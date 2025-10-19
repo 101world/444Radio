@@ -29,9 +29,12 @@ export async function GET(req: NextRequest) {
 
     const music = await response.json()
 
+    // Ensure it's always an array
+    const musicArray = Array.isArray(music) ? music : []
+
     return NextResponse.json({
       success: true,
-      music: music || []
+      music: musicArray
     })
 
   } catch (error) {

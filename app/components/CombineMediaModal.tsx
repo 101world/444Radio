@@ -59,15 +59,26 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
       const imagesRes = await fetch('/api/library/images')
       const imagesData = await imagesRes.json()
 
-      if (musicData.success) {
+      console.log('Music data:', musicData)
+      console.log('Images data:', imagesData)
+
+      if (musicData.success && Array.isArray(musicData.music)) {
         setMusicItems(musicData.music)
+      } else {
+        console.error('Music data is not an array:', musicData)
+        setMusicItems([])
       }
       
-      if (imagesData.success) {
+      if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
+      } else {
+        console.error('Images data is not an array:', imagesData)
+        setImageItems([])
       }
     } catch (error) {
       console.error('Error fetching library:', error)
+      setMusicItems([])
+      setImageItems([])
     } finally {
       setIsLoading(false)
     }

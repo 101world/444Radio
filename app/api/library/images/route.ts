@@ -29,9 +29,12 @@ export async function GET(req: NextRequest) {
 
     const images = await response.json()
 
+    // Ensure it's always an array
+    const imageArray = Array.isArray(images) ? images : []
+
     return NextResponse.json({
       success: true,
-      images: images || []
+      images: imageArray
     })
 
   } catch (error) {
