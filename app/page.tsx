@@ -6,6 +6,7 @@ import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Sphere, MeshDistortMaterial } from '@react-three/drei'
 import * as THREE from 'three'
+import GenerationModal from './components/GenerationModal'
 
 const genres = ['Pop', 'Rock', 'Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Country', 'Reggae', 'Ambient', 'Lo-Fi', 'Trap', 'R&B']
 
@@ -56,6 +57,12 @@ export default function HomePage() {
   const [instrumental, setInstrumental] = useState(false)
   const [coverPrompt, setCoverPrompt] = useState('')
   const [credits, setCredits] = useState(20)
+  const [outputType, setOutputType] = useState<'image' | 'video'>('image')
+  
+  // Modal state
+  const [showModal, setShowModal] = useState(false)
+  const [generatingSongId, setGeneratingSongId] = useState('')
+  const [generatingPrompt, setGeneratingPrompt] = useState('')
 
   useEffect(() => {
     if (prompt.length > 0 && !isDocked) setIsDocked(true)
@@ -86,15 +93,23 @@ export default function HomePage() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, genre: selectedGenre, bpm, instrumental, coverPrompt, userId: user?.id }),
+        body: JSON.stringify({ 
+          prompt, 
+          genre: selectedGenre, 
+          bpm, 
+          instrumental, 
+          coverPrompt, 
+          outputType 
+        }),
       })
       const data = await res.json()
       
       if (data.success) {
+        // Open generation modal
+        setGeneratingSongId(data.songId)
+        setGeneratingPrompt(data.prompt)
+        setShowModal(true)
         setCredits(credits - 1) // Update credits locally
-        alert('🎵 Music generated! Check your profile.')
-        setPrompt('')
-        setIsDocked(false)
       } else if (data.error === 'Insufficient credits') {
         alert('⚡ Not enough credits! You need at least 1 credit.')
       } else {
@@ -105,6 +120,23 @@ export default function HomePage() {
       alert('❌ Failed to generate music. Please try again.')
     }
     setLoading(false)
+  }
+
+  const handleModalClose = () => {
+    setShowModal(false)
+    setGeneratingSongId('')
+    setGeneratingPrompt('')
+    setPrompt('')
+    setIsDocked(false)
+    // Refresh credits
+    if (user) {
+      fetch('/api/credits')
+        .then(res => res.json())
+        .then(data => {
+          if (data.credits !== undefined) setCredits(data.credits)
+        })
+        .catch(console.error)
+    }
   }
 
   return (
@@ -246,6 +278,37 @@ export default function HomePage() {
                         <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${instrumental ? 'translate-x-7' : ''}`}></div>
                       </button>
                     </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm text-green-400 mb-2">Output Type</label>
+                      <div className="flex gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setOutputType('image')}
+                          className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                            outputType === 'image'
+                              ? 'bg-green-500/20 border-green-500 text-green-400'
+                              : 'bg-black/40 border-green-500/30 text-green-400/60'
+                          }`}
+                        >
+                          <div className="text-2xl mb-2">🎨</div>
+                          <div className="font-bold">Music + Cover Art</div>
+                          <div className="text-xs opacity-60">Static image with audio</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOutputType('video')}
+                          className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+                            outputType === 'video'
+                              ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400'
+                              : 'bg-black/40 border-green-500/30 text-green-400/60'
+                          }`}
+                        >
+                          <div className="text-2xl mb-2">🎬</div>
+                          <div className="font-bold">Music + Cover Video</div>
+                          <div className="text-xs opacity-60">Animated video with audio</div>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -253,6 +316,17 @@ export default function HomePage() {
           </div>
         </SignedIn>
       </main>
+
+      {/* Generation Modal */}
+      {showModal && (
+        <GenerationModal
+          isOpen={showModal}
+          onClose={handleModalClose}
+          songId={generatingSongId}
+          prompt={generatingPrompt}
+          outputType={outputType}
+        />
+      )}
     </div>
   )
 }
