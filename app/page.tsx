@@ -295,18 +295,18 @@ export default function HomePage() {
         userCredits={credits}
       />
 
-      {/* 3D Floating Media Preview */}
-      {generatedMedia.length > 0 && (
+      {/* 3D Floating Media Preview - Disabled for now to prevent WebGL issues */}
+      {/* TODO: Re-enable after optimizing WebGL context management */}
+      {/* {generatedMedia.length > 0 && (
         <div className="fixed inset-0 z-40 pointer-events-none">
           <FloatingMediaPreview
             mediaItems={generatedMedia}
             onMediaClick={(item) => {
-              // Open media in fullscreen or modal
               window.open(item.url, '_blank')
             }}
           />
         </div>
-      )}
+      )} */}
     </div>
   )
 }

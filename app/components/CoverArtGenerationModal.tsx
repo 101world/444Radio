@@ -40,7 +40,7 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
     }
 
     if (!prompt.trim()) {
-      alert('Please enter a cover art description')
+      alert('Please enter an image description')
       return
     }
 
@@ -48,10 +48,29 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
     setGeneratedImageUrl(null)
     
     try {
+      // Step 1: Create a song record to get songId
+      const createSongRes = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt.substring(0, 100), // Short title from prompt
+          coverPrompt: prompt,
+          outputType: 'image'
+        })
+      })
+
+      const songData = await createSongRes.json()
+      
+      if (!songData.success || !songData.songId) {
+        throw new Error(songData.error || 'Failed to create song record')
+      }
+
+      // Step 2: Generate the cover art with songId
       const res = await fetch('/api/generate/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          songId: songData.songId,
           prompt,
           params: {
             num_inference_steps: inferenceSteps,
