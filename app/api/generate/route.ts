@@ -93,6 +93,10 @@ export async function POST(request: NextRequest) {
     // Create initial song record with "generating" status
     // Credits will be deducted automatically by the database trigger
     // Songs are PRIVATE by default - user can make public from profile
+    
+    // Get username from user data
+    const username = user.username || `user_${user.id.substring(0, 8)}`
+    
     const songResponse = await fetch(
       `${supabaseUrl}/rest/v1/songs`,
       {
@@ -105,6 +109,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           user_id: user.id,
+          username: username, // Add username for navigation
           title: prompt.substring(0, 50) + '...', // Temporary title
           prompt,
           genre: genre || null,
