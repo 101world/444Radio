@@ -3,31 +3,47 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
+import CombinedMediaPlayer from '../components/CombinedMediaPlayer'
 
-interface Song {
+interface CombinedMedia {
   id: string
   title: string
-  user: {
-    username: string
-    id: string
-  }
-  coverUrl: string
-  audioUrl: string
+  audio_url: string
+  image_url: string
+  audio_prompt: string
+  image_prompt: string
+  user_id: string
   likes: number
   plays: number
-  genre: string
-  createdAt: string
+  created_at: string
+  users: {
+    username: string
+  }
 }
 
 export default function ExplorePage() {
-  const [songs, setSongs] = useState<Song[]>([])
+  const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
   const [filter, setFilter] = useState('trending')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // TODO: Fetch songs from API
-    setLoading(false)
+    fetchCombinedMedia()
   }, [filter])
+
+  const fetchCombinedMedia = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/media/explore')
+      const data = await res.json()
+      if (data.success) {
+        setCombinedMedia(data.combinedMedia)
+      }
+    } catch (error) {
+      console.error('Failed to fetch media:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-green-950 text-white">
@@ -81,7 +97,7 @@ export default function ExplorePage() {
                 <div key={i} className="aspect-square bg-green-500/10 rounded-2xl animate-pulse"></div>
               ))}
             </div>
-          ) : songs.length === 0 ? (
+          ) : combinedMedia.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-6xl mb-4">🎵</div>
               <h2 className="text-2xl font-bold text-green-400 mb-2">No music yet</h2>
@@ -91,36 +107,31 @@ export default function ExplorePage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'flex', flexDirection: 'column-reverse', flexWrap: 'wrap' }}>
-              {/* REVERSED - Shows newest at bottom, scrolling up shows older */}
-              {[...songs].reverse().map((song) => (
-                <Link key={song.id} href={`/song/${song.id}`} className="group">
-                  <div className="relative aspect-square rounded-2xl overflow-hidden backdrop-blur-xl bg-black/40 border border-green-500/20 hover:border-green-500/40 transition-all">
-                    {/* Cover Art */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-cyan-500/20"></div>
-                    
-                    {/* Overlay on Hover */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-cyan-500 flex items-center justify-center mx-auto mb-4">
-                          <span className="text-2xl">▶</span>
-                        </div>
-                        <div className="text-green-100 font-bold">{song.title}</div>
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-                      <div className="flex items-center justify-between text-sm text-green-100">
-                        <span className="font-semibold truncate">{song.user.username}</span>
-                        <div className="flex gap-3">
-                          <span>❤️ {song.likes}</span>
-                          <span>▶️ {song.plays}</span>
-                        </div>
-                      </div>
-                    </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {combinedMedia.map((media) => (
+                <div key={media.id} className="group">
+                  <CombinedMediaPlayer
+                    audioUrl={media.audio_url}
+                    imageUrl={media.image_url}
+                    title={media.title}
+                    audioPrompt={media.audio_prompt}
+                    imagePrompt={media.image_prompt}
+                    likes={media.likes}
+                    plays={media.plays}
+                    showControls={true}
+                  />
+                  <div className="mt-2">
+                    <Link 
+                      href={`/u/${media.users.username}`}
+                      className="text-sm text-green-400 hover:text-green-300 font-semibold"
+                    >
+                      @{media.users.username}
+                    </Link>
+                    <p className="text-xs text-gray-400">
+                      {new Date(media.created_at).toLocaleDateString()}
+                    </p>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}

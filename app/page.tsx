@@ -8,6 +8,7 @@ import { Sphere, MeshDistortMaterial } from '@react-three/drei'
 import * as THREE from 'three'
 import SimpleGenerationSelector from './components/SimpleGenerationSelector'
 import MusicGenerationModal from './components/MusicGenerationModal'
+import CoverArtGenerationModal from './components/CoverArtGenerationModal'
 import CombineMediaModal, { type GeneratedItem } from './components/CombineMediaModal'
 // import FloatingMediaPreview from './components/FloatingMediaPreview' // Disabled due to WebGL issues
 
@@ -244,29 +245,11 @@ export default function HomePage() {
         onSuccess={handleMusicGenerated}
       />
 
-      {/* Cover Art Modal - Coming Soon */}
-      {showCoverArtModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl bg-gradient-to-br from-cyan-900/40 via-slate-900 to-cyan-950/30 rounded-3xl border border-cyan-500/20 shadow-2xl p-8 text-center">
-            <button
-              onClick={() => setShowCoverArtModal(false)}
-              className="absolute top-4 right-4 text-cyan-400 hover:text-cyan-300"
-            >
-              ✕
-            </button>
-            <div className="text-6xl mb-4">🎨</div>
-            <h2 className="text-3xl font-bold text-cyan-400 mb-4">Cover Art Generator</h2>
-            <p className="text-cyan-100/60 mb-6">
-              Flux Schnell image generation modal will be implemented here with:<br/>
-              • Prompt input<br/>
-              • Aspect ratio selector<br/>
-              • Quality settings<br/>
-              • Live preview
-            </p>
-            <p className="text-sm text-cyan-400/60">Coming in the next update!</p>
-          </div>
-        </div>
-      )}
+      <CoverArtGenerationModal
+        isOpen={showCoverArtModal}
+        onClose={() => setShowCoverArtModal(false)}
+        onSuccess={handleImageGenerated}
+      />
 
       <CombineMediaModal
         isOpen={showCombineModal}

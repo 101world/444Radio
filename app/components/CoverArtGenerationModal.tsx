@@ -6,8 +6,9 @@ import { X, Image as ImageIcon, Loader2, Sparkles, Download } from 'lucide-react
 interface CoverArtModalProps {
   isOpen: boolean
   onClose: () => void
-  userCredits: number
+  userCredits?: number
   onGenerated?: (imageUrl: string) => void
+  onSuccess?: (url: string, prompt: string) => void
 }
 
 const aspectRatios = [
@@ -24,7 +25,7 @@ const outputFormats = [
   { value: 'png', label: 'PNG', desc: 'Lossless' },
 ]
 
-export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, onGenerated }: CoverArtModalProps) {
+export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, onGenerated, onSuccess }: CoverArtModalProps) {
   const [prompt, setPrompt] = useState('')
   const [inferenceSteps, setInferenceSteps] = useState(4)
   const [outputQuality, setOutputQuality] = useState(80)
@@ -34,7 +35,7 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   
   const handleGenerate = async () => {
-    if (userCredits < 1) {
+    if (userCredits !== undefined && userCredits < 1) {
       alert('⚡ You need at least 1 credit to generate cover art!')
       return
     }
@@ -70,6 +71,12 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
       if (data.success) {
         setGeneratedImageUrl(data.imageUrl)
         onGenerated?.(data.imageUrl)
+        
+        // Call onSuccess callback if provided
+        if (onSuccess) {
+          onSuccess(data.imageUrl, prompt)
+        }
+        
         alert(`🎨 Cover art generated! ${data.creditsRemaining} credits remaining`)
       } else {
         alert(`Error: ${data.error}`)
@@ -243,7 +250,7 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
                 
                 <button
                   onClick={handleGenerate}
-                  disabled={isGenerating || userCredits < 1 || !prompt.trim()}
+                  disabled={isGenerating || (userCredits !== undefined && userCredits < 1) || !prompt.trim()}
                   className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-bold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
                 >
                   {isGenerating ? (

@@ -21,7 +21,14 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
   const [selectedMusic, setSelectedMusic] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [isCombining, setIsCombining] = useState(false)
-  const [combinedResult, setCombinedResult] = useState<{ audioUrl: string, imageUrl: string } | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [combinedResult, setCombinedResult] = useState<{ 
+    audioUrl: string, 
+    imageUrl: string, 
+    audioPrompt: string, 
+    imagePrompt: string 
+  } | null>(null)
+  const [savedMediaId, setSavedMediaId] = useState<string | null>(null)
 
   const musicItems = generatedItems.filter(item => item.type === 'music')
   const imageItems = generatedItems.filter(item => item.type === 'image')
@@ -39,15 +46,49 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
     const image = generatedItems.find(item => item.id === selectedImage)
 
     if (music && image) {
-      // Simulate combination (in real app, this would save to database)
       setTimeout(() => {
         setCombinedResult({
           audioUrl: music.url,
-          imageUrl: image.url
+          imageUrl: image.url,
+          audioPrompt: music.prompt,
+          imagePrompt: image.prompt
         })
         setIsCombining(false)
-        alert('✅ Media combined! You can now save this to your profile.')
-      }, 1000)
+      }, 500)
+    }
+  }
+
+  const handleSaveToProfile = async () => {
+    if (!combinedResult) return
+
+    setIsSaving(true)
+    try {
+      const res = await fetch('/api/media/combine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioUrl: combinedResult.audioUrl,
+          imageUrl: combinedResult.imageUrl,
+          audioPrompt: combinedResult.audioPrompt,
+          imagePrompt: combinedResult.imagePrompt,
+          title: `${combinedResult.audioPrompt.substring(0, 50)}...`,
+          isPublic: true
+        })
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        setSavedMediaId(data.combinedMedia.id)
+        alert('✅ Saved to your profile! It will appear in the Explore page.')
+      } else {
+        alert(`Error: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Save error:', error)
+      alert('Failed to save. Please try again.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -79,7 +120,9 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
           {/* Combined Preview */}
           {combinedResult && (
             <div className="mb-8 p-6 bg-gradient-to-br from-green-500/20 to-cyan-500/20 rounded-2xl border border-green-500/30">
-              <h3 className="text-xl font-bold text-green-400 mb-4">✅ Combined Media Ready!</h3>
+              <h3 className="text-xl font-bold text-green-400 mb-4">
+                {savedMediaId ? '🎉 Saved to Profile!' : '✅ Combined Media Ready!'}
+              </h3>
               <div className="flex items-center gap-6">
                 <img 
                   src={combinedResult.imageUrl} 
@@ -99,12 +142,45 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
                     }}
                   />
                   <div className="flex gap-3">
-                    <button className="px-6 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-white rounded-xl font-semibold hover:scale-105 transition-transform">
-                      💾 Save to Profile
-                    </button>
-                    <button className="px-6 py-3 bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl font-semibold hover:bg-purple-500/30 transition-colors">
+                    {!savedMediaId ? (
+                      <button 
+                        onClick={handleSaveToProfile}
+                        disabled={isSaving}
+                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-white rounded-xl font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      >
+                        {isSaving ? '💾 Saving...' : '💾 Save to Profile'}
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={onClose}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:scale-105 transition-transform"
+                      >
+                        ✨ View in Profile
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => {
+                        const a = document.createElement('a')
+                        a.href = combinedResult.audioUrl
+                        a.download = 'music.mp3'
+                        a.click()
+                      }}
+                      className="px-6 py-3 bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl font-semibold hover:bg-purple-500/30 transition-colors"
+                    >
                       <Download size={20} className="inline mr-2" />
-                      Download Both
+                      Download Audio
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const a = document.createElement('a')
+                        a.href = combinedResult.imageUrl
+                        a.download = 'cover.webp'
+                        a.click()
+                      }}
+                      className="px-6 py-3 bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl font-semibold hover:bg-purple-500/30 transition-colors"
+                    >
+                      <Download size={20} className="inline mr-2" />
+                      Download Image
                     </button>
                   </div>
                 </div>
