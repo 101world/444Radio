@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { songId, prompt } = await req.json()
+    const { songId, prompt, params } = await req.json()
 
     if (!songId || !prompt) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
@@ -22,11 +22,12 @@ export async function POST(req: NextRequest) {
     // Generate cover art using Flux Schnell with Predictions API
     // Fast 1-4 step generation, 12B parameters, Apache 2.0 license
     console.log('🎨 Starting cover art generation with Flux Schnell for:', prompt)
+    console.log('🎨 Parameters:', params)
     
     // Create a visual prompt for album cover
     const coverPrompt = `Album cover art for: ${prompt}. Professional music album artwork, vibrant colors, artistic, high quality, studio lighting`
     
-    // Create prediction
+    // Create prediction with custom parameters
     const prediction = await replicate.predictions.create({
       version: "black-forest-labs/flux-schnell",
       input: {
@@ -34,9 +35,9 @@ export async function POST(req: NextRequest) {
         num_outputs: 1,
         aspect_ratio: "1:1",
         output_format: "webp",
-        output_quality: 90,
+        output_quality: params?.output_quality ?? 90,
         go_fast: true, // Use optimized fp8 quantization
-        num_inference_steps: 4 // 1-4 steps for schnell
+        num_inference_steps: params?.num_inference_steps ?? 4 // 1-4 steps for schnell
       }
     })
 

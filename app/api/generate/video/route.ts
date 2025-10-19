@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { songId, prompt } = await req.json()
+    const { songId, prompt, params } = await req.json()
 
     if (!songId || !prompt) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
@@ -22,17 +22,18 @@ export async function POST(req: NextRequest) {
     // Generate video using Seedance-1-lite (ByteDance) with Predictions API
     // Text-to-video & image-to-video, 5s or 10s, 480p-1080p
     console.log('🎬 Starting video generation with Seedance-1-lite for:', prompt)
+    console.log('🎬 Parameters:', params)
     
     // Create a visual prompt for music video
     const videoPrompt = `Music video visualization for: ${prompt}. Abstract, colorful, dynamic motion, artistic, cinematic quality, professional music video aesthetic`
     
-    // Create prediction
+    // Create prediction with custom parameters
     const prediction = await replicate.predictions.create({
       version: "bytedance/seedance-1-lite",
       input: {
         prompt: videoPrompt,
-        duration: "5s", // Options: "5s" or "10s"
-        resolution: "720p", // Options: "480p", "720p", "1080p"
+        duration: params?.duration ?? "5s", // Options: "5s" or "10s"
+        resolution: params?.resolution ?? "720p", // Options: "480p", "720p", "1080p"
         // image_url: optional for image-to-video mode
       }
     })

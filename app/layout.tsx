@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
-import Header from '../components/Header';
 import "./globals.css";
 
 const poppins = Poppins({
@@ -25,7 +24,6 @@ export default function RootLayout({
         className={`${poppins.className} antialiased bg-gray-900 text-white`}
       >
         <ClerkProvider>
-          <Header />
           {children}
         </ClerkProvider>
       </body>

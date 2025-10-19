@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { songId, prompt } = await req.json()
+    const { songId, prompt, params } = await req.json()
 
     if (!songId || !prompt) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
@@ -22,13 +22,14 @@ export async function POST(req: NextRequest) {
     // Generate music using MiniMax Music-1.5 with Predictions API
     // Max 240 seconds, supports lyrics (up to 600 chars), English/Chinese
     console.log('🎵 Starting music generation with MiniMax Music-1.5 for:', prompt)
+    console.log('🎵 Parameters:', params)
     
-    // Create prediction
+    // Create prediction with custom parameters
     const prediction = await replicate.predictions.create({
       version: "minimax/music-1.5",
       input: {
         lyrics: prompt.substring(0, 600), // Max 600 characters
-        style_strength: 0.8, // 0.0 to 1.0, default 0.8
+        style_strength: params?.style_strength ?? 0.8, // 0.0 to 1.0, default 0.8
         // reference_audio: optional for style learning
       }
     })
