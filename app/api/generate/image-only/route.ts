@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     console.log('🎨 Parameters:', params)
     
     const output = await replicate.run(
-      "black-forest-labs/flux-schnell" as any,
+      "black-forest-labs/flux-schnell",
       {
         input: {
           prompt,
