@@ -65,10 +65,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate music directly with MiniMax Music-1.5
-    console.log('🎵 Calling MiniMax Music-01 API...')
+    console.log('🎵 Calling MiniMax Music-1.5 API...')
     
     const output = await replicate.run(
-      "minimax/music-01",
+      "minimax/music-1.5",
       {
         input: {
           prompt: prompt.trim(),
@@ -80,16 +80,29 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    console.log('✅ MiniMax Music-01 API response received')
+    console.log('✅ MiniMax Music-1.5 API response received')
     console.log('🎵 Output type:', typeof output)
     console.log('🎵 Output:', output)
 
-    // MusicGen returns a URL string directly
-    const audioUrl = output as unknown as string
+    // Output is a file object with url() method
+    let audioUrl: string
+    
+    if (typeof output === 'string') {
+      audioUrl = output
+    } else if (output && typeof (output as any).url === 'function') {
+      audioUrl = (output as any).url()
+    } else if (output && typeof output === 'object' && 'url' in output) {
+      audioUrl = (output as any).url
+    } else {
+      console.error('❌ Unexpected output format:', output)
+      throw new Error('Invalid output format from API')
+    }
     
     if (!audioUrl) {
-      throw new Error('No audio generated')
+      throw new Error('No audio URL in response')
     }
+
+    console.log('🎵 Audio URL extracted:', audioUrl)
 
     // Deduct credits (-2 for music)
     await fetch(
