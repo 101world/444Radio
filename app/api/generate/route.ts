@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
 
     // Create initial song record with "generating" status
     // Credits will be deducted automatically by the database trigger
+    // Songs are PRIVATE by default - user can make public from profile
     const { data, error } = await supabase
       .from('songs')
       .insert({
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
         instrumental: instrumental || false,
         cover_prompt: coverPrompt || prompt,
         status: 'generating', // Will trigger modal to start generation
+        is_public: false, // 🔒 PRIVATE by default!
       })
       .select()
       .single()

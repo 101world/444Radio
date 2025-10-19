@@ -19,18 +19,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // Generate video using Wan2.2
-    console.log('🎬 Generating video with Wan2.2 for:', prompt)
+    // Generate video using Seedance-1-lite (ByteDance)
+    // Text-to-video & image-to-video, 5s or 10s, 480p-1080p
+    console.log('🎬 Generating video with Seedance-1-lite for:', prompt)
     
     // Create a visual prompt for music video
-    const videoPrompt = `Music video visualization for: ${prompt}. Abstract, colorful, dynamic motion, artistic, cinematic`
+    const videoPrompt = `Music video visualization for: ${prompt}. Abstract, colorful, dynamic motion, artistic, cinematic quality, professional music video aesthetic`
     
     const output = (await replicate.run(
-      "genmo/mochi-1-preview", // Using Mochi as proxy for Wan2.2 - update when Wan2.2 is available
+      "bytedance/seedance-1-lite",
       {
         input: {
           prompt: videoPrompt,
-          num_frames: 120, // ~4 seconds at 30fps
+          duration: "5s", // Options: "5s" or "10s"
+          resolution: "720p", // Options: "480p", "720p", "1080p"
+          // image_url: optional for image-to-video mode
         }
       }
     )) as string | string[]

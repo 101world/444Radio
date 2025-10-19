@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate cover art using Flux Schnell
+    // Fast 1-4 step generation, 12B parameters, Apache 2.0 license
     console.log('🎨 Generating cover art with Flux Schnell for:', prompt)
     
     // Create a visual prompt for album cover
@@ -33,7 +34,9 @@ export async function POST(req: NextRequest) {
           num_outputs: 1,
           aspect_ratio: "1:1",
           output_format: "webp",
-          output_quality: 90
+          output_quality: 90,
+          go_fast: true, // Use optimized fp8 quantization
+          num_inference_steps: 4 // 1-4 steps for schnell
         }
       }
     )) as string | string[]

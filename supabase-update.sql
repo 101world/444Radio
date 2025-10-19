@@ -42,6 +42,7 @@ ALTER TABLE songs ADD COLUMN IF NOT EXISTS cover_prompt TEXT;
 ALTER TABLE songs ADD COLUMN IF NOT EXISTS duration INTEGER;
 ALTER TABLE songs ADD COLUMN IF NOT EXISTS plays INTEGER DEFAULT 0;
 ALTER TABLE songs ADD COLUMN IF NOT EXISTS likes INTEGER DEFAULT 0;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false; -- Songs are private by default!
 
 -- ========================================
 -- 2. CREATE new tables (follows & credits_history)

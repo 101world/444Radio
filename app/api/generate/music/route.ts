@@ -19,15 +19,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // Generate music using MiniMax
-    console.log('🎵 Generating music with MiniMax for:', prompt)
+    // Generate music using MiniMax Music-1.5
+    // Max 240 seconds, supports lyrics (up to 600 chars), English/Chinese
+    console.log('🎵 Generating music with MiniMax Music-1.5 for:', prompt)
     
     const output = (await replicate.run(
-      "minimax/music-01",
+      "minimax/music-1.5",
       {
         input: {
-          prompt: prompt,
-          model: "music-01",
+          lyrics: prompt.substring(0, 600), // Max 600 characters
+          style_strength: 0.8, // 0.0 to 1.0, default 0.8
+          // reference_audio: optional for style learning
         }
       }
     )) as string | string[]
