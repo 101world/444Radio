@@ -124,9 +124,18 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
 
           {/* Lyrics Input (REQUIRED) */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-green-400 mb-2">
-              Lyrics <span className="text-red-400">* Required</span> <span className="text-green-400/60">(10-600 characters)</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-green-400">
+                Lyrics <span className="text-red-400">* Required</span> <span className="text-green-400/60">(10-600 characters)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setLyrics('[intro]\nSynthwave vibes in the night\n\n[verse]\nNeon lights guide my way\nThrough the city after dark\nElectronic dreams at play\n\n[chorus]\nFeel the rhythm, feel the beat\nDancing through the digital heat\nLost in sound, lost in time\nThis moment feels sublime\n\n[outro]\nFading into the night')}
+                className="text-xs px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 hover:bg-green-500/30 transition-colors"
+              >
+                📝 Use Example
+              </button>
+            </div>
             <textarea
               value={lyrics}
               onChange={(e) => setLyrics(e.target.value.slice(0, 600))}

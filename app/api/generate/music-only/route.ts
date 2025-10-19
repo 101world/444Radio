@@ -22,9 +22,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required (10-300 characters)' }, { status: 400 })
     }
 
-    if (!lyrics || lyrics.length < 10 || lyrics.length > 600) {
-      return NextResponse.json({ error: 'Lyrics are required (10-600 characters)' }, { status: 400 })
+    if (!lyrics || lyrics.trim().length < 10 || lyrics.length > 600) {
+      return NextResponse.json({ error: 'Lyrics are required (10-600 characters). Please add structure tags like [verse] [chorus]' }, { status: 400 })
     }
+
+    // Ensure lyrics have proper formatting with line breaks
+    const formattedLyrics = lyrics.trim()
+    
+    // Log for debugging
+    console.log('🎵 Music Generation Request:')
+    console.log('  Prompt:', prompt)
+    console.log('  Lyrics length:', formattedLyrics.length)
+    console.log('  Lyrics preview:', formattedLyrics.substring(0, 100) + '...')
+    console.log('  Bitrate:', bitrate)
+    console.log('  Sample rate:', sample_rate)
+    console.log('  Format:', audio_format)
 
     // Check user credits (music costs 2 credits)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -53,17 +65,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate music directly with MiniMax Music-1.5
-    console.log('🎵 Generating standalone music with MiniMax Music-1.5')
-    console.log('🎵 Prompt:', prompt)
-    console.log('🎵 Lyrics:', lyrics || '(none)')
-    console.log('🎵 Parameters:', { bitrate, sample_rate, audio_format })
+    console.log('🎵 Calling MiniMax Music-01 API...')
     
     const output = await replicate.run(
       "minimax/music-01",
       {
         input: {
-          prompt,
-          lyrics, // Required field
+          prompt: prompt.trim(),
+          lyrics: formattedLyrics,
           bitrate,
           sample_rate,
           audio_format
@@ -71,7 +80,9 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    console.log('🎵 MusicGen output:', output)
+    console.log('✅ MiniMax Music-01 API response received')
+    console.log('🎵 Output type:', typeof output)
+    console.log('🎵 Output:', output)
 
     // MusicGen returns a URL string directly
     const audioUrl = output as unknown as string
