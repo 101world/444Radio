@@ -14,9 +14,11 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
   const [styleStrength, setStyleStrength] = useState(0.8)
   const [isGenerating, setIsGenerating] = useState(false)
   
+  const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null)
+
   const handleGenerate = async () => {
-    if (userCredits < 1) {
-      alert('⚡ You need at least 1 credit to generate music!')
+    if (userCredits < 2) {
+      alert('⚡ You need at least 2 credits to generate music!')
       return
     }
 
@@ -26,24 +28,24 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
     }
 
     setIsGenerating(true)
+    setGeneratedAudioUrl(null)
     
     try {
-      // Call API to generate music
-      const res = await fetch('/api/generate/music', {
+      // Generate music directly (no song record needed)
+      const res = await fetch('/api/generate/music-only', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          params: { style_strength: styleStrength }
+          duration: 8 // 8 seconds default
         })
       })
 
       const data = await res.json()
       
       if (data.success) {
-        alert('🎵 Music generated successfully!')
-        onClose()
-        // TODO: Show completion modal or redirect to profile
+        setGeneratedAudioUrl(data.audioUrl)
+        alert(`🎵 Music generated! ${data.creditsRemaining} credits remaining`)
       } else {
         alert(`Error: ${data.error}`)
       }
@@ -145,12 +147,12 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 px-4 py-2 bg-green-500/20 rounded-full border border-green-500/30">
               <span className="text-xl">⚡</span>
-              <span className="text-green-400 font-bold">1 credit</span>
+              <span className="text-green-400 font-bold">2 credits</span>
             </div>
             
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || userCredits < 1 || !prompt.trim()}
+              disabled={isGenerating || userCredits < 2 || !prompt.trim()}
               className="px-8 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-xl font-bold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
             >
               {isGenerating ? (
@@ -166,6 +168,35 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
               )}
             </button>
           </div>
+
+          {/* Audio Preview */}
+          {generatedAudioUrl && (
+            <div className="mt-6 p-6 bg-gradient-to-br from-green-500/20 to-cyan-500/20 rounded-xl border border-green-500/30">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-green-400 font-semibold">✅ Music Generated!</p>
+                <a
+                  href={generatedAudioUrl}
+                  download="444radio-music.mp3"
+                  className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Download
+                </a>
+              </div>
+              <audio
+                controls
+                src={generatedAudioUrl}
+                className="w-full"
+                style={{
+                  filter: 'hue-rotate(90deg) saturate(1.5)',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  borderRadius: '0.5rem',
+                  padding: '0.5rem'
+                }}
+              >
+                Your browser does not support audio playback.
+              </audio>
+            </div>
+          )}
 
           {/* Generation Info */}
           {isGenerating && (
