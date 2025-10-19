@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
+import { corsResponse, handleOptions } from '../../../lib/cors'
+
+export async function OPTIONS() {
+  return handleOptions()
+}
 
 export async function POST(request: NextRequest) {
   const user = await currentUser()
@@ -78,17 +83,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Return the song ID so frontend can track generation progress
-    return NextResponse.json({ 
+    return corsResponse(NextResponse.json({ 
       success: true, 
       songId: song.id,
       outputType,
       prompt
-    })
+    }))
   } catch (error) {
     console.error('Generation initiation error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to initiate generation'
-    return NextResponse.json({ 
+    return corsResponse(NextResponse.json({ 
       error: errorMessage
-    }, { status: 500 })
+    }, { status: 500 }))
   }
 }

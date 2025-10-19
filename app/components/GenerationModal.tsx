@@ -18,9 +18,10 @@ interface GenerationModalProps {
   songId: string
   prompt: string
   outputType: 'image' | 'video'
+  onComplete?: (data: { audioUrl: string; coverUrl: string }) => void
 }
 
-export default function GenerationModal({ isOpen, onClose, songId, prompt, outputType }: GenerationModalProps) {
+export default function GenerationModal({ isOpen, onClose, songId, prompt, outputType, onComplete }: GenerationModalProps) {
   const [steps, setSteps] = useState<GenerationStep[]>([
     { id: 'music', name: 'Generating Music', status: 'processing', icon: Music },
     { id: 'cover', name: outputType === 'image' ? 'Creating Cover Art' : 'Creating Cover Video', status: 'pending', icon: outputType === 'image' ? ImageIcon : Video },
@@ -84,6 +85,14 @@ export default function GenerationModal({ isOpen, onClose, songId, prompt, outpu
           
           if (finalData.success) {
             updateStep('combine', 'complete')
+            
+            // Notify parent component
+            if (onComplete && musicData.audioUrl && coverData.coverUrl) {
+              onComplete({
+                audioUrl: musicData.audioUrl,
+                coverUrl: coverData.coverUrl
+              })
+            }
           } else {
             updateStep('combine', 'error', undefined, finalData.error)
           }

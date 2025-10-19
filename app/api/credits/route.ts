@@ -1,11 +1,16 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import { corsResponse, handleOptions } from '../../../lib/cors'
+
+export async function OPTIONS() {
+  return handleOptions()
+}
 
 export async function GET() {
   const { userId } = await auth()
 
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
   }
 
   try {
@@ -29,16 +34,16 @@ export async function GET() {
     const data = await response.json()
     const user = data?.[0]
 
-    return NextResponse.json({ 
+    return corsResponse(NextResponse.json({ 
       credits: user?.credits || 0,
       totalGenerated: user?.total_generated || 0
-    })
+    }))
   } catch (error) {
     console.error('Error fetching credits:', error)
-    return NextResponse.json({ 
+    return corsResponse(NextResponse.json({ 
       error: 'Failed to fetch credits',
       credits: 0,
       totalGenerated: 0
-    }, { status: 500 })
+    }, { status: 500 }))
   }
 }

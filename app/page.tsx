@@ -7,6 +7,7 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { Sphere, MeshDistortMaterial } from '@react-three/drei'
 import * as THREE from 'three'
 import GenerationModal from './components/GenerationModal'
+import CompletionModal from './components/CompletionModal'
 
 const genres = ['Pop', 'Rock', 'Hip-Hop', 'Electronic', 'Jazz', 'Classical', 'Country', 'Reggae', 'Ambient', 'Lo-Fi', 'Trap', 'R&B']
 
@@ -63,6 +64,11 @@ export default function HomePage() {
   const [showModal, setShowModal] = useState(false)
   const [generatingSongId, setGeneratingSongId] = useState('')
   const [generatingPrompt, setGeneratingPrompt] = useState('')
+  
+  // Completion modal state
+  const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [completedAudioUrl, setCompletedAudioUrl] = useState('')
+  const [completedCoverUrl, setCompletedCoverUrl] = useState('')
 
   useEffect(() => {
     if (prompt.length > 0 && !isDocked) setIsDocked(true)
@@ -122,10 +128,24 @@ export default function HomePage() {
     setLoading(false)
   }
 
+  const handleGenerationComplete = (data: { audioUrl: string; coverUrl: string }) => {
+    // Close generation modal and open completion modal
+    setShowModal(false)
+    setCompletedAudioUrl(data.audioUrl)
+    setCompletedCoverUrl(data.coverUrl)
+    setShowCompletionModal(true)
+  }
+
   const handleModalClose = () => {
     setShowModal(false)
     setGeneratingSongId('')
     setGeneratingPrompt('')
+  }
+
+  const handleCompletionClose = () => {
+    setShowCompletionModal(false)
+    setCompletedAudioUrl('')
+    setCompletedCoverUrl('')
     setPrompt('')
     setIsDocked(false)
     // Refresh credits
@@ -317,7 +337,7 @@ export default function HomePage() {
         </SignedIn>
       </main>
 
-      {/* Generation Modal */}
+      {/* Generation Modal (Progress) */}
       {showModal && (
         <GenerationModal
           isOpen={showModal}
@@ -325,6 +345,20 @@ export default function HomePage() {
           songId={generatingSongId}
           prompt={generatingPrompt}
           outputType={outputType}
+          onComplete={handleGenerationComplete}
+        />
+      )}
+
+      {/* Completion Modal (Chat-style reply) */}
+      {showCompletionModal && (
+        <CompletionModal
+          isOpen={showCompletionModal}
+          onClose={handleCompletionClose}
+          audioUrl={completedAudioUrl}
+          coverUrl={completedCoverUrl}
+          outputType={outputType}
+          prompt={generatingPrompt}
+          songId={generatingSongId}
         />
       )}
     </div>
