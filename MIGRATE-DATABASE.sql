@@ -4,16 +4,36 @@
 -- SAFE: Can be run multiple times without errors
 
 -- ========================================
--- 1. Add is_public column to songs
+-- 1. Add ALL missing columns to songs table
 -- ========================================
 
-ALTER TABLE songs 
-ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
+-- Core columns
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS prompt TEXT;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS lyrics TEXT;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS bpm INTEGER;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS genre TEXT;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS instrumental BOOLEAN DEFAULT false;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS audio_url TEXT;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS cover_url TEXT;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS cover_prompt TEXT;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS duration INTEGER;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'generating';
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS plays INTEGER DEFAULT 0;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS likes INTEGER DEFAULT 0;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE songs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Update existing songs to be private by default
 UPDATE songs 
 SET is_public = false 
 WHERE is_public IS NULL;
+
+-- Set default status for existing songs
+UPDATE songs 
+SET status = 'complete'
+WHERE status IS NULL;
 
 -- ========================================
 -- 2. Add username columns

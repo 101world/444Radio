@@ -48,29 +48,11 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
     setGeneratedImageUrl(null)
     
     try {
-      // Step 1: Create a song record to get songId
-      const createSongRes = await fetch('/api/generate', {
+      // Generate image directly (no song record needed)
+      const res = await fetch('/api/generate/image-only', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: prompt.substring(0, 100), // Short title from prompt
-          coverPrompt: prompt,
-          outputType: 'image'
-        })
-      })
-
-      const songData = await createSongRes.json()
-      
-      if (!songData.success || !songData.songId) {
-        throw new Error(songData.error || 'Failed to create song record')
-      }
-
-      // Step 2: Generate the cover art with songId
-      const res = await fetch('/api/generate/image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          songId: songData.songId,
           prompt,
           params: {
             num_inference_steps: inferenceSteps,
@@ -86,17 +68,9 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
       const data = await res.json()
       
       if (data.success) {
-        // Flux Schnell output is an array - get first item's URL
-        let imageUrl = data.coverUrl || data.output
-        
-        // If it's an array of objects with url() method, extract the URL
-        if (Array.isArray(imageUrl)) {
-          imageUrl = imageUrl[0]?.url?.() || imageUrl[0]
-        }
-        
-        setGeneratedImageUrl(imageUrl)
-        onGenerated?.(imageUrl)
-        alert('🎨 Cover art generated successfully!')
+        setGeneratedImageUrl(data.imageUrl)
+        onGenerated?.(data.imageUrl)
+        alert(`🎨 Cover art generated! ${data.creditsRemaining} credits remaining`)
       } else {
         alert(`Error: ${data.error}`)
       }
