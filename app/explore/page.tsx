@@ -72,7 +72,7 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Music Grid - Instagram Style */}
+      {/* Music Grid - Instagram Style - Bottom to Top */}
       <main className="px-4 md:px-8 py-8">
         <div className="max-w-7xl mx-auto">
           {loading ? (
@@ -91,8 +91,9 @@ export default function ExplorePage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {songs.map((song) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'flex', flexDirection: 'column-reverse', flexWrap: 'wrap' }}>
+              {/* REVERSED - Shows newest at bottom, scrolling up shows older */}
+              {[...songs].reverse().map((song) => (
                 <Link key={song.id} href={`/song/${song.id}`} className="group">
                   <div className="relative aspect-square rounded-2xl overflow-hidden backdrop-blur-xl bg-black/40 border border-green-500/20 hover:border-green-500/40 transition-all">
                     {/* Cover Art */}

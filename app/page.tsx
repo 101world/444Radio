@@ -55,13 +55,32 @@ export default function HomePage() {
   const [bpm, setBpm] = useState('')
   const [instrumental, setInstrumental] = useState(false)
   const [coverPrompt, setCoverPrompt] = useState('')
+  const [credits, setCredits] = useState(20)
 
   useEffect(() => {
     if (prompt.length > 0 && !isDocked) setIsDocked(true)
   }, [prompt, isDocked])
 
+  // Fetch user credits
+  useEffect(() => {
+    if (user) {
+      fetch('/api/credits')
+        .then(res => res.json())
+        .then(data => {
+          if (data.credits !== undefined) setCredits(data.credits)
+        })
+        .catch(console.error)
+    }
+  }, [user])
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (credits < 1) {
+      alert('⚡ You need at least 1 credit to generate music!')
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch('/api/generate', {
@@ -70,9 +89,20 @@ export default function HomePage() {
         body: JSON.stringify({ prompt, genre: selectedGenre, bpm, instrumental, coverPrompt, userId: user?.id }),
       })
       const data = await res.json()
-      if (data.success) alert('Music generated! Check your profile.')
+      
+      if (data.success) {
+        setCredits(credits - 1) // Update credits locally
+        alert('🎵 Music generated! Check your profile.')
+        setPrompt('')
+        setIsDocked(false)
+      } else if (data.error === 'Insufficient credits') {
+        alert('⚡ Not enough credits! You need at least 1 credit.')
+      } else {
+        alert('❌ Error: ' + (data.message || data.error))
+      }
     } catch (error) {
       console.error(error)
+      alert('❌ Failed to generate music. Please try again.')
     }
     setLoading(false)
   }
@@ -98,7 +128,14 @@ export default function HomePage() {
         <div className="flex items-center gap-4">
           <SignedIn>
             <Link href="/explore" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Explore</Link>
+            <Link href="/billboard" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Charts</Link>
             <Link href={`/profile/${user?.id}`} className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Profile</Link>
+            {/* Credits Display */}
+            <div className="hidden md:flex items-center gap-2 px-4 py-2 backdrop-blur-lg bg-green-500/10 border border-green-500/30 rounded-full">
+              <span className="text-2xl">⚡</span>
+              <span className="text-green-400 font-bold">{credits}</span>
+              <span className="text-green-400/60 text-xs">credits</span>
+            </div>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
           <SignedOut>
@@ -176,8 +213,13 @@ export default function HomePage() {
                       <span> Advanced</span>
                       <span className={`transition-transform ${showAdvanced ? 'rotate-180' : ''}`}></span>
                     </button>
-                    <button type="submit" disabled={loading || !prompt.trim()} className="px-8 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-green-500/50">
-                      {loading ? ' Generating...' : ' Generate'}
+                    <button 
+                      type="submit" 
+                      disabled={loading || !prompt.trim() || credits < 1} 
+                      className="px-8 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-green-500/50"
+                      title={credits < 1 ? 'Not enough credits' : 'Generate music (costs 1 credit)'}
+                    >
+                      {loading ? '⚡ Generating...' : credits < 1 ? '❌ No Credits' : '🎵 Generate (1 ⚡)'}
                     </button>
                   </div>
                 </div>

@@ -133,8 +133,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             ))}
           </div>
         ) : profile?.songs && profile.songs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {profile.songs.map((song) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'flex', flexDirection: 'column-reverse', flexWrap: 'wrap' }}>
+            {/* REVERSED - Newest songs at bottom */}
+            {[...profile.songs].reverse().map((song) => (
               <Link key={song.id} href={`/song/${song.id}`} className="group">
                 <div className="relative aspect-square rounded-2xl overflow-hidden backdrop-blur-xl bg-black/40 border border-green-500/20 hover:border-green-500/40 transition-all">
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-cyan-500/20"></div>

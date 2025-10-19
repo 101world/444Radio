@@ -52,11 +52,12 @@ export async function POST(req: Request) {
   if (eventType === 'user.created') {
     const { id, email_addresses, username } = evt.data
 
-    // Insert user into Supabase
+    // Insert user into Supabase with 20 credits
     const { error } = await supabase.from('users').insert({
       clerk_user_id: id,
       email: email_addresses[0]?.email_address || '',
       username: username || null,
+      credits: 20, // Every new user gets 20 credits
     })
 
     if (error) {

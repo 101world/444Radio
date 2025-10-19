@@ -16,6 +16,22 @@ export async function POST(request: NextRequest) {
   const { title, prompt, lyrics, bpm, genre, instrumental, coverPrompt } = await request.json()
 
   try {
+    // Check if user has enough credits
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('credits')
+      .eq('clerk_user_id', user.id)
+      .single()
+
+    if (userError) throw userError
+
+    if (!userData || userData.credits < 1) {
+      return NextResponse.json({ 
+        error: 'Insufficient credits',
+        message: 'You need at least 1 credit to generate music' 
+      }, { status: 402 })
+    }
+
     // Call Replicate for music - replace with actual model
     const musicOutput = await replicate.run(
       "meta/musicgen:7a76a8258b23fae65c5a22debb8841d1d7e816b75c2f24218cd2bd85737879072",
