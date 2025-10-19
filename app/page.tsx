@@ -6,11 +6,9 @@ import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Sphere, MeshDistortMaterial } from '@react-three/drei'
 import * as THREE from 'three'
-import { Music, Image as ImageIcon, Video } from 'lucide-react'
-import MusicGenerationModal from './components/MusicGenerationModal'
-import CoverArtGenerationModal from './components/CoverArtGenerationModal'
-import CoverVideoGenerationModal from './components/CoverVideoGenerationModal'
-import FloatingMediaPreview from './components/FloatingMediaPreview'
+import { Wand2, Sparkles } from 'lucide-react'
+import UnifiedGenerationModal from './components/UnifiedGenerationModal'
+// import FloatingMediaPreview from './components/FloatingMediaPreview' // Disabled due to WebGL issues
 
 function AnimatedSphere() {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -52,12 +50,10 @@ export default function HomePage() {
   const { user } = useUser()
   const [credits, setCredits] = useState(20)
   
-  // Modal states
-  const [showMusicModal, setShowMusicModal] = useState(false)
-  const [showCoverArtModal, setShowCoverArtModal] = useState(false)
-  const [showCoverVideoModal, setShowCoverVideoModal] = useState(false)
+  // Unified modal state
+  const [showGenerationModal, setShowGenerationModal] = useState(false)
 
-  // Generated media for 3D preview
+  // Generated media for 3D preview (disabled for now)
   const [generatedMedia, setGeneratedMedia] = useState<Array<{
     id: string
     type: 'image' | 'video' | 'audio'
@@ -66,7 +62,7 @@ export default function HomePage() {
     title?: string
   }>>([])
 
-  // Handle generated media
+  // Handle generated media (disabled for now)
   const handleMediaGenerated = (type: 'image' | 'video' | 'audio', url: string, title?: string) => {
     const newMedia = {
       id: Date.now().toString(),
@@ -176,122 +172,87 @@ export default function HomePage() {
         <SignedIn>
           {/* Creation Hub */}
           <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6">
-            <div className="max-w-6xl w-full">
+            <div className="max-w-4xl w-full">
               {/* Header */}
               <div className="text-center mb-12">
-                <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-                  What do you want to create?
+                <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+                  Create with AI
                 </h1>
-                <p className="text-xl text-green-100/60">
-                  Choose a creation type and customize your AI generation
+                <p className="text-xl text-purple-100/60">
+                  Generate music, cover art, and videos with a single prompt
                 </p>
               </div>
 
-              {/* 3 Generation Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                
-                {/* MUSIC GENERATION CARD */}
-                <button
-                  onClick={() => setShowMusicModal(true)}
-                  className="group relative backdrop-blur-xl bg-gradient-to-br from-green-500/10 to-green-600/5 border-2 border-green-500/30 rounded-3xl p-8 hover:border-green-500/60 hover:shadow-2xl hover:shadow-green-500/20 hover:scale-105 transition-all duration-300"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-6 p-6 bg-green-500/20 rounded-full group-hover:bg-green-500/30 transition-colors">
-                      <Music size={64} className="text-green-400" />
-                    </div>
-                    <h2 className="text-3xl font-bold text-green-400 mb-3">Music</h2>
-                    <p className="text-green-100/70 mb-4">
-                      Generate unique music tracks with AI
-                    </p>
-                    <div className="text-sm text-green-400/60">
-                      MiniMax Music-1.5
-                    </div>
-                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-green-500/20 rounded-full">
-                      <span className="text-xl">⚡</span>
-                      <span className="text-green-400 font-bold">1 credit</span>
-                    </div>
+              {/* Unified Prompt Box */}
+              <div className="backdrop-blur-2xl bg-gradient-to-br from-purple-900/40 via-black/40 to-pink-900/40 border-2 border-purple-500/30 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300 shadow-2xl shadow-purple-500/10">
+                <div className="mb-6">
+                  <label className="block text-lg font-semibold text-purple-400 mb-4 flex items-center gap-2">
+                    <Sparkles size={24} className="text-pink-400" />
+                    Describe what you want to create
+                  </label>
+                  <div className="relative">
+                    <textarea
+                      placeholder="e.g., 'upbeat electronic dance track with neon synthwave vibes and cyberpunk energy'"
+                      className="w-full h-32 px-6 py-4 pr-16 bg-black/60 border-2 border-purple-500/30 rounded-2xl text-purple-100 placeholder:text-purple-400/40 focus:outline-none focus:border-purple-500/60 focus:ring-4 focus:ring-purple-500/20 resize-none transition-all text-lg"
+                      maxLength={600}
+                    />
+                    <button
+                      onClick={() => setShowGenerationModal(true)}
+                      className="absolute bottom-4 right-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl transition-all hover:scale-110 shadow-lg shadow-purple-500/50"
+                      title="Open AI Generator"
+                    >
+                      <Wand2 size={24} />
+                    </button>
                   </div>
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-green-500/0 to-green-500/0 group-hover:from-green-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-                </button>
+                </div>
 
-                {/* COVER ART GENERATION CARD */}
-                <button
-                  onClick={() => setShowCoverArtModal(true)}
-                  className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-2 border-cyan-500/30 rounded-3xl p-8 hover:border-cyan-500/60 hover:shadow-2xl hover:shadow-cyan-500/20 hover:scale-105 transition-all duration-300"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-6 p-6 bg-cyan-500/20 rounded-full group-hover:bg-cyan-500/30 transition-colors">
-                      <ImageIcon size={64} className="text-cyan-400" />
-                    </div>
-                    <h2 className="text-3xl font-bold text-cyan-400 mb-3">Cover Art</h2>
-                    <p className="text-green-100/70 mb-4">
-                      Create stunning album cover artwork
-                    </p>
-                    <div className="text-sm text-cyan-400/60">
-                      Flux Schnell
-                    </div>
-                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-cyan-500/20 rounded-full">
-                      <span className="text-xl">⚡</span>
-                      <span className="text-cyan-400 font-bold">1 credit</span>
-                    </div>
+                {/* Quick Info */}
+                <div className="flex items-center justify-between pt-4 border-t border-purple-500/20">
+                  <div className="flex items-center gap-4 text-sm text-purple-400/80">
+                    <span className="flex items-center gap-2">
+                      <span className="text-2xl">🎵</span>
+                      Music • 2 credits
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-2xl">🎨</span>
+                      Art • 1 credit
+                    </span>
+                    <span className="flex items-center gap-2 opacity-50">
+                      <span className="text-2xl">🎬</span>
+                      Video • Soon
+                    </span>
                   </div>
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:to-green-500/5 transition-all duration-300"></div>
-                </button>
-
-                {/* COVER VIDEO GENERATION CARD */}
-                <button
-                  onClick={() => setShowCoverVideoModal(true)}
-                  className="group relative backdrop-blur-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-2 border-purple-500/30 rounded-3xl p-8 hover:border-purple-500/60 hover:shadow-2xl hover:shadow-purple-500/20 hover:scale-105 transition-all duration-300"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-6 p-6 bg-purple-500/20 rounded-full group-hover:bg-purple-500/30 transition-colors">
-                      <Video size={64} className="text-purple-400" />
-                    </div>
-                    <h2 className="text-3xl font-bold text-purple-400 mb-3">Cover Video</h2>
-                    <p className="text-green-100/70 mb-4">
-                      Generate animated music video visuals
-                    </p>
-                    <div className="text-sm text-purple-400/60">
-                      Seedance-1-lite
-                    </div>
-                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-full">
-                      <span className="text-xl">⚡</span>
-                      <span className="text-purple-400 font-bold">1 credit</span>
-                    </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-full border border-purple-500/30">
+                    <span className="text-xl">⚡</span>
+                    <span className="text-purple-400 font-bold">{credits} credits</span>
                   </div>
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-500/0 to-purple-500/0 group-hover:from-purple-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-                </button>
-
+                </div>
               </div>
 
-              {/* Info Text */}
-              <div className="text-center mt-12">
-                <p className="text-green-100/50 text-sm">
-                  Each generation uses 1 credit • You have <span className="text-green-400 font-bold">{credits} credits</span> remaining
-                </p>
+              {/* Features Grid */}
+              <div className="grid grid-cols-3 gap-4 mt-8">
+                <div className="text-center p-4 backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl">
+                  <div className="text-3xl mb-2">⚡</div>
+                  <div className="text-sm text-purple-400/80">Lightning Fast</div>
+                </div>
+                <div className="text-center p-4 backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl">
+                  <div className="text-3xl mb-2">🎯</div>
+                  <div className="text-sm text-purple-400/80">High Quality</div>
+                </div>
+                <div className="text-center p-4 backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl">
+                  <div className="text-3xl mb-2">🔥</div>
+                  <div className="text-sm text-purple-400/80">Unlimited Ideas</div>
+                </div>
               </div>
             </div>
           </div>
         </SignedIn>
       </main>
 
-      {/* Modals */}
-      <MusicGenerationModal
-        isOpen={showMusicModal}
-        onClose={() => setShowMusicModal(false)}
-        userCredits={credits}
-      />
-
-      <CoverArtGenerationModal
-        isOpen={showCoverArtModal}
-        onClose={() => setShowCoverArtModal(false)}
-        userCredits={credits}
-        onGenerated={(url) => handleMediaGenerated('image', url, 'Cover Art')}
-      />
-
-      <CoverVideoGenerationModal
-        isOpen={showCoverVideoModal}
-        onClose={() => setShowCoverVideoModal(false)}
+      {/* Unified Generation Modal */}
+      <UnifiedGenerationModal
+        isOpen={showGenerationModal}
+        onClose={() => setShowGenerationModal(false)}
         userCredits={credits}
       />
 
