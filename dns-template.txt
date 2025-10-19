@@ -1,0 +1,109 @@
+# 444RADIO.CO.IN - DNS Configuration Template
+# Apply these records in your DNS provider (GoDaddy/Cloudflare)
+
+# ===========================================
+# VERCEL DEPLOYMENT DNS RECORDS
+# ===========================================
+
+# Root Domain (444radio.co.in)
+# Type: A Record
+# Name: @
+# Value: 216.198.79.1
+# TTL: 600
+# Proxy: Disabled
+
+# WWW Subdomain (www.444radio.co.in)
+# Type: CNAME Record
+# Name: www
+# Value: 092434441cef6182.vercel-dns-017.com.
+# TTL: 600
+# Proxy: Disabled
+
+# ===========================================
+# OPTIONAL: CLOUDFLARE ENHANCEMENT
+# ===========================================
+
+# If using Cloudflare, add these additional records:
+
+# SSL/TLS Settings:
+# - Mode: Full (strict)
+# - Always Use HTTPS: Enabled
+# - Automatic HTTPS Rewrites: Enabled
+
+# Page Rules (if needed):
+# - URL: https://444radio.co.in/*
+# - Setting: Always Use HTTPS
+
+# ===========================================
+# EMAIL RECORDS (if using custom email)
+# ===========================================
+
+# MX Records (example for Gmail):
+# Type: MX
+# Name: @
+# Value: ASPMX.L.GOOGLE.COM
+# Priority: 1
+# TTL: 3600
+
+# Type: MX
+# Name: @
+# Value: ALT1.ASPMX.L.GOOGLE.COM
+# Priority: 5
+# TTL: 3600
+
+# ===========================================
+# SECURITY RECORDS
+# ===========================================
+
+# SPF Record (example):
+# Type: TXT
+# Name: @
+# Value: "v=spf1 include:_spf.google.com ~all"
+# TTL: 3600
+
+# DKIM Record (example):
+# Type: TXT
+# Name: google._domainkey
+# Value: "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+# TTL: 3600
+
+# ===========================================
+# VERIFICATION RECORDS
+# ===========================================
+
+# Google Search Console (replace with your verification code):
+# Type: TXT
+# Name: @
+# Value: "google-site-verification=XXXXXXXXXXXXXXXXXXXXXXX"
+# TTL: 3600
+
+# Microsoft Bing (replace with your verification code):
+# Type: TXT
+# Name: @
+# Value: "msvalidate.01=XXXXXXXXXXXXXXXXXXXXXXX"
+# TTL: 3600
+
+# ===========================================
+# SUBDOMAIN RECORDS (if needed)
+# ===========================================
+
+# API Subdomain (example):
+# Type: CNAME
+# Name: api
+# Value: 092434441cef6182.vercel-dns-017.com.
+# TTL: 600
+
+# Staging Subdomain (example):
+# Type: CNAME
+# Name: staging
+# Value: 092434441cef6182.vercel-dns-017.com.
+# TTL: 600
+
+# ===========================================
+# NOTES
+# ===========================================
+# - DNS propagation takes 5-30 minutes (up to 24 hours)
+# - Always include trailing dot (.) in CNAME values
+# - Test your domain after DNS updates
+# - Keep TTL low (600) during setup, increase later
+# - Backup existing records before making changes
