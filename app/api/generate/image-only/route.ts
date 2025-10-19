@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
+import { downloadAndUploadToR2 } from '@/lib/storage'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
@@ -77,6 +78,27 @@ export async function POST(req: NextRequest) {
 
     if (!imageUrl) {
       throw new Error('No image generated')
+    }
+
+    // Upload to R2 for permanent storage
+    console.log('📦 Uploading image to R2 for permanent storage...')
+    const outputFormat = params?.output_format ?? 'webp'
+    const fileName = `${prompt.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${outputFormat}`
+    
+    const r2Result = await downloadAndUploadToR2(
+      imageUrl,
+      userId,
+      'images',
+      fileName
+    )
+
+    if (!r2Result.success) {
+      console.error('⚠️ R2 upload failed, using Replicate URL:', r2Result.error)
+      // Continue with Replicate URL if R2 fails
+    } else {
+      console.log('✅ R2 upload successful:', r2Result.url)
+      // Use permanent R2 URL instead of temporary Replicate URL
+      imageUrl = r2Result.url
     }
 
     // Deduct 1 credit

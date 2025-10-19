@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
+import { downloadAndUploadToR2 } from '@/lib/storage'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
@@ -103,6 +104,26 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('🎵 Audio URL extracted:', audioUrl)
+
+    // Upload to R2 for permanent storage
+    console.log('📦 Uploading to R2 for permanent storage...')
+    const fileName = `${prompt.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${audio_format}`
+    
+    const r2Result = await downloadAndUploadToR2(
+      audioUrl,
+      userId,
+      'music',
+      fileName
+    )
+
+    if (!r2Result.success) {
+      console.error('⚠️ R2 upload failed, using Replicate URL:', r2Result.error)
+      // Continue with Replicate URL if R2 fails
+    } else {
+      console.log('✅ R2 upload successful:', r2Result.url)
+      // Use permanent R2 URL instead of temporary Replicate URL
+      audioUrl = r2Result.url
+    }
 
     // Deduct credits (-2 for music)
     await fetch(
