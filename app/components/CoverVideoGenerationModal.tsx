@@ -201,7 +201,7 @@ export default function CoverVideoGenerationModal({ isOpen, onClose, userCredits
             {/* Tip */}
             <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
               <p className="text-sm text-purple-400/80">
-                <span className="font-semibold">💡 Tip:</span> Use descriptive words like "flowing", "pulsating", "swirling" to create dynamic motion.
+                <span className="font-semibold">💡 Tip:</span> Use descriptive words like &ldquo;flowing&rdquo;, &ldquo;pulsating&rdquo;, &ldquo;swirling&rdquo; to create dynamic motion.
               </p>
             </div>
           </div>

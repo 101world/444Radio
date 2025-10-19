@@ -134,7 +134,7 @@ export default function FloatingMediaPreview({ mediaItems, onMediaClick }: Float
       const y = (index % 3) * heightSpacing - heightSpacing
       return [x, y, z] as [number, number, number]
     })
-  }, [mediaItems.length])
+  }, [mediaItems])
 
   return (
     <div className="w-full h-full">
