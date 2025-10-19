@@ -19,26 +19,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // Generate video using Seedance-1-lite (ByteDance)
+    // Generate video using Seedance-1-lite (ByteDance) with Predictions API
     // Text-to-video & image-to-video, 5s or 10s, 480p-1080p
-    console.log('🎬 Generating video with Seedance-1-lite for:', prompt)
+    console.log('🎬 Starting video generation with Seedance-1-lite for:', prompt)
     
     // Create a visual prompt for music video
     const videoPrompt = `Music video visualization for: ${prompt}. Abstract, colorful, dynamic motion, artistic, cinematic quality, professional music video aesthetic`
     
-    const output = (await replicate.run(
-      "bytedance/seedance-1-lite",
-      {
-        input: {
-          prompt: videoPrompt,
-          duration: "5s", // Options: "5s" or "10s"
-          resolution: "720p", // Options: "480p", "720p", "1080p"
-          // image_url: optional for image-to-video mode
-        }
+    // Create prediction
+    const prediction = await replicate.predictions.create({
+      version: "bytedance/seedance-1-lite",
+      input: {
+        prompt: videoPrompt,
+        duration: "5s", // Options: "5s" or "10s"
+        resolution: "720p", // Options: "480p", "720p", "1080p"
+        // image_url: optional for image-to-video mode
       }
-    )) as string | string[]
+    })
+
+    console.log('🎬 Video prediction created:', prediction.id)
+
+    // Poll until completed (video takes longer)
+    let finalPrediction = prediction
+    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed') {
+      await new Promise(resolve => setTimeout(resolve, 3000)) // Poll every 3 seconds
+      finalPrediction = await replicate.predictions.get(prediction.id)
+      console.log('🎬 Video generation status:', finalPrediction.status)
+    }
+
+    if (finalPrediction.status === 'failed') {
+      const errorMsg = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Video generation failed'
+      throw new Error(errorMsg)
+    }
 
     // The output is the video URL
+    const output = finalPrediction.output
     const videoUrl = Array.isArray(output) ? output[0] : output
 
     if (!videoUrl) {

@@ -19,29 +19,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // Generate cover art using Flux Schnell
+    // Generate cover art using Flux Schnell with Predictions API
     // Fast 1-4 step generation, 12B parameters, Apache 2.0 license
-    console.log('🎨 Generating cover art with Flux Schnell for:', prompt)
+    console.log('🎨 Starting cover art generation with Flux Schnell for:', prompt)
     
     // Create a visual prompt for album cover
     const coverPrompt = `Album cover art for: ${prompt}. Professional music album artwork, vibrant colors, artistic, high quality, studio lighting`
     
-    const output = (await replicate.run(
-      "black-forest-labs/flux-schnell",
-      {
-        input: {
-          prompt: coverPrompt,
-          num_outputs: 1,
-          aspect_ratio: "1:1",
-          output_format: "webp",
-          output_quality: 90,
-          go_fast: true, // Use optimized fp8 quantization
-          num_inference_steps: 4 // 1-4 steps for schnell
-        }
+    // Create prediction
+    const prediction = await replicate.predictions.create({
+      version: "black-forest-labs/flux-schnell",
+      input: {
+        prompt: coverPrompt,
+        num_outputs: 1,
+        aspect_ratio: "1:1",
+        output_format: "webp",
+        output_quality: 90,
+        go_fast: true, // Use optimized fp8 quantization
+        num_inference_steps: 4 // 1-4 steps for schnell
       }
-    )) as string | string[]
+    })
+
+    console.log('🎨 Cover art prediction created:', prediction.id)
+
+    // Poll until completed
+    let finalPrediction = prediction
+    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed') {
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Poll every 1 second (fast model)
+      finalPrediction = await replicate.predictions.get(prediction.id)
+      console.log('🎨 Cover art generation status:', finalPrediction.status)
+    }
+
+    if (finalPrediction.status === 'failed') {
+      const errorMsg = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Cover art generation failed'
+      throw new Error(errorMsg)
+    }
 
     // The output is the image URL
+    const output = finalPrediction.output
     const imageUrl = Array.isArray(output) ? output[0] : output
 
     if (!imageUrl) {

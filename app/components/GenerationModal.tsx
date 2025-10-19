@@ -138,14 +138,29 @@ export default function GenerationModal({ isOpen, onClose, songId, prompt, outpu
           {/* Preview Area */}
           {(currentPreview || audioUrl) && (
             <div className="mb-8 rounded-xl overflow-hidden border border-green-500/30 bg-black/40">
-              {outputType === 'image' && currentPreview && (
-                <img src={currentPreview} alt="Cover Art" className="w-full h-64 object-cover" />
+              {/* Show cover (image or video) */}
+              {currentPreview && (
+                <div className="relative">
+                  {outputType === 'image' ? (
+                    <img src={currentPreview} alt="Cover Art" className="w-full h-80 object-cover" />
+                  ) : (
+                    <video src={currentPreview} className="w-full h-80 object-cover" controls autoPlay loop muted />
+                  )}
+                </div>
               )}
-              {outputType === 'video' && currentPreview && (
-                <video src={currentPreview} className="w-full h-64 object-cover" controls />
-              )}
-              {audioUrl && !currentPreview && (
-                <div className="p-8 flex items-center justify-center">
+              
+              {/* Show audio player */}
+              {audioUrl && (
+                <div className="p-6 bg-gradient-to-r from-green-500/10 to-cyan-500/10 border-t border-green-500/30">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-400 to-cyan-400 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">🎵</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-green-400 font-bold truncate">{prompt}</p>
+                      <p className="text-green-400/60 text-sm">Generated Track</p>
+                    </div>
+                  </div>
                   <audio src={audioUrl} controls className="w-full" />
                 </div>
               )}

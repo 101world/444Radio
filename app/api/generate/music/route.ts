@@ -19,22 +19,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // Generate music using MiniMax Music-1.5
+    // Generate music using MiniMax Music-1.5 with Predictions API
     // Max 240 seconds, supports lyrics (up to 600 chars), English/Chinese
-    console.log('🎵 Generating music with MiniMax Music-1.5 for:', prompt)
+    console.log('🎵 Starting music generation with MiniMax Music-1.5 for:', prompt)
     
-    const output = (await replicate.run(
-      "minimax/music-1.5",
-      {
-        input: {
-          lyrics: prompt.substring(0, 600), // Max 600 characters
-          style_strength: 0.8, // 0.0 to 1.0, default 0.8
-          // reference_audio: optional for style learning
-        }
+    // Create prediction
+    const prediction = await replicate.predictions.create({
+      version: "minimax/music-1.5",
+      input: {
+        lyrics: prompt.substring(0, 600), // Max 600 characters
+        style_strength: 0.8, // 0.0 to 1.0, default 0.8
+        // reference_audio: optional for style learning
       }
-    )) as string | string[]
+    })
+
+    console.log('🎵 Music prediction created:', prediction.id)
+
+    // Poll until completed
+    let finalPrediction = prediction
+    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed') {
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Poll every 2 seconds
+      finalPrediction = await replicate.predictions.get(prediction.id)
+      console.log('🎵 Music generation status:', finalPrediction.status)
+    }
+
+    if (finalPrediction.status === 'failed') {
+      const errorMsg = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Music generation failed'
+      throw new Error(errorMsg)
+    }
 
     // The output is the audio URL
+    const output = finalPrediction.output
     const audioUrl = Array.isArray(output) ? output[0] : output
 
     if (!audioUrl) {
