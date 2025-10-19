@@ -1,27 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Check, Music, Image as ImageIcon, Play, Download } from 'lucide-react'
 
-interface GeneratedItem {
+interface LibraryMusic {
   id: string
-  type: 'music' | 'image'
-  url: string
+  title: string | null
   prompt: string
-  createdAt: Date
+  lyrics: string | null
+  audio_url: string
+  created_at: string
+}
+
+interface LibraryImage {
+  id: string
+  title: string | null
+  prompt: string
+  image_url: string
+  created_at: string
 }
 
 interface CombineMediaModalProps {
   isOpen: boolean
   onClose: () => void
-  generatedItems: GeneratedItem[]
 }
 
-export default function CombineMediaModal({ isOpen, onClose, generatedItems }: CombineMediaModalProps) {
+export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModalProps) {
   const [selectedMusic, setSelectedMusic] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [isCombining, setIsCombining] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
+  const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [combinedResult, setCombinedResult] = useState<{ 
     audioUrl: string, 
     imageUrl: string, 
@@ -30,8 +41,37 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
   } | null>(null)
   const [savedMediaId, setSavedMediaId] = useState<string | null>(null)
 
-  const musicItems = generatedItems.filter(item => item.type === 'music')
-  const imageItems = generatedItems.filter(item => item.type === 'image')
+  // Fetch library items when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchLibraryItems()
+    }
+  }, [isOpen])
+
+  const fetchLibraryItems = async () => {
+    setIsLoading(true)
+    try {
+      // Fetch music library
+      const musicRes = await fetch('/api/library/music')
+      const musicData = await musicRes.json()
+      
+      // Fetch images library
+      const imagesRes = await fetch('/api/library/images')
+      const imagesData = await imagesRes.json()
+
+      if (musicData.success) {
+        setMusicItems(musicData.music)
+      }
+      
+      if (imagesData.success) {
+        setImageItems(imagesData.images)
+      }
+    } catch (error) {
+      console.error('Error fetching library:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleCombine = () => {
     if (!selectedMusic || !selectedImage) {
@@ -41,15 +81,15 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
 
     setIsCombining(true)
     
-    // Get the selected items
-    const music = generatedItems.find(item => item.id === selectedMusic)
-    const image = generatedItems.find(item => item.id === selectedImage)
+    // Get the selected items from library
+    const music = musicItems.find(item => item.id === selectedMusic)
+    const image = imageItems.find(item => item.id === selectedImage)
 
     if (music && image) {
       setTimeout(() => {
         setCombinedResult({
-          audioUrl: music.url,
-          imageUrl: image.url,
+          audioUrl: music.audio_url,
+          imageUrl: image.image_url,
           audioPrompt: music.prompt,
           imagePrompt: image.prompt
         })
@@ -114,8 +154,16 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
             <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
               Combine Media
             </h2>
-            <p className="text-purple-400/60">Select 1 music track + 1 cover image to create unified media</p>
+            <p className="text-purple-400/60">Select music + cover art from your library to create a release</p>
           </div>
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mb-4"></div>
+              <p className="text-purple-400">Loading your library...</p>
+            </div>
+          )}
 
           {/* Combined Preview */}
           {combinedResult && (
@@ -220,9 +268,9 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="text-sm text-green-400 font-semibold truncate">{item.prompt}</p>
+                          <p className="text-sm text-green-400 font-semibold truncate">{item.title || item.prompt}</p>
                           <p className="text-xs text-green-400/60 mt-1">
-                            {item.createdAt.toLocaleTimeString()}
+                            {new Date(item.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         {selectedMusic === item.id && (
@@ -230,7 +278,7 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
                         )}
                       </div>
                       <audio
-                        src={item.url}
+                        src={item.audio_url}
                         controls
                         className="w-full mt-2"
                         style={{ height: '32px' }}
@@ -269,7 +317,7 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
                       `}
                     >
                       <img 
-                        src={item.url} 
+                        src={item.image_url} 
                         alt="Cover" 
                         className="w-full aspect-square object-cover"
                       />
@@ -323,5 +371,3 @@ export default function CombineMediaModal({ isOpen, onClose, generatedItems }: C
     </div>
   )
 }
-
-export { type GeneratedItem }

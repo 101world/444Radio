@@ -115,11 +115,48 @@ export async function POST(req: NextRequest) {
       })
     })
 
+    // Save to images_library table
+    console.log('💾 Saving to images library...')
+    const libraryEntry = {
+      clerk_user_id: userId,
+      title: prompt.substring(0, 100), // Use first 100 chars as title
+      prompt: prompt,
+      image_url: imageUrl,
+      aspect_ratio: params?.aspect_ratio ?? "1:1",
+      image_format: params?.output_format ?? "webp",
+      generation_params: {
+        num_outputs: params?.num_outputs ?? 1,
+        aspect_ratio: params?.aspect_ratio ?? "1:1",
+        output_format: params?.output_format ?? "webp",
+        output_quality: params?.output_quality ?? 80,
+        num_inference_steps: params?.num_inference_steps ?? 4
+      },
+      status: 'ready'
+    }
+
+    const saveResponse = await fetch(
+      `${supabaseUrl}/rest/v1/images_library`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(libraryEntry)
+      }
+    )
+
+    const savedImage = await saveResponse.json()
+    console.log('✅ Saved to library:', savedImage)
+
     console.log('✅ Standalone image generated:', imageUrl)
 
     return NextResponse.json({ 
       success: true, 
       imageUrl,
+      libraryId: savedImage[0]?.id, // Return the library ID
       message: 'Image generated successfully',
       creditsRemaining: user.credits - 1
     })

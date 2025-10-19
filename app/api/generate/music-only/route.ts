@@ -142,11 +142,48 @@ export async function POST(req: NextRequest) {
       }
     )
 
+    // Save to music_library table
+    console.log('💾 Saving to music library...')
+    const libraryEntry = {
+      clerk_user_id: userId,
+      title: prompt.substring(0, 100), // Use first 100 chars of prompt as title
+      prompt: prompt,
+      lyrics: formattedLyrics,
+      audio_url: audioUrl,
+      audio_format: audio_format,
+      bitrate: bitrate,
+      sample_rate: sample_rate,
+      generation_params: {
+        bitrate,
+        sample_rate,
+        audio_format
+      },
+      status: 'ready'
+    }
+
+    const saveResponse = await fetch(
+      `${supabaseUrl}/rest/v1/music_library`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(libraryEntry)
+      }
+    )
+
+    const savedMusic = await saveResponse.json()
+    console.log('✅ Saved to library:', savedMusic)
+
     console.log('✅ Music generated successfully:', audioUrl)
     
     return NextResponse.json({
       success: true,
       audioUrl,
+      libraryId: savedMusic[0]?.id, // Return the library ID
       creditsRemaining: userCredits - 2
     })
 

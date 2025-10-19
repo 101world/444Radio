@@ -9,7 +9,7 @@ import * as THREE from 'three'
 import SimpleGenerationSelector from './components/SimpleGenerationSelector'
 import MusicGenerationModal from './components/MusicGenerationModal'
 import CoverArtGenerationModal from './components/CoverArtGenerationModal'
-import CombineMediaModal, { type GeneratedItem } from './components/CombineMediaModal'
+import CombineMediaModal from './components/CombineMediaModal'
 // import FloatingMediaPreview from './components/FloatingMediaPreview' // Disabled due to WebGL issues
 
 function AnimatedSphere() {
@@ -57,31 +57,21 @@ export default function HomePage() {
   const [showCoverArtModal, setShowCoverArtModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
 
-  // Track generated items
-  const [generatedItems, setGeneratedItems] = useState<GeneratedItem[]>([])
+  // Track if user has generated items (to show combine button)
+  const [hasGeneratedItems, setHasGeneratedItems] = useState(false)
 
   // Handle music generation success
   const handleMusicGenerated = (url: string, prompt: string) => {
-    const newItem: GeneratedItem = {
-      id: Date.now().toString(),
-      type: 'music',
-      url,
-      prompt,
-      createdAt: new Date()
-    }
-    setGeneratedItems(prev => [...prev, newItem])
+    setHasGeneratedItems(true)
+    // Show success message
+    console.log('Music generated:', url)
   }
 
   // Handle image generation success
   const handleImageGenerated = (url: string, prompt: string) => {
-    const newItem: GeneratedItem = {
-      id: (Date.now() + 1).toString(),
-      type: 'image',
-      url,
-      prompt,
-      createdAt: new Date()
-    }
-    setGeneratedItems(prev => [...prev, newItem])
+    setHasGeneratedItems(true)
+    // Show success message
+    console.log('Image generated:', url)
   }
 
   // Fetch user credits
@@ -201,19 +191,17 @@ export default function HomePage() {
               />
 
               {/* Combine Button (shows when items are generated) */}
-              {generatedItems.length > 0 && (
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={() => setShowCombineModal(true)}
-                    className="px-8 py-4 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-2xl font-bold text-lg hover:scale-105 transition-transform shadow-xl shadow-green-500/50"
-                  >
-                    🎭 Combine Media ({generatedItems.length} items)
-                  </button>
-                  <p className="text-sm text-purple-400/60 mt-2">
-                    Select 1 music + 1 image to create unified media
-                  </p>
-                </div>
-              )}
+              <div className="mt-8 text-center">
+                <button
+                  onClick={() => setShowCombineModal(true)}
+                  className="px-8 py-4 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-2xl font-bold text-lg hover:scale-105 transition-transform shadow-xl shadow-green-500/50"
+                >
+                  🎭 Combine Media (Create Release)
+                </button>
+                <p className="text-sm text-purple-400/60 mt-2">
+                  Select music + cover art from your library to create a release
+                </p>
+              </div>
 
               {/* Info Cards */}
               <div className="grid grid-cols-3 gap-4 mt-12">
@@ -254,7 +242,6 @@ export default function HomePage() {
       <CombineMediaModal
         isOpen={showCombineModal}
         onClose={() => setShowCombineModal(false)}
-        generatedItems={generatedItems}
       />
 
       {/* 3D Floating Media Preview - Disabled for now to prevent WebGL issues */}
