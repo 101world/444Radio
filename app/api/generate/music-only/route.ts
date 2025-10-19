@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     console.log('🎵 MusicGen output:', output)
 
     // MusicGen returns a URL string directly
-    let audioUrl = output as unknown as string
+    const audioUrl = output as unknown as string
     
     if (!audioUrl) {
       throw new Error('No audio generated')
