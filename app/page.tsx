@@ -7,6 +7,10 @@ import { Canvas, useFrame } from '@react-three/fiber'
 import { Sphere, MeshDistortMaterial } from '@react-three/drei'
 import * as THREE from 'three'
 import { Music, Image as ImageIcon, Video } from 'lucide-react'
+import MusicGenerationModal from './components/MusicGenerationModal'
+import CoverArtGenerationModal from './components/CoverArtGenerationModal'
+import CoverVideoGenerationModal from './components/CoverVideoGenerationModal'
+import FloatingMediaPreview from './components/FloatingMediaPreview'
 
 function AnimatedSphere() {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -52,6 +56,27 @@ export default function HomePage() {
   const [showMusicModal, setShowMusicModal] = useState(false)
   const [showCoverArtModal, setShowCoverArtModal] = useState(false)
   const [showCoverVideoModal, setShowCoverVideoModal] = useState(false)
+
+  // Generated media for 3D preview
+  const [generatedMedia, setGeneratedMedia] = useState<Array<{
+    id: string
+    type: 'image' | 'video' | 'audio'
+    url: string
+    thumbnailUrl?: string
+    title?: string
+  }>>([])
+
+  // Handle generated media
+  const handleMediaGenerated = (type: 'image' | 'video' | 'audio', url: string, title?: string) => {
+    const newMedia = {
+      id: Date.now().toString(),
+      type,
+      url,
+      thumbnailUrl: type === 'image' ? url : undefined,
+      title
+    }
+    setGeneratedMedia(prev => [...prev, newMedia])
+  }
 
   // Fetch user credits
   useEffect(() => {
@@ -250,10 +275,38 @@ export default function HomePage() {
         </SignedIn>
       </main>
 
-      {/* TODO: Add modals here */}
-      {showMusicModal && <div>Music Modal Coming Soon</div>}
-      {showCoverArtModal && <div>Cover Art Modal Coming Soon</div>}
-      {showCoverVideoModal && <div>Cover Video Modal Coming Soon</div>}
+      {/* Modals */}
+      <MusicGenerationModal
+        isOpen={showMusicModal}
+        onClose={() => setShowMusicModal(false)}
+        userCredits={credits}
+      />
+
+      <CoverArtGenerationModal
+        isOpen={showCoverArtModal}
+        onClose={() => setShowCoverArtModal(false)}
+        userCredits={credits}
+        onGenerated={(url) => handleMediaGenerated('image', url, 'Cover Art')}
+      />
+
+      <CoverVideoGenerationModal
+        isOpen={showCoverVideoModal}
+        onClose={() => setShowCoverVideoModal(false)}
+        userCredits={credits}
+      />
+
+      {/* 3D Floating Media Preview */}
+      {generatedMedia.length > 0 && (
+        <div className="fixed inset-0 z-40 pointer-events-none">
+          <FloatingMediaPreview
+            mediaItems={generatedMedia}
+            onMediaClick={(item) => {
+              // Open media in fullscreen or modal
+              window.open(item.url, '_blank')
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

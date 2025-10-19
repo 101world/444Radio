@@ -1,19 +1,37 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Image as ImageIcon, Loader2, Sparkles } from 'lucide-react'
+import { X, Image as ImageIcon, Loader2, Sparkles, Download } from 'lucide-react'
 
 interface CoverArtModalProps {
   isOpen: boolean
   onClose: () => void
   userCredits: number
+  onGenerated?: (imageUrl: string) => void
 }
 
-export default function CoverArtGenerationModal({ isOpen, onClose, userCredits }: CoverArtModalProps) {
+const aspectRatios = [
+  { value: '1:1', label: 'Square (1:1)', emoji: '⬜' },
+  { value: '16:9', label: 'Landscape (16:9)', emoji: '📺' },
+  { value: '9:16', label: 'Portrait (9:16)', emoji: '📱' },
+  { value: '4:5', label: 'Instagram (4:5)', emoji: '📷' },
+  { value: '5:4', label: 'Print (5:4)', emoji: '🖼️' },
+]
+
+const outputFormats = [
+  { value: 'webp', label: 'WebP', desc: 'Best compression' },
+  { value: 'jpg', label: 'JPEG', desc: 'Universal' },
+  { value: 'png', label: 'PNG', desc: 'Lossless' },
+]
+
+export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, onGenerated }: CoverArtModalProps) {
   const [prompt, setPrompt] = useState('')
   const [inferenceSteps, setInferenceSteps] = useState(4)
-  const [outputQuality, setOutputQuality] = useState(90)
+  const [outputQuality, setOutputQuality] = useState(80)
+  const [aspectRatio, setAspectRatio] = useState('1:1')
+  const [outputFormat, setOutputFormat] = useState('webp')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   
   const handleGenerate = async () => {
     if (userCredits < 1) {
@@ -27,6 +45,7 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits }
     }
 
     setIsGenerating(true)
+    setGeneratedImageUrl(null)
     
     try {
       const res = await fetch('/api/generate/image', {
@@ -36,7 +55,11 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits }
           prompt,
           params: {
             num_inference_steps: inferenceSteps,
-            output_quality: outputQuality
+            output_quality: outputQuality,
+            aspect_ratio: aspectRatio,
+            output_format: outputFormat,
+            go_fast: true,
+            num_outputs: 1
           }
         })
       })
@@ -44,8 +67,17 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits }
       const data = await res.json()
       
       if (data.success) {
+        // Flux Schnell output is an array - get first item's URL
+        let imageUrl = data.coverUrl || data.output
+        
+        // If it's an array of objects with url() method, extract the URL
+        if (Array.isArray(imageUrl)) {
+          imageUrl = imageUrl[0]?.url?.() || imageUrl[0]
+        }
+        
+        setGeneratedImageUrl(imageUrl)
+        onGenerated?.(imageUrl)
         alert('🎨 Cover art generated successfully!')
-        onClose()
       } else {
         alert(`Error: ${data.error}`)
       }
@@ -57,16 +89,22 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits }
     }
   }
 
+  const handleClose = () => {
+    setPrompt('')
+    setGeneratedImageUrl(null)
+    onClose()
+  }
+
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl bg-gradient-to-br from-slate-900 to-cyan-950/50 rounded-2xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/20">
+      <div className="relative w-full max-w-4xl bg-gradient-to-br from-slate-900 to-cyan-950/50 rounded-2xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/20 max-h-[90vh] overflow-y-auto">
         
         {!isGenerating && (
           <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+            onClick={handleClose}
+            className="absolute top-4 right-4 p-2 text-cyan-400 hover:text-cyan-300 transition-colors z-10"
           >
             <X size={24} />
           </button>
@@ -80,135 +118,203 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits }
             </div>
             <div>
               <h2 className="text-3xl font-bold text-cyan-400">Generate Cover Art</h2>
-              <p className="text-cyan-400/60 text-sm">Powered by Flux Schnell</p>
+              <p className="text-cyan-400/60 text-sm">Powered by Flux Schnell (12B params)</p>
             </div>
           </div>
 
-          {/* Prompt Input */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-cyan-400 mb-2">
-              Cover Art Description
-            </label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the album cover you want... e.g., 'vibrant neon cityscape at night with geometric patterns, cyberpunk aesthetic, professional album artwork'"
-              className="w-full h-32 px-4 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-400 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500 resize-none"
-              disabled={isGenerating}
-            />
-          </div>
-
-          {/* Parameters */}
-          <div className="mb-8 p-6 rounded-xl border border-cyan-500/20 bg-black/40 space-y-6">
-            <h3 className="text-lg font-semibold text-cyan-400 mb-4 flex items-center gap-2">
-              <Sparkles size={20} />
-              Advanced Parameters
-            </h3>
-            
-            {/* Inference Steps */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: Parameters */}
             <div>
-              <label className="block text-sm text-cyan-400/80 mb-2">
-                Inference Steps: <span className="font-bold text-cyan-400">{inferenceSteps}</span>
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="4"
-                step="1"
-                value={inferenceSteps}
-                onChange={(e) => setInferenceSteps(parseInt(e.target.value))}
-                className="w-full h-2 bg-cyan-500/20 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                disabled={isGenerating}
-              />
-              <div className="flex justify-between text-xs text-cyan-400/60 mt-1">
-                <span>1 (Fastest)</span>
-                <span>2</span>
-                <span>3</span>
-                <span>4 (Best)</span>
+              {/* Prompt Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-cyan-400 mb-2">
+                  Image Description
+                </label>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Professional album cover art, vibrant colors, artistic composition, studio lighting..."
+                  className="w-full h-32 px-4 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500 resize-none"
+                  disabled={isGenerating}
+                />
               </div>
-              <p className="text-xs text-cyan-400/60 mt-2">
-                More steps = better quality but slower generation (~10-20 seconds)
-              </p>
+
+              {/* Parameters */}
+              <div className="mb-6 p-6 rounded-xl border border-cyan-500/20 bg-black/40 space-y-6">
+                <h3 className="text-lg font-semibold text-cyan-400 mb-4 flex items-center gap-2">
+                  <Sparkles size={20} />
+                  Parameters
+                </h3>
+                
+                {/* Aspect Ratio */}
+                <div>
+                  <label className="block text-sm text-cyan-400/80 mb-3">
+                    Aspect Ratio
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {aspectRatios.map((ar) => (
+                      <button
+                        key={ar.value}
+                        onClick={() => setAspectRatio(ar.value)}
+                        disabled={isGenerating}
+                        className={`p-3 rounded-lg border-2 transition-all text-sm ${
+                          aspectRatio === ar.value
+                            ? 'border-cyan-500 bg-cyan-500/20 text-cyan-400'
+                            : 'border-cyan-500/30 bg-cyan-500/5 text-cyan-400/60 hover:border-cyan-500/50'
+                        } disabled:opacity-50`}
+                      >
+                        <div className="font-bold">{ar.emoji} {ar.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Inference Steps */}
+                <div>
+                  <label className="block text-sm text-cyan-400/80 mb-2">
+                    Inference Steps: <span className="font-bold text-cyan-400">{inferenceSteps}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="4"
+                    step="1"
+                    value={inferenceSteps}
+                    onChange={(e) => setInferenceSteps(parseInt(e.target.value))}
+                    className="w-full h-2 bg-cyan-500/20 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    disabled={isGenerating}
+                  />
+                  <div className="flex justify-between text-xs text-cyan-400/60 mt-1">
+                    <span>1 Fast</span>
+                    <span>2</span>
+                    <span>3</span>
+                    <span>4 Best</span>
+                  </div>
+                </div>
+
+                {/* Output Quality */}
+                <div>
+                  <label className="block text-sm text-cyan-400/80 mb-2">
+                    Quality: <span className="font-bold text-cyan-400">{outputQuality}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="50"
+                    max="100"
+                    step="10"
+                    value={outputQuality}
+                    onChange={(e) => setOutputQuality(parseInt(e.target.value))}
+                    className="w-full h-2 bg-cyan-500/20 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    disabled={isGenerating}
+                  />
+                </div>
+
+                {/* Output Format */}
+                <div>
+                  <label className="block text-sm text-cyan-400/80 mb-3">
+                    Format
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {outputFormats.map((fmt) => (
+                      <button
+                        key={fmt.value}
+                        onClick={() => setOutputFormat(fmt.value)}
+                        disabled={isGenerating}
+                        className={`p-2 rounded-lg border-2 transition-all text-xs ${
+                          outputFormat === fmt.value
+                            ? 'border-cyan-500 bg-cyan-500/20 text-cyan-400'
+                            : 'border-cyan-500/30 bg-cyan-500/5 text-cyan-400/60 hover:border-cyan-500/50'
+                        } disabled:opacity-50`}
+                      >
+                        <div className="font-bold">{fmt.label}</div>
+                        <div className="text-cyan-400/60">{fmt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tips */}
+              <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20 mb-6">
+                <p className="text-sm text-cyan-400/80">
+                  <span className="font-semibold">💡 Tips:</span> Use detailed descriptions, mention style (photorealistic, illustration, abstract), lighting, and colors for best results.
+                </p>
+              </div>
+
+              {/* Generate Button */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 px-4 py-2 bg-cyan-500/20 rounded-full border border-cyan-500/30">
+                  <span className="text-xl">⚡</span>
+                  <span className="text-cyan-400 font-bold">1 credit</span>
+                </div>
+                
+                <button
+                  onClick={handleGenerate}
+                  disabled={isGenerating || userCredits < 1 || !prompt.trim()}
+                  className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-bold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon size={20} />
+                      Generate
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Output Quality */}
+            {/* Right: Preview */}
             <div>
-              <label className="block text-sm text-cyan-400/80 mb-2">
-                Output Quality: <span className="font-bold text-cyan-400">{outputQuality}%</span>
-              </label>
-              <input
-                type="range"
-                min="50"
-                max="100"
-                step="5"
-                value={outputQuality}
-                onChange={(e) => setOutputQuality(parseInt(e.target.value))}
-                className="w-full h-2 bg-cyan-500/20 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                disabled={isGenerating}
-              />
-              <div className="flex justify-between text-xs text-cyan-400/60 mt-1">
-                <span>50%</span>
-                <span>75%</span>
-                <span>100%</span>
+              <div className="sticky top-0">
+                <label className="block text-sm font-medium text-cyan-400 mb-2">
+                  Preview
+                </label>
+                <div className="aspect-square bg-black/60 rounded-xl border-2 border-cyan-500/30 overflow-hidden flex items-center justify-center">
+                  {generatedImageUrl ? (
+                    <div className="relative w-full h-full group">
+                      <img 
+                        src={generatedImageUrl} 
+                        alt="Generated cover art"
+                        className="w-full h-full object-contain"
+                      />
+                      <a
+                        href={generatedImageUrl}
+                        download="cover-art.webp"
+                        className="absolute top-4 right-4 p-3 bg-cyan-500/80 hover:bg-cyan-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Download size={20} className="text-white" />
+                      </a>
+                    </div>
+                  ) : isGenerating ? (
+                    <div className="text-center">
+                      <Loader2 size={48} className="animate-spin text-cyan-400 mb-4 mx-auto" />
+                      <p className="text-cyan-400">Generating image...</p>
+                      <p className="text-cyan-400/60 text-sm mt-2">10-20 seconds</p>
+                    </div>
+                  ) : (
+                    <div className="text-center text-cyan-400/40">
+                      <ImageIcon size={64} className="mb-2 mx-auto" />
+                      <p>Your generated image will appear here</p>
+                    </div>
+                  )}
+                </div>
+
+                {generatedImageUrl && (
+                  <div className="mt-4 p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
+                    <p className="text-xs text-cyan-400/80">
+                      ✅ Image generated successfully!<br/>
+                      Aspect Ratio: {aspectRatio} | Format: {outputFormat.toUpperCase()} | Quality: {outputQuality}%
+                    </p>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-cyan-400/60 mt-2">
-                Higher quality = larger file size
-              </p>
-            </div>
-
-            {/* Image Specs */}
-            <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-              <p className="text-sm text-cyan-400/80 mb-2">
-                <span className="font-semibold">📐 Image Specifications:</span>
-              </p>
-              <ul className="text-xs text-cyan-400/60 space-y-1">
-                <li>• Aspect Ratio: 1:1 (Square)</li>
-                <li>• Format: WebP (optimized)</li>
-                <li>• Style: Album cover artwork</li>
-              </ul>
-            </div>
-
-            {/* Tip */}
-            <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-              <p className="text-sm text-cyan-400/80">
-                <span className="font-semibold">💡 Tip:</span> Include style keywords like "professional", "vibrant", "minimalist", "artistic" for better results.
-              </p>
             </div>
           </div>
-
-          {/* Cost & Generate Button */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 px-4 py-2 bg-cyan-500/20 rounded-full border border-cyan-500/30">
-              <span className="text-xl">⚡</span>
-              <span className="text-cyan-400 font-bold">1 credit</span>
-            </div>
-            
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating || userCredits < 1 || !prompt.trim()}
-              className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-xl font-bold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <ImageIcon size={20} />
-                  Generate Cover Art
-                </>
-              )}
-            </button>
-          </div>
-
-          {isGenerating && (
-            <div className="mt-6 p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/30">
-              <p className="text-sm text-cyan-400">
-                ⏱️ Generating your cover art... This typically takes 10-20 seconds.
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>

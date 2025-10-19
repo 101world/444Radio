@@ -32,12 +32,13 @@ export async function POST(req: NextRequest) {
       version: "black-forest-labs/flux-schnell",
       input: {
         prompt: coverPrompt,
-        num_outputs: 1,
-        aspect_ratio: "1:1",
-        output_format: "webp",
-        output_quality: params?.output_quality ?? 90,
-        go_fast: true, // Use optimized fp8 quantization
-        num_inference_steps: params?.num_inference_steps ?? 4 // 1-4 steps for schnell
+        num_outputs: params?.num_outputs ?? 1,
+        aspect_ratio: params?.aspect_ratio ?? "1:1",
+        output_format: params?.output_format ?? "webp",
+        output_quality: params?.output_quality ?? 80,
+        go_fast: params?.go_fast ?? true, // Use optimized fp8 quantization
+        num_inference_steps: params?.num_inference_steps ?? 4, // 1-4 steps for schnell
+        disable_safety_checker: false
       }
     })
 
@@ -56,9 +57,20 @@ export async function POST(req: NextRequest) {
       throw new Error(errorMsg)
     }
 
-    // The output is the image URL
+    // The output is an array of URLs from Flux Schnell
     const output = finalPrediction.output
-    const imageUrl = Array.isArray(output) ? output[0] : output
+    let imageUrl: string
+    
+    // Handle different output formats:
+    // - Array of URL strings: ["https://..."]
+    // - Array of objects with url(): [{url: () => "https://..."}]
+    if (Array.isArray(output)) {
+      const firstItem = output[0]
+      // Check if it's an object with url() method
+      imageUrl = typeof firstItem?.url === 'function' ? firstItem.url() : firstItem
+    } else {
+      imageUrl = output
+    }
 
     if (!imageUrl) {
       throw new Error('No image generated')
@@ -92,6 +104,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       coverUrl: imageUrl,
+      output: [imageUrl], // Return as array for consistency with Replicate format
       message: 'Cover art generated successfully' 
     })
 
