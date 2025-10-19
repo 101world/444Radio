@@ -89,10 +89,10 @@ export async function POST(req: NextRequest) {
     
     if (typeof output === 'string') {
       audioUrl = output
-    } else if (output && typeof (output as any).url === 'function') {
-      audioUrl = (output as any).url()
+    } else if (output && typeof (output as { url?: () => string }).url === 'function') {
+      audioUrl = (output as { url: () => string }).url()
     } else if (output && typeof output === 'object' && 'url' in output) {
-      audioUrl = (output as any).url
+      audioUrl = (output as { url: string }).url
     } else {
       console.error('❌ Unexpected output format:', output)
       throw new Error('Invalid output format from API')
