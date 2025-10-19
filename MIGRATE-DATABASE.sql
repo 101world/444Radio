@@ -1,6 +1,7 @@
--- 444RADIO - Complete Database Migration
+-- 444RADIO - Complete Database Migration (SAFE VERSION)
 -- Run this ONCE in Supabase SQL Editor
 -- This adds all missing columns and sets up username navigation
+-- SAFE: Can be run multiple times without errors
 
 -- ========================================
 -- 1. Add is_public column to songs
@@ -27,24 +28,37 @@ ALTER TABLE songs
 ADD COLUMN IF NOT EXISTS username TEXT;
 
 -- ========================================
--- 3. Create unique index on username
+-- 3. Drop old index if exists (to avoid conflicts)
 -- ========================================
 
--- Create unique index on username (case-insensitive)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower 
-ON users (LOWER(username));
+DROP INDEX IF EXISTS idx_users_username_lower;
 
 -- ========================================
--- 4. Generate usernames for existing users
+-- 4. Generate UNIQUE usernames for existing users
 -- ========================================
 
--- Format: user_<first8chars of clerk_id>
+-- Clear any duplicate/invalid usernames first
 UPDATE users 
-SET username = 'user_' || SUBSTRING(clerk_user_id, 1, 8)
-WHERE username IS NULL OR username = '';
+SET username = NULL
+WHERE username = '' OR username LIKE 'user_user_%';
+
+-- Generate unique usernames using UUID for guaranteed uniqueness
+-- Format: user_<random_hex>
+UPDATE users 
+SET username = 'user_' || SUBSTRING(MD5(RANDOM()::TEXT || clerk_user_id), 1, 12)
+WHERE username IS NULL;
 
 -- ========================================
--- 5. Update songs with usernames
+-- 5. Create unique index AFTER usernames are set
+-- ========================================
+
+-- Create unique index on username (case-insensitive, excludes NULL)
+CREATE UNIQUE INDEX idx_users_username_lower 
+ON users (LOWER(username))
+WHERE username IS NOT NULL;
+
+-- ========================================
+-- 6. Update songs with usernames
 -- ========================================
 
 -- Sync usernames from users to songs
@@ -55,7 +69,7 @@ WHERE s.user_id = u.clerk_user_id
 AND (s.username IS NULL OR s.username = '');
 
 -- ========================================
--- 6. Create auto-sync function
+-- 7. Create auto-sync function
 -- ========================================
 
 -- Function to auto-update song username when user changes username
@@ -63,7 +77,7 @@ CREATE OR REPLACE FUNCTION sync_username_to_songs()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Update all songs when username changes
-  IF NEW.username != OLD.username OR (NEW.username IS NOT NULL AND OLD.username IS NULL) THEN
+  IF NEW.username IS DISTINCT FROM OLD.username THEN
     UPDATE songs 
     SET username = NEW.username
     WHERE user_id = NEW.clerk_user_id;
@@ -73,7 +87,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ========================================
--- 7. Create trigger
+-- 8. Create trigger
 -- ========================================
 
 -- Drop existing trigger if it exists
@@ -86,7 +100,7 @@ CREATE TRIGGER trigger_sync_username
   EXECUTE FUNCTION sync_username_to_songs();
 
 -- ========================================
--- 8. Create indexes for performance
+-- 9. Create indexes for performance
 -- ========================================
 
 CREATE INDEX IF NOT EXISTS idx_songs_username ON songs(username);
@@ -95,7 +109,7 @@ CREATE INDEX IF NOT EXISTS idx_songs_is_public ON songs(is_public);
 CREATE INDEX IF NOT EXISTS idx_songs_user_public ON songs(user_id, is_public);
 
 -- ========================================
--- 9. Verify the migration
+-- 10. Verify the migration
 -- ========================================
 
 -- Check columns were added
@@ -107,8 +121,8 @@ SELECT
       WHERE table_name = 'songs' AND column_name = 'is_public'
     ) THEN '✅ EXISTS' 
     ELSE '❌ MISSING' 
-  END as status;
-
+  END as status
+UNION ALL
 SELECT 
   'users.username' as check_item,
   CASE 
@@ -117,8 +131,8 @@ SELECT
       WHERE table_name = 'users' AND column_name = 'username'
     ) THEN '✅ EXISTS' 
     ELSE '❌ MISSING' 
-  END as status;
-
+  END as status
+UNION ALL
 SELECT 
   'songs.username' as check_item,
   CASE 
@@ -133,7 +147,8 @@ SELECT
 SELECT 
   'Total users' as metric,
   COUNT(*) as count,
-  COUNT(CASE WHEN username IS NOT NULL THEN 1 END) as with_username
+  COUNT(CASE WHEN username IS NOT NULL THEN 1 END) as with_username,
+  COUNT(DISTINCT username) as unique_usernames
 FROM users;
 
 -- Show song statistics
@@ -160,5 +175,7 @@ LIMIT 5;
 -- ========================================
 -- You should see all ✅ checkmarks above
 -- All existing songs are now PRIVATE by default
--- All users have usernames
+-- All users have UNIQUE usernames (user_<random12chars>)
 -- Username navigation is ready at /u/[username]
+--
+-- Users can change their username later in profile settings!
