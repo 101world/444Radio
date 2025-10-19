@@ -34,7 +34,54 @@ export async function POST(request: NextRequest) {
     }
 
     const userData = await userResponse.json()
-    const userRecord = userData?.[0]
+    let userRecord = userData?.[0]
+
+    // If user doesn't exist, create them with 20 credits (race condition with webhook)
+    if (!userRecord) {
+      console.log(`Creating user ${user.id} in Supabase during generation (webhook race condition)`)
+      
+      const createResponse = await fetch(
+        `${supabaseUrl}/rest/v1/users`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            clerk_user_id: user.id,
+            email: user.emailAddresses?.[0]?.emailAddress || '',
+            username: user.username || null,
+            credits: 20,
+            total_generated: 0
+          })
+        }
+      )
+
+      if (createResponse.ok) {
+        const newUserData = await createResponse.json()
+        userRecord = newUserData?.[0]
+        console.log('User created successfully with 20 credits')
+      } else {
+        // Try fetching again in case webhook created it
+        const retryResponse = await fetch(
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${user.id}&select=credits`,
+          {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+            }
+          }
+        )
+        
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json()
+          userRecord = retryData?.[0]
+        }
+      }
+    }
 
     if (!userRecord || userRecord.credits < 1) {
       return NextResponse.json({ 
