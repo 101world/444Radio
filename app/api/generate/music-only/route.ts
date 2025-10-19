@@ -15,10 +15,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { prompt, duration = 8 } = await req.json()
+    const { prompt, lyrics = '', bitrate = 256000, sample_rate = 44100, audio_format = 'mp3' } = await req.json()
 
-    if (!prompt) {
-      return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
+    if (!prompt || prompt.length < 10 || prompt.length > 300) {
+      return NextResponse.json({ error: 'Prompt must be 10-300 characters' }, { status: 400 })
+    }
+
+    if (lyrics && (lyrics.length < 10 || lyrics.length > 600)) {
+      return NextResponse.json({ error: 'Lyrics must be 10-600 characters' }, { status: 400 })
     }
 
     // Check user credits (music costs 2 credits)
@@ -47,21 +51,21 @@ export async function POST(req: NextRequest) {
       }, { status: 402 })
     }
 
-    // Generate music directly with MusicGen
-    console.log('🎵 Generating standalone music with MusicGen')
+    // Generate music directly with MiniMax Music-1.5
+    console.log('🎵 Generating standalone music with MiniMax Music-1.5')
     console.log('🎵 Prompt:', prompt)
-    console.log('🎵 Duration:', duration)
+    console.log('🎵 Lyrics:', lyrics || '(none)')
+    console.log('🎵 Parameters:', { bitrate, sample_rate, audio_format })
     
     const output = await replicate.run(
-      "meta/musicgen",
+      "minimax/music-01",
       {
         input: {
           prompt,
-          duration: duration,
-          temperature: 1,
-          top_k: 250,
-          top_p: 0,
-          classifier_free_guidance: 3
+          lyrics: lyrics || '',
+          bitrate,
+          sample_rate,
+          audio_format
         }
       }
     )

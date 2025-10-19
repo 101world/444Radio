@@ -123,7 +123,13 @@ export default function UnifiedGenerationModal({ isOpen, onClose, userCredits }:
       const res = await fetch('/api/generate/music-only', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, duration: 8 })
+        body: JSON.stringify({ 
+          prompt,
+          lyrics: '', // No lyrics in unified modal for now
+          bitrate: 256000,
+          sample_rate: 44100,
+          audio_format: 'mp3'
+        })
       })
 
       const data = await res.json()

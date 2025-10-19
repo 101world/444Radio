@@ -11,7 +11,10 @@ interface MusicModalProps {
 
 export default function MusicGenerationModal({ isOpen, onClose, userCredits }: MusicModalProps) {
   const [prompt, setPrompt] = useState('')
-  const [styleStrength, setStyleStrength] = useState(0.8)
+  const [lyrics, setLyrics] = useState('')
+  const [bitrate, setBitrate] = useState(256000)
+  const [sampleRate, setSampleRate] = useState(44100)
+  const [audioFormat, setAudioFormat] = useState('mp3')
   const [isGenerating, setIsGenerating] = useState(false)
   
   const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null)
@@ -22,8 +25,13 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
       return
     }
 
-    if (!prompt.trim()) {
-      alert('Please enter a music description')
+    if (!prompt.trim() || prompt.length < 10) {
+      alert('Please enter a music description (10-300 characters)')
+      return
+    }
+
+    if (lyrics && (lyrics.length < 10 || lyrics.length > 600)) {
+      alert('Lyrics must be 10-600 characters if provided')
       return
     }
 
@@ -37,7 +45,10 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          duration: 8 // 8 seconds default
+          lyrics: lyrics || '',
+          bitrate,
+          sample_rate: sampleRate,
+          audio_format: audioFormat
         })
       })
 
@@ -86,20 +97,38 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
           </div>
 
           {/* Prompt Input */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="block text-sm font-medium text-green-400 mb-2">
-              Music Description <span className="text-green-400/60">(max 600 characters)</span>
+              Music Description <span className="text-green-400/60">(10-300 characters)</span>
             </label>
             <textarea
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value.slice(0, 600))}
-              placeholder="Describe the music you want to create... e.g., 'upbeat electronic dance track with energetic drums and synthesizers'"
-              className="w-full h-32 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 placeholder:text-green-400/40 focus:outline-none focus:border-green-500 resize-none"
+              onChange={(e) => setPrompt(e.target.value.slice(0, 300))}
+              placeholder="e.g., 'upbeat electronic dance track with energetic drums and synthesizers'"
+              className="w-full h-24 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 placeholder:text-green-400/40 focus:outline-none focus:border-green-500 resize-none"
+              maxLength={300}
+              disabled={isGenerating}
+            />
+            <div className="text-xs text-green-400/60 mt-1">
+              {prompt.length}/300 characters
+            </div>
+          </div>
+
+          {/* Lyrics Input (Optional) */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-green-400 mb-2">
+              Lyrics <span className="text-green-400/60">(Optional, 10-600 characters)</span>
+            </label>
+            <textarea
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value.slice(0, 600))}
+              placeholder="[intro]&#10;Verse 1 lyrics here...&#10;&#10;[chorus]&#10;Chorus lyrics here...&#10;&#10;[outro]"
+              className="w-full h-32 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 placeholder:text-green-400/40 focus:outline-none focus:border-green-500 resize-none font-mono text-sm"
               maxLength={600}
               disabled={isGenerating}
             />
             <div className="text-xs text-green-400/60 mt-1">
-              {prompt.length}/600 characters
+              {lyrics.length}/600 characters • Supports: [intro] [verse] [chorus] [bridge] [outro]
             </div>
           </div>
 
@@ -107,38 +136,66 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
           <div className="mb-8 p-6 rounded-xl border border-green-500/20 bg-black/40">
             <h3 className="text-lg font-semibold text-green-400 mb-4 flex items-center gap-2">
               <Sparkles size={20} />
-              Advanced Parameters
+              Audio Parameters
             </h3>
             
-            {/* Style Strength */}
+            {/* Sample Rate */}
             <div className="mb-4">
               <label className="block text-sm text-green-400/80 mb-2">
-                Style Strength: <span className="font-bold text-green-400">{styleStrength.toFixed(1)}</span>
+                Sample Rate: <span className="font-bold text-green-400">{sampleRate} Hz</span>
               </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={styleStrength}
-                onChange={(e) => setStyleStrength(parseFloat(e.target.value))}
-                className="w-full h-2 bg-green-500/20 rounded-lg appearance-none cursor-pointer accent-green-500"
+              <select
+                value={sampleRate}
+                onChange={(e) => setSampleRate(parseInt(e.target.value))}
+                className="w-full px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 focus:outline-none focus:border-green-500"
                 disabled={isGenerating}
-              />
-              <div className="flex justify-between text-xs text-green-400/60 mt-1">
-                <span>0.0 (Loose)</span>
-                <span>0.5 (Balanced)</span>
-                <span>1.0 (Strict)</span>
-              </div>
-              <p className="text-xs text-green-400/60 mt-2">
-                Higher values = more adherence to your description
-              </p>
+              >
+                <option value="16000">16000 Hz (Low)</option>
+                <option value="24000">24000 Hz (Medium)</option>
+                <option value="32000">32000 Hz (High)</option>
+                <option value="44100">44100 Hz (CD Quality)</option>
+              </select>
+            </div>
+
+            {/* Bitrate */}
+            <div className="mb-4">
+              <label className="block text-sm text-green-400/80 mb-2">
+                Bitrate: <span className="font-bold text-green-400">{bitrate / 1000} kbps</span>
+              </label>
+              <select
+                value={bitrate}
+                onChange={(e) => setBitrate(parseInt(e.target.value))}
+                className="w-full px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 focus:outline-none focus:border-green-500"
+                disabled={isGenerating}
+              >
+                <option value="32000">32 kbps (Low)</option>
+                <option value="64000">64 kbps (Medium)</option>
+                <option value="128000">128 kbps (Good)</option>
+                <option value="256000">256 kbps (High Quality)</option>
+              </select>
+            </div>
+
+            {/* Audio Format */}
+            <div className="mb-4">
+              <label className="block text-sm text-green-400/80 mb-2">
+                Audio Format: <span className="font-bold text-green-400 uppercase">{audioFormat}</span>
+              </label>
+              <select
+                value={audioFormat}
+                onChange={(e) => setAudioFormat(e.target.value)}
+                className="w-full px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 focus:outline-none focus:border-green-500"
+                disabled={isGenerating}
+              >
+                <option value="mp3">MP3 (Recommended)</option>
+                <option value="wav">WAV (Uncompressed)</option>
+                <option value="pcm">PCM (Raw)</option>
+              </select>
             </div>
 
             {/* Info Box */}
             <div className="mt-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
               <p className="text-sm text-green-400/80">
-                <span className="font-semibold">💡 Tip:</span> Be specific about genre, instruments, tempo, and mood for best results.
+                <span className="font-semibold">💡 Tip:</span> Use higher sample rate and bitrate for better quality. MP3 is recommended for most use cases.
               </p>
             </div>
           </div>
