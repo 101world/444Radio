@@ -107,6 +107,7 @@ export default function HomePage() {
         </Link>
         <div className="flex items-center gap-4">
           <SignedIn>
+            <Link href="/library" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Library</Link>
             <Link href="/explore" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Explore</Link>
             <Link href="/billboard" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Charts</Link>
             <Link href={`/profile/${user?.id}`} className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Profile</Link>
