@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send } from 'lucide-react'
 
 interface LibraryMusic {
   id: string
@@ -24,11 +24,23 @@ interface LibraryImage {
   file_size: number | null
 }
 
+interface LibraryCombined {
+  id: string
+  title: string | null
+  audio_url: string
+  image_url: string
+  music_prompt: string | null
+  image_prompt: string | null
+  is_published: boolean
+  created_at: string
+}
+
 export default function LibraryPage() {
   const { user } = useUser()
-  const [activeTab, setActiveTab] = useState<'music' | 'images'>('music')
+  const [activeTab, setActiveTab] = useState<'music' | 'images' | 'combined'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
+  const [combinedItems, setCombinedItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [playingId, setPlayingId] = useState<string | null>(null)
 
@@ -39,13 +51,15 @@ export default function LibraryPage() {
   const fetchLibrary = async () => {
     setIsLoading(true)
     try {
-      const [musicRes, imagesRes] = await Promise.all([
+      const [musicRes, imagesRes, combinedRes] = await Promise.all([
         fetch('/api/library/music'),
-        fetch('/api/library/images')
+        fetch('/api/library/images'),
+        fetch('/api/library/combined')
       ])
 
       const musicData = await musicRes.json()
       const imagesData = await imagesRes.json()
+      const combinedData = await combinedRes.json()
 
       if (musicData.success && Array.isArray(musicData.music)) {
         setMusicItems(musicData.music)
@@ -54,6 +68,10 @@ export default function LibraryPage() {
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
       }
+
+      if (combinedData.success && Array.isArray(combinedData.combined)) {
+        setCombinedItems(combinedData.combined)
+      }
     } catch (error) {
       console.error('Error fetching library:', error)
     } finally {
@@ -61,7 +79,7 @@ export default function LibraryPage() {
     }
   }
 
-  const handleDelete = async (type: 'music' | 'images', id: string) => {
+  const handleDelete = async (type: 'music' | 'images' | 'combined', id: string) => {
     if (!confirm('Are you sure you want to delete this item?')) return
 
     try {
@@ -85,6 +103,26 @@ export default function LibraryPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  const handleSendToLabel = async (id: string) => {
+    if (!confirm('Publish this to your profile? It will be visible in Explore.')) return
+
+    try {
+      const res = await fetch(`/api/library/combined?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_published: true })
+      })
+
+      if (res.ok) {
+        alert('✅ Published to your profile! It will appear in Explore.')
+        fetchLibrary()
+      }
+    } catch (error) {
+      console.error('Publish error:', error)
+      alert('❌ Failed to publish')
+    }
   }
 
   return (
@@ -139,6 +177,19 @@ export default function LibraryPage() {
           >
             <ImageIcon size={20} />
             Images ({imageItems.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('combined')}
+            className={`
+              px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
+              ${activeTab === 'combined'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-black scale-105'
+                : 'bg-purple-500/10 text-purple-400 border-2 border-purple-500/30 hover:border-purple-500/60'
+              }
+            `}
+          >
+            <Layers size={20} />
+            Combined ({combinedItems.length})
           </button>
         </div>
 
@@ -270,6 +321,107 @@ export default function LibraryPage() {
                             <Trash2 size={16} />
                           </button>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Combined Tab */}
+        {!isLoading && activeTab === 'combined' && (
+          <div>
+            {combinedItems.length === 0 ? (
+              <div className="text-center py-20 backdrop-blur-xl bg-purple-500/5 border-2 border-dashed border-purple-500/30 rounded-3xl">
+                <Layers size={64} className="text-purple-400/40 mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-purple-400 mb-2">No combined media yet</h3>
+                <p className="text-purple-400/60 mb-6">Combine music with cover art to create releases</p>
+                <Link href="/" className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-black rounded-xl font-bold inline-block hover:scale-105 transition-transform">
+                  Combine Media
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {combinedItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl overflow-hidden hover:border-purple-500/40 transition-all"
+                  >
+                    {/* Cover Art */}
+                    <div className="aspect-square relative overflow-hidden">
+                      <img
+                        src={item.image_url}
+                        alt={item.title || 'Combined media'}
+                        className="w-full h-full object-cover"
+                      />
+                      {item.is_published && (
+                        <div className="absolute top-4 right-4 bg-green-500 text-black px-3 py-1 rounded-full text-xs font-bold">
+                          ✓ Published
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info & Controls */}
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-purple-400 mb-2">
+                        {item.title || 'Untitled Release'}
+                      </h3>
+                      
+                      {/* Prompts */}
+                      <div className="mb-4 space-y-2 text-sm">
+                        {item.music_prompt && (
+                          <div>
+                            <span className="text-purple-400/60">🎵 Music: </span>
+                            <span className="text-purple-300/80">{item.music_prompt.substring(0, 60)}...</span>
+                          </div>
+                        )}
+                        {item.image_prompt && (
+                          <div>
+                            <span className="text-purple-400/60">🎨 Art: </span>
+                            <span className="text-purple-300/80">{item.image_prompt.substring(0, 60)}...</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Audio Player */}
+                      <audio
+                        src={item.audio_url}
+                        controls
+                        className="w-full mb-4"
+                      />
+
+                      {/* Meta */}
+                      <div className="text-xs text-purple-400/60 mb-4">
+                        📅 {new Date(item.created_at).toLocaleDateString()}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        {!item.is_published && (
+                          <button
+                            onClick={() => handleSendToLabel(item.id)}
+                            className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-black rounded-xl font-bold hover:scale-105 transition-transform flex items-center justify-center gap-2"
+                          >
+                            <Send size={18} />
+                            Send to Label
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
+                          className="p-3 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/30 transition-colors"
+                          title="Download Audio"
+                        >
+                          <Download size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete('combined', item.id)}
+                          className="p-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </div>
                   </div>

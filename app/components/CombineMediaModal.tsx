@@ -37,7 +37,8 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
     audioUrl: string, 
     imageUrl: string, 
     audioPrompt: string, 
-    imagePrompt: string 
+    imagePrompt: string,
+    combinedId?: string // ID from combined_media_library
   } | null>(null)
   const [savedMediaId, setSavedMediaId] = useState<string | null>(null)
 
@@ -84,7 +85,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
     }
   }
 
-  const handleCombine = () => {
+  const handleCombine = async () => {
     if (!selectedMusic || !selectedImage) {
       alert('Please select both a music track and an image')
       return
@@ -97,15 +98,44 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
     const image = imageItems.find(item => item.id === selectedImage)
 
     if (music && image) {
-      setTimeout(() => {
-        setCombinedResult({
-          audioUrl: music.audio_url,
-          imageUrl: image.image_url,
-          audioPrompt: music.prompt,
-          imagePrompt: image.prompt
+      try {
+        // Save to combined_media_library
+        const res = await fetch('/api/library/combined', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            music_id: music.id,
+            image_id: image.id,
+            audio_url: music.audio_url,
+            image_url: image.image_url,
+            music_prompt: music.prompt,
+            image_prompt: image.prompt,
+            title: music.title || music.prompt.substring(0, 50)
+          })
         })
+
+        const data = await res.json()
+
+        if (data.success) {
+          setCombinedResult({
+            audioUrl: music.audio_url,
+            imageUrl: image.image_url,
+            audioPrompt: music.prompt,
+            imagePrompt: image.prompt,
+            combinedId: data.combined.id // Store the library ID
+          })
+          setIsCombining(false)
+          // Show success message
+          alert('✅ Media combined and saved to your library!\n\nGo to Library > Combined tab to publish it.')
+        } else {
+          alert(`Error: ${data.error}`)
+          setIsCombining(false)
+        }
+      } catch (error) {
+        console.error('Combine error:', error)
+        alert('Failed to combine media')
         setIsCombining(false)
-      }, 500)
+      }
     }
   }
 

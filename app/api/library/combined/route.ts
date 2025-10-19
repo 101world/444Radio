@@ -1,0 +1,229 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+
+/**
+ * GET /api/library/combined
+ * Get all combined media from user's library
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+    // Fetch user's combined media library
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/combined_media_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+
+    const combined = await response.json()
+    const combinedArray = Array.isArray(combined) ? combined : []
+
+    return NextResponse.json({
+      success: true,
+      combined: combinedArray
+    })
+
+  } catch (error) {
+    console.error('Error fetching combined media library:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch combined media library' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * POST /api/library/combined
+ * Create a new combined media entry
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { music_id, image_id, audio_url, image_url, music_prompt, image_prompt, title } = await req.json()
+
+    if (!audio_url || !image_url) {
+      return NextResponse.json(
+        { error: 'Missing required fields: audio_url, image_url' },
+        { status: 400 }
+      )
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+    // Save to combined_media_library
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/combined_media_library`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          clerk_user_id: userId,
+          music_id,
+          image_id,
+          audio_url,
+          image_url,
+          music_prompt,
+          image_prompt,
+          title,
+          is_published: false // Not published to profile yet
+        })
+      }
+    )
+
+    const combined = await response.json()
+
+    return NextResponse.json({
+      success: true,
+      combined: combined[0]
+    })
+
+  } catch (error) {
+    console.error('Error creating combined media:', error)
+    return NextResponse.json(
+      { error: 'Failed to create combined media' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * DELETE /api/library/combined?id=xxx
+ * Delete a combined media from library
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing combined media ID' }, { status: 400 })
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+    // Delete from combined_media_library
+    await fetch(
+      `${supabaseUrl}/rest/v1/combined_media_library?id=eq.${id}&clerk_user_id=eq.${userId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+
+    return NextResponse.json({ success: true })
+
+  } catch (error) {
+    console.error('Error deleting combined media:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete combined media' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * PATCH /api/library/combined?id=xxx
+ * Publish combined media to profile/label
+ */
+export async function PATCH(req: NextRequest) {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    const { is_published } = await req.json()
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing combined media ID' }, { status: 400 })
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+    // Update publication status
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/combined_media_library?id=eq.${id}&clerk_user_id=eq.${userId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          is_published,
+          updated_at: new Date().toISOString()
+        })
+      }
+    )
+
+    const updated = await response.json()
+
+    // Also save to combined_media table for explore page
+    if (is_published) {
+      const combined = updated[0]
+      await fetch('/api/media/combine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioUrl: combined.audio_url,
+          imageUrl: combined.image_url,
+          audioPrompt: combined.music_prompt,
+          imagePrompt: combined.image_prompt,
+          title: combined.title,
+          isPublic: true
+        })
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      combined: updated[0]
+    })
+
+  } catch (error) {
+    console.error('Error publishing combined media:', error)
+    return NextResponse.json(
+      { error: 'Failed to publish combined media' },
+      { status: 500 }
+    )
+  }
+}
