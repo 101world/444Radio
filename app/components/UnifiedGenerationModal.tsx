@@ -120,12 +120,28 @@ export default function UnifiedGenerationModal({ isOpen, onClose, userCredits }:
 
   const generateMusic = async () => {
     try {
+      // Generate default lyrics if not provided
+      const defaultLyrics = `[intro]
+AI generated music
+${prompt}
+
+[verse]
+Feel the rhythm
+Let the beat flow
+
+[chorus]
+Music for the soul
+Let it take control
+
+[outro]
+Generated with AI`
+
       const res = await fetch('/api/generate/music-only', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt,
-          lyrics: '', // No lyrics in unified modal for now
+          lyrics: defaultLyrics, // Required by API
           bitrate: 256000,
           sample_rate: 44100,
           audio_format: 'mp3'

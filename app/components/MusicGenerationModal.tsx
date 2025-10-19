@@ -25,13 +25,14 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
       return
     }
 
-    if (!prompt.trim() || prompt.length < 10) {
+    if (!prompt.trim() || prompt.length < 10 || prompt.length > 300) {
       alert('Please enter a music description (10-300 characters)')
       return
     }
 
-    if (lyrics && (lyrics.length < 10 || lyrics.length > 600)) {
-      alert('Lyrics must be 10-600 characters if provided')
+    // Lyrics are REQUIRED by MiniMax Music API
+    if (!lyrics.trim() || lyrics.length < 10 || lyrics.length > 600) {
+      alert('⚠️ Lyrics are required! Please enter 10-600 characters with structure tags like [verse] [chorus]')
       return
     }
 
@@ -45,7 +46,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          lyrics: lyrics || '',
+          lyrics, // Required
           bitrate,
           sample_rate: sampleRate,
           audio_format: audioFormat
@@ -114,10 +115,10 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
             </div>
           </div>
 
-          {/* Lyrics Input (Optional) */}
+          {/* Lyrics Input (REQUIRED) */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-green-400 mb-2">
-              Lyrics <span className="text-green-400/60">(Optional, 10-600 characters)</span>
+              Lyrics <span className="text-red-400">* Required</span> <span className="text-green-400/60">(10-600 characters)</span>
             </label>
             <textarea
               value={lyrics}

@@ -15,14 +15,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { prompt, lyrics = '', bitrate = 256000, sample_rate = 44100, audio_format = 'mp3' } = await req.json()
+    const { prompt, lyrics, bitrate = 256000, sample_rate = 44100, audio_format = 'mp3' } = await req.json()
 
+    // Both prompt and lyrics are REQUIRED by MiniMax Music API
     if (!prompt || prompt.length < 10 || prompt.length > 300) {
-      return NextResponse.json({ error: 'Prompt must be 10-300 characters' }, { status: 400 })
+      return NextResponse.json({ error: 'Prompt is required (10-300 characters)' }, { status: 400 })
     }
 
-    if (lyrics && (lyrics.length < 10 || lyrics.length > 600)) {
-      return NextResponse.json({ error: 'Lyrics must be 10-600 characters' }, { status: 400 })
+    if (!lyrics || lyrics.length < 10 || lyrics.length > 600) {
+      return NextResponse.json({ error: 'Lyrics are required (10-600 characters)' }, { status: 400 })
     }
 
     // Check user credits (music costs 2 credits)
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
       {
         input: {
           prompt,
-          lyrics: lyrics || '',
+          lyrics, // Required field
           bitrate,
           sample_rate,
           audio_format
