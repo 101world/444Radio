@@ -6,10 +6,11 @@ import { X, Music, Loader2, Sparkles } from 'lucide-react'
 interface MusicModalProps {
   isOpen: boolean
   onClose: () => void
-  userCredits: number
+  userCredits?: number
+  onSuccess?: (url: string, prompt: string) => void
 }
 
-export default function MusicGenerationModal({ isOpen, onClose, userCredits }: MusicModalProps) {
+export default function MusicGenerationModal({ isOpen, onClose, userCredits, onSuccess }: MusicModalProps) {
   const [prompt, setPrompt] = useState('')
   const [lyrics, setLyrics] = useState('')
   const [bitrate, setBitrate] = useState(256000)
@@ -20,7 +21,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
   const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null)
 
   const handleGenerate = async () => {
-    if (userCredits < 2) {
+    if (userCredits !== undefined && userCredits < 2) {
       alert('⚡ You need at least 2 credits to generate music!')
       return
     }
@@ -57,6 +58,12 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
       
       if (data.success) {
         setGeneratedAudioUrl(data.audioUrl)
+        
+        // Call onSuccess callback if provided
+        if (onSuccess) {
+          onSuccess(data.audioUrl, prompt)
+        }
+        
         alert(`🎵 Music generated! ${data.creditsRemaining} credits remaining`)
       } else {
         alert(`Error: ${data.error}`)
@@ -210,7 +217,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits }: M
             
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || userCredits < 2 || !prompt.trim()}
+              disabled={isGenerating || (userCredits !== undefined && userCredits < 2) || !prompt.trim()}
               className="px-8 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-xl font-bold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
             >
               {isGenerating ? (

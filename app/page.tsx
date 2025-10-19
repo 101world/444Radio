@@ -6,8 +6,9 @@ import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Sphere, MeshDistortMaterial } from '@react-three/drei'
 import * as THREE from 'three'
-import { Wand2, Sparkles } from 'lucide-react'
-import UnifiedGenerationModal from './components/UnifiedGenerationModal'
+import SimpleGenerationSelector from './components/SimpleGenerationSelector'
+import MusicGenerationModal from './components/MusicGenerationModal'
+import CombineMediaModal, { type GeneratedItem } from './components/CombineMediaModal'
 // import FloatingMediaPreview from './components/FloatingMediaPreview' // Disabled due to WebGL issues
 
 function AnimatedSphere() {
@@ -50,28 +51,36 @@ export default function HomePage() {
   const { user } = useUser()
   const [credits, setCredits] = useState(20)
   
-  // Unified modal state
-  const [showGenerationModal, setShowGenerationModal] = useState(false)
+  // Modal states
+  const [showMusicModal, setShowMusicModal] = useState(false)
+  const [showCoverArtModal, setShowCoverArtModal] = useState(false)
+  const [showCombineModal, setShowCombineModal] = useState(false)
 
-  // Generated media for 3D preview (disabled for now)
-  const [generatedMedia, setGeneratedMedia] = useState<Array<{
-    id: string
-    type: 'image' | 'video' | 'audio'
-    url: string
-    thumbnailUrl?: string
-    title?: string
-  }>>([])
+  // Track generated items
+  const [generatedItems, setGeneratedItems] = useState<GeneratedItem[]>([])
 
-  // Handle generated media (disabled for now)
-  const handleMediaGenerated = (type: 'image' | 'video' | 'audio', url: string, title?: string) => {
-    const newMedia = {
+  // Handle music generation success
+  const handleMusicGenerated = (url: string, prompt: string) => {
+    const newItem: GeneratedItem = {
       id: Date.now().toString(),
-      type,
+      type: 'music',
       url,
-      thumbnailUrl: type === 'image' ? url : undefined,
-      title
+      prompt,
+      createdAt: new Date()
     }
-    setGeneratedMedia(prev => [...prev, newMedia])
+    setGeneratedItems(prev => [...prev, newItem])
+  }
+
+  // Handle image generation success
+  const handleImageGenerated = (url: string, prompt: string) => {
+    const newItem: GeneratedItem = {
+      id: (Date.now() + 1).toString(),
+      type: 'image',
+      url,
+      prompt,
+      createdAt: new Date()
+    }
+    setGeneratedItems(prev => [...prev, newItem])
   }
 
   // Fetch user credits
@@ -172,76 +181,55 @@ export default function HomePage() {
         <SignedIn>
           {/* Creation Hub */}
           <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6">
-            <div className="max-w-4xl w-full">
+            <div className="max-w-6xl w-full">
               {/* Header */}
               <div className="text-center mb-12">
                 <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
                   Create with AI
                 </h1>
                 <p className="text-xl text-purple-100/60">
-                  Generate music, cover art, and videos with a single prompt
+                  Choose what you want to generate, then combine them into unified media
                 </p>
               </div>
 
-              {/* Unified Prompt Box */}
-              <div className="backdrop-blur-2xl bg-gradient-to-br from-purple-900/40 via-black/40 to-pink-900/40 border-2 border-purple-500/30 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-300 shadow-2xl shadow-purple-500/10">
-                <div className="mb-6">
-                  <label className="block text-lg font-semibold text-purple-400 mb-4 flex items-center gap-2">
-                    <Sparkles size={24} className="text-pink-400" />
-                    Describe what you want to create
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      placeholder="e.g., 'upbeat electronic dance track with neon synthwave vibes and cyberpunk energy'"
-                      className="w-full h-32 px-6 py-4 pr-16 bg-black/60 border-2 border-purple-500/30 rounded-2xl text-purple-100 placeholder:text-purple-400/40 focus:outline-none focus:border-purple-500/60 focus:ring-4 focus:ring-purple-500/20 resize-none transition-all text-lg"
-                      maxLength={600}
-                    />
-                    <button
-                      onClick={() => setShowGenerationModal(true)}
-                      className="absolute bottom-4 right-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl transition-all hover:scale-110 shadow-lg shadow-purple-500/50"
-                      title="Open AI Generator"
-                    >
-                      <Wand2 size={24} />
-                    </button>
-                  </div>
-                </div>
+              {/* Simple Generation Selector */}
+              <SimpleGenerationSelector
+                onSelectMusic={() => setShowMusicModal(true)}
+                onSelectCoverArt={() => setShowCoverArtModal(true)}
+                onSelectVideo={() => alert('🎬 Video generation coming soon!')}
+              />
 
-                {/* Quick Info */}
-                <div className="flex items-center justify-between pt-4 border-t border-purple-500/20">
-                  <div className="flex items-center gap-4 text-sm text-purple-400/80">
-                    <span className="flex items-center gap-2">
-                      <span className="text-2xl">🎵</span>
-                      Music • 2 credits
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="text-2xl">🎨</span>
-                      Art • 1 credit
-                    </span>
-                    <span className="flex items-center gap-2 opacity-50">
-                      <span className="text-2xl">🎬</span>
-                      Video • Soon
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-full border border-purple-500/30">
-                    <span className="text-xl">⚡</span>
-                    <span className="text-purple-400 font-bold">{credits} credits</span>
-                  </div>
+              {/* Combine Button (shows when items are generated) */}
+              {generatedItems.length > 0 && (
+                <div className="mt-8 text-center">
+                  <button
+                    onClick={() => setShowCombineModal(true)}
+                    className="px-8 py-4 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-2xl font-bold text-lg hover:scale-105 transition-transform shadow-xl shadow-green-500/50"
+                  >
+                    🎭 Combine Media ({generatedItems.length} items)
+                  </button>
+                  <p className="text-sm text-purple-400/60 mt-2">
+                    Select 1 music + 1 image to create unified media
+                  </p>
                 </div>
-              </div>
+              )}
 
-              {/* Features Grid */}
-              <div className="grid grid-cols-3 gap-4 mt-8">
+              {/* Info Cards */}
+              <div className="grid grid-cols-3 gap-4 mt-12">
                 <div className="text-center p-4 backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl">
+                  <div className="text-3xl mb-2">🎵</div>
+                  <div className="text-sm text-purple-400/80 font-semibold">2 Credits</div>
+                  <div className="text-xs text-purple-400/60">per music</div>
+                </div>
+                <div className="text-center p-4 backdrop-blur-xl bg-cyan-500/5 border border-cyan-500/20 rounded-2xl">
+                  <div className="text-3xl mb-2">🎨</div>
+                  <div className="text-sm text-cyan-400/80 font-semibold">1 Credit</div>
+                  <div className="text-xs text-cyan-400/60">per image</div>
+                </div>
+                <div className="text-center p-4 backdrop-blur-xl bg-green-500/5 border border-green-500/20 rounded-2xl">
                   <div className="text-3xl mb-2">⚡</div>
-                  <div className="text-sm text-purple-400/80">Lightning Fast</div>
-                </div>
-                <div className="text-center p-4 backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl">
-                  <div className="text-3xl mb-2">🎯</div>
-                  <div className="text-sm text-purple-400/80">High Quality</div>
-                </div>
-                <div className="text-center p-4 backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl">
-                  <div className="text-3xl mb-2">🔥</div>
-                  <div className="text-sm text-purple-400/80">Unlimited Ideas</div>
+                  <div className="text-sm text-green-400/80 font-semibold">{credits} Credits</div>
+                  <div className="text-xs text-green-400/60">remaining</div>
                 </div>
               </div>
             </div>
@@ -249,11 +237,41 @@ export default function HomePage() {
         </SignedIn>
       </main>
 
-      {/* Unified Generation Modal */}
-      <UnifiedGenerationModal
-        isOpen={showGenerationModal}
-        onClose={() => setShowGenerationModal(false)}
-        userCredits={credits}
+      {/* Modals */}
+      <MusicGenerationModal
+        isOpen={showMusicModal}
+        onClose={() => setShowMusicModal(false)}
+        onSuccess={handleMusicGenerated}
+      />
+
+      {/* Cover Art Modal - Coming Soon */}
+      {showCoverArtModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className="relative w-full max-w-2xl bg-gradient-to-br from-cyan-900/40 via-slate-900 to-cyan-950/30 rounded-3xl border border-cyan-500/20 shadow-2xl p-8 text-center">
+            <button
+              onClick={() => setShowCoverArtModal(false)}
+              className="absolute top-4 right-4 text-cyan-400 hover:text-cyan-300"
+            >
+              ✕
+            </button>
+            <div className="text-6xl mb-4">🎨</div>
+            <h2 className="text-3xl font-bold text-cyan-400 mb-4">Cover Art Generator</h2>
+            <p className="text-cyan-100/60 mb-6">
+              Flux Schnell image generation modal will be implemented here with:<br/>
+              • Prompt input<br/>
+              • Aspect ratio selector<br/>
+              • Quality settings<br/>
+              • Live preview
+            </p>
+            <p className="text-sm text-cyan-400/60">Coming in the next update!</p>
+          </div>
+        </div>
+      )}
+
+      <CombineMediaModal
+        isOpen={showCombineModal}
+        onClose={() => setShowCombineModal(false)}
+        generatedItems={generatedItems}
       />
 
       {/* 3D Floating Media Preview - Disabled for now to prevent WebGL issues */}
