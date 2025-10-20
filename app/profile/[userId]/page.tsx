@@ -207,7 +207,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               {/* Left: Username */}
               <div className="flex items-center gap-3">
                 <span className="text-sm font-black text-white">
-                  @{profile?.username || currentUser?.username || 'username'}
+                  @{profile?.username && !profile.username.startsWith('user_') 
+                    ? profile.username 
+                    : (currentUser?.firstName || currentUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'user')}
                 </span>
                 
                 {/* PRVTLST Button */}
