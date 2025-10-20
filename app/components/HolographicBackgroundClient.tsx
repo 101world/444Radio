@@ -70,17 +70,11 @@ export default function HolographicBackground() {
     const blobs: THREE.Mesh[] = [];
 
     for (let i = 0; i < 8; i++) { // Reduced from 12 to 8 for performance
-      const material = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.6),
-        metalness: 1,
-        roughness: 0.05,
-        transmission: 0.7,
-        thickness: 1,
-        envMapIntensity: 1.5, // Reduced from 2
-        clearcoat: 1,
-        clearcoatRoughness: 0.05,
-        emissive: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.3),
-        emissiveIntensity: 0.5,
+      const material = new THREE.MeshBasicMaterial({
+        color: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.7),
+        wireframe: false,
+        transparent: true,
+        opacity: 0.8,
       });
 
       const blob = new THREE.Mesh(blobGeometry, material);
@@ -124,7 +118,7 @@ export default function HolographicBackground() {
         color: new THREE.Color().setHSL(0.5 + i * 0.08, 1, 0.5),
         wireframe: true,
         transparent: true,
-        opacity: 0.4,
+        opacity: 0.7, // Increased from 0.4
       });
 
       const shape = new THREE.Mesh(shapeGeometries[i], material);
@@ -227,14 +221,18 @@ export default function HolographicBackground() {
     // 3D Floating Text "444 Radio"
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;
-    canvas.width = 1024;
-    canvas.height = 256;
+    canvas.width = 2048; // Increased resolution
+    canvas.height = 512;
     
-    // Draw text on canvas
+    // Draw text on canvas with glow effect
     context.fillStyle = 'rgba(0, 0, 0, 0)';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    context.font = 'bold 120px Arial';
-    context.fillStyle = 'rgba(100, 200, 255, 0.5)'; // Increased opacity
+    
+    // Add glow
+    context.shadowBlur = 20;
+    context.shadowColor = 'rgba(100, 200, 255, 1)';
+    context.font = 'bold 200px Arial';
+    context.fillStyle = 'rgba(100, 200, 255, 1)'; // Full opacity cyan
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText('444 RADIO', canvas.width / 2, canvas.height / 2);
@@ -244,23 +242,23 @@ export default function HolographicBackground() {
     const textMaterial = new THREE.MeshBasicMaterial({
       map: textTexture,
       transparent: true,
-      opacity: 0.6, // Increased opacity
+      opacity: 0.9, // Very visible
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending, // Make it glow
     });
     
-    const textGeometry = new THREE.PlaneGeometry(40, 10);
+    const textGeometry = new THREE.PlaneGeometry(50, 12.5); // Bigger
     const textMesh1 = new THREE.Mesh(textGeometry, textMaterial.clone());
-    textMesh1.position.set(0, 15, -30);
+    textMesh1.position.set(0, 10, -20); // Closer to camera
     scene.add(textMesh1);
     
     const textMesh2 = new THREE.Mesh(textGeometry, textMaterial.clone());
-    textMesh2.position.set(-25, -10, -40);
+    textMesh2.position.set(-20, -5, -25);
     textMesh2.rotation.y = Math.PI / 6;
     scene.add(textMesh2);
     
     const textMesh3 = new THREE.Mesh(textGeometry, textMaterial.clone());
-    textMesh3.position.set(25, -10, -40);
+    textMesh3.position.set(20, -5, -25);
     textMesh3.rotation.y = -Math.PI / 6;
     scene.add(textMesh3);
     
@@ -373,13 +371,13 @@ export default function HolographicBackground() {
 
       // Animate 3D text
       textMesh1.rotation.y = Math.sin(time * 0.1) * 0.1;
-      textMesh1.position.y = 15 + Math.sin(time * 0.2) * 2;
+      textMesh1.position.y = 10 + Math.sin(time * 0.2) * 2;
       
       textMesh2.rotation.y = Math.PI / 6 + Math.sin(time * 0.15) * 0.1;
-      textMesh2.position.y = -10 + Math.cos(time * 0.25) * 2;
+      textMesh2.position.y = -5 + Math.cos(time * 0.25) * 2;
       
       textMesh3.rotation.y = -Math.PI / 6 + Math.sin(time * 0.12) * 0.1;
-      textMesh3.position.y = -10 + Math.sin(time * 0.22) * 2;
+      textMesh3.position.y = -5 + Math.sin(time * 0.22) * 2;
 
       // Animate interactive wireframe shapes
       interactiveShapes.forEach((shape, i) => {
