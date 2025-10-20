@@ -60,20 +60,24 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
       const imagesRes = await fetch('/api/library/images')
       const imagesData = await imagesRes.json()
 
-      console.log('Music data:', musicData)
-      console.log('Images data:', imagesData)
+      console.log('Music data:', JSON.stringify(musicData, null, 2))
+      console.log('Images data:', JSON.stringify(imagesData, null, 2))
 
       if (musicData.success && Array.isArray(musicData.music)) {
+        console.log('✅ Music array length:', musicData.music.length)
+        console.log('First music item:', musicData.music[0])
         setMusicItems(musicData.music)
       } else {
-        console.error('Music data is not an array:', musicData)
+        console.error('❌ Music data is not an array:', musicData)
         setMusicItems([])
       }
       
       if (imagesData.success && Array.isArray(imagesData.images)) {
+        console.log('✅ Images array length:', imagesData.images.length)
+        console.log('First image item:', imagesData.images[0])
         setImageItems(imagesData.images)
       } else {
-        console.error('Images data is not an array:', imagesData)
+        console.error('❌ Images data is not an array:', imagesData)
         setImageItems([])
       }
     } catch (error) {
@@ -94,48 +98,66 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
     setIsCombining(true)
     
     // Get the selected items from library
+    console.log('Selected music ID:', selectedMusic)
+    console.log('Selected image ID:', selectedImage)
+    console.log('Music items:', musicItems)
+    console.log('Image items:', imageItems)
+    
     const music = musicItems.find(item => item.id === selectedMusic)
     const image = imageItems.find(item => item.id === selectedImage)
 
-    if (music && image) {
-      try {
-        // Save to combined_media_library
-        const res = await fetch('/api/library/combined', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            music_id: music.id,
-            image_id: image.id,
-            audio_url: music.audio_url,
-            image_url: image.image_url,
-            music_prompt: music.prompt,
-            image_prompt: image.prompt,
-            title: music.title || music.prompt.substring(0, 50)
-          })
+    console.log('Found music:', music)
+    console.log('Found image:', image)
+
+    if (!music) {
+      alert('❌ Selected music not found in library. Please try again.')
+      setIsCombining(false)
+      return
+    }
+
+    if (!image) {
+      alert('❌ Selected image not found in library. Please try again.')
+      setIsCombining(false)
+      return
+    }
+
+    try {
+      // Save to combined_media_library
+      const res = await fetch('/api/library/combined', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          music_id: music.id,
+          image_id: image.id,
+          audio_url: music.audio_url,
+          image_url: image.image_url,
+          music_prompt: music.prompt,
+          image_prompt: image.prompt,
+          title: music.title || music.prompt.substring(0, 50)
         })
+      })
 
-        const data = await res.json()
+      const data = await res.json()
 
-        if (data.success) {
-          setCombinedResult({
-            audioUrl: music.audio_url,
-            imageUrl: image.image_url,
-            audioPrompt: music.prompt,
-            imagePrompt: image.prompt,
-            combinedId: data.combined.id // Store the library ID
-          })
-          setIsCombining(false)
-          // Show success message
-          alert('✅ Media combined and saved to your library!\n\nGo to Library > Combined tab to publish it.')
-        } else {
-          alert(`Error: ${data.error}`)
-          setIsCombining(false)
-        }
-      } catch (error) {
-        console.error('Combine error:', error)
-        alert('Failed to combine media')
+      if (data.success) {
+        setCombinedResult({
+          audioUrl: music.audio_url,
+          imageUrl: image.image_url,
+          audioPrompt: music.prompt,
+          imagePrompt: image.prompt,
+          combinedId: data.combined.id // Store the library ID
+        })
+        setIsCombining(false)
+        // Show success message
+        alert('✅ Media combined and saved to your library!\n\nGo to Library > Combined tab to publish it.')
+      } else {
+        alert(`Error: ${data.error}`)
         setIsCombining(false)
       }
+    } catch (error) {
+      console.error('Combine error:', error)
+      alert('Failed to combine media')
+      setIsCombining(false)
     }
   }
 
