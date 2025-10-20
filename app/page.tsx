@@ -251,7 +251,7 @@ export default function HomePage() {
           {/* Welcome Text */}
           <div className="text-center mb-12 animate-fade-in">
             <h1 className="text-6xl md:text-8xl font-black mb-6 text-white leading-tight">
-              Welcome to Music
+              444 Radio
             </h1>
             <p className="text-xl text-gray-400 mb-12">
               Create AI-generated music, cover art, and more

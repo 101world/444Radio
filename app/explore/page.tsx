@@ -181,9 +181,9 @@ export default function ExplorePage() {
         </div>
       </main>
 
-      {/* Floating Digital Radio Player */}
+      {/* Floating Digital Radio Player - Bottom Center */}
       {currentTrack && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
           <div className="bg-gradient-to-r from-[#4f46e5]/95 via-[#6366f1]/95 to-[#4f46e5]/95 backdrop-blur-2xl border border-[#818cf8]/30 rounded-2xl shadow-2xl shadow-[#818cf8]/50 p-4 min-w-[300px] md:min-w-[500px]">
             <div className="flex items-center gap-4">
               {/* Album Art */}
@@ -242,9 +242,10 @@ export default function ExplorePage() {
         </div>
       )}
 
-      {/* Right-Side Vertical Category Slider */}
-      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
-        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl p-3 shadow-2xl max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-[#6366f1] scrollbar-track-white/5">
+      {/* Right-Side Vertical Category Slider - Attached to Player Height */}
+      {currentTrack && (
+        <div className="fixed right-4 bottom-24 z-40 hidden lg:block">
+          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl p-3 shadow-2xl h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#6366f1] scrollbar-track-white/5">
           <div className="flex flex-col gap-2">
             <p className="text-xs font-bold text-[#818cf8] mb-2 text-center">CATEGORIES</p>
             {['Trending', 'New', 'Top', 'Pop', 'Hip-Hop', 'Electronic', 'Jazz', 'Rock', 'Classical', 'R&B', 'Country', 'Indie', 'Metal', 'Blues', 'Reggae', 'Folk'].map((category) => (
@@ -262,7 +263,8 @@ export default function ExplorePage() {
             ))}
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Hidden Audio Element */}
       <audio 

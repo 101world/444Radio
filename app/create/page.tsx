@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
+import CombineMediaModal from '../components/CombineMediaModal'
 import FloatingMenu from '../components/FloatingMenu'
 
 type MessageType = 'user' | 'assistant' | 'generation'
@@ -41,6 +42,7 @@ export default function CreatePage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [showMusicModal, setShowMusicModal] = useState(false)
+  const [showCombineModal, setShowCombineModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({})
 
@@ -369,35 +371,46 @@ export default function CreatePage() {
           {/* Pill Container */}
           <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl shadow-black/50 p-3">
             {/* Type Selection Pills */}
-            <div className="flex gap-2 mb-3 px-3">
+            <div className="flex gap-2 mb-3 px-3 items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedType('music')}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                    selectedType === 'music'
+                      ? 'bg-white text-black'
+                      : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Music size={14} className="inline mr-1.5" />
+                  Music
+                </button>
+                <button
+                  onClick={() => setSelectedType('image')}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                    selectedType === 'image'
+                      ? 'bg-white text-black'
+                      : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <ImageIcon size={14} className="inline mr-1.5" />
+                  Cover Art
+                </button>
+                <button
+                  disabled
+                  className="px-4 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-600 border border-white/10 cursor-not-allowed"
+                >
+                  <Video size={14} className="inline mr-1.5" />
+                  Video
+                </button>
+              </div>
+              
+              {/* Release Button on the right */}
               <button
-                onClick={() => setSelectedType('music')}
-                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                  selectedType === 'music'
-                    ? 'bg-white text-black'
-                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
-                }`}
+                onClick={() => setShowCombineModal(true)}
+                className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white hover:from-[#5558e3] hover:to-[#7078ef] transition-all shadow-lg"
               >
-                <Music size={14} className="inline mr-1.5" />
-                Music
-              </button>
-              <button
-                onClick={() => setSelectedType('image')}
-                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                  selectedType === 'image'
-                    ? 'bg-white text-black'
-                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
-                }`}
-              >
-                <ImageIcon size={14} className="inline mr-1.5" />
-                Cover Art
-              </button>
-              <button
-                disabled
-                className="px-4 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-600 border border-white/10 cursor-not-allowed"
-              >
-                <Video size={14} className="inline mr-1.5" />
-                Video
+                <Layers size={14} className="inline mr-1.5" />
+                Release
               </button>
             </div>
 
@@ -466,6 +479,12 @@ export default function CreatePage() {
           // This will be called after successful generation
           handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
         }}
+      />
+
+      {/* Combine Media Modal */}
+      <CombineMediaModal
+        isOpen={showCombineModal}
+        onClose={() => setShowCombineModal(false)}
       />
     </div>
   )
