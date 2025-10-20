@@ -137,6 +137,7 @@ export default function LibraryPage() {
         </Link>
         <div className="flex items-center gap-4">
           <Link href="/" className="px-4 py-2 text-purple-400 hover:text-purple-300">Home</Link>
+          <Link href="/create" className="px-4 py-2 text-purple-400 hover:text-purple-300">Create</Link>
           <Link href="/explore" className="px-4 py-2 text-purple-400 hover:text-purple-300">Explore</Link>
         </div>
       </nav>

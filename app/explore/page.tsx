@@ -59,8 +59,11 @@ export default function ExplorePage() {
         </Link>
 
         <div className="flex items-center gap-6">
-          <Link href="/" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium transition-colors">
+          <Link href="/create" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium transition-colors">
             Create
+          </Link>
+          <Link href="/library" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium transition-colors">
+            Library
           </Link>
           <Link href="/explore" className="px-4 py-2 text-green-400 font-bold transition-colors">
             Explore
