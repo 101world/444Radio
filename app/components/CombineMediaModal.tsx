@@ -178,7 +178,10 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
   }
 
   const handleSaveToProfile = async () => {
-    if (!combinedResult) return
+    if (!combinedResult) {
+      alert('⚠️ No combined media found. Please combine music and image first.')
+      return
+    }
 
     // Validate required metadata
     if (!metadata.genre || !metadata.mood || !metadata.copyrightOwner) {
@@ -188,6 +191,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
 
     // Check if we have a combinedId from the library
     if (!combinedResult.combinedId) {
+      console.error('❌ combinedResult:', combinedResult)
       alert('⚠️ No combined media ID found. Please try combining again.')
       return
     }
@@ -196,8 +200,10 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
     try {
       console.log('🚀 PUBLISHING TO EXPLORE/PROFILE')
       console.log('Combined ID:', combinedResult.combinedId)
+      console.log('Combined ID type:', typeof combinedResult.combinedId)
       console.log('Metadata:', metadata)
       console.log('Endpoint: PATCH /api/library/combined')
+      console.log('Timestamp:', new Date().toISOString())
       
       const requestBody = {
         combinedId: combinedResult.combinedId,
@@ -219,22 +225,28 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
       // Update the existing combined_media_library record to publish it
       const res = await fetch('/api/library/combined', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
         body: JSON.stringify(requestBody)
       })
 
-      console.log('Publish response status:', res.status)
+      console.log('📡 Response status:', res.status)
+      console.log('📡 Response headers:', Object.fromEntries(res.headers.entries()))
+      
       const data = await res.json()
-      console.log('Publish response data:', data)
+      console.log('📡 Response data:', JSON.stringify(data, null, 2))
 
       if (data.success) {
         setSavedMediaId(data.combined.id)
         alert('✅ Published to Explore and your Profile!\n\n🎵 Your track is now live with copyright protection.\n📍 Metadata saved for filtering and monetization.')
       } else {
-        alert(`Error: ${data.error}`)
+        console.error('❌ Publish failed:', data)
+        alert(`Error: ${data.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Publish error:', error)
+      console.error('❌ Publish error:', error)
       alert('Failed to publish. Please try again.')
     } finally {
       setIsSaving(false)
