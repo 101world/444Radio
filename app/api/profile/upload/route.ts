@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { uploadToR2 } from '@/lib/r2-upload'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,42 +51,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Missing audio or image file' }, { status: 400 })
       }
 
-      // Upload audio to Supabase Storage
-      const audioFileName = `${userId}/${Date.now()}-${audioFile.name}`
-      const audioBuffer = await audioFile.arrayBuffer()
-      const { error: audioError } = await supabase.storage
-        .from('audio-files')
-        .upload(audioFileName, audioBuffer, {
-          contentType: audioFile.type,
-          upsert: false
-        })
+      // Upload audio to R2
+      const audioKey = `${userId}/${Date.now()}-${audioFile.name}`
+      const audioUpload = await uploadToR2(audioFile, 'audio-files', audioKey)
 
-      if (audioError) {
-        console.error('Audio upload error:', audioError)
+      if (!audioUpload.success) {
+        console.error('Audio upload error:', audioUpload.error)
         return NextResponse.json({ success: false, error: 'Audio upload failed' }, { status: 500 })
       }
 
-      // Upload image to Supabase Storage
-      const imageFileName = `${userId}/${Date.now()}-${imageFile.name}`
-      const imageBuffer = await imageFile.arrayBuffer()
-      const { error: imageError } = await supabase.storage
-        .from('images')
-        .upload(imageFileName, imageBuffer, {
-          contentType: imageFile.type,
-          upsert: false
-        })
+      // Upload image to R2
+      const imageKey = `${userId}/${Date.now()}-${imageFile.name}`
+      const imageUpload = await uploadToR2(imageFile, 'images', imageKey)
 
-      if (imageError) {
-        console.error('Image upload error:', imageError)
+      if (!imageUpload.success) {
+        console.error('Image upload error:', imageUpload.error)
         return NextResponse.json({ success: false, error: 'Image upload failed' }, { status: 500 })
       }
 
-      // Get public URLs
-      const { data: audioUrlData } = supabase.storage.from('audio-files').getPublicUrl(audioFileName)
-      const { data: imageUrlData } = supabase.storage.from('images').getPublicUrl(imageFileName)
-
-      uploadData.audio_url = audioUrlData.publicUrl
-      uploadData.image_url = imageUrlData.publicUrl
+      uploadData.audio_url = audioUpload.url
+      uploadData.image_url = imageUpload.url
 
       // Save to combined_media table
       const { data, error } = await supabase
@@ -107,25 +92,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Missing image file' }, { status: 400 })
       }
 
-      // Upload image to Supabase Storage
-      const imageFileName = `${userId}/${Date.now()}-${imageFile.name}`
-      const imageBuffer = await imageFile.arrayBuffer()
-      const { error: imageError } = await supabase.storage
-        .from('images')
-        .upload(imageFileName, imageBuffer, {
-          contentType: imageFile.type,
-          upsert: false
-        })
+      // Upload image to R2
+      const imageKey = `${userId}/${Date.now()}-${imageFile.name}`
+      const imageUpload = await uploadToR2(imageFile, 'images', imageKey)
 
-      if (imageError) {
-        console.error('Image upload error:', imageError)
+      if (!imageUpload.success) {
+        console.error('Image upload error:', imageUpload.error)
         return NextResponse.json({ success: false, error: 'Image upload failed' }, { status: 500 })
       }
 
-      // Get public URL
-      const { data: imageUrlData } = supabase.storage.from('images').getPublicUrl(imageFileName)
-
-      uploadData.image_url = imageUrlData.publicUrl
+      uploadData.image_url = imageUpload.url
 
       // Save to profile_media table (we'll create this for standalone images/videos)
       const { data, error } = await supabase
@@ -147,25 +123,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Missing video file' }, { status: 400 })
       }
 
-      // Upload video to Supabase Storage
-      const videoFileName = `${userId}/${Date.now()}-${videoFile.name}`
-      const videoBuffer = await videoFile.arrayBuffer()
-      const { error: videoError } = await supabase.storage
-        .from('videos')
-        .upload(videoFileName, videoBuffer, {
-          contentType: videoFile.type,
-          upsert: false
-        })
+      // Upload video to R2
+      const videoKey = `${userId}/${Date.now()}-${videoFile.name}`
+      const videoUpload = await uploadToR2(videoFile, 'videos', videoKey)
 
-      if (videoError) {
-        console.error('Video upload error:', videoError)
+      if (!videoUpload.success) {
+        console.error('Video upload error:', videoUpload.error)
         return NextResponse.json({ success: false, error: 'Video upload failed' }, { status: 500 })
       }
 
-      // Get public URL
-      const { data: videoUrlData } = supabase.storage.from('videos').getPublicUrl(videoFileName)
-
-      uploadData.video_url = videoUrlData.publicUrl
+      uploadData.video_url = videoUpload.url
 
       // Save to profile_media table
       const { data, error } = await supabase
