@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
 import MusicGenerationModal from './components/MusicGenerationModal'
@@ -30,6 +31,7 @@ interface Message {
 }
 
 export default function HomePage() {
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -65,73 +67,13 @@ export default function HomePage() {
   const handleGenerate = async () => {
     if (!input.trim() || isGenerating) return
 
-    // For music, open the modal instead of generating directly
-    if (selectedType === 'music') {
-      setShowMusicModal(true)
-      return
-    }
-
-    // For images and videos, proceed with generation
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: input,
-      timestamp: new Date()
-    }
-
-    const generatingMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'generation',
-      content: `Generating ${selectedType}...`,
-      generationType: selectedType,
-      isGenerating: true,
-      timestamp: new Date()
-    }
-
-    setMessages(prev => [...prev, userMessage, generatingMessage])
-    setInput('')
-    setIsGenerating(true)
-
-    try {
-      let result
-      if (selectedType === 'image') {
-        result = await generateImage(input)
-      } else {
-        result = { error: 'Video generation coming soon!' }
-      }
-
-      // Replace generating message with result
-      setMessages(prev => prev.map(msg => 
-        msg.id === generatingMessage.id 
-          ? {
-              ...msg,
-              isGenerating: false,
-              content: result.error ? `❌ ${result.error}` : `✅ Image generated!`,
-              result: result.error ? undefined : result
-            }
-          : msg
-      ))
-
-      // Add assistant response
-      if (!result.error) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 2).toString(),
-          type: 'assistant',
-          content: 'Image generated! Want to combine it with a track?',
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, assistantMessage])
-      }
-    } catch (error) {
-      console.error('Generation error:', error)
-      setMessages(prev => prev.map(msg => 
-        msg.id === generatingMessage.id 
-          ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
-          : msg
-      ))
-    } finally {
-      setIsGenerating(false)
-    }
+    // Redirect to create page with prompt and selected type
+    const params = new URLSearchParams({
+      prompt: input,
+      type: selectedType
+    })
+    
+    router.push(`/create?${params.toString()}`)
   }
 
   const handleMusicGenerated = (audioUrl: string, title: string, lyrics: string, prompt: string) => {

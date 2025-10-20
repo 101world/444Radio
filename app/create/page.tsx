@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
@@ -32,6 +32,7 @@ interface Message {
 
 export default function CreatePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -56,6 +57,26 @@ export default function CreatePage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Read URL parameters and auto-open modal with prompt
+  useEffect(() => {
+    const prompt = searchParams.get('prompt')
+    const type = searchParams.get('type') as GenerationType | null
+
+    if (prompt) {
+      setInput(prompt)
+      if (type) {
+        setSelectedType(type)
+        // Auto-open the appropriate modal based on type
+        if (type === 'music') {
+          setShowMusicModal(true)
+        } else if (type === 'image') {
+          // Auto-generate image
+          handleGenerate()
+        }
+      }
+    }
+  }, [searchParams])
 
   // ESC key handler to go back to home page (only if no modals are open)
   useEffect(() => {
@@ -510,6 +531,7 @@ export default function CreatePage() {
       <MusicGenerationModal
         isOpen={showMusicModal}
         onClose={() => setShowMusicModal(false)}
+        initialPrompt={input}
         onSuccess={(audioUrl: string, prompt: string) => {
           // Extract title and lyrics from the generated music
           // This will be called after successful generation

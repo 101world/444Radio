@@ -8,11 +8,12 @@ interface MusicModalProps {
   onClose: () => void
   userCredits?: number
   onSuccess?: (url: string, prompt: string) => void
+  initialPrompt?: string
 }
 
-export default function MusicGenerationModal({ isOpen, onClose, userCredits, onSuccess }: MusicModalProps) {
+export default function MusicGenerationModal({ isOpen, onClose, userCredits, onSuccess, initialPrompt = '' }: MusicModalProps) {
   const [title, setTitle] = useState('')
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useState(initialPrompt)
   const [lyrics, setLyrics] = useState('')
   const [bitrate, setBitrate] = useState(256000)
   const [sampleRate, setSampleRate] = useState(44100)
