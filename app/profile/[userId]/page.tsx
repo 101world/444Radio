@@ -164,7 +164,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </sup>
                     </h1>
                     <p className="text-lg md:text-xl text-cyan-400 font-semibold mb-3 italic">
-                      "{profile?.tagline || "Creating the future of music"}"
+                      &quot;{profile?.tagline || "Creating the future of music"}&quot;
                     </p>
                     <p className="text-gray-400 text-sm md:text-base mb-4 max-w-2xl">
                       {profile?.bio || "Music creator and innovator on 444 Radio. Exploring new sounds and pushing boundaries."}
