@@ -9,7 +9,6 @@ import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackground from '../components/HolographicBackground'
-import SocialCTA from '../components/SocialCTA'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -506,9 +505,6 @@ export default function CreatePage() {
           </div>
         </div>
       </div>
-
-      {/* Social CTA Section */}
-      <SocialCTA />
 
       {/* Music Generation Modal */}
       <MusicGenerationModal

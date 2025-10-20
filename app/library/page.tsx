@@ -6,7 +6,6 @@ import { useUser } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackground from '../components/HolographicBackground'
-import SocialCTA from '../components/SocialCTA'
 
 interface LibraryMusic {
   id: string
@@ -372,11 +371,6 @@ export default function LibraryPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Social CTA Section */}
-      <div className="pb-32">
-        <SocialCTA />
       </div>
     </div>
   )
