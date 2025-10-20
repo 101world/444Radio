@@ -8,7 +8,7 @@ import { UserButton } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
 import MusicGenerationModal from './components/MusicGenerationModal'
 import FloatingMenu from './components/FloatingMenu'
-import HolographicBackground from './components/HolographicBackground'
+import HolographicBackgroundClient from './components/HolographicBackgroundClient'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -230,7 +230,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative">
       {/* Holographic 3D Background */}
-      <HolographicBackground />
+      <HolographicBackgroundClient />
       
       {/* Main Content Wrapper with higher z-index */}
       <div className="relative z-10 flex-1 flex flex-col">

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { Music, Video, Image as ImageIcon, Users, Upload } from 'lucide-react'
 import FloatingMenu from '@/app/components/FloatingMenu'
-import HolographicBackground from '@/app/components/HolographicBackground'
+import HolographicBackgroundClient from '@/app/components/HolographicBackgroundClient'
 import ProfileUploadModal from '@/app/components/ProfileUploadModal'
 import PrivateListModal from '@/app/components/PrivateListModal'
 
@@ -123,7 +123,7 @@ export default function UsernameProfilePage() {
   return (
     <div className="min-h-screen bg-black text-white pb-32">
       {/* Holographic 3D Background */}
-      <HolographicBackground />
+      <HolographicBackgroundClient />
       
       {/* Floating Menu */}
       <FloatingMenu />

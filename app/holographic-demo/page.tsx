@@ -1,6 +1,6 @@
 'use client';
 
-import HolographicBackground from '../components/HolographicBackground';
+import HolographicBackgroundClient from '../components/HolographicBackgroundClient';
 import FloatingMenu from '../components/FloatingMenu';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -9,7 +9,7 @@ export default function HolographicDemo() {
   return (
     <div className="relative min-h-screen">
       {/* Holographic Background */}
-      <HolographicBackground />
+      <HolographicBackgroundClient />
 
       {/* Navigation */}
       <FloatingMenu />

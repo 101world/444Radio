@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import HolographicBackground from '../components/HolographicBackground'
+import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 
 interface Song {
   id: string
@@ -33,7 +33,7 @@ export default function Community() {
   return (
     <main className="min-h-screen bg-gray-900 text-white p-8">
       {/* Holographic 3D Background */}
-      <HolographicBackground />
+      <HolographicBackgroundClient />
       
       <div className="max-w-6xl mx-auto relative z-10">
         <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-purple-400">Community Billboard</h1>

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import CombinedMediaPlayer from '../components/CombinedMediaPlayer'
 import FloatingMenu from '../components/FloatingMenu'
-import HolographicBackground from '../components/HolographicBackground'
+import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import SocialCTA from '../components/SocialCTA'
 import { Search, Play, Pause, Volume2, SkipBack, SkipForward, Radio } from 'lucide-react'
 
@@ -87,7 +87,7 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Holographic 3D Background */}
-      <HolographicBackground />
+      <HolographicBackgroundClient />
       
       {/* Floating Menu */}
       <FloatingMenu />
