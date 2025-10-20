@@ -11,6 +11,7 @@ interface MusicModalProps {
 }
 
 export default function MusicGenerationModal({ isOpen, onClose, userCredits, onSuccess }: MusicModalProps) {
+  const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState('')
   const [lyrics, setLyrics] = useState('')
   const [bitrate, setBitrate] = useState(256000)
@@ -26,14 +27,19 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
       return
     }
 
-    if (!prompt.trim() || prompt.length < 10 || prompt.length > 300) {
-      alert('Please enter a music description (10-300 characters)')
+    if (!title.trim() || title.length < 3 || title.length > 100) {
+      alert('Please enter a song title (3-100 characters)')
+      return
+    }
+
+    if (!prompt.trim() || prompt.length < 10 || prompt.length > 500) {
+      alert('Please enter a music description (10-500 characters)')
       return
     }
 
     // Lyrics are REQUIRED by MiniMax Music API
-    if (!lyrics.trim() || lyrics.length < 10 || lyrics.length > 600) {
-      alert('⚠️ Lyrics are required! Please enter 10-600 characters with structure tags like [verse] [chorus]')
+    if (!lyrics.trim() || lyrics.length < 10 || lyrics.length > 3000) {
+      alert('⚠️ Lyrics are required! Please enter 10-3000 characters with structure tags like [verse] [chorus]')
       return
     }
 
@@ -46,6 +52,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          title,
           prompt,
           lyrics, // Required
           bitrate,
@@ -79,155 +86,228 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl bg-gradient-to-br from-slate-900 to-green-950/50 rounded-2xl border border-green-500/30 shadow-2xl shadow-green-500/20">
-        
-        {/* Close Button */}
-        {!isGenerating && (
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-green-400 hover:text-green-300 transition-colors"
-          >
-            <X size={24} />
-          </button>
-        )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={!isGenerating ? onClose : undefined}
+      />
 
-        <div className="p-8">
+      {/* Modal - Glassmorphism */}
+      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-hidden">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50">
+          
           {/* Header */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="p-4 bg-green-500/20 rounded-full">
-              <Music size={32} className="text-green-400" />
+          <div className="flex items-center justify-between p-6 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-white/10 rounded-xl">
+                <Music className="text-white" size={24} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">Generate Music</h2>
+                <p className="text-sm text-gray-400">Fill in the details to create your track</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-3xl font-bold text-green-400">Generate Music</h2>
-              <p className="text-green-400/60 text-sm">Powered by MiniMax Music-1.5</p>
-            </div>
-          </div>
-
-          {/* Prompt Input */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-green-400 mb-2">
-              Music Description <span className="text-green-400/60">(10-300 characters)</span>
-            </label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value.slice(0, 300))}
-              placeholder="e.g., 'upbeat electronic dance track with energetic drums and synthesizers'"
-              className="w-full h-24 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 placeholder:text-green-400/40 focus:outline-none focus:border-green-500 resize-none"
-              maxLength={300}
-              disabled={isGenerating}
-            />
-            <div className="text-xs text-green-400/60 mt-1">
-              {prompt.length}/300 characters
-            </div>
-          </div>
-
-          {/* Lyrics Input (REQUIRED) */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-green-400">
-                Lyrics <span className="text-red-400">* Required</span> <span className="text-green-400/60">(10-600 characters)</span>
-              </label>
+            {!isGenerating && (
               <button
-                type="button"
-                onClick={() => setLyrics('[intro]\nSynthwave vibes in the night\n\n[verse]\nNeon lights guide my way\nThrough the city after dark\nElectronic dreams at play\n\n[chorus]\nFeel the rhythm, feel the beat\nDancing through the digital heat\nLost in sound, lost in time\nThis moment feels sublime\n\n[outro]\nFading into the night')}
-                className="text-xs px-3 py-1 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 hover:bg-green-500/30 transition-colors"
+                onClick={onClose}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
               >
-                📝 Use Example
+                <X size={24} />
               </button>
-            </div>
-            <textarea
-              value={lyrics}
-              onChange={(e) => setLyrics(e.target.value.slice(0, 600))}
-              placeholder="[intro]&#10;Verse 1 lyrics here...&#10;&#10;[chorus]&#10;Chorus lyrics here...&#10;&#10;[outro]"
-              className="w-full h-32 px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 placeholder:text-green-400/40 focus:outline-none focus:border-green-500 resize-none font-mono text-sm"
-              maxLength={600}
-              disabled={isGenerating}
-            />
-            <div className="text-xs text-green-400/60 mt-1">
-              {lyrics.length}/600 characters • Supports: [intro] [verse] [chorus] [bridge] [outro]
-            </div>
+            )}
           </div>
 
-          {/* Parameters */}
-          <div className="mb-8 p-6 rounded-xl border border-green-500/20 bg-black/40">
-            <h3 className="text-lg font-semibold text-green-400 mb-4 flex items-center gap-2">
-              <Sparkles size={20} />
-              Audio Parameters
-            </h3>
+          {/* Form Content */}
+          <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-200px)]">
             
-            {/* Sample Rate */}
-            <div className="mb-4">
-              <label className="block text-sm text-green-400/80 mb-2">
-                Sample Rate: <span className="font-bold text-green-400">{sampleRate} Hz</span>
+            {/* Song Title */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white">
+                Song Title
+                <span className="text-white/40 ml-2">(3-100 characters)</span>
               </label>
-              <select
-                value={sampleRate}
-                onChange={(e) => setSampleRate(parseInt(e.target.value))}
-                className="w-full px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 focus:outline-none focus:border-green-500"
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value.slice(0, 100))}
                 disabled={isGenerating}
-              >
-                <option value="16000">16000 Hz (Low)</option>
-                <option value="24000">24000 Hz (Medium)</option>
-                <option value="32000">32000 Hz (High)</option>
-                <option value="44100">44100 Hz (CD Quality)</option>
-              </select>
+                placeholder="Enter your song title..."
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                maxLength={100}
+              />
+              <p className="text-xs text-gray-500">{title.length}/100</p>
             </div>
 
-            {/* Bitrate */}
-            <div className="mb-4">
-              <label className="block text-sm text-green-400/80 mb-2">
-                Bitrate: <span className="font-bold text-green-400">{bitrate / 1000} kbps</span>
+            {/* Music Style/Prompt */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white">
+                Music Style & Description
+                <span className="text-white/40 ml-2">(10-500 characters)</span>
               </label>
-              <select
-                value={bitrate}
-                onChange={(e) => setBitrate(parseInt(e.target.value))}
-                className="w-full px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 focus:outline-none focus:border-green-500"
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value.slice(0, 500))}
                 disabled={isGenerating}
-              >
-                <option value="32000">32 kbps (Low)</option>
-                <option value="64000">64 kbps (Medium)</option>
-                <option value="128000">128 kbps (Good)</option>
-                <option value="256000">256 kbps (High Quality)</option>
-              </select>
+                placeholder="e.g., 'upbeat electronic dance music with heavy bass, energetic drums, and synthesizer melodies'"
+                rows={3}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                maxLength={500}
+              />
+              <p className="text-xs text-gray-500">{prompt.length}/500</p>
             </div>
 
-            {/* Audio Format */}
-            <div className="mb-4">
-              <label className="block text-sm text-green-400/80 mb-2">
-                Audio Format: <span className="font-bold text-green-400 uppercase">{audioFormat}</span>
-              </label>
-              <select
-                value={audioFormat}
-                onChange={(e) => setAudioFormat(e.target.value)}
-                className="w-full px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 focus:outline-none focus:border-green-500"
+            {/* Lyrics */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-white">
+                  Lyrics
+                  <span className="text-white/40 ml-2">(10-3000 characters)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setLyrics('[intro]\nSynthwave vibes in the night\n\n[verse]\nNeon lights guide my way\nThrough the city after dark\nElectronic dreams at play\n\n[chorus]\nFeel the rhythm, feel the beat\nDancing through the digital heat\nLost in sound, lost in time\nThis moment feels sublime\n\n[outro]\nFading into the night')}
+                  className="text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-white transition-colors"
+                  disabled={isGenerating}
+                >
+                  Use Example
+                </button>
+              </div>
+              <textarea
+                value={lyrics}
+                onChange={(e) => setLyrics(e.target.value.slice(0, 3000))}
                 disabled={isGenerating}
-              >
-                <option value="mp3">MP3 (Recommended)</option>
-                <option value="wav">WAV (Uncompressed)</option>
-                <option value="pcm">PCM (Raw)</option>
-              </select>
+                placeholder="[intro]&#10;Your intro...&#10;&#10;[verse]&#10;Verse 1 lyrics here...&#10;&#10;[chorus]&#10;Chorus lyrics here...&#10;&#10;[outro]&#10;Your outro..."
+                rows={10}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all resize-none font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                maxLength={3000}
+              />
+              <p className="text-xs text-gray-500">{lyrics.length}/3000 • Use tags: [intro] [verse] [chorus] [bridge] [outro]</p>
             </div>
+
+            {/* Advanced Parameters (Collapsible) */}
+            <details className="group">
+              <summary className="cursor-pointer list-none">
+                <div className="flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="text-gray-400" size={18} />
+                    <span className="text-sm font-medium text-white">Advanced Parameters</span>
+                  </div>
+                  <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                </div>
+              </summary>
+              
+              <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-xl space-y-4">
+                {/* Sample Rate */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                    Sample Rate: <span className="text-white">{sampleRate} Hz</span>
+                  </label>
+                  <select
+                    value={sampleRate}
+                    onChange={(e) => setSampleRate(parseInt(e.target.value))}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-white/30"
+                    disabled={isGenerating}
+                  >
+                    <option value="16000">16000 Hz (Low)</option>
+                    <option value="24000">24000 Hz (Medium)</option>
+                    <option value="32000">32000 Hz (High)</option>
+                    <option value="44100">44100 Hz (CD Quality)</option>
+                  </select>
+                </div>
+
+                {/* Bitrate */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                    Bitrate: <span className="text-white">{bitrate / 1000} kbps</span>
+                  </label>
+                  <select
+                    value={bitrate}
+                    onChange={(e) => setBitrate(parseInt(e.target.value))}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-white/30"
+                    disabled={isGenerating}
+                  >
+                    <option value="32000">32 kbps (Low)</option>
+                    <option value="64000">64 kbps (Medium)</option>
+                    <option value="128000">128 kbps (Good)</option>
+                    <option value="256000">256 kbps (High Quality)</option>
+                  </select>
+                </div>
+
+                {/* Audio Format */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                    Format: <span className="text-white uppercase">{audioFormat}</span>
+                  </label>
+                  <select
+                    value={audioFormat}
+                    onChange={(e) => setAudioFormat(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-white/30"
+                    disabled={isGenerating}
+                  >
+                    <option value="mp3">MP3 (Recommended)</option>
+                    <option value="wav">WAV (Uncompressed)</option>
+                    <option value="pcm">PCM (Raw)</option>
+                  </select>
+                </div>
+              </div>
+            </details>
 
             {/* Info Box */}
-            <div className="mt-4 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-              <p className="text-sm text-green-400/80">
-                <span className="font-semibold">💡 Tip:</span> Use higher sample rate and bitrate for better quality. MP3 is recommended for most use cases.
-              </p>
+            <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+              <div className="flex items-start gap-3">
+                <Sparkles className="text-gray-400 flex-shrink-0 mt-0.5" size={16} />
+                <div className="text-xs text-gray-400 space-y-1">
+                  <p><span className="text-white font-semibold">Tip:</span> Be specific with style, genre, and mood.</p>
+                  <p>Structure lyrics with [intro], [verse], [chorus], [bridge], [outro] for best results.</p>
+                </div>
+              </div>
             </div>
+
+            {/* Audio Preview */}
+            {generatedAudioUrl && (
+              <div className="p-4 bg-white/10 border border-white/20 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm text-white font-semibold">✅ Music Generated!</p>
+                  <a
+                    href={generatedAudioUrl}
+                    download={`${title || '444radio-music'}.mp3`}
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Download
+                  </a>
+                </div>
+                <audio
+                  controls
+                  src={generatedAudioUrl}
+                  className="w-full rounded-lg"
+                >
+                  Your browser does not support audio playback.
+                </audio>
+              </div>
+            )}
+
+            {/* Generation Status */}
+            {isGenerating && (
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                <p className="text-sm text-gray-400">
+                  ⏱️ Generating your music... This typically takes 30-60 seconds.
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Cost & Generate Button */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-500/20 rounded-full border border-green-500/30">
-              <span className="text-xl">⚡</span>
-              <span className="text-green-400 font-bold">2 credits</span>
+          {/* Footer */}
+          <div className="flex items-center justify-between p-6 border-t border-white/10 bg-white/5">
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full border border-white/10">
+              <span className="text-lg">⚡</span>
+              <span className="text-white font-bold text-sm">2 credits</span>
             </div>
             
             <button
               onClick={handleGenerate}
-              disabled={isGenerating || (userCredits !== undefined && userCredits < 2) || !prompt.trim()}
-              className="px-8 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-xl font-bold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
+              disabled={isGenerating || (userCredits !== undefined && userCredits < 2) || !title.trim() || !prompt.trim() || !lyrics.trim()}
+              className="px-6 py-3 bg-white text-black rounded-xl font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white flex items-center gap-2"
             >
               {isGenerating ? (
                 <>
@@ -237,51 +317,23 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
               ) : (
                 <>
                   <Music size={20} />
-                  Generate Music
+                  Generate Track
                 </>
               )}
             </button>
           </div>
-
-          {/* Audio Preview */}
-          {generatedAudioUrl && (
-            <div className="mt-6 p-6 bg-gradient-to-br from-green-500/20 to-cyan-500/20 rounded-xl border border-green-500/30">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-green-400 font-semibold">✅ Music Generated!</p>
-                <a
-                  href={generatedAudioUrl}
-                  download="444radio-music.mp3"
-                  className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Download
-                </a>
-              </div>
-              <audio
-                controls
-                src={generatedAudioUrl}
-                className="w-full"
-                style={{
-                  filter: 'hue-rotate(90deg) saturate(1.5)',
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  borderRadius: '0.5rem',
-                  padding: '0.5rem'
-                }}
-              >
-                Your browser does not support audio playback.
-              </audio>
-            </div>
-          )}
-
-          {/* Generation Info */}
-          {isGenerating && (
-            <div className="mt-6 p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/30">
-              <p className="text-sm text-cyan-400">
-                ⏱️ Generating your music... This typically takes 30-60 seconds.
-              </p>
-            </div>
-          )}
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+      `}</style>
     </div>
   )
 }
