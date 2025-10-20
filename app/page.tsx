@@ -41,6 +41,7 @@ export default function HomePage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [showMusicModal, setShowMusicModal] = useState(false)
+  const [isActivated, setIsActivated] = useState(false) // New state for transition
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({})
 
@@ -51,6 +52,13 @@ export default function HomePage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Activate chat interface when user interacts with input
+  const handleActivate = () => {
+    if (!isActivated) {
+      setIsActivated(true)
+    }
+  }
 
   const handleGenerate = async () => {
     if (!input.trim() || isGenerating) return
@@ -233,13 +241,133 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="min-h-screen bg-black text-white flex flex-col relative">
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full">
-        <div className="space-y-6">
+      {/* Landing View - Centered Prompt (before activation) */}
+      {!isActivated && (
+        <div className="flex-1 flex flex-col items-center justify-center px-4 transition-opacity duration-500">
+          {/* Welcome Text */}
+          <div className="text-center mb-12 animate-fade-in">
+            <h1 className="text-6xl md:text-8xl font-black mb-6 text-white leading-tight">
+              Welcome to Music
+            </h1>
+            <p className="text-xl text-gray-400 mb-12">
+              Create AI-generated music, cover art, and more
+            </p>
+          </div>
+
+          {/* Centered Pill Input */}
+          <div className="w-full max-w-3xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl shadow-black/50 p-3 transition-all duration-500 hover:border-white/30 hover:shadow-[#2d4a6e]/30">
+              {/* Type Selection Pills */}
+              <div className="flex gap-2 mb-3 px-3 justify-center">
+                <button
+                  onClick={() => setSelectedType('music')}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                    selectedType === 'music'
+                      ? 'bg-white text-black'
+                      : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Music size={14} className="inline mr-1.5" />
+                  Music
+                </button>
+                <button
+                  onClick={() => setSelectedType('image')}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                    selectedType === 'image'
+                      ? 'bg-white text-black'
+                      : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <ImageIcon size={14} className="inline mr-1.5" />
+                  Cover Art
+                </button>
+                <button
+                  disabled
+                  className="px-4 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-600 border border-white/10 cursor-not-allowed"
+                >
+                  <Video size={14} className="inline mr-1.5" />
+                  Video
+                </button>
+              </div>
+
+              {/* Input Box */}
+              <div className="flex gap-3 items-center px-3">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onFocus={handleActivate}
+                  onClick={handleActivate}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleActivate()
+                      handleGenerate()
+                    }
+                  }}
+                  placeholder={
+                    selectedType === 'music'
+                      ? 'Describe your track...'
+                      : selectedType === 'image'
+                      ? 'Describe your cover art...'
+                      : 'Coming soon...'
+                  }
+                  disabled={isGenerating || selectedType === 'video'}
+                  className="flex-1 px-0 py-3 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                />
+                
+                {/* Settings Button for Music */}
+                {selectedType === 'music' && (
+                  <button
+                    onClick={() => {
+                      handleActivate()
+                      setShowMusicModal(true)
+                    }}
+                    className={`p-3 rounded-full transition-all ${
+                      !input.trim() 
+                        ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                        : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                    title="Music Settings (Required)"
+                  >
+                    <Settings size={20} className="text-white" />
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => {
+                    handleActivate()
+                    handleGenerate()
+                  }}
+                  disabled={isGenerating || !input.trim() || selectedType === 'video'}
+                  className="p-3 bg-[#2d4a6e] hover:bg-[#3d5a7e] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#2d4a6e] flex items-center justify-center"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="animate-spin text-white" size={20} />
+                  ) : (
+                    <Send size={20} className="text-white" />
+                  )}
+                </button>
+              </div>
+
+              {/* Quick Info */}
+              <div className="flex items-center justify-center gap-3 mt-3 text-xs text-gray-500 px-3">
+                <span className="text-[#5a8fc7]">2 credits for music</span>
+                <span>•</span>
+                <span className="text-[#5a8fc7]">1 credit for images</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Area - Shows after activation */}
+      {isActivated && (
+        <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full animate-fade-in">
+          <div className="space-y-6">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -362,10 +490,12 @@ export default function HomePage() {
           <div ref={messagesEndRef} />
         </div>
       </div>
+      )}
 
-      {/* Fixed Bottom Input Area - Pill Shaped Glassmorphism */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6">
-        <div className="max-w-4xl mx-auto">
+      {/* Fixed Bottom Input Area - Only shows when activated */}
+      {isActivated && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 animate-slide-up">
+          <div className="max-w-4xl mx-auto">
           {/* Pill Container */}
           <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl shadow-black/50 p-3">
             {/* Type Selection Pills */}
@@ -456,6 +586,7 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Music Generation Modal */}
       <MusicGenerationModal
