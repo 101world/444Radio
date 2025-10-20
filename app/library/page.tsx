@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send } from 'lucide-react'
+import FloatingMenu from '../components/FloatingMenu'
 
 interface LibraryMusic {
   id: string
@@ -126,29 +127,17 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-purple-950 text-white">
-      {/* Navigation */}
-      <nav className="flex justify-between items-center p-4 md:p-6 backdrop-blur-xl bg-black/20 border-b border-purple-500/20">
-        <Link href="/" className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-400 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-black font-bold text-lg">🎵</span>
-          </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">444RADIO</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/" className="px-4 py-2 text-purple-400 hover:text-purple-300">Home</Link>
-          <Link href="/create" className="px-4 py-2 text-purple-400 hover:text-purple-300">Create</Link>
-          <Link href="/explore" className="px-4 py-2 text-purple-400 hover:text-purple-300">Explore</Link>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-black text-white">
+      {/* Floating Menu */}
+      <FloatingMenu />
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-5xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+          <h1 className="text-5xl font-black text-white mb-2">
             Your Library
           </h1>
-          <p className="text-purple-400/60">All your AI-generated content in one place</p>
+          <p className="text-gray-400">All your AI-generated content in one place</p>
         </div>
 
         {/* Tabs */}
@@ -158,8 +147,8 @@ export default function LibraryPage() {
             className={`
               px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
               ${activeTab === 'music'
-                ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-black scale-105'
-                : 'bg-green-500/10 text-green-400 border-2 border-green-500/30 hover:border-green-500/60'
+                ? 'bg-white text-black'
+                : 'bg-white/10 text-gray-400 border-2 border-white/10 hover:bg-white/20 hover:text-white'
               }
             `}
           >
@@ -171,8 +160,8 @@ export default function LibraryPage() {
             className={`
               px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
               ${activeTab === 'images'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-black scale-105'
-                : 'bg-cyan-500/10 text-cyan-400 border-2 border-cyan-500/30 hover:border-cyan-500/60'
+                ? 'bg-white text-black'
+                : 'bg-white/10 text-gray-400 border-2 border-white/10 hover:bg-white/20 hover:text-white'
               }
             `}
           >
@@ -184,8 +173,8 @@ export default function LibraryPage() {
             className={`
               px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
               ${activeTab === 'combined'
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-black scale-105'
-                : 'bg-purple-500/10 text-purple-400 border-2 border-purple-500/30 hover:border-purple-500/60'
+                ? 'bg-[#2d4a6e] text-white'
+                : 'bg-white/10 text-gray-400 border-2 border-white/10 hover:bg-white/20 hover:text-white'
               }
             `}
           >

@@ -7,6 +7,7 @@ import SimpleGenerationSelector from './components/SimpleGenerationSelector'
 import MusicGenerationModal from './components/MusicGenerationModal'
 import CoverArtGenerationModal from './components/CoverArtGenerationModal'
 import CombineMediaModal from './components/CombineMediaModal'
+import FloatingMenu from './components/FloatingMenu'
 
 export default function HomePage() {
   const { user } = useUser()
@@ -48,47 +49,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden relative">
+      {/* Floating Menu */}
+      <FloatingMenu />
+      
       {/* Animated Background - Subtle */}
       <div className="absolute inset-0 z-0 opacity-20">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(45,74,110,0.3),transparent_50%)] animate-pulse"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(90,143,199,0.2),transparent_40%)] animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.05),transparent_40%)] animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
-
-      {/* Navigation */}
-      <nav className="relative z-50 flex justify-between items-center p-4 md:p-6 backdrop-blur-xl bg-white/5 border-b border-white/10">
-        <Link href="/" className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="font-bold text-lg">🎵</span>
-          </div>
-          <span className="text-2xl font-bold text-white">444RADIO</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <SignedIn>
-            <Link 
-              href="/create" 
-              className="px-6 py-2 bg-white text-black rounded-full font-bold hover:bg-gray-200 transition-all shadow-lg"
-            >
-              ✨ Create
-            </Link>
-            <Link href="/library" className="hidden md:block px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors">Library</Link>
-            <Link href="/explore" className="hidden md:block px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors">Explore</Link>
-            <Link href="/billboard" className="hidden md:block px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors">Charts</Link>
-            <Link href={`/profile/${user?.id}`} className="hidden md:block px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors">Profile</Link>
-            {/* Credits Display */}
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 backdrop-blur-lg bg-white/10 border border-white/20 rounded-full">
-              <span className="text-2xl">⚡</span>
-              <span className="text-white font-bold">{credits}</span>
-              <span className="text-gray-400 text-xs">credits</span>
-            </div>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-          <SignedOut>
-            <Link href="/sign-in" className="px-6 py-2 text-gray-300 hover:text-white font-medium transition-colors">Sign In</Link>
-            <Link href="/sign-up" className="px-6 py-2 bg-white text-black rounded-full font-bold hover:bg-gray-200 transition-all">Join Free</Link>
-          </SignedOut>
-        </div>
-      </nav>
 
       <main className="relative z-10">
         <SignedOut>

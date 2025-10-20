@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
+import FloatingMenu from '../components/FloatingMenu'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -233,20 +234,8 @@ export default function CreatePage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
-      {/* Navigation */}
-      <nav className="flex justify-between items-center p-4 md:p-6 backdrop-blur-xl bg-white/5 border-b border-white/10">
-        <Link href="/" className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="font-bold text-lg">🎵</span>
-          </div>
-          <span className="text-2xl font-bold text-white">444RADIO</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/library" className="px-4 py-2 text-gray-300 hover:text-white transition-colors">Library</Link>
-          <Link href="/explore" className="px-4 py-2 text-gray-300 hover:text-white transition-colors">Explore</Link>
-          <UserButton afterSignOutUrl="/" />
-        </div>
-      </nav>
+      {/* Floating Menu */}
+      <FloatingMenu />
 
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full">
