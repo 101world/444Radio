@@ -7,6 +7,7 @@ import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause,
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import FloatingMenu from '../components/FloatingMenu'
+import HolographicBackground from '../components/HolographicBackground'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -236,6 +237,9 @@ export default function CreatePage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
+      {/* Holographic 3D Background */}
+      <HolographicBackground />
+      
       {/* Floating Menu */}
       <FloatingMenu />
 

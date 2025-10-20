@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
+import HolographicBackground from '../../components/HolographicBackground'
 import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
@@ -92,6 +93,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   return (
     <div className="min-h-screen bg-black text-white pb-32">
+      {/* Holographic 3D Background */}
+      <HolographicBackground />
+      
       {/* Floating Menu */}
       <FloatingMenu />
 

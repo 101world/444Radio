@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
+import HolographicBackground from '../components/HolographicBackground'
 
 interface LibraryMusic {
   id: string
@@ -128,6 +129,9 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-black text-white pb-32">
+      {/* Holographic 3D Background */}
+      <HolographicBackground />
+      
       {/* Floating Menu */}
       <FloatingMenu />
 
