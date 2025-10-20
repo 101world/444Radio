@@ -249,11 +249,8 @@ export default function HomePage() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onFocus={handleActivate}
-                  onClick={handleActivate}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
-                      handleActivate()
                       handleGenerate()
                     }
                   }}
@@ -268,31 +265,12 @@ export default function HomePage() {
                   className="flex-1 px-0 py-3 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 />
                 
-                {/* Settings Button for Music */}
-                {selectedType === 'music' && (
-                  <button
-                    onClick={() => {
-                      handleActivate()
-                      setShowMusicModal(true)
-                    }}
-                    className={`p-3 rounded-full transition-all ${
-                      !input.trim() 
-                        ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                        : 'bg-white/10 hover:bg-white/20'
-                    }`}
-                    title="Music Settings (Required)"
-                  >
-                    <Settings size={20} className="text-white" />
-                  </button>
-                )}
-                
+                {/* Send Button - Goes directly to create page */}
                 <button
-                  onClick={() => {
-                    handleActivate()
-                    handleGenerate()
-                  }}
+                  onClick={handleGenerate}
                   disabled={isGenerating || !input.trim() || selectedType === 'video'}
                   className="p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#4f46e5] flex items-center justify-center"
+                  title="Send and go to Create page"
                 >
                   {isGenerating ? (
                     <Loader2 className="animate-spin text-white" size={20} />
