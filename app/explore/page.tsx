@@ -87,37 +87,13 @@ export default function ExplorePage() {
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Search Bar - Minimal, Above Player */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-[#6366f1] text-sm"
-          />
-          <button className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-[#6366f1] hover:bg-[#818cf8] rounded-full transition-all">
-            <Search className="text-white" size={14} />
-          </button>
-        </div>
-      </div>
-
-      {/* Full Width/Height Media Grid - Horizontal Scrolling */}
-      <main className="pt-20 pb-32 px-4">
-        <div className="w-full">
-          {loading ? (
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-4">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-64 h-80 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl animate-pulse"></div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Row 1 */}
-              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                {combinedMedia.slice(0, Math.ceil(combinedMedia.length / 3)).map((media) => (
-                  <div key={media.id} className="flex-shrink-0 w-64 group relative">
+      {/* Header with 444hz Title (Top Left) and Search */}
+      <div className="pt-24 px-4 md:px-8 pb-6">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl md:text-4xl font-black mb-6 text-white">444 Radio</h1>
+          
+          {/* Search Bar */}
+          <div className="relative max-w-2xl">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
@@ -150,14 +126,18 @@ export default function ExplorePage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
-              {combinedMedia.map((media) => (
+              {combinedMedia.map((media) => {
+                const isCurrentlyPlaying = playingId === media.id
+                const cardClassName = `relative aspect-square backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300 ${
+                  isCurrentlyPlaying
+                    ? 'bg-[#4f46e5]/30 border-2 border-[#818cf8] shadow-2xl shadow-[#818cf8]/50 scale-[1.02]'
+                    : 'bg-white/5 border border-white/10 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#818cf8]/20 hover:border-[#818cf8]/30'
+                }`
+                
+                return (
                 <div key={media.id} className="group relative">
                   {/* 3D Glassmorphism Card with Playing State */}
-                  <div className={`relative aspect-square backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300 ${
-                    playingId === media.id 
-                      ? 'bg-[#4f46e5]/30 border-2 border-[#818cf8] shadow-2xl shadow-[#818cf8]/50 scale-[1.02]' 
-                      : 'bg-white/5 border border-white/10 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#818cf8]/20 hover:border-[#818cf8]/30'
-                  }`}>
+                  <div className={cardClassName}>
                     {/* Image */}
                     <img 
                       src={media.image_url} 
@@ -166,7 +146,7 @@ export default function ExplorePage() {
                     />
                     
                     {/* Playing Indicator */}
-                    {playingId === media.id && (
+                    {isCurrentlyPlaying && (
                       <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-[#818cf8] rounded-full animate-pulse">
                         <Radio size={12} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
                         <span className="text-xs font-bold text-white">LIVE</span>
@@ -179,7 +159,7 @@ export default function ExplorePage() {
                       className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer flex items-center justify-center"
                     >
                       <button className="w-16 h-16 bg-[#818cf8] hover:bg-[#7aa5d7] rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl">
-                        {playingId === media.id && isPlaying ? (
+                        {isCurrentlyPlaying && isPlaying ? (
                           <Pause className="text-white" size={28} />
                         ) : (
                           <Play className="text-white ml-1" size={28} />
@@ -199,7 +179,8 @@ export default function ExplorePage() {
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
