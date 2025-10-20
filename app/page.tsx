@@ -13,7 +13,7 @@ export default function HomePage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (prompt.trim()) {
-      router.push(/create?prompt=-Force{encodeURIComponent(prompt)})
+      router.push(`/create?prompt=${encodeURIComponent(prompt)}`)
     }
   }
 
