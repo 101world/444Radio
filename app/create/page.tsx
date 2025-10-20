@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
@@ -31,6 +32,7 @@ interface Message {
 }
 
 export default function CreatePage() {
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -56,17 +58,17 @@ export default function CreatePage() {
     scrollToBottom()
   }, [messages])
 
-  // ESC key handler to go back to home page
+  // ESC key handler to go back to home page (only if no modals are open)
   useEffect(() => {
     const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        window.location.href = '/'
+      if (e.key === 'Escape' && !showMusicModal && !showCombineModal) {
+        router.push('/')
       }
     }
 
     window.addEventListener('keydown', handleEscKey)
     return () => window.removeEventListener('keydown', handleEscKey)
-  }, [])
+  }, [router, showMusicModal, showCombineModal])
 
   const handleGenerate = async () => {
     if (!input.trim() || isGenerating) return
@@ -257,9 +259,9 @@ export default function CreatePage() {
       <FloatingMenu />
 
       {/* Back to Home Button */}
-      <div className="fixed top-6 left-6 z-50">
-        <Link href="/">
-          <button className="group flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 hover:border-white/30 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl">
+      <div className="fixed top-6 left-6 z-50" style={{ pointerEvents: 'auto' }}>
+        <Link href="/" className="block">
+          <button className="group flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 hover:border-white/30 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl pointer-events-auto">
             <svg 
               className="w-4 h-4 transition-transform group-hover:-translate-x-1" 
               fill="none" 
