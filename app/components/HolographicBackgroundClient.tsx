@@ -126,11 +126,47 @@ export default function HolographicBackground() {
     }
     console.log('🎨 Blocks created:', blocks.length, 'blocks');
 
-    // Interactive wireframe shapes - minimal and small
+    // Small floating rings - multiple torus rings
+    const ringGeometry = new THREE.TorusGeometry(3, 0.4, 16, 50);
+    const rings: THREE.Mesh[] = [];
+
+    for (let i = 0; i < 8; i++) { // 8 small rings
+      const material = new THREE.MeshBasicMaterial({
+        color: new THREE.Color().setHSL(0.5 + i * 0.1, 1, 0.7),
+        wireframe: true,
+        transparent: true,
+        opacity: 0.7,
+      });
+
+      const ring = new THREE.Mesh(ringGeometry, material);
+      ring.position.set(
+        (Math.random() - 0.5) * 50,
+        (Math.random() - 0.5) * 50,
+        (Math.random() - 0.5) * 50
+      );
+      ring.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      ring.userData = {
+        originalScale: 1,
+        originalOpacity: 0.7,
+        rotationSpeed: { 
+          x: (Math.random() - 0.5) * 0.002, 
+          y: (Math.random() - 0.5) * 0.002, 
+          z: (Math.random() - 0.5) * 0.002 
+        }
+      };
+      rings.push(ring);
+      scene.add(ring);
+    }
+    console.log('🎨 Rings created:', rings.length, 'rings');
+
+    // Interactive wireframe shapes - minimal
     const shapeGeometries = [
-      new THREE.TorusGeometry(2, 0.3, 12, 50), // Much smaller
-      new THREE.OctahedronGeometry(2), // Much smaller
-    ]; // Only 2 small shapes
+      new THREE.OctahedronGeometry(2),
+    ]; // Just 1 small shape
 
     const interactiveShapes: THREE.Mesh[] = [];
 
@@ -139,7 +175,7 @@ export default function HolographicBackground() {
         color: new THREE.Color().setHSL(0.5 + i * 0.1, 1, 0.7),
         wireframe: true,
         transparent: true,
-        opacity: 0.5, // Less visible
+        opacity: 0.5,
       });
 
       const shape = new THREE.Mesh(shapeGeometries[i], material);
@@ -153,7 +189,7 @@ export default function HolographicBackground() {
         Math.random() * Math.PI,
         Math.random() * Math.PI
       );
-      shape.scale.setScalar(0.5); // Make them smaller
+      shape.scale.setScalar(0.5);
       shape.userData = {
         originalScale: shape.scale.clone(),
         originalOpacity: 0.5,
@@ -313,7 +349,9 @@ export default function HolographicBackground() {
       mouse.y = targetMouseRef.current.y;
       
       raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(interactiveShapes);
+      // Check all interactive objects: rings, blocks, and shapes
+      const allInteractiveObjects = [...rings, ...blocks, ...interactiveShapes];
+      const intersects = raycaster.intersectObjects(allInteractiveObjects);
       
       // Reset previous hovered shape
       if (hoveredShapeRef.current && !intersects.find(i => i.object === hoveredShapeRef.current)) {
@@ -329,7 +367,7 @@ export default function HolographicBackground() {
         if (shape !== hoveredShapeRef.current) {
           hoveredShapeRef.current = shape;
           const mat = (shape.material as THREE.MeshBasicMaterial);
-          mat.opacity = 0.8;
+          mat.opacity = 0.95;
           shape.scale.multiplyScalar(1.2);
         }
       }
@@ -343,11 +381,13 @@ export default function HolographicBackground() {
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
       
       raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(interactiveShapes);
+      // Check all interactive objects
+      const allInteractiveObjects = [...rings, ...blocks, ...interactiveShapes];
+      const intersects = raycaster.intersectObjects(allInteractiveObjects);
       
       if (intersects.length > 0) {
         const shape = intersects[0].object as THREE.Mesh;
-        console.log('🎯 Shape clicked!', shape.geometry.type);
+        console.log('🎯 Object clicked!', shape.geometry.type);
         
         // Add spinning animation
         shape.userData.rotationSpeed.x += (Math.random() - 0.5) * 0.03;
@@ -356,7 +396,10 @@ export default function HolographicBackground() {
         
         // Change color
         const mat = (shape.material as THREE.MeshBasicMaterial);
-        mat.color.setHSL(Math.random(), 1, 0.6);
+        mat.color.setHSL(Math.random(), 1, 0.7);
+        
+        // Pulse scale
+        shape.scale.multiplyScalar(1.5);
       }
     };
 
@@ -472,6 +515,42 @@ export default function HolographicBackground() {
         // Color cycle
         const hue = (0.5 + i * 0.04 + time * 0.02) % 1;
         (block.material as THREE.MeshBasicMaterial).color.setHSL(hue, 1, 0.7);
+      });
+
+      // Animate floating rings - smooth rotation and cursor interaction
+      rings.forEach((ring, i) => {
+        // Apply custom rotation speeds
+        ring.rotation.x += ring.userData.rotationSpeed.x;
+        ring.rotation.y += ring.userData.rotationSpeed.y;
+        ring.rotation.z += ring.userData.rotationSpeed.z;
+
+        // Gentle floating motion
+        ring.position.y += Math.sin(time * 0.0005 + i) * 0.025;
+        ring.position.x += Math.cos(time * 0.0004 + i) * 0.02;
+
+        // Cursor interaction - scale and glow
+        const distX = mouseRef.current.x * 30 - ring.position.x;
+        const distY = mouseRef.current.y * 30 - ring.position.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+        
+        if (distance < 35) {
+          const attractStrength = (35 - distance) / 35;
+          // Scale up when near cursor
+          ring.scale.setScalar(1 + attractStrength * 0.3);
+          // Increase opacity
+          (ring.material as THREE.MeshBasicMaterial).opacity = 0.7 + attractStrength * 0.3;
+          // Attract toward cursor
+          ring.position.x += distX * 0.004 * attractStrength;
+          ring.position.y += distY * 0.004 * attractStrength;
+        } else {
+          // Return to normal
+          ring.scale.lerp(new THREE.Vector3(1, 1, 1), 0.05);
+          (ring.material as THREE.MeshBasicMaterial).opacity = 0.7;
+        }
+
+        // Color cycle
+        const hue = (0.5 + i * 0.12 + time * 0.025) % 1;
+        (ring.material as THREE.MeshBasicMaterial).color.setHSL(hue, 1, 0.7);
       });
 
       // Animate interactive wireframe shapes with cursor attraction
