@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <path d="M304 134L512 200M194 166C194 154.954 185.046 146 174 146C162.954 146 154 154.954 154 166C154 177.046 162.954 186 174 186C185.046 186 194 177.046 194 166ZM350 186H170C159.507 186 151 194.507 151 205V308C151 318.493 159.507 327 170 327H350C360.493 327 369 318.493 369 308V205C369 194.507 360.493 186 350 186ZM330 223H190V210H330V223ZM233 270C233 253.431 219.569 240 203 240C186.431 240 173 253.431 173 270C173 286.569 186.431 300 203 300C219.569 300 233 286.569 233 270ZM347 270C347 253.431 333.569 240 317 240C300.431 240 287 253.431 287 270C287 286.569 300.431 300 317 300C333.569 300 347 286.569 347 270Z" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="203" cy="270" r="12" fill="currentColor"/>
+  <circle cx="203" cy="270" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+  <circle cx="317" cy="270" r="12" fill="currentColor"/>
+  <circle cx="317" cy="270" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+  <line x1="195" y1="255" x2="195" y2="265" stroke="currentColor" stroke-width="2"/>
+  <line x1="200" y1="258" x2="200" y2="268" stroke="currentColor" stroke-width="2"/>
+  <line x1="205" y1="260" x2="205" y2="270" stroke="currentColor" stroke-width="2"/>
+  <line x1="210" y1="258" x2="210" y2="268" stroke="currentColor" stroke-width="2"/>
+  <line x1="215" y1="255" x2="215" y2="265" stroke="currentColor" stroke-width="2"/>
+  <line x1="309" y1="255" x2="309" y2="265" stroke="currentColor" stroke-width="2"/>
+  <line x1="314" y1="258" x2="314" y2="268" stroke="currentColor" stroke-width="2"/>
+  <line x1="319" y1="260" x2="319" y2="270" stroke="currentColor" stroke-width="2"/>
+  <line x1="324" y1="258" x2="324" y2="268" stroke="currentColor" stroke-width="2"/>
+  <line x1="329" y1="255" x2="329" y2="265" stroke="currentColor" stroke-width="2"/>
+</svg>

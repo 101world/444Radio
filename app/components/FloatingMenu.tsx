@@ -76,20 +76,20 @@ export default function FloatingMenu() {
                       <span className="font-medium">Create</span>
                     </Link>
                     <Link
-                      href="/library"
-                      onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
-                    >
-                      <Library size={20} />
-                      <span className="font-medium">Library</span>
-                    </Link>
-                    <Link
                       href="/explore"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
                     >
                       <Compass size={20} />
                       <span className="font-medium">Explore</span>
+                    </Link>
+                    <Link
+                      href="/library"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
+                    >
+                      <Library size={20} />
+                      <span className="font-medium">Library</span>
                     </Link>
                     <Link
                       href="/billboard"

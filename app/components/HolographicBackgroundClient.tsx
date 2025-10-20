@@ -323,6 +323,56 @@ export default function HolographicBackground() {
     
     console.log('🎨 3D Text created: 8 small white "444 RADIO" instances');
 
+    // 3D Logo - Floating radio icon
+    const logoCanvas = document.createElement('canvas');
+    const logoContext = logoCanvas.getContext('2d')!;
+    logoCanvas.width = 256;
+    logoCanvas.height = 256;
+    
+    // Load and draw logo SVG
+    const logoImg = new Image();
+    logoImg.onload = () => {
+      logoContext.clearRect(0, 0, logoCanvas.width, logoCanvas.height);
+      logoContext.drawImage(logoImg, 0, 0, logoCanvas.width, logoCanvas.height);
+      
+      // Update texture
+      logoTexture.needsUpdate = true;
+    };
+    logoImg.src = '/radio-logo.svg';
+    
+    // Create texture and material
+    const logoTexture = new THREE.CanvasTexture(logoCanvas);
+    const logoMaterial = new THREE.MeshBasicMaterial({
+      map: logoTexture,
+      transparent: true,
+      opacity: 0.8,
+      side: THREE.DoubleSide,
+    });
+    
+    // Create multiple small floating logo instances
+    const logoGeometry = new THREE.PlaneGeometry(8, 8);
+    const logoMeshes: THREE.Mesh[] = [];
+    
+    for (let i = 0; i < 3; i++) {
+      const logoMesh = new THREE.Mesh(logoGeometry, logoMaterial.clone());
+      logoMesh.position.set(
+        (Math.random() - 0.5) * 70,
+        (Math.random() - 0.5) * 50,
+        (Math.random() - 0.5) * 70 - 20
+      );
+      logoMesh.rotation.y = Math.random() * Math.PI * 2;
+      logoMesh.userData = {
+        basePosition: logoMesh.position.clone(),
+        speed: 0.0001 + Math.random() * 0.0001,
+        offset: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.002
+      };
+      logoMeshes.push(logoMesh);
+      scene.add(logoMesh);
+    }
+    
+    console.log('🎨 3D Logo created: 3 floating radio icons');
+
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x222244, 1);
     scene.add(ambientLight);
@@ -457,6 +507,30 @@ export default function HolographicBackground() {
         // Iridescent color shift
         const hue = (0.5 + Math.sin(time * 0.1 + i) * 0.15) % 1;
         (blob.material as THREE.MeshBasicMaterial).color.setHSL(hue, 0.8, 0.9);
+      });
+
+      // Animate 3D logo - floating radio icons
+      logoMeshes.forEach((logoMesh) => {
+        // Gentle floating
+        const floatSpeed = logoMesh.userData.speed;
+        const offset = logoMesh.userData.offset;
+        logoMesh.position.y = logoMesh.userData.basePosition.y + Math.sin(time * floatSpeed + offset) * 4;
+        logoMesh.position.x = logoMesh.userData.basePosition.x + Math.cos(time * floatSpeed * 0.7 + offset) * 3;
+        
+        // Rotate slowly
+        logoMesh.rotation.y += logoMesh.userData.rotationSpeed;
+        logoMesh.rotation.z = Math.sin(time * floatSpeed * 0.5) * 0.1;
+        
+        // React to mouse position
+        const distX = mouseRef.current.x * 20 - logoMesh.position.x;
+        const distY = mouseRef.current.y * 20 - logoMesh.position.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+        
+        if (distance < 30) {
+          // Move away from cursor
+          logoMesh.position.x -= distX * 0.01;
+          logoMesh.position.y -= distY * 0.01;
+        }
       });
 
       // Animate 3D text - small white floating text with cursor interaction
@@ -683,6 +757,13 @@ export default function HolographicBackground() {
         shaft.geometry.dispose();
         (shaft.material as THREE.Material).dispose();
       });
+      
+      // Dispose logo meshes
+      logoMeshes.forEach(mesh => {
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      });
+      logoTexture.dispose();
       
       // Dispose text meshes
       textMeshes.forEach(mesh => {

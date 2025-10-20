@@ -242,9 +242,12 @@ export default function HomePage() {
           <div className="flex-1 flex flex-col items-center justify-center px-4 transition-opacity duration-500">
           {/* Welcome Text */}
           <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-6xl md:text-8xl font-black mb-6 text-white leading-tight">
-              444 Radio
-            </h1>
+            <div className="flex items-center justify-center mb-6 gap-4">
+              <img src="/radio-logo.svg" alt="444 Radio" className="w-20 h-20 md:w-24 md:h-24 text-cyan-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]" style={{ filter: 'drop-shadow(0 0 20px rgba(34, 211, 238, 0.6))' }} />
+              <h1 className="text-6xl md:text-8xl font-black text-white leading-tight">
+                444 Radio
+              </h1>
+            </div>
             <p className="text-xl text-gray-400 mb-12">
               A world where music feels infinite.
             </p>
@@ -252,34 +255,34 @@ export default function HomePage() {
 
           {/* Centered Sleek Modern Input */}
           <div className="w-full max-w-3xl mx-auto">
-            {/* Type Selection Pills - Sleeker Design */}
+            {/* Type Selection Pills - Dark Cyan Theme */}
             <div className="flex gap-2 mb-4 justify-center">
               <button
                 onClick={() => toggleTool('music')}
                 className={`group relative px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
                   selectedTools.has('music')
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50'
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/50'
                     : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
                 }`}
               >
                 <Music size={13} className="inline mr-1.5" />
                 MUSIC
                 {selectedTools.has('music') && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 blur-xl opacity-50 animate-pulse"></span>
+                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-red-600 to-red-700 blur-xl opacity-50 animate-pulse"></span>
                 )}
               </button>
               <button
                 onClick={() => toggleTool('image')}
                 className={`group relative px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
                   selectedTools.has('image')
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/50'
+                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/50'
                     : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
                 }`}
               >
                 <ImageIcon size={13} className="inline mr-1.5" />
                 COVER ART
                 {selectedTools.has('image') && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 blur-xl opacity-50 animate-pulse"></span>
+                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 blur-xl opacity-50 animate-pulse"></span>
                 )}
               </button>
               <button
@@ -291,13 +294,13 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Individual Input Boxes - Sleek Gamified Design */}
+            {/* Individual Input Boxes - Dark Cyan Theme */}
             <div className="flex flex-col gap-3">
               {selectedTools.has('music') && (
                 <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-purple-500/20 hover:border-purple-500/40 transition-all duration-300">
-                    <Music size={18} className="text-purple-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                  <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
+                    <Music size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                     <input
                       type="text"
                       value={musicPrompt}
@@ -306,7 +309,7 @@ export default function HomePage() {
                       placeholder="// Type your music vibe here..."
                       disabled={isGenerating}
                       style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide focus:placeholder-purple-500/50 focus:text-shadow-[0_0_10px_rgba(168,85,247,0.8)] transition-all"
+                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide focus:placeholder-cyan-400 focus:text-shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all"
                     />
                   </div>
                 </div>
@@ -314,9 +317,9 @@ export default function HomePage() {
               
               {selectedTools.has('image') && (
                 <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
                   <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
-                    <ImageIcon size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                    <ImageIcon size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                     <input
                       type="text"
                       value={coverArtPrompt}
@@ -325,7 +328,7 @@ export default function HomePage() {
                       placeholder="// Describe your cover art vision..."
                       disabled={isGenerating}
                       style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide focus:placeholder-cyan-500/50 focus:text-shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all"
+                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide focus:placeholder-cyan-400 focus:text-shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all"
                     />
                   </div>
                 </div>
@@ -358,19 +361,19 @@ export default function HomePage() {
                   (selectedTools.has('image') && !coverArtPrompt.trim()) ||
                   (selectedTools.has('video') && !videoPrompt.trim())
                 }
-                className="group relative w-full mt-3 px-6 py-4 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 hover:from-purple-500 hover:via-pink-500 hover:to-blue-500 rounded-2xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:from-purple-600 flex items-center justify-center gap-3 font-bold text-sm tracking-widest shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 disabled:shadow-none overflow-hidden"
-                title="Combine and Send to Chat"
+                className="group relative w-full mt-3 px-6 py-4 bg-gradient-to-r from-cyan-600 via-blue-600 to-blue-700 hover:from-cyan-500 hover:via-blue-500 hover:to-blue-600 rounded-2xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:from-cyan-600 flex items-center justify-center gap-3 font-bold text-sm tracking-widest shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 disabled:shadow-none overflow-hidden"
+                title="Create with AI"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-blue-400 to-blue-500 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
                 {isGenerating ? (
                   <>
                     <Loader2 className="animate-spin-slow text-white z-10" size={20} />
-                    <span className="text-white z-10">SENDING...</span>
+                    <span className="text-white z-10">CREATING...</span>
                   </>
                 ) : (
                   <>
-                    <Send size={20} className="text-white z-10" />
-                    <span className="text-white z-10">SEND TO CHAT</span>
+                    <Music size={20} className="text-white z-10" />
+                    <span className="text-white z-10">CREATE</span>
                   </>
                 )}
               </button>
@@ -378,7 +381,7 @@ export default function HomePage() {
 
             {/* Quick Info - Sleeker */}
             <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-600 font-mono tracking-wider">
-              <span className="text-purple-400">2 CR</span>
+              <span className="text-red-400">2 CR</span>
               <span className="text-gray-700">⚡</span>
               <span className="text-cyan-400">1 CR</span>
             </div>
@@ -524,28 +527,28 @@ export default function HomePage() {
                 onClick={() => toggleTool('music')}
                 className={`group relative px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
                   selectedTools.has('music')
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50'
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/50'
                     : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
                 }`}
               >
                 <Music size={12} className="inline mr-1" />
                 MUSIC
                 {selectedTools.has('music') && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 blur-xl opacity-50 animate-pulse"></span>
+                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-red-600 to-red-700 blur-xl opacity-50 animate-pulse"></span>
                 )}
               </button>
               <button
                 onClick={() => toggleTool('image')}
                 className={`group relative px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
                   selectedTools.has('image')
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/50'
+                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/50'
                     : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
                 }`}
               >
                 <ImageIcon size={12} className="inline mr-1" />
                 ART
                 {selectedTools.has('image') && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 blur-xl opacity-50 animate-pulse"></span>
+                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 blur-xl opacity-50 animate-pulse"></span>
                 )}
               </button>
               <button
@@ -561,9 +564,9 @@ export default function HomePage() {
             <div className="flex flex-col gap-2">
               {selectedTools.has('music') && (
                 <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-purple-500/20">
-                    <Music size={16} className="text-purple-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]" />
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                  <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
+                    <Music size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                     <input
                       type="text"
                       value={musicPrompt}
@@ -572,7 +575,7 @@ export default function HomePage() {
                       placeholder="// Your music vibe..."
                       disabled={isGenerating}
                       style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide"
+                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide"
                     />
                   </div>
                 </div>
@@ -580,9 +583,9 @@ export default function HomePage() {
               
               {selectedTools.has('image') && (
                 <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20">
-                    <ImageIcon size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                  <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
+                    <ImageIcon size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                     <input
                       type="text"
                       value={coverArtPrompt}
@@ -591,7 +594,7 @@ export default function HomePage() {
                       placeholder="// Cover art vision..."
                       disabled={isGenerating}
                       style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide"
+                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide"
                     />
                   </div>
                 </div>
@@ -624,18 +627,18 @@ export default function HomePage() {
                   (selectedTools.has('image') && !coverArtPrompt.trim()) ||
                   (selectedTools.has('video') && !videoPrompt.trim())
                 }
-                className="group relative w-full mt-3 px-6 py-3.5 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 hover:from-purple-500 hover:via-pink-500 hover:to-blue-500 rounded-2xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold text-sm tracking-widest shadow-lg shadow-purple-500/30 overflow-hidden"
+                className="group relative w-full mt-3 px-6 py-3.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-blue-700 hover:from-cyan-500 hover:via-blue-500 hover:to-blue-600 rounded-2xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold text-sm tracking-widest shadow-lg shadow-cyan-500/30 overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-blue-400 to-blue-500 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
                 {isGenerating ? (
                   <>
                     <Loader2 className="animate-spin-slow text-white z-10" size={18} />
-                    <span className="text-white z-10">SENDING...</span>
+                    <span className="text-white z-10">CREATING...</span>
                   </>
                 ) : (
                   <>
-                    <Send size={18} className="text-white z-10" />
-                    <span className="text-white z-10">SEND</span>
+                    <Music size={18} className="text-white z-10" />
+                    <span className="text-white z-10">CREATE</span>
                   </>
                 )}
               </button>
@@ -643,7 +646,7 @@ export default function HomePage() {
 
             {/* Quick Info - Mobile */}
             <div className="flex items-center justify-center gap-3 mt-3 text-xs text-gray-600 font-mono">
-              <span className="text-purple-400">2 CR</span>
+              <span className="text-red-400">2 CR</span>
               <span className="text-gray-700">⚡</span>
               <span className="text-cyan-400">1 CR</span>
             </div>
