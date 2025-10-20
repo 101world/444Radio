@@ -127,67 +127,23 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white pb-32">
       {/* Floating Menu */}
       <FloatingMenu />
 
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-5xl font-black text-white mb-2">
-            Your Library
+        {/* Header - Clean and centered like create page */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-black text-white">
+            Library
           </h1>
-          <p className="text-gray-400">All your AI-generated content in one place</p>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab('music')}
-            className={`
-              px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
-              ${activeTab === 'music'
-                ? 'bg-white text-black'
-                : 'bg-white/10 text-gray-400 border-2 border-white/10 hover:bg-white/20 hover:text-white'
-              }
-            `}
-          >
-            <Music size={20} />
-            Music ({musicItems.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('images')}
-            className={`
-              px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
-              ${activeTab === 'images'
-                ? 'bg-white text-black'
-                : 'bg-white/10 text-gray-400 border-2 border-white/10 hover:bg-white/20 hover:text-white'
-              }
-            `}
-          >
-            <ImageIcon size={20} />
-            Images ({imageItems.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('combined')}
-            className={`
-              px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2
-              ${activeTab === 'combined'
-                ? 'bg-[#2d4a6e] text-white'
-                : 'bg-white/10 text-gray-400 border-2 border-white/10 hover:bg-white/20 hover:text-white'
-              }
-            `}
-          >
-            <Layers size={20} />
-            Combined ({combinedItems.length})
-          </button>
         </div>
 
         {/* Loading State */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400 mb-4"></div>
-            <p className="text-purple-400">Loading your library...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a8fc7] mb-4"></div>
+            <p className="text-gray-400">Loading...</p>
           </div>
         )}
 
@@ -195,60 +151,47 @@ export default function LibraryPage() {
         {!isLoading && activeTab === 'music' && (
           <div>
             {musicItems.length === 0 ? (
-              <div className="text-center py-20 backdrop-blur-xl bg-green-500/5 border-2 border-dashed border-green-500/30 rounded-3xl">
-                <Music size={64} className="text-green-400/40 mx-auto mb-4" />
-                <h3 className="text-2xl font-bold text-green-400 mb-2">No music yet</h3>
-                <p className="text-green-400/60 mb-6">Start by generating your first track</p>
-                <Link href="/" className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-black rounded-xl font-bold inline-block hover:scale-105 transition-transform">
-                  Generate Music
+              <div className="text-center py-20">
+                <Music size={48} className="text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">No music yet</h3>
+                <p className="text-gray-400 mb-6">Start by generating your first track</p>
+                <Link href="/" className="px-6 py-3 bg-white text-black rounded-full font-bold inline-block hover:bg-gray-200 transition-all">
+                  Create Music
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {musicItems.map((item) => (
                   <div
                     key={item.id}
-                    className="backdrop-blur-xl bg-green-500/5 border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all"
+                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#2d4a6e]/50 transition-all"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-green-400 mb-1">
-                          {item.title || item.prompt.substring(0, 60)}
-                        </h3>
-                        <p className="text-sm text-green-400/60 mb-3">{item.prompt}</p>
-                        
-                        {/* Audio Player */}
-                        <audio
-                          src={item.audio_url}
-                          controls
-                          className="w-full mb-3"
-                          onPlay={() => setPlayingId(item.id)}
-                          onPause={() => setPlayingId(null)}
-                        />
+                    {/* Thumbnail */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#2d4a6e]/20 to-[#5a8fc7]/20 flex items-center justify-center">
+                      <Music size={32} className="text-[#5a8fc7]" />
+                    </div>
 
-                        <div className="flex items-center gap-4 text-xs text-green-400/60">
-                          <span>📅 {new Date(item.created_at).toLocaleDateString()}</span>
-                          {item.file_size && <span>💾 {(item.file_size / 1024 / 1024).toFixed(2)} MB</span>}
-                        </div>
-                      </div>
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                      <button
+                        onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
+                        className="p-2 bg-white/20 backdrop-blur-xl rounded-lg hover:bg-white/30 transition-colors"
+                      >
+                        <Download size={16} className="text-white" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete('music', item.id)}
+                        className="p-2 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors"
+                      >
+                        <Trash2 size={16} className="text-red-400" />
+                      </button>
+                    </div>
 
-                      {/* Actions */}
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
-                          className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
-                          title="Download"
-                        >
-                          <Download size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete('music', item.id)}
-                          className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                    {/* Title */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
+                      <p className="text-xs text-white truncate font-medium">
+                        {item.title || item.prompt.substring(0, 30)}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -261,57 +204,49 @@ export default function LibraryPage() {
         {!isLoading && activeTab === 'images' && (
           <div>
             {imageItems.length === 0 ? (
-              <div className="text-center py-20 backdrop-blur-xl bg-cyan-500/5 border-2 border-dashed border-cyan-500/30 rounded-3xl">
-                <ImageIcon size={64} className="text-cyan-400/40 mx-auto mb-4" />
-                <h3 className="text-2xl font-bold text-cyan-400 mb-2">No images yet</h3>
-                <p className="text-cyan-400/60 mb-6">Start by generating your first cover art</p>
-                <Link href="/" className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-xl font-bold inline-block hover:scale-105 transition-transform">
-                  Generate Cover Art
+              <div className="text-center py-20">
+                <ImageIcon size={48} className="text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">No images yet</h3>
+                <p className="text-gray-400 mb-6">Start by generating your first cover art</p>
+                <Link href="/" className="px-6 py-3 bg-white text-black rounded-full font-bold inline-block hover:bg-gray-200 transition-all">
+                  Create Cover Art
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {imageItems.map((item) => (
                   <div
                     key={item.id}
-                    className="backdrop-blur-xl bg-cyan-500/5 border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-500/40 transition-all group"
+                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#2d4a6e]/50 transition-all"
                   >
-                    <div className="aspect-square relative overflow-hidden">
-                      <img
-                        src={item.image_url}
-                        alt={item.title || item.prompt}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
+                    {/* Image Thumbnail */}
+                    <img
+                      src={item.image_url}
+                      alt={item.title || item.prompt}
+                      className="w-full h-full object-cover"
+                    />
+
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                      <button
+                        onClick={() => handleDownload(item.image_url, `${item.title || 'image'}.webp`)}
+                        className="p-2 bg-white/20 backdrop-blur-xl rounded-lg hover:bg-white/30 transition-colors"
+                      >
+                        <Download size={16} className="text-white" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete('images', item.id)}
+                        className="p-2 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors"
+                      >
+                        <Trash2 size={16} className="text-red-400" />
+                      </button>
                     </div>
-                    <div className="p-4">
-                      <h3 className="text-lg font-bold text-cyan-400 mb-1 truncate">
-                        {item.title || item.prompt.substring(0, 40)}
-                      </h3>
-                      <p className="text-sm text-cyan-400/60 mb-3 line-clamp-2">{item.prompt}</p>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs text-cyan-400/60">
-                          <div>📅 {new Date(item.created_at).toLocaleDateString()}</div>
-                          {item.file_size && <div>💾 {(item.file_size / 1024).toFixed(0)} KB</div>}
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleDownload(item.image_url, `${item.title || 'image'}.webp`)}
-                            className="p-2 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors"
-                            title="Download"
-                          >
-                            <Download size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete('images', item.id)}
-                            className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
+
+                    {/* Title */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
+                      <p className="text-xs text-white truncate font-medium">
+                        {item.title || item.prompt.substring(0, 30)}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -324,102 +259,64 @@ export default function LibraryPage() {
         {!isLoading && activeTab === 'combined' && (
           <div>
             {combinedItems.length === 0 ? (
-              <div className="text-center py-20 backdrop-blur-xl bg-purple-500/5 border-2 border-dashed border-purple-500/30 rounded-3xl">
-                <Layers size={64} className="text-purple-400/40 mx-auto mb-4" />
-                <h3 className="text-2xl font-bold text-purple-400 mb-2">No combined media yet</h3>
-                <p className="text-purple-400/60 mb-6">Combine music with cover art to create releases</p>
-                <Link href="/" className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-black rounded-xl font-bold inline-block hover:scale-105 transition-transform">
+              <div className="text-center py-20">
+                <Layers size={48} className="text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">No combined media yet</h3>
+                <p className="text-gray-400 mb-6">Combine music with cover art to create releases</p>
+                <Link href="/" className="px-6 py-3 bg-[#2d4a6e] text-white rounded-full font-bold inline-block hover:bg-[#3d5a7e] transition-all">
                   Combine Media
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {combinedItems.map((item) => (
                   <div
                     key={item.id}
-                    className="backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl overflow-hidden hover:border-purple-500/40 transition-all"
+                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#2d4a6e]/50 transition-all"
                   >
-                    {/* Cover Art */}
-                    <div className="aspect-square relative overflow-hidden">
-                      <img
-                        src={item.image_url}
-                        alt={item.title || 'Combined media'}
-                        className="w-full h-full object-cover"
-                      />
-                      {item.is_published && (
-                        <div className="absolute top-4 right-4 bg-green-500 text-black px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2">
-                          ✓ Published
-                        </div>
+                    {/* Cover Art Thumbnail */}
+                    <img
+                      src={item.image_url}
+                      alt={item.title || 'Combined media'}
+                      className="w-full h-full object-cover"
+                    />
+
+                    {/* Published Badge */}
+                    {item.is_published && (
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-[#2d4a6e] backdrop-blur-xl rounded-full text-xs font-bold text-white">
+                        Published
+                      </div>
+                    )}
+
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                      {!item.is_published && (
+                        <button
+                          onClick={() => handleSendToLabel(item.id)}
+                          className="p-2 bg-[#2d4a6e] backdrop-blur-xl rounded-lg hover:bg-[#3d5a7e] transition-colors"
+                        >
+                          <Send size={16} className="text-white" />
+                        </button>
                       )}
+                      <button
+                        onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
+                        className="p-2 bg-white/20 backdrop-blur-xl rounded-lg hover:bg-white/30 transition-colors"
+                      >
+                        <Download size={16} className="text-white" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete('combined', item.id)}
+                        className="p-2 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors"
+                      >
+                        <Trash2 size={16} className="text-red-400" />
+                      </button>
                     </div>
 
-                    {/* Info & Controls */}
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-purple-400 mb-2">
-                        {item.title || 'Untitled Release'}
-                      </h3>
-                      
-                      {/* Prompts */}
-                      <div className="mb-4 space-y-2 text-sm">
-                        {item.music_prompt && (
-                          <div>
-                            <span className="text-purple-400/60">🎵 Music: </span>
-                            <span className="text-purple-300/80">{item.music_prompt.substring(0, 60)}...</span>
-                          </div>
-                        )}
-                        {item.image_prompt && (
-                          <div>
-                            <span className="text-purple-400/60">🎨 Art: </span>
-                            <span className="text-purple-300/80">{item.image_prompt.substring(0, 60)}...</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Audio Player */}
-                      <audio
-                        src={item.audio_url}
-                        controls
-                        className="w-full mb-4"
-                      />
-
-                      {/* Meta */}
-                      <div className="text-xs text-purple-400/60 mb-4">
-                        📅 {new Date(item.created_at).toLocaleDateString()}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex gap-2">
-                        {!item.is_published ? (
-                          <button
-                            onClick={() => handleSendToLabel(item.id)}
-                            className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-black rounded-xl font-bold hover:scale-105 transition-transform flex items-center justify-center gap-2"
-                          >
-                            <Send size={18} />
-                            Publish to Explore
-                          </button>
-                        ) : (
-                          <Link
-                            href="/explore"
-                            className="flex-1 px-4 py-3 bg-green-500/20 border-2 border-green-500 text-green-400 rounded-xl font-bold hover:bg-green-500/30 transition-colors flex items-center justify-center gap-2"
-                          >
-                            ✓ View in Explore →
-                          </Link>
-                        )}
-                        <button
-                          onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
-                          className="p-3 bg-purple-500/20 text-purple-400 rounded-xl hover:bg-purple-500/30 transition-colors"
-                          title="Download Audio"
-                        >
-                          <Download size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete('combined', item.id)}
-                          className="p-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                    {/* Title */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
+                      <p className="text-xs text-white truncate font-medium">
+                        {item.title || 'Combined Media'}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -427,6 +324,49 @@ export default function LibraryPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Bottom Docked Tabs - Glassmorphism */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 z-40">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl shadow-black/50 p-2">
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setActiveTab('music')}
+                className={`px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
+                  activeTab === 'music'
+                    ? 'bg-white text-black'
+                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
+                }`}
+              >
+                <Music size={16} />
+                Music
+              </button>
+              <button
+                onClick={() => setActiveTab('images')}
+                className={`px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
+                  activeTab === 'images'
+                    ? 'bg-white text-black'
+                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
+                }`}
+              >
+                <ImageIcon size={16} />
+                Images
+              </button>
+              <button
+                onClick={() => setActiveTab('combined')}
+                className={`px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
+                  activeTab === 'combined'
+                    ? 'bg-[#2d4a6e] text-white'
+                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
+                }`}
+              >
+                <Layers size={16} />
+                Combined
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
