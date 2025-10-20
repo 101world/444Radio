@@ -194,6 +194,9 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
 
     setIsSaving(true)
     try {
+      console.log('Publishing combined media with ID:', combinedResult.combinedId)
+      console.log('Metadata:', metadata)
+      
       // Update the existing combined_media_library record to publish it
       const res = await fetch('/api/library/combined', {
         method: 'PATCH',
@@ -214,7 +217,9 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
         })
       })
 
+      console.log('Publish response status:', res.status)
       const data = await res.json()
+      console.log('Publish response data:', data)
 
       if (data.success) {
         setSavedMediaId(data.combined.id)
