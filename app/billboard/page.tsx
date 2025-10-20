@@ -48,40 +48,20 @@ export default function BillboardPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="sticky top-6 z-40 backdrop-blur-xl bg-white/10 border-b border-white/10 px-4 md:px-8 py-4">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-4 justify-between">
-          {/* Period Filter */}
-          <div className="flex gap-2">
-            {['Today', 'Week', 'Month', 'All-Time'].map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p.toLowerCase())}
-                className={`px-6 py-2 rounded-full font-semibold transition-all ${
-                  period === p.toLowerCase()
-                    ? 'bg-white text-black'
-                    : 'bg-white/10 border border-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-
-          {/* Genre Filter */}
-          <select
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-            className="px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl text-white focus:border-[#818cf8] focus:outline-none"
-          >
-            <option value="all">All Genres</option>
-            <option value="pop">Pop</option>
-            <option value="rock">Rock</option>
-            <option value="hip-hop">Hip-Hop</option>
-            <option value="electronic">Electronic</option>
-            <option value="jazz">Jazz</option>
-          </select>
-        </div>
+      {/* Genre Filter - Top Right */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mb-6 flex justify-end">
+        <select
+          value={genre}
+          onChange={(e) => setGenre(e.target.value)}
+          className="px-4 py-2 bg-[#0f1419]/80 backdrop-blur-xl border border-[#6366f1]/20 rounded-xl text-white focus:border-[#818cf8] focus:outline-none"
+        >
+          <option value="all">All Genres</option>
+          <option value="pop">Pop</option>
+          <option value="rock">Rock</option>
+          <option value="hip-hop">Hip-Hop</option>
+          <option value="electronic">Electronic</option>
+          <option value="jazz">Jazz</option>
+        </select>
       </div>
 
       {/* Charts - Bottom to Top (reversed) */}
@@ -159,6 +139,25 @@ export default function BillboardPage() {
           </div>
         )}
       </main>
+
+      {/* Bottom Navigation - Period Filter */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div className="flex items-center gap-2 px-4 py-3 bg-[#0f1419]/95 backdrop-blur-xl border border-[#6366f1]/20 rounded-full shadow-2xl">
+          {['Today', 'Week', 'Month', 'All-Time'].map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p.toLowerCase().replace('-', ''))}
+              className={`px-6 py-2 rounded-full font-semibold transition-all ${
+                period === p.toLowerCase().replace('-', '')
+                  ? 'bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white shadow-lg shadow-[#6366f1]/50'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

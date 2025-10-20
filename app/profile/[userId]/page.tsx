@@ -87,38 +87,17 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Clean Header - Username Only */}
-      <div className="pt-20 px-4 md:px-8 pb-8">
-        <div className="max-w-7xl mx-auto text-center">
-          {/* Username Display */}
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-6">
-            @{profile?.username || currentUser?.username || 'username'}
-          </h1>
-          
-          {/* Publish Release Button */}
-          {isOwnProfile && (
-            <button 
-              onClick={() => setShowPublishModal(true)}
-              className="group px-6 py-3 bg-gradient-to-r from-[#2d4a6e] to-[#3d5a7e] hover:from-[#3d5a7e] hover:to-[#5a8fc7] rounded-full text-white text-sm font-bold transition-all inline-flex items-center gap-2 shadow-lg shadow-[#2d4a6e]/50 hover:shadow-[#5a8fc7]/50 hover:scale-[1.02]"
-            >
-              <Upload size={16} />
-              <span>Publish Release</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Combined Media Grid - Compact with minimal padding */}
-      <main className="px-3 md:px-6 pb-8">
+      {/* Combined Media Grid - More Space */}
+      <main className="pt-20 px-3 md:px-6 pb-8">
         <div className="max-w-7xl mx-auto">
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
-              {[...Array(10)].map((_, i) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+              {[...Array(12)].map((_, i) => (
                 <div key={i} className="aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl animate-pulse"></div>
               ))}
             </div>
           ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {profile.combinedMedia.map((media) => (
                 <div key={media.id} className="group relative">
                   {/* 3D Glassmorphism Card */}
@@ -164,36 +143,49 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         </div>
       </main>
 
-      {/* Bottom-Docked Stats - Matching Create Page Style */}
+      {/* Bottom-Docked Stats with Username and Publish Icon */}
       <div className="fixed bottom-0 left-0 right-0 p-4 z-40">
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-3 shadow-2xl">
-            <div className="flex items-center justify-center gap-6 px-4">
-              {/* Tracks Count */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-white">{profile?.songCount || 0}</span>
-                <span className="text-xs text-gray-400">Tracks</span>
+            <div className="flex items-center justify-between px-4">
+              {/* Left: Username */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-black text-white">
+                  @{profile?.username || currentUser?.username || 'username'}
+                </span>
+                
+                {/* Publish Icon (Only for own profile) */}
+                {isOwnProfile && (
+                  <>
+                    <div className="w-px h-4 bg-white/20"></div>
+                    <button 
+                      onClick={() => setShowPublishModal(true)}
+                      className="p-2 bg-gradient-to-r from-[#6366f1] to-[#818cf8] hover:from-[#5558e3] hover:to-[#7078ef] rounded-full transition-all shadow-lg hover:scale-110"
+                      title="Publish Release"
+                    >
+                      <Upload size={14} className="text-white" />
+                    </button>
+                  </>
+                )}
               </div>
               
-              {/* Divider */}
-              <div className="w-px h-4 bg-white/20"></div>
-              
-              {/* Plays Count */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-black text-white">{profile?.totalPlays || 0}</span>
-                <span className="text-xs text-gray-400">Plays</span>
+              {/* Right: Stats */}
+              <div className="flex items-center gap-6">
+                {/* Tracks Count */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-white">{profile?.songCount || 0}</span>
+                  <span className="text-xs text-gray-400">Tracks</span>
+                </div>
+                
+                {/* Divider */}
+                <div className="w-px h-4 bg-white/20"></div>
+                
+                {/* Plays Count */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-white">{profile?.totalPlays || 0}</span>
+                  <span className="text-xs text-gray-400">Plays</span>
+                </div>
               </div>
-              
-              {/* Edit Button for Own Profile */}
-              {isOwnProfile && (
-                <>
-                  <div className="w-px h-4 bg-white/20"></div>
-                  <button className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs text-white font-semibold transition-all flex items-center gap-1.5">
-                    <Edit2 size={12} />
-                    Edit
-                  </button>
-                </>
-              )}
             </div>
           </div>
         </div>

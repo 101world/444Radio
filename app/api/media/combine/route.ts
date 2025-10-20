@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { audioUrl, imageUrl, title, audioPrompt, imagePrompt, isPublic } = await req.json()
+    const { audioUrl, imageUrl, title, audioPrompt, imagePrompt, isPublic, metadata } = await req.json()
 
     if (!audioUrl || !imageUrl) {
       return NextResponse.json(
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       .eq('clerk_user_id', userId)
       .single()
 
-    // Insert combined media into database
+    // Insert combined media into database with metadata
     const { data, error } = await supabase
       .from('combined_media')
       .insert({
@@ -42,7 +42,17 @@ export async function POST(req: NextRequest) {
         title: title || 'Untitled Track',
         audio_prompt: audioPrompt || '',
         image_prompt: imagePrompt || '',
-        is_public: isPublic !== undefined ? isPublic : true
+        is_public: isPublic !== undefined ? isPublic : true,
+        // Metadata for filtering and monetization
+        genre: metadata?.genre || null,
+        mood: metadata?.mood || null,
+        bpm: metadata?.bpm || null,
+        key: metadata?.key || null,
+        copyright_owner: metadata?.copyrightOwner || userData?.username || 'anonymous',
+        license_type: metadata?.license || 'exclusive',
+        price: metadata?.price || null,
+        tags: metadata?.tags || [],
+        published_at: metadata?.publishedAt || new Date().toISOString()
       })
       .select()
       .single()

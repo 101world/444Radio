@@ -41,6 +41,18 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
     combinedId?: string // ID from combined_media_library
   } | null>(null)
   const [savedMediaId, setSavedMediaId] = useState<string | null>(null)
+  
+  // Metadata fields
+  const [metadata, setMetadata] = useState({
+    genre: '',
+    mood: '',
+    bpm: '',
+    key: '',
+    copyrightOwner: '',
+    license: 'exclusive', // exclusive, non-exclusive, creative-commons
+    price: '',
+    tags: ''
+  })
 
   // Fetch library items when modal opens
   useEffect(() => {
@@ -168,6 +180,12 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
   const handleSaveToProfile = async () => {
     if (!combinedResult) return
 
+    // Validate required metadata
+    if (!metadata.genre || !metadata.mood || !metadata.copyrightOwner) {
+      alert('⚠️ Please fill in required fields: Genre, Mood, and Copyright Owner')
+      return
+    }
+
     setIsSaving(true)
     try {
       const res = await fetch('/api/media/combine', {
@@ -179,7 +197,19 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
           audioPrompt: combinedResult.audioPrompt,
           imagePrompt: combinedResult.imagePrompt,
           title: `${combinedResult.audioPrompt.substring(0, 50)}...`,
-          isPublic: true
+          isPublic: true,
+          // Metadata for filtering and monetization
+          metadata: {
+            genre: metadata.genre,
+            mood: metadata.mood,
+            bpm: metadata.bpm ? parseInt(metadata.bpm) : null,
+            key: metadata.key,
+            copyrightOwner: metadata.copyrightOwner,
+            license: metadata.license,
+            price: metadata.price ? parseFloat(metadata.price) : null,
+            tags: metadata.tags.split(',').map(t => t.trim()).filter(Boolean),
+            publishedAt: new Date().toISOString()
+          }
         })
       })
 
@@ -187,7 +217,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
 
       if (data.success) {
         setSavedMediaId(data.combinedMedia.id)
-        alert('✅ Saved to your profile! It will appear in the Explore page.')
+        alert('✅ Published to Explore!\n\n🎵 Your track is now live with copyright protection.\n📍 Metadata saved for filtering and monetization.')
       } else {
         alert(`Error: ${data.error}`)
       }
@@ -256,6 +286,133 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                       padding: '0.5rem'
                     }}
                   />
+                  
+                  {/* Metadata Form - Only show if not saved */}
+                  {!savedMediaId && (
+                    <div className="mb-4 p-4 bg-[#1a1f3a]/50 rounded-xl border border-[#6366f1]/20">
+                      <h4 className="text-sm font-bold text-[#818cf8] mb-3">📋 Track Metadata (Required for Publishing)</h4>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Genre */}
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">Genre *</label>
+                          <select
+                            value={metadata.genre}
+                            onChange={(e) => setMetadata({...metadata, genre: e.target.value})}
+                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                          >
+                            <option value="">Select genre</option>
+                            <option value="pop">Pop</option>
+                            <option value="hip-hop">Hip-Hop</option>
+                            <option value="electronic">Electronic</option>
+                            <option value="rock">Rock</option>
+                            <option value="jazz">Jazz</option>
+                            <option value="classical">Classical</option>
+                            <option value="r&b">R&B</option>
+                            <option value="country">Country</option>
+                            <option value="indie">Indie</option>
+                            <option value="metal">Metal</option>
+                          </select>
+                        </div>
+
+                        {/* Mood */}
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">Mood *</label>
+                          <select
+                            value={metadata.mood}
+                            onChange={(e) => setMetadata({...metadata, mood: e.target.value})}
+                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                          >
+                            <option value="">Select mood</option>
+                            <option value="energetic">Energetic</option>
+                            <option value="chill">Chill</option>
+                            <option value="dark">Dark</option>
+                            <option value="happy">Happy</option>
+                            <option value="sad">Sad</option>
+                            <option value="aggressive">Aggressive</option>
+                            <option value="romantic">Romantic</option>
+                            <option value="dreamy">Dreamy</option>
+                          </select>
+                        </div>
+
+                        {/* BPM */}
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">BPM</label>
+                          <input
+                            type="number"
+                            value={metadata.bpm}
+                            onChange={(e) => setMetadata({...metadata, bpm: e.target.value})}
+                            placeholder="120"
+                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Key */}
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">Key</label>
+                          <input
+                            type="text"
+                            value={metadata.key}
+                            onChange={(e) => setMetadata({...metadata, key: e.target.value})}
+                            placeholder="C Major"
+                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Copyright Owner */}
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-400 mb-1 block">Copyright Owner * (Your Name/Artist Name)</label>
+                          <input
+                            type="text"
+                            value={metadata.copyrightOwner}
+                            onChange={(e) => setMetadata({...metadata, copyrightOwner: e.target.value})}
+                            placeholder="Your Artist Name"
+                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                          />
+                        </div>
+
+                        {/* License Type */}
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">License Type</label>
+                          <select
+                            value={metadata.license}
+                            onChange={(e) => setMetadata({...metadata, license: e.target.value})}
+                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                          >
+                            <option value="exclusive">Exclusive Rights (Full ownership)</option>
+                            <option value="non-exclusive">Non-Exclusive (Can be shared)</option>
+                            <option value="creative-commons">Creative Commons</option>
+                          </select>
+                        </div>
+
+                        {/* Price */}
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">Price (USD) - Optional</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={metadata.price}
+                            onChange={(e) => setMetadata({...metadata, price: e.target.value})}
+                            placeholder="0.00"
+                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Tags */}
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-400 mb-1 block">Tags (comma separated)</label>
+                          <input
+                            type="text"
+                            value={metadata.tags}
+                            onChange={(e) => setMetadata({...metadata, tags: e.target.value})}
+                            placeholder="ambient, chill, study, beats"
+                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex gap-3">
                     {!savedMediaId ? (
                       <button 

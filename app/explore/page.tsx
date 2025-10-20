@@ -87,13 +87,37 @@ export default function ExplorePage() {
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Header with 444hz Title (Top Left) and Search */}
-      <div className="pt-24 px-4 md:px-8 pb-6">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-black mb-6 text-white">444 Radio</h1>
-          
-          {/* Search Bar */}
-          <div className="relative max-w-2xl">
+      {/* Search Bar - Minimal, Above Player */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-[#6366f1] text-sm"
+          />
+          <button className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-[#6366f1] hover:bg-[#818cf8] rounded-full transition-all">
+            <Search className="text-white" size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Full Width/Height Media Grid - Horizontal Scrolling */}
+      <main className="pt-20 pb-32 px-4">
+        <div className="w-full">
+          {loading ? (
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-4">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-64 h-80 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl animate-pulse"></div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Row 1 */}
+              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+                {combinedMedia.slice(0, Math.ceil(combinedMedia.length / 3)).map((media) => (
+                  <div key={media.id} className="flex-shrink-0 w-64 group relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
