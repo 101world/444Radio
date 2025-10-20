@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create initial song record with "generating" status
-    // Credits will be deducted automatically by the database trigger
+    // Credits will be deducted here when song is created
     // Songs are PRIVATE by default - user can make public from profile
     
     // Get username from user data
@@ -134,12 +134,37 @@ export async function POST(request: NextRequest) {
       throw new Error('No song data returned')
     }
 
+    // ✅ DEDUCT 1 CREDIT from user
+    const deductResponse = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${user.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          credits: userRecord.credits - 1,
+          total_generated: (userRecord.total_generated || 0) + 1
+        })
+      }
+    )
+
+    if (!deductResponse.ok) {
+      console.error('Failed to deduct credit, but continuing...')
+    }
+
+    console.log(`✅ Credit deducted. User now has ${userRecord.credits - 1} credits`)
+
     // Return the song ID so frontend can track generation progress
     return corsResponse(NextResponse.json({ 
       success: true, 
       songId: song.id,
       outputType,
-      prompt
+      prompt,
+      creditsRemaining: userRecord.credits - 1
     }))
   } catch (error) {
     console.error('Generation initiation error:', error)
