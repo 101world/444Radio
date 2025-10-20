@@ -41,12 +41,12 @@ export default function HomePage() {
     }
   ])
   const [input, setInput] = useState('')
-  const [selectedTools, setSelectedTools] = useState<Set<GenerationType>>(new Set(['music'])) // Multiple tools
   
-  // Separate prompts for each workflow
-  const [musicPrompt, setMusicPrompt] = useState('')
+  // New form fields
+  const [lyrics, setLyrics] = useState('')
+  const [title, setTitle] = useState('')
   const [coverArtPrompt, setCoverArtPrompt] = useState('')
-  const [videoPrompt, setVideoPrompt] = useState('')
+  const [genre, setGenre] = useState('')
   
   const [isGenerating, setIsGenerating] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -70,50 +70,26 @@ export default function HomePage() {
     }
   }
 
-  const toggleTool = (tool: GenerationType) => {
-    const newTools = new Set(selectedTools)
-    if (newTools.has(tool)) {
-      newTools.delete(tool)
-    } else {
-      newTools.add(tool)
-    }
-    // Ensure at least one tool is selected
-    if (newTools.size > 0) {
-      setSelectedTools(newTools)
-    }
-  }
-
   const handleGenerate = async () => {
-    if (selectedTools.size === 0) return
+    // Check that at least title or lyrics is provided
+    if (!title.trim() && !lyrics.trim()) return
 
-    // Check that each selected tool has a prompt
-    const hasValidPrompts = Array.from(selectedTools).every(tool => {
-      if (tool === 'music') return musicPrompt.trim()
-      if (tool === 'image') return coverArtPrompt.trim()
-      if (tool === 'video') return videoPrompt.trim()
-      return false
-    })
+    // Create a combined message with all the information
+    const parts = []
+    if (title.trim()) parts.push(`🎵 Title: ${title}`)
+    if (lyrics.trim()) parts.push(`📝 Lyrics: ${lyrics}`)
+    if (genre.trim()) parts.push(`� Genre: ${genre}`)
+    if (coverArtPrompt.trim()) parts.push(`� Cover Art: ${coverArtPrompt}`)
+    
+    const combinedMessage = parts.join('\n')
 
-    if (!hasValidPrompts) return
-
-    // Combine all prompts into a single message for the chat
-    const combinedMessage = Array.from(selectedTools)
-      .map(tool => {
-        if (tool === 'music') return `🎵 Music: ${musicPrompt}`
-        if (tool === 'image') return `🎨 Cover Art: ${coverArtPrompt}`
-        if (tool === 'video') return `🎬 Video: ${videoPrompt}`
-        return ''
-      })
-      .filter(Boolean)
-      .join('\n')
-
-    // Seamlessly redirect to create page with all prompts and selected tools
+    // Redirect to create page with all the information
     const params = new URLSearchParams({
-      combinedMessage, // Combined prompt for chat display
-      musicPrompt: selectedTools.has('music') ? musicPrompt : '',
-      coverArtPrompt: selectedTools.has('image') ? coverArtPrompt : '',
-      videoPrompt: selectedTools.has('video') ? videoPrompt : '',
-      tools: Array.from(selectedTools).join(',') // "music,image"
+      title: title.trim(),
+      lyrics: lyrics.trim(),
+      genre: genre.trim(),
+      coverArtPrompt: coverArtPrompt.trim(),
+      combinedMessage
     })
     
     router.push(`/create?${params.toString()}`)
@@ -255,127 +231,85 @@ export default function HomePage() {
 
           {/* Centered Sleek Modern Input */}
           <div className="w-full max-w-3xl mx-auto">
-            {/* Type Selection Pills - Dark Cyan Theme */}
-            <div className="flex gap-2 mb-4 justify-center">
-              <button
-                onClick={() => toggleTool('music')}
-                className={`group relative px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
-                  selectedTools.has('music')
-                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/50'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
-                }`}
-              >
-                <Music size={13} className="inline mr-1.5" />
-                MUSIC
-                {selectedTools.has('music') && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-red-600 to-red-700 blur-xl opacity-50 animate-pulse"></span>
-                )}
-              </button>
-              <button
-                onClick={() => toggleTool('image')}
-                className={`group relative px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
-                  selectedTools.has('image')
-                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/50'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
-                }`}
-              >
-                <ImageIcon size={13} className="inline mr-1.5" />
-                COVER ART
-                {selectedTools.has('image') && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 blur-xl opacity-50 animate-pulse"></span>
-                )}
-              </button>
-              <button
-                disabled
-                className="px-5 py-2 rounded-full text-xs font-bold tracking-wide bg-white/5 text-gray-700 border border-white/5 cursor-not-allowed opacity-40"
-              >
-                <Video size={13} className="inline mr-1.5" />
-                VIDEO
-              </button>
-            </div>
-
-            {/* Individual Input Boxes - Dark Cyan Theme */}
+            {/* Form Fields */}
             <div className="flex flex-col gap-3">
-              {selectedTools.has('music') && (
-                <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
-                    <Music size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                    <input
-                      type="text"
-                      value={musicPrompt}
-                      onChange={(e) => setMusicPrompt(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                      placeholder="// Type your music vibe here..."
-                      disabled={isGenerating}
-                      style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide focus:placeholder-cyan-400 focus:text-shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all"
-                    />
-                  </div>
+              {/* Title Input */}
+              <div className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
+                  <Music size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="// Song Title..."
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none text-sm tracking-wide focus:placeholder-cyan-400 transition-all"
+                  />
                 </div>
-              )}
+              </div>
+
+              {/* Lyrics Textarea */}
+              <div className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                <div className="relative flex gap-3 bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
+                  <Music size={18} className="text-cyan-400 flex-shrink-0 mt-1 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  <textarea
+                    value={lyrics}
+                    onChange={(e) => setLyrics(e.target.value)}
+                    placeholder="// Your lyrics here (optional)..."
+                    rows={4}
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none text-sm tracking-wide focus:placeholder-cyan-400 transition-all resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Genre Input */}
+              <div className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
+                  <Music size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  <input
+                    type="text"
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="// Genre (e.g., Pop, Rock, Hip-Hop)..."
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none text-sm tracking-wide focus:placeholder-cyan-400 transition-all"
+                  />
+                </div>
+              </div>
               
-              {selectedTools.has('image') && (
-                <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
-                    <ImageIcon size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                    <input
-                      type="text"
-                      value={coverArtPrompt}
-                      onChange={(e) => setCoverArtPrompt(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                      placeholder="// Describe your cover art vision..."
-                      disabled={isGenerating}
-                      style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide focus:placeholder-cyan-400 focus:text-shadow-[0_0_10px_rgba(34,211,238,0.8)] transition-all"
-                    />
-                  </div>
+              {/* Cover Art Generation Prompt */}
+              <div className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
+                  <ImageIcon size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  <input
+                    type="text"
+                    value={coverArtPrompt}
+                    onChange={(e) => setCoverArtPrompt(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="// Cover art description (optional)..."
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none text-sm tracking-wide focus:placeholder-cyan-400 transition-all"
+                  />
                 </div>
-              )}
-              
-              {selectedTools.has('video') && (
-                <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-blue-500/20 hover:border-blue-500/40 transition-all duration-300">
-                    <Video size={18} className="text-blue-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-                    <input
-                      type="text"
-                      value={videoPrompt}
-                      onChange={(e) => setVideoPrompt(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                      placeholder="// Your video concept..."
-                      disabled={isGenerating}
-                      style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide focus:placeholder-blue-500/50 focus:text-shadow-[0_0_10px_rgba(59,130,246,0.8)] transition-all"
-                    />
-                  </div>
-                </div>
-              )}
+              </div>
               
               {/* Send Button - Gamified Design */}
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating || selectedTools.size === 0 || 
-                  (selectedTools.has('music') && !musicPrompt.trim()) ||
-                  (selectedTools.has('image') && !coverArtPrompt.trim()) ||
-                  (selectedTools.has('video') && !videoPrompt.trim())
-                }
+                disabled={!title.trim() && !lyrics.trim()}
                 className="group relative w-full mt-3 px-6 py-4 bg-gradient-to-r from-cyan-600 via-blue-600 to-blue-700 hover:from-cyan-500 hover:via-blue-500 hover:to-blue-600 rounded-2xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:from-cyan-600 flex items-center justify-center gap-3 font-bold text-sm tracking-widest shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 disabled:shadow-none overflow-hidden"
                 title="Create with AI"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-blue-400 to-blue-500 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="animate-spin-slow text-white z-10" size={20} />
-                    <span className="text-white z-10">CREATING...</span>
-                  </>
-                ) : (
-                  <>
-                    <Music size={20} className="text-white z-10" />
-                    <span className="text-white z-10">CREATE</span>
-                  </>
-                )}
+                <Music size={20} className="text-white z-10" />
+                <span className="text-white z-10">CREATE</span>
               </button>
             </div>
 
@@ -521,112 +455,79 @@ export default function HomePage() {
       {isActivated && (
         <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 animate-slide-up">
           <div className="max-w-4xl mx-auto">
-            {/* Type Selection Pills - Sleeker Mobile Design */}
-            <div className="flex gap-2 mb-3 justify-center">
-              <button
-                onClick={() => toggleTool('music')}
-                className={`group relative px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
-                  selectedTools.has('music')
-                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/50'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
-                }`}
-              >
-                <Music size={12} className="inline mr-1" />
-                MUSIC
-                {selectedTools.has('music') && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-red-600 to-red-700 blur-xl opacity-50 animate-pulse"></span>
-                )}
-              </button>
-              <button
-                onClick={() => toggleTool('image')}
-                className={`group relative px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 ${
-                  selectedTools.has('image')
-                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/50'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
-                }`}
-              >
-                <ImageIcon size={12} className="inline mr-1" />
-                ART
-                {selectedTools.has('image') && (
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 blur-xl opacity-50 animate-pulse"></span>
-                )}
-              </button>
-              <button
-                disabled
-                className="px-4 py-2 rounded-full text-xs font-bold tracking-wide bg-white/5 text-gray-700 border border-white/5 cursor-not-allowed opacity-40"
-              >
-                <Video size={12} className="inline mr-1" />
-                VIDEO
-              </button>
-            </div>
-
             {/* Individual Input Boxes - Mobile */}
             <div className="flex flex-col gap-2">
-              {selectedTools.has('music') && (
-                <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
-                    <Music size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                    <input
-                      type="text"
-                      value={musicPrompt}
-                      onChange={(e) => setMusicPrompt(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                      placeholder="// Your music vibe..."
-                      disabled={isGenerating}
-                      style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide"
-                    />
-                  </div>
+              {/* Title Input - Mobile */}
+              <div className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
+                  <Music size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="// Song Title..."
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 text-sm tracking-wide"
+                  />
                 </div>
-              )}
+              </div>
+
+              {/* Lyrics - Mobile */}
+              <div className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                <div className="relative flex gap-2 bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
+                  <Music size={16} className="text-cyan-400 flex-shrink-0 mt-1 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  <textarea
+                    value={lyrics}
+                    onChange={(e) => setLyrics(e.target.value)}
+                    placeholder="// Lyrics (optional)..."
+                    rows={3}
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 text-sm tracking-wide resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Genre - Mobile */}
+              <div className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
+                  <Music size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  <input
+                    type="text"
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="// Genre..."
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 text-sm tracking-wide"
+                  />
+                </div>
+              </div>
               
-              {selectedTools.has('image') && (
-                <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
-                    <ImageIcon size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                    <input
-                      type="text"
-                      value={coverArtPrompt}
-                      onChange={(e) => setCoverArtPrompt(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                      placeholder="// Cover art vision..."
-                      disabled={isGenerating}
-                      style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide"
-                    />
-                  </div>
+              {/* Cover Art - Mobile */}
+              <div className="group relative">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
+                <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
+                  <ImageIcon size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  <input
+                    type="text"
+                    value={coverArtPrompt}
+                    onChange={(e) => setCoverArtPrompt(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="// Cover art (optional)..."
+                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 text-sm tracking-wide"
+                  />
                 </div>
-              )}
-              
-              {selectedTools.has('video') && (
-                <div className="group relative">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                  <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-blue-500/20">
-                    <Video size={16} className="text-blue-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-                    <input
-                      type="text"
-                      value={videoPrompt}
-                      onChange={(e) => setVideoPrompt(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                      placeholder="// Video concept..."
-                      disabled={isGenerating}
-                      style={{ fontFamily: "'Courier New', monospace" }}
-                      className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm tracking-wide"
-                    />
-                  </div>
-                </div>
-              )}
+              </div>
               
               {/* Send Button - Gamified Mobile */}
               <button
                 onClick={handleGenerate}
-                disabled={selectedTools.size === 0 || 
-                  (selectedTools.has('music') && !musicPrompt.trim()) ||
-                  (selectedTools.has('image') && !coverArtPrompt.trim()) ||
-                  (selectedTools.has('video') && !videoPrompt.trim())
-                }
+                disabled={!title.trim() && !lyrics.trim()}
                 className="group relative w-full mt-3 px-6 py-3.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-blue-700 hover:from-cyan-500 hover:via-blue-500 hover:to-blue-600 rounded-2xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold text-sm tracking-widest shadow-lg shadow-cyan-500/30 overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-blue-400 to-blue-500 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
