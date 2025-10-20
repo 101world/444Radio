@@ -1,195 +1,472 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs'
-import SimpleGenerationSelector from './components/SimpleGenerationSelector'
+import { UserButton } from '@clerk/nextjs'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
 import MusicGenerationModal from './components/MusicGenerationModal'
-import CoverArtGenerationModal from './components/CoverArtGenerationModal'
-import CombineMediaModal from './components/CombineMediaModal'
 import FloatingMenu from './components/FloatingMenu'
 
+type MessageType = 'user' | 'assistant' | 'generation'
+type GenerationType = 'music' | 'image' | 'video'
+
+interface Message {
+  id: string
+  type: MessageType
+  content: string
+  generationType?: GenerationType
+  result?: {
+    url?: string
+    audioUrl?: string
+    imageUrl?: string
+    title?: string
+    prompt?: string
+    lyrics?: string
+  }
+  timestamp: Date
+  isGenerating?: boolean
+}
+
 export default function HomePage() {
-  const { user } = useUser()
-  const [credits, setCredits] = useState(20)
-  
-  // Modal states
-  const [showMusicModal, setShowMusicModal] = useState(false)
-  const [showCoverArtModal, setShowCoverArtModal] = useState(false)
-  const [showCombineModal, setShowCombineModal] = useState(false)
-
-  // Track if user has generated items (to show combine button)
-  const [hasGeneratedItems, setHasGeneratedItems] = useState(false)
-
-  // Handle music generation success
-  const handleMusicGenerated = (url: string, prompt: string) => {
-    setHasGeneratedItems(true)
-    // Show success message
-    console.log('Music generated:', url)
-  }
-
-  // Handle image generation success
-  const handleImageGenerated = (url: string, prompt: string) => {
-    setHasGeneratedItems(true)
-    // Show success message
-    console.log('Image generated:', url)
-  }
-
-  // Fetch user credits
-  useEffect(() => {
-    if (user) {
-      fetch('/api/credits')
-        .then(res => res.json())
-        .then(data => {
-          if (data.credits !== undefined) setCredits(data.credits)
-        })
-        .catch(console.error)
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      type: 'assistant',
+      content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?',
+      timestamp: new Date()
     }
-  }, [user])
+  ])
+  const [input, setInput] = useState('')
+  const [selectedType, setSelectedType] = useState<GenerationType>('music')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [showMusicModal, setShowMusicModal] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({})
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const handleGenerate = async () => {
+    if (!input.trim() || isGenerating) return
+
+    // For music, open the modal instead of generating directly
+    if (selectedType === 'music') {
+      setShowMusicModal(true)
+      return
+    }
+
+    // For images and videos, proceed with generation
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: input,
+      timestamp: new Date()
+    }
+
+    const generatingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'generation',
+      content: `Generating ${selectedType}...`,
+      generationType: selectedType,
+      isGenerating: true,
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, userMessage, generatingMessage])
+    setInput('')
+    setIsGenerating(true)
+
+    try {
+      let result
+      if (selectedType === 'image') {
+        result = await generateImage(input)
+      } else {
+        result = { error: 'Video generation coming soon!' }
+      }
+
+      // Replace generating message with result
+      setMessages(prev => prev.map(msg => 
+        msg.id === generatingMessage.id 
+          ? {
+              ...msg,
+              isGenerating: false,
+              content: result.error ? `❌ ${result.error}` : `✅ Image generated!`,
+              result: result.error ? undefined : result
+            }
+          : msg
+      ))
+
+      // Add assistant response
+      if (!result.error) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          type: 'assistant',
+          content: 'Image generated! Want to combine it with a track?',
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, assistantMessage])
+      }
+    } catch (error) {
+      console.error('Generation error:', error)
+      setMessages(prev => prev.map(msg => 
+        msg.id === generatingMessage.id 
+          ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
+          : msg
+      ))
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleMusicGenerated = (audioUrl: string, title: string, lyrics: string, prompt: string) => {
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: input || prompt,
+      timestamp: new Date()
+    }
+
+    // Add result message
+    const resultMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'generation',
+      content: '✅ Track generated!',
+      generationType: 'music',
+      result: {
+        audioUrl,
+        title,
+        lyrics,
+        prompt
+      },
+      timestamp: new Date()
+    }
+
+    // Add assistant response
+    const assistantMessage: Message = {
+      id: (Date.now() + 2).toString(),
+      type: 'assistant',
+      content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, userMessage, resultMessage, assistantMessage])
+    setInput('')
+    setShowMusicModal(false)
+  }
+
+  const generateMusic = async (prompt: string) => {
+    const res = await fetch('/api/generate/music-only', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    })
+
+    const data = await res.json()
+    
+    if (data.success) {
+      return {
+        audioUrl: data.audioUrl,
+        title: data.title || prompt.substring(0, 50),
+        prompt: prompt,
+        lyrics: data.lyrics
+      }
+    } else {
+      return { error: data.error || 'Failed to generate music' }
+    }
+  }
+
+  const generateImage = async (prompt: string) => {
+    const res = await fetch('/api/generate/image-only', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    })
+
+    const data = await res.json()
+    
+    if (data.success) {
+      return {
+        imageUrl: data.imageUrl,
+        title: prompt.substring(0, 50),
+        prompt: prompt
+      }
+    } else {
+      return { error: data.error || 'Failed to generate image' }
+    }
+  }
+
+  const handlePlayPause = (messageId: string, audioUrl: string) => {
+    const audio = audioRefs.current[messageId]
+    
+    if (!audio) {
+      const newAudio = new Audio(audioUrl)
+      audioRefs.current[messageId] = newAudio
+      newAudio.play()
+      setPlayingId(messageId)
+      
+      newAudio.onended = () => setPlayingId(null)
+    } else {
+      if (playingId === messageId) {
+        audio.pause()
+        setPlayingId(null)
+      } else {
+        audio.play()
+        setPlayingId(messageId)
+      }
+    }
+  }
+
+  const handleDownload = (url: string, filename: string) => {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden relative">
+    <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Floating Menu */}
       <FloatingMenu />
-      
-      {/* Animated Background - Subtle */}
-      <div className="absolute inset-0 z-0 opacity-20">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(45,74,110,0.3),transparent_50%)] animate-pulse"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(90,143,199,0.2),transparent_40%)] animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.05),transparent_40%)] animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+      {/* Chat Area */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full">
+        <div className="space-y-6">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-2xl p-4 backdrop-blur-xl ${
+                  message.type === 'user'
+                    ? 'bg-white/10 border border-white/20 text-white'
+                    : message.type === 'assistant'
+                    ? 'bg-white/5 border border-white/10 text-gray-300'
+                    : 'bg-[#1a2332]/80 border border-[#2d4a6e]/50 text-white'
+                }`}
+              >
+                {/* Message Content */}
+                <p className="text-sm mb-2">{message.content}</p>
+
+                {/* Music Generation Result */}
+                {message.result?.audioUrl && (
+                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-white">{message.result.title}</h4>
+                        <p className="text-xs text-gray-400">{message.result.prompt}</p>
+                      </div>
+                      <button
+                        onClick={() => handlePlayPause(message.id, message.result!.audioUrl!)}
+                        className="p-3 bg-[#2d4a6e] hover:bg-[#3d5a7e] rounded-full transition-colors"
+                      >
+                        {playingId === message.id ? <Pause size={20} /> : <Play size={20} />}
+                      </button>
+                    </div>
+                    
+                    {/* Audio Player */}
+                    <audio
+                      src={message.result.audioUrl}
+                      controls
+                      className="w-full"
+                    />
+
+                    {/* Lyrics */}
+                    {message.result.lyrics && (
+                      <details className="mt-3">
+                        <summary className="text-xs text-[#5a8fc7] cursor-pointer hover:text-[#7aa5d7]">
+                          View Lyrics
+                        </summary>
+                        <pre className="text-xs text-gray-300 mt-2 whitespace-pre-wrap">
+                          {message.result.lyrics}
+                        </pre>
+                      </details>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`)}
+                        className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Download size={14} />
+                        Download
+                      </button>
+                      <Link
+                        href="/library"
+                        className="flex-1 px-3 py-2 bg-[#2d4a6e]/30 hover:bg-[#2d4a6e]/50 border border-[#2d4a6e]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Layers size={14} />
+                        View in Library
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* Image Generation Result */}
+                {message.result?.imageUrl && (
+                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10">
+                    <img
+                      src={message.result.imageUrl}
+                      alt={message.result.title}
+                      className="w-full aspect-square object-cover"
+                    />
+                    <div className="p-4">
+                      <h4 className="font-bold text-white mb-1">{message.result.title}</h4>
+                      <p className="text-xs text-gray-400 mb-3">{message.result.prompt}</p>
+                      
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDownload(message.result!.imageUrl!, `${message.result!.title}.webp`)}
+                          className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <Download size={14} />
+                          Download
+                        </button>
+                        <Link
+                          href="/library"
+                          className="flex-1 px-3 py-2 bg-[#2d4a6e]/30 hover:bg-[#2d4a6e]/50 border border-[#2d4a6e]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <Layers size={14} />
+                          View in Library
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading Indicator */}
+                {message.isGenerating && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Loader2 className="animate-spin text-[#5a8fc7]" size={16} />
+                    <span className="text-xs text-gray-400">Generating...</span>
+                  </div>
+                )}
+
+                {/* Timestamp */}
+                <p className="text-xs text-gray-600 mt-2">
+                  {message.timestamp.toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
-      <main className="relative z-10">
-        <SignedOut>
-          {/* Landing Page */}
-          <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6 text-center">
-            <div className="mb-8">
-              <div className="inline-block px-4 py-2 backdrop-blur-lg bg-green-500/10 border border-green-500/30 rounded-full mb-6">
-                <span className="text-green-400 font-semibold text-sm">✨ AI-POWERED MUSIC SOCIAL NETWORK</span>
-              </div>
-              <h1 className="text-6xl md:text-8xl font-black mb-6 text-white leading-tight">
-                Everyone is an Artist
-              </h1>
-              <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-3xl mx-auto font-light">
-                Generate music with AI. Create stunning visuals. Build your sound. <br/>
-                <span className="text-white font-semibold">Instagram for AI Music</span>
-              </p>
+      {/* Fixed Bottom Input Area - Pill Shaped Glassmorphism */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Pill Container */}
+          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl shadow-black/50 p-3">
+            {/* Type Selection Pills */}
+            <div className="flex gap-2 mb-3 px-3">
+              <button
+                onClick={() => setSelectedType('music')}
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                  selectedType === 'music'
+                    ? 'bg-white text-black'
+                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
+                }`}
+              >
+                <Music size={14} className="inline mr-1.5" />
+                Music
+              </button>
+              <button
+                onClick={() => setSelectedType('image')}
+                className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                  selectedType === 'image'
+                    ? 'bg-white text-black'
+                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
+                }`}
+              >
+                <ImageIcon size={14} className="inline mr-1.5" />
+                Cover Art
+              </button>
+              <button
+                disabled
+                className="px-4 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-600 border border-white/10 cursor-not-allowed"
+              >
+                <Video size={14} className="inline mr-1.5" />
+                Video
+              </button>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 mb-12">
-              <Link href="/sign-up" className="px-10 py-4 bg-white text-black rounded-full font-bold text-lg hover:bg-gray-200 transition-all shadow-xl">
-                🚀 Start Creating Free
-              </Link>
-              <Link href="/explore" className="px-10 py-4 backdrop-blur-lg bg-white/10 border-2 border-white/20 text-white rounded-full font-bold text-lg hover:bg-white/20 transition-all">
-                🎧 Explore Music
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mt-16">
-              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/30 transition-all">
-                <div className="text-4xl mb-3">🎵</div>
-                <h3 className="text-xl font-bold text-white mb-2">AI Music Generation</h3>
-                <p className="text-gray-400">Create unique tracks with MiniMax Music-1.5</p>
-              </div>
-              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-[#2d4a6e]/50 transition-all">
-                <div className="text-4xl mb-3">🎨</div>
-                <h3 className="text-xl font-bold text-white mb-2">Cover Art & Video</h3>
-                <p className="text-gray-400">Generate stunning visuals with Flux & Seedance</p>
-              </div>
-              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/30 transition-all">
-                <div className="text-4xl mb-3">🌍</div>
-                <h3 className="text-xl font-bold text-white mb-2">Social Music Feed</h3>
-                <p className="text-gray-400">Share, discover, and connect with artists</p>
-              </div>
-            </div>
-          </div>
-        </SignedOut>
 
-        <SignedIn>
-          {/* Creation Hub */}
-          <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6">
-            <div className="max-w-6xl w-full">
-              {/* Header */}
-              <div className="text-center mb-12">
-                <h1 className="text-5xl md:text-7xl font-black mb-4 text-white">
-                  Create with AI
-                </h1>
-                <p className="text-xl text-gray-400">
-                  Choose what you want to generate, then combine them into unified media
-                </p>
-              </div>
-
-              {/* Simple Generation Selector */}
-              <SimpleGenerationSelector
-                onSelectMusic={() => setShowMusicModal(true)}
-                onSelectCoverArt={() => setShowCoverArtModal(true)}
-                onSelectVideo={() => alert('🎬 Video generation coming soon!')}
+            {/* Input Box */}
+            <div className="flex gap-3 items-center px-3">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                placeholder={
+                  selectedType === 'music'
+                    ? 'Describe your track...'
+                    : selectedType === 'image'
+                    ? 'Describe your cover art...'
+                    : 'Coming soon...'
+                }
+                disabled={isGenerating || selectedType === 'video'}
+                className="flex-1 px-0 py-3 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               />
-
-              {/* Combine Button (shows when items are generated) */}
-              <div className="mt-8 text-center">
+              
+              {/* Settings Button for Music */}
+              {selectedType === 'music' && (
                 <button
-                  onClick={() => setShowCombineModal(true)}
-                  className="px-8 py-4 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-2xl font-bold text-lg hover:scale-105 transition-transform shadow-xl shadow-green-500/50"
+                  onClick={() => setShowMusicModal(true)}
+                  className={`p-3 rounded-full transition-all ${
+                    !input.trim() 
+                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                      : 'bg-white/10 hover:bg-white/20'
+                  }`}
+                  title="Music Settings (Required)"
                 >
-                  🎭 Combine Media (Create Release)
+                  <Settings size={20} className="text-white" />
                 </button>
-                <p className="text-sm text-purple-400/60 mt-2">
-                  Select music + cover art from your library to create a release
-                </p>
-              </div>
+              )}
+              
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || !input.trim() || selectedType === 'video'}
+                className="p-3 bg-[#2d4a6e] hover:bg-[#3d5a7e] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#2d4a6e] flex items-center justify-center"
+              >
+                {isGenerating ? (
+                  <Loader2 className="animate-spin text-white" size={20} />
+                ) : (
+                  <Send size={20} className="text-white" />
+                )}
+              </button>
+            </div>
 
-              {/* Info Cards */}
-              <div className="grid grid-cols-3 gap-4 mt-12">
-                <div className="text-center p-4 backdrop-blur-xl bg-purple-500/5 border border-purple-500/20 rounded-2xl">
-                  <div className="text-3xl mb-2">🎵</div>
-                  <div className="text-sm text-purple-400/80 font-semibold">2 Credits</div>
-                  <div className="text-xs text-purple-400/60">per music</div>
-                </div>
-                <div className="text-center p-4 backdrop-blur-xl bg-cyan-500/5 border border-cyan-500/20 rounded-2xl">
-                  <div className="text-3xl mb-2">🎨</div>
-                  <div className="text-sm text-cyan-400/80 font-semibold">1 Credit</div>
-                  <div className="text-xs text-cyan-400/60">per image</div>
-                </div>
-                <div className="text-center p-4 backdrop-blur-xl bg-green-500/5 border border-green-500/20 rounded-2xl">
-                  <div className="text-3xl mb-2">⚡</div>
-                  <div className="text-sm text-green-400/80 font-semibold">{credits} Credits</div>
-                  <div className="text-xs text-green-400/60">remaining</div>
-                </div>
-              </div>
+            {/* Quick Info */}
+            <div className="flex items-center justify-center gap-3 mt-3 text-xs text-gray-500 px-3">
+              <span className="text-[#5a8fc7]">2 credits for music</span>
+              <span>•</span>
+              <span className="text-[#5a8fc7]">1 credit for images</span>
             </div>
           </div>
-        </SignedIn>
-      </main>
+        </div>
+      </div>
 
-      {/* Modals */}
+      {/* Music Generation Modal */}
       <MusicGenerationModal
         isOpen={showMusicModal}
         onClose={() => setShowMusicModal(false)}
-        onSuccess={handleMusicGenerated}
+        onSuccess={(audioUrl: string, prompt: string) => {
+          // Extract title and lyrics from the generated music
+          // This will be called after successful generation
+          handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
+        }}
       />
-
-      <CoverArtGenerationModal
-        isOpen={showCoverArtModal}
-        onClose={() => setShowCoverArtModal(false)}
-        onSuccess={handleImageGenerated}
-      />
-
-      <CombineMediaModal
-        isOpen={showCombineModal}
-        onClose={() => setShowCombineModal(false)}
-      />
-
-      {/* 3D Floating Media Preview - Disabled for now to prevent WebGL issues */}
-      {/* TODO: Re-enable after optimizing WebGL context management */}
-      {/* {generatedMedia.length > 0 && (
-        <div className="fixed inset-0 z-40 pointer-events-none">
-          <FloatingMediaPreview
-            mediaItems={generatedMedia}
-            onMediaClick={(item) => {
-              window.open(item.url, '_blank')
-            }}
-          />
-        </div>
-      )} */}
     </div>
   )
 }
