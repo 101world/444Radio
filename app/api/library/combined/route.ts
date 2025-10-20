@@ -220,20 +220,31 @@ export async function PATCH(req: NextRequest) {
     const updated = await response.json()
 
     // Also save to combined_media table for explore page
-    if (is_published) {
+    if (is_published && Array.isArray(updated) && updated.length > 0) {
       const combined = updated[0]
-      await fetch('/api/media/combine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          audioUrl: combined.audio_url,
-          imageUrl: combined.image_url,
-          audioPrompt: combined.music_prompt,
-          imagePrompt: combined.image_prompt,
-          title: combined.title,
-          isPublic: true
-        })
-      })
+      
+      // Insert into combined_media table (for Explore/Profile pages)
+      await fetch(
+        `${supabaseUrl}/rest/v1/combined_media`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            audio_url: combined.audio_url,
+            image_url: combined.image_url,
+            audio_prompt: combined.music_prompt || '',
+            image_prompt: combined.image_prompt || '',
+            title: combined.title || 'Untitled',
+            is_public: true
+          })
+        }
+      )
     }
 
     return NextResponse.json({
