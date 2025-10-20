@@ -188,6 +188,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const body = await req.json()
+    console.log('🔍 PATCH Request Body:', body)
+    
     const { 
       combinedId,
       is_published, 
@@ -200,9 +203,13 @@ export async function PATCH(req: NextRequest) {
       license_type,
       price,
       tags
-    } = await req.json()
+    } = body
+
+    console.log('🔍 Extracted combinedId:', combinedId)
+    console.log('🔍 Extracted metadata:', { title, genre, mood, bpm, key })
 
     if (!combinedId) {
+      console.error('❌ Missing combinedId in request body')
       return NextResponse.json({ error: 'Missing combined media ID' }, { status: 400 })
     }
 

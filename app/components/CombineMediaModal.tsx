@@ -199,24 +199,28 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
       console.log('Metadata:', metadata)
       console.log('Endpoint: PATCH /api/library/combined')
       
+      const requestBody = {
+        combinedId: combinedResult.combinedId,
+        is_published: true,
+        title: `${combinedResult.audioPrompt.substring(0, 50)}`,
+        // Metadata for filtering and monetization
+        genre: metadata.genre,
+        mood: metadata.mood,
+        bpm: metadata.bpm ? parseInt(metadata.bpm) : null,
+        key: metadata.key,
+        copyright_owner: metadata.copyrightOwner,
+        license_type: metadata.license,
+        price: metadata.price ? parseFloat(metadata.price) : null,
+        tags: metadata.tags.split(',').map(t => t.trim()).filter(Boolean)
+      }
+      
+      console.log('📦 Request Body:', JSON.stringify(requestBody, null, 2))
+      
       // Update the existing combined_media_library record to publish it
       const res = await fetch('/api/library/combined', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          combinedId: combinedResult.combinedId,
-          is_published: true,
-          title: `${combinedResult.audioPrompt.substring(0, 50)}`,
-          // Metadata for filtering and monetization
-          genre: metadata.genre,
-          mood: metadata.mood,
-          bpm: metadata.bpm ? parseInt(metadata.bpm) : null,
-          key: metadata.key,
-          copyright_owner: metadata.copyrightOwner,
-          license_type: metadata.license,
-          price: metadata.price ? parseFloat(metadata.price) : null,
-          tags: metadata.tags.split(',').map(t => t.trim()).filter(Boolean)
-        })
+        body: JSON.stringify(requestBody)
       })
 
       console.log('Publish response status:', res.status)
