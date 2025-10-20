@@ -218,21 +218,17 @@ export default function HolographicBackground() {
     }
     console.log('🎨 Distant light shafts created:', distantShafts.length, 'shafts');
 
-    // 3D Floating Text "444 Radio"
+    // 3D Floating Text "444 Radio" - Small white floating text
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;
-    canvas.width = 2048; // Increased resolution
-    canvas.height = 512;
+    canvas.width = 512;
+    canvas.height = 128;
     
-    // Draw text on canvas with glow effect
+    // Draw text on canvas
     context.fillStyle = 'rgba(0, 0, 0, 0)';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Add glow
-    context.shadowBlur = 20;
-    context.shadowColor = 'rgba(100, 200, 255, 1)';
-    context.font = 'bold 200px Arial';
-    context.fillStyle = 'rgba(100, 200, 255, 1)'; // Full opacity cyan
+    context.font = 'bold 48px Arial';
+    context.fillStyle = 'rgba(255, 255, 255, 0.8)'; // White text
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText('444 RADIO', canvas.width / 2, canvas.height / 2);
@@ -242,28 +238,32 @@ export default function HolographicBackground() {
     const textMaterial = new THREE.MeshBasicMaterial({
       map: textTexture,
       transparent: true,
-      opacity: 0.9, // Very visible
+      opacity: 0.3, // Subtle
       side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending, // Make it glow
     });
     
-    const textGeometry = new THREE.PlaneGeometry(50, 12.5); // Bigger
-    const textMesh1 = new THREE.Mesh(textGeometry, textMaterial.clone());
-    textMesh1.position.set(0, 10, -20); // Closer to camera
-    scene.add(textMesh1);
+    // Create multiple small floating text instances (8 instances)
+    const textGeometry = new THREE.PlaneGeometry(15, 3.75); // Small size
+    const textMeshes: THREE.Mesh[] = [];
     
-    const textMesh2 = new THREE.Mesh(textGeometry, textMaterial.clone());
-    textMesh2.position.set(-20, -5, -25);
-    textMesh2.rotation.y = Math.PI / 6;
-    scene.add(textMesh2);
+    for (let i = 0; i < 8; i++) {
+      const textMesh = new THREE.Mesh(textGeometry, textMaterial.clone());
+      textMesh.position.set(
+        (Math.random() - 0.5) * 60,
+        (Math.random() - 0.5) * 40,
+        (Math.random() - 0.5) * 60 - 30
+      );
+      textMesh.rotation.y = Math.random() * Math.PI * 2;
+      textMesh.userData = {
+        basePosition: textMesh.position.clone(),
+        speed: 0.0001 + Math.random() * 0.0002,
+        offset: Math.random() * Math.PI * 2
+      };
+      textMeshes.push(textMesh);
+      scene.add(textMesh);
+    }
     
-    const textMesh3 = new THREE.Mesh(textGeometry, textMaterial.clone());
-    textMesh3.position.set(20, -5, -25);
-    textMesh3.rotation.y = -Math.PI / 6;
-    scene.add(textMesh3);
-    
-    const textMeshes = [textMesh1, textMesh2, textMesh3];
-    console.log('🎨 3D Text created: 3 instances of "444 RADIO"');
+    console.log('🎨 3D Text created: 8 small white "444 RADIO" instances');
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x222244, 1);
@@ -341,6 +341,13 @@ export default function HolographicBackground() {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('click', handleClick);
 
+    // Track scroll position for parallax
+    let scrollY = 0;
+    const handleScroll = () => {
+      scrollY = window.scrollY;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     // Animation loop
     let time = 0;
     const loopDuration = 20; // 20 seconds for complete loop
@@ -350,9 +357,10 @@ export default function HolographicBackground() {
       time += 0.01;
       const loopTime = (time % loopDuration) / loopDuration; // 0 to 1
 
-      // Camera dolly - smooth loop using sine wave
+      // Camera dolly - smooth loop using sine wave + scroll parallax
       const dollyDistance = Math.sin(loopTime * Math.PI * 2) * 5;
-      camera.position.z = initialCameraZ + dollyDistance;
+      const scrollParallax = scrollY * 0.01; // Subtle scroll effect
+      camera.position.z = initialCameraZ + dollyDistance + scrollParallax;
 
       // Animate blobs
       blobs.forEach((blob, i) => {
@@ -369,15 +377,32 @@ export default function HolographicBackground() {
         (blob.material as THREE.MeshPhysicalMaterial).color.setHSL(hue, 0.8, 0.5);
       });
 
-      // Animate 3D text
-      textMesh1.rotation.y = Math.sin(time * 0.1) * 0.1;
-      textMesh1.position.y = 10 + Math.sin(time * 0.2) * 2;
-      
-      textMesh2.rotation.y = Math.PI / 6 + Math.sin(time * 0.15) * 0.1;
-      textMesh2.position.y = -5 + Math.cos(time * 0.25) * 2;
-      
-      textMesh3.rotation.y = -Math.PI / 6 + Math.sin(time * 0.12) * 0.1;
-      textMesh3.position.y = -5 + Math.sin(time * 0.22) * 2;
+      // Animate 3D text - small white floating text with cursor interaction
+      textMeshes.forEach((textMesh, i) => {
+        // Gentle floating
+        const floatSpeed = textMesh.userData.speed;
+        const offset = textMesh.userData.offset;
+        textMesh.position.y = textMesh.userData.basePosition.y + Math.sin(time * floatSpeed + offset) * 3;
+        textMesh.position.x = textMesh.userData.basePosition.x + Math.cos(time * floatSpeed * 0.7 + offset) * 2;
+        
+        // Rotate slowly
+        textMesh.rotation.y += 0.001;
+        
+        // React to mouse position
+        const distX = mouseRef.current.x * 20 - textMesh.position.x;
+        const distY = mouseRef.current.y * 20 - textMesh.position.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+        
+        if (distance < 30) {
+          // Move away from cursor
+          textMesh.position.x -= distX * 0.01;
+          textMesh.position.y -= distY * 0.01;
+        }
+        
+        // Fade based on distance from camera
+        const distFromCamera = Math.abs(textMesh.position.z - camera.position.z);
+        (textMesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.1, Math.min(0.4, 50 / distFromCamera));
+      });
 
       // Animate interactive wireframe shapes
       interactiveShapes.forEach((shape, i) => {
@@ -478,6 +503,7 @@ export default function HolographicBackground() {
       // Remove event listeners
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('click', handleClick);
+      window.removeEventListener('scroll', handleScroll);
       
       renderer.dispose();
     };
