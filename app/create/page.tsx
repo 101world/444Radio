@@ -47,6 +47,14 @@ function CreatePageContent() {
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [showMusicModal, setShowMusicModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  
+  // Advanced parameters
+  const [customLyrics, setCustomLyrics] = useState('')
+  const [customTitle, setCustomTitle] = useState('')
+  const [genre, setGenre] = useState('')
+  const [generateCoverArt, setGenerateCoverArt] = useState(true)
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({})
 
@@ -526,7 +534,7 @@ function CreatePageContent() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                onKeyPress={(e) => e.key === 'Enter' && !showAdvanced && handleGenerate()}
                 placeholder={
                   selectedType === 'music'
                     ? 'Describe your track...'
@@ -538,20 +546,18 @@ function CreatePageContent() {
                 className="flex-1 px-0 py-3 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               />
               
-              {/* Settings Button for Music */}
-              {selectedType === 'music' && (
-                <button
-                  onClick={() => setShowMusicModal(true)}
-                  className={`p-3 rounded-full transition-all ${
-                    !input.trim() 
-                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                      : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                  title="Music Settings (Required)"
-                >
-                  <Settings size={20} className="text-white" />
-                </button>
-              )}
+              {/* Advanced Settings Toggle */}
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className={`p-3 rounded-full transition-all ${
+                  showAdvanced
+                    ? 'bg-cyan-500 hover:bg-cyan-600'
+                    : 'bg-white/10 hover:bg-white/20'
+                }`}
+                title="Advanced Options"
+              >
+                <Settings size={20} className="text-white" />
+              </button>
               
               <button
                 onClick={handleGenerate}
@@ -565,6 +571,66 @@ function CreatePageContent() {
                 )}
               </button>
             </div>
+
+            {/* Advanced Settings Panel */}
+            {showAdvanced && (
+              <div className="mx-3 mt-3 p-4 bg-white/5 backdrop-blur-xl border border-cyan-500/30 rounded-xl space-y-3 animate-fade-in">
+                <h4 className="text-xs font-bold text-cyan-400 tracking-wider uppercase mb-3">Advanced Options</h4>
+                
+                {/* Title */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Custom Title (optional)</label>
+                  <input
+                    type="text"
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                    placeholder="Enter song title..."
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  />
+                </div>
+
+                {/* Genre */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Genre</label>
+                  <input
+                    type="text"
+                    value={genre}
+                    onChange={(e) => setGenre(e.target.value)}
+                    placeholder="e.g. Hip-hop, Jazz, Rock..."
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  />
+                </div>
+
+                {/* Lyrics */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Custom Lyrics (optional)</label>
+                  <textarea
+                    value={customLyrics}
+                    onChange={(e) => setCustomLyrics(e.target.value)}
+                    placeholder="Enter your lyrics here..."
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                {/* Cover Art Toggle */}
+                <div className="flex items-center justify-between pt-2">
+                  <label className="text-xs text-gray-400">Generate Cover Art</label>
+                  <button
+                    onClick={() => setGenerateCoverArt(!generateCoverArt)}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      generateCoverArt ? 'bg-cyan-500' : 'bg-gray-600'
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                        generateCoverArt ? 'translate-x-6' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Quick Info */}
             <div className="flex items-center justify-center gap-3 mt-3 text-xs text-gray-500 px-3">
