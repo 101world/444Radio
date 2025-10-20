@@ -194,8 +194,10 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
 
     setIsSaving(true)
     try {
-      console.log('Publishing combined media with ID:', combinedResult.combinedId)
+      console.log('🚀 PUBLISHING TO EXPLORE/PROFILE')
+      console.log('Combined ID:', combinedResult.combinedId)
       console.log('Metadata:', metadata)
+      console.log('Endpoint: PATCH /api/library/combined')
       
       // Update the existing combined_media_library record to publish it
       const res = await fetch('/api/library/combined', {
