@@ -13,19 +13,26 @@ export async function GET(
   try {
     const { userId } = await params
 
-    // Fetch user's combined media (both public and private if it's their profile)
-    const { data, error } = await supabase
+    // Fetch user's combined media (music + image)
+    const { data: combinedData, error: combinedError } = await supabase
       .from('combined_media')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Database error:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch user media', details: error.message },
-        { status: 500 }
-      )
+    if (combinedError) {
+      console.error('Combined media error:', combinedError)
+    }
+
+    // Fetch user's profile media (standalone images/videos)
+    const { data: profileData, error: profileError } = await supabase
+      .from('profile_media')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (profileError) {
+      console.error('Profile media error:', profileError)
     }
 
     // Fetch username
@@ -35,12 +42,18 @@ export async function GET(
       .eq('clerk_user_id', userId)
       .single()
 
+    // Combine all media with type indicator
+    const allMedia = [
+      ...(combinedData || []).map((item) => ({ ...item, media_type: 'music-image' })),
+      ...(profileData || []).map((item) => ({ ...item, media_type: item.content_type }))
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
     return NextResponse.json({
       success: true,
-      combinedMedia: data || [],
+      combinedMedia: allMedia,
       username: userData?.username || 'Unknown User',
-      trackCount: data?.length || 0,
-      totalPlays: data?.reduce((sum, media) => sum + (media.plays || 0), 0) || 0
+      trackCount: allMedia.length,
+      totalPlays: allMedia.reduce((sum, media) => sum + (media.plays || media.views || 0), 0)
     })
   } catch (error) {
     console.error('Error fetching user media:', error)

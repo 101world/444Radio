@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
-import { Edit2, Grid, List, Upload } from 'lucide-react'
+import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
+import ProfileUploadModal from '../../components/ProfileUploadModal'
 
 interface Song {
   id: string
@@ -22,15 +23,19 @@ interface Song {
 interface CombinedMedia {
   id: string
   title: string
-  audio_url: string
-  image_url: string
-  audio_prompt: string
-  image_prompt: string
+  audio_url?: string
+  image_url?: string
+  video_url?: string
+  audio_prompt?: string
+  image_prompt?: string
   user_id: string
   likes: number
-  plays: number
+  plays?: number
+  views?: number
   is_public: boolean
   created_at: string
+  media_type: 'music-image' | 'image' | 'video'
+  content_type?: string
 }
 
 interface ProfileData {
@@ -51,6 +56,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [loading, setLoading] = useState(true)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [showPublishModal, setShowPublishModal] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
 
   useEffect(() => {
     if (currentUser) {
@@ -98,15 +104,59 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             </div>
           ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-              {profile.combinedMedia.map((media) => (
+              {profile.combinedMedia.map((media) => {
+                const mediaType = media.media_type || media.content_type || 'music-image'
+                const thumbnailUrl = media.image_url || media.video_url
+                
+                return (
                 <div key={media.id} className="group relative">
                   {/* 3D Glassmorphism Card */}
                   <div className="relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#5a8fc7]/20 hover:border-[#5a8fc7]/30">
-                    <img 
-                      src={media.image_url} 
-                      alt={media.title}
-                      className="w-full h-full object-cover"
-                    />
+                    {/* Thumbnail */}
+                    {thumbnailUrl ? (
+                      mediaType === 'video' ? (
+                        <video 
+                          src={media.video_url} 
+                          className="w-full h-full object-cover"
+                          muted
+                          loop
+                          onMouseEnter={(e) => e.currentTarget.play()}
+                          onMouseLeave={(e) => e.currentTarget.pause()}
+                        />
+                      ) : (
+                        <img 
+                          src={thumbnailUrl} 
+                          alt={media.title}
+                          className="w-full h-full object-cover"
+                        />
+                      )
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-[#4f46e5]/20 to-[#818cf8]/20 flex items-center justify-center">
+                        <Music size={48} className="text-[#818cf8]" />
+                      </div>
+                    )}
+                    
+                    {/* Media Type Badge */}
+                    <div className="absolute top-2 left-2 px-2 py-1 bg-black/80 backdrop-blur-xl border border-[#6366f1]/30 rounded-full text-xs font-bold text-white flex items-center gap-1">
+                      {mediaType === 'music-image' && (
+                        <>
+                          <Music size={12} />
+                          <span>Track</span>
+                        </>
+                      )}
+                      {mediaType === 'image' && (
+                        <>
+                          <ImageIcon size={12} />
+                          <span>Image</span>
+                        </>
+                      )}
+                      {mediaType === 'video' && (
+                        <>
+                          <Video size={12} />
+                          <span>Video</span>
+                        </>
+                      )}
+                    </div>
                     
                     {/* Published Badge */}
                     {media.is_public && (
@@ -119,15 +169,19 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
                       <p className="text-xs font-bold text-white truncate">{media.title}</p>
                       <div className="flex justify-between items-center text-xs text-gray-400">
-                        <span className="truncate">{media.audio_prompt?.slice(0, 20)}...</span>
+                        <span className="truncate">
+                          {mediaType === 'music-image' && media.audio_prompt ? `${media.audio_prompt.slice(0, 20)}...` : 
+                           mediaType === 'video' ? 'Video' : 'Image'}
+                        </span>
                         <div className="flex gap-2">
-                          <span>▶️ {media.plays}</span>
+                          <span>▶️ {media.plays || media.views || 0}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <div className="text-center py-20">
@@ -159,9 +213,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   <>
                     <div className="w-px h-4 bg-white/20"></div>
                     <button 
-                      onClick={() => setShowPublishModal(true)}
+                      onClick={() => setShowUploadModal(true)}
                       className="p-2 bg-gradient-to-r from-[#6366f1] to-[#818cf8] hover:from-[#5558e3] hover:to-[#7078ef] rounded-full transition-all shadow-lg hover:scale-110"
-                      title="Publish Release"
+                      title="Upload Content"
                     >
                       <Upload size={14} className="text-white" />
                     </button>
@@ -198,6 +252,17 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           onClose={() => {
             setShowPublishModal(false)
             // Refresh profile data
+          }}
+        />
+      )}
+
+      {/* Upload Content Modal */}
+      {showUploadModal && (
+        <ProfileUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onUploadComplete={() => {
+            fetchProfileData()
           }}
         />
       )}
