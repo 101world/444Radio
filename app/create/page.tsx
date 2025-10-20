@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
@@ -8,7 +8,7 @@ import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause,
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import FloatingMenu from '../components/FloatingMenu'
-import HolographicBackground from '../components/HolographicBackground'
+import HolographicBackground from '../components/HolographicBackgroundClient'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -30,7 +30,7 @@ interface Message {
   isGenerating?: boolean
 }
 
-export default function CreatePage() {
+function CreatePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([
@@ -567,6 +567,18 @@ export default function CreatePage() {
         onClose={() => setShowCombineModal(false)}
       />
     </div>
+  )
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    }>
+      <CreatePageContent />
+    </Suspense>
   )
 }
 
