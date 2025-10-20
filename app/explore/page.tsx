@@ -6,6 +6,7 @@ import { UserButton } from '@clerk/nextjs'
 import CombinedMediaPlayer from '../components/CombinedMediaPlayer'
 import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackground from '../components/HolographicBackground'
+import SocialCTA from '../components/SocialCTA'
 import { Search, Play, Pause, Volume2, SkipBack, SkipForward, Radio } from 'lucide-react'
 
 interface CombinedMedia {
@@ -254,6 +255,11 @@ export default function ExplorePage() {
           </div>
         </div>
       )}
+
+      {/* Social CTA Section */}
+      <div className="pb-32">
+        <SocialCTA />
+      </div>
 
       {/* Hidden Audio Element */}
       <audio 

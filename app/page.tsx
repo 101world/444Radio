@@ -7,6 +7,7 @@ import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause,
 import MusicGenerationModal from './components/MusicGenerationModal'
 import FloatingMenu from './components/FloatingMenu'
 import HolographicBackground from './components/HolographicBackground'
+import SocialCTA from './components/SocialCTA'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -260,7 +261,7 @@ export default function HomePage() {
               444 Radio
             </h1>
             <p className="text-xl text-gray-400 mb-12">
-              Create AI-generated music, cover art, and more
+              A world where music feels infinite.
             </p>
           </div>
 
@@ -591,6 +592,9 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* Social CTA Section */}
+        <SocialCTA />
       </div>
       )}
       </div> {/* Close Main Content Wrapper */}

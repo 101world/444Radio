@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import HolographicBackground from '../components/HolographicBackground'
+import SocialCTA from '../components/SocialCTA'
 
 interface Song {
   id: string
@@ -51,6 +52,9 @@ export default function Community() {
             </div>
           ))}
         </div>
+
+        {/* Social CTA Section */}
+        <SocialCTA />
       </div>
     </main>
   )
