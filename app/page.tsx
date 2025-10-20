@@ -1,260 +1,192 @@
-'use client'
+﻿'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
-import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { Sphere, MeshDistortMaterial } from '@react-three/drei'
-import * as THREE from 'three'
-import { Music, Image as ImageIcon, Video } from 'lucide-react'
-
-function AnimatedSphere() {
-  const meshRef = useRef<THREE.Mesh>(null)
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime) * 0.3
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2
-    }
-  })
-  return (
-    <Sphere ref={meshRef} args={[1, 64, 64]}>
-      <MeshDistortMaterial color="#00ff9d" distort={0.5} speed={2.5} roughness={0.1} metalness={0.9} />
-    </Sphere>
-  )
-}
-
-function FloatingParticles() {
-  const particlesRef = useRef<THREE.Points>(null)
-  useFrame((state) => {
-    if (particlesRef.current) particlesRef.current.rotation.y = state.clock.elapsedTime * 0.05
-  })
-  const particleCount = 100
-  const positions = new Float32Array(particleCount * 3)
-  for (let i = 0; i < particleCount; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 10
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 10
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 10
-  }
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  return (
-    <points ref={particlesRef} geometry={geometry}>
-      <pointsMaterial size={0.03} color="#00ffff" transparent opacity={0.6} />
-    </points>
-  )
-}
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Settings, X } from 'lucide-react'
+import FloatingMenu from './components/FloatingMenu'
+import HolographicBackgroundClient from './components/HolographicBackgroundClient'
 
 export default function HomePage() {
-  const { user } = useUser()
-  const [credits, setCredits] = useState(20)
+  const router = useRouter()
+  const [prompt, setPrompt] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
   
-  // Modal states
-  const [showMusicModal, setShowMusicModal] = useState(false)
-  const [showCoverArtModal, setShowCoverArtModal] = useState(false)
-  const [showCoverVideoModal, setShowCoverVideoModal] = useState(false)
+  // Optional parameters
+  const [customLyrics, setCustomLyrics] = useState('')
+  const [customTitle, setCustomTitle] = useState('')
+  const [generateCoverArt, setGenerateCoverArt] = useState(true)
+  const [genre, setGenre] = useState('')
 
-  // Fetch user credits
-  useEffect(() => {
-    if (user) {
-      fetch('/api/credits')
-        .then(res => res.json())
-        .then(data => {
-          if (data.credits !== undefined) setCredits(data.credits)
-        })
-        .catch(console.error)
+  const handleCreate = () => {
+    if (!prompt.trim()) return
+
+    // Build parameters for create page
+    const params = new URLSearchParams({
+      prompt: prompt.trim(),
+      ...(customLyrics && { lyrics: customLyrics }),
+      ...(customTitle && { title: customTitle }),
+      generateCoverArt: generateCoverArt.toString(),
+      ...(genre && { genre: genre })
+    })
+    
+    // Seamlessly redirect to create page
+    router.push(/create?+params.toString())
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleCreate()
     }
-  }, [user])
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-green-950 text-white overflow-hidden relative">
-      <div className="absolute inset-0 z-0 opacity-40">
-        <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
-          <ambientLight intensity={0.3} />
-          <pointLight position={[10, 10, 10]} color="#00ff9d" intensity={0.8} />
-          <AnimatedSphere />
-          <FloatingParticles />
-        </Canvas>
+    <div className="relative min-h-screen bg-black text-white overflow-hidden">
+      {/* 3D Holographic Background */}
+      <div className="fixed inset-0 z-0">
+        <HolographicBackgroundClient />
       </div>
 
-      {/* Navigation */}
-      <nav className="relative z-50 flex justify-between items-center p-4 md:p-6 backdrop-blur-xl bg-black/20 border-b border-green-500/20">
-        <Link href="/" className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/50">
-            <span className="text-black font-bold text-lg">🎵</span>
-          </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">444RADIO</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <SignedIn>
-            <Link href="/explore" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Explore</Link>
-            <Link href="/billboard" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Charts</Link>
-            <Link href={`/profile/${user?.id}`} className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Profile</Link>
-            {/* Credits Display */}
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 backdrop-blur-lg bg-green-500/10 border border-green-500/30 rounded-full">
-              <span className="text-2xl">⚡</span>
-              <span className="text-green-400 font-bold">{credits}</span>
-              <span className="text-green-400/60 text-xs">credits</span>
-            </div>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-          <SignedOut>
-            <Link href="/sign-in" className="px-6 py-2 text-green-400 hover:text-green-300 font-medium">Sign In</Link>
-            <Link href="/sign-up" className="px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold hover:scale-105 transition-transform">Join Free</Link>
-          </SignedOut>
+      {/* Floating Menu */}
+      <FloatingMenu />
+
+      {/* Main Content */}
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
+        {/* Logo/Title */}
+        <div className="mb-auto pt-20">
+          <h1 
+            className="text-6xl md:text-8xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600"
+            style={{ fontFamily: "'Courier New', monospace" }}
+          >
+            444RADIO
+          </h1>
+          <p className="text-center text-gray-400 text-sm mt-4 tracking-widest">
+            AI MUSIC STUDIO
+          </p>
         </div>
-      </nav>
 
-      <main className="relative z-10">
-        <SignedOut>
-          {/* Landing Page */}
-          <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6 text-center">
-            <div className="mb-8">
-              <div className="inline-block px-4 py-2 backdrop-blur-lg bg-green-500/10 border border-green-500/30 rounded-full mb-6">
-                <span className="text-green-400 font-semibold text-sm">✨ AI-POWERED MUSIC SOCIAL NETWORK</span>
-              </div>
-              <h1 className="text-6xl md:text-8xl font-black mb-6 bg-gradient-to-r from-green-400 via-cyan-400 to-green-300 bg-clip-text text-transparent leading-tight">
-                Everyone is an Artist
-              </h1>
-              <p className="text-xl md:text-2xl text-green-100/80 mb-12 max-w-3xl mx-auto font-light">
-                Generate music with AI. Create stunning visuals. Build your sound. <br/>
-                <span className="text-green-400 font-semibold">Instagram for AI Music</span>
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 mb-12">
-              <Link href="/sign-up" className="px-10 py-4 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-xl shadow-green-500/50">
-                🚀 Start Creating Free
-              </Link>
-              <Link href="/explore" className="px-10 py-4 backdrop-blur-lg bg-green-500/10 border-2 border-green-500/30 text-green-400 rounded-full font-bold text-lg hover:bg-green-500/20 transition-all">
-                🎧 Explore Music
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mt-16">
-              <div className="backdrop-blur-xl bg-black/40 border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all">
-                <div className="text-4xl mb-3">🎵</div>
-                <h3 className="text-xl font-bold text-green-400 mb-2">AI Music Generation</h3>
-                <p className="text-green-100/60">Create unique tracks with MiniMax Music-1.5</p>
-              </div>
-              <div className="backdrop-blur-xl bg-black/40 border border-cyan-500/20 rounded-2xl p-6 hover:border-cyan-500/40 transition-all">
-                <div className="text-4xl mb-3">🎨</div>
-                <h3 className="text-xl font-bold text-cyan-400 mb-2">Cover Art & Video</h3>
-                <p className="text-green-100/60">Generate stunning visuals with Flux & Seedance</p>
-              </div>
-              <div className="backdrop-blur-xl bg-black/40 border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all">
-                <div className="text-4xl mb-3">🌍</div>
-                <h3 className="text-xl font-bold text-green-400 mb-2">Social Music Feed</h3>
-                <p className="text-green-100/60">Share, discover, and connect with artists</p>
-              </div>
+        {/* Bottom Prompt Section */}
+        <div className="w-full max-w-3xl mb-20">
+          {/* Main Prompt Input */}
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition duration-300"></div>
+            <div className="relative">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Describe the music you want to create..."
+                className="w-full px-6 py-4 bg-black/80 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/60 transition-colors resize-none"
+                style={{ fontFamily: "'Courier New', monospace" }}
+                rows={3}
+              />
             </div>
           </div>
-        </SignedOut>
 
-        <SignedIn>
-          {/* Creation Hub */}
-          <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6">
-            <div className="max-w-6xl w-full">
-              {/* Header */}
-              <div className="text-center mb-12">
-                <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-                  What do you want to create?
-                </h1>
-                <p className="text-xl text-green-100/60">
-                  Choose a creation type and customize your AI generation
-                </p>
+          {/* Action Buttons */}
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 rounded-xl transition-colors"
+              title="Advanced Settings"
+            >
+              <Settings size={20} className="text-cyan-400" />
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={!prompt.trim()}
+              className="flex-1 px-8 py-3 bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 hover:from-cyan-500 hover:via-blue-500 hover:to-purple-500 rounded-xl font-bold tracking-wider transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/30"
+              style={{ fontFamily: "'Courier New', monospace" }}
+            >
+              CREATE
+            </button>
+          </div>
+
+          {/* Settings Panel */}
+          {showSettings && (
+            <div className="mt-4 p-6 bg-black/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-cyan-400" style={{ fontFamily: "'Courier New', monospace" }}>
+                  ADVANCED OPTIONS
+                </h3>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
               </div>
 
-              {/* 3 Generation Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                
-                {/* MUSIC GENERATION CARD */}
-                <button
-                  onClick={() => setShowMusicModal(true)}
-                  className="group relative backdrop-blur-xl bg-gradient-to-br from-green-500/10 to-green-600/5 border-2 border-green-500/30 rounded-3xl p-8 hover:border-green-500/60 hover:shadow-2xl hover:shadow-green-500/20 hover:scale-105 transition-all duration-300"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-6 p-6 bg-green-500/20 rounded-full group-hover:bg-green-500/30 transition-colors">
-                      <Music size={64} className="text-green-400" />
-                    </div>
-                    <h2 className="text-3xl font-bold text-green-400 mb-3">Music</h2>
-                    <p className="text-green-100/70 mb-4">
-                      Generate unique music tracks with AI
-                    </p>
-                    <div className="text-sm text-green-400/60">
-                      MiniMax Music-1.5
-                    </div>
-                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-green-500/20 rounded-full">
-                      <span className="text-xl">⚡</span>
-                      <span className="text-green-400 font-bold">1 credit</span>
-                    </div>
-                  </div>
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-green-500/0 to-green-500/0 group-hover:from-green-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-                </button>
-
-                {/* COVER ART GENERATION CARD */}
-                <button
-                  onClick={() => setShowCoverArtModal(true)}
-                  className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-2 border-cyan-500/30 rounded-3xl p-8 hover:border-cyan-500/60 hover:shadow-2xl hover:shadow-cyan-500/20 hover:scale-105 transition-all duration-300"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-6 p-6 bg-cyan-500/20 rounded-full group-hover:bg-cyan-500/30 transition-colors">
-                      <ImageIcon size={64} className="text-cyan-400" />
-                    </div>
-                    <h2 className="text-3xl font-bold text-cyan-400 mb-3">Cover Art</h2>
-                    <p className="text-green-100/70 mb-4">
-                      Create stunning album cover artwork
-                    </p>
-                    <div className="text-sm text-cyan-400/60">
-                      Flux Schnell
-                    </div>
-                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-cyan-500/20 rounded-full">
-                      <span className="text-xl">⚡</span>
-                      <span className="text-cyan-400 font-bold">1 credit</span>
-                    </div>
-                  </div>
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:to-green-500/5 transition-all duration-300"></div>
-                </button>
-
-                {/* COVER VIDEO GENERATION CARD */}
-                <button
-                  onClick={() => setShowCoverVideoModal(true)}
-                  className="group relative backdrop-blur-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-2 border-purple-500/30 rounded-3xl p-8 hover:border-purple-500/60 hover:shadow-2xl hover:shadow-purple-500/20 hover:scale-105 transition-all duration-300"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="mb-6 p-6 bg-purple-500/20 rounded-full group-hover:bg-purple-500/30 transition-colors">
-                      <Video size={64} className="text-purple-400" />
-                    </div>
-                    <h2 className="text-3xl font-bold text-purple-400 mb-3">Cover Video</h2>
-                    <p className="text-green-100/70 mb-4">
-                      Generate animated music video visuals
-                    </p>
-                    <div className="text-sm text-purple-400/60">
-                      Seedance-1-lite
-                    </div>
-                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-full">
-                      <span className="text-xl">⚡</span>
-                      <span className="text-purple-400 font-bold">1 credit</span>
-                    </div>
-                  </div>
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-500/0 to-purple-500/0 group-hover:from-purple-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-                </button>
-
+              {/* Title Input */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Custom Title (optional)
+                </label>
+                <input
+                  type="text"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder="Enter song title..."
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  style={{ fontFamily: "'Courier New', monospace" }}
+                />
               </div>
 
-              {/* Info Text */}
-              <div className="text-center mt-12">
-                <p className="text-green-100/50 text-sm">
-                  Each generation uses 1 credit • You have <span className="text-green-400 font-bold">{credits} credits</span> remaining
-                </p>
+              {/* Genre Input */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Genre
+                </label>
+                <input
+                  type="text"
+                  value={genre}
+                  onChange={(e) => setGenre(e.target.value)}
+                  placeholder="e.g. Hip-hop, Jazz, Rock..."
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  style={{ fontFamily: "'Courier New', monospace" }}
+                />
+              </div>
+
+              {/* Lyrics Input */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Custom Lyrics (optional)
+                </label>
+                <textarea
+                  value={customLyrics}
+                  onChange={(e) => setCustomLyrics(e.target.value)}
+                  placeholder="Enter your lyrics here..."
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
+                  style={{ fontFamily: "'Courier New', monospace" }}
+                  rows={4}
+                />
+              </div>
+
+              {/* Cover Art Toggle */}
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-gray-400">
+                  Generate Cover Art
+                </label>
+                <button
+                  onClick={() => setGenerateCoverArt(!generateCoverArt)}
+                  className={elative w-14 h-8 rounded-full transition-colors +(generateCoverArt ? 'bg-cyan-600' : 'bg-gray-600')}
+                >
+                  <div
+                    className={bsolute top-1 w-6 h-6 bg-white rounded-full transition-transform +(generateCoverArt ? 'translate-x-7' : 'translate-x-1')}
+                  />
+                </button>
               </div>
             </div>
-          </div>
-        </SignedIn>
-      </main>
+          )}
 
-      {/* TODO: Add modals here */}
-      {showMusicModal && <div>Music Modal Coming Soon</div>}
-      {showCoverArtModal && <div>Cover Art Modal Coming Soon</div>}
-      {showCoverVideoModal && <div>Cover Video Modal Coming Soon</div>}
+          {/* Quick Info */}
+          <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-600 font-mono">
+            <span className="text-cyan-400">Music: 2 CR</span>
+            <span className="text-gray-700"></span>
+            <span className="text-purple-400">Cover Art: 1 CR</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
-
