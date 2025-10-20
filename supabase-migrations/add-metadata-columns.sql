@@ -18,6 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_combined_media_library_tags ON combined_media_lib
 
 -- Also add these columns to combined_media table for public display
 ALTER TABLE combined_media
+ADD COLUMN IF NOT EXISTS username TEXT,
 ADD COLUMN IF NOT EXISTS genre TEXT,
 ADD COLUMN IF NOT EXISTS mood TEXT,
 ADD COLUMN IF NOT EXISTS bpm INTEGER,

@@ -257,6 +257,12 @@ export async function PATCH(req: NextRequest) {
     if (is_published && Array.isArray(updated) && updated.length > 0) {
       const combined = updated[0]
       
+      // Get username from Clerk for display on explore page
+      const { clerkClient } = await import('@clerk/nextjs/server')
+      const client = await clerkClient()
+      const clerkUser = await client.users.getUser(userId)
+      const username = clerkUser?.username || clerkUser?.firstName || clerkUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || `user_${userId.slice(-8)}`
+      
       // Insert into combined_media table (for Explore/Profile pages)
       await fetch(
         `${supabaseUrl}/rest/v1/combined_media`,
@@ -270,6 +276,7 @@ export async function PATCH(req: NextRequest) {
           },
           body: JSON.stringify({
             user_id: userId,
+            username: username,
             audio_url: combined.audio_url,
             image_url: combined.image_url,
             audio_prompt: combined.music_prompt || '',
