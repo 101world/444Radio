@@ -364,7 +364,7 @@ export default function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
                 {isGenerating ? (
                   <>
-                    <Loader2 className="animate-spin text-white z-10" size={20} />
+                    <Loader2 className="animate-spin-slow text-white z-10" size={20} />
                     <span className="text-white z-10">SENDING...</span>
                   </>
                 ) : (
@@ -497,7 +497,7 @@ export default function HomePage() {
                 {/* Loading Indicator */}
                 {message.isGenerating && (
                   <div className="flex items-center gap-2 mt-2">
-                    <Loader2 className="animate-spin text-[#818cf8]" size={16} />
+                    <Loader2 className="animate-spin-slow text-[#818cf8]" size={16} />
                     <span className="text-xs text-gray-400">Generating...</span>
                   </div>
                 )}
@@ -629,7 +629,7 @@ export default function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
                 {isGenerating ? (
                   <>
-                    <Loader2 className="animate-spin text-white z-10" size={18} />
+                    <Loader2 className="animate-spin-slow text-white z-10" size={18} />
                     <span className="text-white z-10">SENDING...</span>
                   </>
                 ) : (
