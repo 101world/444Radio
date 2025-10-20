@@ -15,6 +15,7 @@ interface CombinedMedia {
   audio_prompt: string
   image_prompt: string
   user_id: string
+  username?: string
   likes: number
   plays: number
   created_at: string
@@ -166,10 +167,10 @@ export default function ExplorePage() {
                     <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
                       <p className="text-xs font-bold text-white truncate">{media.title}</p>
                       <Link 
-                        href={`/u/${media.users.username}`}
+                        href={`/u/${media.users?.username || media.username || 'unknown'}`}
                         className="text-xs text-[#818cf8] hover:text-[#7aa5d7] font-semibold"
                       >
-                        @{media.users.username}
+                        @{media.users?.username || media.username || 'Unknown User'}
                       </Link>
                     </div>
                   </div>
@@ -183,7 +184,7 @@ export default function ExplorePage() {
       {/* Floating Digital Radio Player */}
       {currentTrack && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
-          <div className="bg-gradient-to-r from-[#4f46e5]/95 via-[#6366f1]/95 to-[#4f46e5]/95 backdrop-blur-2xl border border-[#818cf8]/30 rounded-2xl shadow-2xl shadow-[#818cf8]/50 p-4 min-w-[300px] md:min-w-[400px]">
+          <div className="bg-gradient-to-r from-[#4f46e5]/95 via-[#6366f1]/95 to-[#4f46e5]/95 backdrop-blur-2xl border border-[#818cf8]/30 rounded-2xl shadow-2xl shadow-[#818cf8]/50 p-4 min-w-[300px] md:min-w-[500px]">
             <div className="flex items-center gap-4">
               {/* Album Art */}
               <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
@@ -206,7 +207,9 @@ export default function ExplorePage() {
                   <span className="text-xs font-bold text-[#818cf8]">NOW PLAYING</span>
                 </div>
                 <p className="text-sm font-black text-white truncate">{currentTrack.title}</p>
-                <p className="text-xs text-gray-300 truncate">@{currentTrack.users.username}</p>
+                <p className="text-xs text-gray-300 truncate">
+                  @{currentTrack.users?.username || currentTrack.username || 'Unknown'}
+                </p>
               </div>
 
               {/* Controls */}
@@ -238,6 +241,28 @@ export default function ExplorePage() {
           </div>
         </div>
       )}
+
+      {/* Right-Side Vertical Category Slider */}
+      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
+        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl p-3 shadow-2xl max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-[#6366f1] scrollbar-track-white/5">
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-bold text-[#818cf8] mb-2 text-center">CATEGORIES</p>
+            {['Trending', 'New', 'Top', 'Pop', 'Hip-Hop', 'Electronic', 'Jazz', 'Rock', 'Classical', 'R&B', 'Country', 'Indie', 'Metal', 'Blues', 'Reggae', 'Folk'].map((category) => (
+              <button
+                key={category}
+                onClick={() => setFilter(category.toLowerCase())}
+                className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap transition-all text-sm ${
+                  filter === category.toLowerCase()
+                    ? 'bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white shadow-lg'
+                    : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Hidden Audio Element */}
       <audio 
