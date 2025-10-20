@@ -89,41 +89,75 @@ export default function HolographicBackground() {
     }
     console.log('🎨 Blobs created:', blobs.length, 'blobs');
 
-    // Interactive wireframe shapes - reduced variety for cleaner look
+    // Small floating blocks - many uniform cubes
+    const blockGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5); // Small uniform size
+    const blocks: THREE.Mesh[] = [];
+
+    for (let i = 0; i < 25; i++) { // 25 blocks scattered around
+      const material = new THREE.MeshBasicMaterial({
+        color: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.7),
+        wireframe: true,
+        transparent: true,
+        opacity: 0.6,
+      });
+
+      const block = new THREE.Mesh(blockGeometry, material);
+      block.position.set(
+        (Math.random() - 0.5) * 60,
+        (Math.random() - 0.5) * 60,
+        (Math.random() - 0.5) * 60
+      );
+      block.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      block.userData = {
+        originalScale: block.scale.clone(),
+        originalOpacity: 0.6,
+        rotationSpeed: { 
+          x: (Math.random() - 0.5) * 0.003, 
+          y: (Math.random() - 0.5) * 0.003, 
+          z: (Math.random() - 0.5) * 0.003 
+        }
+      };
+      blocks.push(block);
+      scene.add(block);
+    }
+    console.log('🎨 Blocks created:', blocks.length, 'blocks');
+
+    // Interactive wireframe shapes - minimal and small
     const shapeGeometries = [
-      new THREE.TorusGeometry(5, 0.5, 16, 100),
-      new THREE.TorusKnotGeometry(4, 1, 100, 16),
-      new THREE.OctahedronGeometry(5),
-      new THREE.IcosahedronGeometry(5),
-      new THREE.SphereGeometry(5, 16, 16),
-      new THREE.TetrahedronGeometry(6),
-    ]; // Reduced from 17 to 6 shapes
+      new THREE.TorusGeometry(2, 0.3, 12, 50), // Much smaller
+      new THREE.OctahedronGeometry(2), // Much smaller
+    ]; // Only 2 small shapes
 
     const interactiveShapes: THREE.Mesh[] = [];
 
     for (let i = 0; i < shapeGeometries.length; i++) {
       const material = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(0.5 + i * 0.08, 1, 0.7), // Brighter
+        color: new THREE.Color().setHSL(0.5 + i * 0.1, 1, 0.7),
         wireframe: true,
         transparent: true,
-        opacity: 0.8, // Much more visible
+        opacity: 0.5, // Less visible
       });
 
       const shape = new THREE.Mesh(shapeGeometries[i], material);
       shape.position.set(
-        (Math.random() - 0.5) * 50,
-        (Math.random() - 0.5) * 50,
-        (Math.random() - 0.5) * 50
+        (Math.random() - 0.5) * 40,
+        (Math.random() - 0.5) * 40,
+        (Math.random() - 0.5) * 40
       );
       shape.rotation.set(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
         Math.random() * Math.PI
       );
+      shape.scale.setScalar(0.5); // Make them smaller
       shape.userData = {
         originalScale: shape.scale.clone(),
-        originalOpacity: 0.4,
-        rotationSpeed: { x: (Math.random() - 0.5) * 0.002, y: (Math.random() - 0.5) * 0.003, z: (Math.random() - 0.5) * 0.002 }
+        originalOpacity: 0.5,
+        rotationSpeed: { x: (Math.random() - 0.5) * 0.001, y: (Math.random() - 0.5) * 0.001, z: (Math.random() - 0.5) * 0.001 }
       };
       interactiveShapes.push(shape);
       scene.add(shape);
@@ -407,6 +441,37 @@ export default function HolographicBackground() {
         // Fade based on distance from camera
         const distFromCamera = Math.abs(textMesh.position.z - camera.position.z);
         (textMesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.5, Math.min(0.9, 50 / distFromCamera));
+      });
+
+      // Animate floating blocks - smooth rotation and gentle drift
+      blocks.forEach((block, i) => {
+        // Apply custom rotation speeds
+        block.rotation.x += block.userData.rotationSpeed.x;
+        block.rotation.y += block.userData.rotationSpeed.y;
+        block.rotation.z += block.userData.rotationSpeed.z;
+
+        // Gentle floating motion
+        block.position.y += Math.sin(time * 0.0004 + i) * 0.02;
+        block.position.x += Math.cos(time * 0.0003 + i) * 0.015;
+
+        // Subtle cursor interaction - slight attraction
+        const distX = mouseRef.current.x * 30 - block.position.x;
+        const distY = mouseRef.current.y * 30 - block.position.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+        
+        if (distance < 30) {
+          const attractStrength = (30 - distance) / 30;
+          block.position.x += distX * 0.003 * attractStrength;
+          block.position.y += distY * 0.003 * attractStrength;
+          // Increase opacity when near cursor
+          (block.material as THREE.MeshBasicMaterial).opacity = 0.6 + attractStrength * 0.3;
+        } else {
+          (block.material as THREE.MeshBasicMaterial).opacity = 0.6;
+        }
+
+        // Color cycle
+        const hue = (0.5 + i * 0.04 + time * 0.02) % 1;
+        (block.material as THREE.MeshBasicMaterial).color.setHSL(hue, 1, 0.7);
       });
 
       // Animate interactive wireframe shapes with cursor attraction
