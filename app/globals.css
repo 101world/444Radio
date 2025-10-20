@@ -104,3 +104,83 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: #818cf8;
 }
+
+/* Typewriter Font Import */
+@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
+/* Glow Effect for Inputs */
+input:focus {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(168, 85, 247, 0.6),
+                 0 0 20px rgba(168, 85, 247, 0.4),
+                 0 0 30px rgba(168, 85, 247, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 15px rgba(168, 85, 247, 0.8),
+                 0 0 30px rgba(168, 85, 247, 0.6),
+                 0 0 45px rgba(168, 85, 247, 0.4);
+  }
+}
+
+/* Cyan glow for cover art input */
+input[placeholder*="cover art"]:focus,
+input[placeholder*="Cover art"]:focus {
+  animation: glow-pulse-cyan 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse-cyan {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(34, 211, 238, 0.6),
+                 0 0 20px rgba(34, 211, 238, 0.4),
+                 0 0 30px rgba(34, 211, 238, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 15px rgba(34, 211, 238, 0.8),
+                 0 0 30px rgba(34, 211, 238, 0.6),
+                 0 0 45px rgba(34, 211, 238, 0.4);
+  }
+}
+
+/* Blue glow for video input */
+input[placeholder*="video"]:focus,
+input[placeholder*="Video"]:focus {
+  animation: glow-pulse-blue 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse-blue {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.6),
+                 0 0 20px rgba(59, 130, 246, 0.4),
+                 0 0 30px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    text-shadow: 0 0 15px rgba(59, 130, 246, 0.8),
+                 0 0 30px rgba(59, 130, 246, 0.6),
+                 0 0 45px rgba(59, 130, 246, 0.4);
+  }
+}
+
+/* Typing indicator effect */
+@keyframes typing-indicator {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Sleek modern cursor */
+input[type="text"] {
+  caret-color: #a855f7;
+}
+
+input[placeholder*="cover art"]:focus,
+input[placeholder*="Cover art"]:focus {
+  caret-color: #22d3ee;
+}
+
+input[placeholder*="video"]:focus,
+input[placeholder*="Video"]:focus {
+  caret-color: #3b82f6;
+}
