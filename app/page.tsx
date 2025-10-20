@@ -1,562 +1,259 @@
-﻿'use client'
-// Force deployment - updated 3D background visibility
+'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { UserButton } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
-import MusicGenerationModal from './components/MusicGenerationModal'
-import FloatingMenu from './components/FloatingMenu'
-import HolographicBackgroundClient from './components/HolographicBackgroundClient'
+import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { Sphere, MeshDistortMaterial } from '@react-three/drei'
+import * as THREE from 'three'
+import { Music, Image as ImageIcon, Video } from 'lucide-react'
 
-type MessageType = 'user' | 'assistant' | 'generation'
-type GenerationType = 'music' | 'image' | 'video'
+function AnimatedSphere() {
+  const meshRef = useRef<THREE.Mesh>(null)
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime) * 0.3
+      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2
+    }
+  })
+  return (
+    <Sphere ref={meshRef} args={[1, 64, 64]}>
+      <MeshDistortMaterial color="#00ff9d" distort={0.5} speed={2.5} roughness={0.1} metalness={0.9} />
+    </Sphere>
+  )
+}
 
-interface Message {
-  id: string
-  type: MessageType
-  content: string
-  generationType?: GenerationType
-  result?: {
-    url?: string
-    audioUrl?: string
-    imageUrl?: string
-    title?: string
-    prompt?: string
-    lyrics?: string
+function FloatingParticles() {
+  const particlesRef = useRef<THREE.Points>(null)
+  useFrame((state) => {
+    if (particlesRef.current) particlesRef.current.rotation.y = state.clock.elapsedTime * 0.05
+  })
+  const particleCount = 100
+  const positions = new Float32Array(particleCount * 3)
+  for (let i = 0; i < particleCount; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 10
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 10
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 10
   }
-  timestamp: Date
-  isGenerating?: boolean
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+  return (
+    <points ref={particlesRef} geometry={geometry}>
+      <pointsMaterial size={0.03} color="#00ffff" transparent opacity={0.6} />
+    </points>
+  )
 }
 
 export default function HomePage() {
-  const router = useRouter()
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      type: 'assistant',
-      content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?',
-      timestamp: new Date()
-    }
-  ])
-  const [input, setInput] = useState('')
+  const { user } = useUser()
+  const [credits, setCredits] = useState(20)
   
-  // New form fields
-  const [lyrics, setLyrics] = useState('')
-  const [title, setTitle] = useState('')
-  const [coverArtPrompt, setCoverArtPrompt] = useState('')
-  const [genre, setGenre] = useState('')
-  
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [playingId, setPlayingId] = useState<string | null>(null)
+  // Modal states
   const [showMusicModal, setShowMusicModal] = useState(false)
-  const [isActivated, setIsActivated] = useState(false) // New state for transition
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({})
+  const [showCoverArtModal, setShowCoverArtModal] = useState(false)
+  const [showCoverVideoModal, setShowCoverVideoModal] = useState(false)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
+  // Fetch user credits
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  // Activate chat interface when user interacts with input
-  const handleActivate = () => {
-    if (!isActivated) {
-      setIsActivated(true)
+    if (user) {
+      fetch('/api/credits')
+        .then(res => res.json())
+        .then(data => {
+          if (data.credits !== undefined) setCredits(data.credits)
+        })
+        .catch(console.error)
     }
-  }
-
-  const handleGenerate = async () => {
-    // Check that at least title or lyrics is provided
-    if (!title.trim() && !lyrics.trim()) return
-
-    // Create a combined message with all the information
-    const parts = []
-    if (title.trim()) parts.push(`🎵 Title: ${title}`)
-    if (lyrics.trim()) parts.push(`📝 Lyrics: ${lyrics}`)
-    if (genre.trim()) parts.push(`� Genre: ${genre}`)
-    if (coverArtPrompt.trim()) parts.push(`� Cover Art: ${coverArtPrompt}`)
-    
-    const combinedMessage = parts.join('\n')
-
-    // Redirect to create page with all the information
-    const params = new URLSearchParams({
-      title: title.trim(),
-      lyrics: lyrics.trim(),
-      genre: genre.trim(),
-      coverArtPrompt: coverArtPrompt.trim(),
-      combinedMessage
-    })
-    
-    router.push(`/create?${params.toString()}`)
-  }
-
-  const handleMusicGenerated = (audioUrl: string, title: string, lyrics: string, prompt: string) => {
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: input || prompt,
-      timestamp: new Date()
-    }
-
-    // Add result message
-    const resultMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'generation',
-      content: '✅ Track generated!',
-      generationType: 'music',
-      result: {
-        audioUrl,
-        title,
-        lyrics,
-        prompt
-      },
-      timestamp: new Date()
-    }
-
-    // Add assistant response
-    const assistantMessage: Message = {
-      id: (Date.now() + 2).toString(),
-      type: 'assistant',
-      content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
-      timestamp: new Date()
-    }
-
-    setMessages(prev => [...prev, userMessage, resultMessage, assistantMessage])
-    setInput('')
-    setShowMusicModal(false)
-  }
-
-  const generateMusic = async (prompt: string) => {
-    const res = await fetch('/api/generate/music-only', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    })
-
-    const data = await res.json()
-    
-    if (data.success) {
-      return {
-        audioUrl: data.audioUrl,
-        title: data.title || prompt.substring(0, 50),
-        prompt: prompt,
-        lyrics: data.lyrics
-      }
-    } else {
-      return { error: data.error || 'Failed to generate music' }
-    }
-  }
-
-  const generateImage = async (prompt: string) => {
-    const res = await fetch('/api/generate/image-only', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    })
-
-    const data = await res.json()
-    
-    if (data.success) {
-      return {
-        imageUrl: data.imageUrl,
-        title: prompt.substring(0, 50),
-        prompt: prompt
-      }
-    } else {
-      return { error: data.error || 'Failed to generate image' }
-    }
-  }
-
-  const handlePlayPause = (messageId: string, audioUrl: string) => {
-    const audio = audioRefs.current[messageId]
-    
-    if (!audio) {
-      const newAudio = new Audio(audioUrl)
-      audioRefs.current[messageId] = newAudio
-      newAudio.play()
-      setPlayingId(messageId)
-      
-      newAudio.onended = () => setPlayingId(null)
-    } else {
-      if (playingId === messageId) {
-        audio.pause()
-        setPlayingId(null)
-      } else {
-        audio.play()
-        setPlayingId(messageId)
-      }
-    }
-  }
-
-  const handleDownload = (url: string, filename: string) => {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+  }, [user])
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col relative">
-      {/* Holographic 3D Background */}
-      <HolographicBackgroundClient />
-      
-      {/* Main Content Wrapper with higher z-index */}
-      <div className="relative z-10 flex-1 flex flex-col">
-        {/* Floating Menu */}
-        <FloatingMenu />
+    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-green-950 text-white overflow-hidden relative">
+      <div className="absolute inset-0 z-0 opacity-40">
+        <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
+          <ambientLight intensity={0.3} />
+          <pointLight position={[10, 10, 10]} color="#00ff9d" intensity={0.8} />
+          <AnimatedSphere />
+          <FloatingParticles />
+        </Canvas>
+      </div>
 
-        {/* Landing View - Centered Prompt (before activation) */}
-        {!isActivated && (
-          <div className="flex-1 flex flex-col items-center justify-center px-4 transition-opacity duration-500">
-          {/* Welcome Text */}
-          <div className="text-center mb-12 animate-fade-in">
-            <div className="flex items-center justify-center mb-6 gap-4">
-              <img src="/radio-logo.svg" alt="444 Radio" className="w-20 h-20 md:w-24 md:h-24 text-cyan-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]" style={{ filter: 'drop-shadow(0 0 20px rgba(34, 211, 238, 0.6))' }} />
-              <h1 className="text-6xl md:text-8xl font-black text-white leading-tight">
-                444 Radio
-              </h1>
-            </div>
-            <p className="text-xl text-gray-400 mb-12">
-              A world where music feels infinite.
-            </p>
+      {/* Navigation */}
+      <nav className="relative z-50 flex justify-between items-center p-4 md:p-6 backdrop-blur-xl bg-black/20 border-b border-green-500/20">
+        <Link href="/" className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/50">
+            <span className="text-black font-bold text-lg">🎵</span>
           </div>
-
-          {/* Centered Sleek Modern Input */}
-          <div className="w-full max-w-3xl mx-auto">
-            {/* Form Fields */}
-            <div className="flex flex-col gap-3">
-              {/* Title Input */}
-              <div className="group relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
-                  <Music size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                    placeholder="// Song Title..."
-                    style={{ fontFamily: "'Courier New', monospace" }}
-                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none text-sm tracking-wide focus:placeholder-cyan-400 transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Lyrics Textarea */}
-              <div className="group relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                <div className="relative flex gap-3 bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
-                  <Music size={18} className="text-cyan-400 flex-shrink-0 mt-1 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                  <textarea
-                    value={lyrics}
-                    onChange={(e) => setLyrics(e.target.value)}
-                    placeholder="// Your lyrics here (optional)..."
-                    rows={4}
-                    style={{ fontFamily: "'Courier New', monospace" }}
-                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none text-sm tracking-wide focus:placeholder-cyan-400 transition-all resize-none"
-                  />
-                </div>
-              </div>
-
-              {/* Genre Input */}
-              <div className="group relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
-                  <Music size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                  <input
-                    type="text"
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                    placeholder="// Genre (e.g., Pop, Rock, Hip-Hop)..."
-                    style={{ fontFamily: "'Courier New', monospace" }}
-                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none text-sm tracking-wide focus:placeholder-cyan-400 transition-all"
-                  />
-                </div>
-              </div>
-              
-              {/* Cover Art Generation Prompt */}
-              <div className="group relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-3 border border-cyan-500/20 hover:border-cyan-500/40 transition-all duration-300">
-                  <ImageIcon size={18} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                  <input
-                    type="text"
-                    value={coverArtPrompt}
-                    onChange={(e) => setCoverArtPrompt(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                    placeholder="// Cover art description (optional)..."
-                    style={{ fontFamily: "'Courier New', monospace" }}
-                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none text-sm tracking-wide focus:placeholder-cyan-400 transition-all"
-                  />
-                </div>
-              </div>
-              
-              {/* Send Button - Gamified Design */}
-              <button
-                onClick={handleGenerate}
-                disabled={!title.trim() && !lyrics.trim()}
-                className="group relative w-full mt-3 px-6 py-4 bg-gradient-to-r from-cyan-600 via-blue-600 to-blue-700 hover:from-cyan-500 hover:via-blue-500 hover:to-blue-600 rounded-2xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:from-cyan-600 flex items-center justify-center gap-3 font-bold text-sm tracking-widest shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 disabled:shadow-none overflow-hidden"
-                title="Create with AI"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-blue-400 to-blue-500 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-                <Music size={20} className="text-white z-10" />
-                <span className="text-white z-10">CREATE</span>
-              </button>
+          <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">444RADIO</span>
+        </Link>
+        <div className="flex items-center gap-4">
+          <SignedIn>
+            <Link href="/explore" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Explore</Link>
+            <Link href="/billboard" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Charts</Link>
+            <Link href={`/profile/${user?.id}`} className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Profile</Link>
+            {/* Credits Display */}
+            <div className="hidden md:flex items-center gap-2 px-4 py-2 backdrop-blur-lg bg-green-500/10 border border-green-500/30 rounded-full">
+              <span className="text-2xl">⚡</span>
+              <span className="text-green-400 font-bold">{credits}</span>
+              <span className="text-green-400/60 text-xs">credits</span>
             </div>
-
-            {/* Quick Info - Sleeker */}
-            <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-600 font-mono tracking-wider">
-              <span className="text-red-400">2 CR</span>
-              <span className="text-gray-700">⚡</span>
-              <span className="text-cyan-400">1 CR</span>
-            </div>
-          </div>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+          <SignedOut>
+            <Link href="/sign-in" className="px-6 py-2 text-green-400 hover:text-green-300 font-medium">Sign In</Link>
+            <Link href="/sign-up" className="px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold hover:scale-105 transition-transform">Join Free</Link>
+          </SignedOut>
         </div>
-      )}
+      </nav>
 
-      {/* Chat Area - Shows after activation */}
-      {isActivated && (
-        <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full animate-fade-in">
-          <div className="space-y-6">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-2xl p-4 backdrop-blur-xl ${
-                  message.type === 'user'
-                    ? 'bg-white/10 border border-white/20 text-white'
-                    : message.type === 'assistant'
-                    ? 'bg-white/5 border border-white/10 text-gray-300'
-                    : 'bg-[#1e1b4b]/80 border border-[#4f46e5]/50 text-white'
-                }`}
-              >
-                {/* Message Content */}
-                <p className="text-sm mb-2">{message.content}</p>
+      <main className="relative z-10">
+        <SignedOut>
+          {/* Landing Page */}
+          <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6 text-center">
+            <div className="mb-8">
+              <div className="inline-block px-4 py-2 backdrop-blur-lg bg-green-500/10 border border-green-500/30 rounded-full mb-6">
+                <span className="text-green-400 font-semibold text-sm">✨ AI-POWERED MUSIC SOCIAL NETWORK</span>
+              </div>
+              <h1 className="text-6xl md:text-8xl font-black mb-6 bg-gradient-to-r from-green-400 via-cyan-400 to-green-300 bg-clip-text text-transparent leading-tight">
+                Everyone is an Artist
+              </h1>
+              <p className="text-xl md:text-2xl text-green-100/80 mb-12 max-w-3xl mx-auto font-light">
+                Generate music with AI. Create stunning visuals. Build your sound. <br/>
+                <span className="text-green-400 font-semibold">Instagram for AI Music</span>
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 mb-12">
+              <Link href="/sign-up" className="px-10 py-4 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-xl shadow-green-500/50">
+                🚀 Start Creating Free
+              </Link>
+              <Link href="/explore" className="px-10 py-4 backdrop-blur-lg bg-green-500/10 border-2 border-green-500/30 text-green-400 rounded-full font-bold text-lg hover:bg-green-500/20 transition-all">
+                🎧 Explore Music
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mt-16">
+              <div className="backdrop-blur-xl bg-black/40 border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all">
+                <div className="text-4xl mb-3">🎵</div>
+                <h3 className="text-xl font-bold text-green-400 mb-2">AI Music Generation</h3>
+                <p className="text-green-100/60">Create unique tracks with MiniMax Music-1.5</p>
+              </div>
+              <div className="backdrop-blur-xl bg-black/40 border border-cyan-500/20 rounded-2xl p-6 hover:border-cyan-500/40 transition-all">
+                <div className="text-4xl mb-3">🎨</div>
+                <h3 className="text-xl font-bold text-cyan-400 mb-2">Cover Art & Video</h3>
+                <p className="text-green-100/60">Generate stunning visuals with Flux & Seedance</p>
+              </div>
+              <div className="backdrop-blur-xl bg-black/40 border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all">
+                <div className="text-4xl mb-3">🌍</div>
+                <h3 className="text-xl font-bold text-green-400 mb-2">Social Music Feed</h3>
+                <p className="text-green-100/60">Share, discover, and connect with artists</p>
+              </div>
+            </div>
+          </div>
+        </SignedOut>
 
-                {/* Music Generation Result */}
-                {message.result?.audioUrl && (
-                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex-1">
-                        <h4 className="font-bold text-white">{message.result.title}</h4>
-                        <p className="text-xs text-gray-400">{message.result.prompt}</p>
-                      </div>
-                      <button
-                        onClick={() => handlePlayPause(message.id, message.result!.audioUrl!)}
-                        className="p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-colors"
-                      >
-                        {playingId === message.id ? <Pause size={20} /> : <Play size={20} />}
-                      </button>
+        <SignedIn>
+          {/* Creation Hub */}
+          <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6">
+            <div className="max-w-6xl w-full">
+              {/* Header */}
+              <div className="text-center mb-12">
+                <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
+                  What do you want to create?
+                </h1>
+                <p className="text-xl text-green-100/60">
+                  Choose a creation type and customize your AI generation
+                </p>
+              </div>
+
+              {/* 3 Generation Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                
+                {/* MUSIC GENERATION CARD */}
+                <button
+                  onClick={() => setShowMusicModal(true)}
+                  className="group relative backdrop-blur-xl bg-gradient-to-br from-green-500/10 to-green-600/5 border-2 border-green-500/30 rounded-3xl p-8 hover:border-green-500/60 hover:shadow-2xl hover:shadow-green-500/20 hover:scale-105 transition-all duration-300"
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <div className="mb-6 p-6 bg-green-500/20 rounded-full group-hover:bg-green-500/30 transition-colors">
+                      <Music size={64} className="text-green-400" />
                     </div>
-                    
-                    {/* Audio Player */}
-                    <audio
-                      src={message.result.audioUrl}
-                      controls
-                      className="w-full"
-                    />
-
-                    {/* Lyrics */}
-                    {message.result.lyrics && (
-                      <details className="mt-3">
-                        <summary className="text-xs text-[#818cf8] cursor-pointer hover:text-[#7aa5d7]">
-                          View Lyrics
-                        </summary>
-                        <pre className="text-xs text-gray-300 mt-2 whitespace-pre-wrap">
-                          {message.result.lyrics}
-                        </pre>
-                      </details>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`)}
-                        className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
-                      >
-                        <Download size={14} />
-                        Download
-                      </button>
-                      <Link
-                        href="/library"
-                        className="flex-1 px-3 py-2 bg-[#4f46e5]/30 hover:bg-[#4f46e5]/50 border border-[#4f46e5]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
-                      >
-                        <Layers size={14} />
-                        View in Library
-                      </Link>
+                    <h2 className="text-3xl font-bold text-green-400 mb-3">Music</h2>
+                    <p className="text-green-100/70 mb-4">
+                      Generate unique music tracks with AI
+                    </p>
+                    <div className="text-sm text-green-400/60">
+                      MiniMax Music-1.5
                     </div>
-                  </div>
-                )}
-
-                {/* Image Generation Result */}
-                {message.result?.imageUrl && (
-                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10">
-                    <img
-                      src={message.result.imageUrl}
-                      alt={message.result.title}
-                      className="w-full aspect-square object-cover"
-                    />
-                    <div className="p-4">
-                      <h4 className="font-bold text-white mb-1">{message.result.title}</h4>
-                      <p className="text-xs text-gray-400 mb-3">{message.result.prompt}</p>
-                      
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleDownload(message.result!.imageUrl!, `${message.result!.title}.webp`)}
-                          className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
-                        >
-                          <Download size={14} />
-                          Download
-                        </button>
-                        <Link
-                          href="/library"
-                          className="flex-1 px-3 py-2 bg-[#4f46e5]/30 hover:bg-[#4f46e5]/50 border border-[#4f46e5]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
-                        >
-                          <Layers size={14} />
-                          View in Library
-                        </Link>
-                      </div>
+                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-green-500/20 rounded-full">
+                      <span className="text-xl">⚡</span>
+                      <span className="text-green-400 font-bold">1 credit</span>
                     </div>
                   </div>
-                )}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-green-500/0 to-green-500/0 group-hover:from-green-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
+                </button>
 
-                {/* Loading Indicator */}
-                {message.isGenerating && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <Loader2 className="animate-spin-slow text-[#818cf8]" size={16} />
-                    <span className="text-xs text-gray-400">Generating...</span>
+                {/* COVER ART GENERATION CARD */}
+                <button
+                  onClick={() => setShowCoverArtModal(true)}
+                  className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-2 border-cyan-500/30 rounded-3xl p-8 hover:border-cyan-500/60 hover:shadow-2xl hover:shadow-cyan-500/20 hover:scale-105 transition-all duration-300"
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <div className="mb-6 p-6 bg-cyan-500/20 rounded-full group-hover:bg-cyan-500/30 transition-colors">
+                      <ImageIcon size={64} className="text-cyan-400" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-cyan-400 mb-3">Cover Art</h2>
+                    <p className="text-green-100/70 mb-4">
+                      Create stunning album cover artwork
+                    </p>
+                    <div className="text-sm text-cyan-400/60">
+                      Flux Schnell
+                    </div>
+                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-cyan-500/20 rounded-full">
+                      <span className="text-xl">⚡</span>
+                      <span className="text-cyan-400 font-bold">1 credit</span>
+                    </div>
                   </div>
-                )}
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cyan-500/0 to-cyan-500/0 group-hover:from-cyan-500/5 group-hover:to-green-500/5 transition-all duration-300"></div>
+                </button>
 
-                {/* Timestamp */}
-                <p className="text-xs text-gray-600 mt-2">
-                  {message.timestamp.toLocaleTimeString()}
+                {/* COVER VIDEO GENERATION CARD */}
+                <button
+                  onClick={() => setShowCoverVideoModal(true)}
+                  className="group relative backdrop-blur-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-2 border-purple-500/30 rounded-3xl p-8 hover:border-purple-500/60 hover:shadow-2xl hover:shadow-purple-500/20 hover:scale-105 transition-all duration-300"
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <div className="mb-6 p-6 bg-purple-500/20 rounded-full group-hover:bg-purple-500/30 transition-colors">
+                      <Video size={64} className="text-purple-400" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-purple-400 mb-3">Cover Video</h2>
+                    <p className="text-green-100/70 mb-4">
+                      Generate animated music video visuals
+                    </p>
+                    <div className="text-sm text-purple-400/60">
+                      Seedance-1-lite
+                    </div>
+                    <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-full">
+                      <span className="text-xl">⚡</span>
+                      <span className="text-purple-400 font-bold">1 credit</span>
+                    </div>
+                  </div>
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-500/0 to-purple-500/0 group-hover:from-purple-500/5 group-hover:to-cyan-500/5 transition-all duration-300"></div>
+                </button>
+
+              </div>
+
+              {/* Info Text */}
+              <div className="text-center mt-12">
+                <p className="text-green-100/50 text-sm">
+                  Each generation uses 1 credit • You have <span className="text-green-400 font-bold">{credits} credits</span> remaining
                 </p>
               </div>
             </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-      )}
-
-      {/* Fixed Bottom Input Area - Only shows when activated - MOBILE */}
-      {isActivated && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 animate-slide-up">
-          <div className="max-w-4xl mx-auto">
-            {/* Individual Input Boxes - Mobile */}
-            <div className="flex flex-col gap-2">
-              {/* Title Input - Mobile */}
-              <div className="group relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
-                  <Music size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                    placeholder="// Song Title..."
-                    style={{ fontFamily: "'Courier New', monospace" }}
-                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 text-sm tracking-wide"
-                  />
-                </div>
-              </div>
-
-              {/* Lyrics - Mobile */}
-              <div className="group relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                <div className="relative flex gap-2 bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
-                  <Music size={16} className="text-cyan-400 flex-shrink-0 mt-1 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                  <textarea
-                    value={lyrics}
-                    onChange={(e) => setLyrics(e.target.value)}
-                    placeholder="// Lyrics (optional)..."
-                    rows={3}
-                    style={{ fontFamily: "'Courier New', monospace" }}
-                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 text-sm tracking-wide resize-none"
-                  />
-                </div>
-              </div>
-
-              {/* Genre - Mobile */}
-              <div className="group relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
-                  <Music size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                  <input
-                    type="text"
-                    value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                    placeholder="// Genre..."
-                    style={{ fontFamily: "'Courier New', monospace" }}
-                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 text-sm tracking-wide"
-                  />
-                </div>
-              </div>
-              
-              {/* Cover Art - Mobile */}
-              <div className="group relative">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-300"></div>
-                <div className="relative flex gap-2 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-4 py-2.5 border border-cyan-500/20 hover:border-cyan-500/40">
-                  <ImageIcon size={16} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-                  <input
-                    type="text"
-                    value={coverArtPrompt}
-                    onChange={(e) => setCoverArtPrompt(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                    placeholder="// Cover art (optional)..."
-                    style={{ fontFamily: "'Courier New', monospace" }}
-                    className="flex-1 px-0 py-1 bg-transparent border-none text-white placeholder-gray-400 focus:outline-none focus:placeholder-cyan-400 text-sm tracking-wide"
-                  />
-                </div>
-              </div>
-              
-              {/* Send Button - Gamified Mobile */}
-              <button
-                onClick={handleGenerate}
-                disabled={!title.trim() && !lyrics.trim()}
-                className="group relative w-full mt-3 px-6 py-3.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-blue-700 hover:from-cyan-500 hover:via-blue-500 hover:to-blue-600 rounded-2xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold text-sm tracking-widest shadow-lg shadow-cyan-500/30 overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-blue-400 to-blue-500 blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
-                <Music size={18} className="text-white z-10" />
-                <span className="text-white z-10">CREATE</span>
-              </button>
-            </div>
-
-            {/* Quick Info - Mobile */}
-            <div className="flex items-center justify-center gap-3 mt-3 text-xs text-gray-600 font-mono">
-              <span className="text-red-400">2 CR</span>
-              <span className="text-gray-700">⚡</span>
-              <span className="text-cyan-400">1 CR</span>
-            </div>
           </div>
-        </div>
-      )}
-      </div> {/* Close Main Content Wrapper */}
+        </SignedIn>
+      </main>
 
-      {/* Music Generation Modal */}
-      <MusicGenerationModal
-        isOpen={showMusicModal}
-        onClose={() => setShowMusicModal(false)}
-        onSuccess={(audioUrl: string, prompt: string) => {
-          // Extract title and lyrics from the generated music
-          // This will be called after successful generation
-          handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
-        }}
-      />
+      {/* TODO: Add modals here */}
+      {showMusicModal && <div>Music Modal Coming Soon</div>}
+      {showCoverArtModal && <div>Cover Art Modal Coming Soon</div>}
+      {showCoverVideoModal && <div>Cover Video Modal Coming Soon</div>}
     </div>
   )
 }
