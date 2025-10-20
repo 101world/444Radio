@@ -320,3 +320,4 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
     </div>
   )
 }
+

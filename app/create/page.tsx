@@ -251,7 +251,7 @@ export default function CreatePage() {
                     ? 'bg-white/10 border border-white/20 text-white'
                     : message.type === 'assistant'
                     ? 'bg-white/5 border border-white/10 text-gray-300'
-                    : 'bg-[#1a2332]/80 border border-[#2d4a6e]/50 text-white'
+                    : 'bg-[#1e1b4b]/80 border border-[#4f46e5]/50 text-white'
                 }`}
               >
                 {/* Message Content */}
@@ -267,7 +267,7 @@ export default function CreatePage() {
                       </div>
                       <button
                         onClick={() => handlePlayPause(message.id, message.result!.audioUrl!)}
-                        className="p-3 bg-[#2d4a6e] hover:bg-[#3d5a7e] rounded-full transition-colors"
+                        className="p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-colors"
                       >
                         {playingId === message.id ? <Pause size={20} /> : <Play size={20} />}
                       </button>
@@ -283,7 +283,7 @@ export default function CreatePage() {
                     {/* Lyrics */}
                     {message.result.lyrics && (
                       <details className="mt-3">
-                        <summary className="text-xs text-[#5a8fc7] cursor-pointer hover:text-[#7aa5d7]">
+                        <summary className="text-xs text-[#818cf8] cursor-pointer hover:text-[#7aa5d7]">
                           View Lyrics
                         </summary>
                         <pre className="text-xs text-gray-300 mt-2 whitespace-pre-wrap">
@@ -303,7 +303,7 @@ export default function CreatePage() {
                       </button>
                       <Link
                         href="/library"
-                        className="flex-1 px-3 py-2 bg-[#2d4a6e]/30 hover:bg-[#2d4a6e]/50 border border-[#2d4a6e]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                        className="flex-1 px-3 py-2 bg-[#4f46e5]/30 hover:bg-[#4f46e5]/50 border border-[#4f46e5]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
                       >
                         <Layers size={14} />
                         View in Library
@@ -334,7 +334,7 @@ export default function CreatePage() {
                         </button>
                         <Link
                           href="/library"
-                          className="flex-1 px-3 py-2 bg-[#2d4a6e]/30 hover:bg-[#2d4a6e]/50 border border-[#2d4a6e]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                          className="flex-1 px-3 py-2 bg-[#4f46e5]/30 hover:bg-[#4f46e5]/50 border border-[#4f46e5]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
                         >
                           <Layers size={14} />
                           View in Library
@@ -347,7 +347,7 @@ export default function CreatePage() {
                 {/* Loading Indicator */}
                 {message.isGenerating && (
                   <div className="flex items-center gap-2 mt-2">
-                    <Loader2 className="animate-spin text-[#5a8fc7]" size={16} />
+                    <Loader2 className="animate-spin text-[#818cf8]" size={16} />
                     <span className="text-xs text-gray-400">Generating...</span>
                   </div>
                 )}
@@ -437,7 +437,7 @@ export default function CreatePage() {
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !input.trim() || selectedType === 'video'}
-                className="p-3 bg-[#2d4a6e] hover:bg-[#3d5a7e] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#2d4a6e] flex items-center justify-center"
+                className="p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#4f46e5] flex items-center justify-center"
               >
                 {isGenerating ? (
                   <Loader2 className="animate-spin text-white" size={20} />
@@ -449,9 +449,9 @@ export default function CreatePage() {
 
             {/* Quick Info */}
             <div className="flex items-center justify-center gap-3 mt-3 text-xs text-gray-500 px-3">
-              <span className="text-[#5a8fc7]">2 credits for music</span>
+              <span className="text-[#818cf8]">2 credits for music</span>
               <span>•</span>
-              <span className="text-[#5a8fc7]">1 credit for images</span>
+              <span className="text-[#818cf8]">1 credit for images</span>
             </div>
           </div>
         </div>
@@ -470,3 +470,4 @@ export default function CreatePage() {
     </div>
   )
 }
+

@@ -337,3 +337,4 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
     </div>
   )
 }
+

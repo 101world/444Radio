@@ -24,11 +24,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Get username from users table
+    const { data: userData } = await supabase
+      .from('users')
+      .select('username')
+      .eq('clerk_user_id', userId)
+      .single()
+
     // Insert combined media into database
     const { data, error } = await supabase
       .from('combined_media')
       .insert({
         user_id: userId,
+        username: userData?.username || 'anonymous',
         audio_url: audioUrl,
         image_url: imageUrl,
         title: title || 'Untitled Track',
@@ -96,3 +104,4 @@ export async function GET() {
     )
   }
 }
+

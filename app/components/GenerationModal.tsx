@@ -394,3 +394,4 @@ export default function GenerationModal({ isOpen, onClose, songId, prompt, outpu
     </div>
   )
 }
+

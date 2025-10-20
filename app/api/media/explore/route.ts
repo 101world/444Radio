@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get('limit')) || 20
     const offset = Number(searchParams.get('offset')) || 0
 
-    // Fetch public combined media
+    // Fetch public combined media with username
     const { data, error } = await supabase
       .from('combined_media')
       .select('*')
@@ -28,18 +28,26 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Fetch usernames separately to avoid JOIN issues
+    // Username is now directly in combined_media table
+    // But if username is missing (old records), fetch from users table
     const mediaWithUsers = await Promise.all(
       (data || []).map(async (media) => {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('username')
-          .eq('clerk_user_id', media.user_id)
-          .single()
+        let username = media.username
+        
+        // Fallback: if username is missing, fetch from users table
+        if (!username || username === 'anonymous') {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('username')
+            .eq('clerk_user_id', media.user_id)
+            .single()
+          
+          username = userData?.username || 'Unknown User'
+        }
         
         return {
           ...media,
-          users: { username: userData?.username || 'Unknown User' }
+          users: { username }
         }
       })
     )
@@ -56,3 +64,4 @@ export async function GET(req: NextRequest) {
     )
   }
 }
+

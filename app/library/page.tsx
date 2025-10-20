@@ -132,9 +132,9 @@ export default function LibraryPage() {
       <FloatingMenu />
 
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
-        {/* Header - Clean and centered like create page */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-black text-white">
+        {/* Header - Top Left */}
+        <div className="mb-12">
+          <h1 className="text-3xl md:text-4xl font-black text-white">
             Library
           </h1>
         </div>
@@ -142,7 +142,7 @@ export default function LibraryPage() {
         {/* Loading State */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a8fc7] mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#818cf8] mb-4"></div>
             <p className="text-gray-400">Loading...</p>
           </div>
         )}
@@ -164,11 +164,11 @@ export default function LibraryPage() {
                 {musicItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#2d4a6e]/50 transition-all"
+                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#4f46e5]/50 transition-all"
                   >
                     {/* Thumbnail */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#2d4a6e]/20 to-[#5a8fc7]/20 flex items-center justify-center">
-                      <Music size={32} className="text-[#5a8fc7]" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#4f46e5]/20 to-[#818cf8]/20 flex items-center justify-center">
+                      <Music size={32} className="text-[#818cf8]" />
                     </div>
 
                     {/* Hover Overlay */}
@@ -217,7 +217,7 @@ export default function LibraryPage() {
                 {imageItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#2d4a6e]/50 transition-all"
+                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#4f46e5]/50 transition-all"
                   >
                     {/* Image Thumbnail */}
                     <img
@@ -263,7 +263,7 @@ export default function LibraryPage() {
                 <Layers size={48} className="text-gray-600 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">No combined media yet</h3>
                 <p className="text-gray-400 mb-6">Combine music with cover art to create releases</p>
-                <Link href="/" className="px-6 py-3 bg-[#2d4a6e] text-white rounded-full font-bold inline-block hover:bg-[#3d5a7e] transition-all">
+                <Link href="/" className="px-6 py-3 bg-[#4f46e5] text-white rounded-full font-bold inline-block hover:bg-[#6366f1] transition-all">
                   Combine Media
                 </Link>
               </div>
@@ -272,7 +272,7 @@ export default function LibraryPage() {
                 {combinedItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#2d4a6e]/50 transition-all"
+                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#4f46e5]/50 transition-all"
                   >
                     {/* Cover Art Thumbnail */}
                     <img
@@ -283,7 +283,7 @@ export default function LibraryPage() {
 
                     {/* Published Badge */}
                     {item.is_published && (
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-[#2d4a6e] backdrop-blur-xl rounded-full text-xs font-bold text-white">
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-[#4f46e5] backdrop-blur-xl rounded-full text-xs font-bold text-white">
                         Published
                       </div>
                     )}
@@ -293,7 +293,7 @@ export default function LibraryPage() {
                       {!item.is_published && (
                         <button
                           onClick={() => handleSendToLabel(item.id)}
-                          className="p-2 bg-[#2d4a6e] backdrop-blur-xl rounded-lg hover:bg-[#3d5a7e] transition-colors"
+                          className="p-2 bg-[#4f46e5] backdrop-blur-xl rounded-lg hover:bg-[#6366f1] transition-colors"
                         >
                           <Send size={16} className="text-white" />
                         </button>
@@ -357,7 +357,7 @@ export default function LibraryPage() {
                 onClick={() => setActiveTab('combined')}
                 className={`px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
                   activeTab === 'combined'
-                    ? 'bg-[#2d4a6e] text-white'
+                    ? 'bg-[#4f46e5] text-white'
                     : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
                 }`}
               >
@@ -371,3 +371,4 @@ export default function LibraryPage() {
     </div>
   )
 }
+

@@ -49,7 +49,7 @@ export default function FloatingMenu() {
                   
                   {/* Credits */}
                   <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full w-fit">
-                    <Zap className="text-[#5a8fc7]" size={18} />
+                    <Zap className="text-[#818cf8]" size={18} />
                     <span className="text-white font-bold text-sm">20 credits</span>
                   </div>
                 </div>
@@ -173,3 +173,4 @@ export default function FloatingMenu() {
     </>
   )
 }
+

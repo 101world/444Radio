@@ -86,20 +86,20 @@ export default function ExplorePage() {
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Header with 444hz Title and Search */}
+      {/* Header with 444hz Title (Top Left) and Search */}
       <div className="pt-24 px-4 md:px-8 pb-6">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-6xl md:text-8xl font-black text-center mb-6 text-white">444hz</h1>
+          <h1 className="text-3xl md:text-4xl font-black mb-6 text-white">444 Radio</h1>
           
           {/* Search Bar */}
-          <div className="relative max-w-2xl mx-auto">
+          <div className="relative max-w-2xl">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
               placeholder="Search tracks, artists, genres..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-[#5a8fc7] transition-all"
+              className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-[#818cf8] transition-all"
             />
           </div>
         </div>
@@ -130,8 +130,8 @@ export default function ExplorePage() {
                   {/* 3D Glassmorphism Card with Playing State */}
                   <div className={`relative aspect-square backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300 ${
                     playingId === media.id 
-                      ? 'bg-[#2d4a6e]/30 border-2 border-[#5a8fc7] shadow-2xl shadow-[#5a8fc7]/50 scale-[1.02]' 
-                      : 'bg-white/5 border border-white/10 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#5a8fc7]/20 hover:border-[#5a8fc7]/30'
+                      ? 'bg-[#4f46e5]/30 border-2 border-[#818cf8] shadow-2xl shadow-[#818cf8]/50 scale-[1.02]' 
+                      : 'bg-white/5 border border-white/10 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#818cf8]/20 hover:border-[#818cf8]/30'
                   }`}>
                     {/* Image */}
                     <img 
@@ -142,7 +142,7 @@ export default function ExplorePage() {
                     
                     {/* Playing Indicator */}
                     {playingId === media.id && (
-                      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-[#5a8fc7] rounded-full animate-pulse">
+                      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-[#818cf8] rounded-full animate-pulse">
                         <Radio size={12} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
                         <span className="text-xs font-bold text-white">LIVE</span>
                       </div>
@@ -153,7 +153,7 @@ export default function ExplorePage() {
                       onClick={() => handlePlay(media)}
                       className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer flex items-center justify-center"
                     >
-                      <button className="w-16 h-16 bg-[#5a8fc7] hover:bg-[#7aa5d7] rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl">
+                      <button className="w-16 h-16 bg-[#818cf8] hover:bg-[#7aa5d7] rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl">
                         {playingId === media.id && isPlaying ? (
                           <Pause className="text-white" size={28} />
                         ) : (
@@ -167,7 +167,7 @@ export default function ExplorePage() {
                       <p className="text-xs font-bold text-white truncate">{media.title}</p>
                       <Link 
                         href={`/u/${media.users.username}`}
-                        className="text-xs text-[#5a8fc7] hover:text-[#7aa5d7] font-semibold"
+                        className="text-xs text-[#818cf8] hover:text-[#7aa5d7] font-semibold"
                       >
                         @{media.users.username}
                       </Link>
@@ -183,7 +183,7 @@ export default function ExplorePage() {
       {/* Floating Digital Radio Player */}
       {currentTrack && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
-          <div className="bg-gradient-to-r from-[#2d4a6e]/95 via-[#3d5a7e]/95 to-[#2d4a6e]/95 backdrop-blur-2xl border border-[#5a8fc7]/30 rounded-2xl shadow-2xl shadow-[#5a8fc7]/50 p-4 min-w-[300px] md:min-w-[400px]">
+          <div className="bg-gradient-to-r from-[#4f46e5]/95 via-[#6366f1]/95 to-[#4f46e5]/95 backdrop-blur-2xl border border-[#818cf8]/30 rounded-2xl shadow-2xl shadow-[#818cf8]/50 p-4 min-w-[300px] md:min-w-[400px]">
             <div className="flex items-center gap-4">
               {/* Album Art */}
               <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
@@ -194,7 +194,7 @@ export default function ExplorePage() {
                 />
                 {isPlaying && (
                   <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                    <Radio size={20} className="text-[#5a8fc7] animate-spin" style={{ animationDuration: '3s' }} />
+                    <Radio size={20} className="text-[#818cf8] animate-spin" style={{ animationDuration: '3s' }} />
                   </div>
                 )}
               </div>
@@ -202,8 +202,8 @@ export default function ExplorePage() {
               {/* Track Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <Radio size={12} className="text-[#5a8fc7] animate-pulse" />
-                  <span className="text-xs font-bold text-[#5a8fc7]">NOW PLAYING</span>
+                  <Radio size={12} className="text-[#818cf8] animate-pulse" />
+                  <span className="text-xs font-bold text-[#818cf8]">NOW PLAYING</span>
                 </div>
                 <p className="text-sm font-black text-white truncate">{currentTrack.title}</p>
                 <p className="text-xs text-gray-300 truncate">@{currentTrack.users.username}</p>
@@ -219,7 +219,7 @@ export default function ExplorePage() {
                 </button>
                 <button 
                   onClick={() => currentTrack && handlePlay(currentTrack)}
-                  className="w-10 h-10 bg-[#5a8fc7] hover:bg-[#7aa5d7] rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-lg"
+                  className="w-10 h-10 bg-[#818cf8] hover:bg-[#7aa5d7] rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-lg"
                 >
                   {isPlaying ? (
                     <Pause size={18} className="text-white" />
@@ -272,3 +272,4 @@ export default function ExplorePage() {
     </div>
   )
 }
+

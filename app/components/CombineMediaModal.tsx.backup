@@ -202,14 +202,14 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl">
-      <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-[#1a1f3a] via-[#2d1b4e] to-[#0f1419] rounded-3xl border border-[#6366f1]/30 shadow-2xl shadow-[#6366f1]/20 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+      <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-900 to-purple-950/30 rounded-3xl border border-purple-500/20 shadow-2xl shadow-purple-500/10">
         
         {/* Close Button */}
         {!isCombining && (
           <button
             onClick={onClose}
-            className="absolute top-6 right-6 p-2 text-[#818cf8] hover:text-[#a78bfa] transition-colors z-10"
+            className="absolute top-6 right-6 p-2 text-purple-400 hover:text-purple-300 transition-colors z-10"
           >
             <X size={24} />
           </button>
@@ -218,24 +218,24 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
         <div className="p-8">
           {/* Header */}
           <div className="mb-8">
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-[#818cf8] via-[#a78bfa] to-[#c084fc] bg-clip-text text-transparent mb-2">
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
               Combine Media
             </h2>
-            <p className="text-[#818cf8]/60">Select music + cover art from your library to create a release</p>
+            <p className="text-purple-400/60">Select music + cover art from your library to create a release</p>
           </div>
 
           {/* Loading State */}
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#818cf8] mb-4"></div>
-              <p className="text-[#818cf8]">Loading your library...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mb-4"></div>
+              <p className="text-purple-400">Loading your library...</p>
             </div>
           )}
 
           {/* Combined Preview */}
           {combinedResult && (
-            <div className="mb-8 p-6 bg-gradient-to-br from-[#4f46e5]/20 via-[#6366f1]/20 to-[#818cf8]/20 rounded-2xl border border-[#6366f1]/40 backdrop-blur-xl shadow-lg shadow-[#6366f1]/10">
-              <h3 className="text-xl font-bold bg-gradient-to-r from-[#818cf8] to-[#a78bfa] bg-clip-text text-transparent mb-4">
+            <div className="mb-8 p-6 bg-gradient-to-br from-green-500/20 to-cyan-500/20 rounded-2xl border border-green-500/30">
+              <h3 className="text-xl font-bold text-green-400 mb-4">
                 {savedMediaId ? '🎉 Saved to Profile!' : '✅ Combined Media Ready!'}
               </h3>
               <div className="flex items-center gap-6">
@@ -261,14 +261,14 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                       <button 
                         onClick={handleSaveToProfile}
                         disabled={isSaving}
-                        className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white rounded-xl font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#6366f1]/30"
+                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-white rounded-xl font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                       >
                         {isSaving ? '💾 Saving...' : '💾 Save to Profile'}
                       </button>
                     ) : (
                       <button 
                         onClick={onClose}
-                        className="px-6 py-3 bg-gradient-to-r from-[#818cf8] to-[#a78bfa] text-white rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg shadow-[#818cf8]/30"
+                        className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:scale-105 transition-transform"
                       >
                         ✨ View in Profile
                       </button>
@@ -280,7 +280,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                         a.download = 'music.mp3'
                         a.click()
                       }}
-                      className="px-6 py-3 bg-[#4f46e5]/20 border border-[#6366f1]/30 text-[#818cf8] rounded-xl font-semibold hover:bg-[#4f46e5]/30 transition-colors backdrop-blur-xl"
+                      className="px-6 py-3 bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl font-semibold hover:bg-purple-500/30 transition-colors"
                     >
                       <Download size={20} className="inline mr-2" />
                       Download Audio
@@ -292,7 +292,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                         a.download = 'cover.webp'
                         a.click()
                       }}
-                      className="px-6 py-3 bg-[#4f46e5]/20 border border-[#6366f1]/30 text-[#818cf8] rounded-xl font-semibold hover:bg-[#4f46e5]/30 transition-colors backdrop-blur-xl"
+                      className="px-6 py-3 bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl font-semibold hover:bg-purple-500/30 transition-colors"
                     >
                       <Download size={20} className="inline mr-2" />
                       Download Image
@@ -438,4 +438,3 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
     </div>
   )
 }
-

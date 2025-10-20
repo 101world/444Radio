@@ -39,7 +39,7 @@ export default function BillboardPage() {
 
       {/* Header */}
       <div className="relative overflow-hidden pt-24">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#2d4a6e]/10 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#4f46e5]/10 to-transparent"></div>
         <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-12">
           <h1 className="text-5xl md:text-7xl font-black mb-4 text-white">
             🏆 Billboard Charts
@@ -72,7 +72,7 @@ export default function BillboardPage() {
           <select
             value={genre}
             onChange={(e) => setGenre(e.target.value)}
-            className="px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl text-white focus:border-[#5a8fc7] focus:outline-none"
+            className="px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl text-white focus:border-[#818cf8] focus:outline-none"
           >
             <option value="all">All Genres</option>
             <option value="pop">Pop</option>
@@ -108,7 +108,7 @@ export default function BillboardPage() {
               <Link
                 key={song.id}
                 href={`/song/${song.id}`}
-                className="group flex items-center gap-4 p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:border-[#2d4a6e]/50 hover:bg-white/10 transition-all"
+                className="group flex items-center gap-4 p-4 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl hover:border-[#4f46e5]/50 hover:bg-white/10 transition-all"
               >
                 {/* Rank */}
                 <div className="flex flex-col items-center min-w-[60px]">
@@ -116,25 +116,25 @@ export default function BillboardPage() {
                     song.rank === 1 ? 'text-yellow-400' :
                     song.rank === 2 ? 'text-gray-300' :
                     song.rank === 3 ? 'text-orange-400' :
-                    'text-[#5a8fc7]'
+                    'text-[#818cf8]'
                   }`}>
                     #{song.rank}
                   </div>
                   {song.rankChange !== 0 && (
-                    <div className={`text-xs font-bold ${song.rankChange > 0 ? 'text-[#5a8fc7]' : 'text-red-400'}`}>
+                    <div className={`text-xs font-bold ${song.rankChange > 0 ? 'text-[#818cf8]' : 'text-red-400'}`}>
                       {song.rankChange > 0 ? '↑' : '↓'} {Math.abs(song.rankChange)}
                     </div>
                   )}
                 </div>
 
                 {/* Cover Art */}
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#2d4a6e]/20 to-[#5a8fc7]/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#4f46e5]/20 to-[#818cf8]/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                   🎵
                 </div>
 
                 {/* Song Info */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold text-white truncate group-hover:text-[#5a8fc7] transition-colors">
+                  <h3 className="text-lg font-bold text-white truncate group-hover:text-[#818cf8] transition-colors">
                     {song.title}
                   </h3>
                   <p className="text-sm text-gray-400 truncate">by {song.user.username}</p>
@@ -143,11 +143,11 @@ export default function BillboardPage() {
                 {/* Stats */}
                 <div className="hidden md:flex items-center gap-6 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-[#5a8fc7]">▶️</span>
+                    <span className="text-[#818cf8]">▶️</span>
                     <span className="text-white">{song.plays.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[#5a8fc7]">❤️</span>
+                    <span className="text-[#818cf8]">❤️</span>
                     <span className="text-white">{song.likes.toLocaleString()}</span>
                   </div>
                   <span className="px-3 py-1 bg-white/10 backdrop-blur-xl border border-white/10 rounded-full text-gray-300 text-xs font-semibold">
@@ -162,3 +162,4 @@ export default function BillboardPage() {
     </div>
   )
 }
+

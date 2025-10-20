@@ -244,3 +244,4 @@ export default function CoverVideoGenerationModal({ isOpen, onClose, userCredits
     </div>
   )
 }
+

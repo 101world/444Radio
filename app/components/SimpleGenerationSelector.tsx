@@ -79,3 +79,4 @@ export default function SimpleGenerationSelector({ onSelectMusic, onSelectCoverA
     </div>
   )
 }
+
