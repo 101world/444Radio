@@ -87,22 +87,22 @@ export default function ExplorePage() {
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Header with 444hz Title (Top Left) and Search */}
+      {/* Simple Search - Just Text and Send */}
       <div className="pt-24 px-4 md:px-8 pb-6">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-black mb-6 text-white">444 Radio</h1>
-          
-          {/* Search Bar */}
-          <div className="relative max-w-2xl">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search tracks, artists, genres..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-[#818cf8] transition-all"
-            />
-          </div>
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 px-6 py-3 bg-transparent border-b-2 border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-[#818cf8] transition-all text-lg"
+          />
+          <button 
+            onClick={() => fetchCombinedMedia()}
+            className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#818cf8] rounded-full font-semibold hover:scale-105 transition-transform"
+          >
+            Send
+          </button>
         </div>
       </div>
 
@@ -247,30 +247,6 @@ export default function ExplorePage() {
         </div>
       )}
 
-      {/* Right-Side Vertical Category Slider - Attached to Player Height */}
-      {currentTrack && (
-        <div className="fixed right-4 bottom-24 z-40 hidden lg:block">
-          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl p-3 shadow-2xl h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#6366f1] scrollbar-track-white/5">
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-bold text-[#818cf8] mb-2 text-center">CATEGORIES</p>
-            {['Trending', 'New', 'Top', 'Pop', 'Hip-Hop', 'Electronic', 'Jazz', 'Rock', 'Classical', 'R&B', 'Country', 'Indie', 'Metal', 'Blues', 'Reggae', 'Folk'].map((category) => (
-              <button
-                key={category}
-                onClick={() => setFilter(category.toLowerCase())}
-                className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap transition-all text-sm ${
-                  filter === category.toLowerCase()
-                    ? 'bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white shadow-lg'
-                    : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
-        </div>
-      )}
-
       {/* Hidden Audio Element */}
       <audio 
         ref={audioRef}
@@ -278,30 +254,6 @@ export default function ExplorePage() {
         onPause={() => setIsPlaying(false)}
         onPlay={() => setIsPlaying(true)}
       />
-
-      {/* Bottom-Docked Category Tabs with Horizontal Scroll */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 z-40">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-2 shadow-2xl">
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide px-2">
-              {['Trending', 'New', 'Top', 'Pop', 'Hip-Hop', 'Electronic', 'Jazz', 'Rock', 'Classical', 'R&B', 'Country'].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f.toLowerCase())}
-                  className={`px-4 py-2 rounded-full font-semibold whitespace-nowrap transition-all text-sm ${
-                    filter === f.toLowerCase()
-                      ? 'bg-white text-black shadow-lg'
-                      : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
-

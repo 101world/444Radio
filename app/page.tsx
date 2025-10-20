@@ -6,6 +6,7 @@ import { UserButton } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
 import MusicGenerationModal from './components/MusicGenerationModal'
 import FloatingMenu from './components/FloatingMenu'
+import BlackholeBackground from './components/BlackholeBackground'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -242,6 +243,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative">
+      {/* 3D Pixel Dust Blackhole Background */}
+      <BlackholeBackground />
+      
       {/* Floating Menu */}
       <FloatingMenu />
 
