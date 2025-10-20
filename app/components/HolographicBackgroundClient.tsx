@@ -51,12 +51,13 @@ export default function HolographicBackground() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     
-    // Make the canvas itself clickable, not the container
+    // Make the canvas itself clickable and visible
     renderer.domElement.style.position = 'fixed';
     renderer.domElement.style.top = '0';
     renderer.domElement.style.left = '0';
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
+    renderer.domElement.style.zIndex = '0';
     renderer.domElement.style.pointerEvents = 'auto';
     
     containerRef.current.appendChild(renderer.domElement);
@@ -425,8 +426,10 @@ export default function HolographicBackground() {
   return (
     <div 
       ref={containerRef} 
-      className="fixed inset-0 -z-10 pointer-events-none"
+      className="fixed inset-0"
       style={{
+        zIndex: 0,
+        pointerEvents: 'none',
         background: 'radial-gradient(ellipse at center, #000511 0%, #000000 100%)',
       }}
     />

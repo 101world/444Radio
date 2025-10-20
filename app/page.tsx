@@ -246,12 +246,14 @@ export default function HomePage() {
       {/* Holographic 3D Background */}
       <HolographicBackground />
       
-      {/* Floating Menu */}
-      <FloatingMenu />
+      {/* Main Content Wrapper with higher z-index */}
+      <div className="relative z-10 flex-1 flex flex-col">
+        {/* Floating Menu */}
+        <FloatingMenu />
 
-      {/* Landing View - Centered Prompt (before activation) */}
-      {!isActivated && (
-        <div className="flex-1 flex flex-col items-center justify-center px-4 transition-opacity duration-500">
+        {/* Landing View - Centered Prompt (before activation) */}
+        {!isActivated && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 transition-opacity duration-500">
           {/* Welcome Text */}
           <div className="text-center mb-12 animate-fade-in">
             <h1 className="text-6xl md:text-8xl font-black mb-6 text-white leading-tight">
@@ -591,6 +593,7 @@ export default function HomePage() {
         </div>
       </div>
       )}
+      </div> {/* Close Main Content Wrapper */}
 
       {/* Music Generation Modal */}
       <MusicGenerationModal
