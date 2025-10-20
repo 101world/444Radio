@@ -362,7 +362,7 @@ export default function HolographicBackground() {
       const scrollParallax = scrollY * 0.01; // Subtle scroll effect
       camera.position.z = initialCameraZ + dollyDistance + scrollParallax;
 
-      // Animate blobs
+      // Animate blobs with cursor interaction
       blobs.forEach((blob, i) => {
         blob.rotation.x += 0.001 * (i + 1);
         blob.rotation.y += 0.002 * (i + 1);
@@ -372,9 +372,26 @@ export default function HolographicBackground() {
         blob.position.y += Math.sin(time * speed) * 0.02;
         blob.position.x += Math.cos(time * speed * 0.7) * 0.02;
 
+        // Cursor interaction - scale and glow on hover
+        const distX = mouseRef.current.x * 30 - blob.position.x;
+        const distY = mouseRef.current.y * 30 - blob.position.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+        
+        if (distance < 25) {
+          // Scale up when cursor is near
+          const scaleFactor = 1 + (25 - distance) / 50;
+          blob.scale.setScalar(scaleFactor);
+          // Increase opacity
+          (blob.material as THREE.MeshBasicMaterial).opacity = 1.0;
+        } else {
+          // Return to normal
+          blob.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+          (blob.material as THREE.MeshBasicMaterial).opacity = 0.8;
+        }
+
         // Iridescent color shift
         const hue = (0.5 + Math.sin(time * 0.1 + i) * 0.15) % 1;
-        (blob.material as THREE.MeshPhysicalMaterial).color.setHSL(hue, 0.8, 0.5);
+        (blob.material as THREE.MeshBasicMaterial).color.setHSL(hue, 0.8, 0.5);
       });
 
       // Animate 3D text - small white floating text with cursor interaction
@@ -404,7 +421,7 @@ export default function HolographicBackground() {
         (textMesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.1, Math.min(0.4, 50 / distFromCamera));
       });
 
-      // Animate interactive wireframe shapes
+      // Animate interactive wireframe shapes with cursor attraction
       interactiveShapes.forEach((shape, i) => {
         // Apply custom rotation speeds
         shape.rotation.x += shape.userData.rotationSpeed.x;
@@ -414,6 +431,20 @@ export default function HolographicBackground() {
         // Gentle floating
         shape.position.y += Math.sin(time * 0.0003 + i) * 0.03;
         shape.position.x += Math.cos(time * 0.0002 + i) * 0.02;
+
+        // Cursor interaction - attract shapes slightly toward cursor
+        const distX = mouseRef.current.x * 25 - shape.position.x;
+        const distY = mouseRef.current.y * 25 - shape.position.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+        
+        if (distance < 35) {
+          const attractStrength = (35 - distance) / 35;
+          shape.position.x += distX * 0.005 * attractStrength;
+          shape.position.y += distY * 0.005 * attractStrength;
+          // Spin faster when cursor is near
+          shape.rotation.x += attractStrength * 0.01;
+          shape.rotation.y += attractStrength * 0.01;
+        }
 
         // Color cycle
         const hue = (0.5 + i * 0.08 + time * 0.03) % 1;
@@ -425,24 +456,52 @@ export default function HolographicBackground() {
       camera.position.y = mouseRef.current.y * 3;
       camera.lookAt(0, 0, 0);
 
-      // Animate particles - slow drift
+      // Animate particles - slow drift with cursor avoidance
       const positions = particleGeometry.attributes.position.array as Float32Array;
       for (let i = 0; i < positions.length; i += 3) {
         positions[i + 1] += Math.sin(time * 0.001 + positions[i]) * 0.02;
+        
+        // Cursor interaction - particles move away
+        const distX = mouseRef.current.x * 50 - positions[i];
+        const distY = mouseRef.current.y * 50 - positions[i + 1];
+        const dist = Math.sqrt(distX * distX + distY * distY);
+        
+        if (dist < 20) {
+          const pushStrength = (20 - dist) / 20;
+          positions[i] -= distX * 0.002 * pushStrength;
+          positions[i + 1] -= distY * 0.002 * pushStrength;
+        }
       }
       particleGeometry.attributes.position.needsUpdate = true;
       particles.rotation.y += 0.0001;
 
-      // Animate light rays
+      // Animate light rays with cursor glow
       lightRays.forEach((ray, i) => {
         ray.rotation.z += 0.0005 * (i + 1);
-        (ray.material as THREE.MeshBasicMaterial).opacity = 0.2 + Math.sin(time * 0.1 + i) * 0.1;
+        
+        // Cursor interaction - increase glow intensity when cursor is near
+        const distX = mouseRef.current.x * 30 - ray.position.x;
+        const distY = mouseRef.current.y * 30 - ray.position.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+        
+        if (distance < 30) {
+          const glowBoost = (30 - distance) / 30;
+          (ray.material as THREE.MeshBasicMaterial).opacity = 0.3 + glowBoost * 0.4;
+          // Slight rotation response
+          ray.rotation.z += glowBoost * 0.002;
+        } else {
+          (ray.material as THREE.MeshBasicMaterial).opacity = 0.2 + Math.sin(time * 0.1 + i) * 0.1;
+        }
       });
 
-      // Animate distant light shafts
+      // Animate distant light shafts with subtle cursor response
       distantShafts.forEach((shaft, i) => {
         shaft.rotation.z += 0.0002 * (i + 1);
-        (shaft.material as THREE.MeshBasicMaterial).opacity = 0.1 + Math.sin(time * 0.05 + i) * 0.05;
+        
+        // Subtle glow increase when cursor moves
+        const mouseMovement = Math.abs(mouseRef.current.x) + Math.abs(mouseRef.current.y);
+        const baseOpacity = 0.1 + Math.sin(time * 0.05 + i) * 0.05;
+        (shaft.material as THREE.MeshBasicMaterial).opacity = baseOpacity + mouseMovement * 0.05;
       });
 
       renderer.render(scene, camera);
