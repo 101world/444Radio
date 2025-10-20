@@ -41,7 +41,13 @@ export default function HomePage() {
     }
   ])
   const [input, setInput] = useState('')
-  const [selectedType, setSelectedType] = useState<GenerationType>('music')
+  const [selectedTools, setSelectedTools] = useState<Set<GenerationType>>(new Set(['music'])) // Multiple tools
+  
+  // Separate prompts for each workflow
+  const [musicPrompt, setMusicPrompt] = useState('')
+  const [coverArtPrompt, setCoverArtPrompt] = useState('')
+  const [videoPrompt, setVideoPrompt] = useState('')
+  
   const [isGenerating, setIsGenerating] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [showMusicModal, setShowMusicModal] = useState(false)
@@ -64,13 +70,50 @@ export default function HomePage() {
     }
   }
 
-  const handleGenerate = async () => {
-    if (!input.trim() || isGenerating) return
+  const toggleTool = (tool: GenerationType) => {
+    const newTools = new Set(selectedTools)
+    if (newTools.has(tool)) {
+      newTools.delete(tool)
+    } else {
+      newTools.add(tool)
+    }
+    // Ensure at least one tool is selected
+    if (newTools.size > 0) {
+      setSelectedTools(newTools)
+    }
+  }
 
-    // Redirect to create page with prompt and selected type
+  const handleGenerate = async () => {
+    if (isGenerating || selectedTools.size === 0) return
+
+    // Check that each selected tool has a prompt
+    const hasValidPrompts = Array.from(selectedTools).every(tool => {
+      if (tool === 'music') return musicPrompt.trim()
+      if (tool === 'image') return coverArtPrompt.trim()
+      if (tool === 'video') return videoPrompt.trim()
+      return false
+    })
+
+    if (!hasValidPrompts) return
+
+    // Combine all prompts into a single message for the chat
+    const combinedMessage = Array.from(selectedTools)
+      .map(tool => {
+        if (tool === 'music') return `🎵 Music: ${musicPrompt}`
+        if (tool === 'image') return `🎨 Cover Art: ${coverArtPrompt}`
+        if (tool === 'video') return `🎬 Video: ${videoPrompt}`
+        return ''
+      })
+      .filter(Boolean)
+      .join('\n')
+
+    // Redirect to create page with all prompts and selected tools
     const params = new URLSearchParams({
-      prompt: input,
-      type: selectedType
+      combinedMessage, // Combined prompt for chat display
+      musicPrompt: selectedTools.has('music') ? musicPrompt : '',
+      coverArtPrompt: selectedTools.has('image') ? coverArtPrompt : '',
+      videoPrompt: selectedTools.has('video') ? videoPrompt : '',
+      tools: Array.from(selectedTools).join(',') // "music,image"
     })
     
     router.push(`/create?${params.toString()}`)
@@ -210,12 +253,12 @@ export default function HomePage() {
           {/* Centered Pill Input */}
           <div className="w-full max-w-3xl mx-auto">
             <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl shadow-black/50 p-3 transition-all duration-500 hover:border-white/30 hover:shadow-[#4f46e5]/30">
-              {/* Type Selection Pills */}
+              {/* Type Selection Pills - Multiple Selection Enabled */}
               <div className="flex gap-2 mb-3 px-3 justify-center">
                 <button
-                  onClick={() => setSelectedType('music')}
+                  onClick={() => toggleTool('music')}
                   className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                    selectedType === 'music'
+                    selectedTools.has('music')
                       ? 'bg-white text-black'
                       : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
                   }`}
@@ -224,9 +267,9 @@ export default function HomePage() {
                   Music
                 </button>
                 <button
-                  onClick={() => setSelectedType('image')}
+                  onClick={() => toggleTool('image')}
                   className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                    selectedType === 'image'
+                    selectedTools.has('image')
                       ? 'bg-white text-black'
                       : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
                   }`}
@@ -243,39 +286,74 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* Input Box */}
-              <div className="flex gap-3 items-center px-3">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleGenerate()
-                    }
-                  }}
-                  placeholder={
-                    selectedType === 'music'
-                      ? 'Describe your track...'
-                      : selectedType === 'image'
-                      ? 'Describe your cover art...'
-                      : 'Coming soon...'
-                  }
-                  disabled={isGenerating || selectedType === 'video'}
-                  className="flex-1 px-0 py-3 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                />
+              {/* Individual Input Boxes for Each Selected Tool */}
+              <div className="flex flex-col gap-2 px-3">
+                {selectedTools.has('music') && (
+                  <div className="flex gap-2 items-center bg-white/5 rounded-2xl px-4 py-2 border border-white/10">
+                    <Music size={16} className="text-purple-400" />
+                    <input
+                      type="text"
+                      value={musicPrompt}
+                      onChange={(e) => setMusicPrompt(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                      placeholder="Describe your music track..."
+                      disabled={isGenerating}
+                      className="flex-1 px-0 py-2 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    />
+                  </div>
+                )}
                 
-                {/* Send Button - Goes directly to create page */}
+                {selectedTools.has('image') && (
+                  <div className="flex gap-2 items-center bg-white/5 rounded-2xl px-4 py-2 border border-white/10">
+                    <ImageIcon size={16} className="text-pink-400" />
+                    <input
+                      type="text"
+                      value={coverArtPrompt}
+                      onChange={(e) => setCoverArtPrompt(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                      placeholder="Describe your cover art..."
+                      disabled={isGenerating}
+                      className="flex-1 px-0 py-2 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    />
+                  </div>
+                )}
+                
+                {selectedTools.has('video') && (
+                  <div className="flex gap-2 items-center bg-white/5 rounded-2xl px-4 py-2 border border-white/10">
+                    <Video size={16} className="text-blue-400" />
+                    <input
+                      type="text"
+                      value={videoPrompt}
+                      onChange={(e) => setVideoPrompt(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                      placeholder="Describe your video..."
+                      disabled={isGenerating}
+                      className="flex-1 px-0 py-2 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    />
+                  </div>
+                )}
+                
+                {/* Send Button - Combines and sends to chat */}
                 <button
                   onClick={handleGenerate}
-                  disabled={isGenerating || !input.trim() || selectedType === 'video'}
-                  className="p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#4f46e5] flex items-center justify-center"
-                  title="Send and go to Create page"
+                  disabled={isGenerating || selectedTools.size === 0 || 
+                    (selectedTools.has('music') && !musicPrompt.trim()) ||
+                    (selectedTools.has('image') && !coverArtPrompt.trim()) ||
+                    (selectedTools.has('video') && !videoPrompt.trim())
+                  }
+                  className="w-full mt-2 p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#4f46e5] flex items-center justify-center gap-2 font-semibold"
+                  title="Combine and Send to Chat"
                 >
                   {isGenerating ? (
-                    <Loader2 className="animate-spin text-white" size={20} />
+                    <>
+                      <Loader2 className="animate-spin text-white" size={20} />
+                      <span>Sending...</span>
+                    </>
                   ) : (
-                    <Send size={20} className="text-white" />
+                    <>
+                      <Send size={20} className="text-white" />
+                      <span>Send to Chat</span>
+                    </>
                   )}
                 </button>
               </div>
@@ -425,12 +503,12 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto">
           {/* Pill Container */}
           <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl shadow-black/50 p-3">
-            {/* Type Selection Pills */}
+            {/* Type Selection Pills - Multiple Selection Enabled */}
             <div className="flex gap-2 mb-3 px-3">
               <button
-                onClick={() => setSelectedType('music')}
+                onClick={() => toggleTool('music')}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                  selectedType === 'music'
+                  selectedTools.has('music')
                     ? 'bg-white text-black'
                     : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
                 }`}
@@ -439,9 +517,9 @@ export default function HomePage() {
                 Music
               </button>
               <button
-                onClick={() => setSelectedType('image')}
+                onClick={() => toggleTool('image')}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                  selectedType === 'image'
+                  selectedTools.has('image')
                     ? 'bg-white text-black'
                     : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
                 }`}
@@ -458,48 +536,73 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Input Box */}
-            <div className="flex gap-3 items-center px-3">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                placeholder={
-                  selectedType === 'music'
-                    ? 'Describe your track...'
-                    : selectedType === 'image'
-                    ? 'Describe your cover art...'
-                    : 'Coming soon...'
-                }
-                disabled={isGenerating || selectedType === 'video'}
-                className="flex-1 px-0 py-3 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              />
-              
-              {/* Settings Button for Music */}
-              {selectedType === 'music' && (
-                <button
-                  onClick={() => setShowMusicModal(true)}
-                  className={`p-3 rounded-full transition-all ${
-                    !input.trim() 
-                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
-                      : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                  title="Music Settings (Required)"
-                >
-                  <Settings size={20} className="text-white" />
-                </button>
+            {/* Individual Input Boxes for Each Selected Tool */}
+            <div className="flex flex-col gap-2 px-3">
+              {selectedTools.has('music') && (
+                <div className="flex gap-2 items-center bg-white/5 rounded-2xl px-4 py-2 border border-white/10">
+                  <Music size={16} className="text-purple-400" />
+                  <input
+                    type="text"
+                    value={musicPrompt}
+                    onChange={(e) => setMusicPrompt(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="Describe your music track..."
+                    disabled={isGenerating}
+                    className="flex-1 px-0 py-2 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  />
+                </div>
               )}
               
+              {selectedTools.has('image') && (
+                <div className="flex gap-2 items-center bg-white/5 rounded-2xl px-4 py-2 border border-white/10">
+                  <ImageIcon size={16} className="text-pink-400" />
+                  <input
+                    type="text"
+                    value={coverArtPrompt}
+                    onChange={(e) => setCoverArtPrompt(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="Describe your cover art..."
+                    disabled={isGenerating}
+                    className="flex-1 px-0 py-2 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  />
+                </div>
+              )}
+              
+              {selectedTools.has('video') && (
+                <div className="flex gap-2 items-center bg-white/5 rounded-2xl px-4 py-2 border border-white/10">
+                  <Video size={16} className="text-blue-400" />
+                  <input
+                    type="text"
+                    value={videoPrompt}
+                    onChange={(e) => setVideoPrompt(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                    placeholder="Describe your video..."
+                    disabled={isGenerating}
+                    className="flex-1 px-0 py-2 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  />
+                </div>
+              )}
+              
+              {/* Send Button - Combines and sends to chat */}
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating || !input.trim() || selectedType === 'video'}
-                className="p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#4f46e5] flex items-center justify-center"
+                disabled={isGenerating || selectedTools.size === 0 || 
+                  (selectedTools.has('music') && !musicPrompt.trim()) ||
+                  (selectedTools.has('image') && !coverArtPrompt.trim()) ||
+                  (selectedTools.has('video') && !videoPrompt.trim())
+                }
+                className="w-full mt-2 p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#4f46e5] flex items-center justify-center gap-2 font-semibold"
               >
                 {isGenerating ? (
-                  <Loader2 className="animate-spin text-white" size={20} />
+                  <>
+                    <Loader2 className="animate-spin text-white" size={20} />
+                    <span>Sending...</span>
+                  </>
                 ) : (
-                  <Send size={20} className="text-white" />
+                  <>
+                    <Send size={20} className="text-white" />
+                    <span>Send to Chat</span>
+                  </>
                 )}
               </button>
             </div>

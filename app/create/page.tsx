@@ -58,22 +58,44 @@ export default function CreatePage() {
     scrollToBottom()
   }, [messages])
 
-  // Read URL parameters and auto-open modal with prompt
+  // Read URL parameters and display combined message in chat
   useEffect(() => {
-    const prompt = searchParams.get('prompt')
-    const type = searchParams.get('type') as GenerationType | null
+    const combinedMessage = searchParams.get('combinedMessage')
+    const musicPrompt = searchParams.get('musicPrompt')
+    const coverArtPrompt = searchParams.get('coverArtPrompt')
+    const videoPrompt = searchParams.get('videoPrompt')
+    const toolsParam = searchParams.get('tools')
 
-    if (prompt) {
-      setInput(prompt)
-      if (type) {
-        setSelectedType(type)
-        // Auto-open the appropriate modal based on type
-        if (type === 'music') {
+    if (combinedMessage && toolsParam) {
+      // Add combined message to chat
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        type: 'user',
+        content: combinedMessage, // Shows "🎵 Music: X\n🎨 Cover Art: Y"
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, newMessage])
+
+      // Parse tools
+      const tools = toolsParam.split(',') as GenerationType[]
+      
+      // Set first tool as selected
+      if (tools.length > 0) {
+        setSelectedType(tools[0])
+        
+        // Auto-open modal for first tool with its specific prompt
+        if (tools[0] === 'music' && musicPrompt) {
+          setInput(musicPrompt)
           setShowMusicModal(true)
-        } else if (type === 'image') {
-          // Auto-generate image
+        } else if (tools[0] === 'image' && coverArtPrompt) {
+          setInput(coverArtPrompt)
           handleGenerate()
+        } else if (tools[0] === 'video' && videoPrompt) {
+          setInput(videoPrompt)
+          // Open video modal when ready
         }
+        
+        // TODO: After first workflow completes, process remaining tools
       }
     }
   }, [searchParams])
