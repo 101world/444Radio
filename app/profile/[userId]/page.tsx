@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
-import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon } from 'lucide-react'
+import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
+import PrivateListModal from '../../components/PrivateListModal'
 
 interface Song {
   id: string
@@ -57,6 +58,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [showPublishModal, setShowPublishModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showPrivateListModal, setShowPrivateListModal] = useState(false)
 
   useEffect(() => {
     if (currentUser) {
@@ -208,6 +210,19 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   @{profile?.username || currentUser?.username || 'username'}
                 </span>
                 
+                {/* PRVTLST Button */}
+                <div className="w-px h-4 bg-white/20"></div>
+                <button 
+                  onClick={() => setShowPrivateListModal(true)}
+                  className="px-3 py-1 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-full transition-all shadow-lg hover:scale-105"
+                  title="Private Lists"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Users size={12} className="text-white" />
+                    <span className="text-xs font-black text-white">PRVTLST</span>
+                  </div>
+                </button>
+                
                 {/* Publish Icon (Only for own profile) */}
                 {isOwnProfile && (
                   <>
@@ -264,6 +279,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           onUploadComplete={() => {
             fetchProfileData()
           }}
+        />
+      )}
+
+      {/* Private List Modal */}
+      {showPrivateListModal && (
+        <PrivateListModal
+          isOpen={showPrivateListModal}
+          onClose={() => setShowPrivateListModal(false)}
+          artistId={resolvedParams.userId}
+          isOwnProfile={isOwnProfile}
         />
       )}
     </div>
