@@ -341,7 +341,10 @@ export default function HolographicBackground() {
         (shape.material as THREE.MeshBasicMaterial).color.setHSL(hue, 1, 0.6);
       });
 
-      // Camera stays at original position (no parallax movement)
+      // Camera parallax movement based on mouse
+      camera.position.x = mouseRef.current.x * 3;
+      camera.position.y = mouseRef.current.y * 3;
+      camera.lookAt(0, 0, 0);
 
       // Animate particles - slow drift
       const positions = particleGeometry.attributes.position.array as Float32Array;
