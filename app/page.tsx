@@ -47,45 +47,45 @@ export default function HomePage() {
   }, [user])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-green-950 text-white overflow-hidden relative">
-      {/* Animated Background - CSS Only */}
-      <div className="absolute inset-0 z-0 opacity-30">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,157,0.1),transparent_50%)] animate-pulse"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(0,255,255,0.1),transparent_40%)] animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(168,85,247,0.1),transparent_40%)] animate-pulse" style={{ animationDelay: '2s' }}></div>
+    <div className="min-h-screen bg-black text-white overflow-hidden relative">
+      {/* Animated Background - Subtle */}
+      <div className="absolute inset-0 z-0 opacity-20">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(45,74,110,0.3),transparent_50%)] animate-pulse"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(90,143,199,0.2),transparent_40%)] animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.05),transparent_40%)] animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-50 flex justify-between items-center p-4 md:p-6 backdrop-blur-xl bg-black/20 border-b border-green-500/20">
+      <nav className="relative z-50 flex justify-between items-center p-4 md:p-6 backdrop-blur-xl bg-white/5 border-b border-white/10">
         <Link href="/" className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/50">
-            <span className="text-black font-bold text-lg">🎵</span>
+          <div className="w-10 h-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl flex items-center justify-center shadow-lg">
+            <span className="font-bold text-lg">🎵</span>
           </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">444RADIO</span>
+          <span className="text-2xl font-bold text-white">444RADIO</span>
         </Link>
         <div className="flex items-center gap-4">
           <SignedIn>
             <Link 
               href="/create" 
-              className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-bold hover:scale-105 transition-transform shadow-lg shadow-purple-500/50"
+              className="px-6 py-2 bg-white text-black rounded-full font-bold hover:bg-gray-200 transition-all shadow-lg"
             >
               ✨ Create
             </Link>
-            <Link href="/library" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Library</Link>
-            <Link href="/explore" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Explore</Link>
-            <Link href="/billboard" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Charts</Link>
-            <Link href={`/profile/${user?.id}`} className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Profile</Link>
+            <Link href="/library" className="hidden md:block px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors">Library</Link>
+            <Link href="/explore" className="hidden md:block px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors">Explore</Link>
+            <Link href="/billboard" className="hidden md:block px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors">Charts</Link>
+            <Link href={`/profile/${user?.id}`} className="hidden md:block px-4 py-2 text-gray-300 hover:text-white font-medium transition-colors">Profile</Link>
             {/* Credits Display */}
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 backdrop-blur-lg bg-green-500/10 border border-green-500/30 rounded-full">
+            <div className="hidden md:flex items-center gap-2 px-4 py-2 backdrop-blur-lg bg-white/10 border border-white/20 rounded-full">
               <span className="text-2xl">⚡</span>
-              <span className="text-green-400 font-bold">{credits}</span>
-              <span className="text-green-400/60 text-xs">credits</span>
+              <span className="text-white font-bold">{credits}</span>
+              <span className="text-gray-400 text-xs">credits</span>
             </div>
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
           <SignedOut>
-            <Link href="/sign-in" className="px-6 py-2 text-green-400 hover:text-green-300 font-medium">Sign In</Link>
-            <Link href="/sign-up" className="px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold hover:scale-105 transition-transform">Join Free</Link>
+            <Link href="/sign-in" className="px-6 py-2 text-gray-300 hover:text-white font-medium transition-colors">Sign In</Link>
+            <Link href="/sign-up" className="px-6 py-2 bg-white text-black rounded-full font-bold hover:bg-gray-200 transition-all">Join Free</Link>
           </SignedOut>
         </div>
       </nav>
@@ -98,37 +98,37 @@ export default function HomePage() {
               <div className="inline-block px-4 py-2 backdrop-blur-lg bg-green-500/10 border border-green-500/30 rounded-full mb-6">
                 <span className="text-green-400 font-semibold text-sm">✨ AI-POWERED MUSIC SOCIAL NETWORK</span>
               </div>
-              <h1 className="text-6xl md:text-8xl font-black mb-6 bg-gradient-to-r from-green-400 via-cyan-400 to-green-300 bg-clip-text text-transparent leading-tight">
+              <h1 className="text-6xl md:text-8xl font-black mb-6 text-white leading-tight">
                 Everyone is an Artist
               </h1>
-              <p className="text-xl md:text-2xl text-green-100/80 mb-12 max-w-3xl mx-auto font-light">
+              <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-3xl mx-auto font-light">
                 Generate music with AI. Create stunning visuals. Build your sound. <br/>
-                <span className="text-green-400 font-semibold">Instagram for AI Music</span>
+                <span className="text-white font-semibold">Instagram for AI Music</span>
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 mb-12">
-              <Link href="/sign-up" className="px-10 py-4 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-xl shadow-green-500/50">
+              <Link href="/sign-up" className="px-10 py-4 bg-white text-black rounded-full font-bold text-lg hover:bg-gray-200 transition-all shadow-xl">
                 🚀 Start Creating Free
               </Link>
-              <Link href="/explore" className="px-10 py-4 backdrop-blur-lg bg-green-500/10 border-2 border-green-500/30 text-green-400 rounded-full font-bold text-lg hover:bg-green-500/20 transition-all">
+              <Link href="/explore" className="px-10 py-4 backdrop-blur-lg bg-white/10 border-2 border-white/20 text-white rounded-full font-bold text-lg hover:bg-white/20 transition-all">
                 🎧 Explore Music
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mt-16">
-              <div className="backdrop-blur-xl bg-black/40 border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all">
+              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/30 transition-all">
                 <div className="text-4xl mb-3">🎵</div>
-                <h3 className="text-xl font-bold text-green-400 mb-2">AI Music Generation</h3>
-                <p className="text-green-100/60">Create unique tracks with MiniMax Music-1.5</p>
+                <h3 className="text-xl font-bold text-white mb-2">AI Music Generation</h3>
+                <p className="text-gray-400">Create unique tracks with MiniMax Music-1.5</p>
               </div>
-              <div className="backdrop-blur-xl bg-black/40 border border-cyan-500/20 rounded-2xl p-6 hover:border-cyan-500/40 transition-all">
+              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-[#2d4a6e]/50 transition-all">
                 <div className="text-4xl mb-3">🎨</div>
-                <h3 className="text-xl font-bold text-cyan-400 mb-2">Cover Art & Video</h3>
-                <p className="text-green-100/60">Generate stunning visuals with Flux & Seedance</p>
+                <h3 className="text-xl font-bold text-white mb-2">Cover Art & Video</h3>
+                <p className="text-gray-400">Generate stunning visuals with Flux & Seedance</p>
               </div>
-              <div className="backdrop-blur-xl bg-black/40 border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all">
+              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/30 transition-all">
                 <div className="text-4xl mb-3">🌍</div>
-                <h3 className="text-xl font-bold text-green-400 mb-2">Social Music Feed</h3>
-                <p className="text-green-100/60">Share, discover, and connect with artists</p>
+                <h3 className="text-xl font-bold text-white mb-2">Social Music Feed</h3>
+                <p className="text-gray-400">Share, discover, and connect with artists</p>
               </div>
             </div>
           </div>
@@ -140,10 +140,10 @@ export default function HomePage() {
             <div className="max-w-6xl w-full">
               {/* Header */}
               <div className="text-center mb-12">
-                <h1 className="text-5xl md:text-7xl font-black mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+                <h1 className="text-5xl md:text-7xl font-black mb-4 text-white">
                   Create with AI
                 </h1>
-                <p className="text-xl text-purple-100/60">
+                <p className="text-xl text-gray-400">
                   Choose what you want to generate, then combine them into unified media
                 </p>
               </div>

@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Settings } from 'lucide-react'
+import MusicGenerationModal from '../components/MusicGenerationModal'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -38,6 +39,7 @@ export default function CreatePage() {
   const [selectedType, setSelectedType] = useState<GenerationType>('music')
   const [isGenerating, setIsGenerating] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
+  const [showMusicModal, setShowMusicModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({})
 
@@ -52,6 +54,13 @@ export default function CreatePage() {
   const handleGenerate = async () => {
     if (!input.trim() || isGenerating) return
 
+    // For music, open the modal instead of generating directly
+    if (selectedType === 'music') {
+      setShowMusicModal(true)
+      return
+    }
+
+    // For images and videos, proceed with generation
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
@@ -74,9 +83,7 @@ export default function CreatePage() {
 
     try {
       let result
-      if (selectedType === 'music') {
-        result = await generateMusic(input)
-      } else if (selectedType === 'image') {
+      if (selectedType === 'image') {
         result = await generateImage(input)
       } else {
         result = { error: 'Video generation coming soon!' }
@@ -88,7 +95,7 @@ export default function CreatePage() {
           ? {
               ...msg,
               isGenerating: false,
-              content: result.error ? `❌ ${result.error}` : `✅ ${selectedType === 'music' ? 'Track' : 'Image'} generated!`,
+              content: result.error ? `❌ ${result.error}` : `✅ Image generated!`,
               result: result.error ? undefined : result
             }
           : msg
@@ -99,9 +106,7 @@ export default function CreatePage() {
         const assistantMessage: Message = {
           id: (Date.now() + 2).toString(),
           type: 'assistant',
-          content: selectedType === 'music' 
-            ? 'Your track is ready! Want to create cover art for it? Or generate another track?'
-            : 'Image generated! Want to combine it with a track?',
+          content: 'Image generated! Want to combine it with a track?',
           timestamp: new Date()
         }
         setMessages(prev => [...prev, assistantMessage])
@@ -116,6 +121,43 @@ export default function CreatePage() {
     } finally {
       setIsGenerating(false)
     }
+  }
+
+  const handleMusicGenerated = (audioUrl: string, title: string, lyrics: string, prompt: string) => {
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: input || prompt,
+      timestamp: new Date()
+    }
+
+    // Add result message
+    const resultMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'generation',
+      content: '✅ Track generated!',
+      generationType: 'music',
+      result: {
+        audioUrl,
+        title,
+        lyrics,
+        prompt
+      },
+      timestamp: new Date()
+    }
+
+    // Add assistant response
+    const assistantMessage: Message = {
+      id: (Date.now() + 2).toString(),
+      type: 'assistant',
+      content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
+      timestamp: new Date()
+    }
+
+    setMessages(prev => [...prev, userMessage, resultMessage, assistantMessage])
+    setInput('')
+    setShowMusicModal(false)
   }
 
   const generateMusic = async (prompt: string) => {
@@ -387,6 +429,22 @@ export default function CreatePage() {
                 disabled={isGenerating || selectedType === 'video'}
                 className="flex-1 px-0 py-3 bg-transparent border-none text-white placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               />
+              
+              {/* Settings Button for Music */}
+              {selectedType === 'music' && (
+                <button
+                  onClick={() => setShowMusicModal(true)}
+                  className={`p-3 rounded-full transition-all ${
+                    !input.trim() 
+                      ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                      : 'bg-white/10 hover:bg-white/20'
+                  }`}
+                  title="Music Settings (Required)"
+                >
+                  <Settings size={20} className="text-white" />
+                </button>
+              )}
+              
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating || !input.trim() || selectedType === 'video'}
@@ -409,6 +467,17 @@ export default function CreatePage() {
           </div>
         </div>
       </div>
+
+      {/* Music Generation Modal */}
+      <MusicGenerationModal
+        isOpen={showMusicModal}
+        onClose={() => setShowMusicModal(false)}
+        onSuccess={(audioUrl: string, prompt: string) => {
+          // Extract title and lyrics from the generated music
+          // This will be called after successful generation
+          handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
+        }}
+      />
     </div>
   )
 }
