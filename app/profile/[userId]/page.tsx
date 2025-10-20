@@ -19,6 +19,20 @@ interface Song {
   createdAt: string
 }
 
+interface CombinedMedia {
+  id: string
+  title: string
+  audio_url: string
+  image_url: string
+  audio_prompt: string
+  image_prompt: string
+  user_id: string
+  likes: number
+  plays: number
+  is_public: boolean
+  created_at: string
+}
+
 interface ProfileData {
   username: string
   email: string
@@ -27,6 +41,7 @@ interface ProfileData {
   totalPlays: number
   songCount: number
   songs: Song[]
+  combinedMedia: CombinedMedia[]
 }
 
 export default function ProfilePage({ params }: { params: Promise<{ userId: string }> }) {
@@ -41,9 +56,31 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     if (currentUser) {
       setIsOwnProfile(currentUser.id === resolvedParams.userId)
     }
-    // TODO: Fetch profile data from API
-    setLoading(false)
+    fetchProfileData()
   }, [currentUser, resolvedParams.userId])
+
+  const fetchProfileData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/media/profile/${resolvedParams.userId}`)
+      const data = await res.json()
+      if (data.success) {
+        setProfile({
+          username: data.username,
+          email: '',
+          totalPlays: data.totalPlays,
+          songCount: data.trackCount,
+          totalLikes: 0,
+          songs: [],
+          combinedMedia: data.combinedMedia
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-black text-white pb-12">
@@ -130,25 +167,32 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 <div key={i} className="aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl animate-pulse"></div>
               ))}
             </div>
-          ) : profile?.songs && profile.songs.length > 0 ? (
+          ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
-              {profile.songs.map((song) => (
-                <div key={song.id} className="group relative">
+              {profile.combinedMedia.map((media) => (
+                <div key={media.id} className="group relative">
                   {/* 3D Glassmorphism Card */}
                   <div className="relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#5a8fc7]/20 hover:border-[#5a8fc7]/30">
                     <img 
-                      src={song.coverUrl} 
-                      alt={song.title}
+                      src={media.image_url} 
+                      alt={media.title}
                       className="w-full h-full object-cover"
                     />
                     
+                    {/* Published Badge */}
+                    {media.is_public && (
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-[#2d4a6e]/90 backdrop-blur-xl border border-[#5a8fc7]/30 rounded-full text-xs font-bold text-white">
+                        Published
+                      </div>
+                    )}
+                    
                     {/* Info Overlay */}
                     <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
-                      <p className="text-xs font-bold text-white truncate">{song.title}</p>
+                      <p className="text-xs font-bold text-white truncate">{media.title}</p>
                       <div className="flex justify-between items-center text-xs text-gray-400">
-                        <span>{song.genre}</span>
+                        <span className="truncate">{media.audio_prompt?.slice(0, 20)}...</span>
                         <div className="flex gap-2">
-                          <span>▶️ {song.plays}</span>
+                          <span>▶️ {media.plays}</span>
                         </div>
                       </div>
                     </div>

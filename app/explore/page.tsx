@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import CombinedMediaPlayer from '../components/CombinedMediaPlayer'
 import FloatingMenu from '../components/FloatingMenu'
-import { Search } from 'lucide-react'
+import { Search, Play, Pause, Volume2, SkipBack, SkipForward, Radio } from 'lucide-react'
 
 interface CombinedMedia {
   id: string
@@ -28,6 +28,10 @@ export default function ExplorePage() {
   const [filter, setFilter] = useState('trending')
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [currentTrack, setCurrentTrack] = useState<CombinedMedia | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
     fetchCombinedMedia()
@@ -46,6 +50,35 @@ export default function ExplorePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePlay = (media: CombinedMedia) => {
+    if (playingId === media.id && isPlaying) {
+      audioRef.current?.pause()
+      setIsPlaying(false)
+    } else {
+      setCurrentTrack(media)
+      setPlayingId(media.id)
+      setIsPlaying(true)
+      if (audioRef.current) {
+        audioRef.current.src = media.audio_url
+        audioRef.current.play()
+      }
+    }
+  }
+
+  const handleNext = () => {
+    if (!currentTrack) return
+    const currentIndex = combinedMedia.findIndex(m => m.id === currentTrack.id)
+    const nextIndex = (currentIndex + 1) % combinedMedia.length
+    handlePlay(combinedMedia[nextIndex])
+  }
+
+  const handlePrevious = () => {
+    if (!currentTrack) return
+    const currentIndex = combinedMedia.findIndex(m => m.id === currentTrack.id)
+    const prevIndex = (currentIndex - 1 + combinedMedia.length) % combinedMedia.length
+    handlePlay(combinedMedia[prevIndex])
   }
 
   return (
@@ -94,8 +127,12 @@ export default function ExplorePage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
               {combinedMedia.map((media) => (
                 <div key={media.id} className="group relative">
-                  {/* 3D Glassmorphism Card */}
-                  <div className="relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#5a8fc7]/20 hover:border-[#5a8fc7]/30">
+                  {/* 3D Glassmorphism Card with Playing State */}
+                  <div className={`relative aspect-square backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300 ${
+                    playingId === media.id 
+                      ? 'bg-[#2d4a6e]/30 border-2 border-[#5a8fc7] shadow-2xl shadow-[#5a8fc7]/50 scale-[1.02]' 
+                      : 'bg-white/5 border border-white/10 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#5a8fc7]/20 hover:border-[#5a8fc7]/30'
+                  }`}>
                     {/* Image */}
                     <img 
                       src={media.image_url} 
@@ -103,20 +140,26 @@ export default function ExplorePage() {
                       className="w-full h-full object-cover"
                     />
                     
-                    {/* Glassmorphism Overlay on Hover */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <div className="absolute bottom-0 left-0 right-0 p-2">
-                        <CombinedMediaPlayer
-                          audioUrl={media.audio_url}
-                          imageUrl={media.image_url}
-                          title={media.title}
-                          audioPrompt={media.audio_prompt}
-                          imagePrompt={media.image_prompt}
-                          likes={media.likes}
-                          plays={media.plays}
-                          showControls={true}
-                        />
+                    {/* Playing Indicator */}
+                    {playingId === media.id && (
+                      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-[#5a8fc7] rounded-full animate-pulse">
+                        <Radio size={12} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
+                        <span className="text-xs font-bold text-white">LIVE</span>
                       </div>
+                    )}
+                    
+                    {/* Play Button Overlay */}
+                    <div 
+                      onClick={() => handlePlay(media)}
+                      className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer flex items-center justify-center"
+                    >
+                      <button className="w-16 h-16 bg-[#5a8fc7] hover:bg-[#7aa5d7] rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl">
+                        {playingId === media.id && isPlaying ? (
+                          <Pause className="text-white" size={28} />
+                        ) : (
+                          <Play className="text-white ml-1" size={28} />
+                        )}
+                      </button>
                     </div>
 
                     {/* Always Visible Info */}
@@ -136,6 +179,73 @@ export default function ExplorePage() {
           )}
         </div>
       </main>
+
+      {/* Floating Digital Radio Player */}
+      {currentTrack && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
+          <div className="bg-gradient-to-r from-[#2d4a6e]/95 via-[#3d5a7e]/95 to-[#2d4a6e]/95 backdrop-blur-2xl border border-[#5a8fc7]/30 rounded-2xl shadow-2xl shadow-[#5a8fc7]/50 p-4 min-w-[300px] md:min-w-[400px]">
+            <div className="flex items-center gap-4">
+              {/* Album Art */}
+              <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
+                <img 
+                  src={currentTrack.image_url} 
+                  alt={currentTrack.title}
+                  className="w-full h-full object-cover"
+                />
+                {isPlaying && (
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <Radio size={20} className="text-[#5a8fc7] animate-spin" style={{ animationDuration: '3s' }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Track Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Radio size={12} className="text-[#5a8fc7] animate-pulse" />
+                  <span className="text-xs font-bold text-[#5a8fc7]">NOW PLAYING</span>
+                </div>
+                <p className="text-sm font-black text-white truncate">{currentTrack.title}</p>
+                <p className="text-xs text-gray-300 truncate">@{currentTrack.users.username}</p>
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handlePrevious}
+                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
+                >
+                  <SkipBack size={14} className="text-white" />
+                </button>
+                <button 
+                  onClick={() => currentTrack && handlePlay(currentTrack)}
+                  className="w-10 h-10 bg-[#5a8fc7] hover:bg-[#7aa5d7] rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-lg"
+                >
+                  {isPlaying ? (
+                    <Pause size={18} className="text-white" />
+                  ) : (
+                    <Play size={18} className="text-white ml-0.5" />
+                  )}
+                </button>
+                <button 
+                  onClick={handleNext}
+                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
+                >
+                  <SkipForward size={14} className="text-white" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden Audio Element */}
+      <audio 
+        ref={audioRef}
+        onEnded={handleNext}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+      />
 
       {/* Bottom-Docked Category Tabs with Horizontal Scroll */}
       <div className="fixed bottom-0 left-0 right-0 p-3 z-40">
