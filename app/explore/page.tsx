@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import CombinedMediaPlayer from '../components/CombinedMediaPlayer'
+import FloatingMenu from '../components/FloatingMenu'
 
 interface CombinedMedia {
   id: string
@@ -46,34 +47,12 @@ export default function ExplorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-green-950 text-white">
-      {/* Top Navigation */}
-      <nav className="sticky top-0 z-50 flex justify-between items-center p-4 md:p-6 backdrop-blur-xl bg-black/40 border-b border-green-500/20">
-        <Link href="/" className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/50">
-            <span className="text-black font-bold text-lg">♪</span>
-          </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">
-            444RADIO
-          </span>
-        </Link>
-
-        <div className="flex items-center gap-6">
-          <Link href="/create" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium transition-colors">
-            Create
-          </Link>
-          <Link href="/library" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium transition-colors">
-            Library
-          </Link>
-          <Link href="/explore" className="px-4 py-2 text-green-400 font-bold transition-colors">
-            Explore
-          </Link>
-          <UserButton afterSignOutUrl="/" />
-        </div>
-      </nav>
+    <div className="min-h-screen bg-black text-white">
+      {/* Floating Menu */}
+      <FloatingMenu />
 
       {/* Filters */}
-      <div className="sticky top-20 z-40 backdrop-blur-xl bg-black/20 border-b border-green-500/10 px-4 md:px-8 py-4">
+      <div className="sticky top-6 z-40 backdrop-blur-xl bg-white/10 border-b border-white/10 px-4 md:px-8 py-4 mt-24">
         <div className="flex gap-4 overflow-x-auto scrollbar-hide">
           {['Trending', 'New', 'Top', 'Pop', 'Hip-Hop', 'Electronic', 'Jazz'].map((f) => (
             <button
@@ -81,8 +60,8 @@ export default function ExplorePage() {
               onClick={() => setFilter(f.toLowerCase())}
               className={`px-6 py-2 rounded-full font-semibold whitespace-nowrap transition-all ${
                 filter === f.toLowerCase()
-                  ? 'bg-gradient-to-r from-green-500 to-cyan-500 text-black'
-                  : 'bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20'
+                  ? 'bg-white text-black'
+                  : 'bg-white/10 border border-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
               }`}
             >
               {f}
@@ -97,15 +76,15 @@ export default function ExplorePage() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(9)].map((_, i) => (
-                <div key={i} className="aspect-square bg-green-500/10 rounded-2xl animate-pulse"></div>
+                <div key={i} className="aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl animate-pulse"></div>
               ))}
             </div>
           ) : combinedMedia.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-6xl mb-4">🎵</div>
-              <h2 className="text-2xl font-bold text-green-400 mb-2">No music yet</h2>
-              <p className="text-green-100/60 mb-8">Be the first to create something amazing!</p>
-              <Link href="/" className="inline-block px-8 py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-full font-bold hover:scale-105 transition-transform">
+              <h2 className="text-2xl font-bold text-white mb-2">No music yet</h2>
+              <p className="text-gray-400 mb-8">Be the first to create something amazing!</p>
+              <Link href="/" className="inline-block px-8 py-3 bg-white text-black rounded-full font-bold hover:bg-gray-200 transition-all">
                 Create Now
               </Link>
             </div>
@@ -126,7 +105,7 @@ export default function ExplorePage() {
                   <div className="mt-2">
                     <Link 
                       href={`/u/${media.users.username}`}
-                      className="text-sm text-green-400 hover:text-green-300 font-semibold"
+                      className="text-sm text-[#5a8fc7] hover:text-[#7aa5d7] font-semibold"
                     >
                       @{media.users.username}
                     </Link>
