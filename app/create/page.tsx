@@ -55,6 +55,18 @@ export default function CreatePage() {
     scrollToBottom()
   }, [messages])
 
+  // ESC key handler to go back to home page
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        window.location.href = '/'
+      }
+    }
+
+    window.addEventListener('keydown', handleEscKey)
+    return () => window.removeEventListener('keydown', handleEscKey)
+  }, [])
+
   const handleGenerate = async () => {
     if (!input.trim() || isGenerating) return
 
@@ -242,6 +254,24 @@ export default function CreatePage() {
       
       {/* Floating Menu */}
       <FloatingMenu />
+
+      {/* Back to Home Button */}
+      <div className="fixed top-6 left-6 z-50">
+        <Link href="/">
+          <button className="group flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 hover:border-white/30 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl">
+            <svg 
+              className="w-4 h-4 transition-transform group-hover:-translate-x-1" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span className="text-sm font-medium">Home</span>
+            <span className="text-xs text-gray-400 ml-1">(ESC)</span>
+          </button>
+        </Link>
+      </div>
 
       {/* Chat Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full">
