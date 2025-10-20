@@ -65,16 +65,16 @@ export default function HolographicBackground() {
     containerRef.current.appendChild(renderer.domElement);
     console.log('🎨 Renderer created and canvas appended to DOM');
 
-    // Holographic blobs (optimized count)
+    // Holographic blobs (minimal count for cleaner look)
     const blobGeometry = new THREE.IcosahedronGeometry(2, 1);
     const blobs: THREE.Mesh[] = [];
 
-    for (let i = 0; i < 8; i++) { // Reduced from 12 to 8 for performance
+    for (let i = 0; i < 4; i++) { // Reduced to 4 for less clutter
       const material = new THREE.MeshBasicMaterial({
         color: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.7),
         wireframe: false,
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.5, // Reduced from 0.8 for cleaner look
       });
 
       const blob = new THREE.Mesh(blobGeometry, material);
@@ -89,27 +89,15 @@ export default function HolographicBackground() {
     }
     console.log('🎨 Blobs created:', blobs.length, 'blobs');
 
-    // Interactive wireframe shapes - various geometries
+    // Interactive wireframe shapes - reduced variety for cleaner look
     const shapeGeometries = [
       new THREE.TorusGeometry(5, 0.5, 16, 100),
       new THREE.TorusKnotGeometry(4, 1, 100, 16),
       new THREE.OctahedronGeometry(5),
-      new THREE.TetrahedronGeometry(5),
       new THREE.IcosahedronGeometry(5),
-      new THREE.DodecahedronGeometry(5),
-      new THREE.BoxGeometry(8, 8, 8),
-      new THREE.ConeGeometry(5, 10, 8),
-      new THREE.CylinderGeometry(3, 3, 10, 8),
       new THREE.SphereGeometry(5, 16, 16),
-      new THREE.TorusGeometry(4, 0.8, 12, 50),
-      new THREE.OctahedronGeometry(6),
-      // Add triangles (tetrahedrons and flat triangles)
       new THREE.TetrahedronGeometry(6),
-      new THREE.ConeGeometry(7, 0.5, 3), // Flat triangle
-      new THREE.ConeGeometry(6, 0.5, 3), // Another flat triangle
-      new THREE.TetrahedronGeometry(7),
-      new THREE.ConeGeometry(8, 0.5, 3), // Large flat triangle
-    ];
+    ]; // Reduced from 17 to 6 shapes
 
     const interactiveShapes: THREE.Mesh[] = [];
 
@@ -118,7 +106,7 @@ export default function HolographicBackground() {
         color: new THREE.Color().setHSL(0.5 + i * 0.08, 1, 0.5),
         wireframe: true,
         transparent: true,
-        opacity: 0.7, // Increased from 0.4
+        opacity: 0.4, // Reduced from 0.7 for cleaner look
       });
 
       const shape = new THREE.Mesh(shapeGeometries[i], material);
@@ -142,8 +130,8 @@ export default function HolographicBackground() {
     }
     console.log('🎨 Interactive shapes created:', interactiveShapes.length, 'shapes');
 
-    // Particle system (optimized count for performance)
-    const particleCount = 1000; // Reduced from 2000 for better performance
+    // Particle system (minimal for cleaner look)
+    const particleCount = 500; // Reduced from 1000 for less clutter
     const particleGeometry = new THREE.BufferGeometry();
     const particlePositions = new Float32Array(particleCount * 3);
 
@@ -160,9 +148,9 @@ export default function HolographicBackground() {
 
     const particleMaterial = new THREE.PointsMaterial({
       color: 0xffffff,
-      size: 0.5,
+      size: 0.3, // Reduced from 0.5 for more subtle effect
       transparent: true,
-      opacity: 1,
+      opacity: 0.6, // Reduced from 1 for subtlety
       blending: THREE.AdditiveBlending,
     });
 
@@ -170,17 +158,17 @@ export default function HolographicBackground() {
     scene.add(particles);
     console.log('🎨 Particles created:', particleCount, 'particles');
 
-    // Volumetric light rays (closer ones)
+    // Volumetric light rays (closer ones) - more subtle
     const lightGeometry = new THREE.ConeGeometry(3, 60, 32);
     const lightMaterial = new THREE.MeshBasicMaterial({
       color: 0x00ffff,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.15, // Reduced from 0.3 for subtlety
       side: THREE.DoubleSide,
     });
 
     const lightRays: THREE.Mesh[] = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 4; i++) { // Reduced from 8 to 4 light rays
       const ray = new THREE.Mesh(lightGeometry, lightMaterial);
       ray.position.set(
         (Math.random() - 0.5) * 40,
@@ -194,17 +182,17 @@ export default function HolographicBackground() {
     }
     console.log('🎨 Light rays created:', lightRays.length, 'rays');
 
-    // Distant light shafts (from far away, like sunbeams through clouds)
+    // Distant light shafts (from far away, like sunbeams through clouds) - subtle
     const distantShaftGeometry = new THREE.ConeGeometry(8, 150, 32);
     const distantShaftMaterial = new THREE.MeshBasicMaterial({
       color: 0x4facfe,
       transparent: true,
-      opacity: 0.15,
+      opacity: 0.08, // Reduced from 0.15 for more subtle effect
       side: THREE.DoubleSide,
     });
 
     const distantShafts: THREE.Mesh[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) { // Reduced from 5 to 3 distant shafts
       const shaft = new THREE.Mesh(distantShaftGeometry, distantShaftMaterial);
       shaft.position.set(
         (Math.random() - 0.5) * 100,
@@ -242,11 +230,11 @@ export default function HolographicBackground() {
       side: THREE.DoubleSide,
     });
     
-    // Create multiple small floating text instances (8 instances)
+    // Create multiple small floating text instances (4 instances for cleaner look)
     const textGeometry = new THREE.PlaneGeometry(15, 3.75); // Small size
     const textMeshes: THREE.Mesh[] = [];
     
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 4; i++) { // Reduced from 8 to 4 text instances
       const textMesh = new THREE.Mesh(textGeometry, textMaterial.clone());
       textMesh.position.set(
         (Math.random() - 0.5) * 60,
@@ -382,11 +370,11 @@ export default function HolographicBackground() {
           const scaleFactor = 1 + (25 - distance) / 50;
           blob.scale.setScalar(scaleFactor);
           // Increase opacity
-          (blob.material as THREE.MeshBasicMaterial).opacity = 1.0;
+          (blob.material as THREE.MeshBasicMaterial).opacity = 0.8;
         } else {
           // Return to normal
           blob.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
-          (blob.material as THREE.MeshBasicMaterial).opacity = 0.8;
+          (blob.material as THREE.MeshBasicMaterial).opacity = 0.5;
         }
 
         // Iridescent color shift
