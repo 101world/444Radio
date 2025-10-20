@@ -234,7 +234,7 @@ export default function HolographicBackground() {
     context.fillStyle = 'rgba(0, 0, 0, 0)';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.font = 'bold 120px Arial';
-    context.fillStyle = 'rgba(100, 200, 255, 0.3)';
+    context.fillStyle = 'rgba(100, 200, 255, 0.5)'; // Increased opacity
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText('444 RADIO', canvas.width / 2, canvas.height / 2);
@@ -244,25 +244,27 @@ export default function HolographicBackground() {
     const textMaterial = new THREE.MeshBasicMaterial({
       map: textTexture,
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.6, // Increased opacity
       side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending, // Make it glow
     });
     
     const textGeometry = new THREE.PlaneGeometry(40, 10);
-    const textMesh1 = new THREE.Mesh(textGeometry, textMaterial);
+    const textMesh1 = new THREE.Mesh(textGeometry, textMaterial.clone());
     textMesh1.position.set(0, 15, -30);
     scene.add(textMesh1);
     
-    const textMesh2 = new THREE.Mesh(textGeometry, textMaterial);
+    const textMesh2 = new THREE.Mesh(textGeometry, textMaterial.clone());
     textMesh2.position.set(-25, -10, -40);
     textMesh2.rotation.y = Math.PI / 6;
     scene.add(textMesh2);
     
-    const textMesh3 = new THREE.Mesh(textGeometry, textMaterial);
+    const textMesh3 = new THREE.Mesh(textGeometry, textMaterial.clone());
     textMesh3.position.set(25, -10, -40);
     textMesh3.rotation.y = -Math.PI / 6;
     scene.add(textMesh3);
     
+    const textMeshes = [textMesh1, textMesh2, textMesh3];
     console.log('🎨 3D Text created: 3 instances of "444 RADIO"');
 
     // Lighting
@@ -469,8 +471,10 @@ export default function HolographicBackground() {
       });
       
       // Dispose text meshes
-      textGeometry.dispose();
-      textMaterial.dispose();
+      textMeshes.forEach(mesh => {
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      });
       textTexture.dispose();
       
       // Remove event listeners
