@@ -71,10 +71,10 @@ export default function HolographicBackground() {
 
     for (let i = 0; i < 4; i++) { // Reduced to 4 for less clutter
       const material = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.7),
+        color: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.9), // Brighter
         wireframe: false,
         transparent: true,
-        opacity: 0.5, // Reduced from 0.8 for cleaner look
+        opacity: 0.9, // Much more visible
       });
 
       const blob = new THREE.Mesh(blobGeometry, material);
@@ -103,10 +103,10 @@ export default function HolographicBackground() {
 
     for (let i = 0; i < shapeGeometries.length; i++) {
       const material = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(0.5 + i * 0.08, 1, 0.5),
+        color: new THREE.Color().setHSL(0.5 + i * 0.08, 1, 0.7), // Brighter
         wireframe: true,
         transparent: true,
-        opacity: 0.4, // Reduced from 0.7 for cleaner look
+        opacity: 0.8, // Much more visible
       });
 
       const shape = new THREE.Mesh(shapeGeometries[i], material);
@@ -148,9 +148,9 @@ export default function HolographicBackground() {
 
     const particleMaterial = new THREE.PointsMaterial({
       color: 0xffffff,
-      size: 0.3, // Reduced from 0.5 for more subtle effect
+      size: 0.8, // Bigger and more visible
       transparent: true,
-      opacity: 0.6, // Reduced from 1 for subtlety
+      opacity: 1, // Full brightness
       blending: THREE.AdditiveBlending,
     });
 
@@ -158,12 +158,12 @@ export default function HolographicBackground() {
     scene.add(particles);
     console.log('🎨 Particles created:', particleCount, 'particles');
 
-    // Volumetric light rays (closer ones) - more subtle
+    // Volumetric light rays (closer ones) - highly visible
     const lightGeometry = new THREE.ConeGeometry(3, 60, 32);
     const lightMaterial = new THREE.MeshBasicMaterial({
       color: 0x00ffff,
       transparent: true,
-      opacity: 0.15, // Reduced from 0.3 for subtlety
+      opacity: 0.5, // Much brighter
       side: THREE.DoubleSide,
     });
 
@@ -182,12 +182,12 @@ export default function HolographicBackground() {
     }
     console.log('🎨 Light rays created:', lightRays.length, 'rays');
 
-    // Distant light shafts (from far away, like sunbeams through clouds) - subtle
+    // Distant light shafts (from far away, like sunbeams through clouds) - visible
     const distantShaftGeometry = new THREE.ConeGeometry(8, 150, 32);
     const distantShaftMaterial = new THREE.MeshBasicMaterial({
       color: 0x4facfe,
       transparent: true,
-      opacity: 0.08, // Reduced from 0.15 for more subtle effect
+      opacity: 0.3, // Much more visible
       side: THREE.DoubleSide,
     });
 
@@ -216,7 +216,7 @@ export default function HolographicBackground() {
     context.fillStyle = 'rgba(0, 0, 0, 0)';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.font = 'bold 48px Arial';
-    context.fillStyle = 'rgba(255, 255, 255, 0.8)'; // White text
+    context.fillStyle = 'rgba(255, 255, 255, 1)'; // Fully white text
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText('444 RADIO', canvas.width / 2, canvas.height / 2);
@@ -226,7 +226,7 @@ export default function HolographicBackground() {
     const textMaterial = new THREE.MeshBasicMaterial({
       map: textTexture,
       transparent: true,
-      opacity: 0.3, // Subtle
+      opacity: 0.7, // Much more visible
       side: THREE.DoubleSide,
     });
     
@@ -370,16 +370,16 @@ export default function HolographicBackground() {
           const scaleFactor = 1 + (25 - distance) / 50;
           blob.scale.setScalar(scaleFactor);
           // Increase opacity
-          (blob.material as THREE.MeshBasicMaterial).opacity = 0.8;
+          (blob.material as THREE.MeshBasicMaterial).opacity = 1.0;
         } else {
           // Return to normal
           blob.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
-          (blob.material as THREE.MeshBasicMaterial).opacity = 0.5;
+          (blob.material as THREE.MeshBasicMaterial).opacity = 0.9;
         }
 
         // Iridescent color shift
         const hue = (0.5 + Math.sin(time * 0.1 + i) * 0.15) % 1;
-        (blob.material as THREE.MeshBasicMaterial).color.setHSL(hue, 0.8, 0.5);
+        (blob.material as THREE.MeshBasicMaterial).color.setHSL(hue, 0.8, 0.9);
       });
 
       // Animate 3D text - small white floating text with cursor interaction
@@ -406,7 +406,7 @@ export default function HolographicBackground() {
         
         // Fade based on distance from camera
         const distFromCamera = Math.abs(textMesh.position.z - camera.position.z);
-        (textMesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.1, Math.min(0.4, 50 / distFromCamera));
+        (textMesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0.5, Math.min(0.9, 50 / distFromCamera));
       });
 
       // Animate interactive wireframe shapes with cursor attraction
