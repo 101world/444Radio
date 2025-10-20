@@ -106,7 +106,7 @@ export default function LibraryPage() {
   }
 
   const handleSendToLabel = async (id: string) => {
-    if (!confirm('Publish this to your profile? It will be visible in Explore.')) return
+    if (!confirm('Publish this to Explore? It will be visible to everyone.')) return
 
     try {
       const res = await fetch(`/api/library/combined?id=${id}`, {
@@ -116,12 +116,12 @@ export default function LibraryPage() {
       })
 
       if (res.ok) {
-        alert('✅ Published to your profile! It will appear in Explore.')
+        alert('✅ Published to Explore!\n\n🎉 Your combined media is now live!\n📍 Click "Explore" in the navigation to see it.')
         fetchLibrary()
       }
     } catch (error) {
       console.error('Publish error:', error)
-      alert('❌ Failed to publish')
+      alert('❌ Failed to publish. Please try again.')
     }
   }
 
@@ -357,7 +357,7 @@ export default function LibraryPage() {
                         className="w-full h-full object-cover"
                       />
                       {item.is_published && (
-                        <div className="absolute top-4 right-4 bg-green-500 text-black px-3 py-1 rounded-full text-xs font-bold">
+                        <div className="absolute top-4 right-4 bg-green-500 text-black px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2">
                           ✓ Published
                         </div>
                       )}
@@ -399,14 +399,21 @@ export default function LibraryPage() {
 
                       {/* Actions */}
                       <div className="flex gap-2">
-                        {!item.is_published && (
+                        {!item.is_published ? (
                           <button
                             onClick={() => handleSendToLabel(item.id)}
                             className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-black rounded-xl font-bold hover:scale-105 transition-transform flex items-center justify-center gap-2"
                           >
                             <Send size={18} />
-                            Send to Label
+                            Publish to Explore
                           </button>
+                        ) : (
+                          <Link
+                            href="/explore"
+                            className="flex-1 px-4 py-3 bg-green-500/20 border-2 border-green-500 text-green-400 rounded-xl font-bold hover:bg-green-500/30 transition-colors flex items-center justify-center gap-2"
+                          >
+                            ✓ View in Explore →
+                          </Link>
                         )}
                         <button
                           onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
