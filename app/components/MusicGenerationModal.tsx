@@ -8,10 +8,11 @@ interface MusicModalProps {
   onClose: () => void
   userCredits?: number
   onSuccess?: (url: string, prompt: string) => void
+  onGenerationStart?: (prompt: string) => void
   initialPrompt?: string
 }
 
-export default function MusicGenerationModal({ isOpen, onClose, userCredits, onSuccess, initialPrompt = '' }: MusicModalProps) {
+export default function MusicGenerationModal({ isOpen, onClose, userCredits, onSuccess, onGenerationStart, initialPrompt = '' }: MusicModalProps) {
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState(initialPrompt)
   const [lyrics, setLyrics] = useState('')
@@ -46,6 +47,12 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
 
     setIsGenerating(true)
     setGeneratedAudioUrl(null)
+    
+    // Call onGenerationStart to close modal and show chat immediately
+    if (onGenerationStart) {
+      onGenerationStart(prompt)
+      onClose()
+    }
     
     try {
       // Generate music directly (no song record needed)

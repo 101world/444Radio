@@ -184,41 +184,68 @@ function CreatePageContent() {
     }
   }
 
-  const handleMusicGenerated = (audioUrl: string, title: string, lyrics: string, prompt: string) => {
-    // Add user message
+  const handleMusicGenerationStart = (prompt: string) => {
+    // Close modal immediately
+    setShowMusicModal(false)
+    
+    // Add user message to chat
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
-      content: input || prompt,
+      content: `🎵 Generate music: "${prompt}"`,
       timestamp: new Date()
     }
 
-    // Add result message
-    const resultMessage: Message = {
+    // Add generating message
+    const generatingMessage: Message = {
       id: (Date.now() + 1).toString(),
       type: 'generation',
-      content: '✅ Track generated!',
+      content: '🎵 Generating your track...',
       generationType: 'music',
-      result: {
-        audioUrl,
-        title,
-        lyrics,
-        prompt
-      },
-      timestamp: new Date()
+      timestamp: new Date(),
+      isGenerating: true
     }
 
-    // Add assistant response
-    const assistantMessage: Message = {
-      id: (Date.now() + 2).toString(),
-      type: 'assistant',
-      content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
-      timestamp: new Date()
-    }
+    setMessages(prev => [...prev, userMessage, generatingMessage])
+  }
 
-    setMessages(prev => [...prev, userMessage, resultMessage, assistantMessage])
+  const handleMusicGenerated = (audioUrl: string, title: string, lyrics: string, prompt: string) => {
+    // Update the generating message with the result
+    setMessages(prev => {
+      const updated = [...prev]
+      const lastGeneratingIndex = updated.findLastIndex(m => m.isGenerating && m.generationType === 'music')
+      
+      if (lastGeneratingIndex !== -1) {
+        // Replace generating message with result
+        updated[lastGeneratingIndex] = {
+          id: updated[lastGeneratingIndex].id,
+          type: 'generation',
+          content: '✅ Track generated!',
+          generationType: 'music',
+          result: {
+            audioUrl,
+            title,
+            lyrics,
+            prompt
+          },
+          timestamp: new Date()
+        }
+        
+        // Add assistant response
+        const assistantMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          type: 'assistant',
+          content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
+          timestamp: new Date()
+        }
+        
+        return [...updated, assistantMessage]
+      }
+      
+      return updated
+    })
+    
     setInput('')
-    setShowMusicModal(false)
   }
 
   const generateMusic = async (prompt: string) => {
@@ -554,6 +581,9 @@ function CreatePageContent() {
         isOpen={showMusicModal}
         onClose={() => setShowMusicModal(false)}
         initialPrompt={input}
+        onGenerationStart={(prompt: string) => {
+          handleMusicGenerationStart(prompt)
+        }}
         onSuccess={(audioUrl: string, prompt: string) => {
           // Extract title and lyrics from the generated music
           // This will be called after successful generation
