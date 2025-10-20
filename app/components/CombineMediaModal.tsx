@@ -186,44 +186,45 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
       return
     }
 
+    // Check if we have a combinedId from the library
+    if (!combinedResult.combinedId) {
+      alert('⚠️ No combined media ID found. Please try combining again.')
+      return
+    }
+
     setIsSaving(true)
     try {
-      const res = await fetch('/api/media/combine', {
-        method: 'POST',
+      // Update the existing combined_media_library record to publish it
+      const res = await fetch('/api/library/combined', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          audioUrl: combinedResult.audioUrl,
-          imageUrl: combinedResult.imageUrl,
-          audioPrompt: combinedResult.audioPrompt,
-          imagePrompt: combinedResult.imagePrompt,
-          title: `${combinedResult.audioPrompt.substring(0, 50)}...`,
-          isPublic: true,
+          combinedId: combinedResult.combinedId,
+          is_published: true,
+          title: `${combinedResult.audioPrompt.substring(0, 50)}`,
           // Metadata for filtering and monetization
-          metadata: {
-            genre: metadata.genre,
-            mood: metadata.mood,
-            bpm: metadata.bpm ? parseInt(metadata.bpm) : null,
-            key: metadata.key,
-            copyrightOwner: metadata.copyrightOwner,
-            license: metadata.license,
-            price: metadata.price ? parseFloat(metadata.price) : null,
-            tags: metadata.tags.split(',').map(t => t.trim()).filter(Boolean),
-            publishedAt: new Date().toISOString()
-          }
+          genre: metadata.genre,
+          mood: metadata.mood,
+          bpm: metadata.bpm ? parseInt(metadata.bpm) : null,
+          key: metadata.key,
+          copyright_owner: metadata.copyrightOwner,
+          license_type: metadata.license,
+          price: metadata.price ? parseFloat(metadata.price) : null,
+          tags: metadata.tags.split(',').map(t => t.trim()).filter(Boolean)
         })
       })
 
       const data = await res.json()
 
       if (data.success) {
-        setSavedMediaId(data.combinedMedia.id)
-        alert('✅ Published to Explore!\n\n🎵 Your track is now live with copyright protection.\n📍 Metadata saved for filtering and monetization.')
+        setSavedMediaId(data.combined.id)
+        alert('✅ Published to Explore and your Profile!\n\n🎵 Your track is now live with copyright protection.\n📍 Metadata saved for filtering and monetization.')
       } else {
         alert(`Error: ${data.error}`)
       }
     } catch (error) {
-      console.error('Save error:', error)
-      alert('Failed to save. Please try again.')
+      console.error('Publish error:', error)
+      alert('Failed to publish. Please try again.')
     } finally {
       setIsSaving(false)
     }

@@ -177,8 +177,8 @@ export async function DELETE(req: NextRequest) {
 }
 
 /**
- * PATCH /api/library/combined?id=xxx
- * Publish combined media to profile/label
+ * PATCH /api/library/combined
+ * Publish combined media to profile/explore with metadata
  */
 export async function PATCH(req: NextRequest) {
   try {
@@ -188,20 +188,30 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { searchParams } = new URL(req.url)
-    const id = searchParams.get('id')
-    const { is_published } = await req.json()
+    const { 
+      combinedId,
+      is_published, 
+      title,
+      genre,
+      mood,
+      bpm,
+      key,
+      copyright_owner,
+      license_type,
+      price,
+      tags
+    } = await req.json()
 
-    if (!id) {
+    if (!combinedId) {
       return NextResponse.json({ error: 'Missing combined media ID' }, { status: 400 })
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Update publication status
+    // Update the combined_media_library record with all metadata
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media_library?id=eq.${id}&clerk_user_id=eq.${userId}`,
+      `${supabaseUrl}/rest/v1/combined_media_library?id=eq.${combinedId}&clerk_user_id=eq.${userId}`,
       {
         method: 'PATCH',
         headers: {
@@ -211,7 +221,16 @@ export async function PATCH(req: NextRequest) {
           'Prefer': 'return=representation'
         },
         body: JSON.stringify({
-          is_published,
+          is_published: is_published !== undefined ? is_published : true,
+          title: title || undefined,
+          genre: genre || undefined,
+          mood: mood || undefined,
+          bpm: bpm || undefined,
+          key: key || undefined,
+          copyright_owner: copyright_owner || undefined,
+          license_type: license_type || undefined,
+          price: price || undefined,
+          tags: tags || undefined,
           updated_at: new Date().toISOString()
         })
       }
@@ -219,7 +238,15 @@ export async function PATCH(req: NextRequest) {
 
     const updated = await response.json()
 
-    // Also save to combined_media table for explore page
+    if (!response.ok) {
+      console.error('Supabase PATCH error:', updated)
+      return NextResponse.json(
+        { error: updated.message || 'Failed to update' },
+        { status: response.status }
+      )
+    }
+
+    // Also save to combined_media table for explore page if publishing
     if (is_published && Array.isArray(updated) && updated.length > 0) {
       const combined = updated[0]
       
@@ -241,6 +268,14 @@ export async function PATCH(req: NextRequest) {
             audio_prompt: combined.music_prompt || '',
             image_prompt: combined.image_prompt || '',
             title: combined.title || 'Untitled',
+            genre: combined.genre,
+            mood: combined.mood,
+            bpm: combined.bpm,
+            key: combined.key,
+            copyright_owner: combined.copyright_owner,
+            license_type: combined.license_type,
+            price: combined.price,
+            tags: combined.tags,
             is_public: true
           })
         }
