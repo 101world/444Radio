@@ -28,29 +28,20 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    console.log('📊 Explore API: Fetched', data?.length || 0, 'tracks')
+    console.log('📊 First track sample:', data?.[0])
+
     // Username is now directly in combined_media table
-    // But if username is missing (old records), fetch from users table
-    const mediaWithUsers = await Promise.all(
-      (data || []).map(async (media) => {
-        let username = media.username
-        
-        // Fallback: if username is missing, fetch from users table
-        if (!username || username === 'anonymous') {
-          const { data: userData } = await supabase
-            .from('users')
-            .select('username')
-            .eq('clerk_user_id', media.user_id)
-            .single()
-          
-          username = userData?.username || 'Unknown User'
-        }
-        
-        return {
-          ...media,
-          users: { username }
-        }
-      })
-    )
+    const mediaWithUsers = (data || []).map((media) => {
+      const username = media.username || 'Unknown User'
+      
+      return {
+        ...media,
+        users: { username }
+      }
+    })
+
+    console.log('📊 First processed track:', mediaWithUsers[0])
 
     return NextResponse.json({
       success: true,

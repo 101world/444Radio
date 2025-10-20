@@ -316,29 +316,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           
                           {/* Content */}
                           <div className="absolute inset-0 p-6 flex flex-col justify-between">
-                            {/* Top Badges */}
-                            <div className="flex items-start justify-between">
-                              <div className="px-3 py-1.5 bg-black/80 backdrop-blur-xl border border-cyan-500/30 rounded-full text-sm font-bold text-white flex items-center gap-2">
-                                {mediaType === 'music-image' && (
-                                  <>
-                                    <Music size={16} className="text-cyan-400" />
-                                    <span>AI Generated Track</span>
-                                  </>
-                                )}
-                                {mediaType === 'image' && (
-                                  <>
-                                    <ImageIcon size={16} className="text-cyan-400" />
-                                    <span>AI Image</span>
-                                  </>
-                                )}
-                                {mediaType === 'video' && (
-                                  <>
-                                    <Video size={16} className="text-cyan-400" />
-                                    <span>AI Video</span>
-                                  </>
-                                )}
-                              </div>
-                              
+                            {/* Top Right - Published Badge */}
+                            <div className="flex items-start justify-end">
                               {media.is_public && (
                                 <div className="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 backdrop-blur-xl rounded-full text-sm font-bold text-white shadow-lg">
                                   Published
