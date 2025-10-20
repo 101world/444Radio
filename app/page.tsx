@@ -1,52 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { Sphere, MeshDistortMaterial } from '@react-three/drei'
-import * as THREE from 'three'
 import SimpleGenerationSelector from './components/SimpleGenerationSelector'
 import MusicGenerationModal from './components/MusicGenerationModal'
 import CoverArtGenerationModal from './components/CoverArtGenerationModal'
 import CombineMediaModal from './components/CombineMediaModal'
-// import FloatingMediaPreview from './components/FloatingMediaPreview' // Disabled due to WebGL issues
-
-function AnimatedSphere() {
-  const meshRef = useRef<THREE.Mesh>(null)
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime) * 0.3
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2
-    }
-  })
-  return (
-    <Sphere ref={meshRef} args={[1, 64, 64]}>
-      <MeshDistortMaterial color="#00ff9d" distort={0.5} speed={2.5} roughness={0.1} metalness={0.9} />
-    </Sphere>
-  )
-}
-
-function FloatingParticles() {
-  const particlesRef = useRef<THREE.Points>(null)
-  useFrame((state) => {
-    if (particlesRef.current) particlesRef.current.rotation.y = state.clock.elapsedTime * 0.05
-  })
-  const particleCount = 100
-  const positions = new Float32Array(particleCount * 3)
-  for (let i = 0; i < particleCount; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 10
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 10
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 10
-  }
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-  return (
-    <points ref={particlesRef} geometry={geometry}>
-      <pointsMaterial size={0.03} color="#00ffff" transparent opacity={0.6} />
-    </points>
-  )
-}
 
 export default function HomePage() {
   const { user } = useUser()
@@ -88,13 +48,11 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-slate-950 to-green-950 text-white overflow-hidden relative">
-      <div className="absolute inset-0 z-0 opacity-40">
-        <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
-          <ambientLight intensity={0.3} />
-          <pointLight position={[10, 10, 10]} color="#00ff9d" intensity={0.8} />
-          <AnimatedSphere />
-          <FloatingParticles />
-        </Canvas>
+      {/* Animated Background - CSS Only */}
+      <div className="absolute inset-0 z-0 opacity-30">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,255,157,0.1),transparent_50%)] animate-pulse"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(0,255,255,0.1),transparent_40%)] animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(168,85,247,0.1),transparent_40%)] animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
       {/* Navigation */}
@@ -107,6 +65,12 @@ export default function HomePage() {
         </Link>
         <div className="flex items-center gap-4">
           <SignedIn>
+            <Link 
+              href="/create" 
+              className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-bold hover:scale-105 transition-transform shadow-lg shadow-purple-500/50"
+            >
+              ✨ Create
+            </Link>
             <Link href="/library" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Library</Link>
             <Link href="/explore" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Explore</Link>
             <Link href="/billboard" className="hidden md:block px-4 py-2 text-green-400 hover:text-green-300 font-medium">Charts</Link>

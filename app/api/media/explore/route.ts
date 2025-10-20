@@ -12,13 +12,10 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get('limit')) || 20
     const offset = Number(searchParams.get('offset')) || 0
 
-    // Fetch public combined media with user info
+    // Fetch public combined media
     const { data, error } = await supabase
       .from('combined_media')
-      .select(`
-        *,
-        users!inner(username)
-      `)
+      .select('*')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
@@ -26,14 +23,30 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error('Database error:', error)
       return NextResponse.json(
-        { error: 'Failed to fetch combined media' },
+        { error: 'Failed to fetch combined media', details: error.message },
         { status: 500 }
       )
     }
 
+    // Fetch usernames separately to avoid JOIN issues
+    const mediaWithUsers = await Promise.all(
+      (data || []).map(async (media) => {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('username')
+          .eq('clerk_user_id', media.user_id)
+          .single()
+        
+        return {
+          ...media,
+          users: { username: userData?.username || 'Unknown User' }
+        }
+      })
+    )
+
     return NextResponse.json({
       success: true,
-      combinedMedia: data || []
+      combinedMedia: mediaWithUsers
     })
   } catch (error) {
     console.error('Fetch explore error:', error)
