@@ -38,30 +38,30 @@ export async function GET(
     // 2. Check if viewing own profile
     const isOwnProfile = currentUserId === profile.clerk_user_id
     
-    // 3. Fetch songs (all if own profile, only public if viewing others)
-    let songsQuery = `${supabaseUrl}/rest/v1/songs?username=eq.${username}&status=eq.complete&order=created_at.desc&select=*`
+    // 3. Fetch combined media (all if own profile, only public if viewing others)
+    let mediaQuery = `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${profile.clerk_user_id}&order=created_at.desc&select=*`
     
     if (!isOwnProfile) {
-      songsQuery += '&is_public=eq.true' // Only show public songs for others
+      mediaQuery += '&is_public=eq.true' // Only show public media for others
     }
     
-    const songsResponse = await fetch(songsQuery, {
+    const mediaResponse = await fetch(mediaQuery, {
       headers: {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`,
       }
     })
     
-    if (!songsResponse.ok) {
-      throw new Error('Failed to fetch user songs')
+    if (!mediaResponse.ok) {
+      throw new Error('Failed to fetch user media')
     }
     
-    const songs = await songsResponse.json()
+    const combinedMedia = await mediaResponse.json()
     
     return NextResponse.json({
       success: true,
       profile,
-      songs,
+      combinedMedia: Array.isArray(combinedMedia) ? combinedMedia : [],
       isOwnProfile
     })
     
