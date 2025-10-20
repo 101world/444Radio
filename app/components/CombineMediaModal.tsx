@@ -138,20 +138,24 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
       })
 
       const data = await res.json()
+      console.log('API Response:', JSON.stringify(data, null, 2))
 
       if (data.success) {
+        const combinedId = data.combined?.id || null
+        console.log('Combined ID:', combinedId)
+        
         setCombinedResult({
           audioUrl: music.audio_url,
           imageUrl: image.image_url,
           audioPrompt: music.prompt,
           imagePrompt: image.prompt,
-          combinedId: data.combined.id // Store the library ID
+          combinedId: combinedId // Store the library ID (may be null)
         })
         setIsCombining(false)
         // Show success message
         alert('✅ Media combined and saved to your library!\n\nGo to Library > Combined tab to publish it.')
       } else {
-        alert(`Error: ${data.error}`)
+        alert(`Error: ${data.error || 'Unknown error'}`)
         setIsCombining(false)
       }
     } catch (error) {

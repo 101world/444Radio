@@ -94,6 +94,28 @@ export async function POST(req: NextRequest) {
     )
 
     const combined = await response.json()
+    console.log('Supabase response:', combined)
+
+    // Check if Supabase returned an error
+    if (!response.ok || combined.error || combined.message) {
+      console.error('Supabase error:', combined)
+      return NextResponse.json(
+        { 
+          error: combined.message || combined.error || 'Database error',
+          details: combined.hint || 'Table may not exist. Run migrations in Supabase SQL Editor.'
+        },
+        { status: response.status || 500 }
+      )
+    }
+
+    // Check if we got data back
+    if (!Array.isArray(combined) || combined.length === 0) {
+      console.error('No data returned from Supabase:', combined)
+      return NextResponse.json(
+        { error: 'No data returned after insert. Table may not exist.' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
