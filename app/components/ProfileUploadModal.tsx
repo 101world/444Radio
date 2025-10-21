@@ -45,21 +45,39 @@ export default function ProfileUploadModal({ isOpen, onClose, onUploadComplete }
         }
         formData.append('audio', audioFile)
         formData.append('image', imageFile)
+        
+        // Use profile upload endpoint for music-image combo
+        const res = await fetch('/api/profile/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const data = await res.json()
+        if (data.success) {
+          alert('✅ Upload successful!')
+          onUploadComplete()
+          resetForm()
+          onClose()
+        } else {
+          alert(`❌ Upload failed: ${data.error}`)
+        }
+        return
       } else if (uploadType === 'image') {
         if (!standaloneImageFile) {
           alert('⚠️ Please select an image file')
           return
         }
-        formData.append('image', standaloneImageFile)
+        formData.append('file', standaloneImageFile)
       } else if (uploadType === 'video') {
         if (!videoFile) {
           alert('⚠️ Please select a video file')
           return
         }
-        formData.append('video', videoFile)
+        formData.append('file', videoFile)
       }
 
-      const res = await fetch('/api/profile/upload', {
+      // Use uploads endpoint for standalone images and videos
+      const res = await fetch('/api/uploads', {
         method: 'POST',
         body: formData,
       })

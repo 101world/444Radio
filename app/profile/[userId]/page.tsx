@@ -55,6 +55,16 @@ interface CombinedMedia {
   content_type?: string
 }
 
+interface Upload {
+  id: string
+  type: 'image' | 'video'
+  url: string
+  thumbnail_url?: string
+  title?: string
+  created_at: string
+  file_size?: number
+}
+
 interface ProfileData {
   username: string
   email: string
@@ -68,6 +78,7 @@ interface ProfileData {
   followingCount: number
   songs: Song[]
   combinedMedia: CombinedMedia[]
+  uploads?: Upload[]
 }
 
 export default function ProfilePage({ params }: { params: Promise<{ userId: string }> }) {
@@ -85,6 +96,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [currentTrack, setCurrentTrack] = useState<CombinedMedia | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
   const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
@@ -112,7 +124,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           followerCount: data.followerCount || 0,
           followingCount: data.followingCount || 0,
           songs: [],
-          combinedMedia: data.combinedMedia
+          combinedMedia: data.combinedMedia,
+          uploads: data.uploads || []
         })
       }
     } catch (error) {
@@ -388,6 +401,101 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       })}
                     </div>
                   </div>
+
+                  {/* SECTION 4: UPLOADS - Images & Videos by Month */}
+                  {profile.uploads && profile.uploads.length > 0 && (
+                    <div className="px-6 py-4 border-t border-white/5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-2xl font-bold relative z-10">📸 Uploads</h2>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setActiveSection('tracks')}
+                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                              activeSection === 'tracks'
+                                ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                                : 'bg-white/5 text-cyan-400 hover:bg-white/10'
+                            }`}
+                          >
+                            All Tracks
+                          </button>
+                          <button
+                            onClick={() => setActiveSection('uploads')}
+                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                              activeSection === 'uploads'
+                                ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                                : 'bg-white/5 text-cyan-400 hover:bg-white/10'
+                            }`}
+                          >
+                            Uploads
+                          </button>
+                        </div>
+                      </div>
+
+                      {activeSection === 'uploads' && (
+                        <div className="space-y-6">
+                          {/* Group uploads by month */}
+                          {Object.entries(
+                            profile.uploads.reduce((acc, upload) => {
+                              const date = new Date(upload.created_at)
+                              const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+                              const monthLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+                              if (!acc[monthKey]) {
+                                acc[monthKey] = { label: monthLabel, items: [] }
+                              }
+                              acc[monthKey].items.push(upload)
+                              return acc
+                            }, {} as Record<string, { label: string; items: Upload[] }>)
+                          ).sort(([a], [b]) => b.localeCompare(a)).map(([monthKey, { label, items }]) => (
+                            <div key={monthKey} className="space-y-3">
+                              <h3 className="text-sm font-bold text-cyan-400/80 uppercase tracking-wider">{label}</h3>
+                              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
+                                {items.map((upload) => (
+                                  <div
+                                    key={upload.id}
+                                    className="flex-shrink-0 group cursor-pointer"
+                                  >
+                                    <div className="relative w-40 h-40 rounded-xl overflow-hidden bg-black/40 border border-cyan-500/20 hover:border-cyan-400/60 transition-all hover:scale-105">
+                                      {upload.type === 'image' ? (
+                                        <img
+                                          src={upload.url}
+                                          alt={upload.title || 'Upload'}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <>
+                                          <video
+                                            src={upload.url}
+                                            className="w-full h-full object-cover"
+                                            muted
+                                            loop
+                                            onMouseEnter={(e) => e.currentTarget.play()}
+                                            onMouseLeave={(e) => e.currentTarget.pause()}
+                                          />
+                                          <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 backdrop-blur-sm rounded-full text-[10px] font-bold text-white">
+                                            VIDEO
+                                          </div>
+                                        </>
+                                      )}
+                                      
+                                      {/* Hover Overlay */}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                                        {upload.title && (
+                                          <p className="text-xs text-white font-semibold truncate">{upload.title}</p>
+                                        )}
+                                        <p className="text-[10px] text-cyan-400/60 mt-0.5">
+                                          {new Date(upload.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center min-h-[60vh]">

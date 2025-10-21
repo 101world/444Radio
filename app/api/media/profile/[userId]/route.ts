@@ -35,6 +35,17 @@ export async function GET(
       console.error('Profile media error:', profileError)
     }
 
+    // Fetch user's uploads (images and videos)
+    const { data: uploadsData, error: uploadsError } = await supabase
+      .from('user_uploads')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (uploadsError) {
+      console.error('Uploads error:', uploadsError)
+    }
+
     // Fetch username
     const { data: userData } = await supabase
       .from('users')
@@ -48,9 +59,21 @@ export async function GET(
       ...(profileData || []).map((item) => ({ ...item, media_type: item.content_type }))
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
+    // Format uploads data
+    const uploads = (uploadsData || []).map((item) => ({
+      id: item.id,
+      type: item.content_type?.startsWith('video/') ? 'video' : 'image',
+      url: item.url,
+      thumbnail_url: item.thumbnail_url,
+      title: item.title,
+      created_at: item.created_at,
+      file_size: item.file_size
+    }))
+
     return NextResponse.json({
       success: true,
       combinedMedia: allMedia,
+      uploads: uploads,
       username: userData?.username || 'Unknown User',
       trackCount: allMedia.length,
       totalPlays: allMedia.reduce((sum, media) => sum + (media.plays || media.views || 0), 0)
