@@ -12,7 +12,12 @@ import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
 import { getDisplayUsername, formatUsername } from '../../../lib/username'
+import { createClient } from '@supabase/supabase-js'
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 const THUMBNAIL_SHAPES = [
   'rounded-2xl', // square
   'rounded-full', // circle
@@ -103,6 +108,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [chatMessages, setChatMessages] = useState<Array<{id: string, username: string, message: string, timestamp: Date, type: 'chat' | 'track'}>>([])
   const [chatInput, setChatInput] = useState('')
   const [liveListeners, setLiveListeners] = useState(0)
+  const [stationId, setStationId] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
@@ -110,7 +116,168 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       setIsOwnProfile(currentUser.id === resolvedParams.userId)
     }
     fetchProfileData()
+    fetchStationStatus()
   }, [currentUser, resolvedParams.userId])
+
+  // Fetch station status
+  const fetchStationStatus = async () => {
+    try {
+      const res = await fetch(`/api/station?userId=${resolvedParams.userId}`)
+      const data = await res.json()
+      if (data.success && data.station) {
+        setStationId(data.station.id)
+        setIsLive(data.station.is_live)
+        setLiveListeners(data.station.listener_count || 0)
+        if (data.station.is_live) {
+          loadMessages(data.station.id)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch station status:', error)
+    }
+  }
+
+  // Load chat messages
+  const loadMessages = async (stId: string) => {
+    try {
+      const res = await fetch(`/api/station/messages?stationId=${stId}`)
+      const data = await res.json()
+      if (data.success && data.messages) {
+        setChatMessages(data.messages.map((msg: any) => ({
+          id: msg.id,
+          username: msg.username,
+          message: msg.message,
+          timestamp: new Date(msg.created_at),
+          type: msg.message_type
+        })))
+      }
+    } catch (error) {
+      console.error('Failed to load messages:', error)
+    }
+  }
+
+  // Setup realtime subscriptions
+  useEffect(() => {
+    if (!stationId) return
+
+    // Subscribe to messages
+    const messagesChannel = supabase
+      .channel(`station_messages:${stationId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'station_messages',
+        filter: `station_id=eq.${stationId}`
+      }, (payload) => {
+        const msg = payload.new as any
+        setChatMessages(prev => [...prev, {
+          id: msg.id,
+          username: msg.username,
+          message: msg.message,
+          timestamp: new Date(msg.created_at),
+          type: msg.message_type
+        }])
+      })
+      .subscribe()
+
+    // Subscribe to station updates
+    const stationChannel = supabase
+      .channel(`live_stations:${stationId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'live_stations',
+        filter: `id=eq.${stationId}`
+      }, (payload) => {
+        const station = payload.new as any
+        setIsLive(station.is_live)
+        setLiveListeners(station.listener_count || 0)
+      })
+      .subscribe()
+
+    return () => {
+      messagesChannel.unsubscribe()
+      stationChannel.unsubscribe()
+    }
+  }, [stationId])
+
+  // Join station as listener when viewing
+  useEffect(() => {
+    if (!stationId || !isLive || !currentUser || isOwnProfile) return
+
+    const joinStation = async () => {
+      try {
+        await fetch('/api/station/listeners', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stationId,
+            username: currentUser.username || 'Anonymous'
+          })
+        })
+      } catch (error) {
+        console.error('Failed to join station:', error)
+      }
+    }
+
+    joinStation()
+
+    return () => {
+      // Leave station on unmount
+      fetch(`/api/station/listeners?stationId=${stationId}`, {
+        method: 'DELETE'
+      }).catch(console.error)
+    }
+  }, [stationId, isLive, currentUser, isOwnProfile])
+
+  // Toggle live status
+  const toggleLive = async () => {
+    try {
+      const res = await fetch('/api/station', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isLive: !isLive,
+          currentTrack,
+          username: profile?.username
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setIsLive(!isLive)
+        if (data.station.id) {
+          setStationId(data.station.id)
+        }
+        if (!isLive) {
+          // Clear messages when going offline
+          setChatMessages([])
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle live:', error)
+    }
+  }
+
+  // Send chat message
+  const sendMessage = async () => {
+    if (!chatInput.trim() || !stationId) return
+
+    try {
+      await fetch('/api/station/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stationId,
+          message: chatInput,
+          messageType: 'chat',
+          username: currentUser?.username || 'Anonymous'
+        })
+      })
+      setChatInput('')
+    } catch (error) {
+      console.error('Failed to send message:', error)
+    }
+  }
 
   const fetchProfileData = async () => {
     setLoading(true)
@@ -141,7 +308,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }
 
-  const handlePlay = (media: CombinedMedia) => {
+  const handlePlay = async (media: CombinedMedia) => {
     if (!media.audio_url) return
     
     if (playingId === media.id && isPlaying) {
@@ -156,16 +323,33 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         audioRef.current.play()
       }
       
-      // If station is live, notify chat about track change
-      if (isLive && profile) {
-        const trackMsg = {
-          id: Date.now().toString(),
-          username: profile.username,
-          message: media.title,
-          timestamp: new Date(),
-          type: 'track' as const
+      // If station is live, send track notification to database
+      if (isLive && profile && stationId) {
+        try {
+          await fetch('/api/station/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              stationId,
+              message: media.title,
+              messageType: 'track',
+              username: profile.username
+            })
+          })
+          
+          // Update station with current track
+          await fetch('/api/station', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              isLive: true,
+              currentTrack: media,
+              username: profile.username
+            })
+          })
+        } catch (error) {
+          console.error('Failed to send track notification:', error)
         }
-        setChatMessages(prev => [...prev, trackMsg])
       }
     }
   }
@@ -215,6 +399,150 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 </div>
               ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
                 <div className="space-y-0">
+                  {/* Mobile Station View - Full Screen */}
+                  {activeSubTab === 'station' && (
+                    <div className="md:hidden fixed inset-0 bg-black z-50 flex flex-col">
+                      {/* Header */}
+                      <div className="flex-shrink-0 bg-gradient-to-b from-black to-transparent p-4 border-b border-white/10">
+                        <div className="flex items-center justify-between mb-4">
+                          <button
+                            onClick={() => setActiveSubTab('tracks')}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-all"
+                          >
+                            <ChevronLeft size={24} className="text-white" />
+                          </button>
+                          <h1 className="text-xl font-bold">
+                            {isOwnProfile ? 'My Station' : `${profile.username}'s Station`}
+                          </h1>
+                          <div className="w-10"></div>
+                        </div>
+
+                        {/* Live Status Bar */}
+                        <div className="bg-gradient-to-r from-red-900/30 to-red-950/30 rounded-xl p-4 border border-red-500/30">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Circle size={12} className={`fill-red-500 text-red-500 ${isLive ? 'animate-pulse' : ''}`} />
+                              <span className="text-white font-bold">{isLive ? 'LIVE NOW' : 'OFFLINE'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                              <Users size={14} />
+                              <span>{liveListeners} listening</span>
+                            </div>
+                          </div>
+                          {isOwnProfile && (
+                            <button
+                              onClick={toggleLive}
+                              className={`p-2 rounded-lg font-bold transition-all flex items-center gap-2 ${
+                                isLive
+                                  ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30'
+                                  : 'bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30'
+                              }`}
+                              title={isLive ? 'End Broadcast' : 'Go Live'}
+                            >
+                              {isLive ? (
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                                  <rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor"/>
+                                </svg>
+                              ) : (
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                                  <circle cx="8" cy="8" r="6" fill="currentColor"/>
+                                </svg>
+                              )}
+                              <span className="text-xs">{isLive ? 'End Broadcast' : 'Go Live'}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Currently Playing */}
+                        {isLive && currentTrack && (
+                          <div className="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/30 mt-4">
+                            <div className="text-xs text-cyan-400 uppercase mb-2">Now Playing on Station</div>
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={currentTrack.image_url} 
+                                alt={currentTrack.title}
+                                className="w-12 h-12 rounded-lg"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-white font-bold truncate">{currentTrack.title}</h4>
+                                <p className="text-sm text-gray-400 truncate">@{profile.username}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chat Messages */}
+                      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                        {chatMessages.length === 0 ? (
+                          <div className="text-center text-gray-500 mt-8">
+                            <RadioIcon size={32} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">{isLive ? 'Start the conversation!' : 'Station is offline'}</p>
+                          </div>
+                        ) : (
+                          chatMessages.map((msg) => (
+                            <div key={msg.id} className={`${
+                              msg.type === 'track' ? 'bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3' : ''
+                            }`}>
+                              {msg.type === 'track' ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Play size={14} className="text-cyan-400 flex-shrink-0" />
+                                  <span className="text-cyan-400 font-bold">{msg.username}</span>
+                                  <span className="text-gray-400">played</span>
+                                  <span className="text-white truncate">{msg.message}</span>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="flex items-baseline gap-2 mb-1">
+                                    <span className="font-bold text-white text-sm">{msg.username}</span>
+                                    <span className="text-xs text-gray-500">
+                                      {new Date(msg.timestamp).toLocaleTimeString('en-US', { 
+                                        hour: 'numeric', 
+                                        minute: '2-digit',
+                                        hour12: true 
+                                      })}
+                                    </span>
+                                  </div>
+                                  <p className="text-gray-300 text-sm">{msg.message}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Chat Input */}
+                      {isLive && (
+                        <div className="flex-shrink-0 p-4 border-t border-white/10 bg-black">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={chatInput}
+                              onChange={(e) => setChatInput(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter' && chatInput.trim()) {
+                                  sendMessage()
+                                }
+                              }}
+                              placeholder="Type a message..."
+                              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500/50"
+                            />
+                            <button
+                              onClick={() => {
+                                if (chatInput.trim()) {
+                                  sendMessage()
+                                }
+                              }}
+                              className="bg-cyan-600 hover:bg-cyan-500 rounded-lg px-4 py-2 transition-all"
+                            >
+                              <Send size={16} className="text-white" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Mobile Layout - Original Design */}
                   <div className="md:hidden space-y-0">
                   {/* SECTION 1: TOP BANNER - Cover Art Carousel */}
@@ -270,6 +598,54 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       ))}
                     </div>
                   </div>
+
+                  {/* Mobile Station Access Button */}
+                  {(isLive || isOwnProfile) && (
+                    <div className="px-6 py-4 border-b border-white/5">
+                      <button
+                        onClick={() => {
+                          if (isLive || isOwnProfile) {
+                            setActiveSubTab('station')
+                          }
+                        }}
+                        disabled={!isLive && !isOwnProfile}
+                        className={`w-full p-4 rounded-xl border transition-all ${
+                          isLive 
+                            ? 'bg-gradient-to-r from-red-900/30 to-red-950/30 border-red-500/30 hover:from-red-900/40 hover:to-red-950/40' 
+                            : 'bg-gradient-to-r from-gray-900/30 to-gray-950/30 border-gray-500/30 hover:from-gray-900/40 hover:to-gray-950/40'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${isLive ? 'bg-red-500/20' : 'bg-gray-500/20'}`}>
+                              <RadioIcon size={20} className={isLive ? 'text-red-400' : 'text-gray-400'} />
+                            </div>
+                            <div className="text-left">
+                              <div className="flex items-center gap-2">
+                                <span className="text-white font-bold">
+                                  {isOwnProfile ? 'My Station' : `${profile.username}'s Station`}
+                                </span>
+                                {isLive && (
+                                  <div className="flex items-center gap-1">
+                                    <Circle size={8} className="fill-red-500 text-red-500 animate-pulse" />
+                                    <span className="text-xs text-red-400 font-bold">LIVE</span>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-400">
+                                {isLive 
+                                  ? `${liveListeners} listening now` 
+                                  : isOwnProfile 
+                                    ? 'Start broadcasting' 
+                                    : 'Station offline'}
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronRight size={20} className="text-gray-400" />
+                        </div>
+                      </button>
+                    </div>
+                  )}
 
                   {/* SECTION 2: HORIZONTAL SCROLL - Recent Tracks */}
                   <div className="py-4 px-6 border-b border-white/5">
@@ -530,9 +906,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   <div className="hidden md:block">
                     <div className="grid grid-cols-2 gap-6 p-6">
                       {/* LEFT SIDE: Track List / Station Feed */}
-                      <div className="space-y-2 overflow-hidden flex flex-col max-h-[calc(100vh-150px)]">
+                      <div className="flex flex-col h-[calc(100vh-200px)]">
                         {/* Sub Tabs */}
-                        <div className="sticky top-0 bg-black/90 backdrop-blur-xl z-10 border-b border-cyan-500/20">
+                        <div className="bg-black/90 backdrop-blur-xl border-b border-cyan-500/20 flex-shrink-0">
                           <div className="flex gap-2 p-3">
                             <button
                               onClick={() => setActiveSubTab('tracks')}
@@ -560,7 +936,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
                           {activeSubTab === 'tracks' ? (
                             // Track List View
                             <div className="space-y-2 p-3">
@@ -648,14 +1024,24 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 </div>
                                 {isOwnProfile && (
                                   <button
-                                    onClick={() => setIsLive(!isLive)}
-                                    className={`w-full px-4 py-2 rounded-lg font-bold transition-all ${
+                                    onClick={toggleLive}
+                                    className={`p-2 rounded-lg font-bold transition-all flex items-center gap-2 ${
                                       isLive
-                                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                                        : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white'
+                                        ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30'
+                                        : 'bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30'
                                     }`}
+                                    title={isLive ? 'End Broadcast' : 'Go Live'}
                                   >
-                                    {isLive ? 'End Broadcast' : 'Go Live'}
+                                    {isLive ? (
+                                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                                        <rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor"/>
+                                      </svg>
+                                    ) : (
+                                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                                        <circle cx="8" cy="8" r="6" fill="currentColor"/>
+                                      </svg>
+                                    )}
+                                    <span className="text-xs">{isLive ? 'End' : 'Go Live'}</span>
                                   </button>
                                 )}
                               </div>
@@ -720,15 +1106,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                         onChange={(e) => setChatInput(e.target.value)}
                                         onKeyPress={(e) => {
                                           if (e.key === 'Enter' && chatInput.trim()) {
-                                            const newMsg = {
-                                              id: Date.now().toString(),
-                                              username: currentUser?.username || 'Anonymous',
-                                              message: chatInput,
-                                              timestamp: new Date(),
-                                              type: 'chat' as const
-                                            }
-                                            setChatMessages([...chatMessages, newMsg])
-                                            setChatInput('')
+                                            sendMessage()
                                           }
                                         }}
                                         placeholder="Type a message..."
@@ -737,15 +1115,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                       <button
                                         onClick={() => {
                                           if (chatInput.trim()) {
-                                            const newMsg = {
-                                              id: Date.now().toString(),
-                                              username: currentUser?.username || 'Anonymous',
-                                              message: chatInput,
-                                              timestamp: new Date(),
-                                              type: 'chat' as const
-                                            }
-                                            setChatMessages([...chatMessages, newMsg])
-                                            setChatInput('')
+                                            sendMessage()
                                           }
                                         }}
                                         className="bg-cyan-600 hover:bg-cyan-500 rounded-lg px-4 py-2 transition-all"
