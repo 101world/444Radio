@@ -36,26 +36,26 @@ export default function HomePage() {
         {/* Floating Menu */}
         <FloatingMenu />
 
-        {/* Landing View - Mobile First Design */}
-        <div className="flex-1 flex flex-col items-center justify-between md:justify-center px-4 sm:px-6 lg:px-8 pt-16 pb-6 md:py-8 safe-area-bottom">
+        {/* Landing View - Mobile First Design - Optimized for 5.8" screens */}
+        <div className="flex-1 flex flex-col items-center justify-between md:justify-center px-4 sm:px-6 lg:px-8 pt-12 pb-safe md:py-8">
           
           {/* Welcome Text - Top Section on Mobile, Centered on Desktop */}
-          <div className="text-center space-y-3 md:space-y-6 md:mb-16 will-change-auto">
+          <div className="text-center space-y-2 md:space-y-6 md:mb-16 will-change-auto flex-shrink-0">
             {/* Logo & Title */}
             <div className="flex flex-col items-center justify-center gap-2 md:gap-5 md:flex-row">
               <img 
                 src="/radio-logo.svg" 
                 alt="444 Radio" 
-                className="w-12 h-12 md:w-20 md:h-20 lg:w-24 lg:h-24 md:transition-transform md:hover:scale-110 md:duration-300" 
+                className="w-10 h-10 md:w-20 md:h-20 lg:w-24 lg:h-24 md:transition-transform md:hover:scale-110 md:duration-300" 
                 style={{ filter: 'drop-shadow(0 0 20px rgba(34, 211, 238, 0.8))' }} 
               />
-              <h1 className="text-4xl md:text-6xl lg:text-8xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight">
+              <h1 className="text-3xl md:text-6xl lg:text-8xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight">
                 444 Radio
               </h1>
             </div>
             
             {/* Tagline */}
-            <p className="text-sm md:text-xl lg:text-2xl text-gray-300 font-light tracking-wide max-w-2xl mx-auto px-4">
+            <p className="text-xs md:text-xl lg:text-2xl text-gray-300 font-light tracking-wide max-w-2xl mx-auto px-4">
               A world where music feels infinite.
             </p>
 
@@ -72,8 +72,8 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Prompt Input - Docked at Bottom on Mobile, Centered on Desktop */}
-          <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
+          {/* Prompt Input - Fixed Bottom Position for 5.8" screens */}
+          <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto flex-shrink-0">
             <div 
               className="group relative cursor-pointer active:scale-95 md:hover:scale-105 transition-transform duration-200" 
               onClick={handleFocus}
@@ -81,14 +81,14 @@ export default function HomePage() {
               {/* Glow Effect - Reduced on mobile */}
               <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-3xl blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>
               
-              {/* Input Container - Optimized for mobile */}
-              <div className="relative flex gap-3 md:gap-4 items-center bg-black/30 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl rounded-3xl px-5 md:px-6 py-4 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
+              {/* Input Container - Compact for 5.8" screens */}
+              <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/30 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl rounded-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
                 <Music 
-                  size={22} 
-                  className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)]" 
+                  size={20} 
+                  className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]" 
                 />
                 <div className="flex-1 text-center md:text-left">
-                  <div className="text-base md:text-lg font-light text-gray-200 tracking-wide">
+                  <div className="text-sm md:text-lg font-light text-gray-200 tracking-wide">
                     Describe your sound...
                   </div>
                   <div className="text-xs text-cyan-400/60 mt-0.5 font-mono hidden md:block">
@@ -99,7 +99,7 @@ export default function HomePage() {
             </div>
 
             {/* Quick Info - Mobile Optimized */}
-            <div className="flex items-center justify-center gap-2 mt-3 md:mt-6 text-xs md:text-sm">
+            <div className="flex items-center justify-center gap-2 mt-2 md:mt-6 text-xs md:text-sm mb-2">
               <span className="text-cyan-400/60 font-mono tracking-wider">
                 ✨ Tap to create
               </span>

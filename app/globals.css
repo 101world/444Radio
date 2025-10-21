@@ -49,6 +49,10 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+.pb-safe {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+
 /* Optimize GPU acceleration for mobile */
 .will-change-auto {
   will-change: auto;
