@@ -210,11 +210,51 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       })
       .subscribe()
 
+    // Subscribe to listener changes
+    const listenersChannel = supabase
+      .channel(`station_listeners:${stationId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'station_listeners',
+        filter: `station_id=eq.${stationId}`
+      }, async (payload) => {
+        // Refresh listener count
+        const res = await fetch(`/api/station?userId=${profile?.username}`)
+        const data = await res.json()
+        if (data.success && data.station) {
+          setLiveListeners(data.station.listener_count || 0)
+        }
+        
+        // Send join/leave notification
+        if (payload.eventType === 'INSERT') {
+          const listener = payload.new as { username: string }
+          setChatMessages(prev => [...prev, {
+            id: `join-${Date.now()}`,
+            username: 'System',
+            message: `${listener.username} joined the station 🎧`,
+            timestamp: new Date(),
+            type: 'chat' as const
+          }])
+        } else if (payload.eventType === 'DELETE') {
+          const listener = payload.old as { username: string }
+          setChatMessages(prev => [...prev, {
+            id: `leave-${Date.now()}`,
+            username: 'System',
+            message: `${listener.username} left the station 👋`,
+            timestamp: new Date(),
+            type: 'chat' as const
+          }])
+        }
+      })
+      .subscribe()
+
     return () => {
       messagesChannel.unsubscribe()
       stationChannel.unsubscribe()
+      listenersChannel.unsubscribe()
     }
-  }, [stationId])
+  }, [stationId, profile?.username])
 
   // Join station as listener when viewing
   useEffect(() => {
@@ -248,24 +288,26 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   // Toggle live status
   const toggleLive = async () => {
     try {
+      const newLiveStatus = !isLive
       const res = await fetch('/api/station', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          isLive: !isLive,
-          currentTrack,
+          isLive: newLiveStatus,
+          currentTrack: newLiveStatus ? currentTrack : null,
           username: profile?.username
         })
       })
       const data = await res.json()
       if (data.success) {
-        setIsLive(!isLive)
+        setIsLive(newLiveStatus)
         if (data.station.id) {
           setStationId(data.station.id)
         }
-        if (!isLive) {
-          // Clear messages when going offline
+        if (!newLiveStatus) {
+          // Clear messages and listener count when going offline
           setChatMessages([])
+          setLiveListeners(0)
         }
       }
     } catch (error) {
@@ -416,38 +458,38 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 <div className="space-y-0">
                   {/* Mobile Station View - Full Screen */}
                   {activeSubTab === 'station' && (
-                    <div className="md:hidden fixed inset-0 bg-black z-50 flex flex-col">
+                    <div className="md:hidden fixed inset-0 bg-black z-50 flex flex-col safe-area-inset">
                       {/* Header */}
-                      <div className="flex-shrink-0 bg-gradient-to-b from-black to-transparent p-4 border-b border-white/10">
-                        <div className="flex items-center justify-between mb-4">
+                      <div className="flex-shrink-0 bg-gradient-to-b from-black to-transparent p-3 border-b border-white/10">
+                        <div className="flex items-center justify-between mb-3">
                           <button
                             onClick={() => setActiveSubTab('tracks')}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-all"
+                            className="p-2 hover:bg-white/10 rounded-lg transition-all active:scale-95"
                           >
                             <ChevronLeft size={24} className="text-white" />
                           </button>
-                          <h1 className="text-xl font-bold">
+                          <h1 className="text-lg font-bold">
                             {isOwnProfile ? 'My Station' : `${profile.username}'s Station`}
                           </h1>
                           <div className="w-10"></div>
                         </div>
 
                         {/* Live Status Bar */}
-                        <div className="bg-gradient-to-r from-red-900/30 to-red-950/30 rounded-xl p-4 border border-red-500/30">
-                          <div className="flex items-center justify-between mb-3">
+                        <div className="bg-gradient-to-r from-red-900/30 to-red-950/30 rounded-xl p-3 border border-red-500/30">
+                          <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <Circle size={12} className={`fill-red-500 text-red-500 ${isLive ? 'animate-pulse' : ''}`} />
-                              <span className="text-white font-bold">{isLive ? 'LIVE NOW' : 'OFFLINE'}</span>
+                              <Circle size={10} className={`fill-red-500 text-red-500 ${isLive ? 'animate-pulse' : ''}`} />
+                              <span className="text-white font-bold text-sm">{isLive ? 'LIVE NOW' : 'OFFLINE'}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-400">
-                              <Users size={14} />
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                              <Users size={12} />
                               <span>{liveListeners} listening</span>
                             </div>
                           </div>
                           {isOwnProfile && (
                             <button
                               onClick={toggleLive}
-                              className={`p-2 rounded-lg font-bold transition-all flex items-center gap-2 ${
+                              className={`w-full p-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2 active:scale-95 ${
                                 isLive
                                   ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30'
                                   : 'bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30'
@@ -455,11 +497,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               title={isLive ? 'End Broadcast' : 'Go Live'}
                             >
                               {isLive ? (
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
                                   <rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor"/>
                                 </svg>
                               ) : (
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
+                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
                                   <circle cx="8" cy="8" r="6" fill="currentColor"/>
                                 </svg>
                               )}
@@ -470,17 +512,17 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                         {/* Currently Playing */}
                         {isLive && currentTrack && (
-                          <div className="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/30 mt-4">
-                            <div className="text-xs text-cyan-400 uppercase mb-2">Now Playing on Station</div>
-                            <div className="flex items-center gap-3">
+                          <div className="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/30 mt-3">
+                            <div className="text-[10px] text-cyan-400 uppercase mb-1">Now Playing</div>
+                            <div className="flex items-center gap-2">
                               <img 
                                 src={currentTrack.image_url} 
                                 alt={currentTrack.title}
-                                className="w-12 h-12 rounded-lg"
+                                className="w-10 h-10 rounded-lg"
                               />
                               <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-bold truncate">{currentTrack.title}</h4>
-                                <p className="text-sm text-gray-400 truncate">@{profile.username}</p>
+                                <h4 className="text-white font-bold text-sm truncate">{currentTrack.title}</h4>
+                                <p className="text-xs text-gray-400 truncate">@{profile.username}</p>
                               </div>
                             </div>
                           </div>
@@ -488,29 +530,31 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </div>
 
                       {/* Chat Messages */}
-                      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                         {chatMessages.length === 0 ? (
                           <div className="text-center text-gray-500 mt-8">
-                            <RadioIcon size={32} className="mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">{isLive ? 'Start the conversation!' : 'Station is offline'}</p>
+                            <RadioIcon size={28} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-xs">{isLive ? 'Start the conversation!' : 'Station is offline'}</p>
                           </div>
                         ) : (
                           chatMessages.map((msg) => (
                             <div key={msg.id} className={`${
-                              msg.type === 'track' ? 'bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3' : ''
-                            }`}>
-                              {msg.type === 'track' ? (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Play size={14} className="text-cyan-400 flex-shrink-0" />
+                              msg.type === 'track' ? 'bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-2' : ''
+                            } ${msg.username === 'System' ? 'text-center' : ''}`}>
+                              {msg.username === 'System' ? (
+                                <p className="text-xs text-gray-500 italic">{msg.message}</p>
+                              ) : msg.type === 'track' ? (
+                                <div className="flex items-center gap-2 text-xs">
+                                  <Play size={12} className="text-cyan-400 flex-shrink-0" />
                                   <span className="text-cyan-400 font-bold">{msg.username}</span>
                                   <span className="text-gray-400">played</span>
                                   <span className="text-white truncate">{msg.message}</span>
                                 </div>
                               ) : (
                                 <div>
-                                  <div className="flex items-baseline gap-2 mb-1">
-                                    <span className="font-bold text-white text-sm">{msg.username}</span>
-                                    <span className="text-xs text-gray-500">
+                                  <div className="flex items-baseline gap-2 mb-0.5">
+                                    <span className="font-bold text-white text-xs">{msg.username}</span>
+                                    <span className="text-[10px] text-gray-500">
                                       {new Date(msg.timestamp).toLocaleTimeString('en-US', { 
                                         hour: 'numeric', 
                                         minute: '2-digit',
@@ -518,7 +562,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                       })}
                                     </span>
                                   </div>
-                                  <p className="text-gray-300 text-sm">{msg.message}</p>
+                                  <p className="text-gray-300 text-xs">{msg.message}</p>
                                 </div>
                               )}
                             </div>
@@ -528,7 +572,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                       {/* Chat Input */}
                       {isLive && (
-                        <div className="flex-shrink-0 p-4 border-t border-white/10 bg-black">
+                        <div className="flex-shrink-0 p-3 border-t border-white/10 bg-black safe-area-bottom">
                           <div className="flex gap-2">
                             <input
                               type="text"
@@ -540,7 +584,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 }
                               }}
                               placeholder="Type a message..."
-                              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500/50"
+                              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50"
                             />
                             <button
                               onClick={() => {
@@ -548,7 +592,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                   sendMessage()
                                 }
                               }}
-                              className="bg-cyan-600 hover:bg-cyan-500 rounded-lg px-4 py-2 transition-all"
+                              className="bg-cyan-600 hover:bg-cyan-500 active:scale-95 rounded-lg px-3 py-2.5 transition-all"
                             >
                               <Send size={16} className="text-white" />
                             </button>
@@ -618,12 +662,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   {(isLive || isOwnProfile) && (
                     <div className="px-6 py-4 border-b border-white/5">
                       <button
-                        onClick={() => {
-                          if (isLive || isOwnProfile) {
-                            setActiveSubTab('station')
+                        onClick={async () => {
+                          if (isOwnProfile && !isLive) {
+                            // Auto go live when owner clicks
+                            await toggleLive()
                           }
+                          setActiveSubTab('station')
                         }}
-                        disabled={!isLive && !isOwnProfile}
                         className={`w-full p-4 rounded-xl border transition-all ${
                           isLive 
                             ? 'bg-gradient-to-r from-red-900/30 to-red-950/30 border-red-500/30 hover:from-red-900/40 hover:to-red-950/40' 
