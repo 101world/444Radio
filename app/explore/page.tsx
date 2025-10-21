@@ -385,10 +385,10 @@ export default function ExplorePage() {
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           <div className="group relative">
             {/* Glow Effect - Same as Home Page */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-xl blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 transition-opacity duration-300"></div>
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 transition-opacity duration-300"></div>
             
             {/* Bar Container - Same style as Home Page */}
-            <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl rounded-xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
+            <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
               {currentTrack ? (
                 /* Player Mode */
                 <>
