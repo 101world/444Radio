@@ -564,7 +564,7 @@ function CreatePageContent() {
                 {/* Release Button on the right */}
                 <button
                   onClick={() => setShowCombineModal(true)}
-                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white hover:from-[#5558e3] hover:to-[#7078ef] transition-all shadow-lg"
+                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700 transition-all shadow-lg shadow-cyan-500/30"
                 >
                   <Layers size={14} className="inline mr-1.5" />
                   Release
@@ -577,6 +577,7 @@ function CreatePageContent() {
                 <div className="relative flex gap-3 items-center">
                   <Music size={18} className="text-cyan-400 flex-shrink-0" />
                   <textarea
+                    ref={(el) => el?.focus()}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleGenerate()}
@@ -591,6 +592,7 @@ function CreatePageContent() {
                     className="flex-1 px-0 py-0 bg-transparent border-none text-white text-sm placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors resize-none"
                     rows={1}
                     style={{ fontFamily: "'Courier New', monospace" }}
+                    autoFocus
                   />
                 </div>
 

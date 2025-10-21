@@ -442,7 +442,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                       <button 
                         onClick={handleSaveToProfile}
                         disabled={isSaving}
-                        className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white rounded-xl font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#6366f1]/30"
+                        className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-cyan-500/30"
                       >
                         {isSaving ? '� Releasing...' : '� Release'}
                       </button>

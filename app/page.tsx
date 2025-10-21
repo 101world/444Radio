@@ -29,6 +29,9 @@ export default function HomePage() {
       {/* Floating Genre Texts */}
       <FloatingGenres />
       
+      {/* Dark overlay to reduce clutter */}
+      <div className="absolute inset-0 bg-black/60 z-[2]" />
+      
       {/* Main Content Wrapper - Simplified transition for mobile */}
       <div 
         className={`relative z-10 flex-1 flex flex-col transition-opacity duration-500 ${
