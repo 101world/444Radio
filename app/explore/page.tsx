@@ -210,11 +210,11 @@ export default function ExplorePage() {
         </div>
       )}
 
-      {/* Full-Width List View - Clean, Professional */}
+      {/* Full-Width 4-Column Grid - Clean, Professional */}
       <main className="px-4 md:px-8 py-8 pb-32">
         <div className="w-full">
           {loading ? (
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="bg-white/5 backdrop-blur-xl rounded-xl h-20 animate-pulse"></div>
               ))}
@@ -229,7 +229,7 @@ export default function ExplorePage() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {combinedMedia.map((media) => {
                 const isCurrentlyPlaying = playingId === media.id
                 
@@ -243,9 +243,10 @@ export default function ExplorePage() {
                   }`}
                   onClick={() => handlePlay(media)}
                 >
-                  <div className="flex items-center gap-4 p-4">
-                    {/* Thumbnail Preview */}
-                    <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
+                  {/* Vertical Card Layout */}
+                  <div className="flex flex-col">
+                    {/* Thumbnail - Square */}
+                    <div className="relative aspect-square w-full overflow-hidden">
                       <img 
                         src={media.image_url} 
                         alt={media.title}
@@ -254,56 +255,61 @@ export default function ExplorePage() {
                       
                       {/* Play Button Overlay */}
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                        <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
                           {isCurrentlyPlaying && isPlaying ? (
-                            <Pause className="text-white" size={16} />
+                            <Pause className="text-white" size={20} />
                           ) : (
-                            <Play className="text-white ml-0.5" size={16} />
+                            <Play className="text-white ml-0.5" size={20} />
                           )}
                         </div>
                       </div>
                       
                       {/* Playing Indicator */}
                       {isCurrentlyPlaying && (
-                        <div className="absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 bg-cyan-500 rounded-full">
-                          <Radio size={8} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
+                        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-cyan-500 rounded-full">
+                          <Radio size={10} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
+                          <span className="text-xs font-bold text-white">PLAYING</span>
                         </div>
                       )}
+                      
+                      {/* Metadata Tags Overlay */}
+                      <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-1">
+                        {media.genre && (
+                          <span className="px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded-full text-xs text-white">{media.genre}</span>
+                        )}
+                        {media.bpm && (
+                          <span className="px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded-full text-xs text-white">{media.bpm} BPM</span>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Track Info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-bold text-white truncate mb-1">
+                    <div className="p-3">
+                      <h3 className="text-sm font-bold text-white truncate mb-1">
                         {media.title || 'Untitled Track'}
                       </h3>
                       <Link 
                         href={`/u/${media.users?.username || 'unknown'}`}
-                        className="text-sm text-cyan-400 hover:text-cyan-300 font-semibold transition-colors inline-block"
+                        className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold transition-colors inline-block truncate w-full"
                         onClick={(e) => e.stopPropagation()}
                       >
                         @{media.users?.username || 'Unknown Artist'}
                       </Link>
-                    </div>
-                    
-                    {/* Metadata Tags */}
-                    <div className="hidden md:flex items-center gap-3 text-xs text-gray-400">
-                      {media.genre && (
-                        <span className="px-2 py-1 bg-white/5 rounded-full">{media.genre}</span>
-                      )}
+                      
+                      {/* Mood Badge */}
                       {media.mood && (
-                        <span className="px-2 py-1 bg-white/5 rounded-full">{media.mood}</span>
+                        <div className="mt-2 inline-block px-2 py-0.5 bg-white/5 rounded-full text-xs text-gray-400">
+                          {media.mood}
+                        </div>
                       )}
-                      {media.bpm && (
-                        <span className="px-2 py-1 bg-white/5 rounded-full">{media.bpm} BPM</span>
-                      )}
-                    </div>
-                    
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 text-sm text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Play size={14} />
-                        {media.plays || 0}
-                      </span>
+                      
+                      {/* Stats */}
+                      <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Play size={12} />
+                          {media.plays || 0}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
