@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
-import { getContextualLyrics } from '@/lib/default-lyrics'
+import { getContextualLyrics, getRandomLyrics } from '@/lib/default-lyrics'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
@@ -26,11 +26,13 @@ export async function POST(req: NextRequest) {
 
     // If lyrics not provided, use intelligent default from dataset
     let formattedLyrics: string
-    if (!lyrics || lyrics.trim().length === 0) {
+    if (!lyrics || typeof lyrics !== 'string' || lyrics.trim().length === 0) {
       // Use contextual lyrics based on prompt (from 20 template dataset)
       console.log('⚡ No custom lyrics provided, using intelligent default from dataset')
+      console.log('  Received lyrics value:', lyrics, 'Type:', typeof lyrics)
       formattedLyrics = getContextualLyrics(prompt)
       console.log('📝 Selected lyrics template based on prompt context')
+      console.log('  Formatted lyrics length:', formattedLyrics.length)
     } else {
       // Validate user-provided lyrics
       if (lyrics.trim().length < 10 || lyrics.length > 600) {
@@ -38,6 +40,15 @@ export async function POST(req: NextRequest) {
       }
       formattedLyrics = lyrics.trim()
       console.log('📝 Using custom user-provided lyrics')
+      console.log('  Lyrics length:', formattedLyrics.length)
+    }
+    
+    // CRITICAL: Ensure lyrics are NEVER empty before sending to Replicate
+    if (!formattedLyrics || formattedLyrics.length < 10) {
+      console.error('❌ CRITICAL: Formatted lyrics are invalid!', formattedLyrics)
+      // Fallback to safe default
+      formattedLyrics = getRandomLyrics()
+      console.log('  ⚠️ Using random fallback lyrics, length:', formattedLyrics.length)
     }
     
     // Log for debugging
