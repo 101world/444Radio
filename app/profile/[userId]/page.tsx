@@ -116,261 +116,233 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-32">
+    <div className="min-h-screen bg-black text-white">
       {/* Holographic 3D Background */}
       <HolographicBackground />
       
-      {/* Floating Menu */}
-      <FloatingMenu />
+      {/* 444 Radio Top Bar - Fixed */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-cyan-500/30">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Link href="/" className="flex items-center gap-2">
+            <img 
+              src="/radio-logo.svg" 
+              alt="444 Radio" 
+              className="w-8 h-8" 
+              style={{ filter: 'drop-shadow(0 0 10px rgba(34, 211, 238, 0.8))' }}
+            />
+            <span className="text-xl font-black bg-gradient-to-r from-white to-cyan-300 bg-clip-text text-transparent">
+              444 Radio
+            </span>
+          </Link>
+          <FloatingMenu />
+        </div>
+      </div>
 
-      {/* Profile Header Section - Mobile Optimized at Bottom */}
-      <div className="relative z-10 pt-20 md:pt-24 px-3 md:px-6 pb-4 md:pb-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Profile Info Card - Compact Mobile Design */}
-          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-2xl">
-            <div className="flex flex-col md:flex-row items-start md:items-start gap-4 md:gap-6">
-              {/* Profile Avatar & Info - Small on Mobile */}
-              <div className="flex flex-col md:flex-col items-center md:items-start gap-3 md:gap-4">
-                <div className="relative">
-                  {profile?.avatar || currentUser?.imageUrl ? (
-                    <img 
-                      src={profile?.avatar || currentUser?.imageUrl} 
-                      alt="Profile"
-                      className="w-20 h-20 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full object-cover border-2 md:border-4 border-cyan-500 shadow-xl md:shadow-2xl shadow-cyan-500/50"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-400 flex items-center justify-center text-3xl md:text-5xl lg:text-6xl font-black text-white shadow-xl md:shadow-2xl shadow-cyan-500/50">
-                      {profile?.username?.[0]?.toUpperCase() || currentUser?.firstName?.[0]?.toUpperCase() || '?'}
-                    </div>
-                  )}
-                  {isOwnProfile && (
-                    <button className="absolute bottom-0 right-0 p-2 md:p-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full hover:scale-110 transition-transform shadow-lg">
-                      <Edit2 size={14} className="text-white md:w-[18px] md:h-[18px]" />
-                    </button>
-                  )}
+      {/* Profile Header - Compact & Modern */}
+      <div className="relative z-10 pt-16">
+        <div className="bg-gradient-to-b from-cyan-500/10 to-transparent border-b border-cyan-500/20 px-4 py-4">
+          <div className="flex items-center gap-3">
+            {/* Avatar - Compact */}
+            <div className="relative">
+              {profile?.avatar || currentUser?.imageUrl ? (
+                <img 
+                  src={profile?.avatar || currentUser?.imageUrl} 
+                  alt="Profile"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-cyan-500 shadow-lg shadow-cyan-500/50"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-400 flex items-center justify-center text-2xl font-black text-white">
+                  {profile?.username?.[0]?.toUpperCase() || currentUser?.firstName?.[0]?.toUpperCase() || '?'}
                 </div>
+              )}
+              {isOwnProfile && (
+                <button className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full hover:scale-110 transition-transform">
+                  <Edit2 size={12} className="text-white" />
+                </button>
+              )}
+            </div>
+            
+            {/* Info - Compact */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black text-white truncate">
+                  @{profile?.username && !profile.username.startsWith('user_') 
+                    ? profile.username 
+                    : (currentUser?.username || currentUser?.firstName || currentUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'user')}
+                </h1>
+                <span className="text-xs font-bold text-cyan-400 flex-shrink-0">
+                  {profile?.followerCount || 0} followers
+                </span>
               </div>
+              <p className="text-xs text-cyan-400 italic truncate">
+                &quot;{profile?.tagline || "Creating the future of music"}&quot;
+              </p>
               
-              {/* Profile Details - Compact */}
-              <div className="flex-1 w-full">
-                <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-3 md:gap-4 mb-3 md:mb-4">
-                  <div className="w-full md:w-auto">
-                    <h1 className="text-xl md:text-3xl lg:text-5xl font-black text-white mb-1 md:mb-2">
-                      @{profile?.username && !profile.username.startsWith('user_') 
-                        ? profile.username 
-                        : (currentUser?.username || currentUser?.firstName || currentUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'user')}
-                      <sup className="text-sm md:text-lg lg:text-2xl font-bold text-cyan-400 ml-1">
-                        {profile?.followerCount || 0}
-                      </sup>
-                    </h1>
-                    <p className="text-xs md:text-lg lg:text-xl text-cyan-400 font-semibold mb-2 md:mb-3 italic">
-                      &quot;{profile?.tagline || "Creating the future of music"}&quot;
-                    </p>
-                    <p className="text-gray-400 text-xs md:text-sm lg:text-base mb-3 md:mb-4 max-w-2xl line-clamp-2 md:line-clamp-none">
-                      {profile?.bio || "Music creator and innovator on 444 Radio. Exploring new sounds and pushing boundaries."}
-                    </p>
-                  </div>
-                  
-                  {/* Action Buttons - Compact on Mobile */}
-                  <div className="flex gap-2 w-full md:w-auto">
-                    {!isOwnProfile ? (
-                      <button 
-                        onClick={() => setIsFollowing(!isFollowing)}
-                        className={`flex-1 md:flex-initial px-4 md:px-6 py-2 md:py-3 ${isFollowing ? 'bg-white/10 hover:bg-white/20' : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500'} rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-xs md:text-sm`}
-                      >
-                        <div className="flex items-center justify-center gap-2">
-                          <UserPlus size={16} className="md:w-[18px] md:h-[18px]" />
-                          <span>{isFollowing ? 'Following' : 'Follow'}</span>
-                        </div>
-                      </button>
-                    ) : (
-                      <>
-                        <button 
-                          onClick={() => setShowStationsModal(true)}
-                          className="flex-1 md:flex-initial px-3 md:px-4 py-2 md:py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-xs md:text-sm"
-                          title="My Stations"
-                        >
-                          <div className="flex items-center justify-center gap-1 md:gap-2">
-                            <Radio size={16} className="md:w-[18px] md:h-[18px]" />
-                            <span className="hidden md:inline">STATIONS</span>
-                            <span className="md:hidden">STA</span>
-                          </div>
-                        </button>
-                        <button 
-                          onClick={() => setShowUploadModal(true)}
-                          className="flex-1 md:flex-initial px-3 md:px-4 py-2 md:py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-xs md:text-sm"
-                          title="Upload Content"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Upload size={18} />
-                            <span>UPLOAD</span>
-                          </div>
-                        </button>
-                      </>
-                    )}
-                  </div>
+              {/* Stats - Inline */}
+              <div className="flex items-center gap-4 mt-1 text-xs">
+                <div className="flex items-center gap-1">
+                  <Music size={14} className="text-cyan-400" />
+                  <span className="font-bold text-white">{profile?.songCount || 0}</span>
                 </div>
-                
-                {/* Stats Row */}
-                <div className="flex flex-wrap gap-6">
-                  <div className="flex items-center gap-2">
-                    <Music size={20} className="text-cyan-400" />
-                    <span className="text-2xl font-black text-white">{profile?.songCount || 0}</span>
-                    <span className="text-sm text-gray-400">Tracks</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">▶️</span>
-                    <span className="text-2xl font-black text-white">{profile?.totalPlays || 0}</span>
-                    <span className="text-sm text-gray-400">Plays</span>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <span>▶️</span>
+                  <span className="font-bold text-white">{profile?.totalPlays || 0}</span>
                 </div>
               </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-2 flex-shrink-0">
+              {!isOwnProfile ? (
+                <button 
+                  onClick={() => setIsFollowing(!isFollowing)}
+                  className={`px-4 py-2 ${isFollowing ? 'bg-white/10' : 'bg-gradient-to-r from-cyan-600 to-blue-600'} rounded-lg font-bold text-xs transition-all hover:scale-105`}
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setShowStationsModal(true)}
+                    className="p-2 bg-cyan-600/20 border border-cyan-500/30 rounded-lg hover:bg-cyan-600/30 transition-all"
+                  >
+                    <Radio size={16} className="text-cyan-400" />
+                  </button>
+                  <button 
+                    onClick={() => setShowUploadModal(true)}
+                    className="px-3 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg font-bold text-xs hover:scale-105 transition-all"
+                  >
+                    <Upload size={14} />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="relative z-10 px-4 md:px-6 pb-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex gap-2">
-            <button
-              onClick={() => setActiveTab('feed')}
-              className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
-                activeTab === 'feed'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Grid size={18} />
-                <span>Feed</span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('stations')}
-              className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all ${
-                activeTab === 'stations'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Radio size={18} />
-                <span>Stations</span>
-              </div>
-            </button>
-          </div>
+      {/* Tabs Navigation - Minimal */}
+      <div className="sticky top-16 z-40 bg-black/90 backdrop-blur-xl border-b border-cyan-500/20">
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('feed')}
+            className={`flex-1 px-4 py-3 font-bold text-sm transition-all ${
+              activeTab === 'feed'
+                ? 'text-cyan-400 border-b-2 border-cyan-500'
+                : 'text-gray-500 hover:text-white'
+            }`}
+          >
+            Feed
+          </button>
+          <button
+            onClick={() => setActiveTab('stations')}
+            className={`flex-1 px-4 py-3 font-bold text-sm transition-all ${
+              activeTab === 'stations'
+                ? 'text-cyan-400 border-b-2 border-cyan-500'
+                : 'text-gray-500 hover:text-white'
+            }`}
+          >
+            Stations
+          </button>
         </div>
       </div>
 
-      {/* Feed/Stations Content */}
-      <main className="px-3 md:px-6 pb-32 relative z-10">
-        <div className="max-w-7xl mx-auto">
+      {/* Feed/Stations Content - No padding, full bleed */}
+      <main className="relative z-10 pb-20">
           
           {activeTab === 'feed' ? (
             <>
-              {/* Vertical Feed with Randomized Shapes */}
+              {/* Photo/Video-Focused Masonry Grid */}
               {loading ? (
-                <div className="space-y-4">
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className={`h-96 bg-white/5 backdrop-blur-xl border border-white/10 ${getRandomShape(i)} animate-pulse`}></div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {[...Array(12)].map((_, i) => (
+                    <div key={i} className="aspect-square bg-cyan-950/50 animate-pulse border-[0.5px] border-cyan-500/10"></div>
                   ))}
                 </div>
               ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
-                <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                   {profile.combinedMedia.map((media, index) => {
                     const mediaType = media.media_type || media.content_type || 'music-image'
                     const thumbnailUrl = media.image_url || media.video_url
-                    const shapeClass = getRandomShape(index)
                     
                     return (
-                      <div key={media.id} className="group relative">
-                        {/* Vertical Feed Card with Random Shape */}
-                        <div className={`relative h-96 bg-white/5 backdrop-blur-xl border border-white/10 ${shapeClass} overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-cyan-500/30 hover:border-cyan-500/50`}>
-                          {/* Thumbnail Background */}
-                          {thumbnailUrl ? (
-                            mediaType === 'video' ? (
-                              <video 
-                                src={media.video_url} 
-                                className="w-full h-full object-cover"
-                                muted
-                                loop
-                                onMouseEnter={(e) => e.currentTarget.play()}
-                                onMouseLeave={(e) => e.currentTarget.pause()}
-                              />
-                            ) : (
-                              <img 
-                                src={thumbnailUrl} 
-                                alt={media.title}
-                                className="w-full h-full object-cover"
-                              />
-                            )
+                      <div key={media.id} className="group relative aspect-square overflow-hidden border-[0.5px] border-cyan-500/10 hover:border-cyan-500/50 transition-all">
+                        {/* Media Background */}
+                        {thumbnailUrl ? (
+                          mediaType === 'video' ? (
+                            <video 
+                              src={media.video_url} 
+                              className="w-full h-full object-cover"
+                              muted
+                              loop
+                              playsInline
+                              onMouseEnter={(e) => e.currentTarget.play()}
+                              onMouseLeave={(e) => e.currentTarget.pause()}
+                            />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
-                              <Music size={64} className="text-cyan-400" />
+                            <img 
+                              src={thumbnailUrl} 
+                              alt={media.title}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          )
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-cyan-950 to-black flex items-center justify-center">
+                            <Music size={40} className="text-cyan-500/30" />
+                          </div>
+                        )}
+                        
+                        {/* Hover Overlay with Info */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                          <h3 className="text-sm font-bold text-white mb-1 line-clamp-2">{media.title}</h3>
+                          <div className="flex items-center gap-3 text-xs text-cyan-400">
+                            <span className="flex items-center gap-1">
+                              ▶️ {media.plays || media.views || 0}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              ❤️ {media.likes || 0}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Media Type Badge */}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {mediaType === 'video' ? (
+                            <div className="p-1.5 bg-cyan-500/90 rounded-full">
+                              <Video size={12} className="text-white" />
+                            </div>
+                          ) : mediaType === 'image' ? (
+                            <div className="p-1.5 bg-cyan-500/90 rounded-full">
+                              <ImageIcon size={12} className="text-white" />
+                            </div>
+                          ) : (
+                            <div className="p-1.5 bg-cyan-500/90 rounded-full">
+                              <Music size={12} className="text-white" />
                             </div>
                           )}
-                          
-                          {/* Gradient Overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-                          
-                          {/* Content */}
-                          <div className="absolute inset-0 p-6 flex flex-col justify-between">
-                            {/* Top Right - Published Badge */}
-                            <div className="flex items-start justify-end">
-                              {media.is_public && (
-                                <div className="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 backdrop-blur-xl rounded-full text-sm font-bold text-white shadow-lg">
-                                  Published
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Bottom Info */}
-                            <div>
-                              <h3 className="text-2xl font-black text-white mb-2">{media.title}</h3>
-                              <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                                {mediaType === 'music-image' && media.audio_prompt ? media.audio_prompt : 
-                                 mediaType === 'image' && media.image_prompt ? media.image_prompt :
-                                 'Created with AI'}
-                              </p>
-                              <div className="flex items-center gap-6 text-sm">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xl">▶️</span>
-                                  <span className="text-white font-bold">{media.plays || media.views || 0}</span>
-                                  <span className="text-gray-400">plays</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xl">❤️</span>
-                                  <span className="text-white font-bold">{media.likes || 0}</span>
-                                  <span className="text-gray-400">likes</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     )
                   })}
                 </div>
               ) : (
-                <div className="text-center py-20">
-                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-12">
-                    <div className="text-6xl mb-6">🎵</div>
-                    <h3 className="text-3xl font-black text-white mb-3">
-                      {isOwnProfile ? 'No posts in your feed yet' : 'No posts yet'}
+                <div className="flex items-center justify-center min-h-[60vh]">
+                  <div className="text-center px-6">
+                    <div className="text-6xl mb-4">🎵</div>
+                    <h3 className="text-2xl font-black text-white mb-2">
+                      {isOwnProfile ? 'No content yet' : 'No content'}
                     </h3>
-                    <p className="text-gray-400 mb-8 text-lg">
-                      {isOwnProfile ? 'Start creating and uploading your first masterpiece!' : 'Check back later for new content'}
+                    <p className="text-gray-500 mb-6 text-sm">
+                      {isOwnProfile ? 'Upload your first creation!' : 'Check back later'}
                     </p>
                     {isOwnProfile && (
                       <button
                         onClick={() => setShowUploadModal(true)}
-                        className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-2xl transition-all shadow-lg hover:scale-105 font-bold text-lg"
+                        className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg transition-all hover:scale-105 font-bold text-sm"
                       >
-                        <div className="flex items-center gap-3">
-                          <Upload size={20} />
-                          <span>Upload Your First Track</span>
+                        <div className="flex items-center gap-2">
+                          <Upload size={16} />
+                          <span>Upload</span>
                         </div>
                       </button>
                     )}
@@ -380,30 +352,29 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             </>
           ) : (
             /* Stations Tab */
-            <div className="text-center py-20">
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-12">
-                <div className="text-6xl mb-6">📻</div>
-                <h3 className="text-3xl font-black text-white mb-3">
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="text-center px-6">
+                <div className="text-6xl mb-4">📻</div>
+                <h3 className="text-2xl font-black text-white mb-2">
                   {isOwnProfile ? 'No stations yet' : 'No stations'}
                 </h3>
-                <p className="text-gray-400 mb-8 text-lg">
-                  {isOwnProfile ? 'Create your first station to curate your music!' : 'This user hasn\'t created any stations yet'}
+                <p className="text-gray-500 mb-6 text-sm">
+                  {isOwnProfile ? 'Create your first station!' : 'This user hasn\'t created any stations'}
                 </p>
                 {isOwnProfile && (
                   <button
                     onClick={() => setShowStationsModal(true)}
-                    className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-2xl transition-all shadow-lg hover:scale-105 font-bold text-lg"
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-lg transition-all hover:scale-105 font-bold text-sm"
                   >
-                    <div className="flex items-center gap-3">
-                      <Radio size={20} />
-                      <span>Create Your First Station</span>
+                    <div className="flex items-center gap-2">
+                      <Radio size={16} />
+                      <span>Create Station</span>
                     </div>
                   </button>
                 )}
               </div>
             </div>
           )}
-        </div>
       </main>
 
       {/* Publish Release Modal */}
@@ -430,13 +401,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
       {/* Stations Modal */}
       {showStationsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 max-w-2xl w-full">
-            <h2 className="text-3xl font-black text-white mb-6">My Stations</h2>
-            <p className="text-gray-400 mb-8">Feature coming soon! Create and manage your custom radio stations.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
+          <div className="bg-cyan-950/30 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl p-6 max-w-md w-full">
+            <h2 className="text-2xl font-black text-white mb-3">My Stations</h2>
+            <p className="text-gray-400 mb-6 text-sm">Feature coming soon! Create and manage your custom radio stations.</p>
             <button
               onClick={() => setShowStationsModal(false)}
-              className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl transition-all shadow-lg hover:scale-105 font-bold"
+              className="w-full px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg transition-all hover:scale-105 font-bold text-sm"
             >
               Close
             </button>
