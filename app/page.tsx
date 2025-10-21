@@ -73,7 +73,7 @@ export default function HomePage() {
               <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-2xl sm:rounded-3xl blur-xl opacity-40 group-hover:opacity-70 group-active:opacity-90 transition duration-500 animate-pulse"></div>
               
               {/* Input Container */}
-              <div className="relative flex gap-3 sm:gap-4 items-center bg-black/45 backdrop-blur-2xl rounded-2xl sm:rounded-3xl px-4 sm:px-6 py-4 sm:py-5 border-2 border-cyan-500/30 group-hover:border-cyan-400/60 group-active:border-cyan-300/80 transition-all duration-300 shadow-2xl">
+              <div className="relative flex gap-3 sm:gap-4 items-center bg-black/20 backdrop-blur-2xl rounded-2xl sm:rounded-3xl px-4 sm:px-6 py-4 sm:py-5 border-2 border-cyan-500/30 group-hover:border-cyan-400/60 group-active:border-cyan-300/80 transition-all duration-300 shadow-2xl">
                 <Music 
                   size={20} 
                   className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] group-hover:scale-110 transition-transform" 
