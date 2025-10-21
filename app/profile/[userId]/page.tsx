@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
-import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio, UserPlus } from 'lucide-react'
+import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio, UserPlus, Play, Pause } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
-import { getDisplayUsername } from '../../../lib/username'
+import { getDisplayUsername, formatUsername } from '../../../lib/username'
 
 const THUMBNAIL_SHAPES = [
   'rounded-2xl', // square
@@ -80,6 +80,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [showStationsModal, setShowStationsModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'feed' | 'stations'>('feed')
   const [isFollowing, setIsFollowing] = useState(false)
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [currentTrack, setCurrentTrack] = useState<CombinedMedia | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
     if (currentUser) {
@@ -116,6 +120,23 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }
 
+  const handlePlay = (media: CombinedMedia) => {
+    if (!media.audio_url) return
+    
+    if (playingId === media.id && isPlaying) {
+      audioRef.current?.pause()
+      setIsPlaying(false)
+    } else {
+      setCurrentTrack(media)
+      setPlayingId(media.id)
+      setIsPlaying(true)
+      if (audioRef.current) {
+        audioRef.current.src = media.audio_url
+        audioRef.current.play()
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-black text-white pb-32">
       {/* Holographic 3D Background */}
@@ -124,83 +145,238 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Feed/Stations Content - No padding, full bleed */}
-      <main className="relative z-10 pb-20">
+      {/* Feed/Stations Content - Full bleed with new layout */}
+      <main className="relative z-10 overflow-y-auto pb-32">
           
           {activeTab === 'feed' ? (
             <>
-              {/* Photo/Video-Focused Masonry Grid */}
               {loading ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {[...Array(12)].map((_, i) => (
-                    <div key={i} className="aspect-square bg-cyan-950/50 animate-pulse border-[0.5px] border-cyan-500/10"></div>
-                  ))}
+                <div className="space-y-0">
+                  {/* Banner skeleton */}
+                  <div className="h-64 bg-white/5 animate-pulse"></div>
+                  {/* Horizontal scroll skeleton */}
+                  <div className="px-6 py-6">
+                    <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
+                    <div className="flex gap-2 overflow-x-auto">
+                      {[...Array(10)].map((_, i) => (
+                        <div key={i} className="w-32 h-32 bg-white/5 rounded-lg flex-shrink-0 animate-pulse"></div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Grid skeleton */}
+                  <div className="px-6 py-6">
+                    <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
+                    <div className="grid grid-cols-4 gap-4">
+                      {[...Array(12)].map((_, i) => (
+                        <div key={i} className="bg-white/5 rounded-lg h-48 animate-pulse"></div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {profile.combinedMedia.map((media, index) => {
-                    const mediaType = media.media_type || media.content_type || 'music-image'
-                    const thumbnailUrl = media.image_url || media.video_url
-                    
-                    return (
-                      <div key={media.id} className="group relative aspect-square overflow-hidden border-[0.5px] border-cyan-500/10 hover:border-cyan-500/50 transition-all">
-                        {/* Media Background */}
-                        {thumbnailUrl ? (
-                          mediaType === 'video' ? (
-                            <video 
-                              src={media.video_url} 
-                              className="w-full h-full object-cover"
-                              muted
-                              loop
-                              playsInline
-                              onMouseEnter={(e) => e.currentTarget.play()}
-                              onMouseLeave={(e) => e.currentTarget.pause()}
-                            />
-                          ) : (
+                <div className="space-y-0">
+                  {/* SECTION 1: TOP BANNER - Profile Info */}
+                  <div className="relative h-64 overflow-hidden">
+                    <div className="absolute inset-0">
+                      <img 
+                        src={profile.combinedMedia[0]?.image_url || profile.avatar || '/radio-logo.svg'} 
+                        alt={profile.username}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+                    </div>
+                    <div className="relative h-full flex items-end p-8">
+                      <div className="flex items-center gap-6">
+                        {/* Avatar */}
+                        {profile.avatar && (
+                          <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-cyan-400/50 shadow-2xl flex-shrink-0">
                             <img 
-                              src={thumbnailUrl} 
-                              alt={media.title}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                              src={profile.avatar} 
+                              alt={profile.username}
+                              className="w-full h-full object-cover"
                             />
-                          )
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-cyan-950 to-black flex items-center justify-center">
-                            <Music size={40} className="text-cyan-500/30" />
                           </div>
                         )}
                         
-                        {/* Hover Overlay with Info */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
-                          <h3 className="text-sm font-bold text-white mb-1 line-clamp-2">{media.title}</h3>
-                          <div className="flex items-center gap-3 text-xs text-cyan-400">
-                            <span className="flex items-center gap-1">
-                              ▶️ {media.plays || media.views || 0}
+                        {/* Profile Info */}
+                        <div>
+                          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
+                            @{profile.username}
+                          </h1>
+                          <p className="text-xl text-gray-300">{profile.tagline}</p>
+                          <div className="flex items-center gap-6 mt-3">
+                            <span className="text-sm text-gray-400">
+                              <span className="font-bold text-white">{profile.songCount}</span> Tracks
                             </span>
-                            <span className="flex items-center gap-1">
-                              ❤️ {media.likes || 0}
+                            <span className="text-sm text-gray-400">
+                              <span className="font-bold text-white">{profile.totalPlays}</span> Plays
+                            </span>
+                            <span className="text-sm text-gray-400">
+                              <span className="font-bold text-white">{profile.totalLikes}</span> Likes
                             </span>
                           </div>
                         </div>
-                        
-                        {/* Media Type Badge */}
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {mediaType === 'video' ? (
-                            <div className="p-1.5 bg-cyan-500/90 rounded-full">
-                              <Video size={12} className="text-white" />
-                            </div>
-                          ) : mediaType === 'image' ? (
-                            <div className="p-1.5 bg-cyan-500/90 rounded-full">
-                              <ImageIcon size={12} className="text-white" />
-                            </div>
-                          ) : (
-                            <div className="p-1.5 bg-cyan-500/90 rounded-full">
-                              <Music size={12} className="text-white" />
-                            </div>
-                          )}
-                        </div>
                       </div>
-                    )
-                  })}
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: HORIZONTAL SCROLL - Recent Tracks */}
+                  <div className="py-4 px-6 border-b border-white/5">
+                    <h2 className="text-2xl font-bold mb-3 relative z-10">🎵 Recent Tracks</h2>
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
+                      {profile.combinedMedia.slice(0, 20).map((media) => {
+                        const isCurrentlyPlaying = playingId === media.id
+                        const hasAudio = !!media.audio_url
+                        
+                        return (
+                          <div 
+                            key={media.id} 
+                            className={`flex-shrink-0 group cursor-pointer rounded-lg overflow-hidden transition-all ${
+                              isCurrentlyPlaying ? 'ring-2 ring-cyan-400 scale-105' : 'hover:scale-105'
+                            } ${!hasAudio ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            onClick={() => hasAudio && handlePlay(media)}
+                          >
+                            <div className="relative w-32 h-32">
+                              <img 
+                                src={media.image_url} 
+                                alt={media.title}
+                                className="w-full h-full object-cover"
+                              />
+                              {hasAudio && (
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                                    {isCurrentlyPlaying && isPlaying ? (
+                                      <Pause className="text-black" size={20} />
+                                    ) : (
+                                      <Play className="text-black ml-1" size={20} />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {isCurrentlyPlaying && isPlaying && (
+                                <div className="absolute top-2 right-2 w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* SECTION 3: LIST VIEW - All Tracks */}
+                  <div className="px-6 py-4">
+                    <h2 className="text-2xl font-bold mb-3 relative z-10">📀 All Tracks</h2>
+                    
+                    {/* Desktop: 4 Column List View */}
+                    <div className="hidden md:grid md:grid-cols-4 gap-x-6 gap-y-1">
+                      {profile.combinedMedia.map((media) => {
+                        const isCurrentlyPlaying = playingId === media.id
+                        const hasAudio = !!media.audio_url
+                        
+                        return (
+                          <div 
+                            key={media.id} 
+                            className={`group flex items-center gap-3 p-2 rounded-lg transition-all ${
+                              hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                            } ${
+                              isCurrentlyPlaying 
+                                ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
+                                : hasAudio ? 'hover:bg-white/5' : ''
+                            }`}
+                            onClick={() => hasAudio && handlePlay(media)}
+                          >
+                            {/* Thumbnail */}
+                            <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden">
+                              <img 
+                                src={media.image_url} 
+                                alt={media.title}
+                                className="w-full h-full object-cover"
+                              />
+                              {hasAudio && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                                    {isCurrentlyPlaying && isPlaying ? (
+                                      <Pause className="text-black" size={12} />
+                                    ) : (
+                                      <Play className="text-black ml-0.5" size={12} />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {isCurrentlyPlaying && isPlaying && (
+                                <div className="absolute top-1 right-1 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                              )}
+                            </div>
+                            
+                            {/* Track Info */}
+                            <div className="flex-1 min-w-0 relative z-10">
+                              <h3 className="font-semibold text-white truncate text-sm leading-tight">
+                                {media.title}
+                              </h3>
+                              <p className="text-xs text-gray-300 truncate leading-tight mt-0.5">
+                                {formatUsername(profile.username)}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Mobile: Single Column List View */}
+                    <div className="md:hidden space-y-1">
+                      {profile.combinedMedia.map((media) => {
+                        const isCurrentlyPlaying = playingId === media.id
+                        const hasAudio = !!media.audio_url
+                        
+                        return (
+                          <div 
+                            key={media.id} 
+                            className={`group flex items-center gap-3 p-3 rounded-lg transition-all ${
+                              hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                            } ${
+                              isCurrentlyPlaying 
+                                ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
+                                : hasAudio ? 'hover:bg-white/5' : ''
+                            }`}
+                            onClick={() => hasAudio && handlePlay(media)}
+                          >
+                            {/* Thumbnail */}
+                            <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
+                              <img 
+                                src={media.image_url} 
+                                alt={media.title}
+                                className="w-full h-full object-cover"
+                              />
+                              {hasAudio && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                                    {isCurrentlyPlaying && isPlaying ? (
+                                      <Pause className="text-black" size={14} />
+                                    ) : (
+                                      <Play className="text-black ml-0.5" size={14} />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {isCurrentlyPlaying && isPlaying && (
+                                <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse"></div>
+                              )}
+                            </div>
+                            
+                            {/* Track Info */}
+                            <div className="flex-1 min-w-0 relative z-10">
+                              <h3 className="font-semibold text-white truncate leading-tight">
+                                {media.title}
+                              </h3>
+                              <p className="text-sm text-gray-300 truncate leading-tight mt-0.5">
+                                {formatUsername(profile.username)}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center min-h-[60vh]">
@@ -352,6 +528,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           </div>
         </div>
       )}
+
+      {/* Hidden Audio Element */}
+      <audio 
+        ref={audioRef}
+        onEnded={() => setIsPlaying(false)}
+        onPause={() => setIsPlaying(false)}
+        onPlay={() => setIsPlaying(true)}
+      />
     </div>
   )
 }
