@@ -1,2 +1,4 @@
-# Vercel ignore file
-.next/cache
+# Vercel ignore file - force fresh builds
+.next/
+.turbo/
+node_modules/.cache/
