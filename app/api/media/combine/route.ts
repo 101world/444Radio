@@ -24,7 +24,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Insert combined media into database (simplified structure)
+    // Validate mandatory metadata
+    if (!metadata?.genre || !metadata?.mood) {
+      return NextResponse.json(
+        { error: 'Genre and Mood are required' },
+        { status: 400 }
+      )
+    }
+
+    // Insert combined media into database with full metadata
     const { data, error } = await supabase
       .from('combined_media')
       .insert({
@@ -34,7 +42,15 @@ export async function POST(req: NextRequest) {
         title: title || 'Untitled Track',
         audio_prompt: audioPrompt || '',
         image_prompt: imagePrompt || '',
-        is_public: isPublic !== undefined ? isPublic : true
+        is_public: isPublic !== undefined ? isPublic : true,
+        // Metadata fields
+        genre: metadata.genre,
+        mood: metadata.mood,
+        tags: metadata.tags || [],
+        description: metadata.description || '',
+        bpm: metadata.bpm || null,
+        vocals: metadata.vocals || 'none',
+        language: metadata.language || 'instrumental'
       })
       .select()
       .single()

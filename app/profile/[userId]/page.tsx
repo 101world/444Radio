@@ -117,139 +117,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white pb-32">
       {/* Holographic 3D Background */}
       <HolographicBackground />
       
-      {/* 444 Radio Top Bar - Fixed */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-cyan-500/30">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <img 
-              src="/radio-logo.svg" 
-              alt="444 Radio" 
-              className="w-8 h-8" 
-              style={{ filter: 'drop-shadow(0 0 10px rgba(34, 211, 238, 0.8))' }}
-            />
-            <span className="text-xl font-black bg-gradient-to-r from-white to-cyan-300 bg-clip-text text-transparent">
-              444 Radio
-            </span>
-          </Link>
-          <FloatingMenu />
-        </div>
-      </div>
-
-      {/* Profile Header - Compact & Modern */}
-      <div className="relative z-10 pt-16">
-        <div className="bg-gradient-to-b from-cyan-500/10 to-transparent border-b border-cyan-500/20 px-4 py-4">
-          <div className="flex items-center gap-3">
-            {/* Avatar - Compact */}
-            <div className="relative">
-              {profile?.avatar || currentUser?.imageUrl ? (
-                <img 
-                  src={profile?.avatar || currentUser?.imageUrl} 
-                  alt="Profile"
-                  className="w-16 h-16 rounded-full object-cover border-2 border-cyan-500 shadow-lg shadow-cyan-500/50"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-400 flex items-center justify-center text-2xl font-black text-white">
-                  {profile?.username?.[0]?.toUpperCase() || currentUser?.firstName?.[0]?.toUpperCase() || '?'}
-                </div>
-              )}
-              {isOwnProfile && (
-                <button className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full hover:scale-110 transition-transform">
-                  <Edit2 size={12} className="text-white" />
-                </button>
-              )}
-            </div>
-            
-            {/* Info - Compact */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black text-white truncate">
-                  @{getDisplayUsername(
-                    profile?.username,
-                    currentUser?.username,
-                    currentUser?.firstName,
-                    currentUser?.emailAddresses?.[0]?.emailAddress
-                  )}
-                </h1>
-                <span className="text-xs font-bold text-cyan-400 flex-shrink-0">
-                  {profile?.followerCount || 0} followers
-                </span>
-              </div>
-              <p className="text-xs text-cyan-400 italic truncate">
-                &quot;{profile?.tagline || "Creating the future of music"}&quot;
-              </p>
-              
-              {/* Stats - Inline */}
-              <div className="flex items-center gap-4 mt-1 text-xs">
-                <div className="flex items-center gap-1">
-                  <Music size={14} className="text-cyan-400" />
-                  <span className="font-bold text-white">{profile?.songCount || 0}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span>▶️</span>
-                  <span className="font-bold text-white">{profile?.totalPlays || 0}</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex gap-2 flex-shrink-0">
-              {!isOwnProfile ? (
-                <button 
-                  onClick={() => setIsFollowing(!isFollowing)}
-                  className={`px-4 py-2 ${isFollowing ? 'bg-white/10' : 'bg-gradient-to-r from-cyan-600 to-blue-600'} rounded-lg font-bold text-xs transition-all hover:scale-105`}
-                >
-                  {isFollowing ? 'Following' : 'Follow'}
-                </button>
-              ) : (
-                <>
-                  <button 
-                    onClick={() => setShowStationsModal(true)}
-                    className="p-2 bg-cyan-600/20 border border-cyan-500/30 rounded-lg hover:bg-cyan-600/30 transition-all"
-                  >
-                    <Radio size={16} className="text-cyan-400" />
-                  </button>
-                  <button 
-                    onClick={() => setShowUploadModal(true)}
-                    className="px-3 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg font-bold text-xs hover:scale-105 transition-all"
-                  >
-                    <Upload size={14} />
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs Navigation - Minimal */}
-      <div className="sticky top-16 z-40 bg-black/90 backdrop-blur-xl border-b border-cyan-500/20">
-        <div className="flex">
-          <button
-            onClick={() => setActiveTab('feed')}
-            className={`flex-1 px-4 py-3 font-bold text-sm transition-all ${
-              activeTab === 'feed'
-                ? 'text-cyan-400 border-b-2 border-cyan-500'
-                : 'text-gray-500 hover:text-white'
-            }`}
-          >
-            Feed
-          </button>
-          <button
-            onClick={() => setActiveTab('stations')}
-            className={`flex-1 px-4 py-3 font-bold text-sm transition-all ${
-              activeTab === 'stations'
-                ? 'text-cyan-400 border-b-2 border-cyan-500'
-                : 'text-gray-500 hover:text-white'
-            }`}
-          >
-            Stations
-          </button>
-        </div>
-      </div>
+      {/* Floating Menu */}
+      <FloatingMenu />
 
       {/* Feed/Stations Content - No padding, full bleed */}
       <main className="relative z-10 pb-20">
@@ -380,6 +253,72 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             </div>
           )}
       </main>
+
+      {/* Bottom-Docked Badge with Username and Buttons */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 z-40">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-3 shadow-2xl">
+            <div className="flex items-center justify-between px-4">
+              {/* Left: Username + PRVTLST + Upload (if own) */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-black text-white">
+                  @{profile?.username || getDisplayUsername(
+                    profile?.username,
+                    currentUser?.username,
+                    currentUser?.firstName,
+                    currentUser?.emailAddresses?.[0]?.emailAddress
+                  )}
+                </span>
+                
+                {/* PRVTLST Button */}
+                <div className="w-px h-4 bg-white/20"></div>
+                <button 
+                  onClick={() => setShowStationsModal(true)}
+                  className="px-3 py-1 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-full transition-all shadow-lg hover:scale-105"
+                  title="Private Lists"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Users size={12} className="text-white" />
+                    <span className="text-xs font-black text-white">PRVTLST</span>
+                  </div>
+                </button>
+                
+                {/* Upload Icon (Only for own profile) */}
+                {isOwnProfile && (
+                  <>
+                    <div className="w-px h-4 bg-white/20"></div>
+                    <button 
+                      onClick={() => setShowUploadModal(true)}
+                      className="p-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-full transition-all shadow-lg hover:scale-110"
+                      title="Upload Content"
+                    >
+                      <Upload size={14} className="text-white" />
+                    </button>
+                  </>
+                )}
+              </div>
+              
+              {/* Right: Stats */}
+              <div className="flex items-center gap-6">
+                {/* Tracks Count */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-white">{profile?.songCount || 0}</span>
+                  <span className="text-xs text-gray-400">Tracks</span>
+                </div>
+                
+                {/* Divider */}
+                <div className="w-px h-4 bg-white/20"></div>
+                
+                {/* Plays Count */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-white">{profile?.totalPlays || 0}</span>
+                  <span className="text-xs text-gray-400">Plays</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Publish Release Modal */}
       {showPublishModal && (

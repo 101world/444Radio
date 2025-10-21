@@ -46,6 +46,13 @@ export default function TwoStepReleaseModal({
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState('')
   const [isPublic, setIsPublic] = useState(true)
+  
+  // Mandatory metadata fields
+  const [genre, setGenre] = useState('')
+  const [mood, setMood] = useState('')
+  const [bpm, setBpm] = useState('')
+  const [vocals, setVocals] = useState('none')
+  const [language, setLanguage] = useState('instrumental')
 
   // Fetch library items when modal opens
   useEffect(() => {
@@ -98,8 +105,17 @@ export default function TwoStepReleaseModal({
   }
 
   const handlePublish = async () => {
+    // Validate mandatory fields
     if (!title.trim()) {
       alert('Please enter a title for your release')
+      return
+    }
+    if (!genre) {
+      alert('Please select a genre')
+      return
+    }
+    if (!mood) {
+      alert('Please select a mood')
       return
     }
 
@@ -124,8 +140,13 @@ export default function TwoStepReleaseModal({
           imagePrompt: image.prompt,
           isPublic: isPublic,
           metadata: {
+            description: description.trim(),
             tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-            description: description.trim()
+            genre: genre,
+            mood: mood,
+            bpm: bpm ? parseInt(bpm) : null,
+            vocals: vocals,
+            language: language
           }
         })
       })
@@ -358,6 +379,123 @@ export default function TwoStepReleaseModal({
                 />
               </div>
 
+              {/* Genre (Mandatory) */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Genre * <span className="text-red-400">(Required)</span>
+                </label>
+                <select
+                  value={genre}
+                  onChange={(e) => setGenre(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 transition-all"
+                >
+                  <option value="" className="bg-black">Select genre...</option>
+                  <option value="Pop" className="bg-black">Pop</option>
+                  <option value="Hip-Hop" className="bg-black">Hip-Hop</option>
+                  <option value="Electronic" className="bg-black">Electronic</option>
+                  <option value="Rock" className="bg-black">Rock</option>
+                  <option value="R&B" className="bg-black">R&B</option>
+                  <option value="Jazz" className="bg-black">Jazz</option>
+                  <option value="Classical" className="bg-black">Classical</option>
+                  <option value="Country" className="bg-black">Country</option>
+                  <option value="Reggae" className="bg-black">Reggae</option>
+                  <option value="Latin" className="bg-black">Latin</option>
+                  <option value="K-Pop" className="bg-black">K-Pop</option>
+                  <option value="Indie" className="bg-black">Indie</option>
+                  <option value="Lo-Fi" className="bg-black">Lo-Fi</option>
+                  <option value="Trap" className="bg-black">Trap</option>
+                  <option value="House" className="bg-black">House</option>
+                  <option value="Techno" className="bg-black">Techno</option>
+                  <option value="Ambient" className="bg-black">Ambient</option>
+                  <option value="Other" className="bg-black">Other</option>
+                </select>
+              </div>
+
+              {/* Mood (Mandatory) */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Mood * <span className="text-red-400">(Required)</span>
+                </label>
+                <select
+                  value={mood}
+                  onChange={(e) => setMood(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 transition-all"
+                >
+                  <option value="" className="bg-black">Select mood...</option>
+                  <option value="Happy" className="bg-black">Happy</option>
+                  <option value="Sad" className="bg-black">Sad</option>
+                  <option value="Energetic" className="bg-black">Energetic</option>
+                  <option value="Chill" className="bg-black">Chill</option>
+                  <option value="Romantic" className="bg-black">Romantic</option>
+                  <option value="Dark" className="bg-black">Dark</option>
+                  <option value="Uplifting" className="bg-black">Uplifting</option>
+                  <option value="Melancholic" className="bg-black">Melancholic</option>
+                  <option value="Aggressive" className="bg-black">Aggressive</option>
+                  <option value="Peaceful" className="bg-black">Peaceful</option>
+                  <option value="Mysterious" className="bg-black">Mysterious</option>
+                  <option value="Nostalgic" className="bg-black">Nostalgic</option>
+                </select>
+              </div>
+
+              {/* Two-column grid for smaller fields */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* BPM */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    BPM (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    value={bpm}
+                    onChange={(e) => setBpm(e.target.value)}
+                    placeholder="120"
+                    min="40"
+                    max="200"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                  />
+                </div>
+
+                {/* Vocals */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    Vocals
+                  </label>
+                  <select
+                    value={vocals}
+                    onChange={(e) => setVocals(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 transition-all"
+                  >
+                    <option value="none" className="bg-black">Instrumental</option>
+                    <option value="male" className="bg-black">Male Vocals</option>
+                    <option value="female" className="bg-black">Female Vocals</option>
+                    <option value="both" className="bg-black">Mixed Vocals</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Language */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Language
+                </label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 transition-all"
+                >
+                  <option value="instrumental" className="bg-black">Instrumental</option>
+                  <option value="English" className="bg-black">English</option>
+                  <option value="Spanish" className="bg-black">Spanish</option>
+                  <option value="French" className="bg-black">French</option>
+                  <option value="German" className="bg-black">German</option>
+                  <option value="Japanese" className="bg-black">Japanese</option>
+                  <option value="Korean" className="bg-black">Korean</option>
+                  <option value="Chinese" className="bg-black">Chinese</option>
+                  <option value="Portuguese" className="bg-black">Portuguese</option>
+                  <option value="Other" className="bg-black">Other</option>
+                </select>
+              </div>
+
               {/* Tags */}
               <div>
                 <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
@@ -367,7 +505,7 @@ export default function TwoStepReleaseModal({
                   type="text"
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
-                  placeholder="hip-hop, chill, lo-fi (comma separated)"
+                  placeholder="summer, vibes, 2024 (comma separated)"
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
                 />
                 <p className="text-xs text-gray-500 mt-1">Separate tags with commas</p>
