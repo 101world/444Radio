@@ -113,6 +113,24 @@ function CreatePageContent() {
     fetchCredits()
   }, [])
 
+  // Handle mobile keyboard - adjust viewport height
+  useEffect(() => {
+    // Set CSS variable for mobile viewport height that accounts for keyboard
+    const setViewportHeight = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
+
+    return () => {
+      window.removeEventListener('resize', setViewportHeight);
+      window.removeEventListener('orientationchange', setViewportHeight);
+    };
+  }, []);
+
   // Read URL parameters and display combined message in chat
   useEffect(() => {
     const combinedMessage = searchParams.get('combinedMessage')
@@ -670,7 +688,7 @@ function CreatePageContent() {
       </div>
 
       {/* Fixed Bottom Dock - Home Page Style */}
-      <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8">
+      <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out supports-[height:100dvh]:bottom-0">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           
           {/* Icon Row Above Prompt Box */}
@@ -795,13 +813,26 @@ function CreatePageContent() {
               
               <div className="flex-1 text-center md:text-left">
                 <input
+                  ref={(el) => {
+                    if (el) {
+                      // Store input ref for keyboard control
+                      (window as any).__createPageInput = el;
+                    }
+                  }}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
-                      handleGenerate()
+                      // Close keyboard by blurring input
+                      if (e.currentTarget) {
+                        e.currentTarget.blur()
+                      }
+                      // Small delay to let keyboard close before generating
+                      setTimeout(() => {
+                        handleGenerate()
+                      }, 100)
                     }
                   }}
                   placeholder={
@@ -821,7 +852,17 @@ function CreatePageContent() {
 
               {/* Create Button */}
               <button
-                onClick={handleGenerate}
+                onClick={() => {
+                  // Close keyboard if open
+                  const input = (window as any).__createPageInput;
+                  if (input) {
+                    input.blur();
+                  }
+                  // Small delay to let keyboard close
+                  setTimeout(() => {
+                    handleGenerate();
+                  }, 100);
+                }}
                 disabled={isGenerating || !input.trim() || selectedType === 'video'}
                 className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/50 active:scale-95"
               >
