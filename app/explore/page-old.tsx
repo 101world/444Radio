@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
+import CombinedMediaPlayer from '../components/CombinedMediaPlayer'
 import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
-import { Search, Play, Pause, SkipBack, SkipForward, Radio } from 'lucide-react'
+import SocialCTA from '../components/SocialCTA'
+import { Search, Play, Pause, Volume2, SkipBack, SkipForward, Radio, TrendingUp, Sparkles } from 'lucide-react'
 import { formatUsername } from '../../lib/username'
 
 interface CombinedMedia {
@@ -23,6 +25,7 @@ interface CombinedMedia {
   users: {
     username: string
   }
+  // Metadata fields
   genre?: string
   mood?: string
   bpm?: number
@@ -32,8 +35,17 @@ interface CombinedMedia {
   description?: string
 }
 
+interface Artist {
+  username: string
+  user_id: string
+  trackCount: number
+  avatar?: string
+}
+
 export default function ExplorePage() {
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
+  const [artists, setArtists] = useState<Artist[]>([])
+  const [filter, setFilter] = useState('trending')
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -43,7 +55,7 @@ export default function ExplorePage() {
 
   useEffect(() => {
     fetchCombinedMedia()
-  }, [])
+  }, [filter])
 
   const fetchCombinedMedia = async () => {
     setLoading(true)
@@ -52,6 +64,26 @@ export default function ExplorePage() {
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)
+        
+        // Extract unique artists
+        const artistMap = new Map<string, Artist>()
+        data.combinedMedia.forEach((media: CombinedMedia) => {
+          const username = media.users?.username || media.username
+          const userId = media.user_id
+          if (username && userId) {
+            if (artistMap.has(userId)) {
+              artistMap.get(userId)!.trackCount++
+            } else {
+              artistMap.set(userId, {
+                username,
+                user_id: userId,
+                trackCount: 1,
+                avatar: media.image_url // Use first track's image as avatar
+              })
+            }
+          }
+        })
+        setArtists(Array.from(artistMap.values()))
       }
     } catch (error) {
       console.error('Failed to fetch media:', error)
@@ -89,6 +121,14 @@ export default function ExplorePage() {
     handlePlay(combinedMedia[prevIndex])
   }
 
+  // Group media into 2x2 sections
+  const sections = []
+  for (let i = 0; i < combinedMedia.length; i += 4) {
+    sections.push(combinedMedia.slice(i, i + 4))
+  }
+
+  const sectionTitles = ['Trending Now', 'Popular Tracks', 'Fresh Releases', 'More Music', 'Discover', 'Rising Stars']
+
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Holographic 3D Background */}
@@ -97,30 +137,20 @@ export default function ExplorePage() {
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Main Content - 3 Section Layout */}
-      <main className="flex-1 overflow-y-auto pb-32">
+      {/* Main Content Area - Horizontal Scrolling Sections */}
+      <main className="flex-1 overflow-y-auto pb-48">
         {loading ? (
-          <div className="space-y-0">
-            {/* Banner skeleton */}
-            <div className="h-64 bg-white/5 animate-pulse"></div>
-            {/* Horizontal scroll skeleton */}
-            <div className="px-6 py-6">
-              <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
-              <div className="flex gap-2 overflow-x-auto">
-                {[...Array(10)].map((_, i) => (
-                  <div key={i} className="w-32 h-32 bg-white/5 rounded-lg flex-shrink-0 animate-pulse"></div>
-                ))}
+          <div className="px-4 py-8 space-y-8">
+            {[...Array(3)].map((_, i) => (
+              <div key={i}>
+                <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
+                <div className="flex gap-3 overflow-x-auto pb-4">
+                  {[...Array(8)].map((_, j) => (
+                    <div key={j} className="bg-white/5 backdrop-blur-xl rounded-xl w-32 h-32 flex-shrink-0 animate-pulse"></div>
+                  ))}
+                </div>
               </div>
-            </div>
-            {/* Grid skeleton */}
-            <div className="px-6 py-6">
-              <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
-              <div className="grid grid-cols-5 gap-4">
-                {[...Array(15)].map((_, i) => (
-                  <div key={i} className="bg-white/5 rounded-lg h-48 animate-pulse"></div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         ) : combinedMedia.length === 0 ? (
           <div className="text-center py-20">
@@ -132,118 +162,69 @@ export default function ExplorePage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-0">
-            {/* SECTION 1: TOP BANNER - Full Width, Height 250px */}
-            <div className="relative h-64 overflow-hidden">
-              <div className="absolute inset-0">
-                <img 
-                  src={combinedMedia[0]?.image_url} 
-                  alt="Featured"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
-              </div>
-              <div className="relative h-full flex items-end p-8">
-                <div>
-                  <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
-                    Explore Music
-                  </h1>
-                  <p className="text-xl text-gray-300">Discover amazing tracks from our community</p>
+          <div className="space-y-8 px-4 py-6">
+            {sections.map((sectionMedia, sectionIndex) => (
+              <div key={sectionIndex}>
+                <h2 className="text-lg font-bold text-white mb-4 px-2">
+                  {sectionTitles[sectionIndex % sectionTitles.length]}
+                </h2>
+                <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                  {sectionMedia.map((media) => {
+                const isCurrentlyPlaying = playingId === media.id
+                
+                return (
+                <div 
+                  key={media.id} 
+                  className={`flex-shrink-0 group relative backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-200 cursor-pointer w-32 ${
+                    isCurrentlyPlaying
+                      ? 'ring-2 ring-cyan-400/50 shadow-lg shadow-cyan-400/30'
+                      : 'hover:ring-2 hover:ring-white/20'
+                  }`}
+                  onClick={() => handlePlay(media)}
+                >
+                  {/* Compact Card Layout */}
+                  <div className="flex flex-col">
+                    {/* Thumbnail - Small Square */}
+                    <div className="relative w-32 h-32 overflow-hidden">
+                      <img 
+                        src={media.image_url} 
+                        alt={media.title}
+                        className="w-full h-full object-cover"
+                      />
+                      
+                      {/* Play Button Overlay */}
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="w-10 h-10 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                          {isCurrentlyPlaying && isPlaying ? (
+                            <Pause className="text-white" size={16} />
+                          ) : (
+                            <Play className="text-white ml-0.5" size={16} />
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Playing Indicator */}
+                      {isCurrentlyPlaying && (
+                        <div className="absolute top-1 left-1 w-3 h-3 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full shadow-lg animate-pulse"></div>
+                      )}
+                    </div>
+                    
+                    {/* Track Info - Compact */}
+                    <div className="p-2 bg-black/40 backdrop-blur-sm">
+                      <h3 className="text-xs font-bold text-white truncate">
+                        {media.title || 'Untitled'}
+                      </h3>
+                      <p className="text-[10px] text-teal-300 truncate">
+                        @{media.users?.username || 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
                 </div>
               </div>
-            </div>
-
-            {/* SECTION 2: HORIZONTAL SCROLL - Full Width, Clean, Less Padding */}
-            <div className="py-6 px-6 border-b border-white/5">
-              <h2 className="text-2xl font-bold mb-3">🔥 Trending Now</h2>
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
-                {combinedMedia.slice(0, 20).map((media) => {
-                  const isCurrentlyPlaying = playingId === media.id
-                  
-                  return (
-                    <div 
-                      key={media.id} 
-                      className={`flex-shrink-0 group cursor-pointer rounded-lg overflow-hidden transition-all ${
-                        isCurrentlyPlaying ? 'ring-2 ring-cyan-400 scale-105' : 'hover:scale-105'
-                      }`}
-                      onClick={() => handlePlay(media)}
-                    >
-                      <div className="relative w-32 h-32">
-                        <img 
-                          src={media.image_url} 
-                          alt={media.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                            {isCurrentlyPlaying && isPlaying ? (
-                              <Pause className="text-black" size={20} />
-                            ) : (
-                              <Play className="text-black ml-1" size={20} />
-                            )}
-                          </div>
-                        </div>
-                        {isCurrentlyPlaying && isPlaying && (
-                          <div className="absolute top-2 right-2 w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* SECTION 3: GRID VIEW - 5 Columns with Song Title and Artist Name */}
-            <div className="px-6 py-6">
-              <h2 className="text-2xl font-bold mb-4">🎵 All Tracks</h2>
-              <div className="grid grid-cols-5 gap-4">
-                {combinedMedia.map((media) => {
-                  const isCurrentlyPlaying = playingId === media.id
-                  
-                  return (
-                    <div 
-                      key={media.id} 
-                      className={`group cursor-pointer rounded-lg overflow-hidden transition-all ${
-                        isCurrentlyPlaying ? 'ring-2 ring-cyan-400 scale-105' : 'hover:scale-105'
-                      }`}
-                      onClick={() => handlePlay(media)}
-                    >
-                      <div className="relative aspect-square mb-2">
-                        <img 
-                          src={media.image_url} 
-                          alt={media.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                            {isCurrentlyPlaying && isPlaying ? (
-                              <Pause className="text-black" size={20} />
-                            ) : (
-                              <Play className="text-black ml-1" size={20} />
-                            )}
-                          </div>
-                        </div>
-                        {isCurrentlyPlaying && isPlaying && (
-                          <div className="absolute top-2 right-2 w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
-                        )}
-                      </div>
-                      <div className="px-2 pb-2">
-                        <h3 className="font-bold text-white truncate text-sm mb-0.5">
-                          {media.title}
-                        </h3>
-                        <Link 
-                          href={`/profile/${media.user_id}`}
-                          className="text-xs text-gray-400 hover:text-cyan-400 transition-colors truncate block"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {formatUsername(media.users?.username || media.username)}
-                        </Link>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+            ))}
           </div>
         )}
       </main>
@@ -251,7 +232,9 @@ export default function ExplorePage() {
       {/* Floating Unified Search & Player Bar */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-4xl px-4">
         <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl shadow-cyan-500/20 overflow-hidden">
+          {/* Unified Bar */}
           <div className="flex items-center gap-3 p-3">
+            {/* Now Playing Thumbnail (if playing) */}
             {currentTrack && (
               <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
                 <img 
@@ -267,6 +250,7 @@ export default function ExplorePage() {
               </div>
             )}
             
+            {/* Track Info or Search Icon */}
             {currentTrack ? (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white truncate">{currentTrack.title || 'Untitled Track'}</p>
@@ -286,6 +270,7 @@ export default function ExplorePage() {
               </div>
             )}
             
+            {/* Player Controls */}
             <div className="flex items-center gap-2">
               {currentTrack && (
                 <>
@@ -314,6 +299,7 @@ export default function ExplorePage() {
                 </>
               )}
               
+              {/* Search Button */}
               {!currentTrack && (
                 <button 
                   onClick={() => fetchCombinedMedia()}
