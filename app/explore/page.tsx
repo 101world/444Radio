@@ -164,9 +164,12 @@ export default function ExplorePage() {
             {/* SECTION 1: TOP BANNER - Full Width, Height 250px */}
             <div className="relative h-64 overflow-hidden">
               <div className="absolute inset-0">
-                <img 
-                  src={combinedMedia[0]?.image_url} 
-                  alt="Featured"
+                <video 
+                  src="/1_1_thm2_rxl1.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
