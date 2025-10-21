@@ -87,6 +87,20 @@ input, textarea {
   }
 }
 
+/* 3D Rotate Y animation */
+@keyframes rotate-y {
+  from {
+    transform: perspective(1000px) rotateY(0deg);
+  }
+  to {
+    transform: perspective(1000px) rotateY(360deg);
+  }
+}
+
+.rotate-y-90 {
+  transform: perspective(1000px) rotateY(90deg);
+}
+
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
 }
