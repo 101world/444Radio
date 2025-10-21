@@ -2,7 +2,7 @@ export default function Pricing() {
   return (
     <main className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-purple-400">Pricing</h1>
+        <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-300">Pricing</h1>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl p-6 text-center shadow-2xl hover:scale-105 transition-transform duration-300">
             <h2 className="text-2xl font-semibold mb-4">Free</h2>

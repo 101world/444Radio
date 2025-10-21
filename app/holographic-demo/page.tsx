@@ -25,7 +25,7 @@ export default function HolographicDemo() {
         </Link>
 
         <div className="text-center space-y-6 max-w-4xl">
-          <h1 className="text-6xl font-black text-white bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600">
+          <h1 className="text-6xl font-black text-white bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-300">
             Holographic Space
           </h1>
           
@@ -57,7 +57,7 @@ export default function HolographicDemo() {
           <div className="mt-12 flex gap-4 justify-center">
             <Link
               href="/"
-              className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold rounded-full hover:scale-105 transition-transform"
+              className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-cyan-400 text-white font-bold rounded-full hover:scale-105 transition-transform"
             >
               Use on Home Page
             </Link>

@@ -36,7 +36,7 @@ export default function Community() {
       <HolographicBackgroundClient />
       
       <div className="max-w-6xl mx-auto relative z-10">
-        <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-purple-400">Community Billboard</h1>
+        <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-300">Community Billboard</h1>
         <p className="text-center text-xl mb-8">Fan engagement, collabs, shoutouts. Tag us @444radio to get featured.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {songs.map((song) => (

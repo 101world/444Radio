@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { Music } from 'lucide-react'
@@ -41,7 +41,7 @@ export default function HomePage() {
           {/* Single Prompt Input that redirects on focus/click */}
           <div className="w-full max-w-3xl mx-auto">
             <div className="group relative cursor-pointer" onClick={handleFocus}>
-              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition duration-300"></div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-2xl blur-lg opacity-30 group-hover:opacity-50 transition duration-300"></div>
               <div className="relative flex gap-3 items-center bg-black/60 backdrop-blur-xl rounded-2xl px-5 py-4 border border-cyan-500/20 group-hover:border-cyan-500/40 transition-all duration-300">
                 <Music size={20} className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                 <div

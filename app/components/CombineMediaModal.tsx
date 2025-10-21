@@ -599,7 +599,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
             <button
               onClick={handleCombine}
               disabled={!selectedMusic || !selectedImage || isCombining}
-              className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl font-bold hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-3"
+              className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-2xl font-bold hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-3"
             >
               {isCombining ? (
                 <>

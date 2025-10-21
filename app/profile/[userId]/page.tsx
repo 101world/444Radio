@@ -139,7 +139,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-cyan-500 shadow-2xl shadow-cyan-500/50"
                     />
                   ) : (
-                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-600 flex items-center justify-center text-5xl md:text-6xl font-black text-white shadow-2xl shadow-cyan-500/50">
+                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-400 flex items-center justify-center text-5xl md:text-6xl font-black text-white shadow-2xl shadow-cyan-500/50">
                       {profile?.username?.[0]?.toUpperCase() || currentUser?.firstName?.[0]?.toUpperCase() || '?'}
                     </div>
                   )}
@@ -187,7 +187,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       <>
                         <button 
                           onClick={() => setShowStationsModal(true)}
-                          className="px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-sm"
+                          className="px-4 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-sm"
                           title="My Stations"
                         >
                           <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 {isOwnProfile && (
                   <button
                     onClick={() => setShowStationsModal(true)}
-                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-2xl transition-all shadow-lg hover:scale-105 font-bold text-lg"
+                    className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-2xl transition-all shadow-lg hover:scale-105 font-bold text-lg"
                   >
                     <div className="flex items-center gap-3">
                       <Radio size={20} />

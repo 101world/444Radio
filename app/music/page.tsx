@@ -31,7 +31,7 @@ export default function Music() {
   return (
     <main className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-purple-400">Explore Music</h1>
+        <h1 className="text-4xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-300">Explore Music</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {songs.map((song) => (
             <div key={song.id} className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl p-4 shadow-2xl hover:scale-105 transition-transform">

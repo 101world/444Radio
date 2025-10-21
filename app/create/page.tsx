@@ -59,6 +59,21 @@ function CreatePageContent() {
   const [showTitleModal, setShowTitleModal] = useState(false)
   const [showGenreModal, setShowGenreModal] = useState(false)
   const [showLyricsModal, setShowLyricsModal] = useState(false)
+
+  // Close all modals
+  const closeAllModals = () => {
+    setShowTitleModal(false)
+    setShowGenreModal(false)
+    setShowLyricsModal(false)
+  }
+
+  // Handle modal toggle - close others when opening one
+  const toggleModal = (modalType: 'title' | 'genre' | 'lyrics') => {
+    closeAllModals()
+    if (modalType === 'title') setShowTitleModal(true)
+    if (modalType === 'genre') setShowGenreModal(true)
+    if (modalType === 'lyrics') setShowLyricsModal(true)
+  }
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({})
@@ -128,72 +143,91 @@ function CreatePageContent() {
   const handleGenerate = async () => {
     if (!input.trim() || isGenerating) return
 
-    // For music, open the modal instead of generating directly
+    // Close any open parameter modals
+    closeAllModals()
+
+    // For music generation
     if (selectedType === 'music') {
       setShowMusicModal(true)
       return
     }
 
-    // For images and videos, proceed with generation
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: input,
-      timestamp: new Date()
-    }
-
-    const generatingMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'generation',
-      content: `Generating ${selectedType}...`,
-      generationType: selectedType,
-      isGenerating: true,
-      timestamp: new Date()
-    }
-
-    setMessages(prev => [...prev, userMessage, generatingMessage])
-    setInput('')
-    setIsGenerating(true)
-
-    try {
-      let result
-      if (selectedType === 'image') {
-        result = await generateImage(input)
-      } else {
-        result = { error: 'Video generation coming soon!' }
+    // For cover art/image generation
+    if (selectedType === 'image') {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: 'user',
+        content: input,
+        timestamp: new Date()
       }
 
-      // Replace generating message with result
-      setMessages(prev => prev.map(msg => 
-        msg.id === generatingMessage.id 
-          ? {
-              ...msg,
-              isGenerating: false,
-              content: result.error ? `❌ ${result.error}` : `✅ Image generated!`,
-              result: result.error ? undefined : result
-            }
-          : msg
-      ))
+      const generatingMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'generation',
+        content: `🎨 Generating cover art...`,
+        generationType: 'image',
+        isGenerating: true,
+        timestamp: new Date()
+      }
 
-      // Add assistant response
-      if (!result.error) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 2).toString(),
-          type: 'assistant',
-          content: 'Image generated! Want to combine it with a track?',
-          timestamp: new Date()
+      setMessages(prev => [...prev, userMessage, generatingMessage])
+      setInput('')
+      setIsGenerating(true)
+
+      try {
+        const result = await generateImage(input)
+
+        // Replace generating message with result
+        setMessages(prev => prev.map(msg => 
+          msg.id === generatingMessage.id 
+            ? {
+                ...msg,
+                isGenerating: false,
+                content: result.error ? `❌ ${result.error}` : `✅ Cover art generated!`,
+                result: result.error ? undefined : result
+              }
+            : msg
+        ))
+
+        // Add assistant response
+        if (!result.error) {
+          const assistantMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            type: 'assistant',
+            content: 'Cover art created! Want to combine it with a track?',
+            timestamp: new Date()
+          }
+          setMessages(prev => [...prev, assistantMessage])
         }
-        setMessages(prev => [...prev, assistantMessage])
+      } catch (error) {
+        console.error('Generation error:', error)
+        setMessages(prev => prev.map(msg => 
+          msg.id === generatingMessage.id 
+            ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
+            : msg
+        ))
+      } finally {
+        setIsGenerating(false)
       }
-    } catch (error) {
-      console.error('Generation error:', error)
-      setMessages(prev => prev.map(msg => 
-        msg.id === generatingMessage.id 
-          ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
-          : msg
-      ))
-    } finally {
-      setIsGenerating(false)
+      return
+    }
+
+    // Video coming soon
+    if (selectedType === 'video') {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: 'user',
+        content: input,
+        timestamp: new Date()
+      }
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: '🎬 Video generation coming soon!',
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, userMessage, assistantMessage])
+      setInput('')
     }
   }
 
@@ -489,7 +523,7 @@ function CreatePageContent() {
         <div className="max-w-4xl mx-auto">
           {/* Rectangular Container with Glow Effect */}
           <div className="group relative">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 rounded-2xl blur-lg opacity-30 group-hover:opacity-40 transition duration-300"></div>
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-2xl blur-lg opacity-30 group-hover:opacity-40 transition duration-300"></div>
             <div className="relative bg-black/60 backdrop-blur-xl border border-cyan-500/20 rounded-2xl shadow-2xl">
               {/* Type Selection Pills + Release Button */}
               <div className="flex gap-2 px-5 pt-4 pb-3 items-center justify-between border-b border-white/10">
@@ -544,7 +578,13 @@ function CreatePageContent() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleGenerate()}
-                    placeholder="// Describe your track..."
+                    placeholder={
+                      selectedType === 'music'
+                        ? '// Describe your track...'
+                        : selectedType === 'image'
+                        ? '// Describe your cover art...'
+                        : '// Coming soon...'
+                    }
                     disabled={isGenerating || selectedType === 'video'}
                     className="flex-1 px-0 py-0 bg-transparent border-none text-white text-sm placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors resize-none"
                     rows={1}
@@ -558,9 +598,9 @@ function CreatePageContent() {
                   <div className="flex items-center gap-2">
                     {/* Title */}
                     <button
-                      onClick={() => setShowTitleModal(!showTitleModal)}
+                      onClick={() => showTitleModal ? closeAllModals() : toggleModal('title')}
                       className={`p-2 rounded-lg transition-all ${
-                        customTitle ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                        showTitleModal ? 'bg-cyan-500 text-white' : customTitle ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
                       }`}
                       title="Add Title"
                     >
@@ -569,9 +609,9 @@ function CreatePageContent() {
 
                     {/* Genre */}
                     <button
-                      onClick={() => setShowGenreModal(!showGenreModal)}
+                      onClick={() => showGenreModal ? closeAllModals() : toggleModal('genre')}
                       className={`p-2 rounded-lg transition-all ${
-                        genre ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                        showGenreModal ? 'bg-cyan-500 text-white' : genre ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
                       }`}
                       title="Add Genre"
                     >
@@ -580,31 +620,35 @@ function CreatePageContent() {
 
                     {/* Lyrics */}
                     <button
-                      onClick={() => setShowLyricsModal(!showLyricsModal)}
+                      onClick={() => showLyricsModal ? closeAllModals() : toggleModal('lyrics')}
                       className={`p-2 rounded-lg transition-all ${
-                        customLyrics ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                        showLyricsModal ? 'bg-cyan-500 text-white' : customLyrics ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
                       }`}
                       title="Add Lyrics"
                     >
                       <FileText size={16} />
                     </button>
 
-                    {/* Cover Art Toggle */}
-                    <button
-                      onClick={() => setGenerateCoverArt(!generateCoverArt)}
-                      disabled={isGenerating}
-                      className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
-                        generateCoverArt ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                      }`}
-                      title="Cover Art"
-                    >
-                      <ImageIcon size={16} />
-                    </button>
+                    {/* Auto-Generate Cover Art Toggle (for music) */}
+                    {selectedType === 'music' && (
+                      <button
+                        onClick={() => setGenerateCoverArt(!generateCoverArt)}
+                        disabled={isGenerating}
+                        className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
+                          generateCoverArt ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                        }`}
+                        title={generateCoverArt ? "Auto-generate cover art enabled" : "Auto-generate cover art disabled"}
+                      >
+                        <ImageIcon size={16} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Right: Credits + Send Button */}
                   <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-500">2 credits</span>
+                    <span className="text-xs text-gray-500">
+                      {selectedType === 'music' ? '2 credits' : selectedType === 'image' ? '1 credit' : 'N/A'}
+                    </span>
                     <button
                       onClick={handleGenerate}
                       disabled={isGenerating || !input.trim() || selectedType === 'video'}
@@ -627,41 +671,58 @@ function CreatePageContent() {
 
                 {/* Quick Popover Inputs */}
                 {showTitleModal && (
-                  <div className="animate-fade-in">
+                  <div className="animate-fade-in relative">
                     <input
                       type="text"
                       value={customTitle}
                       onChange={(e) => setCustomTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') closeAllModals()
+                        if (e.key === 'Enter') closeAllModals()
+                      }}
+                      onBlur={() => setTimeout(() => setShowTitleModal(false), 150)}
                       placeholder="Enter title..."
                       className="w-full px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
                       autoFocus
                     />
+                    <span className="absolute right-3 top-2.5 text-xs text-gray-600">Press Enter or Esc</span>
                   </div>
                 )}
 
                 {showGenreModal && (
-                  <div className="animate-fade-in">
+                  <div className="animate-fade-in relative">
                     <input
                       type="text"
                       value={genre}
                       onChange={(e) => setGenre(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') closeAllModals()
+                        if (e.key === 'Enter') closeAllModals()
+                      }}
+                      onBlur={() => setTimeout(() => setShowGenreModal(false), 150)}
                       placeholder="Enter genre (e.g., Hip-hop, Jazz)..."
                       className="w-full px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
                       autoFocus
                     />
+                    <span className="absolute right-3 top-2.5 text-xs text-gray-600">Press Enter or Esc</span>
                   </div>
                 )}
 
                 {showLyricsModal && (
-                  <div className="animate-fade-in">
+                  <div className="animate-fade-in relative">
                     <textarea
                       value={customLyrics}
                       onChange={(e) => setCustomLyrics(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') closeAllModals()
+                      }}
+                      onBlur={() => setTimeout(() => setShowLyricsModal(false), 150)}
                       placeholder="Enter custom lyrics..."
                       className="w-full px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
                       rows={3}
                       autoFocus
                     />
+                    <span className="absolute right-3 top-2.5 text-xs text-gray-600">Press Esc to close</span>
                   </div>
                 )}
               </div>
