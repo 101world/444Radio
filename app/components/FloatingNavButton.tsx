@@ -4,13 +4,15 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { User, Compass, PlusCircle, Library, Menu, X } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 
 export default function FloatingNavButton() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
+  const { user } = useUser()
 
   const navItems = [
-    { href: '/profile', icon: User, label: 'Profile' },
+    { href: user ? `/profile/${user.id}` : '/profile', icon: User, label: 'Profile' },
     { href: '/explore', icon: Compass, label: 'Explore' },
     { href: '/create', icon: PlusCircle, label: 'Create' },
     { href: '/library', icon: Library, label: 'Library' },
