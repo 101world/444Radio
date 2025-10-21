@@ -143,7 +143,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       const res = await fetch(`/api/station/messages?stationId=${stId}`)
       const data = await res.json()
       if (data.success && data.messages) {
-        setChatMessages(data.messages.map((msg: any) => ({
+        setChatMessages(data.messages.map((msg: {
+          id: string
+          username: string
+          message: string
+          created_at: string
+          message_type: 'chat' | 'track'
+        }) => ({
           id: msg.id,
           username: msg.username,
           message: msg.message,
@@ -169,7 +175,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         table: 'station_messages',
         filter: `station_id=eq.${stationId}`
       }, (payload) => {
-        const msg = payload.new as any
+        const msg = payload.new as {
+          id: string
+          username: string
+          message: string
+          created_at: string
+          message_type: 'chat' | 'track'
+        }
         setChatMessages(prev => [...prev, {
           id: msg.id,
           username: msg.username,
@@ -189,7 +201,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         table: 'live_stations',
         filter: `id=eq.${stationId}`
       }, (payload) => {
-        const station = payload.new as any
+        const station = payload.new as {
+          is_live: boolean
+          listener_count: number
+        }
         setIsLive(station.is_live)
         setLiveListeners(station.listener_count || 0)
       })
