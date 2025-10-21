@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
+import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
 import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackground from '../components/HolographicBackgroundClient'
 
@@ -46,6 +47,9 @@ function CreatePageContent() {
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [showMusicModal, setShowMusicModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
+  const [showReleaseModal, setShowReleaseModal] = useState(false)
+  const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
+  const [preselectedImageId, setPreselectedImageId] = useState<string | undefined>()
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
@@ -484,6 +488,12 @@ function CreatePageContent() {
     document.body.removeChild(link)
   }
 
+  const handleOpenRelease = (musicId?: string, imageId?: string) => {
+    setPreselectedMusicId(musicId)
+    setPreselectedImageId(imageId)
+    setShowReleaseModal(true)
+  }
+
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Holographic 3D Background */}
@@ -534,9 +544,18 @@ function CreatePageContent() {
 
                 {/* Music Generation Result */}
                 {message.result?.audioUrl && (
-                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10">
+                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10 relative group">
+                    {/* Rocket Icon - Top Right */}
+                    <button
+                      onClick={() => handleOpenRelease(message.id, undefined)}
+                      className="absolute top-3 right-3 p-2 bg-cyan-500/20 hover:bg-cyan-500/40 backdrop-blur-xl border border-cyan-500/30 rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                      title="Release to Feed"
+                    >
+                      <Rocket size={16} className="text-cyan-400" />
+                    </button>
+
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex-1">
+                      <div className="flex-1 pr-12">
                         <h4 className="font-bold text-white">{message.result.title}</h4>
                         <p className="text-xs text-gray-400">{message.result.prompt}</p>
                       </div>
@@ -589,7 +608,18 @@ function CreatePageContent() {
 
                 {/* Image Generation Result */}
                 {message.result?.imageUrl && (
-                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10">
+                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10 relative group">
+                    {/* Rocket Icon - Top Right over Image */}
+                    <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleOpenRelease(undefined, message.id)}
+                        className="p-2 bg-cyan-500/20 hover:bg-cyan-500/40 backdrop-blur-xl border border-cyan-500/30 rounded-lg transition-all"
+                        title="Release to Feed"
+                      >
+                        <Rocket size={16} className="text-cyan-400" />
+                      </button>
+                    </div>
+
                     <img
                       src={message.result.imageUrl}
                       alt={message.result.title}
@@ -709,8 +739,17 @@ function CreatePageContent() {
                   />
                 </div>
 
-                {/* Right: Settings + Credits + Create Button */}
+                {/* Right: Rocket + Settings + Credits + Create Button */}
                 <div className="flex items-center gap-2">
+                  {/* Rocket Button */}
+                  <button
+                    onClick={() => handleOpenRelease()}
+                    className="p-2.5 rounded-xl transition-all bg-white/5 text-gray-400 hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-500/30 border border-white/5"
+                    title="Release to Feed"
+                  >
+                    <Rocket size={18} />
+                  </button>
+
                   {/* Settings Button */}
                   <button
                     onClick={() => setShowSettingsModal(true)}
@@ -919,6 +958,18 @@ function CreatePageContent() {
       <CombineMediaModal
         isOpen={showCombineModal}
         onClose={() => setShowCombineModal(false)}
+      />
+
+      {/* Two-Step Release Modal */}
+      <TwoStepReleaseModal
+        isOpen={showReleaseModal}
+        onClose={() => {
+          setShowReleaseModal(false)
+          setPreselectedMusicId(undefined)
+          setPreselectedImageId(undefined)
+        }}
+        preselectedMusic={preselectedMusicId}
+        preselectedImage={preselectedImageId}
       />
     </div>
   )
