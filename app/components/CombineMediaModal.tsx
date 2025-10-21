@@ -257,13 +257,13 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl">
-      <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-[#1a1f3a] via-[#2d1b4e] to-[#0f1419] rounded-3xl border border-[#6366f1]/30 shadow-2xl shadow-[#6366f1]/20 backdrop-blur-2xl">
+      <div className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-black via-cyan-950/20 to-black rounded-3xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/20 backdrop-blur-2xl">
         
         {/* Close Button */}
         {!isCombining && (
           <button
             onClick={onClose}
-            className="absolute top-6 right-6 p-2 text-[#818cf8] hover:text-[#a78bfa] transition-colors z-10"
+            className="absolute top-6 right-6 p-2 text-cyan-400 hover:text-cyan-300 transition-colors z-10"
           >
             <X size={24} />
           </button>
@@ -272,24 +272,24 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
         <div className="p-8">
           {/* Header */}
           <div className="mb-8">
-            <h2 className="text-4xl font-bold bg-gradient-to-r from-[#818cf8] via-[#a78bfa] to-[#c084fc] bg-clip-text text-transparent mb-2">
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent mb-2">
               Combine Media
             </h2>
-            <p className="text-[#818cf8]/60">Select music + cover art from your library to create a release</p>
+            <p className="text-cyan-400/60">Select music + cover art from your library to create a release</p>
           </div>
 
           {/* Loading State */}
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#818cf8] mb-4"></div>
-              <p className="text-[#818cf8]">Loading your library...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mb-4"></div>
+              <p className="text-cyan-400">Loading your library...</p>
             </div>
           )}
 
           {/* Combined Preview */}
           {combinedResult && (
-            <div className="mb-8 p-6 bg-gradient-to-br from-[#4f46e5]/20 via-[#6366f1]/20 to-[#818cf8]/20 rounded-2xl border border-[#6366f1]/40 backdrop-blur-xl shadow-lg shadow-[#6366f1]/10">
-              <h3 className="text-xl font-bold bg-gradient-to-r from-[#818cf8] to-[#a78bfa] bg-clip-text text-transparent mb-4">
+            <div className="mb-8 p-6 bg-gradient-to-br from-cyan-500/10 via-cyan-400/10 to-cyan-300/10 rounded-2xl border border-cyan-500/40 backdrop-blur-xl shadow-lg shadow-cyan-500/10">
+              <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-cyan-300 bg-clip-text text-transparent mb-4">
                 {savedMediaId ? '🎉 Saved to Profile!' : '✅ Combined Media Ready!'}
               </h3>
               <div className="flex items-center gap-6">
@@ -313,8 +313,8 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                   
                   {/* Metadata Form - Only show if not saved */}
                   {!savedMediaId && (
-                    <div className="mb-4 p-4 bg-[#1a1f3a]/50 rounded-xl border border-[#6366f1]/20">
-                      <h4 className="text-sm font-bold text-[#818cf8] mb-3">📋 Track Metadata (Required for Publishing)</h4>
+                    <div className="mb-4 p-4 bg-cyan-950/20 rounded-xl border border-cyan-500/20">
+                      <h4 className="text-sm font-bold text-cyan-400 mb-3">📋 Track Metadata (Required for Publishing)</h4>
                       
                       <div className="grid grid-cols-2 gap-3">
                         {/* Genre */}
@@ -323,7 +323,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                           <select
                             value={metadata.genre}
                             onChange={(e) => setMetadata({...metadata, genre: e.target.value})}
-                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                            className="w-full px-3 py-2 bg-black border border-cyan-500/20 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
                           >
                             <option value="">Select genre</option>
                             <option value="pop">Pop</option>
@@ -345,7 +345,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                           <select
                             value={metadata.mood}
                             onChange={(e) => setMetadata({...metadata, mood: e.target.value})}
-                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                            className="w-full px-3 py-2 bg-black border border-cyan-500/20 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
                           >
                             <option value="">Select mood</option>
                             <option value="energetic">Energetic</option>
@@ -367,7 +367,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                             value={metadata.bpm}
                             onChange={(e) => setMetadata({...metadata, bpm: e.target.value})}
                             placeholder="120"
-                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                            className="w-full px-3 py-2 bg-black border border-cyan-500/20 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
                           />
                         </div>
 
@@ -379,7 +379,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                             value={metadata.key}
                             onChange={(e) => setMetadata({...metadata, key: e.target.value})}
                             placeholder="C Major"
-                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                            className="w-full px-3 py-2 bg-black border border-cyan-500/20 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
                           />
                         </div>
 
@@ -391,7 +391,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                             value={metadata.copyrightOwner}
                             onChange={(e) => setMetadata({...metadata, copyrightOwner: e.target.value})}
                             placeholder="Your Artist Name"
-                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                            className="w-full px-3 py-2 bg-black border border-cyan-500/20 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
                           />
                         </div>
 
@@ -401,7 +401,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                           <select
                             value={metadata.license}
                             onChange={(e) => setMetadata({...metadata, license: e.target.value})}
-                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                            className="w-full px-3 py-2 bg-black border border-cyan-500/20 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
                           >
                             <option value="exclusive">Exclusive Rights (Full ownership)</option>
                             <option value="non-exclusive">Non-Exclusive (Can be shared)</option>
@@ -418,7 +418,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                             value={metadata.price}
                             onChange={(e) => setMetadata({...metadata, price: e.target.value})}
                             placeholder="0.00"
-                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                            className="w-full px-3 py-2 bg-black border border-cyan-500/20 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
                           />
                         </div>
 
@@ -430,7 +430,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                             value={metadata.tags}
                             onChange={(e) => setMetadata({...metadata, tags: e.target.value})}
                             placeholder="ambient, chill, study, beats"
-                            className="w-full px-3 py-2 bg-[#0f1419] border border-[#6366f1]/20 rounded-lg text-white text-sm focus:border-[#6366f1] focus:outline-none"
+                            className="w-full px-3 py-2 bg-black border border-cyan-500/20 rounded-lg text-white text-sm focus:border-cyan-500 focus:outline-none"
                           />
                         </div>
                       </div>
@@ -442,14 +442,14 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                       <button 
                         onClick={handleSaveToProfile}
                         disabled={isSaving}
-                        className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-cyan-500/30"
+                        className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white rounded-xl font-semibold hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#6366f1]/30"
                       >
                         {isSaving ? '� Releasing...' : '� Release'}
                       </button>
                     ) : (
                       <button 
                         onClick={onClose}
-                        className="px-6 py-3 bg-gradient-to-r from-[#818cf8] to-[#a78bfa] text-white rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg shadow-[#818cf8]/30"
+                        className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-400 text-white rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg shadow-cyan-500/30"
                       >
                         ✨ View in Profile
                       </button>
@@ -461,7 +461,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                         a.download = 'music.mp3'
                         a.click()
                       }}
-                      className="px-6 py-3 bg-[#4f46e5]/20 border border-[#6366f1]/30 text-[#818cf8] rounded-xl font-semibold hover:bg-[#4f46e5]/30 transition-colors backdrop-blur-xl"
+                      className="px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-xl font-semibold hover:bg-cyan-500/20 transition-colors backdrop-blur-xl"
                     >
                       <Download size={20} className="inline mr-2" />
                       Download Audio
@@ -473,7 +473,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                         a.download = 'cover.webp'
                         a.click()
                       }}
-                      className="px-6 py-3 bg-[#4f46e5]/20 border border-[#6366f1]/30 text-[#818cf8] rounded-xl font-semibold hover:bg-[#4f46e5]/30 transition-colors backdrop-blur-xl"
+                      className="px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-xl font-semibold hover:bg-cyan-500/20 transition-colors backdrop-blur-xl"
                     >
                       <Download size={20} className="inline mr-2" />
                       Download Image
@@ -589,7 +589,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
 
           {/* Combine Button */}
           <div className="mt-8 flex items-center justify-between">
-            <div className="text-sm text-purple-400/60">
+            <div className="text-sm text-cyan-400/60">
               {!selectedMusic && !selectedImage && 'Select both music and image to combine'}
               {selectedMusic && !selectedImage && 'Now select an image'}
               {!selectedMusic && selectedImage && 'Now select a music track'}

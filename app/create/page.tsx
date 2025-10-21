@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2 } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import FloatingMenu from '../components/FloatingMenu'
@@ -52,26 +52,30 @@ function CreatePageContent() {
   const [customLyrics, setCustomLyrics] = useState('')
   const [customTitle, setCustomTitle] = useState('')
   const [genre, setGenre] = useState('')
+  const [bpm, setBpm] = useState('')
   const [generateCoverArt, setGenerateCoverArt] = useState(true)
   
   // Modal states for parameters
   const [showTitleModal, setShowTitleModal] = useState(false)
   const [showGenreModal, setShowGenreModal] = useState(false)
   const [showLyricsModal, setShowLyricsModal] = useState(false)
+  const [showBpmModal, setShowBpmModal] = useState(false)
 
   // Close all modals
   const closeAllModals = () => {
     setShowTitleModal(false)
     setShowGenreModal(false)
     setShowLyricsModal(false)
+    setShowBpmModal(false)
   }
 
   // Handle modal toggle - close others when opening one
-  const toggleModal = (modalType: 'title' | 'genre' | 'lyrics') => {
+  const toggleModal = (modalType: 'title' | 'genre' | 'lyrics' | 'bpm') => {
     closeAllModals()
     if (modalType === 'title') setShowTitleModal(true)
     if (modalType === 'genre') setShowGenreModal(true)
     if (modalType === 'lyrics') setShowLyricsModal(true)
+    if (modalType === 'bpm') setShowBpmModal(true)
   }
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -145,9 +149,74 @@ function CreatePageContent() {
     // Close any open parameter modals
     closeAllModals()
 
-    // For music generation
+    // For music generation - Generate directly without modal
     if (selectedType === 'music') {
-      setShowMusicModal(true)
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        type: 'user',
+        content: `🎵 Generate music: "${input}"`,
+        timestamp: new Date()
+      }
+
+      const generatingMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'generation',
+        content: '🎵 Generating your track...',
+        generationType: 'music',
+        isGenerating: true,
+        timestamp: new Date()
+      }
+
+      setMessages(prev => [...prev, userMessage, generatingMessage])
+      setInput('')
+      setIsGenerating(true)
+
+      try {
+        // Build prompt with parameters
+        let fullPrompt = input
+        if (genre) fullPrompt += ` [${genre}]`
+        if (bpm) fullPrompt += ` [${bpm} BPM]`
+        
+        const result = await generateMusic(fullPrompt, customTitle, customLyrics)
+
+        // Replace generating message with result
+        setMessages(prev => prev.map(msg => 
+          msg.id === generatingMessage.id 
+            ? {
+                ...msg,
+                isGenerating: false,
+                content: result.error ? `❌ ${result.error}` : `✅ Track generated!`,
+                result: result.error ? undefined : result
+              }
+            : msg
+        ))
+
+        // Add assistant response
+        if (!result.error) {
+          const assistantMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            type: 'assistant',
+            content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
+            timestamp: new Date()
+          }
+          setMessages(prev => [...prev, assistantMessage])
+        }
+
+        // Clear parameters after generation
+        setCustomTitle('')
+        setGenre('')
+        setCustomLyrics('')
+        setBpm('')
+      } catch (error) {
+        console.error('Generation error:', error)
+        setMessages(prev => prev.map(msg => 
+          msg.id === generatingMessage.id 
+            ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
+            : msg
+        ))
+      } finally {
+        setIsGenerating(false)
+      }
       return
     }
 
@@ -294,11 +363,11 @@ function CreatePageContent() {
     setInput('')
   }
 
-  const generateMusic = async (prompt: string) => {
+  const generateMusic = async (prompt: string, title?: string, lyrics?: string) => {
     const res = await fetch('/api/generate/music-only', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ prompt, title, lyrics })
     })
 
     const data = await res.json()
@@ -306,9 +375,9 @@ function CreatePageContent() {
     if (data.success) {
       return {
         audioUrl: data.audioUrl,
-        title: data.title || prompt.substring(0, 50),
+        title: data.title || title || prompt.substring(0, 50),
         prompt: prompt,
-        lyrics: data.lyrics
+        lyrics: data.lyrics || lyrics
       }
     } else {
       return { error: data.error || 'Failed to generate music' }
@@ -564,7 +633,7 @@ function CreatePageContent() {
                 {/* Release Button on the right */}
                 <button
                   onClick={() => setShowCombineModal(true)}
-                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white hover:from-[#5558e3] hover:to-[#7078ef] transition-all shadow-lg"
+                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-600 to-cyan-400 text-white hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg"
                 >
                   <Layers size={14} className="inline mr-1.5" />
                   Release
@@ -629,6 +698,17 @@ function CreatePageContent() {
                       title="Add Lyrics"
                     >
                       <FileText size={16} />
+                    </button>
+
+                    {/* BPM */}
+                    <button
+                      onClick={() => showBpmModal ? closeAllModals() : toggleModal('bpm')}
+                      className={`p-2 rounded-lg transition-all ${
+                        showBpmModal ? 'bg-cyan-500 text-white' : bpm ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                      }`}
+                      title="Set BPM (Tempo)"
+                    >
+                      <Music2 size={16} />
                     </button>
 
                     {/* Auto-Generate Cover Art Toggle (for music) */}
@@ -755,6 +835,33 @@ function CreatePageContent() {
                       </button>
                     </div>
                     <span className="absolute right-3 top-2.5 text-xs text-gray-600 hidden md:inline pointer-events-none">Press Esc to close</span>
+                  </div>
+                )}
+
+                {showBpmModal && (
+                  <div className="animate-fade-in relative">
+                    <input
+                      type="number"
+                      value={bpm}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        // Allow empty or valid numbers
+                        if (value === '' || (!isNaN(parseInt(value)) && parseInt(value) >= 0 && parseInt(value) <= 300)) {
+                          setBpm(value)
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') closeAllModals()
+                        if (e.key === 'Enter') closeAllModals()
+                      }}
+                      onBlur={() => setTimeout(() => setShowBpmModal(false), 150)}
+                      placeholder="Enter BPM (e.g., 120)..."
+                      min="60"
+                      max="200"
+                      className="w-full px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
+                      autoFocus
+                    />
+                    <span className="absolute right-3 top-2.5 text-xs text-gray-600 hidden md:inline">60-200 • Enter or Esc</span>
                   </div>
                 )}
               </div>
