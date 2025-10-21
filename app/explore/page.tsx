@@ -197,8 +197,8 @@ export default function ExplorePage() {
             <div className="px-6 py-6">
               <h2 className="text-2xl font-bold mb-4">🎵 All Tracks</h2>
               
-              {/* Desktop: 3 Column List View */}
-              <div className="hidden md:grid md:grid-cols-3 gap-x-6 gap-y-1">
+              {/* Desktop: 4 Column List View */}
+              <div className="hidden md:grid md:grid-cols-4 gap-x-6 gap-y-1">
                 {combinedMedia.map((media, index) => {
                   const isCurrentlyPlaying = playingId === media.id
                   
