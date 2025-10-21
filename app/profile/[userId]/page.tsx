@@ -7,7 +7,7 @@ import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
 import FloatingNavButton from '../../components/FloatingNavButton'
-import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio, UserPlus, Play, Pause } from 'lucide-react'
+import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio, UserPlus, Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
@@ -84,6 +84,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [currentTrack, setCurrentTrack] = useState<CombinedMedia | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [carouselIndex, setCarouselIndex] = useState(0)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
@@ -176,48 +177,57 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 </div>
               ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
                 <div className="space-y-0">
-                  {/* SECTION 1: TOP BANNER - Profile Info */}
-                  <div className="relative h-64 overflow-hidden">
-                    <div className="absolute inset-0">
-                      <img 
-                        src={profile.combinedMedia[0]?.image_url || profile.avatar || '/radio-logo.svg'} 
-                        alt={profile.username}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
-                    </div>
-                    <div className="relative h-full flex items-end p-8">
-                      <div className="flex items-center gap-6">
-                        {/* Avatar */}
-                        {profile.avatar && (
-                          <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-cyan-400/50 shadow-2xl flex-shrink-0">
+                  {/* SECTION 1: TOP BANNER - Cover Art Carousel */}
+                  <div className="relative h-64 overflow-hidden group">
+                    {/* Carousel Images */}
+                    <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
+                      <div className="flex h-full">
+                        {profile.combinedMedia.slice(0, 10).map((media, index) => (
+                          <div key={media.id} className="relative w-full h-full flex-shrink-0">
                             <img 
-                              src={profile.avatar} 
-                              alt={profile.username}
+                              src={media.image_url} 
+                              alt={media.title || 'Cover art'}
                               className="w-full h-full object-cover"
                             />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                           </div>
-                        )}
-                        
-                        {/* Profile Info */}
-                        <div>
-                          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
-                            @{profile.username}
-                          </h1>
-                          <p className="text-xl text-gray-300">{profile.tagline}</p>
-                          <div className="flex items-center gap-6 mt-3">
-                            <span className="text-sm text-gray-400">
-                              <span className="font-bold text-white">{profile.songCount}</span> Tracks
-                            </span>
-                            <span className="text-sm text-gray-400">
-                              <span className="font-bold text-white">{profile.totalPlays}</span> Plays
-                            </span>
-                            <span className="text-sm text-gray-400">
-                              <span className="font-bold text-white">{profile.totalLikes}</span> Likes
-                            </span>
-                          </div>
-                        </div>
+                        ))}
                       </div>
+                    </div>
+
+                    {/* Carousel Navigation - Left */}
+                    {carouselIndex > 0 && (
+                      <button
+                        onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                      >
+                        <ChevronLeft size={20} className="text-white" />
+                      </button>
+                    )}
+
+                    {/* Carousel Navigation - Right */}
+                    {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
+                      <button
+                        onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                      >
+                        <ChevronRight size={20} className="text-white" />
+                      </button>
+                    )}
+
+                    {/* Carousel Indicators */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                      {profile.combinedMedia.slice(0, 10).map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCarouselIndex(index)}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            index === carouselIndex 
+                              ? 'bg-cyan-400 w-8' 
+                              : 'bg-white/30 hover:bg-white/50'
+                          }`}
+                        />
+                      ))}
                     </div>
                   </div>
 
@@ -436,22 +446,22 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-3 shadow-2xl">
             <div className="flex items-center justify-between px-4">
-              {/* Left: Username + PRVTLST + Upload (if own) */}
+              {/* Left: Username + Stations + Upload (if own) */}
               <div className="flex items-center gap-3">
                 <span className="text-sm font-black text-white">
                   @{profile?.username || 'Loading...'}
                 </span>
                 
-                {/* PRVTLST Button */}
+                {/* Stations Button */}
                 <div className="w-px h-4 bg-white/20"></div>
                 <button 
                   onClick={() => setShowStationsModal(true)}
                   className="px-3 py-1 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-full transition-all shadow-lg hover:scale-105"
-                  title="Private Lists"
+                  title="Stations"
                 >
                   <div className="flex items-center gap-1.5">
                     <Users size={12} className="text-white" />
-                    <span className="text-xs font-black text-white">PRVTLST</span>
+                    <span className="text-xs font-black text-white">Stations</span>
                   </div>
                 </button>
                 
