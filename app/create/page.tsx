@@ -670,7 +670,7 @@ function CreatePageContent() {
       </div>
 
       {/* Fixed Bottom Dock - Home Page Style */}
-      <div className="fixed bottom-0 left-0 right-0 md:bottom-auto px-4 sm:px-6 lg:px-8 pb-safe md:pb-0 z-20">
+      <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           
           {/* Icon Row Above Prompt Box */}
@@ -835,7 +835,7 @@ function CreatePageContent() {
           </div>
           
           {/* Quick Info - Below the bar */}
-          <div className="flex items-center justify-center gap-2 mt-2 md:mt-6 text-xs md:text-sm mb-2">
+          <div className="flex items-center justify-center gap-2 mt-2 text-xs md:text-sm">
             <span className="text-cyan-400/60 font-mono tracking-wider">
               ✨ {selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : 'Coming soon'}
             </span>
