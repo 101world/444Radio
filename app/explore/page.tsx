@@ -121,116 +121,55 @@ export default function ExplorePage() {
     handlePlay(combinedMedia[prevIndex])
   }
 
+  // Group media into 2x2 sections
+  const sections = []
+  for (let i = 0; i < combinedMedia.length; i += 4) {
+    sections.push(combinedMedia.slice(i, i + 4))
+  }
+
+  const sectionTitles = ['Trending Now', 'Popular Tracks', 'Fresh Releases', 'More Music', 'Discover', 'Rising Stars']
+
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Holographic 3D Background */}
       <HolographicBackgroundClient />
       
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Full Width Header Banner */}
-      <div className="relative w-full h-80 overflow-hidden">
-        {/* Animated Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-600 via-cyan-500 to-cyan-400 animate-gradient"></div>
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10"></div>
-        
-        {/* Content */}
-        <div className="relative z-10 h-full flex flex-col items-center justify-center px-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Radio size={48} className="text-white animate-pulse" />
-            <TrendingUp size={48} className="text-cyan-200" />
-          </div>
-          <h1 className="text-6xl md:text-8xl font-black text-white mb-4 tracking-tight">
-            Explore
-          </h1>
-          <p className="text-xl md:text-2xl text-cyan-50 font-medium mb-8">
-            Discover the latest tracks from artists worldwide
-          </p>
-          
-          {/* Search Bar */}
-          <div className="w-full max-w-2xl flex items-center gap-3">
-            <input
-              type="text"
-              placeholder="Search for tracks, artists..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 px-6 py-4 bg-white/20 backdrop-blur-xl border-2 border-white/30 text-white placeholder-white/60 focus:outline-none focus:border-white rounded-2xl transition-all text-lg"
-            />
-            <button 
-              onClick={() => fetchCombinedMedia()}
-              className="px-8 py-4 bg-white text-cyan-600 rounded-2xl font-bold hover:scale-105 transition-transform shadow-2xl"
-            >
-              Search
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Artist Profiles - Horizontal Scroll */}
-      {!loading && artists.length > 0 && (
-        <div className="py-8 px-4 md:px-8 border-b border-white/10">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={24} className="text-cyan-400" />
-              <h2 className="text-2xl font-bold text-white">Featured Artists</h2>
-            </div>
-            <div className="relative">
-              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
-                {artists.map((artist) => (
-                  <Link 
-                    key={artist.user_id}
-                    href={`/u/${artist.username}`}
-                    className="flex-shrink-0 snap-start group"
-                  >
-                    <div className="flex flex-col items-center gap-3 w-32 transition-transform hover:scale-105">
-                      {/* Circular Avatar */}
-                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-cyan-400/50 group-hover:border-cyan-400 transition-all shadow-lg shadow-cyan-400/20">
-                        <img 
-                          src={artist.avatar || '/default-avatar.png'} 
-                          alt={artist.username}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      {/* Artist Name */}
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-white truncate w-full">
-                          @{formatUsername(artist.username)}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {artist.trackCount} {artist.trackCount === 1 ? 'track' : 'tracks'}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+      {/* Main Content Area - Scrollable 2x2 Song Grids */}
+      <main className="flex-1 overflow-y-auto pb-96">
+        {loading ? (
+          <div className="px-4 py-8 space-y-8">
+            {[...Array(3)].map((_, i) => (
+              <div key={i}>
+                <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[...Array(4)].map((_, j) => (
+                    <div key={j} className="bg-white/5 backdrop-blur-xl rounded-xl h-64 animate-pulse"></div>
+                  ))}
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
-
-      {/* Full-Width 4-Column Grid - Clean, Professional */}
-      <main className="px-4 md:px-8 py-8 pb-32">
-        <div className="w-full">
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white/5 backdrop-blur-xl rounded-xl h-20 animate-pulse"></div>
-              ))}
-            </div>
-          ) : combinedMedia.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-6xl mb-4">🎵</div>
-              <h2 className="text-2xl font-bold text-white mb-2">No music yet</h2>
-              <p className="text-gray-400 mb-8">Be the first to create something amazing!</p>
-              <Link href="/" className="inline-block px-8 py-3 bg-white text-black rounded-full font-bold hover:bg-gray-200 transition-all">
-                Create Now
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {combinedMedia.map((media) => {
+        ) : combinedMedia.length === 0 ? (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">🎵</div>
+            <h2 className="text-2xl font-bold text-white mb-2">No music yet</h2>
+            <p className="text-gray-400 mb-8">Be the first to create something amazing!</p>
+            <Link href="/" className="inline-block px-8 py-3 bg-white text-black rounded-full font-bold hover:bg-gray-200 transition-all">
+              Create Now
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-8 px-4 py-6">
+            {sections.map((sectionMedia, sectionIndex) => (
+              <div key={sectionIndex}>
+                <h2 className="text-lg font-bold text-white mb-4">
+                  {sectionTitles[sectionIndex % sectionTitles.length]}
+                </h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {sectionMedia.map((media) => {
                 const isCurrentlyPlaying = playingId === media.id
                 
                 return (
@@ -238,7 +177,7 @@ export default function ExplorePage() {
                   key={media.id} 
                   className={`group relative backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-200 cursor-pointer ${
                     isCurrentlyPlaying
-                      ? 'bg-cyan-500/10 shadow-lg shadow-cyan-400/20'
+                      ? 'bg-teal-500/20 shadow-lg shadow-cyan-400/30 ring-2 ring-cyan-400/50'
                       : 'bg-white/5 hover:bg-white/10'
                   }`}
                   onClick={() => handlePlay(media)}
@@ -255,7 +194,7 @@ export default function ExplorePage() {
                       
                       {/* Play Button Overlay */}
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                        <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
                           {isCurrentlyPlaying && isPlaying ? (
                             <Pause className="text-white" size={20} />
                           ) : (
@@ -266,7 +205,7 @@ export default function ExplorePage() {
                       
                       {/* Playing Indicator */}
                       {isCurrentlyPlaying && (
-                        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-cyan-500 rounded-full">
+                        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full shadow-lg">
                           <Radio size={10} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
                           <span className="text-xs font-bold text-white">PLAYING</span>
                         </div>
@@ -275,10 +214,10 @@ export default function ExplorePage() {
                       {/* Metadata Tags Overlay */}
                       <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-1">
                         {media.genre && (
-                          <span className="px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded-full text-xs text-white">{media.genre}</span>
+                          <span className="px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded-full text-xs text-teal-300 font-semibold">{media.genre}</span>
                         )}
                         {media.bpm && (
-                          <span className="px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded-full text-xs text-white">{media.bpm} BPM</span>
+                          <span className="px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded-full text-xs text-cyan-300 font-semibold">{media.bpm} BPM</span>
                         )}
                       </div>
                     </div>
@@ -290,7 +229,7 @@ export default function ExplorePage() {
                       </h3>
                       <Link 
                         href={`/u/${media.users?.username || 'unknown'}`}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold transition-colors inline-block truncate w-full"
+                        className="text-xs text-teal-400 hover:text-cyan-300 font-semibold transition-colors inline-block truncate w-full"
                         onClick={(e) => e.stopPropagation()}
                       >
                         @{media.users?.username || 'Unknown Artist'}
@@ -298,7 +237,7 @@ export default function ExplorePage() {
                       
                       {/* Mood Badge */}
                       {media.mood && (
-                        <div className="mt-2 inline-block px-2 py-0.5 bg-white/5 rounded-full text-xs text-gray-400">
+                        <div className="mt-2 inline-block px-2 py-0.5 bg-teal-500/10 backdrop-blur-sm border border-teal-500/30 rounded-full text-xs text-teal-300 font-medium">
                           {media.mood}
                         </div>
                       )}
@@ -313,77 +252,117 @@ export default function ExplorePage() {
                     </div>
                   </div>
                 </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+              )
+            })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
-      {/* Floating Digital Radio Player - Bottom Center */}
-      {currentTrack && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
-          <div className="bg-gradient-to-r from-cyan-600/95 via-cyan-500/95 to-cyan-600/95 backdrop-blur-2xl border border-cyan-400/30 rounded-2xl shadow-2xl shadow-cyan-500/50 p-4 min-w-[300px] md:min-w-[500px]">
-            <div className="flex items-center gap-4">
-              {/* Album Art */}
-              <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
-                <img 
-                  src={currentTrack.image_url} 
-                  alt={currentTrack.title}
-                  className="w-full h-full object-cover"
-                />
-                {isPlaying && (
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                    <Radio size={20} className="text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
+      {/* Artist Profiles Line - Above Search Bar */}
+      {!loading && artists.length > 0 && (
+        <div className="fixed bottom-40 left-0 right-0 z-40 bg-black/70 backdrop-blur-lg border-t border-teal-500/20 py-3">
+          <div className="flex gap-3 overflow-x-auto px-4 scrollbar-hide">
+            {artists.map((artist) => (
+              <Link 
+                key={artist.user_id}
+                href={`/u/${artist.username}`}
+                className="flex-shrink-0 group"
+              >
+                <div className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-teal-500/20 border border-teal-500/20 hover:border-cyan-400/50 rounded-full transition-all">
+                  <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-teal-400/50 group-hover:border-cyan-400 transition-all shadow-lg shadow-teal-500/30">
+                    <img 
+                      src={artist.avatar || '/default-avatar.png'} 
+                      alt={artist.username}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                )}
-              </div>
-
-              {/* Track Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Radio size={12} className="text-cyan-400 animate-pulse" />
-                  <span className="text-xs font-bold text-cyan-400">NOW PLAYING</span>
+                  <span className="text-xs font-semibold text-white whitespace-nowrap">
+                    {formatUsername(artist.username)}
+                  </span>
                 </div>
-                <p className="text-sm font-black text-white truncate">{currentTrack.title || 'Untitled Track'}</p>
-                <p className="text-xs text-gray-300 truncate">
-                  @{formatUsername(currentTrack.users?.username || currentTrack.username)}
-                </p>
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={handlePrevious}
-                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
-                >
-                  <SkipBack size={14} className="text-white" />
-                </button>
-                <button 
-                  onClick={() => currentTrack && handlePlay(currentTrack)}
-                  className="w-10 h-10 bg-cyan-500 hover:bg-cyan-600 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-lg"
-                >
-                  {isPlaying ? (
-                    <Pause size={18} className="text-white" />
-                  ) : (
-                    <Play size={18} className="text-white ml-0.5" />
-                  )}
-                </button>
-                <button 
-                  onClick={handleNext}
-                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
-                >
-                  <SkipForward size={14} className="text-white" />
-                </button>
-              </div>
-            </div>
+              </Link>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Social CTA Section */}
-      <div className="pb-32">
-        <SocialCTA />
+      {/* Bottom-Docked Glass Morphism Search Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="bg-gradient-to-t from-black/98 via-black/90 to-transparent backdrop-blur-2xl border-t border-teal-500/30 shadow-2xl shadow-cyan-500/20">
+          <div className="px-4 py-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="relative">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-teal-400" size={22} />
+                <input
+                  type="text"
+                  placeholder="Search for tracks, artists, genres..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && fetchCombinedMedia()}
+                  className="w-full pl-14 pr-32 py-5 bg-white/10 backdrop-blur-xl border-2 border-teal-500/30 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:shadow-lg focus:shadow-cyan-500/30 rounded-2xl transition-all text-base font-medium"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%)',
+                  }}
+                />
+                <button 
+                  onClick={() => fetchCombinedMedia()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105"
+                >
+                  Search
+                </button>
+              </div>
+              
+              {/* Now Playing Mini Bar */}
+              {currentTrack && (
+                <div className="mt-3 flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 backdrop-blur-xl border border-teal-400/40 rounded-xl shadow-lg">
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-lg">
+                    <img 
+                      src={currentTrack.image_url} 
+                      alt={currentTrack.title}
+                      className="w-full h-full object-cover"
+                    />
+                    {isPlaying && (
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <Radio size={16} className="text-teal-400 animate-spin" style={{ animationDuration: '3s' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{currentTrack.title || 'Untitled Track'}</p>
+                    <p className="text-xs text-teal-300 truncate">@{formatUsername(currentTrack.users?.username || currentTrack.username)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={handlePrevious}
+                      className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all"
+                    >
+                      <SkipBack size={16} className="text-white" />
+                    </button>
+                    <button 
+                      onClick={() => currentTrack && handlePlay(currentTrack)}
+                      className="w-11 h-11 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 rounded-lg flex items-center justify-center transition-all transform hover:scale-105 shadow-lg shadow-cyan-500/50"
+                    >
+                      {isPlaying ? (
+                        <Pause size={20} className="text-white" />
+                      ) : (
+                        <Play size={20} className="text-white ml-0.5" />
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleNext}
+                      className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all"
+                    >
+                      <SkipForward size={16} className="text-white" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Hidden Audio Element */}
