@@ -182,8 +182,8 @@ export default function ExplorePage() {
             </div>
 
             {/* SECTION 2: HORIZONTAL SCROLL - Full Width, Clean, Less Padding */}
-            <div className="py-6 px-6 border-b border-white/5">
-              <h2 className="text-2xl font-bold mb-3">🔥 Trending Now</h2>
+            <div className="py-4 px-6 border-b border-white/5">
+              <h2 className="text-2xl font-bold mb-3 relative z-10">🔥 Trending Now</h2>
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
                 {combinedMedia.slice(0, 20).map((media) => {
                   const isCurrentlyPlaying = playingId === media.id
@@ -222,8 +222,8 @@ export default function ExplorePage() {
             </div>
 
             {/* NEW SECTION: ARTIST PROFILES - Circular Horizontal Scroll */}
-            <div className="py-6 px-6 border-b border-white/5">
-              <h2 className="text-2xl font-bold mb-3">👥 Artists</h2>
+            <div className="py-4 px-6 border-b border-white/5">
+              <h2 className="text-2xl font-bold mb-3 relative z-10">👥 Artists</h2>
               <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
                 {artists.map((artist) => (
                   <Link 
@@ -241,7 +241,7 @@ export default function ExplorePage() {
                         />
                       </div>
                       {/* Artist Name */}
-                      <div className="text-center">
+                      <div className="text-center relative z-10">
                         <p className="text-xs font-semibold text-white truncate w-20">
                           {formatUsername(artist.username)}
                         </p>
@@ -256,8 +256,8 @@ export default function ExplorePage() {
             </div>
 
             {/* SECTION 3: LIST VIEW - Spotify/Apple Music Style */}
-            <div className="px-6 py-6">
-              <h2 className="text-2xl font-bold mb-4">🎵 All Tracks</h2>
+            <div className="px-6 py-4">
+              <h2 className="text-2xl font-bold mb-3 relative z-10">🎵 All Tracks</h2>
               
               {/* Desktop: 4 Column List View */}
               <div className="hidden md:grid md:grid-cols-4 gap-x-6 gap-y-1">
@@ -296,7 +296,7 @@ export default function ExplorePage() {
                       </div>
                       
                       {/* Track Info */}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 relative z-10">
                         <h3 className="font-semibold text-white truncate text-sm leading-tight">
                           {media.title}
                         </h3>
@@ -350,7 +350,7 @@ export default function ExplorePage() {
                       </div>
                       
                       {/* Track Info */}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 relative z-10">
                         <h3 className="font-semibold text-white truncate leading-tight">
                           {media.title}
                         </h3>
