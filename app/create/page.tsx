@@ -669,133 +669,176 @@ function CreatePageContent() {
         </div>
       </div>
 
-      {/* Fixed Bottom Unified Composer */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="group relative">
-            {/* Glow Effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition duration-300"></div>
-            
-            {/* Main Composer Container */}
-            <div className="relative bg-black/70 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-              
-              {/* Unified Bottom Bar */}
-              <div className="flex items-center gap-3 px-4 py-3">
-                
-                {/* Left: Type Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSelectedType('music')}
-                    className={`p-2.5 rounded-xl transition-all ${
-                      selectedType === 'music'
-                        ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/50'
-                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/5'
-                    }`}
-                    title="Music"
-                  >
-                    <Music size={18} />
-                  </button>
-                  <button
-                    onClick={() => setSelectedType('image')}
-                    className={`p-2.5 rounded-xl transition-all ${
-                      selectedType === 'image'
-                        ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/50'
-                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/5'
-                    }`}
-                    title="Cover Art"
-                  >
-                    <ImageIcon size={18} />
-                  </button>
-                  <button
-                    disabled
-                    className="p-2.5 rounded-xl bg-white/5 text-gray-600 border border-white/5 cursor-not-allowed opacity-50"
-                    title="Video (Coming Soon)"
-                  >
-                    <Video size={18} />
-                  </button>
-                </div>
+      {/* Fixed Bottom Dock - Home Page Style */}
+      <div className="fixed bottom-0 left-0 right-0 md:bottom-auto px-4 sm:px-6 lg:px-8 pb-safe md:pb-0 z-20">
+        <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
+          
+          {/* Icon Row Above Prompt Box */}
+          <div className="flex items-center justify-center gap-3 mb-3 md:mb-4">
+            {/* Music Type Button */}
+            <button
+              onClick={() => setSelectedType('music')}
+              className={`group relative p-3 md:p-3.5 rounded-2xl transition-all duration-300 ${
+                selectedType === 'music'
+                  ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
+                  : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
+              }`}
+              title="Generate Music"
+            >
+              <Music 
+                size={20} 
+                className={`${
+                  selectedType === 'music' ? 'text-black' : 'text-cyan-400'
+                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]`}
+              />
+              {selectedType === 'music' && (
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
+              )}
+            </button>
 
-                {/* Center: Text Input */}
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleGenerate()
-                      }
-                    }}
-                    placeholder={
-                      selectedType === 'music'
-                        ? 'Describe your track...'
-                        : selectedType === 'image'
-                        ? 'Describe your cover art...'
-                        : 'Coming soon...'
-                    }
-                    disabled={isGenerating || selectedType === 'video'}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  />
-                </div>
+            {/* Image Type Button */}
+            <button
+              onClick={() => setSelectedType('image')}
+              className={`group relative p-3 md:p-3.5 rounded-2xl transition-all duration-300 ${
+                selectedType === 'image'
+                  ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
+                  : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
+              }`}
+              title="Generate Cover Art"
+            >
+              <ImageIcon 
+                size={20} 
+                className={`${
+                  selectedType === 'image' ? 'text-black' : 'text-cyan-400'
+                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]`}
+              />
+              {selectedType === 'image' && (
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
+              )}
+            </button>
 
-                {/* Right: Rocket + Settings + Credits + Create Button */}
-                <div className="flex items-center gap-2">
-                  {/* Rocket Button */}
-                  <button
-                    onClick={() => handleOpenRelease()}
-                    className="p-2.5 rounded-xl transition-all bg-white/5 text-gray-400 hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-500/30 border border-white/5"
-                    title="Release to Feed"
-                  >
-                    <Rocket size={18} />
-                  </button>
+            {/* Divider */}
+            <div className="w-px h-8 bg-cyan-500/30"></div>
 
-                  {/* Settings Button */}
-                  <button
-                    onClick={() => setShowSettingsModal(true)}
-                    className={`p-2.5 rounded-xl transition-all ${
-                      customTitle || genre || customLyrics || bpm
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/5'
-                    }`}
-                    title="Advanced Settings"
-                  >
-                    <Settings size={18} />
-                  </button>
+            {/* Settings Button */}
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className={`group relative p-3 md:p-3.5 rounded-2xl transition-all duration-300 ${
+                customTitle || genre || customLyrics || bpm
+                  ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105'
+                  : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
+              }`}
+              title="Advanced Settings"
+            >
+              <Settings 
+                size={20} 
+                className={`${
+                  customTitle || genre || customLyrics || bpm ? 'text-cyan-300' : 'text-cyan-400'
+                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]`}
+              />
+            </button>
 
-                  {/* Credits Display */}
-                  <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-xl">
-                    <Zap size={14} className="text-cyan-400" />
-                    <span className="text-xs text-white font-medium">
-                      {isLoadingCredits ? '...' : userCredits}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : ''}
-                    </span>
-                  </div>
+            {/* Rocket Button */}
+            <button
+              onClick={() => handleOpenRelease()}
+              className="group relative p-3 md:p-3.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
+              title="Release to Feed"
+            >
+              <Rocket 
+                size={20} 
+                className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]"
+              />
+            </button>
 
-                  {/* Create Button */}
-                  <button
-                    onClick={handleGenerate}
-                    disabled={isGenerating || !input.trim() || selectedType === 'video'}
-                    className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-semibold shadow-lg shadow-cyan-500/30 text-white"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="animate-spin" size={16} />
-                        <span className="hidden sm:inline">Creating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send size={16} />
-                        <span className="hidden sm:inline">Create</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+            {/* Divider */}
+            <div className="hidden md:block w-px h-8 bg-cyan-500/30"></div>
 
-              </div>
+            {/* Credits Display */}
+            <div className="hidden md:flex items-center gap-2 px-3 md:px-4 py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
+              <Zap size={16} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
+              <span className="text-sm font-bold text-white">
+                {isLoadingCredits ? '...' : userCredits}
+              </span>
+              <span className="text-xs text-cyan-400/60 font-mono">
+                {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : ''}
+              </span>
             </div>
+          </div>
+
+          {/* Main Prompt Box - Home Page Style */}
+          <div 
+            className="group relative active:scale-95 md:hover:scale-105 transition-transform duration-200"
+          >
+            {/* Glow Effect */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-3xl blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>
+            
+            {/* Input Container */}
+            <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl rounded-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
+              
+              {/* Icon Based on Type */}
+              {selectedType === 'music' ? (
+                <Music 
+                  size={20} 
+                  className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]" 
+                />
+              ) : selectedType === 'image' ? (
+                <ImageIcon 
+                  size={20} 
+                  className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]" 
+                />
+              ) : (
+                <Video 
+                  size={20} 
+                  className="text-gray-600 flex-shrink-0 md:w-[22px] md:h-[22px]" 
+                />
+              )}
+              
+              <div className="flex-1 text-center md:text-left">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleGenerate()
+                    }
+                  }}
+                  placeholder={
+                    selectedType === 'music'
+                      ? 'Describe your sound...'
+                      : selectedType === 'image'
+                      ? 'Describe your cover art...'
+                      : 'Coming soon...'
+                  }
+                  disabled={isGenerating || selectedType === 'video'}
+                  className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <div className="text-xs text-cyan-400/60 mt-0.5 font-mono hidden md:block">
+                  {isGenerating ? 'Creating...' : 'Press Enter to create'}
+                </div>
+              </div>
+
+              {/* Create Button */}
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || !input.trim() || selectedType === 'video'}
+                className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/50 active:scale-95"
+              >
+                {isGenerating ? (
+                  <Loader2 className="text-black animate-spin" size={20} />
+                ) : (
+                  <Send className="text-black ml-0.5" size={20} />
+                )}
+              </button>
+            </div>
+          </div>
+          
+          {/* Quick Info - Below the bar */}
+          <div className="flex items-center justify-center gap-2 mt-2 md:mt-6 text-xs md:text-sm mb-2">
+            <span className="text-cyan-400/60 font-mono tracking-wider">
+              ✨ {selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : 'Coming soon'}
+            </span>
           </div>
         </div>
       </div>
