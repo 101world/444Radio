@@ -24,35 +24,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get username from users table
-    const { data: userData } = await supabase
-      .from('users')
-      .select('username')
-      .eq('clerk_user_id', userId)
-      .single()
-
-    // Insert combined media into database with metadata
+    // Insert combined media into database (simplified structure)
     const { data, error } = await supabase
       .from('combined_media')
       .insert({
         user_id: userId,
-        username: userData?.username || 'anonymous',
         audio_url: audioUrl,
         image_url: imageUrl,
         title: title || 'Untitled Track',
         audio_prompt: audioPrompt || '',
         image_prompt: imagePrompt || '',
-        is_public: isPublic !== undefined ? isPublic : true,
-        // Metadata for filtering and monetization
-        genre: metadata?.genre || null,
-        mood: metadata?.mood || null,
-        bpm: metadata?.bpm || null,
-        key: metadata?.key || null,
-        copyright_owner: metadata?.copyrightOwner || userData?.username || 'anonymous',
-        license_type: metadata?.license || 'exclusive',
-        price: metadata?.price || null,
-        tags: metadata?.tags || [],
-        published_at: metadata?.publishedAt || new Date().toISOString()
+        is_public: isPublic !== undefined ? isPublic : true
       })
       .select()
       .single()
@@ -60,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error('Database error:', error)
       return NextResponse.json(
-        { error: 'Failed to save combined media' },
+        { error: 'Failed to save combined media', details: error.message },
         { status: 500 }
       )
     }
@@ -68,12 +50,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       combinedMedia: data,
+      combinedId: data.id,
       message: 'Combined media saved successfully!'
     })
   } catch (error) {
     console.error('Save combined media error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

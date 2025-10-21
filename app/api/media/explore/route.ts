@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get('limit')) || 20
     const offset = Number(searchParams.get('offset')) || 0
 
-    // Fetch public combined media with username
+    // Fetch public combined media
     const { data, error } = await supabase
       .from('combined_media')
       .select('*')
@@ -29,19 +29,28 @@ export async function GET(req: NextRequest) {
     }
 
     console.log('📊 Explore API: Fetched', data?.length || 0, 'tracks')
-    console.log('📊 First track sample:', data?.[0])
 
-    // Username is now directly in combined_media table
+    // Fetch usernames for all user_ids
+    const userIds = [...new Set((data || []).map(m => m.user_id))]
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('clerk_user_id, username')
+      .in('clerk_user_id', userIds)
+
+    // Create username lookup map
+    const usernameMap = new Map(
+      (usersData || []).map(u => [u.clerk_user_id, u.username])
+    )
+
+    // Add username to each media item
     const mediaWithUsers = (data || []).map((media) => {
-      const username = media.username || 'Unknown User'
+      const username = usernameMap.get(media.user_id) || 'Unknown User'
       
       return {
         ...media,
         users: { username }
       }
     })
-
-    console.log('📊 First processed track:', mediaWithUsers[0])
 
     return NextResponse.json({
       success: true,
