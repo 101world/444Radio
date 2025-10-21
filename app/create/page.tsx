@@ -692,7 +692,7 @@ function CreatePageContent() {
             {/* Music Type Button */}
             <button
               onClick={() => setSelectedType('music')}
-              className={`group relative p-3 md:p-3.5 rounded-2xl transition-all duration-300 ${
+              className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
                 selectedType === 'music'
                   ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
                   : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -700,10 +700,10 @@ function CreatePageContent() {
               title="Generate Music"
             >
               <Music 
-                size={20} 
+                size={18} 
                 className={`${
                   selectedType === 'music' ? 'text-black' : 'text-cyan-400'
-                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]`}
+                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]`}
               />
               {selectedType === 'music' && (
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
@@ -713,7 +713,7 @@ function CreatePageContent() {
             {/* Image Type Button */}
             <button
               onClick={() => setSelectedType('image')}
-              className={`group relative p-3 md:p-3.5 rounded-2xl transition-all duration-300 ${
+              className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
                 selectedType === 'image'
                   ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
                   : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -721,10 +721,10 @@ function CreatePageContent() {
               title="Generate Cover Art"
             >
               <ImageIcon 
-                size={20} 
+                size={18} 
                 className={`${
                   selectedType === 'image' ? 'text-black' : 'text-cyan-400'
-                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]`}
+                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]`}
               />
               {selectedType === 'image' && (
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
@@ -737,7 +737,7 @@ function CreatePageContent() {
             {/* Settings Button */}
             <button
               onClick={() => setShowSettingsModal(true)}
-              className={`group relative p-3 md:p-3.5 rounded-2xl transition-all duration-300 ${
+              className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
                 customTitle || genre || customLyrics || bpm
                   ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105'
                   : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -745,22 +745,22 @@ function CreatePageContent() {
               title="Advanced Settings"
             >
               <Settings 
-                size={20} 
+                size={18} 
                 className={`${
                   customTitle || genre || customLyrics || bpm ? 'text-cyan-300' : 'text-cyan-400'
-                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]`}
+                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]`}
               />
             </button>
 
             {/* Rocket Button */}
             <button
               onClick={() => handleOpenRelease()}
-              className="group relative p-3 md:p-3.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
+              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
               title="Release to Feed"
             >
               <Rocket 
-                size={20} 
-                className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]"
+                size={18} 
+                className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
               />
             </button>
 
