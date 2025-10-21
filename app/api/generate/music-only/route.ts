@@ -18,17 +18,24 @@ export async function POST(req: NextRequest) {
 
     const { prompt, lyrics, bitrate = 256000, sample_rate = 44100, audio_format = 'mp3' } = await req.json()
 
-    // Both prompt and lyrics are REQUIRED by MiniMax Music API
+    // Prompt is REQUIRED
     if (!prompt || prompt.length < 10 || prompt.length > 300) {
       return NextResponse.json({ error: 'Prompt is required (10-300 characters)' }, { status: 400 })
     }
 
-    if (!lyrics || lyrics.trim().length < 10 || lyrics.length > 600) {
-      return NextResponse.json({ error: 'Lyrics are required (10-600 characters). Please add structure tags like [verse] [chorus]' }, { status: 400 })
+    // If lyrics not provided, generate default lyrics based on prompt
+    let formattedLyrics: string
+    if (!lyrics || lyrics.trim().length === 0) {
+      // Generate simple default lyrics from prompt
+      console.log('⚡ No custom lyrics provided, generating defaults from prompt')
+      formattedLyrics = `[verse]\n${prompt}\nFeeling the rhythm all night long\nThis is where I belong\n\n[chorus]\n${prompt}\nLet the music play on and on\nUntil the break of dawn`
+    } else {
+      // Validate user-provided lyrics
+      if (lyrics.trim().length < 10 || lyrics.length > 600) {
+        return NextResponse.json({ error: 'Lyrics must be 10-600 characters. Please add structure tags like [verse] [chorus]' }, { status: 400 })
+      }
+      formattedLyrics = lyrics.trim()
     }
-
-    // Ensure lyrics have proper formatting with line breaks
-    const formattedLyrics = lyrics.trim()
     
     // Log for debugging
     console.log('🎵 Music Generation Request:')

@@ -199,12 +199,23 @@ function CreatePageContent() {
       setIsGenerating(true)
 
       try {
-        // Build prompt with parameters
+        // 🎯 SMART DEFAULTS LOGIC:
+        // - If user provides custom settings → Use them
+        // - If user only uses text input → API generates defaults automatically
+        // This allows quick generation OR detailed customization
+        
+        // Build prompt with optional parameters (only if user specified)
         let fullPrompt = input
         if (genre) fullPrompt += ` [${genre}]`
         if (bpm) fullPrompt += ` [${bpm} BPM]`
         
-        const result = await generateMusic(fullPrompt, customTitle, customLyrics)
+        // Use custom title if provided, otherwise API will generate from prompt
+        const titleToUse = customTitle || undefined
+        
+        // Use custom lyrics if provided, otherwise API generates defaults from prompt
+        const lyricsToUse = customLyrics || undefined
+        
+        const result = await generateMusic(fullPrompt, titleToUse, lyricsToUse)
 
         // Update credits if generation was successful
         if (!result.error && result.creditsRemaining !== undefined) {
