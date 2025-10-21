@@ -7,7 +7,7 @@ import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
 import FloatingNavButton from '../../components/FloatingNavButton'
-import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio, UserPlus, Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
@@ -98,6 +98,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isPlaying, setIsPlaying] = useState(false)
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
+  const [activeSubTab, setActiveSubTab] = useState<'tracks' | 'station'>('tracks')
+  const [isLive, setIsLive] = useState(false)
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, username: string, message: string, timestamp: Date, type: 'chat' | 'track'}>>([])
+  const [chatInput, setChatInput] = useState('')
+  const [liveListeners, setLiveListeners] = useState(0)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
@@ -149,6 +154,18 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       if (audioRef.current) {
         audioRef.current.src = media.audio_url
         audioRef.current.play()
+      }
+      
+      // If station is live, notify chat about track change
+      if (isLive && profile) {
+        const trackMsg = {
+          id: Date.now().toString(),
+          username: profile.username,
+          message: media.title,
+          timestamp: new Date(),
+          type: 'track' as const
+        }
+        setChatMessages(prev => [...prev, trackMsg])
       }
     }
   }
@@ -512,37 +529,69 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   {/* Desktop Layout - Split View */}
                   <div className="hidden md:block">
                     <div className="grid grid-cols-2 gap-6 p-6">
-                      {/* LEFT SIDE: Full Track List with Duration */}
-                      <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-150px)] pr-4 custom-scrollbar">
-                        <h2 className="text-2xl font-bold mb-4 sticky top-0 bg-black/90 backdrop-blur-xl py-3 z-10 border-b border-cyan-500/20">📀 All Tracks</h2>
-                        {profile.combinedMedia.map((media, index) => {
-                          const isCurrentlyPlaying = playingId === media.id
-                          const hasAudio = !!media.audio_url
-                          
-                          return (
-                            <div 
-                              key={media.id} 
-                              className={`group flex items-center gap-4 p-3 rounded-xl transition-all ${
-                                hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                              } ${
-                                isCurrentlyPlaying 
-                                  ? 'bg-cyan-500/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-500/20' 
-                                  : hasAudio ? 'hover:bg-white/5 bg-black/20 border border-white/5' : 'bg-black/10 border border-white/5'
+                      {/* LEFT SIDE: Track List / Station Feed */}
+                      <div className="space-y-2 overflow-hidden flex flex-col max-h-[calc(100vh-150px)]">
+                        {/* Sub Tabs */}
+                        <div className="sticky top-0 bg-black/90 backdrop-blur-xl z-10 border-b border-cyan-500/20">
+                          <div className="flex gap-2 p-3">
+                            <button
+                              onClick={() => setActiveSubTab('tracks')}
+                              className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                activeSubTab === 'tracks'
+                                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
                               }`}
-                              onClick={() => hasAudio && handlePlay(media)}
                             >
-                              {/* Track Number */}
-                              <div className="w-8 text-center flex-shrink-0">
-                                {isCurrentlyPlaying && isPlaying ? (
-                                  <div className="flex justify-center">
-                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5"></div>
-                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.2s' }}></div>
-                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.4s' }}></div>
-                                  </div>
-                                ) : (
-                                  <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{index + 1}</span>
-                                )}
-                              </div>
+                              All Tracks
+                            </button>
+                            <button
+                              onClick={() => setActiveSubTab('station')}
+                              className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                                activeSubTab === 'station'
+                                  ? 'bg-gradient-to-r from-red-600 to-red-400 text-white shadow-lg shadow-red-500/30'
+                                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              <RadioIcon size={16} />
+                              Station
+                              {isLive && <Circle size={8} className="fill-red-500 text-red-500 animate-pulse" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
+                          {activeSubTab === 'tracks' ? (
+                            // Track List View
+                            <div className="space-y-2 p-3">
+                              {profile.combinedMedia.map((media, index) => {
+                                const isCurrentlyPlaying = playingId === media.id
+                                const hasAudio = !!media.audio_url
+                                
+                                return (
+                                  <div 
+                                    key={media.id} 
+                                    className={`group flex items-center gap-4 p-3 rounded-xl transition-all ${
+                                      hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                                    } ${
+                                      isCurrentlyPlaying 
+                                        ? 'bg-cyan-500/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-500/20' 
+                                        : hasAudio ? 'hover:bg-white/5 bg-black/20 border border-white/5' : 'bg-black/10 border border-white/5'
+                                    }`}
+                                    onClick={() => hasAudio && handlePlay(media)}
+                                  >
+                                    {/* Track Number */}
+                                    <div className="w-8 text-center flex-shrink-0">
+                                      {isCurrentlyPlaying && isPlaying ? (
+                                        <div className="flex justify-center">
+                                          <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5"></div>
+                                          <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.2s' }}></div>
+                                          <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.4s' }}></div>
+                                        </div>
+                                      ) : (
+                                        <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{index + 1}</span>
+                                      )}
+                                    </div>
 
                               {/* Thumbnail */}
                               <div className="relative w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden">
@@ -581,6 +630,135 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             </div>
                           )
                         })}
+                            </div>
+                          ) : (
+                            // Station Feed View
+                            <div className="space-y-4 p-3">
+                              {/* Live Station Header */}
+                              <div className="bg-gradient-to-r from-red-900/30 to-red-950/30 rounded-xl p-4 border border-red-500/30">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <Circle size={12} className={`fill-red-500 text-red-500 ${isLive ? 'animate-pulse' : ''}`} />
+                                    <span className="text-white font-bold">{isLive ? 'LIVE NOW' : 'OFFLINE'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                                    <Users size={14} />
+                                    <span>{liveListeners} listening</span>
+                                  </div>
+                                </div>
+                                {isOwnProfile && (
+                                  <button
+                                    onClick={() => setIsLive(!isLive)}
+                                    className={`w-full px-4 py-2 rounded-lg font-bold transition-all ${
+                                      isLive
+                                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                                        : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white'
+                                    }`}
+                                  >
+                                    {isLive ? 'End Broadcast' : 'Go Live'}
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Currently Playing in Station */}
+                              {isLive && currentTrack && (
+                                <div className="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/30">
+                                  <div className="text-xs text-cyan-400 uppercase mb-2">Now Playing on Station</div>
+                                  <div className="flex items-center gap-3">
+                                    <img 
+                                      src={currentTrack.image_url} 
+                                      alt={currentTrack.title}
+                                      className="w-12 h-12 rounded-lg"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="text-white font-bold truncate">{currentTrack.title}</h4>
+                                      <p className="text-sm text-gray-400 truncate">@{profile.username}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Chat/Feed Messages */}
+                              <div className="bg-black/40 rounded-xl border border-white/10 flex flex-col h-[400px]">
+                                {/* Messages */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                                  {chatMessages.length === 0 ? (
+                                    <div className="text-center text-gray-500 mt-8">
+                                      <RadioIcon size={32} className="mx-auto mb-2 opacity-50" />
+                                      <p className="text-sm">{isLive ? 'Start the conversation!' : 'Station is offline'}</p>
+                                    </div>
+                                  ) : (
+                                    chatMessages.map((msg) => (
+                                      <div key={msg.id} className={`${
+                                        msg.type === 'track' ? 'bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3' : ''
+                                      }`}>
+                                        {msg.type === 'track' ? (
+                                          <div className="flex items-center gap-2 text-sm">
+                                            <Music size={14} className="text-cyan-400" />
+                                            <span className="text-cyan-400 font-bold">{msg.username}</span>
+                                            <span className="text-gray-400">played</span>
+                                            <span className="text-white font-semibold">{msg.message}</span>
+                                          </div>
+                                        ) : (
+                                          <div>
+                                            <span className="text-cyan-400 font-bold text-sm">{msg.username}: </span>
+                                            <span className="text-white text-sm">{msg.message}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+
+                                {/* Chat Input */}
+                                {isLive && (
+                                  <div className="border-t border-white/10 p-3">
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        value={chatInput}
+                                        onChange={(e) => setChatInput(e.target.value)}
+                                        onKeyPress={(e) => {
+                                          if (e.key === 'Enter' && chatInput.trim()) {
+                                            const newMsg = {
+                                              id: Date.now().toString(),
+                                              username: currentUser?.username || 'Anonymous',
+                                              message: chatInput,
+                                              timestamp: new Date(),
+                                              type: 'chat' as const
+                                            }
+                                            setChatMessages([...chatMessages, newMsg])
+                                            setChatInput('')
+                                          }
+                                        }}
+                                        placeholder="Type a message..."
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500/50"
+                                      />
+                                      <button
+                                        onClick={() => {
+                                          if (chatInput.trim()) {
+                                            const newMsg = {
+                                              id: Date.now().toString(),
+                                              username: currentUser?.username || 'Anonymous',
+                                              message: chatInput,
+                                              timestamp: new Date(),
+                                              type: 'chat' as const
+                                            }
+                                            setChatMessages([...chatMessages, newMsg])
+                                            setChatInput('')
+                                          }
+                                        }}
+                                        className="bg-cyan-600 hover:bg-cyan-500 rounded-lg px-4 py-2 transition-all"
+                                      >
+                                        <Send size={16} className="text-white" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* RIGHT SIDE: Vinyl-Style Digital Player */}
@@ -738,7 +916,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-lg transition-all hover:scale-105 font-bold text-sm"
                   >
                     <div className="flex items-center gap-2">
-                      <Radio size={16} />
+                      <RadioIcon size={16} />
                       <span>Create Station</span>
                     </div>
                   </button>
