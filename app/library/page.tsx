@@ -171,7 +171,7 @@ export default function LibraryPage() {
 
         {/* Music Tab */}
         {!isLoading && activeTab === 'music' && (
-          <div>
+          <div className="-mt-4">
             {musicItems.length === 0 ? (
               <div className="text-center py-20">
                 <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
@@ -280,7 +280,7 @@ export default function LibraryPage() {
 
         {/* Images Tab */}
         {!isLoading && activeTab === 'images' && (
-          <div>
+          <div className="-mt-4">
             {imageItems.length === 0 ? (
               <div className="text-center py-20">
                 <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
@@ -355,61 +355,65 @@ export default function LibraryPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              <div className="space-y-3 -mt-4">
                 {combinedItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 cursor-pointer"
+                    className="group relative bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 transition-all duration-300"
                   >
-                    {/* Cover Art Thumbnail */}
-                    <img
-                      src={item.image_url}
-                      alt={item.title || 'Combined media'}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                    />
-
-                    {/* Published Badge */}
-                    {item.is_published && (
-                      <div className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-cyan-400 backdrop-blur-xl rounded-full text-xs font-bold text-white shadow-lg shadow-cyan-500/50">
-                        ✨ Live
+                    <div className="flex items-center gap-4 p-4">
+                      {/* Cover Art Thumbnail */}
+                      <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border border-cyan-500/30">
+                        <img
+                          src={item.image_url}
+                          alt={item.title || 'Combined media'}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                    )}
 
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3">
-                      {!item.is_published && (
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-white font-semibold text-sm md:text-base truncate">
+                            {item.title || 'Combined Media'}
+                          </h3>
+                          {item.is_published && (
+                            <span className="px-2 py-0.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-[10px] font-bold text-white shadow-lg shadow-cyan-500/30 flex-shrink-0">
+                              ✨ Live
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-cyan-400/60 text-xs">
+                          Released: {new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {!item.is_published && (
+                          <button
+                            onClick={() => handleSendToLabel(item.id)}
+                            className="p-3 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-lg hover:from-cyan-700 hover:to-cyan-500 transition-all hover:scale-105 border border-cyan-500/30 shadow-lg shadow-cyan-500/30"
+                            title="Publish to Feed"
+                          >
+                            <Send size={18} className="text-white" />
+                          </button>
+                        )}
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleSendToLabel(item.id); }}
-                          className="w-full p-3 bg-gradient-to-r from-cyan-600 to-cyan-400 backdrop-blur-xl rounded-lg hover:from-cyan-700 hover:to-cyan-500 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30"
+                          onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
+                          className="p-3 bg-cyan-500/20 rounded-lg hover:bg-cyan-500/40 transition-all hover:scale-105 border border-cyan-500/30"
+                          title="Download"
                         >
-                          <Send size={18} className="text-white" />
-                          <span className="text-white text-sm font-semibold">Publish</span>
+                          <Download size={18} className="text-cyan-400" />
                         </button>
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownload(item.audio_url, `${item.title || 'track'}.mp3`); }}
-                        className="w-full p-3 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
-                      >
-                        <Download size={18} className="text-cyan-400" />
-                        <span className="text-cyan-400 text-sm font-semibold">Download</span>
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete('combined', item.id); }}
-                        className="w-full p-3 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2"
-                      >
-                        <Trash2 size={18} className="text-red-400" />
-                        <span className="text-red-400 text-sm font-semibold">Delete</span>
-                      </button>
-                    </div>
-
-                    {/* Title */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black via-black/90 to-transparent">
-                      <p className="text-xs text-white truncate font-semibold">
-                        {item.title || 'Combined Media'}
-                      </p>
-                      <p className="text-[10px] text-cyan-400/60 mt-1">
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </p>
+                        <button
+                          onClick={() => handleDelete('combined', item.id)}
+                          className="p-3 bg-red-500/20 rounded-lg hover:bg-red-500/40 transition-all hover:scale-105 border border-red-500/30"
+                          title="Delete"
+                        >
+                          <Trash2 size={18} className="text-red-400" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
