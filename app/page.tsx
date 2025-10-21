@@ -48,7 +48,7 @@ export default function HomePage() {
                   style={{ fontFamily: "'Courier New', monospace" }}
                   className="flex-1 text-sm tracking-wide text-gray-400 group-hover:text-cyan-400 transition-all"
                 >
-                  // Describe the music you want to create...
+                  {/* Describe the music you want to create... */}
                 </div>
               </div>
             </div>

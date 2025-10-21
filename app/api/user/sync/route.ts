@@ -6,7 +6,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
  * Ensures the current user exists in the Supabase users table
  * This is called from the client when a user first loads the app
  */
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const { userId } = await auth()
     const user = await currentUser()
