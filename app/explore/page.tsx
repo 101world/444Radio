@@ -48,6 +48,7 @@ export default function ExplorePage() {
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [currentTrack, setCurrentTrack] = useState<CombinedMedia | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [showSearchBox, setShowSearchBox] = useState(true)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
@@ -379,6 +380,7 @@ export default function ExplorePage() {
       </main>
 
       {/* Floating Unified Search & Player Bar - Matches Home Page Design */}
+      {showSearchBox && (
       <div className="fixed bottom-0 left-0 right-0 md:bottom-8 px-4 sm:px-6 lg:px-8 pb-safe md:pb-0 z-50">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           <div className="group relative">
@@ -467,9 +469,13 @@ export default function ExplorePage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Floating Navigation Button */}
-      <FloatingNavButton />
+      <FloatingNavButton 
+        showPromptToggle={true}
+        onTogglePrompt={() => setShowSearchBox(!showSearchBox)}
+      />
 
       {/* Hidden Audio Element */}
       <audio 

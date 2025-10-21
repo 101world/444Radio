@@ -54,6 +54,7 @@ function CreatePageContent() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
+  const [showBottomDock, setShowBottomDock] = useState(true)
   
   // Advanced parameters
   const [customLyrics, setCustomLyrics] = useState('')
@@ -682,6 +683,7 @@ function CreatePageContent() {
       </div>
 
       {/* Fixed Bottom Dock - Home Page Style */}
+      {showBottomDock && (
       <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           
@@ -877,6 +879,7 @@ function CreatePageContent() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Settings Modal - 1:1 Aspect Ratio with Small Font */}
       {showSettingsModal && (
@@ -1051,7 +1054,10 @@ function CreatePageContent() {
       />
 
       {/* Floating Navigation Button */}
-      <FloatingNavButton />
+      <FloatingNavButton 
+        showPromptToggle={true}
+        onTogglePrompt={() => setShowBottomDock(!showBottomDock)}
+      />
     </div>
   )
 }
