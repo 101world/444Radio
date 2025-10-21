@@ -140,6 +140,38 @@ export default function DatabaseDebugPage() {
                   <p className="font-mono text-sm text-cyan-300">@{user.username || 'not set'}</p>
                 </div>
               </div>
+              
+              {/* Username Mismatch Warning */}
+              {data.diagnosis.username !== user.username && (
+                <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-400 font-semibold mb-2">⚠️ Username Mismatch Detected!</p>
+                  <p className="text-sm text-gray-300 mb-3">
+                    Database has <span className="font-mono text-yellow-300">{data.diagnosis.username}</span> but Clerk has <span className="font-mono text-cyan-300">{user.username}</span>
+                  </p>
+                  <button
+                    onClick={async () => {
+                      try {
+                        setLoading(true)
+                        const res = await fetch('/api/user/update-username', { method: 'POST' })
+                        const result = await res.json()
+                        if (res.ok) {
+                          alert('✅ Username updated successfully! Reloading...')
+                          fetchData()
+                        } else {
+                          alert('❌ Failed to update: ' + result.error)
+                        }
+                      } catch (err) {
+                        alert('❌ Error: ' + (err as Error).message)
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-black font-bold rounded-lg hover:scale-105 transition-transform"
+                  >
+                    🔄 Fix Username - Update DB to Match Clerk
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* User Data */}
