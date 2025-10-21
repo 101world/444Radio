@@ -5,7 +5,7 @@ import { auth } from '@clerk/nextjs/server'
  * GET /api/library/combined
  * Get all combined media from user's library
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const { userId } = await auth()
     
