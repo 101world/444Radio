@@ -53,6 +53,7 @@ interface CombinedMedia {
   created_at: string
   media_type: 'music-image' | 'image' | 'video'
   content_type?: string
+  duration?: number
 }
 
 interface Upload {
@@ -152,6 +153,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }
 
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return '0:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   return (
     <div className="min-h-screen bg-black text-white pb-32">
       {/* Holographic 3D Background */}
@@ -190,6 +198,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 </div>
               ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
                 <div className="space-y-0">
+                  {/* Mobile Layout - Original Design */}
+                  <div className="md:hidden space-y-0">
                   {/* SECTION 1: TOP BANNER - Cover Art Carousel */}
                   <div className="relative h-64 overflow-hidden group">
                     {/* Carousel Images */}
@@ -496,6 +506,191 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       )}
                     </div>
                   )}
+                  </div>
+                  {/* End Mobile Layout */}
+
+                  {/* Desktop Layout - Split View */}
+                  <div className="hidden md:block">
+                    <div className="grid grid-cols-2 gap-6 p-6">
+                      {/* LEFT SIDE: Full Track List with Duration */}
+                      <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-150px)] pr-4 custom-scrollbar">
+                        <h2 className="text-2xl font-bold mb-4 sticky top-0 bg-black/90 backdrop-blur-xl py-3 z-10 border-b border-cyan-500/20">📀 All Tracks</h2>
+                        {profile.combinedMedia.map((media, index) => {
+                          const isCurrentlyPlaying = playingId === media.id
+                          const hasAudio = !!media.audio_url
+                          
+                          return (
+                            <div 
+                              key={media.id} 
+                              className={`group flex items-center gap-4 p-3 rounded-xl transition-all ${
+                                hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                              } ${
+                                isCurrentlyPlaying 
+                                  ? 'bg-cyan-500/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-500/20' 
+                                  : hasAudio ? 'hover:bg-white/5 bg-black/20 border border-white/5' : 'bg-black/10 border border-white/5'
+                              }`}
+                              onClick={() => hasAudio && handlePlay(media)}
+                            >
+                              {/* Track Number */}
+                              <div className="w-8 text-center flex-shrink-0">
+                                {isCurrentlyPlaying && isPlaying ? (
+                                  <div className="flex justify-center">
+                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5"></div>
+                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.2s' }}></div>
+                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.4s' }}></div>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{index + 1}</span>
+                                )}
+                              </div>
+
+                              {/* Thumbnail */}
+                              <div className="relative w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden">
+                                <img 
+                                  src={media.image_url} 
+                                  alt={media.title}
+                                  className="w-full h-full object-cover"
+                                />
+                                {hasAudio && (
+                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                                      {isCurrentlyPlaying && isPlaying ? (
+                                        <Pause className="text-black" size={14} />
+                                      ) : (
+                                        <Play className="text-black ml-0.5" size={14} />
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Track Info */}
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-white truncate leading-tight">
+                                  {media.title}
+                                </h3>
+                                <p className="text-sm text-gray-400 truncate leading-tight mt-1">
+                                  {formatUsername(profile.username)}
+                                </p>
+                              </div>
+
+                              {/* Duration */}
+                              <div className="text-sm text-gray-400 flex-shrink-0 font-mono">
+                                {formatDuration(media.duration || 180)}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {/* RIGHT SIDE: Carousel + Recent Tracks Grid */}
+                      <div className="space-y-6 sticky top-6 self-start">
+                        {/* 1:1 Carousel */}
+                        <div className="relative aspect-square overflow-hidden group rounded-2xl shadow-2xl border border-cyan-500/20">
+                          {/* Carousel Images */}
+                          <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
+                            <div className="flex h-full">
+                              {profile.combinedMedia.slice(0, 10).map((media, index) => (
+                                <div key={media.id} className="relative w-full h-full flex-shrink-0">
+                                  <img 
+                                    src={media.image_url} 
+                                    alt={media.title || 'Cover art'}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                                  {/* Track Title Overlay */}
+                                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                                    <h3 className="text-xl font-bold text-white truncate">{media.title}</h3>
+                                    <p className="text-sm text-cyan-400 mt-1">@{profile.username}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Carousel Navigation - Left */}
+                          {carouselIndex > 0 && (
+                            <button
+                              onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
+                              className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                            >
+                              <ChevronLeft size={24} className="text-white" />
+                            </button>
+                          )}
+
+                          {/* Carousel Navigation - Right */}
+                          {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
+                            <button
+                              onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                            >
+                              <ChevronRight size={24} className="text-white" />
+                            </button>
+                          )}
+
+                          {/* Carousel Indicators */}
+                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                            {profile.combinedMedia.slice(0, 10).map((_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setCarouselIndex(index)}
+                                className={`h-2 rounded-full transition-all ${
+                                  index === carouselIndex 
+                                    ? 'bg-cyan-400 w-8' 
+                                    : 'bg-white/30 hover:bg-white/50 w-2'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Recent Tracks Grid - 1:1 Thumbnails */}
+                        <div>
+                          <h3 className="text-lg font-bold mb-3 text-gray-300">🎵 Recent Tracks</h3>
+                          <div className="grid grid-cols-3 gap-3">
+                            {profile.combinedMedia.slice(0, 9).map((media) => {
+                              const isCurrentlyPlaying = playingId === media.id
+                              const hasAudio = !!media.audio_url
+                              
+                              return (
+                                <div 
+                                  key={media.id} 
+                                  className={`group cursor-pointer rounded-lg overflow-hidden transition-all aspect-square ${
+                                    isCurrentlyPlaying ? 'ring-2 ring-cyan-400 scale-105' : 'hover:scale-105'
+                                  } ${!hasAudio ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  onClick={() => hasAudio && handlePlay(media)}
+                                >
+                                  <div className="relative w-full h-full">
+                                    <img 
+                                      src={media.image_url} 
+                                      alt={media.title}
+                                      className="w-full h-full object-cover"
+                                    />
+                                    {hasAudio && (
+                                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                                          {isCurrentlyPlaying && isPlaying ? (
+                                            <Pause className="text-black" size={16} />
+                                          ) : (
+                                            <Play className="text-black ml-0.5" size={16} />
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {isCurrentlyPlaying && isPlaying && (
+                                      <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* End Desktop Layout */}
+
                 </div>
               ) : (
                 <div className="flex items-center justify-center min-h-[60vh]">
