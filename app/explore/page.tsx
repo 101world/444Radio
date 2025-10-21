@@ -371,76 +371,91 @@ export default function ExplorePage() {
         )}
       </main>
 
-      {/* Floating Unified Search & Player Bar */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-4xl px-4">
-        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl shadow-cyan-500/20 overflow-hidden">
-          {currentTrack ? (
-            /* Compact Player Mode */
-            <div className="flex items-center gap-3 p-3">
-              {/* Thumbnail */}
-              <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-lg">
-                <img 
-                  src={currentTrack.image_url} 
-                  alt={currentTrack.title}
-                  className="w-full h-full object-cover"
-                />
-                {isPlaying && (
-                  <div className="absolute top-1 right-1 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                )}
-              </div>
-              
-              {/* Track Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate">{currentTrack.title}</p>
-                <p className="text-xs text-gray-300 truncate">{formatUsername(currentTrack.users?.username || currentTrack.username)}</p>
-              </div>
-              
-              {/* Player Controls */}
-              <div className="flex items-center gap-1">
-                <button 
-                  onClick={handlePrevious}
-                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all"
-                >
-                  <SkipBack size={14} className="text-white" />
-                </button>
-                <button 
-                  onClick={() => handlePlay(currentTrack)}
-                  className="w-10 h-10 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 rounded-lg flex items-center justify-center transition-all shadow-lg shadow-cyan-500/50"
-                >
-                  {isPlaying ? (
-                    <Pause size={16} className="text-white" />
-                  ) : (
-                    <Play size={16} className="text-white ml-0.5" />
-                  )}
-                </button>
-                <button 
-                  onClick={handleNext}
-                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all"
-                >
-                  <SkipForward size={14} className="text-white" />
-                </button>
-              </div>
+      {/* Floating Unified Search & Player Bar - Matches Home Page Design */}
+      <div className="fixed bottom-0 left-0 right-0 md:bottom-8 px-4 sm:px-6 lg:px-8 pb-safe md:pb-0 z-50">
+        <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
+          <div className="group relative">
+            {/* Glow Effect - Same as Home Page */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-3xl blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 transition-opacity duration-300"></div>
+            
+            {/* Bar Container - Same style as Home Page */}
+            <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl rounded-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
+              {currentTrack ? (
+                /* Player Mode */
+                <>
+                  {/* Radio Icon instead of thumbnail */}
+                  <Radio 
+                    size={20} 
+                    className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]" 
+                  />
+                  
+                  {/* Track Info */}
+                  <div className="flex-1 min-w-0 text-center md:text-left">
+                    <div className="text-sm md:text-lg font-light text-gray-200 tracking-wide truncate">
+                      {currentTrack.title}
+                    </div>
+                    <div className="text-xs text-cyan-400/60 mt-0.5 font-mono truncate">
+                      {formatUsername(currentTrack.users?.username || currentTrack.username)}
+                    </div>
+                  </div>
+                  
+                  {/* Player Controls */}
+                  <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                    <button 
+                      onClick={handlePrevious}
+                      className="w-8 h-8 md:w-9 md:h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
+                    >
+                      <SkipBack size={14} className="text-cyan-400" />
+                    </button>
+                    <button 
+                      onClick={() => handlePlay(currentTrack)}
+                      className="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all shadow-lg shadow-cyan-500/50 active:scale-95"
+                    >
+                      {isPlaying ? (
+                        <Pause size={18} className="text-black" />
+                      ) : (
+                        <Play size={18} className="text-black ml-0.5" />
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleNext}
+                      className="w-8 h-8 md:w-9 md:h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
+                    >
+                      <SkipForward size={14} className="text-cyan-400" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* Search Mode - Same layout as Home Page */
+                <>
+                  <Search 
+                    size={20} 
+                    className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]" 
+                  />
+                  <div className="flex-1 text-center md:text-left">
+                    <input
+                      type="text"
+                      placeholder="Search tracks, artists..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && fetchCombinedMedia()}
+                      className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none"
+                    />
+                    <div className="text-xs text-cyan-400/60 mt-0.5 font-mono hidden md:block">
+                      Press Enter to search
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-          ) : (
-            /* Search Mode */
-            <div className="flex items-center gap-3 p-3">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Search tracks, artists..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && fetchCombinedMedia()}
-                  className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 rounded-xl transition-all text-sm"
-                />
-              </div>
-              <button 
-                onClick={() => fetchCombinedMedia()}
-                className="px-5 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105"
-              >
-                Search
-              </button>
+          </div>
+          
+          {/* Quick Info - Below the bar */}
+          {!currentTrack && (
+            <div className="flex items-center justify-center gap-2 mt-2 md:mt-6 text-xs md:text-sm mb-2">
+              <span className="text-cyan-400/60 font-mono tracking-wider">
+                ✨ Discover new music
+              </span>
             </div>
           )}
         </div>
