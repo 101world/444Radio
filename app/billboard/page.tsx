@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { UserButton, useUser } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
+import { formatUsername } from '../../lib/username'
 
 interface ChartSong {
   id: string
@@ -117,7 +118,7 @@ export default function BillboardPage() {
                   <h3 className="text-lg font-bold text-white truncate group-hover:text-[#818cf8] transition-colors">
                     {song.title}
                   </h3>
-                  <p className="text-sm text-gray-400 truncate">by {song.user.username}</p>
+                  <p className="text-sm text-gray-400 truncate">by @{formatUsername(song.user.username)}</p>
                 </div>
 
                 {/* Stats */}

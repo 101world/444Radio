@@ -8,6 +8,7 @@ import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import SocialCTA from '../components/SocialCTA'
 import { Search, Play, Pause, Volume2, SkipBack, SkipForward, Radio } from 'lucide-react'
+import { formatUsername } from '../../lib/username'
 
 interface CombinedMedia {
   id: string
@@ -179,9 +180,7 @@ export default function ExplorePage() {
                         href={`/u/${media.users?.username || media.username || 'unknown'}`}
                         className="text-xs text-[#818cf8] hover:text-[#7aa5d7] font-semibold"
                       >
-                        @{(media.users?.username || media.username || 'Unknown User').startsWith('user_') 
-                          ? (media.users?.username || media.username || 'Unknown User').replace('user_', 'user') 
-                          : (media.users?.username || media.username || 'Unknown User')}
+                        @{formatUsername(media.users?.username || media.username)}
                       </Link>
                     </div>
                   </div>
@@ -220,9 +219,7 @@ export default function ExplorePage() {
                 </div>
                 <p className="text-sm font-black text-white truncate">{currentTrack.title}</p>
                 <p className="text-xs text-gray-300 truncate">
-                  @{(currentTrack.users?.username || currentTrack.username || 'Unknown').startsWith('user_') 
-                    ? (currentTrack.users?.username || currentTrack.username || 'Unknown').replace('user_', 'user') 
-                    : (currentTrack.users?.username || currentTrack.username || 'Unknown')}
+                  @{formatUsername(currentTrack.users?.username || currentTrack.username)}
                 </p>
               </div>
 

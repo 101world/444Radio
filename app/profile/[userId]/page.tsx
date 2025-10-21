@@ -10,6 +10,7 @@ import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Rad
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
+import { getDisplayUsername } from '../../../lib/username'
 
 const THUMBNAIL_SHAPES = [
   'rounded-2xl', // square
@@ -166,9 +167,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-black text-white truncate">
-                  @{profile?.username && !profile.username.startsWith('user_') 
-                    ? profile.username 
-                    : (currentUser?.username || currentUser?.firstName || currentUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'user')}
+                  @{getDisplayUsername(
+                    profile?.username,
+                    currentUser?.username,
+                    currentUser?.firstName,
+                    currentUser?.emailAddresses?.[0]?.emailAddress
+                  )}
                 </h1>
                 <span className="text-xs font-bold text-cyan-400 flex-shrink-0">
                   {profile?.followerCount || 0} followers
