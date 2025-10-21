@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
-import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus } from 'lucide-react'
+import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock } from 'lucide-react'
 
 export default function FloatingMenu() {
   const { user } = useUser()
@@ -30,10 +30,10 @@ export default function FloatingMenu() {
 
   return (
     <>
-      {/* Floating Hamburger Button */}
+      {/* Floating Hamburger Button - Desktop Only */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-6 right-6 z-50 p-4 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl hover:bg-white/20 transition-all"
+        className="hidden md:block fixed top-6 right-6 z-50 p-4 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl hover:bg-white/20 transition-all"
       >
         {isOpen ? (
           <X className="text-white" size={24} />
@@ -119,6 +119,14 @@ export default function FloatingMenu() {
                     >
                       <BarChart3 size={20} />
                       <span className="font-medium">Charts</span>
+                    </Link>
+                    <Link
+                      href="/decrypt"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-colors border border-cyan-500/30"
+                    >
+                      <Unlock size={20} />
+                      <span className="font-medium">Decrypt</span>
                     </Link>
                     <Link
                       href={`/profile/${user.id}`}

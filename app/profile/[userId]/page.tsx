@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
+import CreditIndicator from '../../components/CreditIndicator'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
 import FloatingNavButton from '../../components/FloatingNavButton'
+import FMTuner from '../../components/FMTuner'
 import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio, UserPlus, Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
@@ -165,7 +167,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       {/* Holographic 3D Background */}
       <HolographicBackground />
       
-      {/* Floating Menu */}
+      {/* Credit Indicator - Mobile Only */}
+      <div className="md:hidden">
+        <CreditIndicator />
+      </div>
+      
+      {/* Floating Menu - Desktop Only */}
       <FloatingMenu />
 
       {/* Feed/Stations Content - Full bleed with new layout */}
@@ -583,96 +590,60 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         })}
                       </div>
 
-                      {/* RIGHT SIDE: Vinyl-Style Digital Player */}
-                      <div className="sticky top-6 self-start">
-                        <div className="relative aspect-square p-8 bg-gradient-to-br from-black via-gray-900 to-black rounded-3xl border border-cyan-500/20 shadow-2xl">
-                          {/* Vinyl Record Background Effect */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-5">
-                            <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-800 to-black"></div>
-                          </div>
+                      {/* RIGHT SIDE: FM Tuner */}
+                      <div className="sticky top-6 self-start space-y-6">
+                        {/* FM Tuner */}
+                        <FMTuner 
+                          tracks={profile.combinedMedia.map(media => ({
+                            id: media.id,
+                            title: media.title || 'Untitled',
+                            artist: `@${profile.username}`,
+                            audio_url: media.audio_url || '',
+                            image_url: media.image_url
+                          }))}
+                          autoPlay={false}
+                          onTrackChange={(track) => {
+                            const media = profile.combinedMedia.find(m => m.id === track.id)
+                            if (media) {
+                              handlePlay(media)
+                            }
+                          }}
+                        />
 
-                          {/* Album Artwork - Modern Glassmorphic Vinyl */}
-                          <div className="relative w-full h-full flex items-center justify-center">
-                            {/* Outer Vinyl Disc - Glassmorphic */}
-                            <div className={`absolute inset-0 rounded-full backdrop-blur-3xl bg-gradient-to-br from-white/5 via-cyan-500/10 to-white/5 border border-white/10 shadow-[0_8px_32px_0_rgba(6,182,212,0.2)] transition-transform duration-700 ${
-                              isPlaying ? 'animate-spin-slow' : ''
-                            }`} style={{ animationDuration: '3s' }}>
-                              {/* Subtle Vinyl Grooves */}
-                              <div className="absolute inset-0 rounded-full opacity-30" style={{
-                                background: 'repeating-radial-gradient(circle at center, transparent 0px, transparent 3px, rgba(6,182,212,0.1) 3px, rgba(6,182,212,0.1) 6px)'
-                              }}></div>
-                              {/* Glossy Overlay */}
-                              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 via-transparent to-transparent"></div>
-                              {/* Center Label - Glassmorphic */}
-                              <div className="absolute inset-[15%] rounded-full backdrop-blur-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/30 border border-cyan-400/30 shadow-[0_0_30px_rgba(6,182,212,0.3)]"></div>
-                            </div>
-
-                            {/* Album Cover - Centered on Vinyl */}
-                            <div className={`relative w-[70%] h-[70%] rounded-full overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.4)] border border-white/20 transition-transform duration-700 ${
-                              isPlaying ? 'animate-spin-slow' : ''
-                            }`} style={{ animationDuration: '3s' }}>
-                              <img 
-                                src={currentTrack?.image_url || profile.combinedMedia[0]?.image_url || '/radio-logo.svg'} 
-                                alt={currentTrack?.title || 'Album'}
-                                className="w-full h-full object-cover"
-                              />
-                              {/* Futuristic Shine */}
-                              <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-cyan-500/20"></div>
-                            </div>
-
-                            {/* Center Spindle - Minimal Glassmorphic */}
-                            <div className="absolute w-16 h-16 rounded-full backdrop-blur-xl bg-white/5 border border-white/20 shadow-[0_0_20px_rgba(6,182,212,0.5)] z-10">
-                              <div className="absolute inset-3 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 shadow-[0_0_15px_rgba(6,182,212,0.8)]"></div>
-                            </div>
-                          </div>
-
-                          {/* Track Info Overlay */}
-                          <div className="absolute bottom-8 left-8 right-8 bg-black/80 backdrop-blur-xl rounded-2xl p-6 border border-cyan-500/30">
-                            <div className="flex items-center gap-4">
-                              {/* Play/Pause Button */}
-                              <button
-                                onClick={() => {
-                                  if (currentTrack) {
-                                    handlePlay(currentTrack)
-                                  } else if (profile.combinedMedia[0]) {
-                                    handlePlay(profile.combinedMedia[0])
-                                  }
-                                }}
-                                className="w-14 h-14 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/50 hover:from-cyan-500 hover:to-cyan-300 transition-all hover:scale-110 flex-shrink-0"
+                        {/* Recent Cover Art Grid */}
+                        <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 border border-cyan-500/20">
+                          <h3 className="text-lg font-bold text-white mb-4">Recent Releases</h3>
+                          <div className="grid grid-cols-3 gap-3">
+                            {profile.combinedMedia.slice(0, 6).map((media) => (
+                              <div 
+                                key={media.id}
+                                className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer border border-cyan-500/20 hover:border-cyan-400/60 transition-all"
+                                onClick={() => handlePlay(media)}
                               >
-                                {isPlaying ? (
-                                  <Pause className="text-black" size={24} />
-                                ) : (
-                                  <Play className="text-black ml-1" size={24} />
-                                )}
-                              </button>
-
-                              {/* Track Details */}
-                              <div className="flex-1 min-w-0">
-                                <h3 className="text-white font-bold truncate text-lg">
-                                  {currentTrack?.title || profile.combinedMedia[0]?.title || 'No track selected'}
-                                </h3>
-                                <p className="text-cyan-400 text-sm truncate mt-1">
-                                  @{profile.username}
-                                </p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <div className="text-xs text-gray-400 font-mono">
-                                    {formatDuration(currentTrack?.duration || profile.combinedMedia[0]?.duration || 180)}
+                                <img 
+                                  src={media.image_url || '/radio-logo.svg'}
+                                  alt={media.title || 'Cover'}
+                                  className="w-full h-full object-cover"
+                                />
+                                {/* Play overlay */}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <div className="w-12 h-12 rounded-full bg-cyan-500 flex items-center justify-center">
+                                    <Play className="text-black ml-1" size={20} fill="currentColor" />
                                   </div>
-                                  {isPlaying && (
+                                </div>
+                                {/* Playing indicator */}
+                                {playingId === media.id && isPlaying && (
+                                  <div className="absolute top-2 right-2">
                                     <div className="flex gap-1">
                                       <div className="w-1 h-3 bg-cyan-400 animate-pulse"></div>
                                       <div className="w-1 h-4 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.1s' }}></div>
                                       <div className="w-1 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                                     </div>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </div>
-                            </div>
+                            ))}
                           </div>
-
-                          {/* Vinyl Player Base Shadow */}
-                          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] h-8 bg-gradient-to-r from-transparent via-black/50 to-transparent blur-2xl"></div>
                         </div>
                       </div>
                     </div>

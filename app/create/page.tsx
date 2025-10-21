@@ -8,6 +8,7 @@ import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
 import FloatingMenu from '../components/FloatingMenu'
+import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackground from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 
@@ -519,7 +520,12 @@ function CreatePageContent() {
       {/* Holographic 3D Background */}
       <HolographicBackground />
       
-      {/* Floating Menu */}
+      {/* Credit Indicator - Mobile Only */}
+      <div className="md:hidden">
+        <CreditIndicator />
+      </div>
+      
+      {/* Floating Menu - Desktop Only */}
       <FloatingMenu />
 
       {/* Back to Home Button - Mobile optimized */}

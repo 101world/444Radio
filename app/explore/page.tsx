@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
+import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, SkipBack, SkipForward, Radio } from 'lucide-react'
@@ -124,7 +125,12 @@ export default function ExplorePage() {
       {/* Holographic 3D Background */}
       <HolographicBackgroundClient />
       
-      {/* Floating Menu */}
+      {/* Credit Indicator - Mobile Only */}
+      <div className="md:hidden">
+        <CreditIndicator />
+      </div>
+      
+      {/* Floating Menu - Desktop Only */}
       <FloatingMenu />
 
       {/* Main Content - 3 Section Layout */}

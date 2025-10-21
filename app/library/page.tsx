@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
+import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 
@@ -133,7 +134,12 @@ export default function LibraryPage() {
       {/* Holographic 3D Background */}
       <HolographicBackgroundClient />
       
-      {/* Floating Menu */}
+      {/* Credit Indicator - Mobile Only */}
+      <div className="md:hidden">
+        <CreditIndicator />
+      </div>
+      
+      {/* Floating Menu - Desktop Only */}
       <FloatingMenu />
 
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
@@ -355,7 +361,7 @@ export default function LibraryPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-3 -mt-4">
+              <div className="space-y-3 -mt-8">
                 {combinedItems.map((item) => (
                   <div
                     key={item.id}

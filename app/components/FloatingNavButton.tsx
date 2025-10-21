@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare } from 'lucide-react'
+import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 
@@ -21,6 +21,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
     { href: '/explore', icon: Compass, label: 'Explore' },
     { href: '/create', icon: PlusCircle, label: 'Create' },
     { href: '/library', icon: Library, label: 'Library' },
+    { href: '/decrypt', icon: Unlock, label: 'Decrypt', highlight: true },
   ]
 
   return (
@@ -57,6 +58,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
             const Icon = item.icon
             const isActive = pathname === item.href || 
                            (item.href !== '/' && pathname.startsWith(item.href))
+            const isDecrypt = item.label === 'Decrypt'
             
             return (
               <Link
@@ -67,8 +69,10 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
                 style={{ animationDelay: `${(showPromptToggle ? index + 1 : index) * 50}ms` }}
               >
                 {/* Label */}
-                <div className="absolute right-16 bg-black/90 backdrop-blur-xl border border-cyan-500/30 rounded-xl px-4 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-                  <span className="text-sm font-medium text-cyan-300">{item.label}</span>
+                <div className={`absolute right-16 bg-black/90 backdrop-blur-xl border rounded-xl px-4 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap ${
+                  isDecrypt ? 'border-cyan-400' : 'border-cyan-500/30'
+                }`}>
+                  <span className={`text-sm font-medium ${isDecrypt ? 'text-cyan-300' : 'text-cyan-300'}`}>{item.label}</span>
                 </div>
                 
                 {/* Icon Button */}
@@ -76,6 +80,8 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
                   className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
                     isActive
                       ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-cyan-500/50 scale-110'
+                      : isDecrypt
+                      ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 backdrop-blur-xl border-2 border-cyan-400/50 hover:border-cyan-300 hover:scale-105 animate-pulse'
                       : 'bg-black/80 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400 hover:scale-105'
                   }`}
                 >
