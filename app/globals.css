@@ -317,3 +317,20 @@ input[placeholder*="Video"]:focus {
   animation: slide-right 4s linear infinite;
 }
 
+/* Floating Nav Button Animation */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+  opacity: 0;
+}
+
