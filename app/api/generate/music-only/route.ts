@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
+import { getContextualLyrics } from '@/lib/default-lyrics'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
@@ -23,18 +24,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required (10-300 characters)' }, { status: 400 })
     }
 
-    // If lyrics not provided, generate default lyrics based on prompt
+    // If lyrics not provided, use intelligent default from dataset
     let formattedLyrics: string
     if (!lyrics || lyrics.trim().length === 0) {
-      // Generate simple default lyrics from prompt
-      console.log('⚡ No custom lyrics provided, generating defaults from prompt')
-      formattedLyrics = `[verse]\n${prompt}\nFeeling the rhythm all night long\nThis is where I belong\n\n[chorus]\n${prompt}\nLet the music play on and on\nUntil the break of dawn`
+      // Use contextual lyrics based on prompt (from 20 template dataset)
+      console.log('⚡ No custom lyrics provided, using intelligent default from dataset')
+      formattedLyrics = getContextualLyrics(prompt)
+      console.log('📝 Selected lyrics template based on prompt context')
     } else {
       // Validate user-provided lyrics
       if (lyrics.trim().length < 10 || lyrics.length > 600) {
         return NextResponse.json({ error: 'Lyrics must be 10-600 characters. Please add structure tags like [verse] [chorus]' }, { status: 400 })
       }
       formattedLyrics = lyrics.trim()
+      console.log('📝 Using custom user-provided lyrics')
     }
     
     // Log for debugging
