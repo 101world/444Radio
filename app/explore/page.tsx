@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
+import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, SkipBack, SkipForward, Radio } from 'lucide-react'
 import { formatUsername } from '../../lib/username'
 
@@ -466,6 +467,9 @@ export default function ExplorePage() {
           )}
         </div>
       </div>
+
+      {/* Floating Navigation Button */}
+      <FloatingNavButton />
 
       {/* Hidden Audio Element */}
       <audio 

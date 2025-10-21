@@ -6,6 +6,7 @@ import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
+import FloatingNavButton from '../../components/FloatingNavButton'
 import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio, UserPlus, Play, Pause } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
@@ -528,6 +529,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           </div>
         </div>
       )}
+
+      {/* Floating Navigation Button */}
+      <FloatingNavButton />
 
       {/* Hidden Audio Element */}
       <audio 
