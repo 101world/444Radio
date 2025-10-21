@@ -7,7 +7,7 @@ import CombinedMediaPlayer from '../components/CombinedMediaPlayer'
 import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import SocialCTA from '../components/SocialCTA'
-import { Search, Play, Pause, Volume2, SkipBack, SkipForward, Radio } from 'lucide-react'
+import { Search, Play, Pause, Volume2, SkipBack, SkipForward, Radio, TrendingUp, Sparkles } from 'lucide-react'
 import { formatUsername } from '../../lib/username'
 
 interface CombinedMedia {
@@ -27,8 +27,16 @@ interface CombinedMedia {
   }
 }
 
+interface Artist {
+  username: string
+  user_id: string
+  trackCount: number
+  avatar?: string
+}
+
 export default function ExplorePage() {
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
+  const [artists, setArtists] = useState<Artist[]>([])
   const [filter, setFilter] = useState('trending')
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -48,6 +56,26 @@ export default function ExplorePage() {
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)
+        
+        // Extract unique artists
+        const artistMap = new Map<string, Artist>()
+        data.combinedMedia.forEach((media: CombinedMedia) => {
+          const username = media.users?.username || media.username
+          const userId = media.user_id
+          if (username && userId) {
+            if (artistMap.has(userId)) {
+              artistMap.get(userId)!.trackCount++
+            } else {
+              artistMap.set(userId, {
+                username,
+                user_id: userId,
+                trackCount: 1,
+                avatar: media.image_url // Use first track's image as avatar
+              })
+            }
+          }
+        })
+        setArtists(Array.from(artistMap.values()))
       }
     } catch (error) {
       console.error('Failed to fetch media:', error)
@@ -93,32 +121,94 @@ export default function ExplorePage() {
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Simple Search - Just Text and Send */}
-      <div className="pt-24 px-4 md:px-8 pb-6">
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-6 py-3 bg-transparent border-b-2 border-white/20 text-white placeholder-gray-400 focus:outline-none focus:border-[#818cf8] transition-all text-lg"
-          />
-          <button 
-            onClick={() => fetchCombinedMedia()}
-            className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#818cf8] rounded-full font-semibold hover:scale-105 transition-transform"
-          >
-            Send
-          </button>
+      {/* Full Width Header Banner */}
+      <div className="relative w-full h-80 overflow-hidden">
+        {/* Animated Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-600 via-cyan-500 to-cyan-400 animate-gradient"></div>
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10"></div>
+        
+        {/* Content */}
+        <div className="relative z-10 h-full flex flex-col items-center justify-center px-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Radio size={48} className="text-white animate-pulse" />
+            <TrendingUp size={48} className="text-cyan-200" />
+          </div>
+          <h1 className="text-6xl md:text-8xl font-black text-white mb-4 tracking-tight">
+            Explore
+          </h1>
+          <p className="text-xl md:text-2xl text-cyan-50 font-medium mb-8">
+            Discover the latest tracks from artists worldwide
+          </p>
+          
+          {/* Search Bar */}
+          <div className="w-full max-w-2xl flex items-center gap-3">
+            <input
+              type="text"
+              placeholder="Search for tracks, artists..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 px-6 py-4 bg-white/20 backdrop-blur-xl border-2 border-white/30 text-white placeholder-white/60 focus:outline-none focus:border-white rounded-2xl transition-all text-lg"
+            />
+            <button 
+              onClick={() => fetchCombinedMedia()}
+              className="px-8 py-4 bg-white text-cyan-600 rounded-2xl font-bold hover:scale-105 transition-transform shadow-2xl"
+            >
+              Search
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Music Grid - Glassmorphism 3D Cards */}
-      <main className="px-3 md:px-6 pb-32">
+      {/* Artist Profiles - Horizontal Scroll */}
+      {!loading && artists.length > 0 && (
+        <div className="py-8 px-4 md:px-8 border-b border-white/10">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles size={24} className="text-cyan-400" />
+              <h2 className="text-2xl font-bold text-white">Featured Artists</h2>
+            </div>
+            <div className="relative">
+              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
+                {artists.map((artist) => (
+                  <Link 
+                    key={artist.user_id}
+                    href={`/u/${artist.username}`}
+                    className="flex-shrink-0 snap-start group"
+                  >
+                    <div className="flex flex-col items-center gap-3 w-32 transition-transform hover:scale-105">
+                      {/* Circular Avatar */}
+                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-cyan-400/50 group-hover:border-cyan-400 transition-all shadow-lg shadow-cyan-400/20">
+                        <img 
+                          src={artist.avatar || '/default-avatar.png'} 
+                          alt={artist.username}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      {/* Artist Name */}
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-white truncate w-full">
+                          @{formatUsername(artist.username)}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {artist.trackCount} {artist.trackCount === 1 ? 'track' : 'tracks'}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3-Column Grid List View */}
+      <main className="px-4 md:px-8 py-8 pb-32">
         <div className="max-w-7xl mx-auto">
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl animate-pulse"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl h-32 animate-pulse"></div>
               ))}
             </div>
           ) : combinedMedia.length === 0 ? (
@@ -131,59 +221,66 @@ export default function ExplorePage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {combinedMedia.map((media) => {
                 const isCurrentlyPlaying = playingId === media.id
-                const cardClassName = `relative aspect-square backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300 ${
-                  isCurrentlyPlaying
-                    ? 'bg-cyan-500/30 border-2 border-cyan-400 shadow-2xl shadow-cyan-400/50 scale-[1.02]'
-                    : 'bg-white/5 border border-white/10 hover:scale-[1.02] hover:shadow-2xl hover:shadow-cyan-400/20 hover:border-cyan-400/30'
-                }`
                 
                 return (
-                <div key={media.id} className="group relative">
-                  {/* 3D Glassmorphism Card with Playing State */}
-                  <div className={cardClassName}>
-                    {/* Image */}
-                    <img 
-                      src={media.image_url} 
-                      alt={media.title}
-                      className="w-full h-full object-cover"
-                    />
-                    
-                    {/* Playing Indicator */}
-                    {isCurrentlyPlaying && (
-                      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 bg-cyan-500 rounded-full animate-pulse">
-                        <Radio size={12} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
-                        <span className="text-xs font-bold text-white">LIVE</span>
+                <div 
+                  key={media.id} 
+                  className={`group relative backdrop-blur-xl rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer ${
+                    isCurrentlyPlaying
+                      ? 'bg-cyan-500/20 border-2 border-cyan-400 shadow-xl shadow-cyan-400/30'
+                      : 'bg-white/5 border border-white/10 hover:border-cyan-400/50 hover:shadow-xl hover:shadow-cyan-400/20'
+                  }`}
+                  onClick={() => handlePlay(media)}
+                >
+                  <div className="flex gap-4 p-4">
+                    {/* Thumbnail Preview */}
+                    <div className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden">
+                      <img 
+                        src={media.image_url} 
+                        alt={media.title}
+                        className="w-full h-full object-cover"
+                      />
+                      
+                      {/* Play Button Overlay */}
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center">
+                          {isCurrentlyPlaying && isPlaying ? (
+                            <Pause className="text-white" size={20} />
+                          ) : (
+                            <Play className="text-white ml-0.5" size={20} />
+                          )}
+                        </div>
                       </div>
-                    )}
-                    
-                    {/* Play Button Overlay */}
-                    <div 
-                      onClick={() => handlePlay(media)}
-                      className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer flex items-center justify-center"
-                    >
-                      <button className="w-16 h-16 bg-cyan-500 hover:bg-cyan-600 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-2xl">
-                        {isCurrentlyPlaying && isPlaying ? (
-                          <Pause className="text-white" size={28} />
-                        ) : (
-                          <Play className="text-white ml-1" size={28} />
-                        )}
-                      </button>
+                      
+                      {/* Playing Indicator */}
+                      {isCurrentlyPlaying && (
+                        <div className="absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 bg-cyan-500 rounded-full">
+                          <Radio size={10} className="text-white animate-spin" style={{ animationDuration: '3s' }} />
+                        </div>
+                      )}
                     </div>
-
-                    {/* Always Visible Info */}
-                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
-                      <p className="text-xs font-bold text-white truncate">
+                    
+                    {/* Track Info */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <h3 className="text-lg font-bold text-white truncate mb-1">
                         {media.title || 'Untitled Track'}
-                      </p>
+                      </h3>
                       <Link 
                         href={`/u/${media.users?.username || media.username || 'unknown'}`}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
+                        className="text-sm text-cyan-400 hover:text-cyan-300 font-semibold transition-colors truncate"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         @{formatUsername(media.users?.username || media.username)}
                       </Link>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Play size={12} />
+                          {media.plays || 0} plays
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
