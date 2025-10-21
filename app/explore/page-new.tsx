@@ -193,108 +193,47 @@ export default function ExplorePage() {
               </div>
             </div>
 
-            {/* SECTION 3: LIST VIEW - Spotify/Apple Music Style */}
+            {/* SECTION 3: GRID VIEW - 5 Columns with Song Title and Artist Name */}
             <div className="px-6 py-6">
               <h2 className="text-2xl font-bold mb-4">🎵 All Tracks</h2>
-              
-              {/* Desktop: 3 Column List View */}
-              <div className="hidden md:grid md:grid-cols-3 gap-x-6 gap-y-1">
-                {combinedMedia.map((media, index) => {
-                  const isCurrentlyPlaying = playingId === media.id
-                  
-                  return (
-                    <div 
-                      key={media.id} 
-                      className={`group flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${
-                        isCurrentlyPlaying 
-                          ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
-                          : 'hover:bg-white/5'
-                      }`}
-                      onClick={() => handlePlay(media)}
-                    >
-                      {/* Thumbnail */}
-                      <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden">
-                        <img 
-                          src={media.image_url} 
-                          alt={media.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                            {isCurrentlyPlaying && isPlaying ? (
-                              <Pause className="text-black" size={12} />
-                            ) : (
-                              <Play className="text-black ml-0.5" size={12} />
-                            )}
-                          </div>
-                        </div>
-                        {isCurrentlyPlaying && isPlaying && (
-                          <div className="absolute top-1 right-1 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                        )}
-                      </div>
-                      
-                      {/* Track Info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate text-sm">
-                          {media.title}
-                        </h3>
-                        <Link 
-                          href={`/profile/${media.user_id}`}
-                          className="text-xs text-gray-400 hover:text-cyan-400 transition-colors truncate block"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {formatUsername(media.users?.username || media.username)}
-                        </Link>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Mobile: Single Column List View */}
-              <div className="md:hidden space-y-1">
+              <div className="grid grid-cols-5 gap-4">
                 {combinedMedia.map((media) => {
                   const isCurrentlyPlaying = playingId === media.id
                   
                   return (
                     <div 
                       key={media.id} 
-                      className={`group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                        isCurrentlyPlaying 
-                          ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
-                          : 'hover:bg-white/5'
+                      className={`group cursor-pointer rounded-lg overflow-hidden transition-all ${
+                        isCurrentlyPlaying ? 'ring-2 ring-cyan-400 scale-105' : 'hover:scale-105'
                       }`}
                       onClick={() => handlePlay(media)}
                     >
-                      {/* Thumbnail */}
-                      <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
+                      <div className="relative aspect-square mb-2">
                         <img 
                           src={media.image_url} 
                           alt={media.title}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
                             {isCurrentlyPlaying && isPlaying ? (
-                              <Pause className="text-black" size={14} />
+                              <Pause className="text-black" size={20} />
                             ) : (
-                              <Play className="text-black ml-0.5" size={14} />
+                              <Play className="text-black ml-1" size={20} />
                             )}
                           </div>
                         </div>
                         {isCurrentlyPlaying && isPlaying && (
-                          <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse"></div>
+                          <div className="absolute top-2 right-2 w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
                         )}
                       </div>
-                      
-                      {/* Track Info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate">
+                      <div className="px-2 pb-2">
+                        <h3 className="font-bold text-white truncate text-sm mb-0.5">
                           {media.title}
                         </h3>
                         <Link 
                           href={`/profile/${media.user_id}`}
-                          className="text-sm text-gray-400 hover:text-cyan-400 transition-colors truncate block"
+                          className="text-xs text-gray-400 hover:text-cyan-400 transition-colors truncate block"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {formatUsername(media.users?.username || media.username)}
