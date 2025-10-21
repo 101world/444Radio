@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2 } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import FloatingMenu from '../components/FloatingMenu'
@@ -62,6 +62,7 @@ function CreatePageContent() {
   const [showGenreModal, setShowGenreModal] = useState(false)
   const [showLyricsModal, setShowLyricsModal] = useState(false)
   const [showBpmModal, setShowBpmModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
 
   // Close all modals
   const closeAllModals = () => {
@@ -627,292 +628,266 @@ function CreatePageContent() {
         </div>
       </div>
 
-      {/* Fixed Bottom Input Area - Rectangular Design with Glow */}
-      <div className="fixed bottom-0 left-0 right-0 p-6 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Rectangular Container with Glow Effect */}
+      {/* Fixed Bottom Unified Composer */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6">
+        <div className="max-w-5xl mx-auto">
           <div className="group relative">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-2xl blur-lg opacity-30 group-hover:opacity-40 transition duration-300"></div>
-            <div className="relative bg-black/60 backdrop-blur-xl border border-cyan-500/20 rounded-2xl shadow-2xl">
-              {/* Type Selection Pills + Release Button */}
-              <div className="flex gap-2 px-5 pt-4 pb-3 items-center justify-between border-b border-white/10">
+            {/* Glow Effect */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-blue-500 rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition duration-300"></div>
+            
+            {/* Main Composer Container */}
+            <div className="relative bg-black/70 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+              
+              {/* Unified Bottom Bar */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                
+                {/* Left: Type Buttons */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setSelectedType('music')}
-                    className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                    className={`p-2.5 rounded-xl transition-all ${
                       selectedType === 'music'
-                        ? 'bg-white text-black'
-                        : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
+                        ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/50'
+                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/5'
                     }`}
+                    title="Music"
                   >
-                    <Music size={14} className="inline mr-1.5" />
-                    Music
+                    <Music size={18} />
                   </button>
                   <button
                     onClick={() => setSelectedType('image')}
-                    className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                    className={`p-2.5 rounded-xl transition-all ${
                       selectedType === 'image'
-                        ? 'bg-white text-black'
-                        : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white border border-white/10'
+                        ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/50'
+                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/5'
                     }`}
+                    title="Cover Art"
                   >
-                    <ImageIcon size={14} className="inline mr-1.5" />
-                    Cover Art
+                    <ImageIcon size={18} />
                   </button>
                   <button
                     disabled
-                    className="px-4 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-600 border border-white/10 cursor-not-allowed"
+                    className="p-2.5 rounded-xl bg-white/5 text-gray-600 border border-white/5 cursor-not-allowed opacity-50"
+                    title="Video (Coming Soon)"
                   >
-                    <Video size={14} className="inline mr-1.5" />
-                    Video
+                    <Video size={18} />
                   </button>
                 </div>
-                
-                {/* Release Button on the right */}
-                <button
-                  onClick={() => setShowCombineModal(true)}
-                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-600 to-cyan-400 text-white hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg"
-                >
-                  <Layers size={14} className="inline mr-1.5" />
-                  Release
-                </button>
-              </div>
 
-              {/* Integrated Input Area - Sleek Design */}
-              <div className="px-5 py-4 space-y-4">
-                {/* Main Prompt */}
-                <div className="relative flex gap-3 items-center">
-                  <Music size={18} className="text-cyan-400 flex-shrink-0" />
-                  <textarea
+                {/* Center: Text Input */}
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleGenerate()}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleGenerate()
+                      }
+                    }}
                     placeholder={
                       selectedType === 'music'
-                        ? '// Describe your track...'
+                        ? 'Describe your track...'
                         : selectedType === 'image'
-                        ? '// Describe your cover art...'
-                        : '// Coming soon...'
+                        ? 'Describe your cover art...'
+                        : 'Coming soon...'
                     }
                     disabled={isGenerating || selectedType === 'video'}
-                    className="flex-1 px-0 py-0 bg-transparent border-none text-white text-sm placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors resize-none"
-                    rows={1}
-                    style={{ fontFamily: "'Courier New', monospace" }}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                   />
                 </div>
 
-                {/* Parameter Options + Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                  {/* Left: Parameter Icons */}
-                  <div className="flex items-center gap-2">
-                    {/* Title */}
-                    <button
-                      onClick={() => showTitleModal ? closeAllModals() : toggleModal('title')}
-                      className={`p-2 rounded-lg transition-all ${
-                        showTitleModal ? 'bg-cyan-500 text-white' : customTitle ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                      }`}
-                      title="Add Title"
-                    >
-                      <Type size={16} />
-                    </button>
+                {/* Right: Settings + Credits + Create Button */}
+                <div className="flex items-center gap-2">
+                  {/* Settings Button */}
+                  <button
+                    onClick={() => setShowSettingsModal(true)}
+                    className={`p-2.5 rounded-xl transition-all ${
+                      customTitle || genre || customLyrics || bpm
+                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/5'
+                    }`}
+                    title="Advanced Settings"
+                  >
+                    <Settings size={18} />
+                  </button>
 
-                    {/* Genre */}
-                    <button
-                      onClick={() => showGenreModal ? closeAllModals() : toggleModal('genre')}
-                      className={`p-2 rounded-lg transition-all ${
-                        showGenreModal ? 'bg-cyan-500 text-white' : genre ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                      }`}
-                      title="Add Genre"
-                    >
-                      <Tag size={16} />
-                    </button>
+                  {/* Credits Display */}
+                  <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-xl">
+                    <Zap size={14} className="text-cyan-400" />
+                    <span className="text-xs text-white font-medium">
+                      {isLoadingCredits ? '...' : userCredits}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : ''}
+                    </span>
+                  </div>
 
-                    {/* Lyrics */}
-                    <button
-                      onClick={() => showLyricsModal ? closeAllModals() : toggleModal('lyrics')}
-                      className={`p-2 rounded-lg transition-all ${
-                        showLyricsModal ? 'bg-cyan-500 text-white' : customLyrics ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                      }`}
-                      title="Add Lyrics"
-                    >
-                      <FileText size={16} />
-                    </button>
-
-                    {/* BPM */}
-                    <button
-                      onClick={() => showBpmModal ? closeAllModals() : toggleModal('bpm')}
-                      className={`p-2 rounded-lg transition-all ${
-                        showBpmModal ? 'bg-cyan-500 text-white' : bpm ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                      }`}
-                      title="Set BPM (Tempo)"
-                    >
-                      <Music2 size={16} />
-                    </button>
-
-                    {/* Auto-Generate Cover Art Toggle (for music) */}
-                    {selectedType === 'music' && (
-                      <button
-                        onClick={() => setGenerateCoverArt(!generateCoverArt)}
-                        disabled={isGenerating}
-                        className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
-                          generateCoverArt ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                        }`}
-                        title={generateCoverArt ? "Auto-generate cover art enabled" : "Auto-generate cover art disabled"}
-                      >
-                        <ImageIcon size={16} />
-                      </button>
+                  {/* Create Button */}
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating || !input.trim() || selectedType === 'video'}
+                    className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-semibold shadow-lg shadow-cyan-500/30 text-white"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} />
+                        <span className="hidden sm:inline">Creating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        <span className="hidden sm:inline">Create</span>
+                      </>
                     )}
-                  </div>
-
-                  {/* Right: Credits + Send Button */}
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-white">
-                        {isLoadingCredits ? '...' : `${userCredits} credits`}
-                      </span>
-                      <span className="text-xs text-gray-500">•</span>
-                      <span className="text-xs text-gray-500">
-                        {selectedType === 'music' ? '-2' : selectedType === 'image' ? '-1' : 'N/A'}
-                      </span>
-                    </div>
-                    <button
-                      onClick={handleGenerate}
-                      disabled={isGenerating || !input.trim() || selectedType === 'video'}
-                      className="px-5 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium shadow-lg shadow-cyan-500/30"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="animate-spin text-white" size={16} />
-                          <span className="text-white">Creating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send size={16} className="text-white" />
-                          <span className="text-white">Create</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  </button>
                 </div>
 
-                {/* Quick Popover Inputs */}
-                {showTitleModal && (
-                  <div className="animate-fade-in relative">
-                    <input
-                      type="text"
-                      value={customTitle}
-                      onChange={(e) => setCustomTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') closeAllModals()
-                        if (e.key === 'Enter') closeAllModals()
-                      }}
-                      onBlur={() => setTimeout(() => setShowTitleModal(false), 150)}
-                      placeholder="Enter title..."
-                      className="w-full px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                      autoFocus
-                    />
-                    <span className="absolute right-3 top-2.5 text-xs text-gray-600 hidden md:inline">Press Enter or Esc</span>
-                  </div>
-                )}
-
-                {showGenreModal && (
-                  <div className="animate-fade-in relative">
-                    <input
-                      type="text"
-                      value={genre}
-                      onChange={(e) => setGenre(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') closeAllModals()
-                        if (e.key === 'Enter') closeAllModals()
-                      }}
-                      onBlur={() => setTimeout(() => setShowGenreModal(false), 150)}
-                      placeholder="Enter genre (e.g., Hip-hop, Jazz)..."
-                      className="w-full px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                      autoFocus
-                    />
-                    <span className="absolute right-3 top-2.5 text-xs text-gray-600 hidden md:inline">Press Enter or Esc</span>
-                  </div>
-                )}
-
-                {showLyricsModal && (
-                  <div className="animate-fade-in relative">
-                    <div className="flex gap-2 items-start">
-                      <textarea
-                        value={customLyrics}
-                        onChange={(e) => setCustomLyrics(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape') closeAllModals()
-                        }}
-                        onBlur={(e) => {
-                          // Don't close if clicking the generate button
-                          const relatedTarget = e.relatedTarget as HTMLElement
-                          if (!relatedTarget?.classList.contains('generate-lyrics-btn')) {
-                            setTimeout(() => setShowLyricsModal(false), 150)
-                          }
-                        }}
-                        placeholder="Enter custom lyrics..."
-                        className="flex-1 px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
-                        rows={3}
-                        autoFocus
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Random lyrics samples
-                          const lyricsTemplates = [
-                            "Walking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day",
-                            "Lost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
-                            "Staring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow",
-                            "Dancing in the pouring rain\nFeelings that I can't contain\nBreaking free from every chain\nNever going back again",
-                            "Echoes of a distant time\nMemories that won't fade away\nYour voice still sounds in rhyme\nWishing you were here to stay",
-                            "Rising with the morning sun\nNew adventures to be found\nA journey that has just begun\nMy feet barely touch the ground",
-                            "Shadows dancing on the wall\nWhispers in the midnight air\nWaiting for your late night call\nWondering if you even care",
-                            "Electric feelings running through\nColors bursting in my mind\nEverything I do is new\nLeaving the past behind"
-                          ]
-                          const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
-                          setCustomLyrics(randomLyrics)
-                        }}
-                        className="generate-lyrics-btn flex-shrink-0 p-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 rounded-lg transition-all duration-200 active:scale-95 group"
-                        title="Generate random lyrics"
-                      >
-                        <Sparkles size={16} className="text-white group-hover:rotate-12 transition-transform" />
-                      </button>
-                    </div>
-                    <span className="absolute right-3 top-2.5 text-xs text-gray-600 hidden md:inline pointer-events-none">Press Esc to close</span>
-                  </div>
-                )}
-
-                {showBpmModal && (
-                  <div className="animate-fade-in relative">
-                    <input
-                      type="number"
-                      value={bpm}
-                      onChange={(e) => {
-                        const value = e.target.value
-                        // Allow empty or valid numbers
-                        if (value === '' || (!isNaN(parseInt(value)) && parseInt(value) >= 0 && parseInt(value) <= 300)) {
-                          setBpm(value)
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') closeAllModals()
-                        if (e.key === 'Enter') closeAllModals()
-                      }}
-                      onBlur={() => setTimeout(() => setShowBpmModal(false), 150)}
-                      placeholder="Enter BPM (e.g., 120)..."
-                      min="60"
-                      max="200"
-                      className="w-full px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                      autoFocus
-                    />
-                    <span className="absolute right-3 top-2.5 text-xs text-gray-600 hidden md:inline">60-200 • Enter or Esc</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Settings Modal - 1:1 Aspect Ratio with Small Font */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowSettingsModal(false)}
+          />
+          
+          {/* Modal Container - Square 1:1 */}
+          <div className="relative w-full max-w-md aspect-square bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Settings size={18} className="text-cyan-400" />
+                Advanced Settings
+              </h3>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+              >
+                <X size={16} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              
+              {/* Title */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Title</label>
+                <input
+                  type="text"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder="Enter song title..."
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                />
+              </div>
+
+              {/* Genre */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Genre</label>
+                <input
+                  type="text"
+                  value={genre}
+                  onChange={(e) => setGenre(e.target.value)}
+                  placeholder="e.g., Hip-hop, Jazz, Rock"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                />
+              </div>
+
+              {/* BPM */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">BPM (Tempo)</label>
+                <input
+                  type="number"
+                  value={bpm}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || (!isNaN(parseInt(value)) && parseInt(value) >= 0 && parseInt(value) <= 300)) {
+                      setBpm(value)
+                    }
+                  }}
+                  placeholder="e.g., 120"
+                  min="60"
+                  max="200"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                />
+                <p className="text-xs text-gray-500">Typical range: 60-200 BPM</p>
+              </div>
+
+              {/* Lyrics */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Lyrics</label>
+                  <button
+                    onClick={() => {
+                      const lyricsTemplates = [
+                        "Walking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day",
+                        "Lost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
+                        "Staring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow"
+                      ]
+                      const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
+                      setCustomLyrics(randomLyrics)
+                    }}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
+                  >
+                    <Sparkles size={12} />
+                    Generate
+                  </button>
+                </div>
+                <textarea
+                  value={customLyrics}
+                  onChange={(e) => setCustomLyrics(e.target.value)}
+                  placeholder="Enter custom lyrics..."
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
+                  rows={6}
+                />
+                <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
+              </div>
+
+              {/* Auto-Generate Cover Art */}
+              {selectedType === 'music' && (
+                <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-white">Auto-Generate Cover Art</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Create cover art with your music</p>
+                  </div>
+                  <button
+                    onClick={() => setGenerateCoverArt(!generateCoverArt)}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                      generateCoverArt ? 'bg-cyan-500' : 'bg-white/20'
+                    }`}
+                  >
+                    <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      generateCoverArt ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+              )}
+
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-white/10">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30"
+              >
+                Done
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Music Generation Modal */}
       <MusicGenerationModal
