@@ -165,13 +165,16 @@ export default function ExplorePage() {
             <div className="relative h-64 overflow-hidden">
               <div className="absolute inset-0">
                 <video 
-                  src="/1_1_thm2_rxl1.mp4"
                   autoPlay
                   loop
                   muted
                   playsInline
                   className="w-full h-full object-cover"
-                />
+                >
+                  <source src="/1_1_thm2_rxl1.webm" type="video/webm" />
+                  {/* Fallback for older browsers - you can add MP4 here if needed */}
+                  Your browser does not support the video tag.
+                </video>
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
               </div>
               <div className="relative h-full flex items-end p-8">
