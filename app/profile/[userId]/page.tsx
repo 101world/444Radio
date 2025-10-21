@@ -123,63 +123,63 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Profile Header Section */}
-      <div className="relative z-10 pt-24 px-4 md:px-6 pb-6">
+      {/* Profile Header Section - Mobile Optimized at Bottom */}
+      <div className="relative z-10 pt-20 md:pt-24 px-3 md:px-6 pb-4 md:pb-6">
         <div className="max-w-7xl mx-auto">
-          {/* Profile Info Card */}
-          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-            <div className="flex flex-col md:flex-row items-start md:items-start gap-6">
-              {/* Profile Avatar & Info */}
-              <div className="flex flex-col items-center md:items-start gap-4">
+          {/* Profile Info Card - Compact Mobile Design */}
+          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl md:rounded-3xl p-4 md:p-8 shadow-2xl">
+            <div className="flex flex-col md:flex-row items-start md:items-start gap-4 md:gap-6">
+              {/* Profile Avatar & Info - Small on Mobile */}
+              <div className="flex flex-col md:flex-col items-center md:items-start gap-3 md:gap-4">
                 <div className="relative">
                   {profile?.avatar || currentUser?.imageUrl ? (
                     <img 
                       src={profile?.avatar || currentUser?.imageUrl} 
                       alt="Profile"
-                      className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-cyan-500 shadow-2xl shadow-cyan-500/50"
+                      className="w-20 h-20 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full object-cover border-2 md:border-4 border-cyan-500 shadow-xl md:shadow-2xl shadow-cyan-500/50"
                     />
                   ) : (
-                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-400 flex items-center justify-center text-5xl md:text-6xl font-black text-white shadow-2xl shadow-cyan-500/50">
+                    <div className="w-20 h-20 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-400 flex items-center justify-center text-3xl md:text-5xl lg:text-6xl font-black text-white shadow-xl md:shadow-2xl shadow-cyan-500/50">
                       {profile?.username?.[0]?.toUpperCase() || currentUser?.firstName?.[0]?.toUpperCase() || '?'}
                     </div>
                   )}
                   {isOwnProfile && (
-                    <button className="absolute bottom-0 right-0 p-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full hover:scale-110 transition-transform shadow-lg">
-                      <Edit2 size={18} className="text-white" />
+                    <button className="absolute bottom-0 right-0 p-2 md:p-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-full hover:scale-110 transition-transform shadow-lg">
+                      <Edit2 size={14} className="text-white md:w-[18px] md:h-[18px]" />
                     </button>
                   )}
                 </div>
               </div>
               
-              {/* Profile Details */}
+              {/* Profile Details - Compact */}
               <div className="flex-1 w-full">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <h1 className="text-3xl md:text-5xl font-black text-white mb-2">
+                <div className="flex flex-col md:flex-row items-start md:items-start justify-between gap-3 md:gap-4 mb-3 md:mb-4">
+                  <div className="w-full md:w-auto">
+                    <h1 className="text-xl md:text-3xl lg:text-5xl font-black text-white mb-1 md:mb-2">
                       @{profile?.username && !profile.username.startsWith('user_') 
                         ? profile.username 
                         : (currentUser?.username || currentUser?.firstName || currentUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'user')}
-                      <sup className="text-lg md:text-2xl font-bold text-cyan-400 ml-1">
+                      <sup className="text-sm md:text-lg lg:text-2xl font-bold text-cyan-400 ml-1">
                         {profile?.followerCount || 0}
                       </sup>
                     </h1>
-                    <p className="text-lg md:text-xl text-cyan-400 font-semibold mb-3 italic">
+                    <p className="text-xs md:text-lg lg:text-xl text-cyan-400 font-semibold mb-2 md:mb-3 italic">
                       &quot;{profile?.tagline || "Creating the future of music"}&quot;
                     </p>
-                    <p className="text-gray-400 text-sm md:text-base mb-4 max-w-2xl">
+                    <p className="text-gray-400 text-xs md:text-sm lg:text-base mb-3 md:mb-4 max-w-2xl line-clamp-2 md:line-clamp-none">
                       {profile?.bio || "Music creator and innovator on 444 Radio. Exploring new sounds and pushing boundaries."}
                     </p>
                   </div>
                   
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
+                  {/* Action Buttons - Compact on Mobile */}
+                  <div className="flex gap-2 w-full md:w-auto">
                     {!isOwnProfile ? (
                       <button 
                         onClick={() => setIsFollowing(!isFollowing)}
-                        className={`px-6 py-3 ${isFollowing ? 'bg-white/10 hover:bg-white/20' : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500'} rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-sm`}
+                        className={`flex-1 md:flex-initial px-4 md:px-6 py-2 md:py-3 ${isFollowing ? 'bg-white/10 hover:bg-white/20' : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500'} rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-xs md:text-sm`}
                       >
-                        <div className="flex items-center gap-2">
-                          <UserPlus size={18} />
+                        <div className="flex items-center justify-center gap-2">
+                          <UserPlus size={16} className="md:w-[18px] md:h-[18px]" />
                           <span>{isFollowing ? 'Following' : 'Follow'}</span>
                         </div>
                       </button>
@@ -187,17 +187,18 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       <>
                         <button 
                           onClick={() => setShowStationsModal(true)}
-                          className="px-4 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-sm"
+                          className="flex-1 md:flex-initial px-3 md:px-4 py-2 md:py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-xs md:text-sm"
                           title="My Stations"
                         >
-                          <div className="flex items-center gap-2">
-                            <Radio size={18} />
-                            <span>STATIONS</span>
+                          <div className="flex items-center justify-center gap-1 md:gap-2">
+                            <Radio size={16} className="md:w-[18px] md:h-[18px]" />
+                            <span className="hidden md:inline">STATIONS</span>
+                            <span className="md:hidden">STA</span>
                           </div>
                         </button>
                         <button 
                           onClick={() => setShowUploadModal(true)}
-                          className="px-4 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-sm"
+                          className="flex-1 md:flex-initial px-3 md:px-4 py-2 md:py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl transition-all shadow-lg hover:scale-105 font-bold text-xs md:text-sm"
                           title="Upload Content"
                         >
                           <div className="flex items-center gap-2">
