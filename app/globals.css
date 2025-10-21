@@ -359,3 +359,17 @@ input[placeholder*="Video"]:focus {
   scrollbar-color: #06b6d4 rgba(0, 0, 0, 0.3);
 }
 
+/* Vinyl Record Spin Animation */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+

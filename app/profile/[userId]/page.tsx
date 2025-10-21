@@ -583,108 +583,94 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         })}
                       </div>
 
-                      {/* RIGHT SIDE: Carousel + Recent Tracks Grid */}
-                      <div className="space-y-6 sticky top-6 self-start">
-                        {/* 1:1 Carousel */}
-                        <div className="relative aspect-square overflow-hidden group rounded-2xl shadow-2xl border border-cyan-500/20">
-                          {/* Carousel Images */}
-                          <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
-                            <div className="flex h-full">
-                              {profile.combinedMedia.slice(0, 10).map((media, index) => (
-                                <div key={media.id} className="relative w-full h-full flex-shrink-0">
-                                  <img 
-                                    src={media.image_url} 
-                                    alt={media.title || 'Cover art'}
-                                    className="w-full h-full object-cover"
-                                  />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                                  {/* Track Title Overlay */}
-                                  <div className="absolute bottom-0 left-0 right-0 p-6">
-                                    <h3 className="text-xl font-bold text-white truncate">{media.title}</h3>
-                                    <p className="text-sm text-cyan-400 mt-1">@{profile.username}</p>
-                                  </div>
-                                </div>
-                              ))}
+                      {/* RIGHT SIDE: Vinyl-Style Digital Player */}
+                      <div className="sticky top-6 self-start">
+                        <div className="relative aspect-square p-8 bg-gradient-to-br from-black via-gray-900 to-black rounded-3xl border border-cyan-500/20 shadow-2xl">
+                          {/* Vinyl Record Background Effect */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-5">
+                            <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-800 to-black"></div>
+                          </div>
+
+                          {/* Album Artwork - Vinyl Style */}
+                          <div className="relative w-full h-full flex items-center justify-center">
+                            {/* Outer Vinyl Disc */}
+                            <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 via-black to-gray-900 shadow-2xl transition-transform duration-700 ${
+                              isPlaying ? 'animate-spin-slow' : ''
+                            }`} style={{ animationDuration: '3s' }}>
+                              {/* Vinyl Grooves Effect */}
+                              <div className="absolute inset-0 rounded-full" style={{
+                                background: 'repeating-radial-gradient(circle at center, transparent 0px, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)'
+                              }}></div>
+                              {/* Center Label */}
+                              <div className="absolute inset-[15%] rounded-full bg-gradient-to-br from-cyan-950 to-cyan-900 border-4 border-cyan-500/30 shadow-inner"></div>
+                            </div>
+
+                            {/* Album Cover - Centered on Vinyl */}
+                            <div className={`relative w-[70%] h-[70%] rounded-full overflow-hidden shadow-2xl border-4 border-black/50 transition-transform duration-700 ${
+                              isPlaying ? 'animate-spin-slow' : ''
+                            }`} style={{ animationDuration: '3s' }}>
+                              <img 
+                                src={currentTrack?.image_url || profile.combinedMedia[0]?.image_url || '/radio-logo.svg'} 
+                                alt={currentTrack?.title || 'Album'}
+                                className="w-full h-full object-cover"
+                              />
+                              {/* Vinyl Shine Effect */}
+                              <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/40"></div>
+                            </div>
+
+                            {/* Center Spindle */}
+                            <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-gray-800 to-black border-4 border-gray-700 shadow-2xl z-10">
+                              <div className="absolute inset-2 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-700 shadow-inner"></div>
                             </div>
                           </div>
 
-                          {/* Carousel Navigation - Left */}
-                          {carouselIndex > 0 && (
-                            <button
-                              onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
-                              className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                            >
-                              <ChevronLeft size={24} className="text-white" />
-                            </button>
-                          )}
-
-                          {/* Carousel Navigation - Right */}
-                          {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
-                            <button
-                              onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
-                              className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                            >
-                              <ChevronRight size={24} className="text-white" />
-                            </button>
-                          )}
-
-                          {/* Carousel Indicators */}
-                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                            {profile.combinedMedia.slice(0, 10).map((_, index) => (
+                          {/* Track Info Overlay */}
+                          <div className="absolute bottom-8 left-8 right-8 bg-black/80 backdrop-blur-xl rounded-2xl p-6 border border-cyan-500/30">
+                            <div className="flex items-center gap-4">
+                              {/* Play/Pause Button */}
                               <button
-                                key={index}
-                                onClick={() => setCarouselIndex(index)}
-                                className={`h-2 rounded-full transition-all ${
-                                  index === carouselIndex 
-                                    ? 'bg-cyan-400 w-8' 
-                                    : 'bg-white/30 hover:bg-white/50 w-2'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
+                                onClick={() => {
+                                  if (currentTrack) {
+                                    handlePlay(currentTrack)
+                                  } else if (profile.combinedMedia[0]) {
+                                    handlePlay(profile.combinedMedia[0])
+                                  }
+                                }}
+                                className="w-14 h-14 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/50 hover:from-cyan-500 hover:to-cyan-300 transition-all hover:scale-110 flex-shrink-0"
+                              >
+                                {isPlaying ? (
+                                  <Pause className="text-black" size={24} />
+                                ) : (
+                                  <Play className="text-black ml-1" size={24} />
+                                )}
+                              </button>
 
-                        {/* Recent Tracks Grid - 1:1 Thumbnails */}
-                        <div>
-                          <h3 className="text-lg font-bold mb-3 text-gray-300">🎵 Recent Tracks</h3>
-                          <div className="grid grid-cols-3 gap-3">
-                            {profile.combinedMedia.slice(0, 9).map((media) => {
-                              const isCurrentlyPlaying = playingId === media.id
-                              const hasAudio = !!media.audio_url
-                              
-                              return (
-                                <div 
-                                  key={media.id} 
-                                  className={`group cursor-pointer rounded-lg overflow-hidden transition-all aspect-square ${
-                                    isCurrentlyPlaying ? 'ring-2 ring-cyan-400 scale-105' : 'hover:scale-105'
-                                  } ${!hasAudio ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                  onClick={() => hasAudio && handlePlay(media)}
-                                >
-                                  <div className="relative w-full h-full">
-                                    <img 
-                                      src={media.image_url} 
-                                      alt={media.title}
-                                      className="w-full h-full object-cover"
-                                    />
-                                    {hasAudio && (
-                                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                                          {isCurrentlyPlaying && isPlaying ? (
-                                            <Pause className="text-black" size={16} />
-                                          ) : (
-                                            <Play className="text-black ml-0.5" size={16} />
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                    {isCurrentlyPlaying && isPlaying && (
-                                      <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
-                                    )}
+                              {/* Track Details */}
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-white font-bold truncate text-lg">
+                                  {currentTrack?.title || profile.combinedMedia[0]?.title || 'No track selected'}
+                                </h3>
+                                <p className="text-cyan-400 text-sm truncate mt-1">
+                                  @{profile.username}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <div className="text-xs text-gray-400 font-mono">
+                                    {formatDuration(currentTrack?.duration || profile.combinedMedia[0]?.duration || 180)}
                                   </div>
+                                  {isPlaying && (
+                                    <div className="flex gap-1">
+                                      <div className="w-1 h-3 bg-cyan-400 animate-pulse"></div>
+                                      <div className="w-1 h-4 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                                      <div className="w-1 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                    </div>
+                                  )}
                                 </div>
-                              )
-                            })}
+                              </div>
+                            </div>
                           </div>
+
+                          {/* Vinyl Player Base Shadow */}
+                          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] h-8 bg-gradient-to-r from-transparent via-black/50 to-transparent blur-2xl"></div>
                         </div>
                       </div>
                     </div>
