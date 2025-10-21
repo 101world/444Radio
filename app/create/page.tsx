@@ -47,6 +47,8 @@ function CreatePageContent() {
   const [showMusicModal, setShowMusicModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [userCredits, setUserCredits] = useState<number | null>(null)
+  const [isLoadingCredits, setIsLoadingCredits] = useState(true)
   
   // Advanced parameters
   const [customLyrics, setCustomLyrics] = useState('')
@@ -88,6 +90,23 @@ function CreatePageContent() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Fetch user credits on mount
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const res = await fetch('/api/credits')
+        const data = await res.json()
+        setUserCredits(data.credits || 0)
+      } catch (error) {
+        console.error('Failed to fetch credits:', error)
+        setUserCredits(0)
+      } finally {
+        setIsLoadingCredits(false)
+      }
+    }
+    fetchCredits()
+  }, [])
 
   // Read URL parameters and display combined message in chat
   useEffect(() => {
@@ -146,6 +165,13 @@ function CreatePageContent() {
   const handleGenerate = async () => {
     if (!input.trim() || isGenerating) return
 
+    // Check credits before generation
+    const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0
+    if (userCredits !== null && userCredits < creditsNeeded) {
+      alert(`⚡ Insufficient credits! You need ${creditsNeeded} credits but only have ${userCredits}. Visit the pricing page to get more.`)
+      return
+    }
+
     // Close any open parameter modals
     closeAllModals()
 
@@ -178,6 +204,11 @@ function CreatePageContent() {
         if (bpm) fullPrompt += ` [${bpm} BPM]`
         
         const result = await generateMusic(fullPrompt, customTitle, customLyrics)
+
+        // Update credits if generation was successful
+        if (!result.error && result.creditsRemaining !== undefined) {
+          setUserCredits(result.creditsRemaining)
+        }
 
         // Replace generating message with result
         setMessages(prev => prev.map(msg => 
@@ -244,6 +275,11 @@ function CreatePageContent() {
 
       try {
         const result = await generateImage(input)
+
+        // Update credits if generation was successful
+        if (!result.error && result.creditsRemaining !== undefined) {
+          setUserCredits(result.creditsRemaining)
+        }
 
         // Replace generating message with result
         setMessages(prev => prev.map(msg => 
@@ -377,7 +413,8 @@ function CreatePageContent() {
         audioUrl: data.audioUrl,
         title: data.title || title || prompt.substring(0, 50),
         prompt: prompt,
-        lyrics: data.lyrics || lyrics
+        lyrics: data.lyrics || lyrics,
+        creditsRemaining: data.creditsRemaining
       }
     } else {
       return { error: data.error || 'Failed to generate music' }
@@ -397,7 +434,8 @@ function CreatePageContent() {
       return {
         imageUrl: data.imageUrl,
         title: prompt.substring(0, 50),
-        prompt: prompt
+        prompt: prompt,
+        creditsRemaining: data.creditsRemaining
       }
     } else {
       return { error: data.error || 'Failed to generate image' }
@@ -728,9 +766,15 @@ function CreatePageContent() {
 
                   {/* Right: Credits + Send Button */}
                   <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-500">
-                      {selectedType === 'music' ? '2 credits' : selectedType === 'image' ? '1 credit' : 'N/A'}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-white">
+                        {isLoadingCredits ? '...' : `${userCredits} credits`}
+                      </span>
+                      <span className="text-xs text-gray-500">•</span>
+                      <span className="text-xs text-gray-500">
+                        {selectedType === 'music' ? '-2' : selectedType === 'image' ? '-1' : 'N/A'}
+                      </span>
+                    </div>
                     <button
                       onClick={handleGenerate}
                       disabled={isGenerating || !input.trim() || selectedType === 'video'}
