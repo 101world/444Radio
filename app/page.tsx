@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useRouter } from 'next/navigation'
-import { Music, Sparkles } from 'lucide-react'
+import { Music } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import HolographicBackgroundClient from './components/HolographicBackgroundClient'
 import { useState } from 'react'
@@ -61,13 +61,6 @@ export default function HomePage() {
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 font-light tracking-wide max-w-2xl mx-auto px-4">
               A world where music feels infinite.
             </p>
-            
-            {/* Subtext */}
-            <div className="flex items-center justify-center gap-2 text-cyan-400/80 text-xs sm:text-sm">
-              <Sparkles size={14} className="animate-pulse" />
-              <span className="font-mono tracking-wider">AI-Powered Music Creation</span>
-              <Sparkles size={14} className="animate-pulse" />
-            </div>
           </div>
 
           {/* Single Prompt Input - Mobile Optimized */}
