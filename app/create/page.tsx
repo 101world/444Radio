@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
@@ -688,7 +688,7 @@ function CreatePageContent() {
       </div>
 
       {/* Fixed Bottom Dock - Home Page Style */}
-      <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out supports-[height:100dvh]:bottom-0">
+      <div className="fixed bottom-[72px] md:bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           
           {/* Icon Row Above Prompt Box */}
@@ -1055,6 +1055,47 @@ function CreatePageContent() {
         preselectedMusic={preselectedMusicId}
         preselectedImage={preselectedImageId}
       />
+
+      {/* Mobile Bottom Navigation - App Style */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-cyan-500/20 z-50 pb-safe">
+        <div className="flex items-center justify-around px-2 py-3">
+          {/* Profile */}
+          <Link 
+            href="/profile"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all active:scale-95"
+          >
+            <User size={22} className="text-cyan-400" />
+            <span className="text-xs text-cyan-400/80 font-medium">Profile</span>
+          </Link>
+
+          {/* Explore */}
+          <Link 
+            href="/explore"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all active:scale-95"
+          >
+            <Compass size={22} className="text-cyan-400" />
+            <span className="text-xs text-cyan-400/80 font-medium">Explore</span>
+          </Link>
+
+          {/* Create - Active State */}
+          <Link 
+            href="/create"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border border-cyan-400/50 transition-all active:scale-95"
+          >
+            <PlusCircle size={24} className="text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+            <span className="text-xs text-cyan-300 font-bold">Create</span>
+          </Link>
+
+          {/* Library */}
+          <Link 
+            href="/library"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all active:scale-95"
+          >
+            <Library size={22} className="text-cyan-400" />
+            <span className="text-xs text-cyan-400/80 font-medium">Library</span>
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }
