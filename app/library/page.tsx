@@ -183,51 +183,92 @@ export default function LibraryPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              <div className="space-y-3">
                 {musicItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 cursor-pointer"
+                    className="group relative bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 transition-all duration-300"
                   >
-                    {/* Thumbnail */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 flex items-center justify-center">
-                      <Music size={40} className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
-                    </div>
+                    <div className="flex items-center gap-4 p-4">
+                      {/* Thumbnail */}
+                      <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 rounded-xl flex items-center justify-center border border-cyan-500/30">
+                        <Music size={28} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                      </div>
 
-                    {/* Audio Preview */}
-                    <audio
-                      src={item.audio_url}
-                      className="absolute top-2 left-2 right-2 h-8 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                      controls
-                      style={{ height: '32px' }}
-                    />
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm md:text-base truncate">
+                          {item.title || item.prompt.substring(0, 40)}
+                        </h3>
+                        <p className="text-cyan-400/60 text-xs mt-1">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
 
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3 pb-12">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownload(item.audio_url, `${item.title || 'track'}.mp3`); }}
-                        className="w-full p-3 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
-                      >
-                        <Download size={18} className="text-cyan-400" />
-                        <span className="text-cyan-400 text-sm font-semibold">Download</span>
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete('music', item.id); }}
-                        className="w-full p-3 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2"
-                      >
-                        <Trash2 size={18} className="text-red-400" />
-                        <span className="text-red-400 text-sm font-semibold">Delete</span>
-                      </button>
-                    </div>
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Play/Pause Button */}
+                        <button
+                          onClick={() => {
+                            if (playingId === item.id) {
+                              const audio = document.getElementById(`audio-${item.id}`) as HTMLAudioElement;
+                              audio?.pause();
+                              setPlayingId(null);
+                            } else {
+                              // Pause all other audios
+                              musicItems.forEach(i => {
+                                const audio = document.getElementById(`audio-${i.id}`) as HTMLAudioElement;
+                                if (audio) audio.pause();
+                              });
+                              const audio = document.getElementById(`audio-${item.id}`) as HTMLAudioElement;
+                              audio?.play();
+                              setPlayingId(item.id);
+                            }
+                          }}
+                          className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all shadow-lg shadow-cyan-500/30 active:scale-95"
+                        >
+                          {playingId === item.id ? (
+                            <Pause size={20} className="text-black" />
+                          ) : (
+                            <Play size={20} className="text-black ml-0.5" />
+                          )}
+                        </button>
 
-                    {/* Title */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black via-black/90 to-transparent">
-                      <p className="text-xs text-white truncate font-semibold">
-                        {item.title || item.prompt.substring(0, 30)}
-                      </p>
-                      <p className="text-[10px] text-cyan-400/60 mt-1">
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </p>
+                        {/* Release Button */}
+                        <button
+                          onClick={() => handleSendToLabel(item.id)}
+                          className="hidden md:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 items-center justify-center transition-all active:scale-95"
+                          title="Release to Explore"
+                        >
+                          <Send size={18} className="text-cyan-400" />
+                        </button>
+
+                        {/* Download Button */}
+                        <button
+                          onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
+                          className="hidden md:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 items-center justify-center transition-all active:scale-95"
+                          title="Download"
+                        >
+                          <Download size={18} className="text-cyan-400" />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDelete('music', item.id)}
+                          className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-red-500/10 backdrop-blur-xl border-2 border-red-500/30 hover:border-red-400 hover:bg-red-500/20 flex items-center justify-center transition-all active:scale-95"
+                          title="Delete"
+                        >
+                          <Trash2 size={18} className="text-red-400" />
+                        </button>
+                      </div>
+
+                      {/* Hidden Audio Element */}
+                      <audio
+                        id={`audio-${item.id}`}
+                        src={item.audio_url}
+                        onEnded={() => setPlayingId(null)}
+                        className="hidden"
+                      />
                     </div>
                   </div>
                 ))}
