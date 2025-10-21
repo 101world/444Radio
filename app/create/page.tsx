@@ -539,152 +539,145 @@ function CreatePageContent() {
         </Link>
       </div>
 
-      {/* Chat Area with Holographic Board */}
+      {/* Chat Area - Minimal & Clean */}
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full scrollbar-thin scroll-smooth">
-        {/* Holographic Chat Board */}
-        <div className="min-h-full bg-gradient-to-br from-cyan-500/5 via-transparent to-cyan-400/5 backdrop-blur-sm border border-cyan-500/10 rounded-3xl p-4 md:p-6 shadow-2xl">
-          <div className="space-y-6">
+        <div className="space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div
-                className={`max-w-[80%] rounded-2xl p-4 backdrop-blur-xl ${
-                  message.type === 'user'
-                    ? 'bg-white/10 border border-white/20 text-white'
-                    : message.type === 'assistant'
-                    ? 'bg-white/5 border border-white/10 text-gray-300'
-                    : 'bg-cyan-950/80 border border-cyan-500/50 text-white'
-                }`}
-              >
-                {/* Message Content */}
-                <p className="text-sm mb-2">{message.content}</p>
+              {/* Message Bubble - Single Container */}
+              <div className={`max-w-[85%] ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
+                {/* Text Message */}
+                {message.content && (
+                  <div
+                    className={`rounded-2xl px-4 py-3 backdrop-blur-xl ${
+                      message.type === 'user'
+                        ? 'bg-cyan-500/20 border border-cyan-400/30 text-white'
+                        : 'bg-white/5 border border-white/10 text-gray-300'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                    <p className="text-xs text-gray-500 mt-1">{message.timestamp.toLocaleTimeString()}</p>
+                  </div>
+                )}
 
-                {/* Music Generation Result */}
+                {/* Music Result - Lean Design */}
                 {message.result?.audioUrl && (
-                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10 relative group">
-                    {/* Rocket Icon - Top Right */}
-                    <button
-                      onClick={() => handleOpenRelease(message.id, undefined)}
-                      className="absolute top-3 right-3 p-2 bg-cyan-500/20 hover:bg-cyan-500/40 backdrop-blur-xl border border-cyan-500/30 rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
-                      title="Release to Feed"
-                    >
-                      <Rocket size={16} className="text-cyan-400" />
-                    </button>
-
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex-1 pr-12">
-                        <h4 className="font-bold text-white">{message.result.title}</h4>
-                        <p className="text-xs text-gray-400">{message.result.prompt}</p>
-                      </div>
+                  <div className="backdrop-blur-xl bg-black/40 border border-cyan-500/20 rounded-2xl overflow-hidden group">
+                    {/* Header with Play Button */}
+                    <div className="flex items-center gap-3 p-4 border-b border-white/5">
                       <button
                         onClick={() => handlePlayPause(message.id, message.result!.audioUrl!)}
-                        className="p-3 bg-cyan-500 hover:bg-cyan-600 rounded-full transition-colors"
+                        className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/30 transition-all active:scale-95"
                       >
-                        {playingId === message.id ? <Pause size={20} /> : <Play size={20} />}
+                        {playingId === message.id ? <Pause size={20} className="text-black" /> : <Play size={20} className="text-black ml-0.5" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-white truncate">{message.result.title}</h4>
+                        <p className="text-xs text-gray-400 truncate">{message.result.prompt}</p>
+                      </div>
+                      <button
+                        onClick={() => handleOpenRelease(message.id, undefined)}
+                        className="p-2.5 hover:bg-cyan-500/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                        title="Release"
+                      >
+                        <Rocket size={18} className="text-cyan-400" />
                       </button>
                     </div>
-                    
+
                     {/* Audio Player */}
-                    <audio
-                      src={message.result.audioUrl}
-                      controls
-                      className="w-full"
-                    />
+                    <audio src={message.result.audioUrl} controls className="w-full px-4 py-3" />
 
                     {/* Lyrics */}
                     {message.result.lyrics && (
-                      <details className="mt-3">
-                        <summary className="text-xs text-cyan-400 cursor-pointer hover:text-cyan-300">
-                          View Lyrics
+                      <details className="border-t border-white/5">
+                        <summary className="px-4 py-2 text-xs text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors">
+                          Lyrics
                         </summary>
-                        <pre className="text-xs text-gray-300 mt-2 whitespace-pre-wrap">
+                        <pre className="px-4 pb-3 text-xs text-gray-300 whitespace-pre-wrap">
                           {message.result.lyrics}
                         </pre>
                       </details>
                     )}
 
-                    {/* Actions */}
-                    <div className="flex gap-2 mt-3">
+                    {/* Action Buttons */}
+                    <div className="flex border-t border-white/5">
                       <button
                         onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`)}
-                        className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                        className="flex-1 px-4 py-3 hover:bg-white/5 text-xs text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/5"
                       >
                         <Download size={14} />
                         Download
                       </button>
                       <Link
                         href="/library"
-                        className="flex-1 px-3 py-2 bg-cyan-500/30 hover:bg-cyan-500/50 border border-cyan-500/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                        className="flex-1 px-4 py-3 hover:bg-white/5 text-xs text-cyan-400 flex items-center justify-center gap-2 transition-colors"
                       >
                         <Layers size={14} />
-                        View in Library
+                        Library
                       </Link>
                     </div>
                   </div>
                 )}
 
-                {/* Image Generation Result */}
+                {/* Image Result - Lean Design */}
                 {message.result?.imageUrl && (
-                  <div className="mt-4 bg-white/5 backdrop-blur-xl rounded-xl overflow-hidden border border-white/10 relative group">
-                    {/* Rocket Icon - Top Right over Image */}
-                    <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="backdrop-blur-xl bg-black/40 border border-cyan-500/20 rounded-2xl overflow-hidden group">
+                    {/* Image with Overlay Button */}
+                    <div className="relative">
+                      <img
+                        src={message.result.imageUrl}
+                        alt={message.result.title}
+                        className="w-full aspect-square object-cover"
+                      />
                       <button
                         onClick={() => handleOpenRelease(undefined, message.id)}
-                        className="p-2 bg-cyan-500/20 hover:bg-cyan-500/40 backdrop-blur-xl border border-cyan-500/30 rounded-lg transition-all"
-                        title="Release to Feed"
+                        className="absolute top-3 right-3 p-2.5 bg-black/60 hover:bg-cyan-500/40 backdrop-blur-xl border border-cyan-500/30 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Release"
                       >
-                        <Rocket size={16} className="text-cyan-400" />
+                        <Rocket size={18} className="text-cyan-400" />
                       </button>
                     </div>
 
-                    <img
-                      src={message.result.imageUrl}
-                      alt={message.result.title}
-                      className="w-full aspect-square object-cover"
-                    />
-                    <div className="p-4">
-                      <h4 className="font-bold text-white mb-1">{message.result.title}</h4>
-                      <p className="text-xs text-gray-400 mb-3">{message.result.prompt}</p>
-                      
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleDownload(message.result!.imageUrl!, `${message.result!.title}.webp`)}
-                          className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
-                        >
-                          <Download size={14} />
-                          Download
-                        </button>
-                        <Link
-                          href="/library"
-                          className="flex-1 px-3 py-2 bg-cyan-500/30 hover:bg-cyan-500/50 border border-cyan-500/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
-                        >
-                          <Layers size={14} />
-                          View in Library
-                        </Link>
-                      </div>
+                    {/* Info */}
+                    <div className="p-4 border-t border-white/5">
+                      <h4 className="font-semibold text-white mb-1">{message.result.title}</h4>
+                      <p className="text-xs text-gray-400">{message.result.prompt}</p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex border-t border-white/5">
+                      <button
+                        onClick={() => handleDownload(message.result!.imageUrl!, `${message.result!.title}.webp`)}
+                        className="flex-1 px-4 py-3 hover:bg-white/5 text-xs text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/5"
+                      >
+                        <Download size={14} />
+                        Download
+                      </button>
+                      <Link
+                        href="/library"
+                        className="flex-1 px-4 py-3 hover:bg-white/5 text-xs text-cyan-400 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Layers size={14} />
+                        Library
+                      </Link>
                     </div>
                   </div>
                 )}
 
-                {/* Loading Indicator */}
+                {/* Loading */}
                 {message.isGenerating && (
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 px-4 py-3 backdrop-blur-xl bg-cyan-500/10 border border-cyan-400/20 rounded-2xl">
                     <Loader2 className="animate-spin text-cyan-400" size={16} />
-                    <span className="text-xs text-gray-400">Generating...</span>
+                    <span className="text-xs text-cyan-300">Generating...</span>
                   </div>
                 )}
-
-                {/* Timestamp */}
-                <p className="text-xs text-gray-600 mt-2">
-                  {message.timestamp.toLocaleTimeString()}
-                </p>
               </div>
             </div>
           ))}
           <div ref={messagesEndRef} />
-          </div>
         </div>
       </div>
 
