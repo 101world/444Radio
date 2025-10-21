@@ -32,8 +32,16 @@ interface CombinedMedia {
   description?: string
 }
 
+interface Artist {
+  username: string
+  user_id: string
+  avatar: string
+  trackCount: number
+}
+
 export default function ExplorePage() {
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
+  const [artists, setArtists] = useState<Artist[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -52,6 +60,26 @@ export default function ExplorePage() {
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)
+        
+        // Extract unique artists
+        const artistMap = new Map<string, Artist>()
+        data.combinedMedia.forEach((media: CombinedMedia) => {
+          const username = media.users?.username || media.username
+          const userId = media.user_id
+          if (username && userId) {
+            if (artistMap.has(userId)) {
+              artistMap.get(userId)!.trackCount++
+            } else {
+              artistMap.set(userId, {
+                username,
+                user_id: userId,
+                trackCount: 1,
+                avatar: media.image_url
+              })
+            }
+          }
+        })
+        setArtists(Array.from(artistMap.values()))
       }
     } catch (error) {
       console.error('Failed to fetch media:', error)
@@ -193,6 +221,40 @@ export default function ExplorePage() {
               </div>
             </div>
 
+            {/* NEW SECTION: ARTIST PROFILES - Circular Horizontal Scroll */}
+            <div className="py-6 px-6 border-b border-white/5">
+              <h2 className="text-2xl font-bold mb-3">👥 Artists</h2>
+              <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
+                {artists.map((artist) => (
+                  <Link 
+                    key={artist.user_id}
+                    href={`/profile/${artist.user_id}`}
+                    className="flex-shrink-0 group cursor-pointer"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      {/* Circular Avatar */}
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden ring-2 ring-white/10 group-hover:ring-cyan-400 transition-all">
+                        <img 
+                          src={artist.avatar} 
+                          alt={artist.username}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      {/* Artist Name */}
+                      <div className="text-center">
+                        <p className="text-xs font-semibold text-white truncate w-20">
+                          {formatUsername(artist.username)}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                          {artist.trackCount} {artist.trackCount === 1 ? 'track' : 'tracks'}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
             {/* SECTION 3: LIST VIEW - Spotify/Apple Music Style */}
             <div className="px-6 py-6">
               <h2 className="text-2xl font-bold mb-4">🎵 All Tracks</h2>
@@ -235,12 +297,12 @@ export default function ExplorePage() {
                       
                       {/* Track Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate text-sm">
+                        <h3 className="font-semibold text-white truncate text-sm leading-tight">
                           {media.title}
                         </h3>
                         <Link 
                           href={`/profile/${media.user_id}`}
-                          className="text-xs text-gray-400 hover:text-cyan-400 transition-colors truncate block"
+                          className="text-xs text-gray-300 hover:text-cyan-400 transition-colors truncate block leading-tight mt-0.5"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {formatUsername(media.users?.username || media.username)}
@@ -289,12 +351,12 @@ export default function ExplorePage() {
                       
                       {/* Track Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-white truncate">
+                        <h3 className="font-semibold text-white truncate leading-tight">
                           {media.title}
                         </h3>
                         <Link 
                           href={`/profile/${media.user_id}`}
-                          className="text-sm text-gray-400 hover:text-cyan-400 transition-colors truncate block"
+                          className="text-sm text-gray-300 hover:text-cyan-400 transition-colors truncate block leading-tight mt-0.5"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {formatUsername(media.users?.username || media.username)}
@@ -312,28 +374,56 @@ export default function ExplorePage() {
       {/* Floating Unified Search & Player Bar */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full max-w-4xl px-4">
         <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl shadow-cyan-500/20 overflow-hidden">
-          <div className="flex items-center gap-3 p-3">
-            {currentTrack && (
-              <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
+          {currentTrack ? (
+            /* Compact Player Mode */
+            <div className="flex items-center gap-3 p-3">
+              {/* Thumbnail */}
+              <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-lg">
                 <img 
                   src={currentTrack.image_url} 
                   alt={currentTrack.title}
                   className="w-full h-full object-cover"
                 />
                 {isPlaying && (
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                    <Radio size={14} className="text-teal-400 animate-spin" style={{ animationDuration: '3s' }} />
-                  </div>
+                  <div className="absolute top-1 right-1 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
                 )}
               </div>
-            )}
-            
-            {currentTrack ? (
+              
+              {/* Track Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate">{currentTrack.title || 'Untitled Track'}</p>
-                <p className="text-xs text-teal-300 truncate">@{formatUsername(currentTrack.users?.username || currentTrack.username)}</p>
+                <p className="text-sm font-bold text-white truncate">{currentTrack.title}</p>
+                <p className="text-xs text-gray-300 truncate">{formatUsername(currentTrack.users?.username || currentTrack.username)}</p>
               </div>
-            ) : (
+              
+              {/* Player Controls */}
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={handlePrevious}
+                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all"
+                >
+                  <SkipBack size={14} className="text-white" />
+                </button>
+                <button 
+                  onClick={() => handlePlay(currentTrack)}
+                  className="w-10 h-10 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 rounded-lg flex items-center justify-center transition-all shadow-lg shadow-cyan-500/50"
+                >
+                  {isPlaying ? (
+                    <Pause size={16} className="text-white" />
+                  ) : (
+                    <Play size={16} className="text-white ml-0.5" />
+                  )}
+                </button>
+                <button 
+                  onClick={handleNext}
+                  className="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all"
+                >
+                  <SkipForward size={14} className="text-white" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Search Mode */
+            <div className="flex items-center gap-3 p-3">
               <div className="flex-1 relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-teal-400" size={18} />
                 <input
@@ -345,46 +435,14 @@ export default function ExplorePage() {
                   className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 rounded-xl transition-all text-sm"
                 />
               </div>
-            )}
-            
-            <div className="flex items-center gap-2">
-              {currentTrack && (
-                <>
-                  <button 
-                    onClick={handlePrevious}
-                    className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all"
-                  >
-                    <SkipBack size={16} className="text-white" />
-                  </button>
-                  <button 
-                    onClick={() => currentTrack && handlePlay(currentTrack)}
-                    className="w-11 h-11 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 rounded-lg flex items-center justify-center transition-all transform hover:scale-105 shadow-lg shadow-cyan-500/50"
-                  >
-                    {isPlaying ? (
-                      <Pause size={18} className="text-white" />
-                    ) : (
-                      <Play size={18} className="text-white ml-0.5" />
-                    )}
-                  </button>
-                  <button 
-                    onClick={handleNext}
-                    className="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all"
-                  >
-                    <SkipForward size={16} className="text-white" />
-                  </button>
-                </>
-              )}
-              
-              {!currentTrack && (
-                <button 
-                  onClick={() => fetchCombinedMedia()}
-                  className="px-5 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105"
-                >
-                  Search
-                </button>
-              )}
+              <button 
+                onClick={() => fetchCombinedMedia()}
+                className="px-5 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-105"
+              >
+                Search
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
