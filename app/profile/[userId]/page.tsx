@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
@@ -100,7 +100,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isPlaying, setIsPlaying] = useState(false)
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
+  const [isMounted, setIsMounted] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     if (currentUser) {
@@ -108,6 +113,17 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
     fetchProfileData()
   }, [currentUser, resolvedParams.userId])
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    const audio = audioRef.current
+    return () => {
+      if (audio) {
+        audio.pause()
+        audio.src = ''
+      }
+    }
+  }, [])
 
   const fetchProfileData = async () => {
     setLoading(true)
@@ -138,7 +154,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }
 
-  const handlePlay = (media: CombinedMedia) => {
+  const handlePlay = useCallback((media: CombinedMedia) => {
     if (!media.audio_url) return
     
     if (playingId === media.id && isPlaying) {
@@ -150,10 +166,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       setIsPlaying(true)
       if (audioRef.current) {
         audioRef.current.src = media.audio_url
-        audioRef.current.play()
+        audioRef.current.play().catch(err => {
+          console.error('Audio playback failed:', err)
+          setIsPlaying(false)
+        })
       }
     }
-  }
+  }, [playingId, isPlaying])
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return '0:00'
@@ -518,9 +537,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                   {/* Desktop Layout - Split View */}
                   <div className="hidden md:block">
-                    <div className="grid grid-cols-2 gap-6 p-6">
+                    <div className="grid grid-cols-2 gap-6 p-6 min-h-screen">
                       {/* LEFT SIDE: Full Track List with Duration */}
-                      <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-150px)] pr-4 custom-scrollbar">
+                      <div className="space-y-2 overflow-y-auto h-[calc(100vh-200px)] pr-4 custom-scrollbar" style={{ willChange: 'scroll-position' }}>
                         <h2 className="text-2xl font-bold mb-4 sticky top-0 bg-black/90 backdrop-blur-xl py-3 z-10 border-b border-cyan-500/20">📀 All Tracks</h2>
                         {profile.combinedMedia.map((media, index) => {
                           const isCurrentlyPlaying = playingId === media.id
@@ -541,10 +560,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               {/* Track Number */}
                               <div className="w-8 text-center flex-shrink-0">
                                 {isCurrentlyPlaying && isPlaying ? (
-                                  <div className="flex justify-center">
-                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5"></div>
-                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.2s' }}></div>
-                                    <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.4s' }}></div>
+                                  <div className="flex justify-center items-end gap-0.5 h-4">
+                                    <div className="w-1 bg-cyan-400 animate-playing-bar"></div>
+                                    <div className="w-1 bg-cyan-400 animate-playing-bar"></div>
+                                    <div className="w-1 bg-cyan-400 animate-playing-bar"></div>
                                   </div>
                                 ) : (
                                   <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{index + 1}</span>
@@ -634,10 +653,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 {/* Playing indicator */}
                                 {playingId === media.id && isPlaying && (
                                   <div className="absolute top-2 right-2">
-                                    <div className="flex gap-1">
-                                      <div className="w-1 h-3 bg-cyan-400 animate-pulse"></div>
-                                      <div className="w-1 h-4 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                                      <div className="w-1 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                    <div className="flex gap-1 items-end h-4">
+                                      <div className="w-1 bg-cyan-400 animate-playing-bar"></div>
+                                      <div className="w-1 bg-cyan-400 animate-playing-bar"></div>
+                                      <div className="w-1 bg-cyan-400 animate-playing-bar"></div>
                                     </div>
                                   </div>
                                 )}

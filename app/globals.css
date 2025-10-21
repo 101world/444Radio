@@ -371,5 +371,29 @@ input[placeholder*="Video"]:focus {
 
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
+  will-change: transform;
 }
+
+/* Playing Indicator Animation - More efficient than pulse */
+@keyframes playing-bar {
+  0%, 100% {
+    height: 0.5rem;
+  }
+  50% {
+    height: 1rem;
+  }
+}
+
+.animate-playing-bar {
+  animation: playing-bar 0.8s ease-in-out infinite;
+}
+
+.animate-playing-bar:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.animate-playing-bar:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
 
