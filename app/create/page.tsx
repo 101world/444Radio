@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import FloatingMenu from '../components/FloatingMenu'
@@ -564,7 +564,7 @@ function CreatePageContent() {
                 {/* Release Button on the right */}
                 <button
                   onClick={() => setShowCombineModal(true)}
-                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700 transition-all shadow-lg shadow-cyan-500/30"
+                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-[#6366f1] to-[#818cf8] text-white hover:from-[#5558e3] hover:to-[#7078ef] transition-all shadow-lg"
                 >
                   <Layers size={14} className="inline mr-1.5" />
                   Release
@@ -577,7 +577,6 @@ function CreatePageContent() {
                 <div className="relative flex gap-3 items-center">
                   <Music size={18} className="text-cyan-400 flex-shrink-0" />
                   <textarea
-                    ref={(el) => el?.focus()}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleGenerate()}
@@ -592,7 +591,6 @@ function CreatePageContent() {
                     className="flex-1 px-0 py-0 bg-transparent border-none text-white text-sm placeholder-gray-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors resize-none"
                     rows={1}
                     style={{ fontFamily: "'Courier New', monospace" }}
-                    autoFocus
                   />
                 </div>
 
@@ -714,19 +712,49 @@ function CreatePageContent() {
 
                 {showLyricsModal && (
                   <div className="animate-fade-in relative">
-                    <textarea
-                      value={customLyrics}
-                      onChange={(e) => setCustomLyrics(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') closeAllModals()
-                      }}
-                      onBlur={() => setTimeout(() => setShowLyricsModal(false), 150)}
-                      placeholder="Enter custom lyrics..."
-                      className="w-full px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
-                      rows={3}
-                      autoFocus
-                    />
-                    <span className="absolute right-3 top-2.5 text-xs text-gray-600 hidden md:inline">Press Esc to close</span>
+                    <div className="flex gap-2 items-start">
+                      <textarea
+                        value={customLyrics}
+                        onChange={(e) => setCustomLyrics(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') closeAllModals()
+                        }}
+                        onBlur={(e) => {
+                          // Don't close if clicking the generate button
+                          const relatedTarget = e.relatedTarget as HTMLElement
+                          if (!relatedTarget?.classList.contains('generate-lyrics-btn')) {
+                            setTimeout(() => setShowLyricsModal(false), 150)
+                          }
+                        }}
+                        placeholder="Enter custom lyrics..."
+                        className="flex-1 px-3 py-2 bg-white/5 border border-cyan-500/30 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
+                        rows={3}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Random lyrics samples
+                          const lyricsTemplates = [
+                            "Walking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day",
+                            "Lost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
+                            "Staring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow",
+                            "Dancing in the pouring rain\nFeelings that I can't contain\nBreaking free from every chain\nNever going back again",
+                            "Echoes of a distant time\nMemories that won't fade away\nYour voice still sounds in rhyme\nWishing you were here to stay",
+                            "Rising with the morning sun\nNew adventures to be found\nA journey that has just begun\nMy feet barely touch the ground",
+                            "Shadows dancing on the wall\nWhispers in the midnight air\nWaiting for your late night call\nWondering if you even care",
+                            "Electric feelings running through\nColors bursting in my mind\nEverything I do is new\nLeaving the past behind"
+                          ]
+                          const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
+                          setCustomLyrics(randomLyrics)
+                        }}
+                        className="generate-lyrics-btn flex-shrink-0 p-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 rounded-lg transition-all duration-200 active:scale-95 group"
+                        title="Generate random lyrics"
+                      >
+                        <Sparkles size={16} className="text-white group-hover:rotate-12 transition-transform" />
+                      </button>
+                    </div>
+                    <span className="absolute right-3 top-2.5 text-xs text-gray-600 hidden md:inline pointer-events-none">Press Esc to close</span>
                   </div>
                 )}
               </div>
