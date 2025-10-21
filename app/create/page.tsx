@@ -523,7 +523,7 @@ function CreatePageContent() {
       {/* Chat Area with Holographic Board */}
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full scrollbar-thin scroll-smooth">
         {/* Holographic Chat Board */}
-        <div className="min-h-full bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5 backdrop-blur-sm border border-cyan-500/10 rounded-3xl p-4 md:p-6 shadow-2xl">
+        <div className="min-h-full bg-gradient-to-br from-cyan-500/5 via-transparent to-cyan-400/5 backdrop-blur-sm border border-cyan-500/10 rounded-3xl p-4 md:p-6 shadow-2xl">
           <div className="space-y-6">
           {messages.map((message) => (
             <div
@@ -536,7 +536,7 @@ function CreatePageContent() {
                     ? 'bg-white/10 border border-white/20 text-white'
                     : message.type === 'assistant'
                     ? 'bg-white/5 border border-white/10 text-gray-300'
-                    : 'bg-[#1e1b4b]/80 border border-[#4f46e5]/50 text-white'
+                    : 'bg-cyan-950/80 border border-cyan-500/50 text-white'
                 }`}
               >
                 {/* Message Content */}
@@ -561,7 +561,7 @@ function CreatePageContent() {
                       </div>
                       <button
                         onClick={() => handlePlayPause(message.id, message.result!.audioUrl!)}
-                        className="p-3 bg-[#4f46e5] hover:bg-[#6366f1] rounded-full transition-colors"
+                        className="p-3 bg-cyan-500 hover:bg-cyan-600 rounded-full transition-colors"
                       >
                         {playingId === message.id ? <Pause size={20} /> : <Play size={20} />}
                       </button>
@@ -577,7 +577,7 @@ function CreatePageContent() {
                     {/* Lyrics */}
                     {message.result.lyrics && (
                       <details className="mt-3">
-                        <summary className="text-xs text-[#818cf8] cursor-pointer hover:text-[#7aa5d7]">
+                        <summary className="text-xs text-cyan-400 cursor-pointer hover:text-cyan-300">
                           View Lyrics
                         </summary>
                         <pre className="text-xs text-gray-300 mt-2 whitespace-pre-wrap">
@@ -597,7 +597,7 @@ function CreatePageContent() {
                       </button>
                       <Link
                         href="/library"
-                        className="flex-1 px-3 py-2 bg-[#4f46e5]/30 hover:bg-[#4f46e5]/50 border border-[#4f46e5]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                        className="flex-1 px-3 py-2 bg-cyan-500/30 hover:bg-cyan-500/50 border border-cyan-500/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
                       >
                         <Layers size={14} />
                         View in Library
@@ -639,7 +639,7 @@ function CreatePageContent() {
                         </button>
                         <Link
                           href="/library"
-                          className="flex-1 px-3 py-2 bg-[#4f46e5]/30 hover:bg-[#4f46e5]/50 border border-[#4f46e5]/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
+                          className="flex-1 px-3 py-2 bg-cyan-500/30 hover:bg-cyan-500/50 border border-cyan-500/50 rounded-lg text-xs flex items-center justify-center gap-2 transition-colors"
                         >
                           <Layers size={14} />
                           View in Library
@@ -652,7 +652,7 @@ function CreatePageContent() {
                 {/* Loading Indicator */}
                 {message.isGenerating && (
                   <div className="flex items-center gap-2 mt-2">
-                    <Loader2 className="animate-spin text-[#818cf8]" size={16} />
+                    <Loader2 className="animate-spin text-cyan-400" size={16} />
                     <span className="text-xs text-gray-400">Generating...</span>
                   </div>
                 )}
@@ -674,7 +674,7 @@ function CreatePageContent() {
         <div className="max-w-5xl mx-auto">
           <div className="group relative">
             {/* Glow Effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 to-blue-500 rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition duration-300"></div>
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-2xl blur-xl opacity-20 group-hover:opacity-30 transition duration-300"></div>
             
             {/* Main Composer Container */}
             <div className="relative bg-black/70 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
@@ -778,7 +778,7 @@ function CreatePageContent() {
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating || !input.trim() || selectedType === 'video'}
-                    className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-semibold shadow-lg shadow-cyan-500/30 text-white"
+                    className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-semibold shadow-lg shadow-cyan-500/30 text-white"
                   >
                     {isGenerating ? (
                       <>
@@ -929,7 +929,7 @@ function CreatePageContent() {
             <div className="px-5 py-4 border-t border-white/10">
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="w-full px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30"
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30"
               >
                 Done
               </button>
