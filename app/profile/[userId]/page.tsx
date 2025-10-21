@@ -262,12 +262,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               {/* Left: Username + PRVTLST + Upload (if own) */}
               <div className="flex items-center gap-3">
                 <span className="text-sm font-black text-white">
-                  @{profile?.username || getDisplayUsername(
-                    profile?.username,
-                    currentUser?.username,
-                    currentUser?.firstName,
-                    currentUser?.emailAddresses?.[0]?.emailAddress
-                  )}
+                  @{profile?.username || 'Loading...'}
                 </span>
                 
                 {/* PRVTLST Button */}
