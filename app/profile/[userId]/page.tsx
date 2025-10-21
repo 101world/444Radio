@@ -591,22 +591,24 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-800 to-black"></div>
                           </div>
 
-                          {/* Album Artwork - Vinyl Style */}
+                          {/* Album Artwork - Modern Glassmorphic Vinyl */}
                           <div className="relative w-full h-full flex items-center justify-center">
-                            {/* Outer Vinyl Disc */}
-                            <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 via-black to-gray-900 shadow-2xl transition-transform duration-700 ${
+                            {/* Outer Vinyl Disc - Glassmorphic */}
+                            <div className={`absolute inset-0 rounded-full backdrop-blur-3xl bg-gradient-to-br from-white/5 via-cyan-500/10 to-white/5 border border-white/10 shadow-[0_8px_32px_0_rgba(6,182,212,0.2)] transition-transform duration-700 ${
                               isPlaying ? 'animate-spin-slow' : ''
                             }`} style={{ animationDuration: '3s' }}>
-                              {/* Vinyl Grooves Effect */}
-                              <div className="absolute inset-0 rounded-full" style={{
-                                background: 'repeating-radial-gradient(circle at center, transparent 0px, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)'
+                              {/* Subtle Vinyl Grooves */}
+                              <div className="absolute inset-0 rounded-full opacity-30" style={{
+                                background: 'repeating-radial-gradient(circle at center, transparent 0px, transparent 3px, rgba(6,182,212,0.1) 3px, rgba(6,182,212,0.1) 6px)'
                               }}></div>
-                              {/* Center Label */}
-                              <div className="absolute inset-[15%] rounded-full bg-gradient-to-br from-cyan-950 to-cyan-900 border-4 border-cyan-500/30 shadow-inner"></div>
+                              {/* Glossy Overlay */}
+                              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 via-transparent to-transparent"></div>
+                              {/* Center Label - Glassmorphic */}
+                              <div className="absolute inset-[15%] rounded-full backdrop-blur-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/30 border border-cyan-400/30 shadow-[0_0_30px_rgba(6,182,212,0.3)]"></div>
                             </div>
 
                             {/* Album Cover - Centered on Vinyl */}
-                            <div className={`relative w-[70%] h-[70%] rounded-full overflow-hidden shadow-2xl border-4 border-black/50 transition-transform duration-700 ${
+                            <div className={`relative w-[70%] h-[70%] rounded-full overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.4)] border border-white/20 transition-transform duration-700 ${
                               isPlaying ? 'animate-spin-slow' : ''
                             }`} style={{ animationDuration: '3s' }}>
                               <img 
@@ -614,13 +616,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 alt={currentTrack?.title || 'Album'}
                                 className="w-full h-full object-cover"
                               />
-                              {/* Vinyl Shine Effect */}
-                              <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/40"></div>
+                              {/* Futuristic Shine */}
+                              <div className="absolute inset-0 bg-gradient-to-br from-white/30 via-transparent to-cyan-500/20"></div>
                             </div>
 
-                            {/* Center Spindle */}
-                            <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-gray-800 to-black border-4 border-gray-700 shadow-2xl z-10">
-                              <div className="absolute inset-2 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-700 shadow-inner"></div>
+                            {/* Center Spindle - Minimal Glassmorphic */}
+                            <div className="absolute w-16 h-16 rounded-full backdrop-blur-xl bg-white/5 border border-white/20 shadow-[0_0_20px_rgba(6,182,212,0.5)] z-10">
+                              <div className="absolute inset-3 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 shadow-[0_0_15px_rgba(6,182,212,0.8)]"></div>
                             </div>
                           </div>
 
