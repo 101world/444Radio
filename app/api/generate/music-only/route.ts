@@ -61,27 +61,47 @@ export async function POST(req: NextRequest) {
     const userCredits = users[0].credits || 0
     if (userCredits < 2) {
       return NextResponse.json({ 
-        error: 'Insufficient credits. Music generation requires 2 credits.' 
+        error: 'Insufficient credits. Music generation requires 2 credits.',
+        creditsNeeded: 2,
+        creditsAvailable: userCredits
       }, { status: 402 })
     }
+
+    console.log(`💰 User has ${userCredits} credits. Music requires 2 credits.`)
 
     // Generate music directly with MiniMax Music-1.5
     console.log('🎵 Calling MiniMax Music-1.5 API...')
     
-    const output = await replicate.run(
-      "minimax/music-1.5",
-      {
-        input: {
-          prompt: prompt.trim(),
-          lyrics: formattedLyrics,
-          bitrate,
-          sample_rate,
-          audio_format
+    let output;
+    try {
+      output = await replicate.run(
+        "minimax/music-1.5",
+        {
+          input: {
+            prompt: prompt.trim(),
+            lyrics: formattedLyrics,
+            bitrate,
+            sample_rate,
+            audio_format
+          }
         }
-      }
-    )
+      )
+      console.log('✅ MiniMax Music-1.5 API response received')
+    } catch (genError) {
+      console.error('❌ Music generation failed:', genError)
+      // NO credits deducted since generation failed
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: genError instanceof Error ? genError.message : 'Music generation failed',
+          creditsRefunded: false, // No deduction happened
+          creditsRemaining: userCredits
+        },
+        { status: 500 }
+      )
+    }
 
-    console.log('✅ MiniMax Music-1.5 API response received')
+    console.log('✅ Generation succeeded, processing output...')
     console.log('🎵 Output type:', typeof output)
     console.log('🎵 Output:', output)
 
@@ -125,24 +145,7 @@ export async function POST(req: NextRequest) {
       audioUrl = r2Result.url
     }
 
-    // Deduct credits (-2 for music)
-    await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          credits: userCredits - 2
-        })
-      }
-    )
-
-    // Save to music_library table
+    // Save to music_library table first
     console.log('💾 Saving to music library...')
     const libraryEntry = {
       clerk_user_id: userId,
@@ -178,21 +181,50 @@ export async function POST(req: NextRequest) {
     const savedMusic = await saveResponse.json()
     console.log('✅ Saved to library:', savedMusic)
 
+    // NOW deduct credits (-2 for music) since everything succeeded
+    console.log(`💰 Deducting 2 credits from user (${userCredits} → ${userCredits - 2})`)
+    const creditDeductRes = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          credits: userCredits - 2
+        })
+      }
+    )
+
+    if (!creditDeductRes.ok) {
+      console.error('⚠️ Failed to deduct credits, but generation succeeded')
+      // Continue anyway - better to give free generation than lose the work
+    } else {
+      console.log('✅ Credits deducted successfully')
+    }
+
     console.log('✅ Music generated successfully:', audioUrl)
     
     return NextResponse.json({
       success: true,
       audioUrl,
-      libraryId: savedMusic[0]?.id, // Return the library ID
-      creditsRemaining: userCredits - 2
+      libraryId: savedMusic[0]?.id,
+      creditsRemaining: userCredits - 2,
+      creditsDeducted: 2
     })
 
   } catch (error) {
     console.error('❌ Music generation error:', error)
+    console.log('💰 No credits deducted due to error')
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Music generation failed' 
+        error: error instanceof Error ? error.message : 'Music generation failed',
+        creditsRefunded: false, // No deduction happened
+        // Note: We don't have userCredits here if error happened before credit check
       },
       { status: 500 }
     )

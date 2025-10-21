@@ -137,17 +137,34 @@ export default function LibraryPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
         {/* Header - Top Left */}
-        <div className="mb-12">
-          <h1 className="text-3xl md:text-4xl font-black text-white">
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent mb-3">
             Library
           </h1>
+          <p className="text-cyan-400/60 text-sm md:text-base">Your creative collection</p>
+          
+          {/* Stats */}
+          <div className="flex gap-4 mt-6 flex-wrap">
+            <div className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+              <span className="text-cyan-400 font-bold">{musicItems.length}</span>
+              <span className="text-cyan-400/60 text-sm ml-2">Tracks</span>
+            </div>
+            <div className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+              <span className="text-cyan-400 font-bold">{imageItems.length}</span>
+              <span className="text-cyan-400/60 text-sm ml-2">Images</span>
+            </div>
+            <div className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+              <span className="text-cyan-400 font-bold">{combinedItems.length}</span>
+              <span className="text-cyan-400/60 text-sm ml-2">Releases</span>
+            </div>
+          </div>
         </div>
 
         {/* Loading State */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#818cf8] mb-4"></div>
-            <p className="text-gray-400">Loading...</p>
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-500/20 border-t-cyan-400 mb-4"></div>
+            <p className="text-cyan-400/60 font-mono">Loading library...</p>
           </div>
         )}
 
@@ -156,45 +173,60 @@ export default function LibraryPage() {
           <div>
             {musicItems.length === 0 ? (
               <div className="text-center py-20">
-                <Music size={48} className="text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-white mb-2">No music yet</h3>
-                <p className="text-gray-400 mb-6">Start by generating your first track</p>
-                <Link href="/" className="px-6 py-3 bg-white text-black rounded-full font-bold inline-block hover:bg-gray-200 transition-all">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Music size={40} className="text-cyan-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">No music yet</h3>
+                <p className="text-cyan-400/60 mb-8 text-sm">Start by generating your first track</p>
+                <Link href="/create" className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-full font-bold inline-block hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30">
                   Create Music
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {musicItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#4f46e5]/50 transition-all"
+                    className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 cursor-pointer"
                   >
                     {/* Thumbnail */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#4f46e5]/20 to-[#818cf8]/20 flex items-center justify-center">
-                      <Music size={32} className="text-[#818cf8]" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 flex items-center justify-center">
+                      <Music size={40} className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.6)]" />
                     </div>
 
+                    {/* Audio Preview */}
+                    <audio
+                      src={item.audio_url}
+                      className="absolute top-2 left-2 right-2 h-8 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      controls
+                      style={{ height: '32px' }}
+                    />
+
                     {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3 pb-12">
                       <button
-                        onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
-                        className="p-2 bg-white/20 backdrop-blur-xl rounded-lg hover:bg-white/30 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleDownload(item.audio_url, `${item.title || 'track'}.mp3`); }}
+                        className="w-full p-3 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
                       >
-                        <Download size={16} className="text-white" />
+                        <Download size={18} className="text-cyan-400" />
+                        <span className="text-cyan-400 text-sm font-semibold">Download</span>
                       </button>
                       <button
-                        onClick={() => handleDelete('music', item.id)}
-                        className="p-2 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleDelete('music', item.id); }}
+                        className="w-full p-3 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2"
                       >
-                        <Trash2 size={16} className="text-red-400" />
+                        <Trash2 size={18} className="text-red-400" />
+                        <span className="text-red-400 text-sm font-semibold">Delete</span>
                       </button>
                     </div>
 
                     {/* Title */}
-                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
-                      <p className="text-xs text-white truncate font-medium">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black via-black/90 to-transparent">
+                      <p className="text-xs text-white truncate font-semibold">
                         {item.title || item.prompt.substring(0, 30)}
+                      </p>
+                      <p className="text-[10px] text-cyan-400/60 mt-1">
+                        {new Date(item.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -209,47 +241,54 @@ export default function LibraryPage() {
           <div>
             {imageItems.length === 0 ? (
               <div className="text-center py-20">
-                <ImageIcon size={48} className="text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-white mb-2">No images yet</h3>
-                <p className="text-gray-400 mb-6">Start by generating your first cover art</p>
-                <Link href="/" className="px-6 py-3 bg-white text-black rounded-full font-bold inline-block hover:bg-gray-200 transition-all">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
+                  <ImageIcon size={40} className="text-cyan-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">No images yet</h3>
+                <p className="text-cyan-400/60 mb-8 text-sm">Start by generating your first cover art</p>
+                <Link href="/create" className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-full font-bold inline-block hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30">
                   Create Cover Art
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {imageItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#4f46e5]/50 transition-all"
+                    className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 cursor-pointer"
                   >
                     {/* Image Thumbnail */}
                     <img
                       src={item.image_url}
                       alt={item.title || item.prompt}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                     />
 
                     {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3">
                       <button
-                        onClick={() => handleDownload(item.image_url, `${item.title || 'image'}.webp`)}
-                        className="p-2 bg-white/20 backdrop-blur-xl rounded-lg hover:bg-white/30 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleDownload(item.image_url, `${item.title || 'image'}.webp`); }}
+                        className="w-full p-3 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
                       >
-                        <Download size={16} className="text-white" />
+                        <Download size={18} className="text-cyan-400" />
+                        <span className="text-cyan-400 text-sm font-semibold">Download</span>
                       </button>
                       <button
-                        onClick={() => handleDelete('images', item.id)}
-                        className="p-2 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleDelete('images', item.id); }}
+                        className="w-full p-3 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2"
                       >
-                        <Trash2 size={16} className="text-red-400" />
+                        <Trash2 size={18} className="text-red-400" />
+                        <span className="text-red-400 text-sm font-semibold">Delete</span>
                       </button>
                     </div>
 
                     {/* Title */}
-                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
-                      <p className="text-xs text-white truncate font-medium">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black via-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-xs text-white truncate font-semibold">
                         {item.title || item.prompt.substring(0, 30)}
+                      </p>
+                      <p className="text-[10px] text-cyan-400/60 mt-1">
+                        {new Date(item.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -264,62 +303,70 @@ export default function LibraryPage() {
           <div>
             {combinedItems.length === 0 ? (
               <div className="text-center py-20">
-                <Layers size={48} className="text-gray-600 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-white mb-2">No combined media yet</h3>
-                <p className="text-gray-400 mb-6">Combine music with cover art to create releases</p>
-                <Link href="/" className="px-6 py-3 bg-[#4f46e5] text-white rounded-full font-bold inline-block hover:bg-[#6366f1] transition-all">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Layers size={40} className="text-cyan-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">No releases yet</h3>
+                <p className="text-cyan-400/60 mb-8 text-sm">Combine music with cover art to create releases</p>
+                <Link href="/create" className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-full font-bold inline-block hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30">
                   Combine Media
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {combinedItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hover:border-[#4f46e5]/50 transition-all"
+                    className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 cursor-pointer"
                   >
                     {/* Cover Art Thumbnail */}
                     <img
                       src={item.image_url}
                       alt={item.title || 'Combined media'}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                     />
 
                     {/* Published Badge */}
                     {item.is_published && (
-                      <div className="absolute top-2 right-2 px-2 py-1 bg-[#4f46e5] backdrop-blur-xl rounded-full text-xs font-bold text-white">
-                        Published
+                      <div className="absolute top-3 right-3 px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-cyan-400 backdrop-blur-xl rounded-full text-xs font-bold text-white shadow-lg shadow-cyan-500/50">
+                        ✨ Live
                       </div>
                     )}
 
                     {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3">
                       {!item.is_published && (
                         <button
-                          onClick={() => handleSendToLabel(item.id)}
-                          className="p-2 bg-[#4f46e5] backdrop-blur-xl rounded-lg hover:bg-[#6366f1] transition-colors"
+                          onClick={(e) => { e.stopPropagation(); handleSendToLabel(item.id); }}
+                          className="w-full p-3 bg-gradient-to-r from-cyan-600 to-cyan-400 backdrop-blur-xl rounded-lg hover:from-cyan-700 hover:to-cyan-500 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30"
                         >
-                          <Send size={16} className="text-white" />
+                          <Send size={18} className="text-white" />
+                          <span className="text-white text-sm font-semibold">Publish</span>
                         </button>
                       )}
                       <button
-                        onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
-                        className="p-2 bg-white/20 backdrop-blur-xl rounded-lg hover:bg-white/30 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleDownload(item.audio_url, `${item.title || 'track'}.mp3`); }}
+                        className="w-full p-3 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
                       >
-                        <Download size={16} className="text-white" />
+                        <Download size={18} className="text-cyan-400" />
+                        <span className="text-cyan-400 text-sm font-semibold">Download</span>
                       </button>
                       <button
-                        onClick={() => handleDelete('combined', item.id)}
-                        className="p-2 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleDelete('combined', item.id); }}
+                        className="w-full p-3 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2"
                       >
-                        <Trash2 size={16} className="text-red-400" />
+                        <Trash2 size={18} className="text-red-400" />
+                        <span className="text-red-400 text-sm font-semibold">Delete</span>
                       </button>
                     </div>
 
                     {/* Title */}
-                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
-                      <p className="text-xs text-white truncate font-medium">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black via-black/90 to-transparent">
+                      <p className="text-xs text-white truncate font-semibold">
                         {item.title || 'Combined Media'}
+                      </p>
+                      <p className="text-[10px] text-cyan-400/60 mt-1">
+                        {new Date(item.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -333,14 +380,14 @@ export default function LibraryPage() {
       {/* Bottom Docked Tabs - Glassmorphism */}
       <div className="fixed bottom-0 left-0 right-0 p-4 z-40">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl shadow-black/50 p-2">
+          <div className="bg-black/40 backdrop-blur-2xl border border-cyan-500/30 rounded-full shadow-2xl shadow-cyan-500/20 p-2">
             <div className="flex gap-2 justify-center">
               <button
                 onClick={() => setActiveTab('music')}
-                className={`px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
+                className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
                   activeTab === 'music'
-                    ? 'bg-white text-black'
-                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
+                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                    : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
                 }`}
               >
                 <Music size={16} />
@@ -348,10 +395,10 @@ export default function LibraryPage() {
               </button>
               <button
                 onClick={() => setActiveTab('images')}
-                className={`px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
+                className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
                   activeTab === 'images'
-                    ? 'bg-white text-black'
-                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
+                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                    : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
                 }`}
               >
                 <ImageIcon size={16} />
@@ -359,14 +406,14 @@ export default function LibraryPage() {
               </button>
               <button
                 onClick={() => setActiveTab('combined')}
-                className={`px-6 py-3 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
+                className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
                   activeTab === 'combined'
-                    ? 'bg-[#4f46e5] text-white'
-                    : 'bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white'
+                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                    : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
                 }`}
               >
                 <Layers size={16} />
-                Combined
+                Releases
               </button>
             </div>
           </div>

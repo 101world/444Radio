@@ -40,31 +40,53 @@ export async function POST(req: NextRequest) {
     const user = userData?.[0]
     
     if (!user || user.credits < 1) {
-      return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
+      return NextResponse.json({ 
+        error: 'Insufficient credits. Image generation requires 1 credit.',
+        creditsNeeded: 1,
+        creditsAvailable: user?.credits || 0
+      }, { status: 402 })
     }
+
+    console.log(`💰 User has ${user.credits} credits. Image requires 1 credit.`)
 
     // Generate image directly with Flux Schnell
     console.log('🎨 Generating standalone image with Flux Schnell')
     console.log('🎨 Prompt:', prompt)
     console.log('🎨 Parameters:', params)
     
-    const output = await replicate.run(
-      "black-forest-labs/flux-schnell",
-      {
-        input: {
-          prompt,
-          num_outputs: params?.num_outputs ?? 1,
-          aspect_ratio: params?.aspect_ratio ?? "1:1",
-          output_format: params?.output_format ?? "webp",
-          output_quality: params?.output_quality ?? 80,
-          go_fast: params?.go_fast ?? true,
-          num_inference_steps: params?.num_inference_steps ?? 4,
-          disable_safety_checker: false
+    let output;
+    try {
+      output = await replicate.run(
+        "black-forest-labs/flux-schnell",
+        {
+          input: {
+            prompt,
+            num_outputs: params?.num_outputs ?? 1,
+            aspect_ratio: params?.aspect_ratio ?? "1:1",
+            output_format: params?.output_format ?? "webp",
+            output_quality: params?.output_quality ?? 80,
+            go_fast: params?.go_fast ?? true,
+            num_inference_steps: params?.num_inference_steps ?? 4,
+            disable_safety_checker: false
+          }
         }
-      }
-    )
+      )
+      console.log('✅ Flux generation succeeded')
+    } catch (genError) {
+      console.error('❌ Image generation failed:', genError)
+      // NO credits deducted since generation failed
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: genError instanceof Error ? genError.message : 'Image generation failed',
+          creditsRefunded: false,
+          creditsRemaining: user.credits
+        },
+        { status: 500 }
+      )
+    }
 
-    console.log('🎨 Flux output:', output)
+    console.log('✅ Generation succeeded, processing output...')
 
     // Handle output format
     let imageUrl: string
@@ -101,21 +123,7 @@ export async function POST(req: NextRequest) {
       imageUrl = r2Result.url
     }
 
-    // Deduct 1 credit
-    await fetch(`${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({
-        credits: user.credits - 1
-      })
-    })
-
-    // Save to images_library table
+    // Save to images_library table first
     console.log('💾 Saving to images library...')
     const libraryEntry = {
       clerk_user_id: userId,
@@ -151,20 +159,51 @@ export async function POST(req: NextRequest) {
     const savedImage = await saveResponse.json()
     console.log('✅ Saved to library:', savedImage)
 
+    // NOW deduct credits (-1 for image) since everything succeeded
+    console.log(`💰 Deducting 1 credit from user (${user.credits} → ${user.credits - 1})`)
+    const creditDeductRes = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          credits: user.credits - 1
+        })
+      }
+    )
+
+    if (!creditDeductRes.ok) {
+      console.error('⚠️ Failed to deduct credits, but generation succeeded')
+      // Continue anyway - better to give free generation than lose the work
+    } else {
+      console.log('✅ Credits deducted successfully')
+    }
+
     console.log('✅ Standalone image generated:', imageUrl)
 
     return NextResponse.json({ 
       success: true, 
       imageUrl,
-      libraryId: savedImage[0]?.id, // Return the library ID
+      libraryId: savedImage[0]?.id,
       message: 'Image generated successfully',
-      creditsRemaining: user.credits - 1
+      creditsRemaining: user.credits - 1,
+      creditsDeducted: 1
     })
 
   } catch (error) {
     console.error('Standalone image generation error:', error)
+    console.log('💰 No credits deducted due to error')
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate image'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    return NextResponse.json({ 
+      success: false,
+      error: errorMessage,
+      creditsRefunded: false
+    }, { status: 500 })
   }
 }
 
