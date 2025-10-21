@@ -816,7 +816,7 @@ function CreatePageContent() {
                   ref={(el) => {
                     if (el) {
                       // Store input ref for keyboard control
-                      (window as any).__createPageInput = el;
+                      (window as unknown as Record<string, HTMLInputElement>).__createPageInput = el;
                     }
                   }}
                   type="text"
@@ -854,7 +854,7 @@ function CreatePageContent() {
               <button
                 onClick={() => {
                   // Close keyboard if open
-                  const input = (window as any).__createPageInput;
+                  const input = (window as unknown as Record<string, HTMLInputElement>).__createPageInput;
                   if (input) {
                     input.blur();
                   }

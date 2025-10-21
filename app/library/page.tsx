@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, User, Compass, PlusCircle, Library as LibraryIcon } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 
@@ -419,7 +419,7 @@ export default function LibraryPage() {
       </div>
 
       {/* Bottom Docked Tabs - Glassmorphism */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 z-40">
+      <div className="fixed bottom-[72px] md:bottom-0 left-0 right-0 p-4 z-40">
         <div className="max-w-4xl mx-auto">
           <div className="bg-black/40 backdrop-blur-2xl border border-cyan-500/30 rounded-full shadow-2xl shadow-cyan-500/20 p-2">
             <div className="flex gap-2 justify-center">
@@ -458,6 +458,47 @@ export default function LibraryPage() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Navigation - App Style */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-cyan-500/20 z-50 pb-safe">
+        <div className="flex items-center justify-around px-2 py-3">
+          {/* Profile */}
+          <Link 
+            href="/profile"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all active:scale-95"
+          >
+            <User size={22} className="text-cyan-400" />
+            <span className="text-xs text-cyan-400/80 font-medium">Profile</span>
+          </Link>
+
+          {/* Explore */}
+          <Link 
+            href="/explore"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all active:scale-95"
+          >
+            <Compass size={22} className="text-cyan-400" />
+            <span className="text-xs text-cyan-400/80 font-medium">Explore</span>
+          </Link>
+
+          {/* Create */}
+          <Link 
+            href="/create"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all active:scale-95"
+          >
+            <PlusCircle size={22} className="text-cyan-400" />
+            <span className="text-xs text-cyan-400/80 font-medium">Create</span>
+          </Link>
+
+          {/* Library - Active State */}
+          <Link 
+            href="/library"
+            className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border border-cyan-400/50 transition-all active:scale-95"
+          >
+            <LibraryIcon size={24} className="text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+            <span className="text-xs text-cyan-300 font-bold">Library</span>
+          </Link>
         </div>
       </div>
     </div>
