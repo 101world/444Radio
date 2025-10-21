@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus } from 'lucide-react'
@@ -8,6 +8,25 @@ import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus 
 export default function FloatingMenu() {
   const { user } = useUser()
   const [isOpen, setIsOpen] = useState(false)
+  const [credits, setCredits] = useState<number | null>(null)
+  const [isLoadingCredits, setIsLoadingCredits] = useState(true)
+
+  // Fetch real credits from API
+  useEffect(() => {
+    if (user) {
+      fetch('/api/credits')
+        .then(res => res.json())
+        .then(data => {
+          setCredits(data.credits || 0)
+          setIsLoadingCredits(false)
+        })
+        .catch(err => {
+          console.error('Failed to fetch credits:', err)
+          setCredits(0)
+          setIsLoadingCredits(false)
+        })
+    }
+  }, [user])
 
   return (
     <>
@@ -49,8 +68,10 @@ export default function FloatingMenu() {
                   
                   {/* Credits */}
                   <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full w-fit">
-                    <Zap className="text-[#818cf8]" size={18} />
-                    <span className="text-white font-bold text-sm">20 credits</span>
+                    <Zap className="text-[#22D3EE]" size={18} />
+                    <span className="text-white font-bold text-sm">
+                      {isLoadingCredits ? '...' : `${credits} credits`}
+                    </span>
                   </div>
                 </div>
               )}
