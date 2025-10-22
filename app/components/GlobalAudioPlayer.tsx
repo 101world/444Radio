@@ -23,11 +23,8 @@ export default function GlobalAudioPlayer() {
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false)
 
-  // Hide player on profile and create pages
-  const hiddenPaths = ['/create', '/profile']
-  const shouldHide = hiddenPaths.some(path => pathname?.startsWith(path))
-
-  if (!currentTrack || shouldHide) return null
+  // Don't show if no track is loaded
+  if (!currentTrack) return null
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return '0:00'
