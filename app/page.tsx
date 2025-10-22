@@ -1,21 +1,84 @@
 ﻿'use client'
 
 import { useRouter } from 'next/navigation'
-import { Music } from 'lucide-react'
+import { Music, Play, Pause } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import HolographicBackgroundClient from './components/HolographicBackgroundClient'
 import FloatingGenres from './components/FloatingGenres'
-import { useState } from 'react'
+import { useAudioPlayer } from './contexts/AudioPlayerContext'
+import { useState, useEffect } from 'react'
+
+interface Track {
+  id: string
+  title: string
+  artist: string
+  audio_url: string
+  image_url?: string
+}
+
+interface MediaItem {
+  id: string
+  title?: string
+  users?: { username?: string }
+  username?: string
+  audio_url: string
+  image_url?: string
+}
 
 export default function HomePage() {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [tracks, setTracks] = useState<Track[]>([])
+  const [loading, setLoading] = useState(true)
+  const { setPlaylist, playTrack, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
 
-  // 3D transition animation to create page
+  useEffect(() => {
+    fetchAllTracks()
+  }, [])
+
+  const fetchAllTracks = async () => {
+    try {
+      const res = await fetch('/api/media/explore')
+      const data = await res.json()
+      if (data.success && data.combinedMedia) {
+        const formattedTracks = data.combinedMedia.map((media: MediaItem) => ({
+          id: media.id,
+          title: media.title || 'Untitled',
+          artist: media.users?.username || media.username || 'Unknown Artist',
+          audio_url: media.audio_url,
+          image_url: media.image_url
+        }))
+        setTracks(formattedTracks)
+      }
+    } catch (error) {
+      console.error('Failed to fetch tracks:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePlayAll = () => {
+    if (tracks.length === 0) return
+    
+    if (currentTrack && isPlaying) {
+      togglePlayPause()
+      return
+    }
+    
+    const playerTracks = tracks.map(t => ({
+      id: t.id,
+      audioUrl: t.audio_url,
+      title: t.title,
+      artist: t.artist,
+      imageUrl: t.image_url
+    }))
+    
+    setPlaylist(playerTracks, 0)
+    playTrack(playerTracks[0])
+  }
+
   const handleFocus = () => {
     setIsTransitioning(true)
-
-    // Faster transition for mobile
     setTimeout(() => {
       router.push('/create')
     }, 400)
@@ -39,11 +102,12 @@ export default function HomePage() {
         {/* Floating Menu */}
         <FloatingMenu />
 
-        {/* Landing View - Mobile First Design */}
+        {/* Landing View */}
         <div className="flex-1 flex flex-col items-center md:justify-center px-4 sm:px-6 lg:px-8 pt-16 md:py-8">
-
-          {/* Welcome Text - Top Section on Mobile, Centered on Desktop */}
+          
+          {/* Welcome Text */}
           <div className="text-center space-y-2 md:space-y-6 md:mb-16 will-change-auto flex-shrink-0">
+            
             {/* Logo & Title */}
             <div className="flex flex-col items-center justify-center gap-2 md:gap-5 md:flex-row">
               <img
@@ -80,13 +144,36 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+
+            {/* Play Button - Always Visible */}
+            <div className="mt-6 md:mt-10">
+              <button
+                onClick={handlePlayAll}
+                disabled={tracks.length === 0 || loading}
+                className="group relative w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300 disabled:from-gray-600 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70 disabled:shadow-gray-500/30 mx-auto"
+              >
+                {currentTrack && isPlaying ? (
+                  <Pause className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-black" fill="currentColor" />
+                ) : (
+                  <Play className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 text-black ml-1" fill="currentColor" />
+                )}
+                
+                {(!currentTrack || !isPlaying) && tracks.length > 0 && !loading && (
+                  <div className="absolute inset-0 rounded-full bg-cyan-400/30 animate-ping"></div>
+                )}
+              </button>
+              
+              <p className="text-cyan-500/70 text-xs md:text-sm font-medium tracking-wide mt-3">
+                {loading ? 'Loading...' : tracks.length === 0 ? 'No Tracks' : currentTrack && isPlaying ? 'Now Playing' : 'Start Broadcasting'}
+              </p>
+            </div>
           </div>
 
-          {/* Spacer for mobile to push content up */}
+          {/* Spacer for mobile */}
           <div className="flex-1 md:hidden"></div>
         </div>
 
-        {/* Prompt Input - Fixed to bottom on mobile, centered in layout on desktop */}
+        {/* Prompt Input - Fixed to bottom */}
         <div className="fixed bottom-0 left-0 right-0 md:relative md:bottom-auto px-4 sm:px-6 lg:px-8 pb-safe md:pb-0 z-20">
           <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
             <div
