@@ -104,11 +104,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   // Track play count API call
   const trackPlay = async (trackId: string) => {
     try {
-      await fetch('/api/songs/track-play', {
+      // Try combined_media first, then fall back to songs
+      const mediaResponse = await fetch('/api/media/track-play', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackId })
+        body: JSON.stringify({ mediaId: trackId })
       })
+      
+      // If media tracking fails, try songs table
+      if (!mediaResponse.ok) {
+        await fetch('/api/songs/track-play', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackId })
+        })
+      }
     } catch (error) {
       console.error('Failed to track play:', error)
     }
