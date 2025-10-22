@@ -19,7 +19,7 @@ export default function FloatingAudioPlayer() {
   } = useAudioPlayer()
 
   // Position and size state
-  const [position, setPosition] = useState({ x: 20, y: window.innerHeight - 200 })
+  const [position, setPosition] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight - 200 : 100 })
   const [size, setSize] = useState({ width: 400, height: 140 })
   const [isExpanded, setIsExpanded] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
@@ -28,9 +28,6 @@ export default function FloatingAudioPlayer() {
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 })
   
   const playerRef = useRef<HTMLDivElement>(null)
-
-  // Don't show if no track is loaded
-  if (!currentTrack) return null
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return '0:00'
@@ -79,7 +76,7 @@ export default function FloatingAudioPlayer() {
 
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
-      if (isDragging) {
+      if (isDragging && typeof window !== 'undefined') {
         const newX = Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.x))
         const newY = Math.max(0, Math.min(window.innerHeight - size.height, e.clientY - dragOffset.y))
         setPosition({ x: newX, y: newY })
@@ -113,6 +110,9 @@ export default function FloatingAudioPlayer() {
     }
     setIsExpanded(!isExpanded)
   }
+
+  // Don't show if no track is loaded
+  if (!currentTrack) return null
 
   return (
     <div
