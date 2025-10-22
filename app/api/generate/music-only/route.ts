@@ -8,6 +8,58 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 })
 
+/**
+ * Expand lyrics to reach target length based on duration
+ * Short: 200-300 chars, Medium: 350-500 chars, Long: 500-600 chars
+ */
+function expandLyricsForDuration(baseLyrics: string, duration: 'short' | 'medium' | 'long' = 'medium'): string {
+  const targetLengths = {
+    short: { min: 200, max: 300 },
+    medium: { min: 350, max: 500 },
+    long: { min: 500, max: 600 }
+  }
+  
+  const target = targetLengths[duration]
+  
+  // If lyrics are already long enough, return them (trimmed if needed)
+  if (baseLyrics.length >= target.min) {
+    return baseLyrics.length > 600 ? baseLyrics.substring(0, 597) + '...' : baseLyrics
+  }
+  
+  // Add song structure to expand lyrics
+  let expandedLyrics = baseLyrics
+  
+  // Add verse 2 if needed
+  if (expandedLyrics.length < target.min) {
+    expandedLyrics += `\n\n[Verse 2]\n${baseLyrics}`
+  }
+  
+  // Add chorus if still needed
+  if (expandedLyrics.length < target.min) {
+    const chorusLines = baseLyrics.split('\n').slice(0, 2).join('\n')
+    expandedLyrics += `\n\n[Chorus]\n${chorusLines}`
+  }
+  
+  // Add bridge for long songs
+  if (duration === 'long' && expandedLyrics.length < target.min) {
+    const bridgeLines = baseLyrics.split('\n').slice(0, 2).join('\n')
+    expandedLyrics += `\n\n[Bridge]\n${bridgeLines}`
+  }
+  
+  // Add outro for long songs
+  if (duration === 'long' && expandedLyrics.length < target.max) {
+    const outroLines = baseLyrics.split('\n').slice(0, 1).join('\n')
+    expandedLyrics += `\n\n[Outro]\n${outroLines}`
+  }
+  
+  // Trim if too long
+  if (expandedLyrics.length > 600) {
+    expandedLyrics = expandedLyrics.substring(0, 597) + '...'
+  }
+  
+  return expandedLyrics
+}
+
 // POST /api/generate/music-only - Generate ONLY music (no song record)
 // For standalone music generation with preview
 export async function POST(req: NextRequest) {
@@ -17,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { prompt, lyrics, bitrate = 256000, sample_rate = 44100, audio_format = 'mp3' } = await req.json()
+    const { prompt, lyrics, duration = 'medium', bitrate = 256000, sample_rate = 44100, audio_format = 'mp3' } = await req.json()
 
     // Prompt is REQUIRED
     if (!prompt || prompt.length < 10 || prompt.length > 300) {
@@ -30,20 +82,25 @@ export async function POST(req: NextRequest) {
       // Use smart lyrics matcher based on prompt (supports 444 trigger and genre matching)
       console.log('⚡ No custom lyrics provided, using smart lyrics matcher')
       console.log('  Received lyrics value:', lyrics, 'Type:', typeof lyrics)
+      console.log('  Requested duration:', duration)
       const matchedSong = findBestMatchingLyrics(prompt)
-      formattedLyrics = matchedSong.lyrics
+      const baseLyrics = matchedSong.lyrics
+      // Expand lyrics based on requested duration
+      formattedLyrics = expandLyricsForDuration(baseLyrics, duration as 'short' | 'medium' | 'long')
       console.log('📝 Selected lyrics from smart matcher')
       console.log('  Song title:', matchedSong.title)
       console.log('  Genre:', matchedSong.genre)
-      console.log('  Formatted lyrics length:', formattedLyrics.length)
+      console.log('  Base lyrics length:', baseLyrics.length)
+      console.log('  Expanded lyrics length:', formattedLyrics.length)
+      console.log('  Duration:', duration)
     } else {
-      // Validate user-provided lyrics
-      if (lyrics.trim().length < 10 || lyrics.length > 600) {
-        return NextResponse.json({ error: 'Lyrics must be 10-600 characters. Please add structure tags like [verse] [chorus]' }, { status: 400 })
-      }
-      formattedLyrics = lyrics.trim()
+      // Validate and expand user-provided lyrics
       console.log('📝 Using custom user-provided lyrics')
-      console.log('  Lyrics length:', formattedLyrics.length)
+      console.log('  Original lyrics length:', lyrics.length)
+      console.log('  Requested duration:', duration)
+      // Expand user's custom lyrics based on duration
+      formattedLyrics = expandLyricsForDuration(lyrics.trim(), duration as 'short' | 'medium' | 'long')
+      console.log('  Final lyrics length:', formattedLyrics.length)
     }
     
     // CRITICAL: Ensure lyrics are NEVER empty and within API limits before sending to Replicate

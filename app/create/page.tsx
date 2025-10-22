@@ -70,6 +70,7 @@ function CreatePageContent() {
   const [customTitle, setCustomTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [bpm, setBpm] = useState('')
+  const [songDuration, setSongDuration] = useState<'short' | 'medium' | 'long'>('medium')
   const [generateCoverArt, setGenerateCoverArt] = useState(true)
   
   // Modal states for parameters
@@ -284,7 +285,8 @@ function CreatePageContent() {
         genre,
         bpm,
         customTitle,
-        customLyrics
+        customLyrics,
+        songDuration
       })
 
       // Clear parameters after queueing
@@ -292,6 +294,7 @@ function CreatePageContent() {
       setGenre('')
       setCustomLyrics('')
       setBpm('')
+      setSongDuration('medium')
       return
     }
 
@@ -333,6 +336,7 @@ function CreatePageContent() {
       bpm?: string
       customTitle?: string
       customLyrics?: string
+      songDuration?: 'short' | 'medium' | 'long'
     }
   ) => {
     try {
@@ -356,8 +360,9 @@ function CreatePageContent() {
         
         const titleToUse = params.customTitle || undefined
         const lyricsToUse = params.customLyrics || undefined
+        const durationToUse = params.songDuration || 'medium'
         
-        result = await generateMusic(fullPrompt, titleToUse, lyricsToUse)
+        result = await generateMusic(fullPrompt, titleToUse, lyricsToUse, durationToUse)
       } else {
         result = await generateImage(params.prompt)
       }
@@ -482,11 +487,11 @@ function CreatePageContent() {
     setInput('')
   }
 
-  const generateMusic = async (prompt: string, title?: string, lyrics?: string) => {
+  const generateMusic = async (prompt: string, title?: string, lyrics?: string, duration: 'short' | 'medium' | 'long' = 'medium') => {
     const res = await fetch('/api/generate/music-only', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, title, lyrics })
+      body: JSON.stringify({ prompt, title, lyrics, duration })
     })
 
     const data = await res.json()
@@ -1024,6 +1029,47 @@ function CreatePageContent() {
                   className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
                 />
                 <p className="text-xs text-gray-500">Typical range: 60-200 BPM</p>
+              </div>
+
+              {/* Song Duration */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Song Length</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setSongDuration('short')}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                      songDuration === 'short'
+                        ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
+                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="font-bold">Short</div>
+                    <div className="text-[10px] opacity-60">~60-90s</div>
+                  </button>
+                  <button
+                    onClick={() => setSongDuration('medium')}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                      songDuration === 'medium'
+                        ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
+                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="font-bold">Medium</div>
+                    <div className="text-[10px] opacity-60">~90-150s</div>
+                  </button>
+                  <button
+                    onClick={() => setSongDuration('long')}
+                    className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                      songDuration === 'long'
+                        ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
+                        : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="font-bold">Long</div>
+                    <div className="text-[10px] opacity-60">~150-240s</div>
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">Longer songs use extended lyrics structures (verses, chorus, bridge)</p>
               </div>
 
               {/* Lyrics */}
