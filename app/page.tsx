@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useRouter } from 'next/navigation'
 import { Music, Play, Pause } from 'lucide-react'
@@ -97,7 +97,7 @@ export default function HomePage() {
 
       {/* Main Content Wrapper */}
       <div
-        className={\elative z-10 flex-1 flex flex-col transition-opacity duration-500 \\}
+        className="relative z-10 flex-1 flex flex-col transition-opacity duration-500"
       >
         {/* Floating Menu */}
         <FloatingMenu />
