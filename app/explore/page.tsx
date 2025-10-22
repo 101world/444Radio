@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
@@ -9,6 +9,7 @@ import HolographicBackgroundClient from '../components/HolographicBackgroundClie
 import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, SkipBack, SkipForward, Radio } from 'lucide-react'
 import { formatUsername } from '../../lib/username'
+import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 
 interface CombinedMedia {
   id: string
@@ -46,11 +47,21 @@ export default function ExplorePage() {
   const [artists, setArtists] = useState<Artist[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [playingId, setPlayingId] = useState<string | null>(null)
-  const [currentTrack, setCurrentTrack] = useState<CombinedMedia | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
   const [showSearchBox, setShowSearchBox] = useState(true)
-  const audioRef = useRef<HTMLAudioElement>(null)
+  
+  const { 
+    currentTrack: globalCurrentTrack, 
+    isPlaying: globalIsPlaying, 
+    playTrack, 
+    togglePlayPause,
+    playNext: globalPlayNext,
+    playPrevious: globalPlayPrevious,
+    setPlaylist
+  } = useAudioPlayer()
+
+  // Use global player state
+  const playingId = globalCurrentTrack?.id || null
+  const isPlaying = globalIsPlaying
 
   useEffect(() => {
     fetchCombinedMedia()
@@ -93,33 +104,36 @@ export default function ExplorePage() {
 
   const handlePlay = (media: CombinedMedia) => {
     if (playingId === media.id && isPlaying) {
-      audioRef.current?.pause()
-      setIsPlaying(false)
+      togglePlayPause()
       setShowSearchBox(true) // Show search bar when paused
     } else {
-      setCurrentTrack(media)
-      setPlayingId(media.id)
-      setIsPlaying(true)
+      // Set the playlist with all combined media
+      setPlaylist(combinedMedia.map(m => ({
+        id: m.id,
+        title: m.title,
+        audioUrl: m.audio_url,
+        imageUrl: m.image_url,
+        artist: formatUsername(m.users?.username || m.username)
+      })))
+      
+      // Play the selected track
+      playTrack({
+        id: media.id,
+        title: media.title,
+        audioUrl: media.audio_url,
+        imageUrl: media.image_url,
+        artist: formatUsername(media.users?.username || media.username)
+      })
       setShowSearchBox(false) // Hide search bar when playing
-      if (audioRef.current) {
-        audioRef.current.src = media.audio_url
-        audioRef.current.play()
-      }
     }
   }
 
   const handleNext = () => {
-    if (!currentTrack) return
-    const currentIndex = combinedMedia.findIndex(m => m.id === currentTrack.id)
-    const nextIndex = (currentIndex + 1) % combinedMedia.length
-    handlePlay(combinedMedia[nextIndex])
+    globalPlayNext()
   }
 
   const handlePrevious = () => {
-    if (!currentTrack) return
-    const currentIndex = combinedMedia.findIndex(m => m.id === currentTrack.id)
-    const prevIndex = (currentIndex - 1 + combinedMedia.length) % combinedMedia.length
-    handlePlay(combinedMedia[prevIndex])
+    globalPlayPrevious()
   }
 
   return (
@@ -397,7 +411,7 @@ export default function ExplorePage() {
             
             {/* Bar Container - Same style as Home Page */}
             <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
-              {currentTrack ? (
+              {globalCurrentTrack ? (
                 /* Player Mode */
                 <>
                   {/* Radio Icon instead of thumbnail */}
@@ -409,10 +423,10 @@ export default function ExplorePage() {
                   {/* Track Info */}
                   <div className="flex-1 min-w-0 text-center md:text-left">
                     <div className="text-sm md:text-lg font-light text-gray-200 tracking-wide truncate">
-                      {currentTrack.title}
+                      {globalCurrentTrack.title}
                     </div>
                     <div className="text-xs text-cyan-400/60 mt-0.5 font-mono truncate">
-                      {formatUsername(currentTrack.users?.username || currentTrack.username)}
+                      {globalCurrentTrack.artist}
                     </div>
                   </div>
                   
@@ -425,7 +439,7 @@ export default function ExplorePage() {
                       <SkipBack size={14} className="text-cyan-400" />
                     </button>
                     <button 
-                      onClick={() => handlePlay(currentTrack)}
+                      onClick={togglePlayPause}
                       className="w-10 h-10 md:w-11 md:h-11 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all shadow-lg shadow-cyan-500/50 active:scale-95"
                     >
                       {isPlaying ? (
@@ -468,7 +482,7 @@ export default function ExplorePage() {
           </div>
           
           {/* Quick Info - Below the bar */}
-          {!currentTrack && (
+          {!globalCurrentTrack && (
             <div className="flex items-center justify-center gap-2 mt-2 md:mt-6 text-xs md:text-sm mb-2">
               <span className="text-cyan-400/60 font-mono tracking-wider">
                 ✨ Discover new music
@@ -483,14 +497,6 @@ export default function ExplorePage() {
       <FloatingNavButton 
         showPromptToggle={true}
         onTogglePrompt={() => setShowSearchBox(!showSearchBox)}
-      />
-
-      {/* Hidden Audio Element */}
-      <audio 
-        ref={audioRef}
-        onEnded={handleNext}
-        onPause={() => setIsPlaying(false)}
-        onPlay={() => setIsPlaying(true)}
       />
     </div>
   )
