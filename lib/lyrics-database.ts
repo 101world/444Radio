@@ -4,7 +4,8 @@
  * This file contains a curated collection of lyrics that can be used
  * for randomized suggestions in the music creation interface.
  * 
- * Updated: October 2025 - 83 curated songs across 6 genres
+ * Updated: October 2025 - 143 curated songs across 6 genres
+ * Includes 444 Radio branded songs for user engagement
  */
 
 export interface LyricsSuggestion {
@@ -609,6 +610,366 @@ export const LYRICS_DATABASE: LyricsSuggestion[] = [
     lyrics: "Evening falls in amber light, slow beats wrap the fading night. Window panes reflect my thoughts, drifting soft in endless knots.",
     mood: "contemplative",
     tags: ["evening", "amber", "beats", "window", "reflection"]
+  },
+  
+  // 444 Radio Branded Songs - Hip-hop (10 songs)
+  {
+    title: "Street Kings",
+    genre: "hiphop",
+    lyrics: "Beat drops hard, city listens close, 444 Radio is the OG. My rhymes ignite, every line a spark, streets know my name in the dark.",
+    mood: "powerful",
+    tags: ["444radio", "street", "city", "rhymes", "og"]
+  },
+  {
+    title: "Grind Mode",
+    genre: "hiphop",
+    lyrics: "Late nights, fast lights, 444 Radio is the OG vibe. Hustle flows in every bar, dreams alive in every scar.",
+    mood: "determined",
+    tags: ["444radio", "hustle", "grind", "dreams", "og"]
+  },
+  {
+    title: "Concrete Waves",
+    genre: "hiphop",
+    lyrics: "City hums beneath my feet, 444 Radio is the OG beat. Rhymes roll deep through every street, my story's written in the heat.",
+    mood: "urban",
+    tags: ["444radio", "city", "street", "beat", "og"]
+  },
+  {
+    title: "Neon Hustle",
+    genre: "hiphop",
+    lyrics: "Lights flash, nights collide, 444 Radio is the OG guide. I spit truth, no compromise, streets echo my battle cries.",
+    mood: "fierce",
+    tags: ["444radio", "neon", "truth", "battle", "og"]
+  },
+  {
+    title: "Mic Legends",
+    genre: "hiphop",
+    lyrics: "Every verse a fire, 444 Radio is the OG wire. Lines electrify, hearts inspire, my flow never tires.",
+    mood: "inspiring",
+    tags: ["444radio", "fire", "flow", "electric", "og"]
+  },
+  {
+    title: "Cipher Kings",
+    genre: "hiphop",
+    lyrics: "Gather round, hear the flow, 444 Radio is the OG show. Streets talk, beats glow, legends rise where rhythms go.",
+    mood: "confident",
+    tags: ["444radio", "cipher", "beats", "legends", "og"]
+  },
+  {
+    title: "Urban Tales",
+    genre: "hiphop",
+    lyrics: "Night hums, my words ignite, 444 Radio is the OG sight. Every rhyme a piece of life, streets feel my vibe tonight.",
+    mood: "storytelling",
+    tags: ["444radio", "urban", "night", "vibe", "og"]
+  },
+  {
+    title: "Hustle Echo",
+    genre: "hiphop",
+    lyrics: "From corners to neon lights, 444 Radio is the OG rights. My grind speaks loud and clear, streets remember every year.",
+    mood: "persistent",
+    tags: ["444radio", "hustle", "grind", "neon", "og"]
+  },
+  {
+    title: "Block Vibes",
+    genre: "hiphop",
+    lyrics: "Bass hits hard, nights unfold, 444 Radio is the OG gold. Every line a legacy, my rhymes stay bold.",
+    mood: "bold",
+    tags: ["444radio", "bass", "legacy", "block", "og"]
+  },
+  {
+    title: "Flow Empire",
+    genre: "hiphop",
+    lyrics: "City beats, neon glow, 444 Radio is the OG show. Every verse a story told, streets alive with fire and soul.",
+    mood: "triumphant",
+    tags: ["444radio", "empire", "city", "soul", "og"]
+  },
+  
+  // 444 Radio Branded Songs - R&B (10 songs)
+  {
+    title: "Velvet Touch",
+    genre: "rnb",
+    lyrics: "Your love hums through the night, 444 Radio plays soft and right. Touch electric, hearts collide, rhythms flow where feelings hide.",
+    mood: "sensual",
+    tags: ["444radio", "love", "touch", "electric", "night"]
+  },
+  {
+    title: "Moonlit Glow",
+    genre: "rnb",
+    lyrics: "Soft beats drift, stars align, 444 Radio spins smooth and fine. Every sigh a melody, lost in love's sweet symphony.",
+    mood: "romantic",
+    tags: ["444radio", "moonlight", "stars", "melody", "love"]
+  },
+  {
+    title: "Silken Dreams",
+    genre: "rnb",
+    lyrics: "Your voice whispers through the haze, 444 Radio sets the phase. Hearts entwined in gentle sound, love's warmth and peace abound.",
+    mood: "dreamy",
+    tags: ["444radio", "dreams", "voice", "hearts", "peace"]
+  },
+  {
+    title: "Midnight Sway",
+    genre: "rnb",
+    lyrics: "Slow hums, candlelight, 444 Radio keeps the night alive. Every note a tender flame, love's rhythm whispers your name.",
+    mood: "intimate",
+    tags: ["444radio", "midnight", "candle", "flame", "love"]
+  },
+  {
+    title: "Honey Waves",
+    genre: "rnb",
+    lyrics: "Soft beats brush my soul, 444 Radio plays the gentle role. Every touch a spark divine, hearts sync in rhythmic line.",
+    mood: "sweet",
+    tags: ["444radio", "honey", "soul", "touch", "sync"]
+  },
+  {
+    title: "Golden Veil",
+    genre: "rnb",
+    lyrics: "Evening hums in amber light, 444 Radio sets love right. Warmth flows through every chord, whispers soft in heart's accord.",
+    mood: "warm",
+    tags: ["444radio", "golden", "evening", "warmth", "love"]
+  },
+  {
+    title: "Velour Nights",
+    genre: "rnb",
+    lyrics: "Moon above, soft groove low, 444 Radio lets feelings show. Every sigh a melody, drifting slow, our harmony.",
+    mood: "smooth",
+    tags: ["444radio", "moon", "groove", "harmony", "night"]
+  },
+  {
+    title: "Silk & Smoke",
+    genre: "rnb",
+    lyrics: "Candle flickers, hearts collide, 444 Radio hums beside. Notes like velvet wrap around, love in every sound.",
+    mood: "sultry",
+    tags: ["444radio", "silk", "candle", "velvet", "love"]
+  },
+  {
+    title: "Amber Flow",
+    genre: "rnb",
+    lyrics: "Soft rain hums, piano sighs, 444 Radio plays the night sky. Touch and rhythm intertwine, love's pulse beats through time.",
+    mood: "flowing",
+    tags: ["444radio", "rain", "piano", "rhythm", "love"]
+  },
+  {
+    title: "Velvet Keys",
+    genre: "rnb",
+    lyrics: "Fingers glide, night drifts slow, 444 Radio lets music grow. Every chord a whispered plea, hearts entwined in harmony.",
+    mood: "tender",
+    tags: ["444radio", "keys", "night", "harmony", "hearts"]
+  },
+  
+  // 444 Radio Branded Songs - Jazz (10 songs)
+  {
+    title: "Smoke & Gold",
+    genre: "jazz",
+    lyrics: "Trumpet hums beneath dim light, 444 Radio jazz takes flight. Shadows sway in amber glow, midnight drifts soft and slow.",
+    mood: "atmospheric",
+    tags: ["444radio", "trumpet", "smoke", "amber", "midnight"]
+  },
+  {
+    title: "Amber Lounge",
+    genre: "jazz",
+    lyrics: "Bass notes hum in velvet air, 444 Radio plays rare. Lovers drift on gentle tune, city sleeps beneath the moon.",
+    mood: "sophisticated",
+    tags: ["444radio", "bass", "lounge", "moon", "lovers"]
+  },
+  {
+    title: "Candle Sway",
+    genre: "jazz",
+    lyrics: "Smoke curls soft, saxophone hums, 444 Radio fills the drums. Time dissolves, hearts align, love's soft echo through the wine.",
+    mood: "romantic",
+    tags: ["444radio", "saxophone", "candle", "wine", "love"]
+  },
+  {
+    title: "Velour Smoke",
+    genre: "jazz",
+    lyrics: "Piano drifts through amber haze, 444 Radio sets the phase. Shadows bend to every note, melody floats like a boat.",
+    mood: "smoky",
+    tags: ["444radio", "piano", "smoke", "amber", "melody"]
+  },
+  {
+    title: "Golden Haze",
+    genre: "jazz",
+    lyrics: "Soft keys hum, candle glow, 444 Radio lets rhythms flow. Every chord a subtle spark, music hums into the dark.",
+    mood: "mellow",
+    tags: ["444radio", "golden", "candle", "rhythm", "dark"]
+  },
+  {
+    title: "Silk Shadows",
+    genre: "jazz",
+    lyrics: "Trumpet cries in velvet night, 444 Radio plays it right. Smoke drifts slow across the room, jazz dissolves the evening gloom.",
+    mood: "elegant",
+    tags: ["444radio", "trumpet", "silk", "shadows", "evening"]
+  },
+  {
+    title: "Midnight Amber",
+    genre: "jazz",
+    lyrics: "Bass drifts deep, piano sighs, 444 Radio hums and flies. Lovers sway beneath dim lights, jazz ignites the quiet nights.",
+    mood: "intimate",
+    tags: ["444radio", "midnight", "bass", "piano", "lovers"]
+  },
+  {
+    title: "Velvet Lounge",
+    genre: "jazz",
+    lyrics: "Soft chords curl in amber haze, 444 Radio spins slow plays. Every note a whispered line, shadows hum where hearts entwine.",
+    mood: "cozy",
+    tags: ["444radio", "velvet", "lounge", "amber", "hearts"]
+  },
+  {
+    title: "Candle Drift",
+    genre: "jazz",
+    lyrics: "Piano hums, soft smoke bends, 444 Radio plays and blends. Jazz dissolves the night in glow, hearts embrace the gentle flow.",
+    mood: "gentle",
+    tags: ["444radio", "candle", "piano", "smoke", "hearts"]
+  },
+  {
+    title: "Amber Whisper",
+    genre: "jazz",
+    lyrics: "Trumpet sighs in muted night, 444 Radio hums just right. Soft lights flicker, shadows dance, jazz flows deep in quiet trance.",
+    mood: "tranquil",
+    tags: ["444radio", "amber", "trumpet", "whisper", "trance"]
+  },
+  
+  // 444 Radio Branded Songs - Chill (10 songs)
+  {
+    title: "Cloud Drift",
+    genre: "chill",
+    lyrics: "Waves hum soft and skies are gray, 444 Radio drifts my way. Calm surrounds each gentle note, peace unfolds as dreams float.",
+    mood: "peaceful",
+    tags: ["444radio", "clouds", "waves", "calm", "dreams"]
+  },
+  {
+    title: "Silver Haze",
+    genre: "chill",
+    lyrics: "Breeze hums slow, time fades low, 444 Radio lets music flow. Every tone a gentle sigh, drifting soft beneath the sky.",
+    mood: "serene",
+    tags: ["444radio", "silver", "breeze", "time", "sky"]
+  },
+  {
+    title: "Ocean Mist",
+    genre: "chill",
+    lyrics: "Sea hums low beneath the moon, 444 Radio plays a gentle tune. Thoughts unwind in every wave, calm returns to hearts that crave.",
+    mood: "calming",
+    tags: ["444radio", "ocean", "mist", "moon", "waves"]
+  },
+  {
+    title: "Wind Echo",
+    genre: "chill",
+    lyrics: "Air drifts slow through open trees, 444 Radio hums with ease. Every sound a soft caress, peace returns and hearts confess.",
+    mood: "gentle",
+    tags: ["444radio", "wind", "trees", "peace", "echo"]
+  },
+  {
+    title: "Morning Calm",
+    genre: "chill",
+    lyrics: "Sunlight glows on window pane, 444 Radio plays soft refrain. Mind drifts slow in gentle tune, coffee hums beneath the moon.",
+    mood: "tranquil",
+    tags: ["444radio", "morning", "sunlight", "coffee", "calm"]
+  },
+  {
+    title: "Silver Tide",
+    genre: "chill",
+    lyrics: "Waves kiss shore in quiet flow, 444 Radio lets rhythm go. Every hum a gentle sway, drifting soft the peaceful way.",
+    mood: "flowing",
+    tags: ["444radio", "silver", "tide", "waves", "peaceful"]
+  },
+  {
+    title: "Evening Drift",
+    genre: "chill",
+    lyrics: "Twilight falls in amber skies, 444 Radio hums soft and wise. Thoughts unwind like drifting sand, peace returns to every hand.",
+    mood: "reflective",
+    tags: ["444radio", "evening", "twilight", "amber", "peace"]
+  },
+  {
+    title: "Horizon Glow",
+    genre: "chill",
+    lyrics: "Sun dips low, sky hums slow, 444 Radio lets calmness show. Every tone a gentle wave, hearts find rest in peaceful cave.",
+    mood: "restful",
+    tags: ["444radio", "horizon", "sun", "glow", "rest"]
+  },
+  {
+    title: "Cloud Whisper",
+    genre: "chill",
+    lyrics: "Breeze flows soft through open space, 444 Radio sets gentle pace. Every sound a quiet song, drifting slow the whole night long.",
+    mood: "soothing",
+    tags: ["444radio", "clouds", "whisper", "breeze", "night"]
+  },
+  {
+    title: "Night Haze",
+    genre: "chill",
+    lyrics: "Stars hum low in silver skies, 444 Radio plays soft replies. Thoughts unwind in peaceful streams, drifting slow through gentle dreams.",
+    mood: "dreamy",
+    tags: ["444radio", "night", "stars", "haze", "dreams"]
+  },
+  
+  // 444 Radio Branded Songs - Lofi (10 songs)
+  {
+    title: "Late Tape",
+    genre: "lofi",
+    lyrics: "Faded loops and gentle hum, 444 Radio drifts where thoughts come. Coffee cold and vinyl spins, music heals what day begins.",
+    mood: "nostalgic",
+    tags: ["444radio", "tape", "coffee", "vinyl", "loops"]
+  },
+  {
+    title: "Window Rain",
+    genre: "lofi",
+    lyrics: "Raindrops tap the window pane, 444 Radio soothes the strain. Beats drift slow in quiet light, music hums through endless night.",
+    mood: "soothing",
+    tags: ["444radio", "rain", "window", "beats", "night"]
+  },
+  {
+    title: "Candle Tape",
+    genre: "lofi",
+    lyrics: "Soft glow lights the quiet room, 444 Radio hums through gloom. Every loop a gentle trace, drifting slow in peaceful space.",
+    mood: "peaceful",
+    tags: ["444radio", "candle", "tape", "glow", "loops"]
+  },
+  {
+    title: "Flicker Notes",
+    genre: "lofi",
+    lyrics: "Lights flicker in amber hue, 444 Radio plays soft and true. Every note a drifting line, music hums and hearts align.",
+    mood: "ambient",
+    tags: ["444radio", "lights", "amber", "notes", "hearts"]
+  },
+  {
+    title: "Midnight Sketch",
+    genre: "lofi",
+    lyrics: "Pen drifts slow on faded page, 444 Radio sets gentle stage. Beats hum soft beneath the glow, thoughts unwind, they come and go.",
+    mood: "creative",
+    tags: ["444radio", "midnight", "sketch", "beats", "thoughts"]
+  },
+  {
+    title: "Dusty Glow",
+    genre: "lofi",
+    lyrics: "Old pages curl beside my pen, 444 Radio hums again. Loops drift soft through evening light, music guides the silent night.",
+    mood: "vintage",
+    tags: ["444radio", "dust", "pages", "evening", "loops"]
+  },
+  {
+    title: "Cloud Tape",
+    genre: "lofi",
+    lyrics: "Sky hums low in amber haze, 444 Radio drifts through days. Every beat a gentle stream, thoughts dissolve inside a dream.",
+    mood: "dreamy",
+    tags: ["444radio", "clouds", "tape", "amber", "dreams"]
+  },
+  {
+    title: "Late Drift",
+    genre: "lofi",
+    lyrics: "Night hums soft, the city sleeps, 444 Radio through the streets seeps. Every note a quiet sigh, drifting slow beneath the sky.",
+    mood: "nocturnal",
+    tags: ["444radio", "night", "city", "drift", "streets"]
+  },
+  {
+    title: "Soft Echo",
+    genre: "lofi",
+    lyrics: "Vinyl hums in candle glow, 444 Radio plays soft and slow. Every loop a gentle trace, drifting calm through empty space.",
+    mood: "calm",
+    tags: ["444radio", "vinyl", "echo", "candle", "loops"]
+  },
+  {
+    title: "Amber Loop",
+    genre: "lofi",
+    lyrics: "Tape spins slow on faded deck, 444 Radio keeps the rhythm in check. Beats drift soft through night and haze, music hums in gentle ways.",
+    mood: "relaxed",
+    tags: ["444radio", "amber", "tape", "loops", "beats"]
   }
 ]
 
