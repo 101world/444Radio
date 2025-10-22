@@ -14,11 +14,12 @@ interface MatchScore {
 
 // Genre keywords mapping
 const GENRE_KEYWORDS: Record<string, string[]> = {
-  lofi: ['lofi', 'lo-fi', 'chill', 'study', 'relax', 'mellow', 'tape', 'vinyl', 'coffee', 'rain', 'ambient', 'slow', 'quiet', 'soft'],
+  lofi: ['lofi', 'lo-fi', 'study', 'relax', 'mellow', 'tape', 'vinyl', 'coffee', 'rain', 'ambient', 'slow', 'quiet', 'soft'],
   hiphop: ['hip hop', 'hiphop', 'rap', 'urban', 'street', 'hustle', 'bars', 'beats', 'rhyme', 'flow', 'city', 'struggle', 'grind'],
   jazz: ['jazz', 'smooth', 'saxophone', 'sax', 'trumpet', 'piano', 'swing', 'blue', 'smoky', 'elegant', 'sophisticated', 'club'],
-  chill: ['chill', 'calm', 'peaceful', 'tranquil', 'serene', 'ocean', 'waves', 'breeze', 'floating', 'drift', 'relax', 'meditation'],
-  rnb: ['rnb', 'r&b', 'soul', 'love', 'romance', 'sensual', 'smooth', 'groove', 'rhythm', 'passion', 'heartbeat', 'desire']
+  chill: ['chill', 'calm', 'peaceful', 'tranquil', 'serene', 'ocean', 'waves', 'breeze', 'floating', 'drift', 'meditation'],
+  rnb: ['rnb', 'r&b', 'soul', 'love', 'romance', 'sensual', 'smooth', 'groove', 'rhythm', 'passion', 'heartbeat', 'desire'],
+  techno: ['techno', 'electronic', 'edm', 'dance', 'rave', 'club', 'laser', 'neon', 'pulse', 'circuit', 'electric', 'bass drop', 'synth']
 }
 
 // Mood keywords mapping
