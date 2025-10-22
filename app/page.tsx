@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
@@ -150,7 +150,7 @@ export default function HomePage() {
             </div>
           ) : tracks.length > 0 ? (
             <div className="relative z-20">
-              <FMTuner tracks={tracks} autoPlay=false} />
+              <FMTuner tracks={tracks} autoPlay={false} />
             </div>
           ) : (
             <div className="text-center space-y-4">
