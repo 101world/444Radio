@@ -968,8 +968,18 @@ function CreatePageContent() {
                   <button
                     onClick={async () => {
                       try {
-                        const response = await fetch('/api/lyrics/random')
+                        // Build API URL with description parameter
+                        const params = new URLSearchParams()
+                        
+                        // Use the user's description/prompt for smart matching
+                        if (input && input.trim()) {
+                          params.append('description', input)
+                        }
+                        
+                        const url = `/api/lyrics/random${params.toString() ? '?' + params.toString() : ''}`
+                        const response = await fetch(url)
                         const data = await response.json()
+                        
                         if (data.success && data.lyrics) {
                           setCustomLyrics(data.lyrics.lyrics)
                           // Optionally set genre and title if empty

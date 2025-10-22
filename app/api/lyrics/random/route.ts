@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getRandomLyrics, getRandomLyricsByGenre, getRandomLyricsByMood } from '@/lib/lyrics-database'
+import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 
 /**
  * GET /api/lyrics/random
@@ -7,18 +8,25 @@ import { getRandomLyrics, getRandomLyricsByGenre, getRandomLyricsByMood } from '
  * Get random lyrics for inspiration
  * 
  * Query params:
+ * - description: User's prompt/description to match against (smart matching)
  * - genre: Filter by genre (lofi, hiphop, jazz, chill, rnb)
  * - mood: Filter by mood (melancholic, empowering, romantic, etc.)
  */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
+    const description = searchParams.get('description')
     const genre = searchParams.get('genre')
     const mood = searchParams.get('mood')
 
     let lyrics
 
-    if (genre) {
+    // Priority 1: Smart matching based on description
+    if (description && description.trim().length > 0) {
+      lyrics = findBestMatchingLyrics(description)
+    }
+    // Priority 2: Filter by genre
+    else if (genre) {
       lyrics = getRandomLyricsByGenre(genre)
       if (!lyrics) {
         return NextResponse.json(
@@ -26,7 +34,9 @@ export async function GET(req: Request) {
           { status: 404 }
         )
       }
-    } else if (mood) {
+    } 
+    // Priority 3: Filter by mood
+    else if (mood) {
       lyrics = getRandomLyricsByMood(mood)
       if (!lyrics) {
         return NextResponse.json(
@@ -34,7 +44,9 @@ export async function GET(req: Request) {
           { status: 404 }
         )
       }
-    } else {
+    } 
+    // Priority 4: Pure random
+    else {
       lyrics = getRandomLyrics()
     }
 
