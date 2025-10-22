@@ -104,7 +104,7 @@ export default function HomePage() {
                 444 RADIO
               </h1>
               <p className="text-cyan-400/80 text-lg md:text-xl font-light tracking-wide text-center">
-                AI-Powered Music Generation
+                A world where music feels infinite.
               </p>
               
               {/* Large Play Button */}
