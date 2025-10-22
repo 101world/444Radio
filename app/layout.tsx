@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
+import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
+import GlobalAudioPlayer from './components/GlobalAudioPlayer';
 import "./globals.css";
 
 const poppins = Poppins({
@@ -24,7 +26,10 @@ export default function RootLayout({
         className={`${poppins.className} antialiased bg-gray-900 text-white`}
       >
         <ClerkProvider>
-          {children}
+          <AudioPlayerProvider>
+            {children}
+            <GlobalAudioPlayer />
+          </AudioPlayerProvider>
         </ClerkProvider>
       </body>
     </html>

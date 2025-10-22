@@ -95,10 +95,12 @@ export default function ExplorePage() {
     if (playingId === media.id && isPlaying) {
       audioRef.current?.pause()
       setIsPlaying(false)
+      setShowSearchBox(true) // Show search bar when paused
     } else {
       setCurrentTrack(media)
       setPlayingId(media.id)
       setIsPlaying(true)
+      setShowSearchBox(false) // Hide search bar when playing
       if (audioRef.current) {
         audioRef.current.src = media.audio_url
         audioRef.current.play()

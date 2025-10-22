@@ -1,0 +1,257 @@
+'use client'
+
+import React, { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react'
+
+interface Track {
+  id: string
+  audioUrl: string
+  title: string
+  artist?: string
+  imageUrl?: string
+  userId?: string
+}
+
+interface AudioPlayerContextType {
+  currentTrack: Track | null
+  isPlaying: boolean
+  currentTime: number
+  duration: number
+  volume: number
+  playlist: Track[]
+  playTrack: (track: Track) => void
+  pause: () => void
+  resume: () => void
+  togglePlayPause: () => void
+  setVolume: (volume: number) => void
+  seekTo: (time: number) => void
+  playNext: () => void
+  playPrevious: () => void
+  setPlaylist: (tracks: Track[], startIndex?: number) => void
+  shufflePlaylist: () => void
+}
+
+const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined)
+
+export function AudioPlayerProvider({ children }: { children: ReactNode }) {
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [volume, setVolumeState] = useState(0.7)
+  const [playlist, setPlaylist] = useState<Track[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
+  
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const playTimeRef = useRef<number>(0)
+  const hasTrackedPlayRef = useRef<boolean>(false)
+
+  // Initialize audio element
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      audioRef.current = new Audio()
+      audioRef.current.volume = volume
+
+      // Enable background playback
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', () => resume())
+        navigator.mediaSession.setActionHandler('pause', () => pause())
+        navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious())
+        navigator.mediaSession.setActionHandler('nexttrack', () => playNext())
+      }
+
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.pause()
+          audioRef.current = null
+        }
+      }
+    }
+  }, [])
+
+  // Update media session metadata
+  useEffect(() => {
+    if (currentTrack && 'mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist || 'Unknown Artist',
+        artwork: currentTrack.imageUrl ? [
+          { src: currentTrack.imageUrl, sizes: '512x512', type: 'image/png' }
+        ] : undefined
+      })
+    }
+  }, [currentTrack])
+
+  // Track play count after 3 seconds
+  useEffect(() => {
+    if (!isPlaying || !currentTrack) {
+      playTimeRef.current = 0
+      return
+    }
+
+    const interval = setInterval(() => {
+      playTimeRef.current += 1
+
+      // Track play after 3 seconds
+      if (playTimeRef.current >= 3 && !hasTrackedPlayRef.current) {
+        hasTrackedPlayRef.current = true
+        trackPlay(currentTrack.id)
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isPlaying, currentTrack])
+
+  // Track play count API call
+  const trackPlay = async (trackId: string) => {
+    try {
+      await fetch('/api/songs/track-play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackId })
+      })
+    } catch (error) {
+      console.error('Failed to track play:', error)
+    }
+  }
+
+  // Audio event listeners
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+    const handleDurationChange = () => setDuration(audio.duration)
+    const handleEnded = () => {
+      setIsPlaying(false)
+      playNext()
+    }
+
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    audio.addEventListener('durationchange', handleDurationChange)
+    audio.addEventListener('ended', handleEnded)
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('durationchange', handleDurationChange)
+      audio.removeEventListener('ended', handleEnded)
+    }
+  }, [])
+
+  const playTrack = (track: Track) => {
+    if (!audioRef.current) return
+
+    // Reset play tracking
+    playTimeRef.current = 0
+    hasTrackedPlayRef.current = false
+
+    setCurrentTrack(track)
+    audioRef.current.src = track.audioUrl
+    audioRef.current.play()
+    setIsPlaying(true)
+
+    // Find track in playlist and update index
+    const index = playlist.findIndex(t => t.id === track.id)
+    if (index !== -1) {
+      setCurrentIndex(index)
+    }
+  }
+
+  const pause = () => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      setIsPlaying(false)
+    }
+  }
+
+  const resume = () => {
+    if (audioRef.current) {
+      audioRef.current.play()
+      setIsPlaying(true)
+    }
+  }
+
+  const togglePlayPause = () => {
+    if (isPlaying) {
+      pause()
+    } else {
+      resume()
+    }
+  }
+
+  const setVolume = (vol: number) => {
+    setVolumeState(vol)
+    if (audioRef.current) {
+      audioRef.current.volume = vol
+    }
+  }
+
+  const seekTo = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time
+    }
+  }
+
+  const playNext = () => {
+    if (playlist.length === 0) return
+    const nextIndex = (currentIndex + 1) % playlist.length
+    setCurrentIndex(nextIndex)
+    playTrack(playlist[nextIndex])
+  }
+
+  const playPrevious = () => {
+    if (playlist.length === 0) return
+    const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1
+    setCurrentIndex(prevIndex)
+    playTrack(playlist[prevIndex])
+  }
+
+  const setPlaylistAndPlay = (tracks: Track[], startIndex: number = 0) => {
+    setPlaylist(tracks)
+    setCurrentIndex(startIndex)
+    if (tracks.length > 0) {
+      playTrack(tracks[startIndex])
+    }
+  }
+
+  const shufflePlaylist = () => {
+    const shuffled = [...playlist].sort(() => Math.random() - 0.5)
+    setPlaylist(shuffled)
+    setCurrentIndex(0)
+    if (shuffled.length > 0) {
+      playTrack(shuffled[0])
+    }
+  }
+
+  return (
+    <AudioPlayerContext.Provider
+      value={{
+        currentTrack,
+        isPlaying,
+        currentTime,
+        duration,
+        volume,
+        playlist,
+        playTrack,
+        pause,
+        resume,
+        togglePlayPause,
+        setVolume,
+        seekTo,
+        playNext,
+        playPrevious,
+        setPlaylist: setPlaylistAndPlay,
+        shufflePlaylist
+      }}
+    >
+      {children}
+    </AudioPlayerContext.Provider>
+  )
+}
+
+export function useAudioPlayer() {
+  const context = useContext(AudioPlayerContext)
+  if (context === undefined) {
+    throw new Error('useAudioPlayer must be used within AudioPlayerProvider')
+  }
+  return context
+}
