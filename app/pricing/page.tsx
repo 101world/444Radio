@@ -1,4 +1,5 @@
-import { Youtube, Mail, Instagram } from 'lucide-react'
+import { Youtube, Mail, Instagram, X, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 export default function Pricing() {
   return (
@@ -7,6 +8,20 @@ export default function Pricing() {
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-black to-black pointer-events-none"></div>
 
       <div className="max-w-6xl mx-auto relative z-10 px-4 py-8">
+        {/* Escape/Back Button */}
+        <div className="flex justify-start mb-8">
+          <Link
+            href="/explore"
+            className="group flex items-center gap-2 text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300"
+          >
+            {/* Desktop: Escape button */}
+            <X className="w-6 h-6 hidden md:block" />
+            {/* Mobile: Arrow left */}
+            <ArrowLeft className="w-6 h-6 md:hidden" />
+            <span className="text-sm font-medium">Back to Explore</span>
+          </Link>
+        </div>
+
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-black mb-4 bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent">
             Simple Pricing
