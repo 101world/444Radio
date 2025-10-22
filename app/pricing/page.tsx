@@ -1,7 +1,12 @@
+'use client'
+
+import { useState } from 'react'
 import { Youtube, Mail, Instagram, X, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 export default function Pricing() {
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
+
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Background gradient */}
@@ -22,13 +27,42 @@ export default function Pricing() {
           </Link>
         </div>
 
-        <div className="text-center mb-16">
+        <div className="text-center mb-8">
           <h1 className="text-5xl md:text-6xl font-black mb-4 bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent">
             Simple Pricing
           </h1>
           <p className="text-cyan-400/60 text-lg max-w-2xl mx-auto">
-            Choose the perfect plan for your music creation needs. Pay once, own forever.
+            Choose the perfect plan for your music creation needs. Flexible billing options.
           </p>
+        </div>
+
+        {/* Billing Toggle */}
+        <div className="flex justify-center mb-12">
+          <div className="inline-flex items-center gap-4 bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-full p-2">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-6 py-3 rounded-full font-bold transition-all duration-300 ${
+                billingCycle === 'monthly'
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                  : 'text-cyan-400/60 hover:text-cyan-400'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingCycle('annual')}
+              className={`px-6 py-3 rounded-full font-bold transition-all duration-300 relative ${
+                billingCycle === 'annual'
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                  : 'text-cyan-400/60 hover:text-cyan-400'
+              }`}
+            >
+              Annual
+              <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-gradient-to-r from-green-600 to-green-400 text-white text-xs rounded-full">
+                Save 20%
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
@@ -44,10 +78,18 @@ export default function Pricing() {
 
               <div className="mb-8">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-black text-white">$1</span>
-                  <span className="text-cyan-400/60 text-lg">one-time</span>
+                  <span className="text-5xl font-black text-white">
+                    ${billingCycle === 'monthly' ? '9' : '86'}
+                  </span>
+                  <span className="text-cyan-400/60 text-lg">
+                    /{billingCycle === 'monthly' ? 'month' : 'year'}
+                  </span>
                 </div>
-                <p className="text-cyan-400/40 text-xs mt-1">No recurring fees</p>
+                {billingCycle === 'annual' && (
+                  <p className="text-green-400/80 text-sm mt-2">
+                    Save $22/year compared to monthly
+                  </p>
+                )}
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -55,7 +97,7 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300"><span className="font-bold text-white">20 songs</span> generation</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">20 songs</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,16 +147,19 @@ export default function Pricing() {
               </div>
 
               <div className="mb-8">
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-5xl font-black text-white">$3</span>
-                  <span className="text-cyan-300/80 text-lg">one-time</span>
-                </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-cyan-400">$30</span>
-                  <span className="text-cyan-300/60 text-sm line-through opacity-50">$36</span>
-                  <span className="text-cyan-300/80 text-sm">annual</span>
+                  <span className="text-5xl font-black text-white">
+                    ${billingCycle === 'monthly' ? '19' : '182'}
+                  </span>
+                  <span className="text-cyan-300/80 text-lg">
+                    /{billingCycle === 'monthly' ? 'month' : 'year'}
+                  </span>
                 </div>
-                <p className="text-cyan-300/60 text-xs mt-1">Save $6 with annual plan</p>
+                {billingCycle === 'annual' && (
+                  <p className="text-green-400/80 text-sm mt-2">
+                    Save $46/year compared to monthly
+                  </p>
+                )}
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -122,7 +167,7 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200"><span className="font-bold text-white">50 songs</span> generation</span>
+                  <span className="text-gray-200"><span className="font-bold text-white">100 songs</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,16 +218,19 @@ export default function Pricing() {
               </div>
 
               <div className="mb-8">
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-5xl font-black text-white">$25</span>
-                  <span className="text-cyan-400/60 text-lg">one-time</span>
-                </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-cyan-400">$280</span>
-                  <span className="text-cyan-400/60 text-sm line-through opacity-50">$300</span>
-                  <span className="text-cyan-400/60 text-sm">annual</span>
+                  <span className="text-5xl font-black text-white">
+                    ${billingCycle === 'monthly' ? '49' : '470'}
+                  </span>
+                  <span className="text-cyan-400/60 text-lg">
+                    /{billingCycle === 'monthly' ? 'month' : 'year'}
+                  </span>
                 </div>
-                <p className="text-cyan-400/40 text-xs mt-1">Save $20 with annual plan</p>
+                {billingCycle === 'annual' && (
+                  <p className="text-green-400/80 text-sm mt-2">
+                    Save $118/year compared to monthly
+                  </p>
+                )}
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -190,7 +238,7 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300"><span className="font-bold text-white">Unlimited songs</span> generation</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">Unlimited songs</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,8 +301,8 @@ export default function Pricing() {
               <tbody>
                 <tr className="border-b border-cyan-500/10">
                   <td className="p-6 text-gray-300 font-medium">Song Generations</td>
-                  <td className="text-center p-6 text-white">20</td>
-                  <td className="text-center p-6 text-white">50</td>
+                  <td className="text-center p-6 text-white">20/month</td>
+                  <td className="text-center p-6 text-white">100/month</td>
                   <td className="text-center p-6 text-white">Unlimited</td>
                 </tr>
                 <tr className="border-b border-cyan-500/10">
@@ -304,12 +352,12 @@ export default function Pricing() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-white mb-3">How does the one-time payment work?</h3>
-                <p className="text-gray-300 text-sm">Pay once and get lifetime access to your plan. No monthly subscriptions or hidden fees. Generate as many songs as your plan allows whenever you want.</p>
+                <h3 className="text-lg font-bold text-white mb-3">How does billing work?</h3>
+                <p className="text-gray-300 text-sm">Choose between monthly or annual billing. Annual plans save you 20% compared to monthly. You can cancel anytime, and your subscription will remain active until the end of your billing period.</p>
               </div>
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-3">Can I use the music commercially?</h3>
-                <p className="text-gray-300 text-sm">Creator and Pro plans include commercial licenses. Starter plan is for personal use only. All generated music is owned by you.</p>
+                <p className="text-gray-300 text-sm">Creator and Pro plans include commercial licenses. Starter plan is for personal use only. All generated music is owned by you and you retain full rights.</p>
               </div>
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-3">What audio quality do you provide?</h3>
@@ -319,11 +367,11 @@ export default function Pricing() {
             <div className="space-y-6">
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-3">Do you offer refunds?</h3>
-                <p className="text-gray-300 text-sm">We offer a 30-day money-back guarantee. If you&apos;re not satisfied with your purchase, contact our support team for a full refund.</p>
+                <p className="text-gray-300 text-sm">We offer a 7-day money-back guarantee on all plans. If you&apos;re not satisfied with your subscription, contact our support team for a full refund within the first week.</p>
               </div>
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
-                <h3 className="text-lg font-bold text-white mb-3">Can I upgrade my plan later?</h3>
-                <p className="text-gray-300 text-sm">Yes! You can upgrade to a higher plan at any time. We&apos;ll credit your existing purchase toward the upgrade price.</p>
+                <h3 className="text-lg font-bold text-white mb-3">Can I upgrade or downgrade my plan?</h3>
+                <p className="text-gray-300 text-sm">Yes! You can upgrade or downgrade at any time. Changes take effect immediately, and we&apos;ll prorate the difference for your current billing cycle.</p>
               </div>
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-3">How long do downloads take?</h3>
@@ -353,7 +401,7 @@ export default function Pricing() {
         {/* Footer */}
         <div className="mt-20 text-center">
           <p className="text-cyan-400/60 text-sm">
-            All plans include high-quality music generation • No subscriptions • Pay once, use forever
+            All plans include high-quality music generation • Flexible billing • Cancel anytime
           </p>
           <p className="text-cyan-400/40 text-xs mt-2">
             Questions? Contact us at support@444radio.com • © 2025 444RADIO
