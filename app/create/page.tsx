@@ -966,19 +966,32 @@ function CreatePageContent() {
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Lyrics</label>
                   <button
-                    onClick={() => {
-                      const lyricsTemplates = [
-                        "Walking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day",
-                        "Lost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
-                        "Staring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow"
-                      ]
-                      const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
-                      setCustomLyrics(randomLyrics)
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/lyrics/random')
+                        const data = await response.json()
+                        if (data.success && data.lyrics) {
+                          setCustomLyrics(data.lyrics.lyrics)
+                          // Optionally set genre and title if empty
+                          if (!genre) setGenre(data.lyrics.genre)
+                          if (!customTitle) setCustomTitle(data.lyrics.title)
+                        }
+                      } catch (error) {
+                        console.error('Failed to fetch random lyrics:', error)
+                        // Fallback to old templates if API fails
+                        const lyricsTemplates = [
+                          "Walking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day",
+                          "Lost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
+                          "Staring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow"
+                        ]
+                        const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
+                        setCustomLyrics(randomLyrics)
+                      }
                     }}
                     className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
                   >
                     <Sparkles size={12} />
-                    Generate
+                    Randomize
                   </button>
                 </div>
                 <textarea
