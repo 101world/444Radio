@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
@@ -20,6 +20,15 @@ interface Track {
   image_url?: string
 }
 
+interface MediaItem {
+  id: string
+  title?: string
+  users?: { username?: string }
+  username?: string
+  audio_url: string
+  image_url?: string
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [tracks, setTracks] = useState<Track[]>([])
@@ -35,7 +44,7 @@ export default function HomePage() {
       const res = await fetch('/api/media/explore')
       const data = await res.json()
       if (data.success && data.combinedMedia) {
-        const formattedTracks = data.combinedMedia.map((media: any) => ({
+        const formattedTracks = data.combinedMedia.map((media: MediaItem) => ({
           id: media.id,
           title: media.title || 'Untitled',
           artist: media.users?.username || media.username || 'Unknown Artist',
@@ -91,72 +100,61 @@ export default function HomePage() {
         {/* Floating Menu - Desktop Only */}
         <FloatingMenu />
 
-        {/* Landing View - Centered Hero Section */}
-        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        {/* Landing View - FM Tuner Centered */}
+        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 pt-24 pb-32 md:py-8">
           
-          {/* Hero Section - Always Visible */}
-          <div className="relative z-20 w-full max-w-4xl mx-auto text-center space-y-6 mb-8">
-            {/* Main Heading */}
-            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 bg-clip-text tracking-wider leading-tight" style={{
-              textShadow: '0 0 40px rgba(34, 211, 238, 0.6)',
-              fontFamily: 'serif'
-            }}>
-              444 RADIO
-            </h1>
-            
-            {/* Tagline */}
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-cyan-400/90 font-light tracking-wide max-w-2xl mx-auto px-4">
-              A world where music feels infinite.
-            </p>
-
-            {/* Feature Tags */}
-            <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 px-4 max-w-2xl mx-auto pt-2">
-              {['Instant Generation', 'High Quality', 'Unlimited Ideas'].map((feature) => (
-                <div
-                  key={feature}
-                  className="px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs md:text-sm font-mono backdrop-blur-sm hover:bg-cyan-500/20 hover:border-cyan-400/50 transition-all duration-300"
-                >
-                  {feature}
-                </div>
-              ))}
-            </div>
-            
-            {/* Large Play Button - Always Visible */}
-            <div className="flex flex-col items-center gap-3 pt-4">
+          {/* Instant Play Button - Centered Above Tuner */}
+          {!loading && tracks.length > 0 && (
+            <div className="relative z-20 mb-8 flex flex-col items-center gap-4">
+              <h1 className="text-6xl md:text-7xl font-black text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 bg-clip-text tracking-wider text-center" style={{
+                textShadow: '0 0 30px rgba(34, 211, 238, 0.5)',
+                fontFamily: 'serif'
+              }}>
+                444 RADIO
+              </h1>
+              <p className="text-cyan-400/80 text-lg md:text-xl font-light tracking-wide text-center">
+                A world where music feels infinite.
+              </p>
+              
+              {/* Large Play Button */}
               <button
                 onClick={handlePlayAll}
-                disabled={tracks.length === 0}
-                className="group relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300 disabled:from-gray-600 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-400/70"
+                className="group relative mt-4 w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300 flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-400/60"
               >
                 {currentTrack && isPlaying ? (
-                  <Pause className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-black" fill="currentColor" />
+                  <div className="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center gap-1">
+                    <div className="w-1.5 md:w-2 h-6 md:h-8 bg-black rounded-full"></div>
+                    <div className="w-1.5 md:w-2 h-6 md:h-8 bg-black rounded-full"></div>
+                  </div>
                 ) : (
-                  <Play className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-black ml-1" fill="currentColor" />
+                  <Play className="w-10 h-10 md:w-12 md:h-12 text-black ml-1" fill="currentColor" />
                 )}
                 
                 {/* Pulse animation when not playing */}
-                {(!currentTrack || !isPlaying) && !loading && tracks.length > 0 && (
+                {(!currentTrack || !isPlaying) && (
                   <div className="absolute inset-0 rounded-full bg-cyan-400/30 animate-ping"></div>
                 )}
               </button>
               
-              <p className="text-cyan-500/70 text-sm md:text-base font-medium tracking-wide">
-                {loading ? 'Loading...' : tracks.length === 0 ? 'No Tracks Available' : currentTrack && isPlaying ? 'Now Playing' : 'Start Broadcasting'}
+              <p className="text-cyan-500/60 text-sm font-medium tracking-wide">
+                {currentTrack && isPlaying ? 'Now Playing' : 'Start Broadcasting'}
               </p>
             </div>
-          </div>
-          
-          {/* FM Tuner - Shown when tracks are loaded */}
-          {!loading && tracks.length > 0 && (
-            <div className="relative z-20 w-full max-w-4xl mx-auto mt-8">
-              <FMTuner tracks={tracks} autoPlay={false} />
-            </div>
           )}
-
-          {/* Empty State */}
-          {!loading && tracks.length === 0 && (
-            <div className="text-center space-y-4 mt-8">
-              <div className="text-6xl mb-4">📻</div>
+          
+          {loading ? (
+            <div className="text-center space-y-4">
+              <div className="text-cyan-400 text-2xl font-mono animate-pulse">
+                Tuning stations...
+              </div>
+            </div>
+          ) : tracks.length > 0 ? (
+            <div className="relative z-20">
+              <FMTuner tracks={tracks} autoPlay=false} />
+            </div>
+          ) : (
+            <div className="text-center space-y-4">
+              <div className="text-6xl mb-4"></div>
               <h2 className="text-2xl font-bold text-white mb-2">No stations available</h2>
               <p className="text-gray-400 mb-8">Be the first to broadcast!</p>
               <button
@@ -172,8 +170,8 @@ export default function HomePage() {
 
       {/* Floating Navigation Button */}
       <FloatingNavButton />
-
-      {/* Profile Music Player */}
+      
+      {/* Global Music Player */}
       <ProfileMusicPlayer />
     </div>
   )
