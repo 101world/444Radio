@@ -546,9 +546,19 @@ function CreatePageContent() {
         </Link>
       </div>
 
-      {/* Chat Area - Minimal & Clean */}
+      {/* Chat Area - Glassmorphism Effect */}
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full scrollbar-thin scroll-smooth">
-        <div className="space-y-4">
+        {/* Glassmorphism Container */}
+        <div className="relative">
+          {/* Glassy Backdrop */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/3 to-transparent backdrop-blur-2xl rounded-3xl border border-white/10 shadow-2xl shadow-white/5"></div>
+          
+          {/* Dew-like Effect Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-cyan-400/5 rounded-3xl"></div>
+          
+          {/* Content */}
+          <div className="relative z-10 p-6 rounded-3xl">
+            <div className="space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -685,6 +695,8 @@ function CreatePageContent() {
             </div>
           ))}
           <div ref={messagesEndRef} />
+        </div>
+          </div>
         </div>
       </div>
 
