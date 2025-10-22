@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
-import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock } from 'lucide-react'
+import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard } from 'lucide-react'
 
 export default function FloatingMenu() {
   const { user } = useUser()
@@ -119,6 +119,14 @@ export default function FloatingMenu() {
                     >
                       <BarChart3 size={20} />
                       <span className="font-medium">Charts</span>
+                    </Link>
+                    <Link
+                      href="/pricing"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
+                    >
+                      <CreditCard size={20} />
+                      <span className="font-medium">Pricing</span>
                     </Link>
                     <Link
                       href="/decrypt"
