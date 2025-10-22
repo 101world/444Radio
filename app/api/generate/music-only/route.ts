@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
-import { getContextualLyrics, getRandomLyrics } from '@/lib/default-lyrics'
+import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
@@ -27,11 +27,14 @@ export async function POST(req: NextRequest) {
     // If lyrics not provided, use intelligent default from dataset
     let formattedLyrics: string
     if (!lyrics || typeof lyrics !== 'string' || lyrics.trim().length === 0) {
-      // Use contextual lyrics based on prompt (from 20 template dataset)
-      console.log('⚡ No custom lyrics provided, using intelligent default from dataset')
+      // Use smart lyrics matcher based on prompt (supports 444 trigger and genre matching)
+      console.log('⚡ No custom lyrics provided, using smart lyrics matcher')
       console.log('  Received lyrics value:', lyrics, 'Type:', typeof lyrics)
-      formattedLyrics = getContextualLyrics(prompt)
-      console.log('📝 Selected lyrics template based on prompt context')
+      const matchedSong = findBestMatchingLyrics(prompt)
+      formattedLyrics = matchedSong.lyrics
+      console.log('📝 Selected lyrics from smart matcher')
+      console.log('  Song title:', matchedSong.title)
+      console.log('  Genre:', matchedSong.genre)
       console.log('  Formatted lyrics length:', formattedLyrics.length)
     } else {
       // Validate user-provided lyrics
@@ -43,12 +46,22 @@ export async function POST(req: NextRequest) {
       console.log('  Lyrics length:', formattedLyrics.length)
     }
     
-    // CRITICAL: Ensure lyrics are NEVER empty before sending to Replicate
+    // CRITICAL: Ensure lyrics are NEVER empty and within API limits before sending to Replicate
     if (!formattedLyrics || formattedLyrics.length < 10) {
       console.error('❌ CRITICAL: Formatted lyrics are invalid!', formattedLyrics)
-      // Fallback to safe default
-      formattedLyrics = getRandomLyrics()
-      console.log('  ⚠️ Using random fallback lyrics, length:', formattedLyrics.length)
+      // Fallback to a safe default
+      const fallbackSong = findBestMatchingLyrics('chill vibes')
+      formattedLyrics = fallbackSong.lyrics
+      console.log('  ⚠️ Using fallback lyrics, length:', formattedLyrics.length)
+    }
+    
+    // CRITICAL: Validate lyrics length for API (10-600 characters)
+    if (formattedLyrics.length > 600) {
+      console.warn('⚠️ Lyrics too long for API, trimming to 600 characters')
+      console.log('  Original length:', formattedLyrics.length)
+      // Trim to 600 characters at a word boundary
+      formattedLyrics = formattedLyrics.substring(0, 597).trim() + '...'
+      console.log('  Trimmed length:', formattedLyrics.length)
     }
     
     // Log for debugging
