@@ -549,7 +549,7 @@ function CreatePageContent() {
       {/* Chat Area - Glassmorphism Effect */}
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full scrollbar-thin scroll-smooth">
         {/* Single Glassmorphism Container */}
-        <div className="relative p-6 rounded-3xl backdrop-blur-3xl bg-white/[0.01] border border-white/10 shadow-2xl">
+        <div className="relative p-6 rounded-3xl backdrop-blur-sm bg-white/[0.01] border border-white/10 shadow-2xl">
           {/* Dew-like gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5 rounded-3xl pointer-events-none"></div>
           
