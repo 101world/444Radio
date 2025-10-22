@@ -62,7 +62,7 @@ function CreatePageContent() {
   const [activeGenerations, setActiveGenerations] = useState<Set<string>>(new Set())
   
   // Validation constants
-  const MIN_PROMPT_LENGTH = 3
+  const MIN_PROMPT_LENGTH = 10
   const MAX_PROMPT_LENGTH = 300
   
   // Advanced parameters
@@ -105,6 +105,33 @@ function CreatePageContent() {
 
   useEffect(() => {
     scrollToBottom()
+  }, [messages])
+
+  // Load chat from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedChat = localStorage.getItem('444radio-chat-messages')
+      if (savedChat) {
+        const parsedMessages = JSON.parse(savedChat)
+        // Convert timestamp strings back to Date objects
+        const messagesWithDates = parsedMessages.map((msg: Message) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }))
+        setMessages(messagesWithDates)
+      }
+    } catch (error) {
+      console.error('Failed to load chat from localStorage:', error)
+    }
+  }, [])
+
+  // Save chat to localStorage whenever messages change
+  useEffect(() => {
+    try {
+      localStorage.setItem('444radio-chat-messages', JSON.stringify(messages))
+    } catch (error) {
+      console.error('Failed to save chat to localStorage:', error)
+    }
   }, [messages])
 
   // Fetch user credits on mount

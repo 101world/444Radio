@@ -39,7 +39,7 @@ export default function CreditIndicator() {
 
   return (
     <Link href="/decrypt">
-      <div className="fixed top-6 left-6 z-50 flex items-center gap-2 px-4 py-3 bg-black/60 backdrop-blur-2xl border border-cyan-500/30 rounded-full shadow-lg shadow-cyan-500/20 hover:bg-black/70 hover:border-cyan-500/50 transition-all cursor-pointer group">
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-black/60 backdrop-blur-2xl border border-cyan-500/30 rounded-full shadow-lg shadow-cyan-500/20 hover:bg-black/70 hover:border-cyan-500/50 transition-all cursor-pointer group">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center group-hover:scale-110 transition-transform">
           <Zap className="text-black" size={16} fill="currentColor" />
         </div>

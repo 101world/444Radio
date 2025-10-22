@@ -130,7 +130,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-32">
+    <div className="min-h-screen bg-black text-white pb-8">
       {/* Holographic 3D Background */}
       <HolographicBackgroundClient />
       
@@ -167,6 +167,45 @@ export default function LibraryPage() {
           </div>
         </div>
 
+        {/* Tabs - Above Content */}
+        <div className="mb-6">
+          <div className="flex gap-2 justify-center md:justify-start flex-wrap">
+            <button
+              onClick={() => setActiveTab('music')}
+              className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'music'
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
+              }`}
+            >
+              <Music size={16} />
+              Music
+            </button>
+            <button
+              onClick={() => setActiveTab('images')}
+              className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'images'
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
+              }`}
+            >
+              <ImageIcon size={16} />
+              Images
+            </button>
+            <button
+              onClick={() => setActiveTab('combined')}
+              className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'combined'
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
+              }`}
+            >
+              <Layers size={16} />
+              Releases
+            </button>
+          </div>
+        </div>
+
         {/* Loading State */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
@@ -177,7 +216,7 @@ export default function LibraryPage() {
 
         {/* Music Tab */}
         {!isLoading && activeTab === 'music' && (
-          <div className="-mt-4">
+          <div>
             {musicItems.length === 0 ? (
               <div className="text-center py-20">
                 <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
@@ -427,49 +466,6 @@ export default function LibraryPage() {
             )}
           </div>
         )}
-      </div>
-
-      {/* Bottom Docked Tabs - Glassmorphism */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 z-40">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-black/40 backdrop-blur-2xl border border-cyan-500/30 rounded-full shadow-2xl shadow-cyan-500/20 p-2">
-            <div className="flex gap-2 justify-center">
-              <button
-                onClick={() => setActiveTab('music')}
-                className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
-                  activeTab === 'music'
-                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                    : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
-                }`}
-              >
-                <Music size={16} />
-                Music
-              </button>
-              <button
-                onClick={() => setActiveTab('images')}
-                className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
-                  activeTab === 'images'
-                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                    : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
-                }`}
-              >
-                <ImageIcon size={16} />
-                Images
-              </button>
-              <button
-                onClick={() => setActiveTab('combined')}
-                className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
-                  activeTab === 'combined'
-                    ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                    : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
-                }`}
-              >
-                <Layers size={16} />
-                Releases
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Floating Navigation Button */}
