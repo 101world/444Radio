@@ -115,6 +115,27 @@ export function findBestMatchingLyrics(userInput: string): LyricsSuggestion {
     return LYRICS_DATABASE[randomIndex]
   }
 
+  const normalizedInput = userInput.toLowerCase()
+
+  // ⚡ TRIGGER WORD: "444" - Return only 444 Radio branded songs
+  if (normalizedInput.includes('444')) {
+    console.log('🎵 Trigger word "444" detected - selecting from 444 Radio branded songs')
+    const brandedSongs = LYRICS_DATABASE.filter(lyrics => 
+      lyrics.tags?.includes('444radio')
+    )
+    
+    if (brandedSongs.length > 0) {
+      // Still apply matching logic within branded songs for best fit
+      const scores = brandedSongs.map(lyrics => 
+        calculateMatchScore(userInput, lyrics)
+      )
+      scores.sort((a, b) => b.score - a.score)
+      
+      console.log(`  Selected: "${scores[0].lyrics.title}" (${scores[0].lyrics.genre})`)
+      return scores[0].lyrics
+    }
+  }
+
   // Calculate scores for all lyrics
   const scores = LYRICS_DATABASE.map(lyrics => 
     calculateMatchScore(userInput, lyrics)
