@@ -79,7 +79,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-black text-white">
-                    ${billingCycle === 'monthly' ? '3' : '36'}
+                    ${billingCycle === 'monthly' ? '3' : '28.80'}
                   </span>
                   <span className="text-cyan-400/60 text-lg">
                     /{billingCycle === 'monthly' ? 'month' : 'year'}
@@ -87,7 +87,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <p className="text-green-400/80 text-sm mt-2">
-                    Save $0/year - same great price!
+                    🎉 Early bird: Save 20% ($7.20/year) - First 500 users only!
                   </p>
                 )}
               </div>
@@ -149,7 +149,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-black text-white">
-                    ${billingCycle === 'monthly' ? '7' : '84'}
+                    ${billingCycle === 'monthly' ? '7' : '67.20'}
                   </span>
                   <span className="text-cyan-300/80 text-lg">
                     /{billingCycle === 'monthly' ? 'month' : 'year'}
@@ -157,7 +157,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <p className="text-green-400/80 text-sm mt-2">
-                    Save $0/year - same great price!
+                    🎉 Early bird: Save 20% ($16.80/year) - First 500 users only!
                   </p>
                 )}
               </div>
@@ -220,7 +220,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-black text-white">
-                    ${billingCycle === 'monthly' ? '29' : '348'}
+                    ${billingCycle === 'monthly' ? '29' : '278.40'}
                   </span>
                   <span className="text-cyan-400/60 text-lg">
                     /{billingCycle === 'monthly' ? 'month' : 'year'}
@@ -228,7 +228,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <p className="text-green-400/80 text-sm mt-2">
-                    Save $0/year - same great price!
+                    🎉 Early bird: Save 20% ($69.60/year) - First 500 users only!
                   </p>
                 )}
               </div>
