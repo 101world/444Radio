@@ -60,22 +60,6 @@ export default function FloatingAudioPlayer() {
     })
   }
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      const newX = Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.x))
-      const newY = Math.max(0, Math.min(window.innerHeight - size.height, e.clientY - dragOffset.y))
-      setPosition({ x: newX, y: newY })
-    }
-    
-    if (isResizing) {
-      const deltaX = e.clientX - resizeStart.x
-      const deltaY = e.clientY - resizeStart.y
-      const newWidth = Math.max(300, Math.min(800, resizeStart.width + deltaX))
-      const newHeight = Math.max(120, Math.min(400, resizeStart.height + deltaY))
-      setSize({ width: newWidth, height: newHeight })
-    }
-  }
-
   const handleMouseUp = () => {
     setIsDragging(false)
     setIsResizing(false)
@@ -94,15 +78,31 @@ export default function FloatingAudioPlayer() {
   }
 
   useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (isDragging) {
+        const newX = Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.x))
+        const newY = Math.max(0, Math.min(window.innerHeight - size.height, e.clientY - dragOffset.y))
+        setPosition({ x: newX, y: newY })
+      }
+      
+      if (isResizing) {
+        const deltaX = e.clientX - resizeStart.x
+        const deltaY = e.clientY - resizeStart.y
+        const newWidth = Math.max(300, Math.min(800, resizeStart.width + deltaX))
+        const newHeight = Math.max(120, Math.min(400, resizeStart.height + deltaY))
+        setSize({ width: newWidth, height: newHeight })
+      }
+    }
+
     if (isDragging || isResizing) {
-      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mousemove', handleMove)
       window.addEventListener('mouseup', handleMouseUp)
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mousemove', handleMove)
         window.removeEventListener('mouseup', handleMouseUp)
       }
     }
-  }, [isDragging, isResizing, dragOffset, resizeStart])
+  }, [isDragging, isResizing, dragOffset, resizeStart, size.width, size.height])
 
   // Toggle expand/collapse
   const toggleExpand = () => {
