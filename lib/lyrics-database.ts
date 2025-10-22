@@ -4,12 +4,12 @@
  * This file contains a curated collection of lyrics that can be used
  * for randomized suggestions in the music creation interface.
  * 
- * Updated: October 2025 - 70 curated songs across 5 genres
+ * Updated: October 2025 - 83 curated songs across 6 genres
  */
 
 export interface LyricsSuggestion {
   title: string
-  genre: 'lofi' | 'hiphop' | 'jazz' | 'chill' | 'rnb'
+  genre: 'lofi' | 'hiphop' | 'jazz' | 'chill' | 'rnb' | 'techno'
   lyrics: string
   mood?: string
   tags?: string[]
@@ -514,6 +514,101 @@ export const LYRICS_DATABASE: LyricsSuggestion[] = [
     lyrics: "Waking up in tangled sheets, sunrise soft and love complete. Your skin glows like precious ore, every day I love you more.",
     mood: "tender",
     tags: ["morning", "sunrise", "love", "gold", "tenderness"]
+  },
+  
+  // Techno (10 songs)
+  {
+    title: "Neon Pulse",
+    genre: "techno",
+    lyrics: "Lights flash, rhythm thrums, the night ignites as the bass becomes. Every beat a heartbeat's race, moving fast through electric space.",
+    mood: "energetic",
+    tags: ["lights", "bass", "night", "electric", "rhythm"]
+  },
+  {
+    title: "Circuit Flow",
+    genre: "techno",
+    lyrics: "Metal hums beneath my skin, wires spark, let the night begin. Synths collide in endless loops, my mind dissolves in coded grooves.",
+    mood: "hypnotic",
+    tags: ["synths", "loops", "night", "metal", "technology"]
+  },
+  {
+    title: "Binary Dreams",
+    genre: "techno",
+    lyrics: "Glowing lines across the floor, techno calls me back for more. Pulses run in neon streams, lost inside my electric dreams.",
+    mood: "dreamlike",
+    tags: ["neon", "electric", "dreams", "pulses", "glow"]
+  },
+  {
+    title: "Voltage Sky",
+    genre: "techno",
+    lyrics: "Thunder hums in circuits tight, lasers cut the endless night. My heartbeat syncs with flashing lights, moving shadows, flying heights.",
+    mood: "intense",
+    tags: ["lasers", "lights", "night", "thunder", "circuits"]
+  },
+  {
+    title: "Data Rush",
+    genre: "techno",
+    lyrics: "Streams of sound collide and spin, every note pulls me within. City throbs beneath the beat, techno nights that won't retreat.",
+    mood: "driving",
+    tags: ["city", "beat", "night", "sound", "data"]
+  },
+  {
+    title: "Magnetron",
+    genre: "techno",
+    lyrics: "Electric waves across the room, bass drops heavy, sparks consume. Neon haze and metal gleam, techno drives my endless dream.",
+    mood: "powerful",
+    tags: ["electric", "bass", "neon", "metal", "sparks"]
+  },
+  {
+    title: "Laser Tide",
+    genre: "techno",
+    lyrics: "Lights cascade in rhythmic rain, every sound dissolves my pain. Synths collide, the floor ignites, techno hums through endless nights.",
+    mood: "euphoric",
+    tags: ["lights", "synths", "night", "rhythm", "lasers"]
+  },
+  {
+    title: "Neon Drift",
+    genre: "techno",
+    lyrics: "City pulses under glow, laser lines in rhythmic flow. Every chord ignites my mind, endless beats I cannot leave behind.",
+    mood: "mesmerizing",
+    tags: ["city", "lasers", "rhythm", "neon", "beats"]
+  },
+  {
+    title: "Photon Rush",
+    genre: "techno",
+    lyrics: "Beams of light across the floor, bass drops hard, I crave more. Electric waves that twist and wind, techno frees my racing mind.",
+    mood: "exhilarating",
+    tags: ["light", "bass", "electric", "racing", "freedom"]
+  },
+  {
+    title: "Circuit Blaze",
+    genre: "techno",
+    lyrics: "Metal hums and sparks collide, neon flashes everywhere I hide. Rhythm drives my endless run, techno night has just begun.",
+    mood: "electrifying",
+    tags: ["metal", "sparks", "neon", "rhythm", "night"]
+  },
+  
+  // Additional Lofi (3 songs)
+  {
+    title: "Morning Drift",
+    genre: "lofi",
+    lyrics: "Coffee steams and soft beats play, morning hums in gentle sway. Rain taps slow on window glass, thoughts dissolve as moments pass.",
+    mood: "peaceful",
+    tags: ["coffee", "morning", "rain", "beats", "calm"]
+  },
+  {
+    title: "Faded Loop",
+    genre: "lofi",
+    lyrics: "Tape hiss whispers through the room, shadows curl beneath the gloom. Soft beats hum in gentle flow, music drifts, my mind lets go.",
+    mood: "atmospheric",
+    tags: ["tape", "shadows", "beats", "vintage", "drift"]
+  },
+  {
+    title: "Silent Haze",
+    genre: "lofi",
+    lyrics: "Evening falls in amber light, slow beats wrap the fading night. Window panes reflect my thoughts, drifting soft in endless knots.",
+    mood: "contemplative",
+    tags: ["evening", "amber", "beats", "window", "reflection"]
   }
 ]
 
