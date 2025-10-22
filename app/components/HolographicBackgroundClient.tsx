@@ -374,14 +374,14 @@ export default function HolographicBackground() {
     console.log('🎨 3D Logo created: 3 floating radio icons');
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0x222244, 1);
+    const ambientLight = new THREE.AmbientLight(0x1a2244, 1);
     scene.add(ambientLight);
 
     const pointLight1 = new THREE.PointLight(0x00d4ff, 2, 100);
     pointLight1.position.set(20, 20, 20);
     scene.add(pointLight1);
 
-    const pointLight2 = new THREE.PointLight(0xff00ff, 2, 100);
+    const pointLight2 = new THREE.PointLight(0x00bfff, 2, 100);
     pointLight2.position.set(-20, -20, -20);
     scene.add(pointLight2);
 
@@ -622,8 +622,8 @@ export default function HolographicBackground() {
           (ring.material as THREE.MeshBasicMaterial).opacity = 0.7;
         }
 
-        // Color cycle
-        const hue = (0.5 + i * 0.12 + time * 0.025) % 1;
+        // Color cycle - keep in cyan-blue range
+        const hue = 0.5 + (Math.sin(time * 0.02 + i * 0.3) * 0.08); // Range: 0.42-0.58 (cyan-blue)
         (ring.material as THREE.MeshBasicMaterial).color.setHSL(hue, 1, 0.7);
       });
 
@@ -652,8 +652,8 @@ export default function HolographicBackground() {
           shape.rotation.y += attractStrength * 0.01;
         }
 
-        // Color cycle
-        const hue = (0.5 + i * 0.08 + time * 0.03) % 1;
+        // Color cycle - keep in cyan-blue range
+        const hue = 0.5 + (Math.sin(time * 0.025 + i * 0.4) * 0.08); // Range: 0.42-0.58 (cyan-blue)
         (shape.material as THREE.MeshBasicMaterial).color.setHSL(hue, 1, 0.6);
       });
 

@@ -3,8 +3,10 @@
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Shuffle } from 'lucide-react'
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 export default function GlobalAudioPlayer() {
+  const pathname = usePathname()
   const {
     currentTrack,
     isPlaying,
@@ -21,7 +23,11 @@ export default function GlobalAudioPlayer() {
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false)
 
-  if (!currentTrack) return null
+  // Hide player on profile and create pages
+  const hiddenPaths = ['/create', '/profile']
+  const shouldHide = hiddenPaths.some(path => pathname?.startsWith(path))
+
+  if (!currentTrack || shouldHide) return null
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return '0:00'

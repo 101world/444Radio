@@ -105,11 +105,16 @@ export default function Pricing() {
               </div>
 
               <div className="mb-8">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2 mb-3">
                   <span className="text-5xl font-black text-white">$3</span>
                   <span className="text-cyan-300/80 text-lg">one-time</span>
                 </div>
-                <p className="text-cyan-300/60 text-xs mt-1">Save $2 vs monthly plans</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-cyan-400">$30</span>
+                  <span className="text-cyan-300/60 text-sm line-through opacity-50">$36</span>
+                  <span className="text-cyan-300/80 text-sm">annual</span>
+                </div>
+                <p className="text-cyan-300/60 text-xs mt-1">Save $6 with annual plan</p>
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -168,11 +173,16 @@ export default function Pricing() {
               </div>
 
               <div className="mb-8">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2 mb-3">
                   <span className="text-5xl font-black text-white">$25</span>
                   <span className="text-cyan-400/60 text-lg">one-time</span>
                 </div>
-                <p className="text-cyan-400/40 text-xs mt-1">Unlimited creativity</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-cyan-400">$280</span>
+                  <span className="text-cyan-400/60 text-sm line-through opacity-50">$300</span>
+                  <span className="text-cyan-400/60 text-sm">annual</span>
+                </div>
+                <p className="text-cyan-400/40 text-xs mt-1">Save $20 with annual plan</p>
               </div>
 
               <ul className="space-y-4 mb-8">
