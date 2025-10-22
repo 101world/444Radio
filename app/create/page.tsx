@@ -549,7 +549,7 @@ function CreatePageContent() {
       {/* Chat Area - Glassmorphism Effect */}
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-40 max-w-4xl mx-auto w-full scrollbar-thin scroll-smooth">
         {/* Single Glassmorphism Container */}
-        <div className="relative p-6 rounded-3xl backdrop-blur-md bg-white/[0.02] border border-white/10 shadow-2xl">
+        <div className="relative p-6 rounded-3xl backdrop-blur-3xl bg-white/[0.01] border border-white/10 shadow-2xl">
           {/* Dew-like gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5 rounded-3xl pointer-events-none"></div>
           
@@ -560,18 +560,12 @@ function CreatePageContent() {
               key={message.id}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {/* Message Bubble - Single Container */}
+              {/* Message Content - No Bubble */}
               <div className={`max-w-[85%] ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
-                {/* Text Message */}
+                {/* Text Message - No Background Bubble */}
                 {message.content && (
-                  <div
-                    className={`rounded-2xl px-4 py-3 backdrop-blur-xl ${
-                      message.type === 'user'
-                        ? 'bg-cyan-500/20 border border-cyan-400/30 text-white'
-                        : 'bg-white/5 border border-white/10 text-gray-300'
-                    }`}
-                  >
-                    <p className="text-sm">{message.content}</p>
+                  <div className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}>
+                    <p className={`text-sm ${message.type === 'user' ? 'text-cyan-300' : 'text-gray-200'}`}>{message.content}</p>
                     <p className="text-xs text-gray-500 mt-1">{message.timestamp.toLocaleTimeString()}</p>
                   </div>
                 )}
