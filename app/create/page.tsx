@@ -57,6 +57,14 @@ function CreatePageContent() {
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
   const [showBottomDock, setShowBottomDock] = useState(true)
   
+  // Generation queue system
+  const [generationQueue, setGenerationQueue] = useState<string[]>([])
+  const [activeGenerations, setActiveGenerations] = useState<Set<string>>(new Set())
+  
+  // Validation constants
+  const MIN_PROMPT_LENGTH = 3
+  const MAX_PROMPT_LENGTH = 300
+  
   // Advanced parameters
   const [customLyrics, setCustomLyrics] = useState('')
   const [customTitle, setCustomTitle] = useState('')
@@ -188,8 +196,27 @@ function CreatePageContent() {
     return () => window.removeEventListener('keydown', handleEscKey)
   }, [router, showMusicModal, showCombineModal])
 
+  // Validate prompt length
+  const validatePrompt = (prompt: string): { valid: boolean; error?: string } => {
+    const trimmed = prompt.trim()
+    if (trimmed.length < MIN_PROMPT_LENGTH) {
+      return { valid: false, error: `Prompt must be at least ${MIN_PROMPT_LENGTH} characters` }
+    }
+    if (trimmed.length > MAX_PROMPT_LENGTH) {
+      return { valid: false, error: `Prompt must be ${MAX_PROMPT_LENGTH} characters or less` }
+    }
+    return { valid: true }
+  }
+
   const handleGenerate = async () => {
-    if (!input.trim() || isGenerating) return
+    if (!input.trim()) return
+
+    // Validate prompt length
+    const validation = validatePrompt(input)
+    if (!validation.valid) {
+      alert(`❌ ${validation.error}`)
+      return
+    }
 
     // Check credits before generation
     const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0
@@ -203,8 +230,9 @@ function CreatePageContent() {
 
     // For music generation - Generate directly without modal
     if (selectedType === 'music') {
+      const generationId = Date.now().toString()
       const userMessage: Message = {
-        id: Date.now().toString(),
+        id: generationId,
         type: 'user',
         content: `🎵 Generate music: "${input}"`,
         timestamp: new Date()
@@ -213,78 +241,30 @@ function CreatePageContent() {
       const generatingMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'generation',
-        content: '🎵 Generating your track...',
+        content: activeGenerations.size > 0 ? '🎵 Queued - will start soon...' : '🎵 Generating your track...',
         generationType: 'music',
         isGenerating: true,
         timestamp: new Date()
       }
 
       setMessages(prev => [...prev, userMessage, generatingMessage])
+      setGenerationQueue(prev => [...prev, generatingMessage.id])
       setInput('')
-      setIsGenerating(true)
 
-      try {
-        // 🎯 SMART DEFAULTS LOGIC:
-        // - If user provides custom settings → Use them
-        // - If user only uses text input → API generates defaults automatically
-        // This allows quick generation OR detailed customization
-        
-        // Build prompt with optional parameters (only if user specified)
-        let fullPrompt = input
-        if (genre) fullPrompt += ` [${genre}]`
-        if (bpm) fullPrompt += ` [${bpm} BPM]`
-        
-        // Use custom title if provided, otherwise API will generate from prompt
-        const titleToUse = customTitle || undefined
-        
-        // Use custom lyrics if provided, otherwise API generates defaults from prompt
-        const lyricsToUse = customLyrics || undefined
-        
-        const result = await generateMusic(fullPrompt, titleToUse, lyricsToUse)
+      // Process queue asynchronously
+      processQueue(generatingMessage.id, 'music', {
+        prompt: input,
+        genre,
+        bpm,
+        customTitle,
+        customLyrics
+      })
 
-        // Update credits if generation was successful
-        if (!result.error && result.creditsRemaining !== undefined) {
-          setUserCredits(result.creditsRemaining)
-        }
-
-        // Replace generating message with result
-        setMessages(prev => prev.map(msg => 
-          msg.id === generatingMessage.id 
-            ? {
-                ...msg,
-                isGenerating: false,
-                content: result.error ? `❌ ${result.error}` : `✅ Track generated!`,
-                result: result.error ? undefined : result
-              }
-            : msg
-        ))
-
-        // Add assistant response
-        if (!result.error) {
-          const assistantMessage: Message = {
-            id: (Date.now() + 2).toString(),
-            type: 'assistant',
-            content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
-            timestamp: new Date()
-          }
-          setMessages(prev => [...prev, assistantMessage])
-        }
-
-        // Clear parameters after generation
-        setCustomTitle('')
-        setGenre('')
-        setCustomLyrics('')
-        setBpm('')
-      } catch (error) {
-        console.error('Generation error:', error)
-        setMessages(prev => prev.map(msg => 
-          msg.id === generatingMessage.id 
-            ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
-            : msg
-        ))
-      } finally {
-        setIsGenerating(false)
-      }
+      // Clear parameters after queueing
+      setCustomTitle('')
+      setGenre('')
+      setCustomLyrics('')
+      setBpm('')
       return
     }
 
@@ -300,76 +280,115 @@ function CreatePageContent() {
       const generatingMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'generation',
-        content: `🎨 Generating cover art...`,
+        content: activeGenerations.size > 0 ? '🎨 Queued - will start soon...' : '🎨 Generating cover art...',
         generationType: 'image',
         isGenerating: true,
         timestamp: new Date()
       }
 
       setMessages(prev => [...prev, userMessage, generatingMessage])
+      setGenerationQueue(prev => [...prev, generatingMessage.id])
       setInput('')
-      setIsGenerating(true)
 
-      try {
-        const result = await generateImage(input)
-
-        // Update credits if generation was successful
-        if (!result.error && result.creditsRemaining !== undefined) {
-          setUserCredits(result.creditsRemaining)
-        }
-
-        // Replace generating message with result
-        setMessages(prev => prev.map(msg => 
-          msg.id === generatingMessage.id 
-            ? {
-                ...msg,
-                isGenerating: false,
-                content: result.error ? `❌ ${result.error}` : `✅ Cover art generated!`,
-                result: result.error ? undefined : result
-              }
-            : msg
-        ))
-
-        // Add assistant response
-        if (!result.error) {
-          const assistantMessage: Message = {
-            id: (Date.now() + 2).toString(),
-            type: 'assistant',
-            content: 'Cover art created! Want to combine it with a track?',
-            timestamp: new Date()
-          }
-          setMessages(prev => [...prev, assistantMessage])
-        }
-      } catch (error) {
-        console.error('Generation error:', error)
-        setMessages(prev => prev.map(msg => 
-          msg.id === generatingMessage.id 
-            ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
-            : msg
-        ))
-      } finally {
-        setIsGenerating(false)
-      }
+      // Process queue asynchronously
+      processQueue(generatingMessage.id, 'image', { prompt: input })
       return
     }
+  }
 
-    // Video coming soon
-    if (selectedType === 'video') {
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        type: 'user',
-        content: input,
-        timestamp: new Date()
-      }
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: '🎬 Video generation coming soon!',
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, userMessage, assistantMessage])
-      setInput('')
+  // Queue processing function
+  const processQueue = async (
+    messageId: string,
+    type: 'music' | 'image',
+    params: {
+      prompt: string
+      genre?: string
+      bpm?: string
+      customTitle?: string
+      customLyrics?: string
     }
+  ) => {
+    try {
+      // Add to active generations
+      setActiveGenerations(prev => new Set(prev).add(messageId))
+      
+      // Update message to show it's now generating (if it was queued)
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId && msg.content.includes('Queued')
+          ? { ...msg, content: type === 'music' ? '🎵 Generating your track...' : '🎨 Generating cover art...' }
+          : msg
+      ))
+
+      let result
+      
+      if (type === 'music') {
+        // Build prompt with optional parameters
+        let fullPrompt = params.prompt
+        if (params.genre) fullPrompt += ` [${params.genre}]`
+        if (params.bpm) fullPrompt += ` [${params.bpm} BPM]`
+        
+        const titleToUse = params.customTitle || undefined
+        const lyricsToUse = params.customLyrics || undefined
+        
+        result = await generateMusic(fullPrompt, titleToUse, lyricsToUse)
+      } else {
+        result = await generateImage(params.prompt)
+      }
+
+      // Update credits
+      if (!result.error && result.creditsRemaining !== undefined) {
+        setUserCredits(result.creditsRemaining)
+      }
+
+      // Update message with result
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId
+          ? {
+              ...msg,
+              isGenerating: false,
+              content: result.error ? `❌ ${result.error}` : (type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
+              result: result.error ? undefined : result
+            }
+          : msg
+      ))
+
+      // Add assistant response
+      if (!result.error) {
+        const assistantMessage: Message = {
+          id: (Date.now() + Math.random()).toString(),
+          type: 'assistant',
+          content: type === 'music' 
+            ? 'Your track is ready! Want to create cover art for it? Or generate another track?'
+            : 'Cover art created! Want to combine it with a track?',
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, assistantMessage])
+      }
+    } catch (error) {
+      console.error('Generation error:', error)
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId
+          ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
+          : msg
+      ))
+    } finally {
+      // Remove from queue and active generations
+      setGenerationQueue(prev => prev.filter(id => id !== messageId))
+      setActiveGenerations(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(messageId)
+        return newSet
+      })
+    }
+  }
+
+  // Legacy isGenerating based on active generations
+  useEffect(() => {
+    setIsGenerating(activeGenerations.size > 0)
+  }, [activeGenerations])
+
+  // Video coming soon handler (kept separate)
+  const handleVideoPrompt = () => {
   }
 
   const handleMusicGenerationStart = (prompt: string) => {
@@ -845,11 +864,21 @@ function CreatePageContent() {
                       ? 'Describe your cover art...'
                       : 'Coming soon...'
                   }
-                  disabled={isGenerating || selectedType === 'video'}
+                  disabled={selectedType === 'video'}
                   className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                <div className="text-xs text-cyan-400/60 mt-0.5 font-mono hidden md:block">
-                  {isGenerating ? 'Creating...' : 'Press Enter to create'}
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
+                    {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
+                  </div>
+                  <div className={`text-xs font-mono ${
+                    input.length < MIN_PROMPT_LENGTH ? 'text-red-400' :
+                    input.length > MAX_PROMPT_LENGTH ? 'text-red-400' :
+                    input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-400' :
+                    'text-gray-500'
+                  }`}>
+                    {input.length}/{MAX_PROMPT_LENGTH}
+                  </div>
                 </div>
               </div>
 
@@ -866,10 +895,15 @@ function CreatePageContent() {
                     handleGenerate();
                   }, 100);
                 }}
-                disabled={isGenerating || !input.trim() || selectedType === 'video'}
-                className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/50 active:scale-95"
+                disabled={!input.trim() || selectedType === 'video'}
+                className="relative flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/50 active:scale-95"
               >
-                {isGenerating ? (
+                {activeGenerations.size > 0 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">
+                    {activeGenerations.size}
+                  </div>
+                )}
+                {activeGenerations.size > 0 ? (
                   <Loader2 className="text-black animate-spin" size={20} />
                 ) : (
                   <Send className="text-black ml-0.5" size={20} />
@@ -881,7 +915,11 @@ function CreatePageContent() {
           {/* Quick Info - Below the bar */}
           <div className="flex items-center justify-center gap-2 mt-2 text-xs md:text-sm">
             <span className="text-cyan-400/60 font-mono tracking-wider">
-              ✨ {selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : 'Coming soon'}
+              {activeGenerations.size > 0 ? (
+                `⚡ ${activeGenerations.size} generation${activeGenerations.size > 1 ? 's' : ''} in progress • You can queue more`
+              ) : (
+                `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : 'Coming soon'}`
+              )}
             </span>
           </div>
         </div>
