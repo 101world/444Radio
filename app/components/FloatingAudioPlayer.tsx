@@ -18,6 +18,9 @@ export default function FloatingAudioPlayer() {
     playPrevious,
   } = useAudioPlayer()
 
+  // Detect mobile
+  const [isMobile, setIsMobile] = useState(false)
+
   // Position and size state
   const [position, setPosition] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight - 200 : 100 })
   const [size, setSize] = useState({ width: 400, height: 140 })
@@ -28,6 +31,17 @@ export default function FloatingAudioPlayer() {
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 })
   
   const playerRef = useRef<HTMLDivElement>(null)
+
+  // Detect mobile on mount and window resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return '0:00'
@@ -46,8 +60,9 @@ export default function FloatingAudioPlayer() {
     setVolume(vol)
   }
 
-  // Dragging handlers
+  // Dragging handlers (only for desktop)
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (isMobile) return
     if ((e.target as HTMLElement).closest('.no-drag')) return
     
     setIsDragging(true)
@@ -62,8 +77,9 @@ export default function FloatingAudioPlayer() {
     setIsResizing(false)
   }
 
-  // Resize handler
+  // Resize handler (only for desktop)
   const handleResizeStart = (e: React.MouseEvent) => {
+    if (isMobile) return
     e.stopPropagation()
     setIsResizing(true)
     setResizeStart({
@@ -75,6 +91,8 @@ export default function FloatingAudioPlayer() {
   }
 
   useEffect(() => {
+    if (isMobile) return // No dragging/resizing on mobile
+
     const handleMove = (e: MouseEvent) => {
       if (isDragging && typeof window !== 'undefined') {
         const newX = Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.x))
@@ -99,7 +117,7 @@ export default function FloatingAudioPlayer() {
         window.removeEventListener('mouseup', handleMouseUp)
       }
     }
-  }, [isDragging, isResizing, dragOffset, resizeStart, size.width, size.height])
+  }, [isMobile, isDragging, isResizing, dragOffset, resizeStart, size.width, size.height])
 
   // Toggle expand/collapse
   const toggleExpand = () => {
@@ -114,6 +132,119 @@ export default function FloatingAudioPlayer() {
   // Don't show if no track is loaded
   if (!currentTrack) return null
 
+  // Mobile layout - docked at top
+  if (isMobile) {
+    return (
+      <div className="fixed top-0 left-0 right-0 z-50 shadow-2xl" style={{
+        background: 'rgba(0, 0, 0, 0.6)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(34, 211, 238, 0.2)',
+      }}>
+        <div className="px-3 py-2">
+          {/* Track Info & Controls Row */}
+          <div className="flex items-center gap-3">
+            {/* Album Art */}
+            {currentTrack.imageUrl && (
+              <img
+                src={currentTrack.imageUrl}
+                alt={currentTrack.title}
+                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+              />
+            )}
+            
+            {/* Track Info */}
+            <div className="min-w-0 flex-1">
+              <p className="text-white font-semibold text-xs truncate">
+                {currentTrack.title}
+              </p>
+              {currentTrack.artist && (
+                <p className="text-gray-400 text-[10px] truncate">
+                  {currentTrack.artist}
+                </p>
+              )}
+            </div>
+
+            {/* Playback Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={playPrevious}
+                className="text-gray-400 hover:text-white transition-colors"
+                title="Previous"
+              >
+                <SkipBack size={16} />
+              </button>
+
+              <button
+                onClick={togglePlayPause}
+                className="w-9 h-9 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/30"
+              >
+                {isPlaying ? (
+                  <Pause size={14} className="text-black" fill="currentColor" />
+                ) : (
+                  <Play size={14} className="text-black ml-0.5" fill="currentColor" />
+                )}
+              </button>
+
+              <button
+                onClick={playNext}
+                className="text-gray-400 hover:text-white transition-colors"
+                title="Next"
+              >
+                <SkipForward size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-[9px] text-gray-400 w-8 text-right">
+              {formatTime(currentTime)}
+            </span>
+            <input
+              type="range"
+              min="0"
+              max={duration || 0}
+              value={currentTime}
+              onChange={handleSeek}
+              className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) 100%)`
+              }}
+            />
+            <span className="text-[9px] text-gray-400 w-8">
+              {formatTime(duration)}
+            </span>
+          </div>
+        </div>
+
+        {/* Custom slider styles */}
+        <style jsx>{`
+          input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgb(34 211 238);
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+          }
+
+          input[type="range"]::-moz-range-thumb {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgb(34 211 238);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+          }
+        `}</style>
+      </div>
+    )
+  }
+
+  // Desktop layout - floating player
   return (
     <div
       ref={playerRef}
