@@ -6,9 +6,6 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Track redeemed codes per user
-const redeemedCodes = new Map<string, Set<string>>()
-
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
@@ -46,13 +43,65 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Check if user already redeemed this code
-    const userRedeemed = redeemedCodes.get(userId) || new Set()
-    if (userRedeemed.has(normalizedCode)) {
+    // Check if user already redeemed this code in the database
+    const { data: existingRedemption, error: checkError } = await supabase
+      .from('code_redemptions')
+      .select('*')
+      .eq('clerk_user_id', userId)
+      .eq('code', normalizedCode)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 is "not found" error, which is fine
+      console.error('Error checking redemption:', checkError)
       return NextResponse.json(
-        { success: false, error: 'Code already redeemed' },
-        { status: 400 }
+        { success: false, error: 'Failed to verify code status' },
+        { status: 500 }
       )
+    }
+
+    if (existingRedemption) {
+      // Check if redemption is still within the one-month window
+      const redemptionDate = new Date(existingRedemption.redeemed_at)
+      const oneMonthAgo = new Date()
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+
+      if (redemptionDate > oneMonthAgo) {
+        // Code was already redeemed within the last month
+        return NextResponse.json(
+          { success: false, error: 'Code already redeemed. Each code can only be used once per month.' },
+          { status: 400 }
+        )
+      } else {
+        // More than a month has passed, update the redemption date
+        const { error: updateRedemptionError } = await supabase
+          .from('code_redemptions')
+          .update({ 
+            redeemed_at: new Date().toISOString(),
+            redemption_count: existingRedemption.redemption_count + 1
+          })
+          .eq('id', existingRedemption.id)
+
+        if (updateRedemptionError) {
+          console.error('Error updating redemption:', updateRedemptionError)
+        }
+      }
+    } else {
+      // First time redeeming this code, create a new redemption record
+      const { error: insertError } = await supabase
+        .from('code_redemptions')
+        .insert({
+          clerk_user_id: userId,
+          code: normalizedCode,
+          credits_awarded: validCodes[normalizedCode],
+          redeemed_at: new Date().toISOString(),
+          redemption_count: 1
+        })
+
+      if (insertError) {
+        console.error('Error recording redemption:', insertError)
+        // Continue anyway to award credits
+      }
     }
 
     const creditsToAward = validCodes[normalizedCode]
@@ -92,15 +141,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Mark code as redeemed
-    userRedeemed.add(normalizedCode)
-    redeemedCodes.set(userId, userRedeemed)
-
     return NextResponse.json({
       success: true,
       credits: newCredits,
       awarded: creditsToAward,
-      code: normalizedCode
+      code: normalizedCode,
+      message: 'Credits awarded! This code can be redeemed again in one month.'
     })
 
   } catch (error) {
