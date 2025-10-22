@@ -292,15 +292,15 @@ export default function Pricing() {
             <div className="space-y-6">
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-3">Do you offer refunds?</h3>
-                <p className="text-gray-300 text-sm">We offer a 30-day money-back guarantee. If you're not satisfied with your purchase, contact our support team for a full refund.</p>
+                <p className="text-gray-300 text-sm">We offer a 30-day money-back guarantee. If you&apos;re not satisfied with your purchase, contact our support team for a full refund.</p>
               </div>
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-3">Can I upgrade my plan later?</h3>
-                <p className="text-gray-300 text-sm">Yes! You can upgrade to a higher plan at any time. We'll credit your existing purchase toward the upgrade price.</p>
+                <p className="text-gray-300 text-sm">Yes! You can upgrade to a higher plan at any time. We&apos;ll credit your existing purchase toward the upgrade price.</p>
               </div>
               <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6">
                 <h3 className="text-lg font-bold text-white mb-3">How long do downloads take?</h3>
-                <p className="text-gray-300 text-sm">Song generation typically takes 30-60 seconds. Cover art generation takes 10-20 seconds. You'll receive download links immediately after generation.</p>
+                <p className="text-gray-300 text-sm">Song generation typically takes 30-60 seconds. Cover art generation takes 10-20 seconds. You&apos;ll receive download links immediately after generation.</p>
               </div>
             </div>
           </div>
