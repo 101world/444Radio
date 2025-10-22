@@ -1,3 +1,5 @@
+import { Youtube, Mail, Instagram } from 'lucide-react'
+
 export default function Pricing() {
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -331,6 +333,35 @@ export default function Pricing() {
           <p className="text-cyan-400/40 text-xs mt-2">
             Questions? Contact us at support@444radio.com • © 2025 444RADIO
           </p>
+
+          {/* Social Media Links */}
+          <div className="mt-8 flex justify-center gap-6">
+            <a
+              href="https://youtube.com/@444radio"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300"
+              aria-label="Follow us on YouTube"
+            >
+              <Youtube className="w-6 h-6" />
+            </a>
+            <a
+              href="mailto:contact@444radio.com"
+              className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300"
+              aria-label="Email us"
+            >
+              <Mail className="w-6 h-6" />
+            </a>
+            <a
+              href="https://instagram.com/444radio"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300"
+              aria-label="Follow us on Instagram"
+            >
+              <Instagram className="w-6 h-6" />
+            </a>
+          </div>
         </div>
       </div>
     </main>
