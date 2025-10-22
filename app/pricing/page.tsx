@@ -337,7 +337,7 @@ export default function Pricing() {
           {/* Social Media Links */}
           <div className="mt-8 flex justify-center gap-6">
             <a
-              href="https://youtube.com/@444radio"
+              href="https://youtube.com/@444radioog?si=k0Def96c20mleUbS"
               target="_blank"
               rel="noopener noreferrer"
               className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300"
@@ -346,14 +346,14 @@ export default function Pricing() {
               <Youtube className="w-6 h-6" />
             </a>
             <a
-              href="mailto:contact@444radio.com"
+              href="mailto:444radioog@gmail.com"
               className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300"
               aria-label="Email us"
             >
               <Mail className="w-6 h-6" />
             </a>
             <a
-              href="https://instagram.com/444radio"
+              href="https://www.instagram.com/444radioog"
               target="_blank"
               rel="noopener noreferrer"
               className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300"
