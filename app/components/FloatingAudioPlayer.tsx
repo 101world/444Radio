@@ -18,6 +18,7 @@ export default function FloatingAudioPlayer() {
     playPrevious,
     playlist,
     playTrack,
+    removeFromPlaylist,
   } = useAudioPlayer()
 
   // Detect mobile
@@ -29,6 +30,7 @@ export default function FloatingAudioPlayer() {
   const [isExpanded, setIsExpanded] = useState(true)
   const [isMobileCollapsed, setIsMobileCollapsed] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
+  const [activeTab, setActiveTab] = useState<'player' | 'queue'>('player')
   const [isDragging, setIsDragging] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -257,87 +259,83 @@ export default function FloatingAudioPlayer() {
                 </span>
               </div>
             )}
+
+            {/* Queue Section - Expandable */}
+            {showQueue && !isMobileCollapsed && (
+              <div className="mt-2 border-t border-white/10 pt-2">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-400">Queue ({playlist.length})</span>
+                </div>
+                <div className="max-h-[40vh] overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
+                  {playlist.length === 0 ? (
+                    <div className="py-4 text-center text-gray-500 text-xs">
+                      No tracks in queue
+                    </div>
+                  ) : (
+                    playlist.map((track, index) => {
+                      const isCurrentTrack = currentTrack?.id === track.id
+                      return (
+                        <div
+                          key={`${track.id}-${index}`}
+                          className={`flex items-center gap-2 px-2 py-1.5 rounded-lg mb-1 transition-colors ${
+                            isCurrentTrack
+                              ? 'bg-cyan-500/20 border border-cyan-500/30'
+                              : 'hover:bg-white/5'
+                          }`}
+                        >
+                          <button
+                            onClick={() => playTrack(track)}
+                            className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                          >
+                            <span className="text-[9px] text-gray-500 w-4 flex-shrink-0">
+                              {index + 1}
+                            </span>
+                            {track.imageUrl && (
+                              <img
+                                src={track.imageUrl}
+                                alt={track.title}
+                                className="w-7 h-7 rounded object-cover flex-shrink-0"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-[10px] truncate ${
+                                isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
+                              }`}>
+                                {track.title}
+                              </p>
+                              {track.artist && (
+                                <p className="text-[9px] text-gray-400 truncate">
+                                  {track.artist}
+                                </p>
+                              )}
+                            </div>
+                            {isCurrentTrack && isPlaying && (
+                              <div className="flex gap-0.5 flex-shrink-0">
+                                <div className="w-0.5 h-2 bg-cyan-400 animate-pulse"></div>
+                                <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                              </div>
+                            )}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removeFromPlaylist(track.id)
+                            }}
+                            className="text-gray-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                            title="Remove from queue"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Queue Modal for Mobile */}
-        {showQueue && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end">
-            <div className="w-full bg-gradient-to-b from-gray-900 to-black rounded-t-2xl max-h-[70vh] overflow-hidden shadow-2xl border-t border-cyan-500/20">
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                <h3 className="text-white font-bold text-lg flex items-center gap-2">
-                  <List size={20} className="text-cyan-400" />
-                  Queue ({playlist.length} tracks)
-                </h3>
-                <button
-                  onClick={() => setShowQueue(false)}
-                  className="text-gray-400 hover:text-white transition-colors p-1"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Queue List */}
-              <div className="overflow-y-auto max-h-[calc(70vh-60px)] scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
-                {playlist.length === 0 ? (
-                  <div className="p-8 text-center text-gray-400">
-                    <List size={48} className="mx-auto mb-3 opacity-30" />
-                    <p>No tracks in queue</p>
-                  </div>
-                ) : (
-                  playlist.map((track, index) => {
-                    const isCurrentTrack = currentTrack?.id === track.id
-                    return (
-                      <button
-                        key={`${track.id}-${index}`}
-                        onClick={() => {
-                          playTrack(track)
-                          setShowQueue(false)
-                        }}
-                        className={`w-full flex items-center gap-3 p-3 transition-colors border-b border-white/5 ${
-                          isCurrentTrack 
-                            ? 'bg-cyan-500/10 border-l-4 border-l-cyan-400' 
-                            : 'hover:bg-white/5'
-                        }`}
-                      >
-                        <div className="text-gray-500 text-xs font-mono w-6 text-center">
-                          {index + 1}
-                        </div>
-                        {track.imageUrl && (
-                          <img
-                            src={track.imageUrl}
-                            alt={track.title}
-                            className="w-10 h-10 rounded object-cover flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0 text-left">
-                          <p className={`text-sm truncate ${
-                            isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
-                          }`}>
-                            {track.title}
-                          </p>
-                          {track.artist && (
-                            <p className="text-xs text-gray-400 truncate">
-                              {track.artist}
-                            </p>
-                          )}
-                        </div>
-                        {isCurrentTrack && isPlaying && (
-                          <div className="flex gap-0.5">
-                            <div className="w-0.5 h-3 bg-cyan-400 animate-pulse"></div>
-                            <div className="w-0.5 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="w-0.5 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                          </div>
-                        )}
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Custom slider styles */}
         <style jsx>{`
@@ -408,13 +406,6 @@ export default function FloatingAudioPlayer() {
         
         <div className="flex items-center gap-1 no-drag">
           <button
-            onClick={() => setShowQueue(!showQueue)}
-            className="text-gray-400 hover:text-cyan-400 transition-colors p-1"
-            title="Queue"
-          >
-            <List size={14} />
-          </button>
-          <button
             onClick={toggleExpand}
             className="text-gray-400 hover:text-cyan-400 transition-colors p-1"
             title={isExpanded ? "Minimize" : "Maximize"}
@@ -424,93 +415,42 @@ export default function FloatingAudioPlayer() {
         </div>
       </div>
 
-      {/* Queue Panel - Desktop */}
-      {showQueue && (
-        <div 
-          className="absolute left-full ml-2 top-0 w-80 rounded-xl shadow-2xl overflow-hidden no-drag"
-          style={{
-            background: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid rgba(34, 211, 238, 0.2)',
-            maxHeight: `${size.height}px`,
-          }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-cyan-500/10">
-            <h3 className="text-white font-semibold text-xs flex items-center gap-2">
-              <List size={14} className="text-cyan-400" />
-              Queue ({playlist.length})
-            </h3>
-            <button
-              onClick={() => setShowQueue(false)}
-              className="text-gray-400 hover:text-white transition-colors p-1"
-            >
-              <X size={14} />
-            </button>
-          </div>
-
-          {/* Queue List */}
-          <div className="overflow-y-auto" style={{ maxHeight: `${size.height - 40}px` }}>
-            {playlist.length === 0 ? (
-              <div className="p-6 text-center text-gray-400">
-                <List size={32} className="mx-auto mb-2 opacity-30" />
-                <p className="text-xs">No tracks in queue</p>
-              </div>
-            ) : (
-              playlist.map((track, index) => {
-                const isCurrentTrack = currentTrack?.id === track.id
-                return (
-                  <button
-                    key={`${track.id}-${index}`}
-                    onClick={() => playTrack(track)}
-                    className={`w-full flex items-center gap-2 p-2 transition-colors border-b border-white/5 ${
-                      isCurrentTrack 
-                        ? 'bg-cyan-500/10 border-l-2 border-l-cyan-400' 
-                        : 'hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="text-gray-500 text-[10px] font-mono w-5 text-center">
-                      {index + 1}
-                    </div>
-                    {track.imageUrl && (
-                      <img
-                        src={track.imageUrl}
-                        alt={track.title}
-                        className="w-8 h-8 rounded object-cover flex-shrink-0"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0 text-left">
-                      <p className={`text-[11px] truncate ${
-                        isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
-                      }`}>
-                        {track.title}
-                      </p>
-                      {track.artist && (
-                        <p className="text-[9px] text-gray-400 truncate">
-                          {track.artist}
-                        </p>
-                      )}
-                    </div>
-                    {isCurrentTrack && isPlaying && (
-                      <div className="flex gap-0.5">
-                        <div className="w-0.5 h-2 bg-cyan-400 animate-pulse"></div>
-                        <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                      </div>
-                    )}
-                  </button>
-                )
-              })
+      {/* Tabs */}
+      {isExpanded && (
+        <div className="flex border-b border-cyan-500/10 no-drag">
+          <button
+            onClick={() => setActiveTab('player')}
+            className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+              activeTab === 'player'
+                ? 'text-cyan-400 border-b-2 border-cyan-400'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Player
+          </button>
+          <button
+            onClick={() => setActiveTab('queue')}
+            className={`flex-1 px-4 py-2 text-xs font-medium transition-colors relative ${
+              activeTab === 'queue'
+                ? 'text-cyan-400 border-b-2 border-cyan-400'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Queue
+            {playlist.length > 0 && (
+              <span className="ml-1 text-[9px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded-full">
+                {playlist.length}
+              </span>
             )}
-          </div>
+          </button>
         </div>
       )}
 
       {/* Player Content */}
-      <div className="px-4 py-3 flex flex-col gap-2">
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-4 no-drag">
+      {activeTab === 'player' && (
+        <div className="px-4 py-3 flex flex-col gap-2">
+          {/* Controls */}
+          <div className="flex items-center justify-center gap-4 no-drag">
           <button
             onClick={playPrevious}
             className="text-gray-400 hover:text-white transition-colors"
@@ -591,7 +531,81 @@ export default function FloatingAudioPlayer() {
             </div>
           </>
         )}
-      </div>
+        </div>
+      )}
+
+      {/* Queue Content */}
+      {activeTab === 'queue' && isExpanded && (
+        <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: `${size.height - 120}px` }}>
+          {playlist.length === 0 ? (
+            <div className="py-8 text-center text-gray-400">
+              <List size={32} className="mx-auto mb-2 opacity-30" />
+              <p className="text-xs">No tracks in queue</p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {playlist.map((track, index) => {
+                const isCurrentTrack = currentTrack?.id === track.id
+                return (
+                  <div
+                    key={`${track.id}-${index}`}
+                    className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+                      isCurrentTrack
+                        ? 'bg-cyan-500/20 border border-cyan-500/30'
+                        : 'hover:bg-white/5'
+                    }`}
+                  >
+                    <button
+                      onClick={() => playTrack(track)}
+                      className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                    >
+                      <span className="text-[10px] text-gray-500 w-5 font-mono flex-shrink-0">
+                        {index + 1}
+                      </span>
+                      {track.imageUrl && (
+                        <img
+                          src={track.imageUrl}
+                          alt={track.title}
+                          className="w-8 h-8 rounded object-cover flex-shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[11px] truncate ${
+                          isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
+                        }`}>
+                          {track.title}
+                        </p>
+                        {track.artist && (
+                          <p className="text-[9px] text-gray-400 truncate">
+                            {track.artist}
+                          </p>
+                        )}
+                      </div>
+                      {isCurrentTrack && isPlaying && (
+                        <div className="flex gap-0.5 flex-shrink-0">
+                          <div className="w-0.5 h-2 bg-cyan-400 animate-pulse"></div>
+                          <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        </div>
+                      )}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeFromPlaylist(track.id)
+                      }}
+                      className="text-gray-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                      title="Remove from queue"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Resize Handle */}
       {isExpanded && (

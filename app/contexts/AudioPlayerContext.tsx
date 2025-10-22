@@ -28,6 +28,8 @@ interface AudioPlayerContextType {
   playPrevious: () => void
   setPlaylist: (tracks: Track[], startIndex?: number) => void
   shufflePlaylist: () => void
+  removeFromPlaylist: (trackId: string) => void
+  addToPlaylist: (track: Track) => void
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined)
@@ -232,6 +234,28 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const removeFromPlaylist = (trackId: string) => {
+    const newPlaylist = playlist.filter(track => track.id !== trackId)
+    setPlaylist(newPlaylist)
+    
+    // If we removed the current track, play the next one
+    if (currentTrack?.id === trackId && newPlaylist.length > 0) {
+      const newIndex = Math.min(currentIndex, newPlaylist.length - 1)
+      setCurrentIndex(newIndex)
+      playTrack(newPlaylist[newIndex])
+    } else if (newPlaylist.length === 0) {
+      // If playlist is empty, stop playback
+      pause()
+    }
+  }
+
+  const addToPlaylist = (track: Track) => {
+    // Check if track already exists in playlist
+    if (!playlist.find(t => t.id === track.id)) {
+      setPlaylist([...playlist, track])
+    }
+  }
+
   return (
     <AudioPlayerContext.Provider
       value={{
@@ -250,7 +274,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         playNext,
         playPrevious,
         setPlaylist: setPlaylistAndPlay,
-        shufflePlaylist
+        shufflePlaylist,
+        removeFromPlaylist,
+        addToPlaylist
       }}
     >
       {children}
