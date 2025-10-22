@@ -1,7 +1,7 @@
 'use client'
 
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical, ChevronDown, ChevronUp, List, X } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 
 export default function FloatingAudioPlayer() {
@@ -16,6 +16,8 @@ export default function FloatingAudioPlayer() {
     seekTo,
     playNext,
     playPrevious,
+    playlist,
+    playTrack,
   } = useAudioPlayer()
 
   // Detect mobile
@@ -25,6 +27,8 @@ export default function FloatingAudioPlayer() {
   const [position, setPosition] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight - 200 : 100 })
   const [size, setSize] = useState({ width: 400, height: 140 })
   const [isExpanded, setIsExpanded] = useState(true)
+  const [isMobileCollapsed, setIsMobileCollapsed] = useState(false)
+  const [showQueue, setShowQueue] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -135,88 +139,205 @@ export default function FloatingAudioPlayer() {
   // Mobile layout - docked at top
   if (isMobile) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-50 shadow-2xl" style={{
-        background: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(34, 211, 238, 0.2)',
-      }}>
-        <div className="px-3 py-2">
-          {/* Track Info & Controls Row */}
-          <div className="flex items-center gap-3">
-            {/* Album Art */}
-            {currentTrack.imageUrl && (
-              <img
-                src={currentTrack.imageUrl}
-                alt={currentTrack.title}
-                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-              />
-            )}
-            
-            {/* Track Info */}
-            <div className="min-w-0 flex-1">
-              <p className="text-white font-semibold text-xs truncate">
-                {currentTrack.title}
-              </p>
-              {currentTrack.artist && (
-                <p className="text-gray-400 text-[10px] truncate">
-                  {currentTrack.artist}
-                </p>
+      <>
+        <div className="fixed top-0 left-0 right-0 z-50 shadow-2xl transition-all duration-300" style={{
+          background: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(34, 211, 238, 0.2)',
+        }}>
+          <div className="px-3 py-2">
+            {/* Track Info & Controls Row */}
+            <div className="flex items-center gap-3">
+              {/* Album Art */}
+              {currentTrack.imageUrl && (
+                <img
+                  src={currentTrack.imageUrl}
+                  alt={currentTrack.title}
+                  className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                />
               )}
-            </div>
-
-            {/* Playback Controls */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={playPrevious}
-                className="text-gray-400 hover:text-white transition-colors"
-                title="Previous"
-              >
-                <SkipBack size={16} />
-              </button>
-
-              <button
-                onClick={togglePlayPause}
-                className="w-9 h-9 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/30"
-              >
-                {isPlaying ? (
-                  <Pause size={14} className="text-black" fill="currentColor" />
-                ) : (
-                  <Play size={14} className="text-black ml-0.5" fill="currentColor" />
+              
+              {/* Track Info */}
+              <div className="min-w-0 flex-1">
+                <p className="text-white font-semibold text-xs truncate">
+                  {currentTrack.title}
+                </p>
+                {currentTrack.artist && (
+                  <p className="text-gray-400 text-[10px] truncate">
+                    {currentTrack.artist}
+                  </p>
                 )}
+              </div>
+
+              {/* Playback Controls */}
+              {!isMobileCollapsed && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={playPrevious}
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="Previous"
+                  >
+                    <SkipBack size={16} />
+                  </button>
+
+                  <button
+                    onClick={togglePlayPause}
+                    className="w-9 h-9 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/30"
+                  >
+                    {isPlaying ? (
+                      <Pause size={14} className="text-black" fill="currentColor" />
+                    ) : (
+                      <Play size={14} className="text-black ml-0.5" fill="currentColor" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={playNext}
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="Next"
+                  >
+                    <SkipForward size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Quick Play/Pause when collapsed */}
+              {isMobileCollapsed && (
+                <button
+                  onClick={togglePlayPause}
+                  className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/30"
+                >
+                  {isPlaying ? (
+                    <Pause size={12} className="text-black" fill="currentColor" />
+                  ) : (
+                    <Play size={12} className="text-black ml-0.5" fill="currentColor" />
+                  )}
+                </button>
+              )}
+
+              {/* Queue Button */}
+              <button
+                onClick={() => setShowQueue(!showQueue)}
+                className="text-gray-400 hover:text-cyan-400 transition-colors p-1"
+                title="Queue"
+              >
+                <List size={18} />
               </button>
 
+              {/* Collapse Button */}
               <button
-                onClick={playNext}
-                className="text-gray-400 hover:text-white transition-colors"
-                title="Next"
+                onClick={() => setIsMobileCollapsed(!isMobileCollapsed)}
+                className="text-gray-400 hover:text-cyan-400 transition-colors p-1"
+                title={isMobileCollapsed ? "Expand" : "Collapse"}
               >
-                <SkipForward size={16} />
+                {isMobileCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
               </button>
             </div>
-          </div>
 
-          {/* Progress Bar */}
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-[9px] text-gray-400 w-8 text-right">
-              {formatTime(currentTime)}
-            </span>
-            <input
-              type="range"
-              min="0"
-              max={duration || 0}
-              value={currentTime}
-              onChange={handleSeek}
-              className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
-              style={{
-                background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) 100%)`
-              }}
-            />
-            <span className="text-[9px] text-gray-400 w-8">
-              {formatTime(duration)}
-            </span>
+            {/* Progress Bar - Only show when expanded */}
+            {!isMobileCollapsed && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-[9px] text-gray-400 w-8 text-right">
+                  {formatTime(currentTime)}
+                </span>
+                <input
+                  type="range"
+                  min="0"
+                  max={duration || 0}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) 100%)`
+                  }}
+                />
+                <span className="text-[9px] text-gray-400 w-8">
+                  {formatTime(duration)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Queue Modal for Mobile */}
+        {showQueue && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-end">
+            <div className="w-full bg-gradient-to-b from-gray-900 to-black rounded-t-2xl max-h-[70vh] overflow-hidden shadow-2xl border-t border-cyan-500/20">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                  <List size={20} className="text-cyan-400" />
+                  Queue ({playlist.length} tracks)
+                </h3>
+                <button
+                  onClick={() => setShowQueue(false)}
+                  className="text-gray-400 hover:text-white transition-colors p-1"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Queue List */}
+              <div className="overflow-y-auto max-h-[calc(70vh-60px)] scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
+                {playlist.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">
+                    <List size={48} className="mx-auto mb-3 opacity-30" />
+                    <p>No tracks in queue</p>
+                  </div>
+                ) : (
+                  playlist.map((track, index) => {
+                    const isCurrentTrack = currentTrack?.id === track.id
+                    return (
+                      <button
+                        key={`${track.id}-${index}`}
+                        onClick={() => {
+                          playTrack(track)
+                          setShowQueue(false)
+                        }}
+                        className={`w-full flex items-center gap-3 p-3 transition-colors border-b border-white/5 ${
+                          isCurrentTrack 
+                            ? 'bg-cyan-500/10 border-l-4 border-l-cyan-400' 
+                            : 'hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="text-gray-500 text-xs font-mono w-6 text-center">
+                          {index + 1}
+                        </div>
+                        {track.imageUrl && (
+                          <img
+                            src={track.imageUrl}
+                            alt={track.title}
+                            className="w-10 h-10 rounded object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className={`text-sm truncate ${
+                            isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
+                          }`}>
+                            {track.title}
+                          </p>
+                          {track.artist && (
+                            <p className="text-xs text-gray-400 truncate">
+                              {track.artist}
+                            </p>
+                          )}
+                        </div>
+                        {isCurrentTrack && isPlaying && (
+                          <div className="flex gap-0.5">
+                            <div className="w-0.5 h-3 bg-cyan-400 animate-pulse"></div>
+                            <div className="w-0.5 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-0.5 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Custom slider styles */}
         <style jsx>{`
@@ -240,7 +361,7 @@ export default function FloatingAudioPlayer() {
             box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
           }
         `}</style>
-      </div>
+      </>
     )
   }
 
@@ -287,6 +408,13 @@ export default function FloatingAudioPlayer() {
         
         <div className="flex items-center gap-1 no-drag">
           <button
+            onClick={() => setShowQueue(!showQueue)}
+            className="text-gray-400 hover:text-cyan-400 transition-colors p-1"
+            title="Queue"
+          >
+            <List size={14} />
+          </button>
+          <button
             onClick={toggleExpand}
             className="text-gray-400 hover:text-cyan-400 transition-colors p-1"
             title={isExpanded ? "Minimize" : "Maximize"}
@@ -295,6 +423,89 @@ export default function FloatingAudioPlayer() {
           </button>
         </div>
       </div>
+
+      {/* Queue Panel - Desktop */}
+      {showQueue && (
+        <div 
+          className="absolute left-full ml-2 top-0 w-80 rounded-xl shadow-2xl overflow-hidden no-drag"
+          style={{
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(34, 211, 238, 0.2)',
+            maxHeight: `${size.height}px`,
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-cyan-500/10">
+            <h3 className="text-white font-semibold text-xs flex items-center gap-2">
+              <List size={14} className="text-cyan-400" />
+              Queue ({playlist.length})
+            </h3>
+            <button
+              onClick={() => setShowQueue(false)}
+              className="text-gray-400 hover:text-white transition-colors p-1"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {/* Queue List */}
+          <div className="overflow-y-auto" style={{ maxHeight: `${size.height - 40}px` }}>
+            {playlist.length === 0 ? (
+              <div className="p-6 text-center text-gray-400">
+                <List size={32} className="mx-auto mb-2 opacity-30" />
+                <p className="text-xs">No tracks in queue</p>
+              </div>
+            ) : (
+              playlist.map((track, index) => {
+                const isCurrentTrack = currentTrack?.id === track.id
+                return (
+                  <button
+                    key={`${track.id}-${index}`}
+                    onClick={() => playTrack(track)}
+                    className={`w-full flex items-center gap-2 p-2 transition-colors border-b border-white/5 ${
+                      isCurrentTrack 
+                        ? 'bg-cyan-500/10 border-l-2 border-l-cyan-400' 
+                        : 'hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="text-gray-500 text-[10px] font-mono w-5 text-center">
+                      {index + 1}
+                    </div>
+                    {track.imageUrl && (
+                      <img
+                        src={track.imageUrl}
+                        alt={track.title}
+                        className="w-8 h-8 rounded object-cover flex-shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className={`text-[11px] truncate ${
+                        isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
+                      }`}>
+                        {track.title}
+                      </p>
+                      {track.artist && (
+                        <p className="text-[9px] text-gray-400 truncate">
+                          {track.artist}
+                        </p>
+                      )}
+                    </div>
+                    {isCurrentTrack && isPlaying && (
+                      <div className="flex gap-0.5">
+                        <div className="w-0.5 h-2 bg-cyan-400 animate-pulse"></div>
+                        <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
+                    )}
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Player Content */}
       <div className="px-4 py-3 flex flex-col gap-2">
