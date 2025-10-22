@@ -1,15 +1,15 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import GlobalAudioPlayer from './GlobalAudioPlayer'
+import FloatingAudioPlayer from './FloatingAudioPlayer'
 
 export default function ConditionalGlobalPlayer() {
   const pathname = usePathname()
   
-  // Only show on explore and profile pages
-  const showPlayer = pathname?.startsWith('/explore') || pathname?.startsWith('/profile') || pathname?.startsWith('/u/')
+  // Don't show player on home page (show everywhere else)
+  const isHomePage = pathname === '/'
   
-  if (!showPlayer) return null
+  if (isHomePage) return null
   
-  return <GlobalAudioPlayer />
+  return <FloatingAudioPlayer />
 }
