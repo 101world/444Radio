@@ -9,8 +9,15 @@ export default function DecryptPage() {
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [showMessage, setShowMessage] = useState(false)
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const router = useRouter()
+  
+  // Detect mobile for performance optimization
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+  }, [])
 
   // ESC key handler to go back
   useEffect(() => {
@@ -24,8 +31,10 @@ export default function DecryptPage() {
     return () => window.removeEventListener('keydown', handleEscKey)
   }, [router])
 
-  // Matrix Rain Effect
+  // Matrix Rain Effect - Skip on mobile for performance
   useEffect(() => {
+    if (isMobile) return // Skip heavy animation on mobile
+    
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -36,7 +45,7 @@ export default function DecryptPage() {
     canvas.height = window.innerHeight
 
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*()_+-=[]{}|;:,.<>?'
-    const fontSize = 14
+    const fontSize = isMobile ? 16 : 14
     const columns = canvas.width / fontSize
     const drops: number[] = []
 
@@ -79,15 +88,18 @@ export default function DecryptPage() {
       cancelAnimationFrame(animationId)
       window.removeEventListener('resize', handleResize)
     }
-  }, [])
+  }, [isMobile])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Prevent multiple submissions
+    if (isSubmitting) return
+    
     if (password.toLowerCase() === 'free the music') {
       setError('')
+      setIsSubmitting(true)
       
-      // Award 10 credits
       try {
         const response = await fetch('/api/credits/award', {
           method: 'POST',
@@ -98,20 +110,21 @@ export default function DecryptPage() {
         const data = await response.json()
         
         if (data.success) {
+          // Successfully awarded credits
+          setIsUnlocked(true)
+          setTimeout(() => setShowMessage(true), 500)
+        } else if (data.error && data.error.includes('already redeemed')) {
+          // Code already used - still show unlock screen but with message
           setIsUnlocked(true)
           setTimeout(() => setShowMessage(true), 500)
         } else {
-          // Even if already redeemed, show the message
-          if (data.error === 'Code already redeemed') {
-            setIsUnlocked(true)
-            setTimeout(() => setShowMessage(true), 500)
-          } else {
-            setError('Failed to unlock. Try again.')
-          }
+          setError(data.error || 'Failed to unlock. Try again.')
+          setIsSubmitting(false)
         }
       } catch (err) {
         console.error('Failed to award credits:', err)
-        setError('Connection failed. Try again.')
+        setError('Connection failed. Please try again.')
+        setIsSubmitting(false)
       }
     } else {
       setError('Access Denied. Seek the truth.')
@@ -122,17 +135,21 @@ export default function DecryptPage() {
   return (
     <div className="min-h-screen bg-black relative overflow-hidden">
       {/* Matrix Rain Background */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full"
-      />
+      {!isMobile ? (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full"
+        />
+      ) : (
+        <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-black via-cyan-950/20 to-black" />
+      )}
 
       {/* Content Overlay */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
         {!isUnlocked ? (
           // Password Entry Screen
           <div className="w-full max-w-md">
-            <div className="bg-black/80 backdrop-blur-xl border-2 border-cyan-500/50 rounded-2xl p-8 shadow-[0_0_50px_rgba(6,182,212,0.3)]">
+            <div className="bg-black/90 md:bg-black/80 backdrop-blur-sm md:backdrop-blur-xl border-2 border-cyan-500/50 rounded-2xl p-8 shadow-lg md:shadow-[0_0_50px_rgba(6,182,212,0.3)]">
               {/* Lock Icon */}
               <div className="flex justify-center mb-6">
                 <div className="w-20 h-20 rounded-full bg-cyan-500/20 border-2 border-cyan-500/50 flex items-center justify-center animate-pulse">
@@ -168,9 +185,10 @@ export default function DecryptPage() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black font-bold rounded-lg hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 hover:scale-[1.02]"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black font-bold rounded-lg hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
-                  DECRYPT
+                  {isSubmitting ? 'DECRYPTING...' : 'DECRYPT'}
                 </button>
               </form>
 
@@ -185,7 +203,7 @@ export default function DecryptPage() {
         ) : (
           // Unlocked Message Screen
           <div className={`w-full max-w-3xl transition-all duration-1000 ${showMessage ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <div className="bg-black/90 backdrop-blur-xl border-2 border-cyan-500/50 rounded-2xl p-8 md:p-12 shadow-[0_0_80px_rgba(6,182,212,0.4)]">
+            <div className="bg-black/95 md:bg-black/90 backdrop-blur-sm md:backdrop-blur-xl border-2 border-cyan-500/50 rounded-2xl p-8 md:p-12 shadow-lg md:shadow-[0_0_80px_rgba(6,182,212,0.4)]">
               {/* Unlock Icon */}
               <div className="flex justify-center mb-8">
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500/30 to-cyan-600/30 border-2 border-cyan-400 flex items-center justify-center animate-pulse">
