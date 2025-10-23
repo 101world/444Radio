@@ -877,17 +877,17 @@ function CreatePageContent() {
             {/* Divider */}
             <div className="w-px h-8 bg-cyan-500/30"></div>
 
-            {/* Settings Button */}
+            {/* Lyrics Button */}
             <button
-              onClick={() => setShowSettingsModal(true)}
+              onClick={() => setShowLyricsModal(true)}
               className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
                 customTitle || genre || customLyrics || bpm
                   ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105'
                   : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
               }`}
-              title="Advanced Settings"
+              title="Lyrics & Settings"
             >
-              <Settings 
+              <FileText 
                 size={18} 
                 className={`${
                   customTitle || genre || customLyrics || bpm ? 'text-cyan-300' : 'text-cyan-400'
@@ -906,45 +906,6 @@ function CreatePageContent() {
                 className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
               />
             </button>
-
-            {/* Language Selector */}
-            <div className="relative">
-              <button
-                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
-                title={`Language: ${selectedLanguage}`}
-              >
-                <Globe 
-                  size={18} 
-                  className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
-                />
-              </button>
-              
-              {/* Language Dropdown */}
-              {showLanguageDropdown && (
-                <div className="absolute top-full mt-2 right-0 w-48 bg-black/95 backdrop-blur-xl border-2 border-cyan-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
-                  {['English', 'Hindi', 'German', 'Spanish', 'French', 'Japanese', 'Korean', 'Portuguese', 'Italian', 'Chinese'].map((lang) => (
-                    <button
-                      key={lang}
-                      onClick={() => {
-                        setSelectedLanguage(lang)
-                        setShowLanguageDropdown(false)
-                      }}
-                      className={`w-full px-4 py-2.5 text-left text-sm transition-all ${
-                        selectedLanguage === lang
-                          ? 'bg-cyan-500/20 text-cyan-300 font-semibold'
-                          : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      {lang}
-                      {selectedLanguage === lang && (
-                        <Check size={14} className="inline ml-2" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Divider */}
             <div className="hidden md:block w-px h-8 bg-cyan-500/30"></div>
@@ -1085,13 +1046,13 @@ function CreatePageContent() {
       </div>
       )}
 
-      {/* Settings Modal - 1:1 Aspect Ratio with Small Font */}
-      {showSettingsModal && (
+      {/* Lyrics & Settings Modal - Comprehensive */}
+      {showLyricsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
           {/* Backdrop */}
           <div 
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowSettingsModal(false)}
+            onClick={() => setShowLyricsModal(false)}
           />
           
           {/* Modal Container - Square 1:1 */}
@@ -1100,11 +1061,11 @@ function CreatePageContent() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Settings size={18} className="text-cyan-400" />
-                Advanced Settings
+                <FileText size={18} className="text-cyan-400" />
+                Lyrics & Settings
               </h3>
               <button
-                onClick={() => setShowSettingsModal(false)}
+                onClick={() => setShowLyricsModal(false)}
                 className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <X size={16} className="text-gray-400" />
@@ -1252,6 +1213,30 @@ function CreatePageContent() {
                 <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
               </div>
 
+              {/* Language Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                  <Globe size={14} className="text-cyan-400" />
+                  Language
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['English', 'Hindi', 'German', 'Spanish', 'French', 'Japanese', 'Korean', 'Portuguese', 'Italian', 'Chinese'].map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => setSelectedLanguage(lang)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-between ${
+                        selectedLanguage === lang
+                          ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
+                          : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
+                      }`}
+                    >
+                      {lang}
+                      {selectedLanguage === lang && <Check size={12} />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Auto-Generate Cover Art */}
               {selectedType === 'music' && (
                 <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
@@ -1277,7 +1262,7 @@ function CreatePageContent() {
             {/* Footer */}
             <div className="px-5 py-4 border-t border-white/10">
               <button
-                onClick={() => setShowSettingsModal(false)}
+                onClick={() => setShowLyricsModal(false)}
                 className="w-full px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30"
               >
                 Done
