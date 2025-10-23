@@ -7,6 +7,7 @@ import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
+import StarryBackground from '../../components/StarryBackground'
 import FloatingNavButton from '../../components/FloatingNavButton'
 import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2 } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
@@ -646,8 +647,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   {/* Mobile Station View - Full Screen */}
                   {activeSubTab === 'station' && (
                     <div className="md:hidden fixed inset-0 bg-black z-50 flex flex-col safe-area-inset">
+                      {/* Starry Background for Chat */}
+                      <StarryBackground />
+                      
                       {/* Header */}
-                      <div className="flex-shrink-0 bg-gradient-to-b from-black to-transparent p-3 border-b border-white/10">
+                      <div className="flex-shrink-0 bg-gradient-to-b from-black to-transparent p-3 border-b border-white/10 relative z-10">
                         <div className="flex items-center justify-between mb-3">
                           <button
                             onClick={() => setActiveSubTab('tracks')}
@@ -717,7 +721,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </div>
 
                       {/* Chat Messages */}
-                      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar relative z-10">
                         {chatMessages.length === 0 ? (
                           <div className="text-center text-gray-500 mt-8">
                             <RadioIcon size={28} className="mx-auto mb-2 opacity-50" />
