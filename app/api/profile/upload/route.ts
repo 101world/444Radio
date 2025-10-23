@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: data[0] })
 
     } else if (type === 'image') {
-      const imageFile = formData.get('image') as File
+      const imageFile = formData.get('file') as File
 
       if (!imageFile) {
         return NextResponse.json({ success: false, error: 'Missing image file' }, { status: 400 })
@@ -103,9 +103,9 @@ export async function POST(req: NextRequest) {
 
       uploadData.image_url = imageUpload.url
 
-      // Save to profile_media table (we'll create this for standalone images/videos)
+      // Save to combined_media table with image type
       const { data, error } = await supabase
-        .from('profile_media')
+        .from('combined_media')
         .insert([uploadData])
         .select()
 
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: data[0] })
 
     } else if (type === 'video') {
-      const videoFile = formData.get('video') as File
+      const videoFile = formData.get('file') as File
 
       if (!videoFile) {
         return NextResponse.json({ success: false, error: 'Missing video file' }, { status: 400 })
@@ -134,9 +134,9 @@ export async function POST(req: NextRequest) {
 
       uploadData.video_url = videoUpload.url
 
-      // Save to profile_media table
+      // Save to combined_media table with video type
       const { data, error } = await supabase
-        .from('profile_media')
+        .from('combined_media')
         .insert([uploadData])
         .select()
 
