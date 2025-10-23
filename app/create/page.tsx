@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
@@ -79,6 +79,8 @@ function CreatePageContent() {
   const [showLyricsModal, setShowLyricsModal] = useState(false)
   const [showBpmModal, setShowBpmModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [selectedLanguage, setSelectedLanguage] = useState('English')
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
 
   // Close all modals
   const closeAllModals = () => {
@@ -821,6 +823,45 @@ function CreatePageContent() {
                 className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
               />
             </button>
+
+            {/* Language Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
+                title={`Language: ${selectedLanguage}`}
+              >
+                <Globe 
+                  size={18} 
+                  className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
+                />
+              </button>
+              
+              {/* Language Dropdown */}
+              {showLanguageDropdown && (
+                <div className="absolute top-full mt-2 right-0 w-48 bg-black/95 backdrop-blur-xl border-2 border-cyan-500/30 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  {['English', 'Hindi', 'German', 'Spanish', 'French', 'Japanese', 'Korean', 'Portuguese', 'Italian', 'Chinese'].map((lang) => (
+                    <button
+                      key={lang}
+                      onClick={() => {
+                        setSelectedLanguage(lang)
+                        setShowLanguageDropdown(false)
+                      }}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-all ${
+                        selectedLanguage === lang
+                          ? 'bg-cyan-500/20 text-cyan-300 font-semibold'
+                          : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      {lang}
+                      {selectedLanguage === lang && (
+                        <Check size={14} className="inline ml-2" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Divider */}
             <div className="hidden md:block w-px h-8 bg-cyan-500/30"></div>

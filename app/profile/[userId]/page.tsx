@@ -8,7 +8,7 @@ import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
 import FloatingNavButton from '../../components/FloatingNavButton'
-import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft } from 'lucide-react'
+import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
@@ -106,6 +106,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
   const [activeSubTab, setActiveSubTab] = useState<'tracks' | 'station'>('tracks')
+  const [contentTab, setContentTab] = useState<'tracks' | 'posts'>('tracks')
   const [isLive, setIsLive] = useState(false)
   const [chatMessages, setChatMessages] = useState<Array<{id: string, username: string, message: string, timestamp: Date, type: 'chat' | 'track'}>>([])
   const [chatInput, setChatInput] = useState('')
@@ -783,13 +784,44 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     </div>
                   </div>
 
-                  {/* SECTION 3: LIST VIEW - All Tracks */}
+                  {/* SECTION 3: LIST VIEW - All Content with Tabs */}
                   <div className="px-6 py-4">
-                    <h2 className="text-2xl font-bold mb-3 relative z-10">📀 All Tracks</h2>
+                    {/* Tab Buttons */}
+                    <div className="flex items-center gap-4 mb-4">
+                      <button
+                        onClick={() => setContentTab('tracks')}
+                        className={`text-xl font-bold transition-all relative pb-2 ${
+                          contentTab === 'tracks'
+                            ? 'text-cyan-400'
+                            : 'text-gray-400 hover:text-gray-300'
+                        }`}
+                      >
+                        📀 All Tracks
+                        {contentTab === 'tracks' && (
+                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setContentTab('posts')}
+                        className={`text-xl font-bold transition-all relative pb-2 ${
+                          contentTab === 'posts'
+                            ? 'text-cyan-400'
+                            : 'text-gray-400 hover:text-gray-300'
+                        }`}
+                      >
+                        📝 All Posts
+                        {contentTab === 'posts' && (
+                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                        )}
+                      </button>
+                    </div>
                     
-                    {/* Desktop: 4 Column List View */}
-                    <div className="hidden md:grid md:grid-cols-4 gap-x-6 gap-y-1">
-                      {profile.combinedMedia.map((media) => {
+                    {/* All Tracks Tab Content */}
+                    {contentTab === 'tracks' && (
+                      <>
+                        {/* Desktop: 4 Column List View */}
+                        <div className="hidden md:grid md:grid-cols-4 gap-x-6 gap-y-1">
+                          {profile.combinedMedia.map((media) => {
                         const isCurrentlyPlaying = playingId === media.id
                         const hasAudio = !!media.audio_url
                         
@@ -896,6 +928,134 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         )
                       })}
                     </div>
+
+                    {/* Mobile: Single Column List View */}
+                    <div className="md:hidden space-y-1">
+                      {profile.combinedMedia.map((media) => {
+                        const isCurrentlyPlaying = playingId === media.id
+                        const hasAudio = !!media.audio_url
+                        
+                        return (
+                          <div 
+                            key={media.id} 
+                            className={`group flex items-center gap-3 p-3 rounded-lg transition-all ${
+                              hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                            } ${
+                              isCurrentlyPlaying 
+                                ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
+                                : hasAudio ? 'hover:bg-white/5' : ''
+                            }`}
+                            onClick={() => hasAudio && handlePlay(media)}
+                          >
+                            {/* Thumbnail */}
+                            <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
+                              <img 
+                                src={media.image_url} 
+                                alt={media.title}
+                                className="w-full h-full object-cover"
+                              />
+                              {hasAudio && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                                    {isCurrentlyPlaying && isPlaying ? (
+                                      <Pause className="text-black" size={14} />
+                                    ) : (
+                                      <Play className="text-black ml-0.5" size={14} />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {isCurrentlyPlaying && isPlaying && (
+                                <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse"></div>
+                              )}
+                            </div>
+                            
+                            {/* Track Info */}
+                            <div className="flex-1 min-w-0 relative z-10">
+                              <h3 className="font-semibold text-white truncate leading-tight">
+                                {media.title}
+                              </h3>
+                              <p className="text-sm text-gray-300 truncate leading-tight mt-0.5">
+                                {formatUsername(profile.username)}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                      </>
+                    )}
+
+                    {/* All Posts Tab Content */}
+                    {contentTab === 'posts' && (
+                      <div className="space-y-4">
+                        {/* Posts Grid - Desktop */}
+                        <div className="hidden md:grid md:grid-cols-3 gap-4">
+                          {profile.combinedMedia.length === 0 ? (
+                            <div className="col-span-3 text-center py-12">
+                              <p className="text-gray-400 text-lg">No posts yet</p>
+                              <p className="text-gray-500 text-sm mt-2">Share your creations to see them here</p>
+                            </div>
+                          ) : (
+                            profile.combinedMedia.map((media) => (
+                              <div key={media.id} className="group cursor-pointer">
+                                <div className="relative aspect-square rounded-xl overflow-hidden bg-black/40 border border-white/10 hover:border-cyan-400/50 transition-all">
+                                  <img 
+                                    src={media.image_url} 
+                                    alt={media.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                                      <h3 className="text-white font-bold text-lg truncate">{media.title}</h3>
+                                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                          <Play size={12} /> {media.plays || 0}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                          <Heart size={12} /> {media.likes || 0}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Posts List - Mobile */}
+                        <div className="md:hidden space-y-3">
+                          {profile.combinedMedia.length === 0 ? (
+                            <div className="text-center py-12">
+                              <p className="text-gray-400">No posts yet</p>
+                              <p className="text-gray-500 text-sm mt-2">Share your creations to see them here</p>
+                            </div>
+                          ) : (
+                            profile.combinedMedia.map((media) => (
+                              <div key={media.id} className="flex gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all">
+                                <img 
+                                  src={media.image_url} 
+                                  alt={media.title}
+                                  className="w-20 h-20 rounded-lg object-cover"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-white font-semibold truncate">{media.title}</h3>
+                                  <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
+                                    <span className="flex items-center gap-1">
+                                      <Play size={12} /> {media.plays || 0}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Heart size={12} /> {media.plays || 0}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* SECTION 4: UPLOADS - Images & Videos by Month */}
