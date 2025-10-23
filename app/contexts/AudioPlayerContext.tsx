@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react'
 
 interface Track {
   id: string
@@ -47,6 +47,39 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const playTimeRef = useRef<number>(0)
   const hasTrackedPlayRef = useRef<boolean>(false)
 
+  const playTrack = useCallback((track: Track) => {
+    if (!audioRef.current) return
+
+    // Reset play tracking
+    playTimeRef.current = 0
+    hasTrackedPlayRef.current = false
+
+    setCurrentTrack(track)
+    audioRef.current.src = track.audioUrl
+    audioRef.current.play()
+    setIsPlaying(true)
+
+    // Find track in playlist and update index
+    const index = playlist.findIndex(t => t.id === track.id)
+    if (index !== -1) {
+      setCurrentIndex(index)
+    }
+  }, [playlist])
+
+  const playNext = useCallback(() => {
+    if (playlist.length === 0) return
+    const nextIndex = (currentIndex + 1) % playlist.length
+    setCurrentIndex(nextIndex)
+    playTrack(playlist[nextIndex])
+  }, [playlist, currentIndex, playTrack])
+
+  const playPrevious = useCallback(() => {
+    if (playlist.length === 0) return
+    const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1
+    setCurrentIndex(prevIndex)
+    playTrack(playlist[prevIndex])
+  }, [playlist, currentIndex, playTrack])
+
   // Initialize audio element
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -68,7 +101,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [])
+  }, [volume, playNext, playPrevious])
 
   // Update media session metadata
   useEffect(() => {
@@ -147,26 +180,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener('durationchange', handleDurationChange)
       audio.removeEventListener('ended', handleEnded)
     }
-  }, [])
-
-  const playTrack = (track: Track) => {
-    if (!audioRef.current) return
-
-    // Reset play tracking
-    playTimeRef.current = 0
-    hasTrackedPlayRef.current = false
-
-    setCurrentTrack(track)
-    audioRef.current.src = track.audioUrl
-    audioRef.current.play()
-    setIsPlaying(true)
-
-    // Find track in playlist and update index
-    const index = playlist.findIndex(t => t.id === track.id)
-    if (index !== -1) {
-      setCurrentIndex(index)
-    }
-  }
+  }, [playNext])
 
   const pause = () => {
     if (audioRef.current) {
@@ -201,20 +215,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (audioRef.current) {
       audioRef.current.currentTime = time
     }
-  }
-
-  const playNext = () => {
-    if (playlist.length === 0) return
-    const nextIndex = (currentIndex + 1) % playlist.length
-    setCurrentIndex(nextIndex)
-    playTrack(playlist[nextIndex])
-  }
-
-  const playPrevious = () => {
-    if (playlist.length === 0) return
-    const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1
-    setCurrentIndex(prevIndex)
-    playTrack(playlist[prevIndex])
   }
 
   const setPlaylistAndPlay = (tracks: Track[], startIndex: number = 0) => {

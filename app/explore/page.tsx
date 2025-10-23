@@ -9,6 +9,7 @@ import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
 import { formatUsername } from '../../lib/username'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 
@@ -250,11 +251,15 @@ export default function ExplorePage() {
                       onClick={() => handlePlay(media)}
                     >
                       <div className="relative w-32 h-32">
-                        <img 
-                          src={media.image_url} 
-                          alt={media.title}
-                          className="w-full h-full object-cover"
-                        />
+                        {media.image_url && (
+                          <Image 
+                            src={media.image_url} 
+                            alt={media.title}
+                            width={256}
+                            height={256}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
                             {isCurrentlyPlaying && isPlaying ? (
@@ -370,24 +375,21 @@ export default function ExplorePage() {
               <div className="md:hidden space-y-1">
                 {combinedMedia.map((media) => {
                   const isCurrentlyPlaying = playingId === media.id
-                  
                   return (
-                    <div 
-                      key={media.id} 
-                      className={`group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                        isCurrentlyPlaying 
-                          ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
-                          : 'hover:bg-white/5'
+                    <div
+                      key={media.id}
+                      className={`group flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${
+                        isCurrentlyPlaying ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' : 'hover:bg-white/5'
                       }`}
                       onClick={() => handlePlay(media)}
                     >
                       {/* Thumbnail */}
                       <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
-                        <img 
-                          src={media.image_url} 
-                          alt={media.title}
-                          className="w-full h-full object-cover"
-                        />
+                        {media.image_url ? (
+                          <Image src={media.image_url} alt={media.title} width={56} height={56} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-white/5" />
+                        )}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                             {isCurrentlyPlaying && isPlaying ? (
@@ -401,13 +403,13 @@ export default function ExplorePage() {
                           <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse"></div>
                         )}
                       </div>
-                      
+
                       {/* Track Info */}
                       <div className="flex-1 min-w-0 relative z-10">
                         <h3 className="font-semibold text-white truncate leading-tight">
                           {media.title}
                         </h3>
-                        <Link 
+                        <Link
                           href={`/profile/${media.user_id}`}
                           className="text-sm text-gray-300 hover:text-cyan-400 transition-colors truncate block leading-tight mt-0.5"
                           onClick={(e) => e.stopPropagation()}

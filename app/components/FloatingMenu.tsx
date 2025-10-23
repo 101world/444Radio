@@ -91,10 +91,11 @@ export default function FloatingMenu() {
                     <Link
                       href="/create"
                       onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-cyan-600/20 to-cyan-400/20 border border-cyan-500/40 text-cyan-400 hover:from-cyan-600/30 hover:to-cyan-400/30 rounded-xl transition-all shadow-lg shadow-cyan-500/10"
                     >
                       <Zap size={20} />
-                      <span className="font-medium">Create</span>
+                      <span className="font-semibold">Create</span>
+                      <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">Suggested</span>
                     </Link>
                     <Link
                       href="/explore"
@@ -113,6 +114,14 @@ export default function FloatingMenu() {
                       <span className="font-medium">Library</span>
                     </Link>
                     <Link
+                      href="/decrypt"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-colors border border-cyan-500/30"
+                    >
+                      <Unlock size={20} />
+                      <span className="font-medium">Decrypt</span>
+                    </Link>
+                    <Link
                       href="/billboard"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
@@ -127,14 +136,6 @@ export default function FloatingMenu() {
                     >
                       <CreditCard size={20} />
                       <span className="font-medium">Pricing</span>
-                    </Link>
-                    <Link
-                      href="/decrypt"
-                      onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-colors border border-cyan-500/30"
-                    >
-                      <Unlock size={20} />
-                      <span className="font-medium">Decrypt</span>
                     </Link>
                     <Link
                       href={`/profile/${user.id}`}
@@ -156,12 +157,61 @@ export default function FloatingMenu() {
                       <span className="font-medium">Home</span>
                     </Link>
                     <Link
+                      href="/create"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-cyan-600/20 to-cyan-400/20 border border-cyan-500/40 text-cyan-400 hover:from-cyan-600/30 hover:to-cyan-400/30 rounded-xl transition-all shadow-lg shadow-cyan-500/10"
+                    >
+                      <Zap size={20} />
+                      <span className="font-semibold">Create</span>
+                      <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded-full">Suggested</span>
+                    </Link>
+                    <Link
                       href="/explore"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
                     >
                       <Compass size={20} />
                       <span className="font-medium">Explore</span>
+                    </Link>
+                    <Link
+                      href="/library"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
+                    >
+                      <Library size={20} />
+                      <span className="font-medium">Library</span>
+                    </Link>
+                    <Link
+                      href="/decrypt"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-colors border border-cyan-500/30"
+                    >
+                      <Unlock size={20} />
+                      <span className="font-medium">Decrypt</span>
+                    </Link>
+                    <Link
+                      href="/billboard"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
+                    >
+                      <BarChart3 size={20} />
+                      <span className="font-medium">Charts</span>
+                    </Link>
+                    <Link
+                      href="/pricing"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
+                    >
+                      <CreditCard size={20} />
+                      <span className="font-medium">Pricing</span>
+                    </Link>
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
+                    >
+                      <User size={20} />
+                      <span className="font-medium">Profile</span>
                     </Link>
                     <Link
                       href="/sign-in"

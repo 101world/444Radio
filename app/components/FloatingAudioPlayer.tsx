@@ -3,6 +3,7 @@
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical, ChevronDown, ChevronUp, List, X } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 
 export default function FloatingAudioPlayer() {
   const {
@@ -158,9 +159,11 @@ export default function FloatingAudioPlayer() {
             <div className="flex items-center gap-3">
               {/* Album Art */}
               {currentTrack.imageUrl && (
-                <img
+                <Image
                   src={currentTrack.imageUrl}
                   alt={currentTrack.title}
+                  width={40}
+                  height={40}
                   className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                 />
               )}
@@ -296,9 +299,11 @@ export default function FloatingAudioPlayer() {
                               {index + 1}
                             </span>
                             {track.imageUrl && (
-                              <img
+                              <Image
                                 src={track.imageUrl}
                                 alt={track.title}
+                                width={28}
+                                height={28}
                                 className="w-7 h-7 rounded object-cover flex-shrink-0"
                               />
                             )}
@@ -391,9 +396,11 @@ export default function FloatingAudioPlayer() {
         <div className="flex items-center gap-2 flex-1">
           <GripVertical size={16} className="text-cyan-500/50" />
           {currentTrack.imageUrl && (
-            <img
+            <Image
               src={currentTrack.imageUrl}
               alt={currentTrack.title}
+              width={32}
+              height={32}
               className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
             />
           )}
@@ -568,9 +575,11 @@ export default function FloatingAudioPlayer() {
                         {index + 1}
                       </span>
                       {track.imageUrl && (
-                        <img
+                        <Image
                           src={track.imageUrl}
                           alt={track.title}
+                          width={32}
+                          height={32}
                           className="w-8 h-8 rounded object-cover flex-shrink-0"
                         />
                       )}

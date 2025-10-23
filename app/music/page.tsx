@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import Image from 'next/image'
 
 interface Song {
   id: string
@@ -35,7 +36,7 @@ export default function Music() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {songs.map((song) => (
             <div key={song.id} className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl p-4 shadow-2xl hover:scale-105 transition-transform">
-              <img src={song.cover_url} alt="Cover" className="w-full h-48 object-cover rounded-xl mb-4" />
+              <Image src={song.cover_url} alt="Cover" width={800} height={192} className="w-full h-48 object-cover rounded-xl mb-4" />
               <h3 className="text-lg font-semibold mb-2">{song.title}</h3>
               <p className="text-gray-400 mb-2">{song.prompt}</p>
               <p className="text-gray-400 mb-2">{song.genre}</p>
