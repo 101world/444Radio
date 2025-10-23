@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { uploadToR2 } from '@/lib/r2-upload'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +18,29 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { username, avatar } = await req.json()
+    // Check if request is FormData (with file upload) or JSON
+    const contentType = req.headers.get('content-type')
+    let username: string
+    let avatar: string | undefined
+
+    if (contentType?.includes('multipart/form-data')) {
+      const formData = await req.formData()
+      username = formData.get('username') as string
+      const avatarFile = formData.get('avatar') as File | null
+
+      // Upload avatar to R2 if provided
+      if (avatarFile) {
+        const avatarKey = `avatars/${userId}-${Date.now()}.${avatarFile.name.split('.').pop()}`
+        const uploadResult = await uploadToR2(avatarFile, 'images', avatarKey)
+        if (uploadResult.success && uploadResult.url) {
+          avatar = uploadResult.url
+        }
+      }
+    } else {
+      const body = await req.json()
+      username = body.username
+      avatar = body.avatar
+    }
 
     if (!username) {
       return NextResponse.json(
@@ -74,11 +97,10 @@ export async function POST(req: NextRequest) {
       username,
       avatar
     })
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('Profile update error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json(
-      { success: false, error: errorMessage },
+      { success: false, error: error.message || 'Internal server error' },
       { status: 500 }
     )
   }
