@@ -144,7 +144,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-8">
+    <div className="min-h-screen bg-black text-white">
       {/* Holographic 3D Background */}
       <HolographicBackgroundClient />
       
@@ -179,75 +179,118 @@ export default function LibraryPage() {
         </button>
       )}
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 pt-20 sm:pt-24">
-        {/* Header - Top Left */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent mb-3">
-            Library
-          </h1>
-          <p className="text-cyan-400/60 text-sm md:text-base">Your creative collection</p>
-          
-          {/* Stats */}
-          <div className="flex gap-4 mt-6 flex-wrap">
-            <div className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
-              <span className="text-cyan-400 font-bold">{musicItems.length}</span>
-              <span className="text-cyan-400/60 text-sm ml-2">Tracks</span>
-            </div>
-            <div className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
-              <span className="text-cyan-400 font-bold">{imageItems.length}</span>
-              <span className="text-cyan-400/60 text-sm ml-2">Images</span>
-            </div>
-            <div className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
-              <span className="text-cyan-400 font-bold">{combinedItems.length}</span>
-              <span className="text-cyan-400/60 text-sm ml-2">Releases</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs - Above Content */}
-        <div className="mb-6">
-          <div className="flex gap-2 justify-center md:justify-start flex-wrap">
-            <button
-              onClick={() => setActiveTab('music')}
-              className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
-                activeTab === 'music'
-                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
-              }`}
-            >
-              <Music size={16} />
-              Music
-            </button>
+      {/* Main Content - Starts from top */}
+      <div className="max-w-7xl mx-auto px-4 pt-20 md:pt-24 pb-8">
+        {/* Category Tabs - Clean & Prominent */}
+        <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-cyan-500/20 -mx-4 px-4 py-4 mb-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setActiveTab('images')}
-              className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                 activeTab === 'images'
                   ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
+                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
               }`}
             >
-              <ImageIcon size={16} />
-              Images
+              <ImageIcon size={18} />
+              <span>Images</span>
+              <span className="ml-1 text-xs opacity-60">({imageItems.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('music')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'music'
+                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
+                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
+              }`}
+            >
+              <Music size={18} />
+              <span>Music</span>
+              <span className="ml-1 text-xs opacity-60">({musicItems.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('combined')}
-              className={`px-6 py-3 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                 activeTab === 'combined'
                   ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/20 hover:text-cyan-400 border border-cyan-500/20'
+                  : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
               }`}
             >
-              <Layers size={16} />
-              Releases
+              <Layers size={18} />
+              <span>Releases</span>
+              <span className="ml-1 text-xs opacity-60">({combinedItems.length})</span>
             </button>
           </div>
         </div>
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex flex-col items-center justify-center py-20">
+          <div className="flex flex-col items-center justify-center py-32">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-500/20 border-t-cyan-400 mb-4"></div>
-            <p className="text-cyan-400/60 font-mono">Loading library...</p>
+            <p className="text-cyan-400/60 font-mono text-sm">Loading your creations...</p>
+          </div>
+        )}
+
+        {/* Images Tab */}
+        {!isLoading && activeTab === 'images' && (
+          <div>
+            {imageItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
+                  <ImageIcon size={32} className="text-cyan-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No images yet</h3>
+                <p className="text-cyan-400/50 mb-6 text-sm">Create cover art to get started</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
+                  <ImageIcon size={18} />
+                  Create Cover Art
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {imageItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-xl overflow-hidden hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 cursor-pointer"
+                  >
+                    {/* Image */}
+                    <img
+                      src={item.image_url}
+                      alt={item.title || item.prompt}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+
+                    {/* Hover Actions */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDownload(item.image_url, `${item.title || 'image'}.webp`); }}
+                        className="w-full py-2.5 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
+                      >
+                        <Download size={16} className="text-cyan-400" />
+                        <span className="text-cyan-400 text-xs font-semibold">Download</span>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete('images', item.id); }}
+                        className="w-full py-2.5 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2"
+                      >
+                        <Trash2 size={16} className="text-red-400" />
+                        <span className="text-red-400 text-xs font-semibold">Delete</span>
+                      </button>
+                    </div>
+
+                    {/* Info Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2.5 bg-gradient-to-t from-black to-transparent">
+                      <p className="text-xs text-white/90 truncate font-medium">
+                        {item.title || item.prompt.substring(0, 25)}
+                      </p>
+                      <p className="text-[10px] text-cyan-400/50 mt-0.5">
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -256,41 +299,41 @@ export default function LibraryPage() {
           <div>
             {musicItems.length === 0 ? (
               <div className="text-center py-20">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
-                  <Music size={40} className="text-cyan-400" />
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Music size={32} className="text-cyan-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3">No music yet</h3>
-                <p className="text-cyan-400/60 mb-8 text-sm">Start by generating your first track</p>
-                <Link href="/create" className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-full font-bold inline-block hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30">
+                <h3 className="text-xl font-bold text-white/80 mb-2">No music yet</h3>
+                <p className="text-cyan-400/50 mb-6 text-sm">Generate your first track</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
+                  <Music size={18} />
                   Create Music
                 </Link>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {musicItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 transition-all duration-300"
+                    className="group relative bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-xl overflow-hidden hover:border-cyan-400/60 transition-all duration-300"
                   >
-                    <div className="flex items-center gap-4 p-4">
+                    <div className="flex items-center gap-3 p-3">
                       {/* Thumbnail */}
-                      <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 rounded-xl flex items-center justify-center border border-cyan-500/30">
-                        <Music size={28} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                      <div className="w-14 h-14 flex-shrink-0 bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 rounded-lg flex items-center justify-center border border-cyan-500/30">
+                        <Music size={24} className="text-cyan-400" />
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm md:text-base truncate">
+                        <h3 className="text-white font-semibold text-sm truncate">
                           {item.title || item.prompt.substring(0, 40)}
                         </h3>
-                        <p className="text-cyan-400/60 text-xs mt-1">
+                        <p className="text-cyan-400/50 text-xs mt-0.5">
                           {new Date(item.created_at).toLocaleDateString()}
                         </p>
                       </div>
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {/* Play/Pause Button */}
                         <button
                           onClick={() => {
                             if (playingId === item.id) {
@@ -298,7 +341,6 @@ export default function LibraryPage() {
                               audio?.pause();
                               setPlayingId(null);
                             } else {
-                              // Pause all other audios
                               musicItems.forEach(i => {
                                 const audio = document.getElementById(`audio-${i.id}`) as HTMLAudioElement;
                                 if (audio) audio.pause();
@@ -308,44 +350,30 @@ export default function LibraryPage() {
                               setPlayingId(item.id);
                             }
                           }}
-                          className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all shadow-lg shadow-cyan-500/30 active:scale-95"
+                          className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all shadow-lg shadow-cyan-500/20 active:scale-95"
                         >
                           {playingId === item.id ? (
-                            <Pause size={20} className="text-black" />
+                            <Pause size={18} className="text-black" />
                           ) : (
-                            <Play size={20} className="text-black ml-0.5" />
+                            <Play size={18} className="text-black ml-0.5" />
                           )}
                         </button>
 
-                        {/* Release Button */}
-                        <button
-                          onClick={() => handleSendToLabel(item.id)}
-                          className="hidden md:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 items-center justify-center transition-all active:scale-95"
-                          title="Release to Explore"
-                        >
-                          <Send size={18} className="text-cyan-400" />
-                        </button>
-
-                        {/* Download Button */}
                         <button
                           onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
-                          className="hidden md:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 items-center justify-center transition-all active:scale-95"
-                          title="Download"
+                          className="hidden sm:flex w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 items-center justify-center transition-all active:scale-95"
                         >
-                          <Download size={18} className="text-cyan-400" />
+                          <Download size={16} className="text-cyan-400" />
                         </button>
 
-                        {/* Delete Button */}
                         <button
                           onClick={() => handleDelete('music', item.id)}
-                          className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-red-500/10 backdrop-blur-xl border-2 border-red-500/30 hover:border-red-400 hover:bg-red-500/20 flex items-center justify-center transition-all active:scale-95"
-                          title="Delete"
+                          className="w-10 h-10 rounded-full bg-red-500/10 backdrop-blur-xl border border-red-500/30 hover:border-red-400 hover:bg-red-500/20 flex items-center justify-center transition-all active:scale-95"
                         >
-                          <Trash2 size={18} className="text-red-400" />
+                          <Trash2 size={16} className="text-red-400" />
                         </button>
                       </div>
 
-                      {/* Hidden Audio Element */}
                       <audio
                         id={`audio-${item.id}`}
                         src={item.audio_url}
@@ -360,113 +388,52 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {/* Images Tab */}
-        {!isLoading && activeTab === 'images' && (
-          <div className="-mt-4">
-            {imageItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
-                  <ImageIcon size={40} className="text-cyan-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">No images yet</h3>
-                <p className="text-cyan-400/60 mb-8 text-sm">Start by generating your first cover art</p>
-                <Link href="/create" className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-full font-bold inline-block hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30">
-                  Create Cover Art
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                {imageItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 cursor-pointer"
-                  >
-                    {/* Image Thumbnail */}
-                    <img
-                      src={item.image_url}
-                      alt={item.title || item.prompt}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                    />
-
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownload(item.image_url, `${item.title || 'image'}.webp`); }}
-                        className="w-full p-3 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
-                      >
-                        <Download size={18} className="text-cyan-400" />
-                        <span className="text-cyan-400 text-sm font-semibold">Download</span>
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete('images', item.id); }}
-                        className="w-full p-3 bg-red-500/20 backdrop-blur-xl rounded-lg hover:bg-red-500/40 transition-colors border border-red-500/30 flex items-center justify-center gap-2"
-                      >
-                        <Trash2 size={18} className="text-red-400" />
-                        <span className="text-red-400 text-sm font-semibold">Delete</span>
-                      </button>
-                    </div>
-
-                    {/* Title */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black via-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <p className="text-xs text-white truncate font-semibold">
-                        {item.title || item.prompt.substring(0, 30)}
-                      </p>
-                      <p className="text-[10px] text-cyan-400/60 mt-1">
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Combined Tab */}
+        {/* Releases Tab */}
         {!isLoading && activeTab === 'combined' && (
           <div>
             {combinedItems.length === 0 ? (
               <div className="text-center py-20">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
-                  <Layers size={40} className="text-cyan-400" />
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Layers size={32} className="text-cyan-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3">No releases yet</h3>
-                <p className="text-cyan-400/60 mb-8 text-sm">Combine music with cover art to create releases</p>
-                <Link href="/create" className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-full font-bold inline-block hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30">
-                  Combine Media
+                <h3 className="text-xl font-bold text-white/80 mb-2">No releases yet</h3>
+                <p className="text-cyan-400/50 mb-6 text-sm">Combine music with cover art</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
+                  <Layers size={18} />
+                  Create Release
                 </Link>
               </div>
             ) : (
-              <div className="space-y-3 -mt-8">
+              <div className="space-y-2">
                 {combinedItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden hover:border-cyan-400/60 transition-all duration-300"
+                    className="group relative bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-xl overflow-hidden hover:border-cyan-400/60 transition-all duration-300"
                   >
-                    <div className="flex items-center gap-4 p-4">
-                      {/* Cover Art Thumbnail */}
-                      <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border border-cyan-500/30">
+                    <div className="flex items-center gap-3 p-3">
+                      {/* Cover Art */}
+                      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-cyan-500/30">
                         <img
                           src={item.image_url}
-                          alt={item.title || 'Combined media'}
+                          alt={item.title || 'Release'}
                           className="w-full h-full object-cover"
                         />
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-white font-semibold text-sm md:text-base truncate">
-                            {item.title || 'Combined Media'}
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <h3 className="text-white font-semibold text-sm truncate">
+                            {item.title || 'Release'}
                           </h3>
                           {item.is_published && (
-                            <span className="px-2 py-0.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-[10px] font-bold text-white shadow-lg shadow-cyan-500/30 flex-shrink-0">
+                            <span className="px-2 py-0.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-[10px] font-bold text-white shadow-lg shadow-cyan-500/20 flex-shrink-0">
                               ✨ Live
                             </span>
                           )}
                         </div>
-                        <p className="text-cyan-400/60 text-xs">
-                          Released: {new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        <p className="text-cyan-400/50 text-xs">
+                          {new Date(item.created_at).toLocaleDateString()}
                         </p>
                       </div>
 
@@ -475,25 +442,23 @@ export default function LibraryPage() {
                         {!item.is_published && (
                           <button
                             onClick={() => handleSendToLabel(item.id)}
-                            className="p-3 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-lg hover:from-cyan-700 hover:to-cyan-500 transition-all hover:scale-105 border border-cyan-500/30 shadow-lg shadow-cyan-500/30"
-                            title="Publish to Feed"
+                            className="p-2.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-lg hover:from-cyan-700 hover:to-cyan-500 transition-all hover:scale-105 border border-cyan-500/30 shadow-lg shadow-cyan-500/20"
+                            title="Publish"
                           >
-                            <Send size={18} className="text-white" />
+                            <Send size={16} className="text-white" />
                           </button>
                         )}
                         <button
                           onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
-                          className="p-3 bg-cyan-500/20 rounded-lg hover:bg-cyan-500/40 transition-all hover:scale-105 border border-cyan-500/30"
-                          title="Download"
+                          className="hidden sm:flex p-2.5 bg-cyan-500/20 rounded-lg hover:bg-cyan-500/40 transition-all hover:scale-105 border border-cyan-500/30"
                         >
-                          <Download size={18} className="text-cyan-400" />
+                          <Download size={16} className="text-cyan-400" />
                         </button>
                         <button
                           onClick={() => handleDelete('combined', item.id)}
-                          className="p-3 bg-red-500/20 rounded-lg hover:bg-red-500/40 transition-all hover:scale-105 border border-red-500/30"
-                          title="Delete"
+                          className="p-2.5 bg-red-500/20 rounded-lg hover:bg-red-500/40 transition-all hover:scale-105 border border-red-500/30"
                         >
-                          <Trash2 size={18} className="text-red-400" />
+                          <Trash2 size={16} className="text-red-400" />
                         </button>
                       </div>
                     </div>
