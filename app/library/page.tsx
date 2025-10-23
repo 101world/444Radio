@@ -179,10 +179,10 @@ export default function LibraryPage() {
         </button>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 pt-20 sm:pt-24">
         {/* Header - Top Left */}
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent mb-3">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent mb-3">
             Library
           </h1>
           <p className="text-cyan-400/60 text-sm md:text-base">Your creative collection</p>

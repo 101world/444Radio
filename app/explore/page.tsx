@@ -173,7 +173,7 @@ export default function ExplorePage() {
       </button>
 
       {/* Main Content - 3 Section Layout */}
-      <main className="flex-1 overflow-y-auto pb-32">
+      <main className="flex-1 overflow-y-auto pb-32 pt-16 sm:pt-0">
         {loading ? (
           <div className="space-y-0">
             {/* Banner skeleton */}
