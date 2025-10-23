@@ -146,6 +146,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [showComments, setShowComments] = useState<{[key: string]: boolean}>({})
   const [comments, setComments] = useState<{[key: string]: Comment[]}>({})
   const [commentInput, setCommentInput] = useState<{[key: string]: string}>({})
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile device
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+  }, [])
 
   // ESC key handler for desktop navigation to explore
   useEffect(() => {
@@ -583,7 +589,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   return (
     <div className="min-h-screen bg-black text-white pb-32">
       {/* Holographic 3D Background */}
-      <HolographicBackground />
+      {!isMobile && <HolographicBackground />}
       
       {/* Floating Menu */}
       <FloatingMenu />

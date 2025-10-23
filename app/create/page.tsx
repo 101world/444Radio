@@ -11,6 +11,7 @@ import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackground from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
+import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -35,6 +36,12 @@ interface Message {
 function CreatePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+  }, [])
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -647,7 +654,7 @@ function CreatePageContent() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Holographic 3D Background */}
-      <HolographicBackground />
+      {!isMobile && <HolographicBackground />}
       
       {/* Credit Indicator - Mobile Only */}
       <div className="md:hidden">
@@ -701,7 +708,7 @@ function CreatePageContent() {
 
                 {/* Music Result - Bigger and Cooler */}
                 {message.result?.audioUrl && (
-                  <div className="backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
+                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
                     {/* Header with Big Play Button */}
                     <div className="flex items-center gap-5 p-6 border-b border-white/10">
                       <button
@@ -760,7 +767,7 @@ function CreatePageContent() {
 
                 {/* Image Result - Bigger and Cooler */}
                 {message.result?.imageUrl && (
-                  <div className="backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
+                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
                     {/* Image with Overlay Button */}
                     <div className="relative">
                       <img
@@ -958,11 +965,11 @@ function CreatePageContent() {
           <div 
             className="group relative active:scale-95 md:hover:scale-105 transition-transform duration-200"
           >
-            {/* Glow Effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>
+            {/* Glow Effect - Simplified for mobile */}
+            {!isMobile && <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>}
             
             {/* Input Container */}
-            <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
+            <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/60 md:bg-black/20 backdrop-blur-sm md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-lg md:shadow-2xl">
               
               {/* Record Button - Small Dot/Mic */}
               <button
