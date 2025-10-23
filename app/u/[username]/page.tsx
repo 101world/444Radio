@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { Music, Video, Image as ImageIcon, Users, Upload } from 'lucide-react'
@@ -9,7 +10,7 @@ import HolographicBackgroundClient from '@/app/components/HolographicBackgroundC
 import ProfileUploadModal from '@/app/components/ProfileUploadModal'
 import PrivateListModal from '@/app/components/PrivateListModal'
 
-interface UserProfile {
+interface ProfileUserData {
   clerk_user_id: string
   username: string
   email: string
@@ -60,6 +61,7 @@ export default function UsernameProfilePage() {
 
   useEffect(() => {
     fetchProfileData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, currentUser])
 
   const fetchProfileData = async () => {

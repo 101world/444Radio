@@ -692,104 +692,104 @@ function CreatePageContent() {
                   </div>
                 )}
 
-                {/* Music Result - Lean Design */}
+                {/* Music Result - Bigger and Cooler */}
                 {message.result?.audioUrl && (
-                  <div className="backdrop-blur-xl bg-black/40 border border-cyan-500/20 rounded-2xl overflow-hidden group">
-                    {/* Header with Play Button */}
-                    <div className="flex items-center gap-3 p-4 border-b border-white/5">
+                  <div className="backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
+                    {/* Header with Big Play Button */}
+                    <div className="flex items-center gap-5 p-6 border-b border-white/10">
                       <button
                         onClick={() => handlePlayPause(message.id, message.result!.audioUrl!)}
-                        className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/30 transition-all active:scale-95"
+                        className="w-20 h-20 rounded-full bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-2xl shadow-cyan-500/50 transition-all active:scale-95 hover:scale-105"
                       >
-                        {playingId === message.id ? <Pause size={20} className="text-black" /> : <Play size={20} className="text-black ml-0.5" />}
+                        {playingId === message.id ? <Pause size={32} className="text-black" /> : <Play size={32} className="text-black ml-1" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-white truncate">{message.result.title}</h4>
-                        <p className="text-xs text-gray-400 truncate">{message.result.prompt}</p>
+                        <h4 className="text-xl font-bold text-white truncate mb-1">{message.result.title}</h4>
+                        <p className="text-sm text-gray-400 truncate">{message.result.prompt}</p>
                       </div>
                       <button
                         onClick={() => handleOpenRelease(message.id, undefined)}
-                        className="p-2.5 hover:bg-cyan-500/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-3 hover:bg-cyan-500/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
                         title="Release"
                       >
-                        <Rocket size={18} className="text-cyan-400" />
+                        <Rocket size={24} className="text-cyan-400" />
                       </button>
                     </div>
 
                     {/* Audio Player */}
-                    <audio src={message.result.audioUrl} controls className="w-full px-4 py-3" />
+                    <audio src={message.result.audioUrl} controls className="w-full px-6 py-4" />
 
                     {/* Lyrics */}
                     {message.result.lyrics && (
-                      <details className="border-t border-white/5">
-                        <summary className="px-4 py-2 text-xs text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors">
-                          Lyrics
+                      <details className="border-t border-white/10">
+                        <summary className="px-6 py-3 text-sm text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors font-medium">
+                          📝 View Lyrics
                         </summary>
-                        <pre className="px-4 pb-3 text-xs text-gray-300 whitespace-pre-wrap">
+                        <pre className="px-6 pb-4 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
                           {message.result.lyrics}
                         </pre>
                       </details>
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex border-t border-white/5">
+                    <div className="flex border-t border-white/10">
                       <button
                         onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`)}
-                        className="flex-1 px-4 py-3 hover:bg-white/5 text-xs text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/5"
+                        className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/10"
                       >
-                        <Download size={14} />
+                        <Download size={18} />
                         Download
                       </button>
                       <Link
                         href="/library"
-                        className="flex-1 px-4 py-3 hover:bg-white/5 text-xs text-cyan-400 flex items-center justify-center gap-2 transition-colors"
+                        className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors"
                       >
-                        <Layers size={14} />
+                        <Layers size={18} />
                         Library
                       </Link>
                     </div>
                   </div>
                 )}
 
-                {/* Image Result - Lean Design */}
+                {/* Image Result - Bigger and Cooler */}
                 {message.result?.imageUrl && (
-                  <div className="backdrop-blur-xl bg-black/40 border border-cyan-500/20 rounded-2xl overflow-hidden group">
+                  <div className="backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
                     {/* Image with Overlay Button */}
                     <div className="relative">
                       <img
                         src={message.result.imageUrl}
                         alt={message.result.title}
-                        className="w-full aspect-square object-cover"
+                        className="w-full min-h-[400px] md:min-h-[500px] object-cover"
                       />
                       <button
                         onClick={() => handleOpenRelease(undefined, message.id)}
-                        className="absolute top-3 right-3 p-2.5 bg-black/60 hover:bg-cyan-500/40 backdrop-blur-xl border border-cyan-500/30 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        className="absolute top-4 right-4 p-3.5 bg-black/70 hover:bg-cyan-500/50 backdrop-blur-xl border-2 border-cyan-500/40 rounded-xl transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
                         title="Release"
                       >
-                        <Rocket size={18} className="text-cyan-400" />
+                        <Rocket size={24} className="text-cyan-400" />
                       </button>
                     </div>
 
                     {/* Info */}
-                    <div className="p-4 border-t border-white/5">
-                      <h4 className="font-semibold text-white mb-1">{message.result.title}</h4>
-                      <p className="text-xs text-gray-400">{message.result.prompt}</p>
+                    <div className="p-6 border-t border-white/10">
+                      <h4 className="text-xl font-bold text-white mb-2">{message.result.title}</h4>
+                      <p className="text-sm text-gray-400">{message.result.prompt}</p>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex border-t border-white/5">
+                    <div className="flex border-t border-white/10">
                       <button
                         onClick={() => handleDownload(message.result!.imageUrl!, `${message.result!.title}.webp`)}
-                        className="flex-1 px-4 py-3 hover:bg-white/5 text-xs text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/5"
+                        className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/10"
                       >
-                        <Download size={14} />
+                        <Download size={18} />
                         Download
                       </button>
                       <Link
                         href="/library"
-                        className="flex-1 px-4 py-3 hover:bg-white/5 text-xs text-cyan-400 flex items-center justify-center gap-2 transition-colors"
+                        className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors"
                       >
-                        <Layers size={14} />
+                        <Layers size={18} />
                         Library
                       </Link>
                     </div>
@@ -957,26 +957,43 @@ function CreatePageContent() {
             {/* Input Container */}
             <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
               
-              {/* Record Button - Extreme Left */}
+              {/* Record Button - Extreme Left - COOL VERSION */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`flex-shrink-0 p-2 rounded-full transition-all duration-300 ${
+                className={`relative flex-shrink-0 p-3 md:p-3.5 rounded-full transition-all duration-300 group ${
                   isRecording 
-                    ? 'bg-red-500/20 border-2 border-red-500 animate-pulse' 
-                    : 'bg-cyan-500/10 border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:bg-cyan-500/20'
+                    ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-lg shadow-red-500/50 scale-110' 
+                    : 'bg-gradient-to-br from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-110'
                 }`}
                 title={isRecording ? 'Stop Recording' : 'Start Voice Recording'}
               >
-                {isRecording ? (
-                  <MicOff 
-                    size={18} 
-                    className="text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.9)] md:w-[20px] md:h-[20px]" 
-                  />
-                ) : (
-                  <Mic 
-                    size={18} 
-                    className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]" 
-                  />
+                {/* Glow Ring Animation */}
+                {isRecording && (
+                  <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-red-400 rounded-full blur opacity-75 animate-pulse"></div>
+                )}
+                
+                {/* Icon */}
+                <div className="relative z-10">
+                  {isRecording ? (
+                    <MicOff 
+                      size={20} 
+                      className="text-white drop-shadow-lg md:w-[22px] md:h-[22px] animate-pulse" 
+                    />
+                  ) : (
+                    <Mic 
+                      size={20} 
+                      className="text-white drop-shadow-lg md:w-[22px] md:h-[22px] group-hover:scale-110 transition-transform" 
+                    />
+                  )}
+                </div>
+                
+                {/* Recording Indicator Dots */}
+                {isRecording && (
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                    <div className="w-1 h-1 bg-white rounded-full animate-bounce"></div>
+                    <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
                 )}
               </button>
 

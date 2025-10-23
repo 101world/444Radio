@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
@@ -1498,9 +1499,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                               {/* Thumbnail */}
                               <div className="relative w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden">
-                                <img 
-                                  src={media.image_url} 
+                                <Image 
+                                  src={media.image_url || '/radio-logo.svg'} 
                                   alt={media.title}
+                                  width={56}
+                                  height={56}
                                   className="w-full h-full object-cover"
                                 />
                                 {hasAudio && (
