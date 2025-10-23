@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { Music, Play, Pause, Sparkles } from 'lucide-react'
@@ -25,17 +25,6 @@ export default function HomePage() {
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const { setPlaylist, playTrack, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
-  const [isMobile, setIsMobile] = useState(false)
-
-  // Detect mobile for performance optimization
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   useEffect(() => {
     fetchAllTracks()
@@ -94,84 +83,81 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative overflow-hidden" data-version="3.0">
-      {/* Holographic 3D Background - Desktop Only for Performance */}
-      {!isMobile && (
-        <Suspense fallback={<div className="absolute inset-0 bg-black" />}>
-          <HolographicBackgroundClient />
-        </Suspense>
-      )}
+      {/* Holographic 3D Background - Lazy loaded */}
+      <Suspense fallback={<div className="absolute inset-0 bg-black" />}>
+        <HolographicBackgroundClient />
+      </Suspense>
       
-      {/* Floating Genre Texts - Desktop Only for Performance */}
-      {!isMobile && (
-        <Suspense fallback={null}>
-          <FloatingGenres />
-        </Suspense>
-      )}
+      {/* Floating Genre Texts - Lazy loaded */}
+      <Suspense fallback={null}>
+        <FloatingGenres />
+      </Suspense>
       
-      {/* Floating Nav Button and Credit Indicator */}
-      <FloatingNavButton />
-      <CreditIndicator />
-      
-      {/* Main Content Container */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 md:px-12 pb-40 md:pb-32">
-        {/* Hero Section with Integrated Describe Bar */}
-        <div className="text-center space-y-8 w-full max-w-3xl">
-          {/* Main Title */}
-          <h1 className="text-7xl md:text-[10rem] font-black tracking-tighter text-cyan-400"
-              style={{ 
-                fontFamily: 'Anton, Impact, "Arial Black", sans-serif',
-                fontWeight: 900,
-                textShadow: '0 0 80px rgba(34, 211, 238, 0.6), 0 0 40px rgba(34, 211, 238, 0.4), 0 0 20px rgba(34, 211, 238, 0.3)'
-              }}>
-            444 RADIO
-          </h1>
+      {/* Main Content Wrapper */}
+      <div className="relative z-10 flex-1 flex flex-col">
+        {/* Credit Indicator - Mobile Only */}
+        <div className="md:hidden">
+          <CreditIndicator />
+        </div>
+        
+        {/* Floating Menu - Desktop Only */}
+        <FloatingMenu />
 
-          {/* Play Button - Centered */}
-          <div className="flex justify-center mt-12">
-            <button
-              onClick={handlePlayAll}
-              disabled={loading || tracks.length === 0}
-              className="group relative px-12 py-6 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 disabled:from-gray-600 disabled:to-gray-700 rounded-full transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(34,211,238,0.5)] hover:shadow-[0_0_50px_rgba(34,211,238,0.8)]"
-            >
-              <div className="flex items-center gap-4">
-                {loading ? (
-                  <>
-                    <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
-                    <span className="text-2xl font-bold text-white">Loading...</span>
-                  </>
-                ) : currentTrack && isPlaying ? (
-                  <>
-                    <Pause className="w-8 h-8 text-white fill-white" />
-                    <span className="text-2xl font-bold text-white">Pause</span>
-                  </>
+        {/* Landing View - Centered Hero */}
+        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 pb-40 md:pb-32">
+          
+          {/* Hero Section - Always Visible */}
+          <div className="relative z-20 w-full max-w-4xl mx-auto text-center space-y-8">
+            {/* Main Heading */}
+            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 bg-clip-text tracking-wider leading-tight" style={{
+              textShadow: '0 0 40px rgba(34, 211, 238, 0.6)',
+              fontFamily: 'Anton, Impact, Arial Black, sans-serif',
+              fontWeight: 900
+            }}>
+              444 RADIO
+            </h1>
+            
+            {/* Large Play Button */}
+            <div className="mt-12 md:mt-16">
+              <button
+                onClick={handlePlayAll}
+                disabled={tracks.length === 0}
+                className="group relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300 disabled:from-gray-600 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70 disabled:shadow-gray-500/30 mx-auto"
+              >
+                {currentTrack && isPlaying ? (
+                  <Pause className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-black" fill="currentColor" />
                 ) : (
-                  <>
-                    <Play className="w-8 h-8 text-white fill-white" />
-                    <span className="text-2xl font-bold text-white">
-                      {currentTrack ? 'Resume' : 'Play All'}
-                    </span>
-                  </>
+                  <Play className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-black ml-1" fill="currentColor" />
                 )}
-              </div>
-            </button>
-          </div>
+                
+                {/* Pulse animation when not playing and enabled */}
+                {(!currentTrack || !isPlaying) && tracks.length > 0 && (
+                  <div className="absolute inset-0 rounded-full bg-cyan-400/30 animate-ping"></div>
+                )}
+              </button>
+            </div>
 
-          {/* Describe Your Sound Input - Integrated */}
-          <div className="relative mt-8">
-            <input
-              type="text"
-              placeholder="Describe your sound..."
-              onFocus={() => router.push('/create')}
-              readOnly
-              className="w-full px-6 py-4 bg-white/10 border border-cyan-400/30 rounded-full text-white placeholder-gray-400 cursor-pointer transition-all duration-300 hover:bg-white/15 hover:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
-            />
-            <Sparkles className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
+            {/* Describe Your Sound Bar - Integrated */}
+            <div className="mt-16 md:mt-20">
+              <button
+                onClick={() => router.push('/create')}
+                className="w-full max-w-2xl mx-auto flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-cyan-600/20 to-cyan-400/20 hover:from-cyan-600/30 hover:to-cyan-400/30 border border-cyan-500/30 hover:border-cyan-400/50 rounded-full transition-all duration-300 group"
+              >
+                <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+                <span className="flex-1 text-left text-sm md:text-base text-gray-300 group-hover:text-white transition-colors">
+                  Describe your sound...
+                </span>
+                <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
+                  Press to create
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Floating Menu */}
-      <FloatingMenu />
+      {/* Floating Navigation Button */}
+      <FloatingNavButton />
     </div>
   )
 }
