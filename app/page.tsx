@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { Music, Play, Pause, Sparkles } from 'lucide-react'
@@ -104,10 +104,10 @@ export default function HomePage() {
         <FloatingMenu />
 
         {/* Landing View - Centered Hero */}
-        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 pt-24 pb-32 md:py-8">
+        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 pb-40 md:pb-32">
           
           {/* Hero Section - Always Visible */}
-          <div className="relative z-20 w-full max-w-4xl mx-auto text-center space-y-6">
+          <div className="relative z-20 w-full max-w-4xl mx-auto text-center space-y-8">
             {/* Main Heading */}
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 bg-clip-text tracking-wider leading-tight" style={{
               textShadow: '0 0 40px rgba(34, 211, 238, 0.6)',
@@ -136,30 +136,28 @@ export default function HomePage() {
                 )}
               </button>
             </div>
+
+            {/* Describe Your Sound Bar - Integrated */}
+            <div className="mt-16 md:mt-20">
+              <button
+                onClick={() => router.push('/create')}
+                className="w-full max-w-2xl mx-auto flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-cyan-600/20 to-cyan-400/20 hover:from-cyan-600/30 hover:to-cyan-400/30 border border-cyan-500/30 hover:border-cyan-400/50 rounded-full transition-all duration-300 group"
+              >
+                <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+                <span className="flex-1 text-left text-sm md:text-base text-gray-300 group-hover:text-white transition-colors">
+                  Describe your sound...
+                </span>
+                <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
+                  Press to create
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Floating Navigation Button */}
       <FloatingNavButton />
-
-      {/* Describe Your Sound Bar - Fixed at Bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-black/80 backdrop-blur-md border-t border-cyan-500/20">
-        <div className="max-w-4xl mx-auto px-4 py-3 md:py-4">
-          <button
-            onClick={() => router.push('/create')}
-            className="w-full flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-cyan-600/20 to-cyan-400/20 hover:from-cyan-600/30 hover:to-cyan-400/30 border border-cyan-500/30 hover:border-cyan-400/50 rounded-full transition-all duration-300 group"
-          >
-            <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
-            <span className="flex-1 text-left text-sm md:text-base text-gray-300 group-hover:text-white transition-colors">
-              Describe your sound...
-            </span>
-            <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
-              Press to create
-            </div>
-          </button>
-        </div>
-      </div>
     </div>
   )
 }
