@@ -1,12 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Youtube, Mail, Instagram, X, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import FloatingMenu from '../components/FloatingMenu'
 
 export default function Pricing() {
+  const router = useRouter()
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
+  
+  // ESC key handler to go back to explore
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.push('/explore')
+      }
+    }
+    
+    window.addEventListener('keydown', handleEscKey)
+    return () => window.removeEventListener('keydown', handleEscKey)
+  }, [router])
 
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
