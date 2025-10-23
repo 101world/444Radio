@@ -56,11 +56,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   const resume = useCallback(() => {
     if (audioRef.current) {
-      audioRef.current.play().catch(error => {
-        console.error('Error resuming audio:', error)
-        setIsPlaying(false)
-      })
-      setIsPlaying(true)
+      audioRef.current.play()
+        .then(() => {
+          setIsPlaying(true)
+        })
+        .catch(error => {
+          console.error('Error resuming audio:', error)
+          setIsPlaying(false)
+        })
     }
   }, [])
 
@@ -78,11 +81,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
     setCurrentTrack(track)
     audioRef.current.src = track.audioUrl
-    audioRef.current.play().catch(error => {
-      console.error('Error playing audio:', error)
-      setIsPlaying(false)
-    })
-    setIsPlaying(true)
+    
+    // Set isPlaying to true after play promise resolves
+    audioRef.current.play()
+      .then(() => {
+        setIsPlaying(true)
+      })
+      .catch(error => {
+        console.error('Error playing audio:', error)
+        setIsPlaying(false)
+      })
 
     // Find track in playlist and update index
     const index = playlist.findIndex(t => t.id === track.id)
@@ -201,6 +209,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
     const handleDurationChange = () => setDuration(audio.duration)
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+    const handlePlaying = () => setIsPlaying(true)
     const handleEnded = () => {
       setIsPlaying(false)
       playNext()
@@ -208,14 +219,20 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
     audio.addEventListener('timeupdate', handleTimeUpdate)
     audio.addEventListener('durationchange', handleDurationChange)
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('pause', handlePause)
+    audio.addEventListener('playing', handlePlaying)
     audio.addEventListener('ended', handleEnded)
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate)
       audio.removeEventListener('durationchange', handleDurationChange)
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('pause', handlePause)
+      audio.removeEventListener('playing', handlePlaying)
       audio.removeEventListener('ended', handleEnded)
     }
-  }, [])
+  }, [playNext])
 
   const togglePlayPause = () => {
     if (isPlaying) {
