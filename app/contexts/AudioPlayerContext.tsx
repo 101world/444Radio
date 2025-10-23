@@ -105,20 +105,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     playTrack(playlist[prevIndex])
   }, [playlist, currentIndex, playTrack])
 
-  // Initialize audio element
+  // Initialize audio element once on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && !audioRef.current) {
       audioRef.current = new Audio()
       audioRef.current.volume = volume
       console.log('Audio element initialized')
-
-      // Enable background playback
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.setActionHandler('play', () => resume())
-        navigator.mediaSession.setActionHandler('pause', () => pause())
-        navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious())
-        navigator.mediaSession.setActionHandler('nexttrack', () => playNext())
-      }
 
       return () => {
         if (audioRef.current) {
@@ -127,7 +119,24 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [volume, playNext, playPrevious, pause, resume])
+  }, []) // Empty dependency array - only run once on mount
+
+  // Set up media session handlers separately
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+      navigator.mediaSession.setActionHandler('play', () => resume())
+      navigator.mediaSession.setActionHandler('pause', () => pause())
+      navigator.mediaSession.setActionHandler('previoustrack', () => playPrevious())
+      navigator.mediaSession.setActionHandler('nexttrack', () => playNext())
+    }
+  }, [pause, resume, playNext, playPrevious])
+
+  // Update volume when it changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume
+    }
+  }, [volume])
 
   // Update media session metadata
   useEffect(() => {
