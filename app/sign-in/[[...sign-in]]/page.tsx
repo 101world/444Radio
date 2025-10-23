@@ -6,11 +6,6 @@ import { useRouter } from 'next/navigation'
 
 export default function SignInPage() {
   const router = useRouter()
-  const [isMounted, setIsMounted] = useState(false)
-  
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
   
   // ESC key to go back
   useEffect(() => {
@@ -24,16 +19,8 @@ export default function SignInPage() {
     return () => window.removeEventListener('keydown', handleEscKey)
   }, [router])
   
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-950 to-green-950">
-        <div className="text-green-400 text-xl animate-pulse">Loading...</div>
-      </div>
-    )
-  }
-  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-950 to-green-950 p-6">
+    <div suppressHydrationWarning className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-950 to-green-950 p-6">
       <div className="backdrop-blur-xl md:backdrop-blur-2xl bg-gradient-to-br from-black/80 md:from-black/70 via-slate-900/70 md:via-slate-900/60 to-green-950/80 md:to-green-950/70 border-2 border-green-500/30 rounded-3xl p-6 md:p-8 shadow-xl md:shadow-2xl shadow-green-500/20">
         <SignIn 
           appearance={{
