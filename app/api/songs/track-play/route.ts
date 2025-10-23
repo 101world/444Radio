@@ -8,7 +8,7 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { trackId } = await req.json()
+    const { trackId, userId } = await req.json()
 
     if (!trackId) {
       return NextResponse.json(
@@ -17,14 +17,30 @@ export async function POST(req: Request) {
       )
     }
 
-    // First get current play count
+    // Get track info including artist
     const { data: currentSong } = await supabase
       .from('songs')
-      .select('plays')
+      .select('plays, user_id')
       .eq('id', trackId)
       .single()
 
-    const currentPlays = currentSong?.plays || 0
+    if (!currentSong) {
+      return NextResponse.json(
+        { error: 'Track not found' },
+        { status: 404 }
+      )
+    }
+
+    // Only increment plays if listener is not the artist
+    if (userId && currentSong.user_id === userId) {
+      return NextResponse.json({ 
+        success: true,
+        plays: currentSong.plays || 0,
+        message: 'Artist play - not counted'
+      })
+    }
+
+    const currentPlays = currentSong.plays || 0
 
     // Increment play count
     const { data, error } = await supabase

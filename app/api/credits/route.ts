@@ -35,7 +35,7 @@ export async function GET() {
     const data = await response.json()
     let user = data?.[0]
 
-    // If user doesn't exist, create them with 20 credits (race condition with webhook)
+    // If user doesn't exist, create them with 0 credits (must decrypt first)
     if (!user) {
       console.log(`Creating user ${userId} in Supabase (webhook race condition)`)
       
@@ -52,7 +52,7 @@ export async function GET() {
           body: JSON.stringify({
             clerk_user_id: userId,
             email: '', // Will be updated by webhook
-            credits: 20,
+            credits: 0, // Users must decrypt to get 20 credits
             total_generated: 0
           })
         }
@@ -82,14 +82,14 @@ export async function GET() {
     }
 
     return corsResponse(NextResponse.json({ 
-      credits: user?.credits || 20, // Default to 20 if still not found
+      credits: user?.credits || 0, // Default to 0 if still not found
       totalGenerated: user?.total_generated || 0
     }))
   } catch (error) {
     console.error('Error fetching credits:', error)
     return corsResponse(NextResponse.json({ 
       error: 'Failed to fetch credits',
-      credits: 20, // Return 20 as fallback instead of 0
+      credits: 0, // Return 0 as fallback - users must decrypt
       totalGenerated: 0
     }, { status: 500 }))
   }

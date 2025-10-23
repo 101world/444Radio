@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react'
+import { useUser } from '@clerk/nextjs'
 
 interface Track {
   id: string
@@ -35,6 +36,7 @@ interface AudioPlayerContextType {
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined)
 
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
+  const { user } = useUser()
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -182,11 +184,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   // Track play count API call
   const trackPlay = async (trackId: string) => {
     try {
+      const userId = user?.id || null
+      
       // Try combined_media first, then fall back to songs
       const mediaResponse = await fetch('/api/media/track-play', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mediaId: trackId })
+        body: JSON.stringify({ mediaId: trackId, userId })
       })
       
       // If media tracking fails, try songs table
@@ -194,7 +198,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         await fetch('/api/songs/track-play', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trackId })
+          body: JSON.stringify({ trackId, userId })
         })
       }
     } catch (error) {

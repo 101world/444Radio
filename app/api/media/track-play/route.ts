@@ -8,7 +8,7 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { mediaId } = await req.json()
+    const { mediaId, userId } = await req.json()
 
     if (!mediaId) {
       return NextResponse.json(
@@ -17,14 +17,30 @@ export async function POST(req: Request) {
       )
     }
 
-    // First get current play count
+    // Get media info including artist
     const { data: currentMedia } = await supabase
       .from('combined_media')
-      .select('plays')
+      .select('plays, user_id')
       .eq('id', mediaId)
       .single()
 
-    const currentPlays = currentMedia?.plays || 0
+    if (!currentMedia) {
+      return NextResponse.json(
+        { error: 'Media not found' },
+        { status: 404 }
+      )
+    }
+
+    // Only increment plays if listener is not the artist
+    if (userId && currentMedia.user_id === userId) {
+      return NextResponse.json({ 
+        success: true,
+        plays: currentMedia.plays || 0,
+        message: 'Artist play - not counted'
+      })
+    }
+
+    const currentPlays = currentMedia.plays || 0
 
     // Increment play count
     const { data, error } = await supabase

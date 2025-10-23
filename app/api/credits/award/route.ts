@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     // Check if code is valid
     const validCodes: { [key: string]: number } = {
       'PORSCHE': 100,
-      'FREE THE MUSIC': 10,
+      'FREE THE MUSIC': 20, // Decrypt reward - initial credits
       // Add more codes here in the future
     }
 

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const userData = await userResponse.json()
     let userRecord = userData?.[0]
 
-    // If user doesn't exist, create them with 20 credits (race condition with webhook)
+    // If user doesn't exist, create them with 0 credits (must decrypt first)
     if (!userRecord) {
       console.log(`Creating user ${user.id} in Supabase during generation (webhook race condition)`)
       
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
             clerk_user_id: user.id,
             email: user.emailAddresses?.[0]?.emailAddress || '',
             username: user.username || null,
-            credits: 20,
+            credits: 0, // Users must decrypt to get 20 credits
             total_generated: 0
           })
         }
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       if (createResponse.ok) {
         const newUserData = await createResponse.json()
         userRecord = newUserData?.[0]
-        console.log('User created successfully with 20 credits')
+        console.log('User created successfully with 0 credits')
       } else {
         // Try fetching again in case webhook created it
         const retryResponse = await fetch(

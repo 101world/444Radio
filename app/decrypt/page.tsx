@@ -185,7 +185,7 @@ export default function DecryptPage() {
               <div className="text-center mb-8">
                 <div className="inline-block px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full shadow-lg shadow-cyan-500/50">
                   <p className="text-black font-bold text-lg">
-                    +10 CREDITS UNLOCKED
+                    +20 CREDITS UNLOCKED
                   </p>
                 </div>
               </div>
