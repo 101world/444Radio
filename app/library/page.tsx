@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
@@ -40,6 +41,7 @@ interface LibraryCombined {
 }
 
 export default function LibraryPage() {
+  const router = useRouter()
   const { user } = useUser()
   const [activeTab, setActiveTab] = useState<'music' | 'images' | 'combined'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
@@ -47,6 +49,18 @@ export default function LibraryPage() {
   const [combinedItems, setCombinedItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [playingId, setPlayingId] = useState<string | null>(null)
+
+  // ESC key handler for desktop navigation to profile
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && user?.id) {
+        router.push(`/profile/${user.id}`)
+      }
+    }
+    
+    window.addEventListener('keydown', handleEscKey)
+    return () => window.removeEventListener('keydown', handleEscKey)
+  }, [router, user])
 
   useEffect(() => {
     fetchLibrary()
@@ -141,6 +155,29 @@ export default function LibraryPage() {
       
       {/* Floating Menu - Desktop Only */}
       <FloatingMenu />
+
+      {/* Back Button - Mobile (Top Left) */}
+      {user?.id && (
+        <button
+          onClick={() => router.push(`/profile/${user.id}`)}
+          className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 flex items-center justify-center text-cyan-400 hover:bg-black/80 hover:border-cyan-400 transition-all shadow-lg"
+          title="Back to Profile"
+        >
+          <ArrowLeft size={20} />
+        </button>
+      )}
+
+      {/* ESC Button - Desktop (Top Left) */}
+      {user?.id && (
+        <button
+          onClick={() => router.push(`/profile/${user.id}`)}
+          className="hidden md:flex fixed top-4 left-4 z-50 px-4 py-2 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 items-center gap-2 text-cyan-400 hover:bg-black/80 hover:border-cyan-400 transition-all shadow-lg text-sm font-medium"
+          title="Press ESC to go back"
+        >
+          <ArrowLeft size={16} />
+          <span>ESC</span>
+        </button>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
         {/* Header - Top Left */}

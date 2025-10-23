@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Youtube, Mail, Instagram, X, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import FloatingMenu from '../components/FloatingMenu'
 
 export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
@@ -11,6 +12,9 @@ export default function Pricing() {
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-black to-black pointer-events-none"></div>
+
+      {/* Floating Menu */}
+      <FloatingMenu />
 
       <div className="max-w-6xl mx-auto relative z-10 px-4 py-8">
         {/* Escape/Back Button */}

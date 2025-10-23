@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
-import { Search, Play, Pause } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft } from 'lucide-react'
 import { formatUsername } from '../../lib/username'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 
@@ -43,6 +44,7 @@ interface Artist {
 }
 
 export default function ExplorePage() {
+  const router = useRouter()
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,6 +58,18 @@ export default function ExplorePage() {
     togglePlayPause,
     setPlaylist
   } = useAudioPlayer()
+
+  // ESC key handler for desktop navigation
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.push('/create')
+      }
+    }
+    
+    window.addEventListener('keydown', handleEscKey)
+    return () => window.removeEventListener('keydown', handleEscKey)
+  }, [router])
 
   // Use global player state
   const playingId = globalCurrentTrack?.id || null
@@ -138,6 +152,25 @@ export default function ExplorePage() {
       
       {/* Floating Menu - Desktop Only */}
       <FloatingMenu />
+
+      {/* Back Button - Mobile (Top Left) */}
+      <button
+        onClick={() => router.push('/create')}
+        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 flex items-center justify-center text-cyan-400 hover:bg-black/80 hover:border-cyan-400 transition-all shadow-lg"
+        title="Back to Create"
+      >
+        <ArrowLeft size={20} />
+      </button>
+
+      {/* ESC Button - Desktop (Top Left) */}
+      <button
+        onClick={() => router.push('/create')}
+        className="hidden md:flex fixed top-4 left-4 z-50 px-4 py-2 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 items-center gap-2 text-cyan-400 hover:bg-black/80 hover:border-cyan-400 transition-all shadow-lg text-sm font-medium"
+        title="Press ESC to go back"
+      >
+        <ArrowLeft size={16} />
+        <span>ESC</span>
+      </button>
 
       {/* Main Content - 3 Section Layout */}
       <main className="flex-1 overflow-y-auto pb-32">

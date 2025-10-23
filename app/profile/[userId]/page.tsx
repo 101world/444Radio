@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
 import FloatingNavButton from '../../components/FloatingNavButton'
-import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle } from 'lucide-react'
+import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
@@ -88,6 +89,7 @@ interface ProfileData {
 }
 
 export default function ProfilePage({ params }: { params: Promise<{ userId: string }> }) {
+  const router = useRouter()
   const resolvedParams = use(params)
   const { user: currentUser } = useUser()
   const [profile, setProfile] = useState<ProfileData | null>(null)
@@ -110,6 +112,18 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [liveListeners, setLiveListeners] = useState(0)
   const [stationId, setStationId] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
+
+  // ESC key handler for desktop navigation to explore
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.push('/explore')
+      }
+    }
+    
+    window.addEventListener('keydown', handleEscKey)
+    return () => window.removeEventListener('keydown', handleEscKey)
+  }, [router])
 
   useEffect(() => {
     if (currentUser) {
@@ -425,6 +439,25 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       
       {/* Floating Menu */}
       <FloatingMenu />
+
+      {/* Back Button - Mobile (Top Left) */}
+      <button
+        onClick={() => router.push('/explore')}
+        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 flex items-center justify-center text-cyan-400 hover:bg-black/80 hover:border-cyan-400 transition-all shadow-lg"
+        title="Back to Explore"
+      >
+        <ArrowLeft size={20} />
+      </button>
+
+      {/* ESC Button - Desktop (Top Left) */}
+      <button
+        onClick={() => router.push('/explore')}
+        className="hidden md:flex fixed top-4 left-4 z-50 px-4 py-2 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 items-center gap-2 text-cyan-400 hover:bg-black/80 hover:border-cyan-400 transition-all shadow-lg text-sm font-medium"
+        title="Press ESC to go back"
+      >
+        <ArrowLeft size={16} />
+        <span>ESC</span>
+      </button>
 
       {/* Feed/Stations Content - Full bleed with new layout */}
       <main className="relative z-10 overflow-y-auto pb-32">
