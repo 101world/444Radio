@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
@@ -81,6 +81,9 @@ function CreatePageContent() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState('English')
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([])
 
   // Close all modals
   const closeAllModals = () => {
@@ -104,6 +107,72 @@ function CreatePageContent() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      // Check if browser supports speech recognition
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.')
+        return
+      }
+
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
+      const recognition = new SpeechRecognition()
+      
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.lang = selectedLanguage === 'English' ? 'en-US' : 
+                        selectedLanguage === 'Spanish' ? 'es-ES' :
+                        selectedLanguage === 'French' ? 'fr-FR' :
+                        selectedLanguage === 'German' ? 'de-DE' :
+                        selectedLanguage === 'Italian' ? 'it-IT' :
+                        selectedLanguage === 'Portuguese' ? 'pt-PT' :
+                        selectedLanguage === 'Russian' ? 'ru-RU' :
+                        selectedLanguage === 'Japanese' ? 'ja-JP' :
+                        selectedLanguage === 'Korean' ? 'ko-KR' :
+                        selectedLanguage === 'Chinese' ? 'zh-CN' : 'en-US'
+
+      recognition.onresult = (event: any) => {
+        let transcript = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            transcript += event.results[i][0].transcript
+          }
+        }
+        if (transcript) {
+          setInput(prev => prev + (prev ? ' ' : '') + transcript)
+        }
+      }
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error)
+        setIsRecording(false)
+        if (event.error === 'not-allowed') {
+          alert('Microphone access denied. Please allow microphone access in your browser settings.')
+        }
+      }
+
+      recognition.onend = () => {
+        setIsRecording(false)
+      }
+
+      recognition.start()
+      setMediaRecorder(recognition)
+      setIsRecording(true)
+    } catch (error) {
+      console.error('Error starting recording:', error)
+      alert('Could not access microphone. Please check permissions.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      (mediaRecorder as any).stop()
+      setIsRecording(false)
+      setMediaRecorder(null)
+    }
   }
 
   useEffect(() => {
@@ -888,6 +957,29 @@ function CreatePageContent() {
             {/* Input Container */}
             <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
               
+              {/* Record Button - Extreme Left */}
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`flex-shrink-0 p-2 rounded-full transition-all duration-300 ${
+                  isRecording 
+                    ? 'bg-red-500/20 border-2 border-red-500 animate-pulse' 
+                    : 'bg-cyan-500/10 border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:bg-cyan-500/20'
+                }`}
+                title={isRecording ? 'Stop Recording' : 'Start Voice Recording'}
+              >
+                {isRecording ? (
+                  <MicOff 
+                    size={18} 
+                    className="text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.9)] md:w-[20px] md:h-[20px]" 
+                  />
+                ) : (
+                  <Mic 
+                    size={18} 
+                    className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]" 
+                  />
+                )}
+              </button>
+
               {/* Icon Based on Type */}
               {selectedType === 'music' ? (
                 <Music 
