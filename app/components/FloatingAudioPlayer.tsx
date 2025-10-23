@@ -87,6 +87,7 @@ export default function FloatingAudioPlayer() {
   const handleResizeStart = (e: React.MouseEvent) => {
     if (isMobile) return
     e.stopPropagation()
+    e.preventDefault()
     setIsResizing(true)
     setResizeStart({
       x: e.clientX,
@@ -109,16 +110,20 @@ export default function FloatingAudioPlayer() {
       if (isResizing) {
         const deltaX = e.clientX - resizeStart.x
         const deltaY = e.clientY - resizeStart.y
-        const newWidth = Math.max(300, Math.min(800, resizeStart.width + deltaX))
-        const newHeight = Math.max(120, Math.min(400, resizeStart.height + deltaY))
+        const newWidth = Math.max(320, Math.min(900, resizeStart.width + deltaX))
+        const newHeight = Math.max(140, Math.min(500, resizeStart.height + deltaY))
         setSize({ width: newWidth, height: newHeight })
       }
     }
 
     if (isDragging || isResizing) {
+      document.body.style.cursor = isDragging ? 'move' : 'nwse-resize'
+      document.body.style.userSelect = 'none'
       window.addEventListener('mousemove', handleMove)
       window.addEventListener('mouseup', handleMouseUp)
       return () => {
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
         window.removeEventListener('mousemove', handleMove)
         window.removeEventListener('mouseup', handleMouseUp)
       }
@@ -610,12 +615,14 @@ export default function FloatingAudioPlayer() {
       {/* Resize Handle */}
       {isExpanded && (
         <div
-          className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize no-drag"
+          className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize no-drag group/resize hover:bg-cyan-500/20 rounded-tl-lg transition-colors"
           onMouseDown={handleResizeStart}
-          style={{
-            background: 'linear-gradient(135deg, transparent 50%, rgba(34, 211, 238, 0.3) 50%)'
-          }}
-        />
+          title="Drag to resize"
+        >
+          <svg className="w-full h-full p-1 text-cyan-400/40 group-hover/resize:text-cyan-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M22 22H20V20H22V22M22 18H20V16H22V18M18 22H16V20H18V22M18 18H16V16H18V18M14 22H12V20H14V22M22 14H20V12H22V14Z"/>
+          </svg>
+        </div>
       )}
 
       {/* Custom slider styles */}
