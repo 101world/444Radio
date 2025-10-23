@@ -47,8 +47,30 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const playTimeRef = useRef<number>(0)
   const hasTrackedPlayRef = useRef<boolean>(false)
 
+  const pause = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      setIsPlaying(false)
+    }
+  }, [])
+
+  const resume = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.play().catch(error => {
+        console.error('Error resuming audio:', error)
+        setIsPlaying(false)
+      })
+      setIsPlaying(true)
+    }
+  }, [])
+
   const playTrack = useCallback((track: Track) => {
-    if (!audioRef.current) return
+    if (!audioRef.current) {
+      console.error('Audio ref not initialized')
+      return
+    }
+
+    console.log('Playing track:', track.title, track.audioUrl)
 
     // Reset play tracking
     playTimeRef.current = 0
@@ -56,7 +78,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
     setCurrentTrack(track)
     audioRef.current.src = track.audioUrl
-    audioRef.current.play()
+    audioRef.current.play().catch(error => {
+      console.error('Error playing audio:', error)
+      setIsPlaying(false)
+    })
     setIsPlaying(true)
 
     // Find track in playlist and update index
@@ -85,6 +110,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       audioRef.current = new Audio()
       audioRef.current.volume = volume
+      console.log('Audio element initialized')
 
       // Enable background playback
       if ('mediaSession' in navigator) {
@@ -101,7 +127,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [volume, playNext, playPrevious])
+  }, [volume, playNext, playPrevious, pause, resume])
 
   // Update media session metadata
   useEffect(() => {
@@ -180,21 +206,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener('durationchange', handleDurationChange)
       audio.removeEventListener('ended', handleEnded)
     }
-  }, [playNext])
-
-  const pause = () => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      setIsPlaying(false)
-    }
-  }
-
-  const resume = () => {
-    if (audioRef.current) {
-      audioRef.current.play()
-      setIsPlaying(true)
-    }
-  }
+  }, [])
 
   const togglePlayPause = () => {
     if (isPlaying) {
