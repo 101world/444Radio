@@ -27,21 +27,19 @@ export default function FloatingGenres() {
   ]
 
   useEffect(() => {
-    // Defer canvas initialization to improve page load
-    const timeoutId = setTimeout(() => {
-      const canvas = canvasRef.current
-      if (!canvas) return
+    const canvas = canvasRef.current
+    if (!canvas) return
 
-      const ctx = canvas.getContext('2d', { alpha: true })
-      if (!ctx) return
+    const ctx = canvas.getContext('2d', { alpha: true })
+    if (!ctx) return
 
-      // Set canvas size
-      const resize = () => {
-        canvas.width = window.innerWidth
-        canvas.height = window.innerHeight
-      }
-      resize()
-      window.addEventListener('resize', resize)
+    // Set canvas size
+    const resize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
 
     // Initialize floating texts
     const initTexts = () => {
@@ -49,10 +47,10 @@ export default function FloatingGenres() {
         text,
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5, // Slower movement for performance
-        vy: (Math.random() - 0.5) * 0.5,
+        vx: (Math.random() - 0.5) * 1.2, // Increased velocity for more movement
+        vy: (Math.random() - 0.5) * 1.2,
         rotation: Math.random() * 360,
-        rotationSpeed: (Math.random() - 0.5) * 0.5,
+        rotationSpeed: (Math.random() - 0.5) * 1.5, // Faster rotation
         scale: 0.6 + Math.random() * 0.8 // Random size variation
       }))
     }
@@ -77,16 +75,16 @@ export default function FloatingGenres() {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       textsRef.current.forEach((item) => {
-        // Mouse interaction - repel text from cursor
+        // Mouse interaction - repel text from cursor with stronger force
         const dx = item.x - mouseRef.current.x
         const dy = item.y - mouseRef.current.y
         const dist = Math.sqrt(dx * dx + dy * dy)
-        const minDist = 150 // Interaction radius
+        const minDist = 200 // Larger interaction radius
 
         if (dist < minDist) {
           const force = (minDist - dist) / minDist
-          item.vx += (dx / dist) * force * 0.2
-          item.vy += (dy / dist) * force * 0.2
+          item.vx += (dx / dist) * force * 0.8 // Much stronger repulsion
+          item.vy += (dy / dist) * force * 0.8
         }
 
         // Update position
@@ -94,19 +92,19 @@ export default function FloatingGenres() {
         item.y += item.vy
         item.rotation += item.rotationSpeed
 
-        // Boundary bounce with damping
+        // Boundary bounce with less damping for more energy
         if (item.x < 0 || item.x > canvas.width) {
-          item.vx *= -0.8
+          item.vx *= -0.9
           item.x = Math.max(0, Math.min(canvas.width, item.x))
         }
         if (item.y < 0 || item.y > canvas.height) {
-          item.vy *= -0.8
+          item.vy *= -0.9
           item.y = Math.max(0, Math.min(canvas.height, item.y))
         }
 
-        // Apply friction
-        item.vx *= 0.98
-        item.vy *= 0.98
+        // Apply less friction to maintain energy
+        item.vx *= 0.995
+        item.vy *= 0.995
 
         // Draw text
         ctx.save()
@@ -157,11 +155,6 @@ export default function FloatingGenres() {
         cancelAnimationFrame(animationRef.current)
       }
     }
-    }, 50); // Defer initialization by 50ms
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
   }, [])
 
   return (

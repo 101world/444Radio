@@ -8,10 +8,11 @@ import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
 import FloatingNavButton from '../../components/FloatingNavButton'
-import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart } from 'lucide-react'
+import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2 } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
+import CreatePostModal from '../../components/CreatePostModal'
 import { getDisplayUsername, formatUsername } from '../../../lib/username'
 import { createClient } from '@supabase/supabase-js'
 
@@ -72,6 +73,32 @@ interface Upload {
   file_size?: number
 }
 
+interface Post {
+  id: string
+  user_id: string
+  content: string
+  media_type: 'photo' | 'video' | 'ai-art' | null
+  media_url: string | null
+  thumbnail_url: string | null
+  attached_song_id: string | null
+  likes_count: number
+  comments_count: number
+  shares_count: number
+  created_at: string
+  users?: { username: string; avatar_url: string }
+  media?: { id: string; title: string; audio_url: string; image_url: string }
+  isLiked?: boolean
+}
+
+interface Comment {
+  id: string
+  post_id: string
+  user_id: string
+  comment: string
+  created_at: string
+  users?: { username: string; avatar_url: string }
+}
+
 interface ProfileData {
   username: string
   email: string
@@ -113,6 +140,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [liveListeners, setLiveListeners] = useState(0)
   const [stationId, setStationId] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
+  const [showComments, setShowComments] = useState<{[key: string]: boolean}>({})
+  const [comments, setComments] = useState<{[key: string]: Comment[]}>({})
+  const [commentInput, setCommentInput] = useState<{[key: string]: string}>({})
 
   // ESC key handler for desktop navigation to explore
   useEffect(() => {
@@ -379,6 +412,120 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       setLoading(false)
     }
   }
+
+  const fetchPosts = async () => {
+    try {
+      const res = await fetch(`/api/posts?userId=${resolvedParams.userId}&limit=50`)
+      const data = await res.json()
+      if (data.posts) {
+        setPosts(data.posts)
+      }
+    } catch (error) {
+      console.error('Failed to fetch posts:', error)
+    }
+  }
+
+  const toggleLike = async (postId: string) => {
+    if (!currentUser) return
+    
+    try {
+      const res = await fetch('/api/posts/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId, userId: currentUser.id })
+      })
+      const data = await res.json()
+      
+      setPosts(prev => prev.map(post => 
+        post.id === postId 
+          ? {
+              ...post,
+              likes_count: data.liked ? post.likes_count + 1 : post.likes_count - 1,
+              isLiked: data.liked
+            }
+          : post
+      ))
+    } catch (error) {
+      console.error('Failed to toggle like:', error)
+    }
+  }
+
+  const fetchComments = async (postId: string) => {
+    try {
+      const res = await fetch(`/api/posts/comments?postId=${postId}`)
+      const data = await res.json()
+      if (data.comments) {
+        setComments(prev => ({ ...prev, [postId]: data.comments }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch comments:', error)
+    }
+  }
+
+  const addComment = async (postId: string) => {
+    if (!currentUser || !commentInput[postId]?.trim()) return
+    
+    try {
+      const res = await fetch('/api/posts/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId,
+          userId: currentUser.id,
+          comment: commentInput[postId]
+        })
+      })
+      const data = await res.json()
+      
+      if (data.comment) {
+        setComments(prev => ({
+          ...prev,
+          [postId]: [...(prev[postId] || []), data.comment]
+        }))
+        setCommentInput(prev => ({ ...prev, [postId]: '' }))
+        setPosts(prev => prev.map(post => 
+          post.id === postId 
+            ? { ...post, comments_count: post.comments_count + 1 }
+            : post
+        ))
+      }
+    } catch (error) {
+      console.error('Failed to add comment:', error)
+    }
+  }
+
+  const deletePost = async (postId: string) => {
+    if (!currentUser || !confirm('Delete this post?')) return
+    
+    try {
+      const res = await fetch(`/api/posts?postId=${postId}&userId=${currentUser.id}`, {
+        method: 'DELETE'
+      })
+      
+      if (res.ok) {
+        setPosts(prev => prev.filter(post => post.id !== postId))
+      }
+    } catch (error) {
+      console.error('Failed to delete post:', error)
+    }
+  }
+
+  const toggleComments = (postId: string) => {
+    setShowComments(prev => ({
+      ...prev,
+      [postId]: !prev[postId]
+    }))
+    
+    if (!showComments[postId] && !comments[postId]) {
+      fetchComments(postId)
+    }
+  }
+
+  useEffect(() => {
+    if (contentTab === 'posts') {
+      fetchPosts()
+    }
+  }, [contentTab, resolvedParams.userId])
 
   const handlePlay = async (media: CombinedMedia) => {
     if (!media.audio_url) return
@@ -988,72 +1135,199 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                     {/* All Posts Tab Content */}
                     {contentTab === 'posts' && (
-                      <div className="space-y-4">
-                        {/* Posts Grid - Desktop */}
-                        <div className="hidden md:grid md:grid-cols-3 gap-4">
-                          {profile.combinedMedia.length === 0 ? (
-                            <div className="col-span-3 text-center py-12">
-                              <p className="text-gray-400 text-lg">No posts yet</p>
-                              <p className="text-gray-500 text-sm mt-2">Share your creations to see them here</p>
-                            </div>
-                          ) : (
-                            profile.combinedMedia.map((media) => (
-                              <div key={media.id} className="group cursor-pointer">
-                                <div className="relative aspect-square rounded-xl overflow-hidden bg-black/40 border border-white/10 hover:border-cyan-400/50 transition-all">
-                                  <img 
-                                    src={media.image_url} 
-                                    alt={media.title}
-                                    className="w-full h-full object-cover"
+                      <div className="space-y-6">
+                        {/* Create Post Button (Own Profile Only) */}
+                        {isOwnProfile && (
+                          <button
+                            onClick={() => setShowCreatePostModal(true)}
+                            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl p-4 font-bold text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30"
+                          >
+                            <ImageIcon size={20} />
+                            <span>Create Post</span>
+                          </button>
+                        )}
+
+                        {/* Posts Feed */}
+                        {posts.length === 0 ? (
+                          <div className="text-center py-12">
+                            <p className="text-gray-400 text-lg">No posts yet</p>
+                            <p className="text-gray-500 text-sm mt-2">
+                              {isOwnProfile ? 'Share photos, videos, and music with the world' : 'Check back later'}
+                            </p>
+                          </div>
+                        ) : (
+                          posts.map((post) => (
+                            <div key={post.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-cyan-400/30 transition-all">
+                              {/* Post Header */}
+                              <div className="p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <img
+                                    src={profile?.avatar || '/radio-logo.svg'}
+                                    alt={profile?.username}
+                                    className="w-10 h-10 rounded-full object-cover border border-cyan-400/30"
                                   />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                                      <h3 className="text-white font-bold text-lg truncate">{media.title}</h3>
-                                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                                        <span className="flex items-center gap-1">
-                                          <Play size={12} /> {media.plays || 0}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                          <Heart size={12} /> {media.likes || 0}
-                                        </span>
+                                  <div>
+                                    <p className="text-white font-bold text-sm">@{profile?.username}</p>
+                                    <p className="text-gray-400 text-xs">
+                                      {new Date(post.created_at).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit'
+                                      })}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                {isOwnProfile && (
+                                  <button
+                                    onClick={() => deletePost(post.id)}
+                                    className="p-2 hover:bg-white/10 rounded-full transition-all"
+                                  >
+                                    <Trash2 size={16} className="text-gray-400 hover:text-red-400" />
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Post Content Text */}
+                              {post.content && (
+                                <div className="px-4 pb-3">
+                                  <p className="text-white">{post.content}</p>
+                                </div>
+                              )}
+
+                              {/* Post Media */}
+                              {post.media_url && (
+                                <div className="relative bg-black">
+                                  {post.media_type === 'video' ? (
+                                    <video
+                                      src={post.media_url}
+                                      controls
+                                      className="w-full max-h-[500px] object-contain"
+                                    />
+                                  ) : (
+                                    <img
+                                      src={post.media_url}
+                                      alt="Post media"
+                                      className="w-full max-h-[500px] object-contain"
+                                    />
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Attached Song */}
+                              {post.media && (
+                                <div className="mx-4 my-3 bg-black/40 border border-cyan-400/30 rounded-xl p-3 flex items-center gap-3 hover:bg-black/60 transition-all cursor-pointer"
+                                  onClick={() => {
+                                    if (post.media) {
+                                      handlePlay({
+                                        id: post.media.id,
+                                        title: post.media.title,
+                                        audio_url: post.media.audio_url,
+                                        image_url: post.media.image_url,
+                                        user_id: post.user_id,
+                                        likes: 0,
+                                        is_public: true,
+                                        created_at: post.created_at,
+                                        media_type: 'music-image'
+                                      })
+                                    }
+                                  }}
+                                >
+                                  <img
+                                    src={post.media.image_url}
+                                    alt={post.media.title}
+                                    className="w-12 h-12 rounded-lg object-cover"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-white font-semibold text-sm">{post.media.title}</p>
+                                    <p className="text-cyan-400 text-xs">🎵 Play track</p>
+                                  </div>
+                                  <Play size={20} className="text-cyan-400" />
+                                </div>
+                              )}
+
+                              {/* Engagement Bar */}
+                              <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <button
+                                    onClick={() => toggleLike(post.id)}
+                                    className="flex items-center gap-1.5 hover:scale-110 transition-all"
+                                  >
+                                    <Heart
+                                      size={20}
+                                      className={post.isLiked ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-400'}
+                                    />
+                                    <span className={`text-sm font-medium ${post.isLiked ? 'text-red-400' : 'text-gray-400'}`}>
+                                      {post.likes_count}
+                                    </span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => toggleComments(post.id)}
+                                    className="flex items-center gap-1.5 hover:scale-110 transition-all"
+                                  >
+                                    <MessageCircle size={20} className="text-gray-400 hover:text-cyan-400" />
+                                    <span className="text-sm font-medium text-gray-400">{post.comments_count}</span>
+                                  </button>
+
+                                  <button className="flex items-center gap-1.5 hover:scale-110 transition-all">
+                                    <Share2 size={20} className="text-gray-400 hover:text-green-400" />
+                                    <span className="text-sm font-medium text-gray-400">{post.shares_count}</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Comments Section */}
+                              {showComments[post.id] && (
+                                <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
+                                  {/* Comment Input */}
+                                  {currentUser && (
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        value={commentInput[post.id] || ''}
+                                        onChange={(e) => setCommentInput(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                        onKeyPress={(e) => e.key === 'Enter' && addComment(post.id)}
+                                        placeholder="Write a comment..."
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-cyan-400/50 focus:outline-none"
+                                      />
+                                      <button
+                                        onClick={() => addComment(post.id)}
+                                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-white text-sm font-bold transition-all"
+                                      >
+                                        Post
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {/* Comments List */}
+                                  {comments[post.id]?.map((comment) => (
+                                    <div key={comment.id} className="flex gap-2">
+                                      <img
+                                        src={comment.users?.avatar_url || '/radio-logo.svg'}
+                                        alt={comment.users?.username}
+                                        className="w-8 h-8 rounded-full object-cover"
+                                      />
+                                      <div className="flex-1 bg-white/5 rounded-lg p-2">
+                                        <p className="text-cyan-400 font-semibold text-xs">@{comment.users?.username}</p>
+                                        <p className="text-white text-sm mt-1">{comment.comment}</p>
+                                        <p className="text-gray-500 text-xs mt-1">
+                                          {new Date(comment.created_at).toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: 'numeric',
+                                            minute: '2-digit'
+                                          })}
+                                        </p>
                                       </div>
                                     </div>
-                                  </div>
+                                  ))}
                                 </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-
-                        {/* Posts List - Mobile */}
-                        <div className="md:hidden space-y-3">
-                          {profile.combinedMedia.length === 0 ? (
-                            <div className="text-center py-12">
-                              <p className="text-gray-400">No posts yet</p>
-                              <p className="text-gray-500 text-sm mt-2">Share your creations to see them here</p>
+                              )}
                             </div>
-                          ) : (
-                            profile.combinedMedia.map((media) => (
-                              <div key={media.id} className="flex gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all">
-                                <img 
-                                  src={media.image_url} 
-                                  alt={media.title}
-                                  className="w-20 h-20 rounded-lg object-cover"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="text-white font-semibold truncate">{media.title}</h3>
-                                  <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
-                                    <span className="flex items-center gap-1">
-                                      <Play size={12} /> {media.plays || 0}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Heart size={12} /> {media.plays || 0}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
@@ -1647,6 +1921,21 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           </div>
         </div>
       )}
+
+      {/* Create Post Modal */}
+      <CreatePostModal
+        isOpen={showCreatePostModal}
+        onClose={() => setShowCreatePostModal(false)}
+        userSongs={profile?.combinedMedia.filter(m => m.audio_url).map(m => ({
+          id: m.id,
+          title: m.title,
+          image_url: m.image_url || '/radio-logo.svg',
+          audio_url: m.audio_url || ''
+        })) || []}
+        onPostCreated={() => {
+          fetchPosts()
+        }}
+      />
 
       {/* Floating Navigation Button */}
       <FloatingNavButton />
