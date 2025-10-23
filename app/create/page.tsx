@@ -964,64 +964,27 @@ function CreatePageContent() {
             {/* Input Container */}
             <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
               
-              {/* Record Button - Extreme Left - COOL VERSION */}
+              {/* Record Button - Small Dot/Mic */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`relative flex-shrink-0 p-3 md:p-3.5 rounded-full transition-all duration-300 group ${
+                className={`relative flex-shrink-0 p-2 rounded-full transition-all duration-300 ${
                   isRecording 
-                    ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700 shadow-lg shadow-red-500/50 scale-110' 
-                    : 'bg-gradient-to-br from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/40 hover:shadow-cyan-500/60 hover:scale-110'
+                    ? 'bg-red-500 shadow-lg shadow-red-500/50 scale-110 animate-pulse' 
+                    : 'bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 hover:border-cyan-400 hover:scale-110'
                 }`}
                 title={isRecording ? 'Stop Recording' : 'Start Voice Recording'}
               >
-                {/* Glow Ring Animation */}
-                {isRecording && (
-                  <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-red-400 rounded-full blur opacity-75 animate-pulse"></div>
-                )}
-                
-                {/* Icon */}
-                <div className="relative z-10">
-                  {isRecording ? (
-                    <MicOff 
-                      size={20} 
-                      className="text-white drop-shadow-lg md:w-[22px] md:h-[22px] animate-pulse" 
-                    />
-                  ) : (
-                    <Mic 
-                      size={20} 
-                      className="text-white drop-shadow-lg md:w-[22px] md:h-[22px] group-hover:scale-110 transition-transform" 
-                    />
-                  )}
-                </div>
-                
-                {/* Recording Indicator Dots */}
-                {isRecording && (
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
-                    <div className="w-1 h-1 bg-white rounded-full animate-bounce"></div>
-                    <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-1 h-1 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
+                {isRecording ? (
+                  <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+                ) : (
+                  <Mic 
+                    size={14} 
+                    className="text-cyan-400"
+                  />
                 )}
               </button>
 
-              {/* Icon Based on Type */}
-              {selectedType === 'music' ? (
-                <Music 
-                  size={20} 
-                  className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]" 
-                />
-              ) : selectedType === 'image' ? (
-                <ImageIcon 
-                  size={20} 
-                  className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]" 
-                />
-              ) : (
-                <Video 
-                  size={20} 
-                  className="text-gray-600 flex-shrink-0 md:w-[22px] md:h-[22px]" 
-                />
-              )}
-              
+              {/* Input Field */}
               <div className="flex-1 text-center md:text-left">
                 <input
                   ref={(el) => {
