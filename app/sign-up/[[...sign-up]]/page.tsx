@@ -35,7 +35,7 @@ export default function SignUpPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-slate-950 to-green-950 p-6">
       <div className="backdrop-blur-xl bg-gradient-to-br from-black/70 via-slate-900/60 to-green-950/70 border-2 border-green-500/30 rounded-3xl p-8 shadow-2xl shadow-green-500/20">
         <SignUp 
-          forceRedirectUrl="/explore"
+          forceRedirectUrl="/"
           signInUrl="/sign-in"
           appearance={{
             elements: {
