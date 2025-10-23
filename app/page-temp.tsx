@@ -104,15 +104,14 @@ export default function HomePage() {
         <FloatingMenu />
 
         {/* Landing View - Centered Hero */}
-        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 pb-40 md:pb-32">
+        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 pt-24 pb-32 md:py-8">
           
           {/* Hero Section - Always Visible */}
-          <div className="relative z-20 w-full max-w-4xl mx-auto text-center space-y-8">
+          <div className="relative z-20 w-full max-w-4xl mx-auto text-center space-y-6">
             {/* Main Heading */}
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 bg-clip-text tracking-wider leading-tight" style={{
               textShadow: '0 0 40px rgba(34, 211, 238, 0.6)',
-              fontFamily: 'Anton, Impact, Arial Black, sans-serif',
-              fontWeight: 900
+              fontFamily: 'serif'
             }}>
               444 RADIO
             </h1>
@@ -163,4 +162,3 @@ export default function HomePage() {
     </div>
   )
 }
-

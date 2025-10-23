@@ -143,24 +143,9 @@ export default function HomePage() {
       {/* Floating Navigation Button */}
       <FloatingNavButton />
 
-      {/* Describe Your Sound Bar - Fixed at Bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-black/80 backdrop-blur-md border-t border-cyan-500/20">
-        <div className="max-w-4xl mx-auto px-4 py-3 md:py-4">
-          <button
-            onClick={() => router.push('/create')}
-            className="w-full flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-cyan-600/20 to-cyan-400/20 hover:from-cyan-600/30 hover:to-cyan-400/30 border border-cyan-500/30 hover:border-cyan-400/50 rounded-full transition-all duration-300 group"
-          >
-            <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
-            <span className="flex-1 text-left text-sm md:text-base text-gray-300 group-hover:text-white transition-colors">
-              Describe your sound...
-            </span>
-            <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
-              Press to create
-            </div>
-          </button>
-        </div>
-      </div>
+            {/* Describe Your Sound Bar - Integrated */}`n            <div className="mt-16 md:mt-20">`n              <button`n                onClick={() => router.push('/create')}`n                className="w-full max-w-2xl mx-auto flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-cyan-600/20 to-cyan-400/20 hover:from-cyan-600/30 hover:to-cyan-400/30 border border-cyan-500/30 hover:border-cyan-400/50 rounded-full transition-all duration-300 group"`n              >`n                <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />`n                <span className="flex-1 text-left text-sm md:text-base text-gray-300 group-hover:text-white transition-colors">`n                  Describe your sound...`n                </span>`n                <div className="text-xs text-cyan-400/60 font-mono hidden md:block">`n                  Press to create`n                </div>`n              </button>`n            </div>`n          </div>`n        </div>`n      </div>`n`n      {/* Floating Navigation Button */}`n      <FloatingNavButton />
     </div>
   )
 }
+
 
