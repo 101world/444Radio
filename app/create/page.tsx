@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3 } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
@@ -887,7 +887,7 @@ function CreatePageContent() {
               }`}
               title="Lyrics & Settings"
             >
-              <FileText 
+              <Edit3 
                 size={18} 
                 className={`${
                   customTitle || genre || customLyrics || bpm ? 'text-cyan-300' : 'text-cyan-400'
@@ -1061,7 +1061,7 @@ function CreatePageContent() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <FileText size={18} className="text-cyan-400" />
+                <Edit3 size={18} className="text-cyan-400" />
                 Lyrics & Settings
               </h3>
               <button
@@ -1075,16 +1075,83 @@ function CreatePageContent() {
             {/* Content - Scrollable */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               
-              {/* Title */}
+              {/* Lyrics - FIRST & MANDATORY */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Title</label>
-                <input
-                  type="text"
-                  value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder="Enter song title..."
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-red-400 uppercase tracking-wide">Lyrics *</label>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const params = new URLSearchParams()
+                        if (input && input.trim()) {
+                          params.append('description', input)
+                        }
+                        const url = `/api/lyrics/random${params.toString() ? '?' + params.toString() : ''}`
+                        const response = await fetch(url)
+                        const data = await response.json()
+                        
+                        if (data.success && data.lyrics) {
+                          setCustomLyrics(data.lyrics.lyrics)
+                          if (!genre) setGenre(data.lyrics.genre)
+                          if (!customTitle) setCustomTitle(data.lyrics.title)
+                        }
+                      } catch (error) {
+                        console.error('Failed to fetch random lyrics:', error)
+                        const lyricsTemplates = [
+                          "Walking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day",
+                          "Lost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
+                          "Staring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow"
+                        ]
+                        const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
+                        setCustomLyrics(randomLyrics)
+                      }
+                    }}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
+                  >
+                    <Sparkles size={12} />
+                    Randomize
+                  </button>
+                </div>
+                <textarea
+                  value={customLyrics}
+                  onChange={(e) => setCustomLyrics(e.target.value)}
+                  placeholder="Enter custom lyrics (required)..."
+                  className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
+                  rows={6}
+                  required
                 />
+                <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
+              </div>
+
+              {/* Language Selector - DROPDOWN */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-red-400 uppercase tracking-wide flex items-center gap-2">
+                  <Globe size={14} className="text-cyan-400" />
+                  Language *
+                </label>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/50 transition-all appearance-none cursor-pointer"
+                  style={{
+                    backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(34,211,238,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundSize: '1.5em 1.5em',
+                    paddingRight: '2.5rem'
+                  }}
+                >
+                  <option value="English">English</option>
+                  <option value="Hindi">Hindi</option>
+                  <option value="German">German</option>
+                  <option value="Spanish">Spanish</option>
+                  <option value="French">French</option>
+                  <option value="Japanese">Japanese</option>
+                  <option value="Korean">Korean</option>
+                  <option value="Portuguese">Portuguese</option>
+                  <option value="Italian">Italian</option>
+                  <option value="Chinese">Chinese</option>
+                </select>
               </div>
 
               {/* Genre */}
@@ -1099,24 +1166,16 @@ function CreatePageContent() {
                 />
               </div>
 
-              {/* BPM */}
+              {/* Title */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">BPM (Tempo)</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Title</label>
                 <input
-                  type="number"
-                  value={bpm}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (value === '' || (!isNaN(parseInt(value)) && parseInt(value) >= 0 && parseInt(value) <= 300)) {
-                      setBpm(value)
-                    }
-                  }}
-                  placeholder="e.g., 120"
-                  min="60"
-                  max="200"
+                  type="text"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder="Enter song title..."
                   className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
                 />
-                <p className="text-xs text-gray-500">Typical range: 60-200 BPM</p>
               </div>
 
               {/* Song Duration */}
@@ -1159,103 +1218,6 @@ function CreatePageContent() {
                 </div>
                 <p className="text-xs text-gray-500">Longer songs use extended lyrics structures (verses, chorus, bridge)</p>
               </div>
-
-              {/* Lyrics */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Lyrics</label>
-                  <button
-                    onClick={async () => {
-                      try {
-                        // Build API URL with description parameter
-                        const params = new URLSearchParams()
-                        
-                        // Use the user's description/prompt for smart matching
-                        if (input && input.trim()) {
-                          params.append('description', input)
-                        }
-                        
-                        const url = `/api/lyrics/random${params.toString() ? '?' + params.toString() : ''}`
-                        const response = await fetch(url)
-                        const data = await response.json()
-                        
-                        if (data.success && data.lyrics) {
-                          setCustomLyrics(data.lyrics.lyrics)
-                          // Optionally set genre and title if empty
-                          if (!genre) setGenre(data.lyrics.genre)
-                          if (!customTitle) setCustomTitle(data.lyrics.title)
-                        }
-                      } catch (error) {
-                        console.error('Failed to fetch random lyrics:', error)
-                        // Fallback to old templates if API fails
-                        const lyricsTemplates = [
-                          "Walking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day",
-                          "Lost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
-                          "Staring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow"
-                        ]
-                        const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
-                        setCustomLyrics(randomLyrics)
-                      }
-                    }}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
-                  >
-                    <Sparkles size={12} />
-                    Randomize
-                  </button>
-                </div>
-                <textarea
-                  value={customLyrics}
-                  onChange={(e) => setCustomLyrics(e.target.value)}
-                  placeholder="Enter custom lyrics..."
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
-                  rows={6}
-                />
-                <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
-              </div>
-
-              {/* Language Selector */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
-                  <Globe size={14} className="text-cyan-400" />
-                  Language
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['English', 'Hindi', 'German', 'Spanish', 'French', 'Japanese', 'Korean', 'Portuguese', 'Italian', 'Chinese'].map((lang) => (
-                    <button
-                      key={lang}
-                      onClick={() => setSelectedLanguage(lang)}
-                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-between ${
-                        selectedLanguage === lang
-                          ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
-                          : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
-                      }`}
-                    >
-                      {lang}
-                      {selectedLanguage === lang && <Check size={12} />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Auto-Generate Cover Art */}
-              {selectedType === 'music' && (
-                <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-white">Auto-Generate Cover Art</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Create cover art with your music</p>
-                  </div>
-                  <button
-                    onClick={() => setGenerateCoverArt(!generateCoverArt)}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
-                      generateCoverArt ? 'bg-cyan-500' : 'bg-white/20'
-                    }`}
-                  >
-                    <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                      generateCoverArt ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-              )}
 
             </div>
 
