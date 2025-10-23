@@ -1498,11 +1498,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                               {/* Thumbnail */}
                               <div className="relative w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden">
-                                <Image 
+                                <img 
                                   src={media.image_url || '/radio-logo.svg'} 
                                   alt={media.title}
-                                  width={56}
-                                  height={56}
                                   className="w-full h-full object-cover"
                                 />
                                 {hasAudio && (
