@@ -9,13 +9,13 @@ const supabase = createClient(
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const limit = Number(searchParams.get('limit')) || 20
+    const limit = Number(searchParams.get('limit')) || 50 // Increased default for better UX
     const offset = Number(searchParams.get('offset')) || 0
 
-    // Fetch public combined media
+    // Fetch public combined media with optimized query
     const { data, error } = await supabase
       .from('combined_media')
-      .select('*')
+      .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, mood')
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)

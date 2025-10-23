@@ -17,37 +17,29 @@ export default function HolographicBackground() {
   const hoveredShapeRef = useRef<THREE.Mesh | null>(null);
 
   useEffect(() => {
-    console.log('🎨 HolographicBackground: useEffect triggered');
-    console.log('🎨 containerRef.current:', containerRef.current);
-    
-    if (!containerRef.current) {
-      console.log('🎨 HolographicBackground: No container ref, exiting');
-      return;
-    }
+    // Defer heavy 3D initialization to next frame
+    const timeoutId = setTimeout(() => {
+      if (!containerRef.current) return;
 
-    console.log('🎨 HolographicBackground: Starting Three.js scene setup...');
+      // Scene setup
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x000511, 0.08);
 
-    // Scene setup
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x000511, 0.08);
-    console.log('🎨 Scene created');
+      // Camera
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.z = 25;
 
-    // Camera
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-    camera.position.z = 25;
-    console.log('🎨 Camera created');
-
-    // Renderer with optimizations
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: window.devicePixelRatio < 2, // Only antialias on lower DPI screens
-      alpha: true,
-      powerPreference: 'high-performance',
-      stencil: false,
+      // Renderer with optimizations
+      const renderer = new THREE.WebGLRenderer({ 
+        antialias: false, // Disable antialiasing for better performance
+        alpha: true,
+        powerPreference: 'high-performance',
+        stencil: false,
       depth: true
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -778,6 +770,11 @@ export default function HolographicBackground() {
       window.removeEventListener('scroll', handleScroll);
       
       renderer.dispose();
+    };
+    }, 100); // Defer initialization by 100ms
+
+    return () => {
+      clearTimeout(timeoutId);
     };
   }, []);
 

@@ -27,19 +27,21 @@ export default function FloatingGenres() {
   ]
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    // Defer canvas initialization to improve page load
+    const timeoutId = setTimeout(() => {
+      const canvas = canvasRef.current
+      if (!canvas) return
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+      const ctx = canvas.getContext('2d', { alpha: true })
+      if (!ctx) return
 
-    // Set canvas size
-    const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
+      // Set canvas size
+      const resize = () => {
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight
+      }
+      resize()
+      window.addEventListener('resize', resize)
 
     // Initialize floating texts
     const initTexts = () => {
@@ -155,6 +157,11 @@ export default function FloatingGenres() {
         cancelAnimationFrame(animationRef.current)
       }
     }
+    }, 50); // Defer initialization by 50ms
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [])
 
   return (

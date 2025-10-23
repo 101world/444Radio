@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
-import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, ArrowLeft } from 'lucide-react'
 import { formatUsername } from '../../lib/username'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
+
+// Lazy load heavy 3D background
+const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
 
 interface CombinedMedia {
   id: string
@@ -83,7 +85,8 @@ export default function ExplorePage() {
   const fetchCombinedMedia = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/media/explore')
+      // Add limit parameter to reduce initial load time
+      const res = await fetch('/api/media/explore?limit=50')
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)
@@ -143,8 +146,10 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
-      {/* Holographic 3D Background */}
-      <HolographicBackgroundClient />
+      {/* 3D Holographic Background - Lazy loaded */}
+      <Suspense fallback={<div className="absolute inset-0 bg-black" />}>
+        <HolographicBackgroundClient />
+      </Suspense>
       
       {/* Credit Indicator - Mobile Only */}
       <div className="md:hidden">
@@ -257,6 +262,10 @@ export default function ExplorePage() {
                           width={128}
                           height={128}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          quality={75}
+                          placeholder="blur"
+                          blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iIzAwMDUxMSIvPjwvc3ZnPg=="
                         />
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
@@ -296,6 +305,8 @@ export default function ExplorePage() {
                           width={80}
                           height={80}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          quality={70}
                         />
                       </div>
                       {/* Artist Name */}
@@ -340,6 +351,8 @@ export default function ExplorePage() {
                           width={48}
                           height={48}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          quality={70}
                         />
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
@@ -396,6 +409,8 @@ export default function ExplorePage() {
                           width={56}
                           height={56}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          quality={70}
                         />
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
