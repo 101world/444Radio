@@ -12,6 +12,18 @@ export default function DecryptPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const router = useRouter()
 
+  // ESC key handler to go back
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        router.back()
+      }
+    }
+    
+    window.addEventListener('keydown', handleEscKey)
+    return () => window.removeEventListener('keydown', handleEscKey)
+  }, [router])
+
   // Matrix Rain Effect
   useEffect(() => {
     const canvas = canvasRef.current
