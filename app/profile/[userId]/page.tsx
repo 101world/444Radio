@@ -1830,59 +1830,59 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       </main>
 
       {/* Bottom-Docked Badge with Username and Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 z-40">
+      <div className="fixed bottom-0 left-0 right-0 p-2 md:p-4 z-40">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-3 shadow-2xl">
-            <div className="flex items-center justify-between px-4">
+          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-2 md:p-3 shadow-2xl">
+            <div className="flex items-center justify-between px-2 md:px-4">
               {/* Left: Username + Stations + Upload (if own) */}
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-black text-white">
+              <div className="flex items-center gap-1.5 md:gap-3 min-w-0 flex-1">
+                <span className="text-xs md:text-sm font-black text-white truncate">
                   @{profile?.username || 'Loading...'}
                 </span>
                 
-                {/* Stations Button */}
-                <div className="w-px h-4 bg-white/20"></div>
+                {/* Stations Button - Hide text on mobile */}
+                <div className="hidden md:block w-px h-4 bg-white/20"></div>
                 <button 
                   onClick={() => setShowStationsModal(true)}
-                  className="px-3 py-1 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-full transition-all shadow-lg hover:scale-105"
+                  className="px-2 md:px-3 py-1 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-full transition-all shadow-lg hover:scale-105 flex-shrink-0"
                   title="Stations"
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1 md:gap-1.5">
                     <Users size={12} className="text-white" />
-                    <span className="text-xs font-black text-white">Stations</span>
+                    <span className="hidden md:inline text-xs font-black text-white">Stations</span>
                   </div>
                 </button>
                 
                 {/* Upload Icon (Only for own profile) */}
                 {isOwnProfile && (
                   <>
-                    <div className="w-px h-4 bg-white/20"></div>
+                    <div className="hidden md:block w-px h-4 bg-white/20"></div>
                     <button 
                       onClick={() => setShowUploadModal(true)}
-                      className="p-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-full transition-all shadow-lg hover:scale-110"
+                      className="p-1.5 md:p-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-full transition-all shadow-lg hover:scale-110 flex-shrink-0"
                       title="Upload Content"
                     >
-                      <Upload size={14} className="text-white" />
+                      <Upload size={12} className="text-white md:w-[14px] md:h-[14px]" />
                     </button>
                   </>
                 )}
               </div>
               
               {/* Right: Stats */}
-              <div className="flex items-center gap-3 md:gap-6">
+              <div className="flex items-center gap-2 md:gap-6 flex-shrink-0">
                 {/* Tracks Count */}
-                <div className="flex items-center gap-1 md:gap-2">
-                  <span className="text-xs md:text-sm font-black text-white">{profile?.songCount || 0}</span>
-                  <span className="text-[10px] md:text-xs text-gray-400">Tracks</span>
+                <div className="flex flex-col md:flex-row items-center md:gap-2">
+                  <span className="text-xs md:text-sm font-black text-white leading-none">{profile?.songCount || 0}</span>
+                  <span className="text-[9px] md:text-xs text-gray-400 leading-none">Tracks</span>
                 </div>
                 
                 {/* Divider */}
-                <div className="w-px h-3 md:h-4 bg-white/20"></div>
+                <div className="w-px h-4 md:h-4 bg-white/20"></div>
                 
                 {/* Plays Count */}
-                <div className="flex items-center gap-1 md:gap-2">
-                  <span className="text-xs md:text-sm font-black text-white">{profile?.totalPlays || 0}</span>
-                  <span className="text-[10px] md:text-xs text-gray-400">Plays</span>
+                <div className="flex flex-col md:flex-row items-center md:gap-2">
+                  <span className="text-xs md:text-sm font-black text-white leading-none">{profile?.totalPlays || 0}</span>
+                  <span className="text-[9px] md:text-xs text-gray-400 leading-none">Plays</span>
                 </div>
               </div>
             </div>
