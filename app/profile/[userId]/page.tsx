@@ -1869,20 +1869,20 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               </div>
               
               {/* Right: Stats */}
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3 md:gap-6">
                 {/* Tracks Count */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-white">{profile?.songCount || 0}</span>
-                  <span className="text-xs text-gray-400">Tracks</span>
+                <div className="flex items-center gap-1 md:gap-2">
+                  <span className="text-xs md:text-sm font-black text-white">{profile?.songCount || 0}</span>
+                  <span className="text-[10px] md:text-xs text-gray-400">Tracks</span>
                 </div>
                 
                 {/* Divider */}
-                <div className="w-px h-4 bg-white/20"></div>
+                <div className="w-px h-3 md:h-4 bg-white/20"></div>
                 
                 {/* Plays Count */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-white">{profile?.totalPlays || 0}</span>
-                  <span className="text-xs text-gray-400">Plays</span>
+                <div className="flex items-center gap-1 md:gap-2">
+                  <span className="text-xs md:text-sm font-black text-white">{profile?.totalPlays || 0}</span>
+                  <span className="text-[10px] md:text-xs text-gray-400">Plays</span>
                 </div>
               </div>
             </div>
