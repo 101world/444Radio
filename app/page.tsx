@@ -111,7 +111,8 @@ export default function HomePage() {
             {/* Main Heading */}
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 bg-clip-text tracking-wider leading-tight" style={{
               textShadow: '0 0 40px rgba(34, 211, 238, 0.6)',
-              fontFamily: 'serif'
+              fontFamily: 'Anton, Impact, Arial Black, sans-serif',
+              fontWeight: 900
             }}>
               444 RADIO
             </h1>
