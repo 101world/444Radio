@@ -82,8 +82,7 @@ function CreatePageContent() {
   const [selectedLanguage, setSelectedLanguage] = useState('English')
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([])
+  const [mediaRecorder, setMediaRecorder] = useState<unknown | null>(null)
 
   // Close all modals
   const closeAllModals = () => {
@@ -118,6 +117,7 @@ function CreatePageContent() {
         return
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
       const recognition = new SpeechRecognition()
       
@@ -134,6 +134,7 @@ function CreatePageContent() {
                         selectedLanguage === 'Korean' ? 'ko-KR' :
                         selectedLanguage === 'Chinese' ? 'zh-CN' : 'en-US'
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onresult = (event: any) => {
         let transcript = ''
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -146,6 +147,7 @@ function CreatePageContent() {
         }
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error)
         setIsRecording(false)
@@ -169,7 +171,12 @@ function CreatePageContent() {
 
   const stopRecording = () => {
     if (mediaRecorder && isRecording) {
-      (mediaRecorder as any).stop()
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mediaRecorder as any).stop()
+      } catch (e) {
+        console.error('Error stopping recording:', e)
+      }
       setIsRecording(false)
       setMediaRecorder(null)
     }

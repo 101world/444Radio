@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { Music, Video, Image as ImageIcon, Users, Upload } from 'lucide-react'
