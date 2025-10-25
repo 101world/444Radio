@@ -121,14 +121,16 @@ export default function FloatingMenu() {
                       <Unlock size={20} />
                       <span className="font-medium">Decrypt</span>
                     </Link>
-                    <Link
-                      href="/billboard"
+                    <a
+                      href="https://www.thesocialtwin.com/billboard"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
                     >
                       <BarChart3 size={20} />
                       <span className="font-medium">Charts</span>
-                    </Link>
+                    </a>
                     <Link
                       href="/pricing"
                       onClick={() => setIsOpen(false)}
@@ -189,14 +191,16 @@ export default function FloatingMenu() {
                       <Unlock size={20} />
                       <span className="font-medium">Decrypt</span>
                     </Link>
-                    <Link
-                      href="/billboard"
+                    <a
+                      href="https://www.thesocialtwin.com/billboard"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
                     >
                       <BarChart3 size={20} />
                       <span className="font-medium">Charts</span>
-                    </Link>
+                    </a>
                     <Link
                       href="/pricing"
                       onClick={() => setIsOpen(false)}

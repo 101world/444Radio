@@ -4,7 +4,6 @@ import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Shuffle } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import Image from 'next/image'
 
 export default function GlobalAudioPlayer() {
   const pathname = usePathname()
@@ -51,12 +50,10 @@ export default function GlobalAudioPlayer() {
           {/* Track Info */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {currentTrack.imageUrl && (
-              <Image
+              <img
                 src={currentTrack.imageUrl}
                 alt={currentTrack.title}
-                width={40}
-                height={40}
-                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
               />
             )}
             <div className="min-w-0 flex-1">

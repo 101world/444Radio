@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import Image from 'next/image'
 import { Play, Pause, Volume2, VolumeX, Download, Heart, Share2 } from 'lucide-react'
 
 interface CombinedMediaPlayerProps {
@@ -108,9 +107,11 @@ export default function CombinedMediaPlayer({
     <div className="relative group">
       {/* Album Cover */}
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl">
-          {imageUrl && (
-            <Image src={imageUrl} alt={title} width={80} height={80} className="w-full h-full object-cover" />
-          )}
+        <img
+          src={imageUrl}
+          alt={title}
+          className="w-full h-full object-cover"
+        />
         
         {/* Play Overlay */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

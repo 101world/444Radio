@@ -115,7 +115,7 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300"><span className="font-bold text-white">20 songs</span> per month</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">25 songs</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +127,7 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300">AI-generated cover art</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">50 cover arts</span></span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +185,7 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200"><span className="font-bold text-white">100 songs</span> per month</span>
+                  <span className="text-gray-200"><span className="font-bold text-white">150 songs</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,13 +197,13 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200">AI-generated cover art</span>
+                  <span className="text-gray-200"><span className="font-bold text-white">200 cover arts</span></span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200">Priority email support</span>
+                  <span className="text-gray-200">Commercial use allowed</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,7 +215,7 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200">Commercial use allowed</span>
+                  <span className="text-gray-200">Priority support</span>
                 </li>
               </ul>
 
@@ -268,13 +268,19 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300">Unlimited AI cover art</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">Unlimited cover arts</span></span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300">Priority support 24/7</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">Audio Suite</span> (Full production tools)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span className="text-gray-300">24/7 Priority support</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

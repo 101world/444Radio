@@ -91,9 +91,8 @@ export default function ProfileEditModal({
         setSuccess(false)
         onClose()
       }, 1500)
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update profile'
-      setError(errorMessage)
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile')
     } finally {
       setIsSaving(false)
     }

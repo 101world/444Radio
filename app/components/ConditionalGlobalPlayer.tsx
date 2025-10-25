@@ -6,6 +6,10 @@ import FloatingAudioPlayer from './FloatingAudioPlayer'
 export default function ConditionalGlobalPlayer() {
   const pathname = usePathname()
   
-  // Show player on all pages
+  // Don't show player on home page (show everywhere else)
+  const isHomePage = pathname === '/'
+  
+  if (isHomePage) return null
+  
   return <FloatingAudioPlayer />
 }
