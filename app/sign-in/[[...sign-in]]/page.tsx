@@ -1,10 +1,20 @@
 'use client'
 
-import { SignIn } from '@clerk/nextjs'
+import { SignIn, useAuth } from '@clerk/nextjs'
 import { useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 
 function SignInContent() {
+  const { isLoaded } = useAuth()
+  
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400"></div>
+      </div>
+    )
+  }
+  
   return (
     <SignIn 
       appearance={{

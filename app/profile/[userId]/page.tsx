@@ -9,6 +9,7 @@ import FloatingMenu from '../../components/FloatingMenu'
 import HolographicBackground from '../../components/HolographicBackgroundClient'
 import StarryBackground from '../../components/StarryBackground'
 import FloatingNavButton from '../../components/FloatingNavButton'
+import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2 } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
@@ -128,9 +129,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [showStationsModal, setShowStationsModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'feed' | 'stations'>('feed')
   const [isFollowing, setIsFollowing] = useState(false)
-  const [playingId, setPlayingId] = useState<string | null>(null)
-  const [currentTrack, setCurrentTrack] = useState<CombinedMedia | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
+  
+  // Use global audio player context
+  const { currentTrack, isPlaying, playTrack, togglePlayPause } = useAudioPlayer()
+  const playingId = currentTrack?.id || null
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
   const [activeSubTab, setActiveSubTab] = useState<'tracks' | 'station'>('tracks')
@@ -140,7 +142,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [chatInput, setChatInput] = useState('')
   const [liveListeners, setLiveListeners] = useState(0)
   const [stationId, setStationId] = useState<string | null>(null)
-  const audioRef = useRef<HTMLAudioElement>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [showCreatePostModal, setShowCreatePostModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
@@ -538,16 +539,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     if (!media.audio_url) return
     
     if (playingId === media.id && isPlaying) {
-      audioRef.current?.pause()
-      setIsPlaying(false)
+      togglePlayPause()
     } else {
-      setCurrentTrack(media)
-      setPlayingId(media.id)
-      setIsPlaying(true)
-      if (audioRef.current) {
-        audioRef.current.src = media.audio_url
-        audioRef.current.play()
-      }
+      playTrack({
+        id: media.id,
+        audioUrl: media.audio_url,
+        title: media.title,
+        artist: profile?.username,
+        imageUrl: media.image_url,
+        userId: media.user_id
+      })
       
       // If station is live, send track notification to database
       if (isLive && profile && stationId) {
@@ -706,8 +707,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           <div className="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/30 mt-3">
                             <div className="text-[10px] text-cyan-400 uppercase mb-1">Now Playing</div>
                             <div className="flex items-center gap-2">
-                              <img 
-                                src={currentTrack.image_url} 
+                              <img
+                                src={currentTrack.imageUrl}
                                 alt={currentTrack.title}
                                 className="w-10 h-10 rounded-lg"
                               />
@@ -1588,8 +1589,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 <div className="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/30">
                                   <div className="text-xs text-cyan-400 uppercase mb-2">Now Playing on Station</div>
                                   <div className="flex items-center gap-3">
-                                    <img 
-                                      src={currentTrack.image_url} 
+                                    <img
+                                      src={currentTrack.imageUrl}
                                       alt={currentTrack.title}
                                       className="w-12 h-12 rounded-lg"
                                     />
@@ -1706,8 +1707,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             <div className={`relative w-[60%] h-[60%] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full overflow-hidden shadow-2xl border-4 border-black/50 transition-transform ${
                               isPlaying ? 'animate-spin-slow' : ''
                             }`} style={{ animationDuration: '3s' }}>
-                              <img 
-                                src={currentTrack?.image_url || profile.combinedMedia[0]?.image_url || '/radio-logo.svg'} 
+                              <img
+                                src={currentTrack?.imageUrl || profile.combinedMedia[0]?.image_url || '/radio-logo.svg'}
                                 alt={currentTrack?.title || 'Album'}
                                 className="w-full h-full object-cover"
                               />
@@ -1724,8 +1725,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           {/* Play/Pause Button */}
                           <button
                             onClick={() => {
-                              if (currentTrack) {
-                                handlePlay(currentTrack)
+                              if (currentTrack && playingId === currentTrack.id) {
+                                togglePlayPause()
                               } else if (profile.combinedMedia[0]) {
                                 handlePlay(profile.combinedMedia[0])
                               }
@@ -1949,14 +1950,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
       {/* Floating Navigation Button */}
       <FloatingNavButton />
-
-      {/* Hidden Audio Element */}
-      <audio 
-        ref={audioRef}
-        onEnded={() => setIsPlaying(false)}
-        onPause={() => setIsPlaying(false)}
-        onPlay={() => setIsPlaying(true)}
-      />
     </div>
   )
 }

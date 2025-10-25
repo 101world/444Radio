@@ -97,8 +97,8 @@ export default function StarryBackground() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.4 }}
+      className="fixed inset-0 pointer-events-none"
+      style={{ zIndex: 1, opacity: 0.4 }}
     />
   )
 }

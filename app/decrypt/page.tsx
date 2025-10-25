@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@clerk/nextjs'
 import { Lock, Unlock } from 'lucide-react'
 
 export default function DecryptPage() {
+  const { isLoaded } = useAuth()
   const [password, setPassword] = useState('')
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [showMessage, setShowMessage] = useState(false)
