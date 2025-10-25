@@ -23,7 +23,8 @@
     "react-dom": "19.1.0",
     "replicate": "^1.2.0",
     "svix": "^1.77.0",
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "@sentry/nextjs": "^7.14.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
