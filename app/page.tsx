@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { Music, Play, Pause, Sparkles } from 'lucide-react'
@@ -74,13 +74,13 @@ export default function HomePage() {
 
   const handlePlayAll = () => {
     if (tracks.length === 0) return
-
+    
     // If already playing and has a track, just toggle
     if (currentTrack && isPlaying) {
       togglePlayPause()
       return
     }
-
+    
     // Convert tracks to audio player format and start playing
     const playerTracks = tracks.map(t => ({
       id: t.id,
@@ -89,7 +89,7 @@ export default function HomePage() {
       artist: t.artist,
       imageUrl: t.image_url
     }))
-
+    
     setPlaylist(playerTracks, 0)
     playTrack(playerTracks[0])
   }
@@ -100,123 +100,77 @@ export default function HomePage() {
       <Suspense fallback={<div className="absolute inset-0 bg-black" />}>
         <HolographicBackgroundClient />
       </Suspense>
-
+      
       {/* Floating Genre Texts - Lazy loaded */}
       <Suspense fallback={null}>
         <FloatingGenres />
       </Suspense>
+      
+      {/* Main Content Wrapper */}
+      <div className="relative z-10 flex-1 flex flex-col">
+        {/* Credit Indicator - Mobile Only */}
+        <div className="md:hidden">
+          <CreditIndicator />
+        </div>
+        
+        {/* Floating Menu - Desktop Only */}
+        <FloatingMenu />
 
-      {/* Floating Nav Button and Credit Indicator */}
-      <FloatingNavButton />
-      <CreditIndicator />
-
-      {/* Floating Menu */}
-      <FloatingMenu />
-
-      {/* Main Content */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 pt-12 pb-32">
-        <div className="text-center max-w-6xl w-full space-y-8 sm:space-y-12">
-          {/* Logo */}
-          <div className="flex justify-center mb-6 sm:mb-8">
-            <div className="relative group cursor-pointer" onClick={() => router.push('/')}>
-              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-400 to-cyan-600 rounded-full blur-md opacity-75 group-hover:opacity-100 transition duration-500 animate-pulse"></div>
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 bg-black rounded-full flex items-center justify-center border-4 border-cyan-400 shadow-lg shadow-cyan-500/50 group-hover:scale-110 transition-transform duration-300">
-                <Music className="text-cyan-400 w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14" strokeWidth={2.5} />
-              </div>
-            </div>
-          </div>
-
-          {/* Main Heading */}
-          <div className="space-y-4 sm:space-y-6">
+        {/* Landing View - Centered Hero */}
+        <div className="flex-1 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 pb-40 md:pb-32">
+          
+          {/* Hero Section - Always Visible */}
+          <div className="relative z-20 w-full max-w-4xl mx-auto text-center space-y-8">
+            {/* Main Heading */}
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 bg-clip-text tracking-wider leading-tight" style={{
-              textShadow: '0 0 40px rgba(34, 211, 238, 0.4), 0 0 80px rgba(34, 211, 238, 0.2)',
+              textShadow: '0 0 40px rgba(34, 211, 238, 0.6)',
+              fontFamily: 'Anton, Impact, Arial Black, sans-serif',
               fontWeight: 900
             }}>
               444 RADIO
             </h1>
-            <p className="text-lg sm:text-xl md:text-2xl text-cyan-100 font-medium tracking-wide max-w-3xl mx-auto" style={{
-              textShadow: '0 0 20px rgba(34, 211, 238, 0.3)'
-            }}>
-              AI-Powered Music Creation
-            </p>
-          </div>
-
-          {/* Play Button */}
-          <div className="flex justify-center pt-4 sm:pt-8">
-            <button
-              onClick={handlePlayAll}
-              disabled={loading || tracks.length === 0}
-              className="group relative px-8 sm:px-12 py-4 sm:py-5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-base sm:text-lg rounded-full transition-all duration-300 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              <div className="flex items-center gap-3">
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span>Loading...</span>
-                  </>
+            
+            {/* Large Play Button */}
+            <div className="mt-12 md:mt-16">
+              <button
+                onClick={handlePlayAll}
+                disabled={tracks.length === 0}
+                className="group relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300 disabled:from-gray-600 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70 disabled:shadow-gray-500/30 mx-auto"
+              >
+                {currentTrack && isPlaying ? (
+                  <Pause className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-black" fill="currentColor" />
                 ) : (
-                  <>
-                    {isPlaying && currentTrack ? (
-                      <Pause className="w-5 h-5 sm:w-6 sm:h-6" />
-                    ) : (
-                      <Play className="w-5 h-5 sm:w-6 sm:h-6" />
-                    )}
-                    <span>{isPlaying && currentTrack ? 'PAUSE' : 'PLAY ALL'}</span>
-                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 opacity-75" />
-                  </>
+                  <Play className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 text-black ml-1" fill="currentColor" />
                 )}
-              </div>
-            </button>
-          </div>
-
-          {/* Track Count */}
-          {!loading && tracks.length > 0 && (
-            <p className="text-cyan-400/70 text-sm sm:text-base font-medium">
-              {tracks.length} tracks available
-            </p>
-          )}
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center pt-4 sm:pt-8">
-            <button
-              onClick={() => router.push('/create')}
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold text-sm sm:text-base rounded-full transition-all duration-300 shadow-lg shadow-green-500/50 hover:shadow-green-500/70 hover:scale-105"
-            >
-              CREATE MUSIC
-            </button>
-            <button
-              onClick={() => router.push('/explore')}
-              className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-bold text-sm sm:text-base rounded-full transition-all duration-300 border-2 border-white/20 hover:border-white/40 hover:scale-105"
-            >
-              EXPLORE
-            </button>
-          </div>
-
-          {/* Features Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pt-8 sm:pt-16 max-w-4xl mx-auto">
-            <div className="bg-white/5 backdrop-blur-sm border border-cyan-500/30 rounded-2xl p-6 hover:bg-white/10 transition-all hover:scale-105 hover:border-cyan-400/50">
-              <div className="text-3xl sm:text-4xl mb-3">🎵</div>
-              <h3 className="text-lg sm:text-xl font-bold text-cyan-400 mb-2">AI Generation</h3>
-              <p className="text-sm sm:text-base text-gray-400">Create unique music with advanced AI technology</p>
+                
+                {/* Pulse animation when not playing and enabled */}
+                {(!currentTrack || !isPlaying) && tracks.length > 0 && (
+                  <div className="absolute inset-0 rounded-full bg-cyan-400/30 animate-ping"></div>
+                )}
+              </button>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-cyan-500/30 rounded-2xl p-6 hover:bg-white/10 transition-all hover:scale-105 hover:border-cyan-400/50">
-              <div className="text-3xl sm:text-4xl mb-3">🎨</div>
-              <h3 className="text-lg sm:text-xl font-bold text-cyan-400 mb-2">Custom Covers</h3>
-              <p className="text-sm sm:text-base text-gray-400">Design stunning album artwork automatically</p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-cyan-500/30 rounded-2xl p-6 hover:bg-white/10 transition-all hover:scale-105 hover:border-cyan-400/50">
-              <div className="text-3xl sm:text-4xl mb-3">⚡</div>
-              <h3 className="text-lg sm:text-xl font-bold text-cyan-400 mb-2">Instant Results</h3>
-              <p className="text-sm sm:text-base text-gray-400">Get your tracks in seconds, not hours</p>
+
+            {/* Describe Your Sound Bar - Integrated */}
+            <div className="mt-16 md:mt-20">
+              <button
+                onClick={() => router.push('/create')}
+                className="w-full max-w-2xl mx-auto flex items-center gap-3 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-cyan-600/20 to-cyan-400/20 hover:from-cyan-600/30 hover:to-cyan-400/30 border border-cyan-500/30 hover:border-cyan-400/50 rounded-full transition-all duration-300 group"
+              >
+                <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+                <span className="flex-1 text-left text-sm md:text-base text-gray-300 group-hover:text-white transition-colors">
+                  Describe your sound...
+                </span>
+                <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
+                  Press to create
+                </div>
+              </button>
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* Footer */}
-      <footer className="relative z-10 text-center py-6 text-gray-500 text-xs sm:text-sm border-t border-white/5">
-        <p>© 2024 444 Radio. Powered by AI. Made with 💙</p>
-      </footer>
+      {/* Floating Navigation Button */}
+      <FloatingNavButton />
     </div>
   )
 }
