@@ -1848,7 +1848,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 <div className="hidden md:block w-px h-4 bg-white/20"></div>
                 <button 
                   onClick={() => setShowStationsModal(true)}
-                  className="px-2 md:px-3 py-1 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 rounded-full transition-all shadow-lg hover:scale-105 flex-shrink-0"
+                  className="px-2 md:px-3 py-1 bg-gradient-to-r from-cyan-600 to-cyan-800 hover:from-cyan-700 hover:to-cyan-900 rounded-full transition-all shadow-lg hover:scale-105 flex-shrink-0"
                   title="Stations"
                 >
                   <div className="flex items-center gap-1 md:gap-1.5">
