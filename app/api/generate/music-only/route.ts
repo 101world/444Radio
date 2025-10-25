@@ -78,11 +78,49 @@ export async function POST(req: NextRequest) {
 
     // If lyrics not provided, use intelligent default from dataset
     let formattedLyrics: string
+    let used444Radio = false
+    
     if (!lyrics || typeof lyrics !== 'string' || lyrics.trim().length === 0) {
       // Use smart lyrics matcher based on prompt (supports 444 trigger and genre matching)
       console.log('⚡ No custom lyrics provided, using smart lyrics matcher')
       console.log('  Received lyrics value:', lyrics, 'Type:', typeof lyrics)
       console.log('  Requested duration:', duration)
+      
+      // Check if user wants 444 Radio lyrics
+      const wants444 = prompt.toLowerCase().includes('444')
+      
+      if (wants444) {
+        // Check daily limit for 444 Radio lyrics
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+        
+        const userCheckRes = await fetch(
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=last_444_radio_date`,
+          {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`
+            }
+          }
+        )
+        
+        const userCheckData = await userCheckRes.json()
+        const userRecord = userCheckData?.[0]
+        
+        const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+        const lastUsedDate = userRecord?.last_444_radio_date
+        
+        if (lastUsedDate === today) {
+          // User already used 444 Radio lyrics today
+          return NextResponse.json({ 
+            error: 'Daily 444 Radio limit reached',
+            message: '444 Radio lyrics can only be generated once per day. Try again tomorrow or use custom lyrics!'
+          }, { status: 429 })
+        }
+        
+        used444Radio = true
+      }
+      
       const matchedSong = findBestMatchingLyrics(prompt)
       const baseLyrics = matchedSong.lyrics
       // Expand lyrics based on requested duration
@@ -93,6 +131,7 @@ export async function POST(req: NextRequest) {
       console.log('  Base lyrics length:', baseLyrics.length)
       console.log('  Expanded lyrics length:', formattedLyrics.length)
       console.log('  Duration:', duration)
+      console.log('  Used 444 Radio:', used444Radio)
     } else {
       // Validate and expand user-provided lyrics
       console.log('📝 Using custom user-provided lyrics')
@@ -274,6 +313,19 @@ export async function POST(req: NextRequest) {
 
     // NOW deduct credits (-2 for music) since everything succeeded
     console.log(`💰 Deducting 2 credits from user (${userCredits} → ${userCredits - 2})`)
+    
+    // Prepare update body
+    const updateBody: { credits: number; last_444_radio_date?: string } = {
+      credits: userCredits - 2
+    }
+    
+    // If user used 444 Radio lyrics, record today's date
+    if (used444Radio) {
+      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      updateBody.last_444_radio_date = today
+      console.log('📅 Recording 444 Radio usage date:', today)
+    }
+    
     const creditDeductRes = await fetch(
       `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
       {
@@ -284,9 +336,7 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal'
         },
-        body: JSON.stringify({
-          credits: userCredits - 2
-        })
+        body: JSON.stringify(updateBody)
       }
     )
 
