@@ -17,6 +17,38 @@ export default function HolographicBackground() {
   const hoveredShapeRef = useRef<THREE.Mesh | null>(null);
 
   useEffect(() => {
+    // Detect mobile device for performance optimization
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    
+    // Performance settings based on device
+    const perfSettings = isMobile ? {
+      blobCount: 2,
+      blockCount: 10,
+      ringCount: 4,
+      particleCount: 200,
+      lightRayCount: 2,
+      distantShaftCount: 1,
+      textCount: 2,
+      logoCount: 1,
+      pixelRatio: 1,
+      antialias: false,
+      animationFrameSkip: 1 // Animate every other frame on mobile
+    } : {
+      blobCount: 4,
+      blockCount: 25,
+      ringCount: 8,
+      particleCount: 500,
+      lightRayCount: 4,
+      distantShaftCount: 3,
+      textCount: 4,
+      logoCount: 3,
+      pixelRatio: Math.min(window.devicePixelRatio, 2),
+      antialias: false,
+      animationFrameSkip: 0 // No frame skip on desktop
+    };
+
+    console.log('🎨 Performance mode:', isMobile ? 'MOBILE (optimized)' : 'DESKTOP (full quality)', perfSettings);
+
     // Defer heavy 3D initialization to next frame
     const timeoutId = setTimeout(() => {
       if (!containerRef.current) return;
@@ -36,14 +68,14 @@ export default function HolographicBackground() {
 
       // Renderer with optimizations
       const renderer = new THREE.WebGLRenderer({ 
-        antialias: false, // Disable antialiasing for better performance
+        antialias: perfSettings.antialias,
         alpha: true,
         powerPreference: 'high-performance',
         stencil: false,
       depth: true
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap at 2x for performance
+    renderer.setPixelRatio(perfSettings.pixelRatio);
     
     // Make the canvas itself clickable and visible
     renderer.domElement.style.position = 'fixed';
@@ -61,7 +93,7 @@ export default function HolographicBackground() {
     const blobGeometry = new THREE.IcosahedronGeometry(2, 1);
     const blobs: THREE.Mesh[] = [];
 
-    for (let i = 0; i < 4; i++) { // Reduced to 4 for less clutter
+    for (let i = 0; i < perfSettings.blobCount; i++) {
       const material = new THREE.MeshBasicMaterial({
         color: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.9), // Brighter
         wireframe: false,
@@ -85,7 +117,7 @@ export default function HolographicBackground() {
     const blockGeometry = new THREE.BoxGeometry(1.5, 1.5, 1.5); // Small uniform size
     const blocks: THREE.Mesh[] = [];
 
-    for (let i = 0; i < 25; i++) { // 25 blocks scattered around
+    for (let i = 0; i < perfSettings.blockCount; i++) {
       const material = new THREE.MeshBasicMaterial({
         color: new THREE.Color().setHSL(0.5 + Math.random() * 0.3, 1, 0.7),
         wireframe: true,
@@ -122,7 +154,7 @@ export default function HolographicBackground() {
     const ringGeometry = new THREE.TorusGeometry(3, 0.4, 16, 50);
     const rings: THREE.Mesh[] = [];
 
-    for (let i = 0; i < 8; i++) { // 8 small rings
+    for (let i = 0; i < perfSettings.ringCount; i++) {
       const material = new THREE.MeshBasicMaterial({
         color: new THREE.Color().setHSL(0.5 + i * 0.1, 1, 0.7),
         wireframe: true,
@@ -193,7 +225,7 @@ export default function HolographicBackground() {
     console.log('🎨 Interactive shapes created:', interactiveShapes.length, 'shapes');
 
     // Particle system (minimal for cleaner look)
-    const particleCount = 500; // Reduced from 1000 for less clutter
+    const particleCount = perfSettings.particleCount;
     const particleGeometry = new THREE.BufferGeometry();
     const particlePositions = new Float32Array(particleCount * 3);
 
@@ -230,7 +262,7 @@ export default function HolographicBackground() {
     });
 
     const lightRays: THREE.Mesh[] = [];
-    for (let i = 0; i < 4; i++) { // Reduced from 8 to 4 light rays
+    for (let i = 0; i < perfSettings.lightRayCount; i++) {
       const ray = new THREE.Mesh(lightGeometry, lightMaterial);
       ray.position.set(
         (Math.random() - 0.5) * 40,
@@ -254,7 +286,7 @@ export default function HolographicBackground() {
     });
 
     const distantShafts: THREE.Mesh[] = [];
-    for (let i = 0; i < 3; i++) { // Reduced from 5 to 3 distant shafts
+    for (let i = 0; i < perfSettings.distantShaftCount; i++) {
       const shaft = new THREE.Mesh(distantShaftGeometry, distantShaftMaterial);
       shaft.position.set(
         (Math.random() - 0.5) * 100,
@@ -296,7 +328,7 @@ export default function HolographicBackground() {
     const textGeometry = new THREE.PlaneGeometry(15, 3.75); // Small size
     const textMeshes: THREE.Mesh[] = [];
     
-    for (let i = 0; i < 4; i++) { // Reduced from 8 to 4 text instances
+    for (let i = 0; i < perfSettings.textCount; i++) {
       const textMesh = new THREE.Mesh(textGeometry, textMaterial.clone());
       textMesh.position.set(
         (Math.random() - 0.5) * 60,
@@ -313,7 +345,7 @@ export default function HolographicBackground() {
       scene.add(textMesh);
     }
     
-    console.log('🎨 3D Text created: 8 small white "444 RADIO" instances');
+    console.log('🎨 3D Text created:', perfSettings.textCount, 'small white "444 RADIO" instances');
 
     // 3D Logo - Floating radio icon
     const logoCanvas = document.createElement('canvas');
@@ -345,7 +377,7 @@ export default function HolographicBackground() {
     const logoGeometry = new THREE.PlaneGeometry(8, 8);
     const logoMeshes: THREE.Mesh[] = [];
     
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < perfSettings.logoCount; i++) {
       const logoMesh = new THREE.Mesh(logoGeometry, logoMaterial.clone());
       logoMesh.position.set(
         (Math.random() - 0.5) * 70,
@@ -363,7 +395,7 @@ export default function HolographicBackground() {
       scene.add(logoMesh);
     }
     
-    console.log('🎨 3D Logo created: 3 floating radio icons');
+    console.log('🎨 3D Logo created:', perfSettings.logoCount, 'floating radio icons');
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0x1a2244, 1);
@@ -457,10 +489,19 @@ export default function HolographicBackground() {
 
     // Animation loop
     let time = 0;
+    let frameCount = 0;
     const loopDuration = 20; // 20 seconds for complete loop
     const initialCameraZ = 25;
 
     const animate = () => {
+      frameCount++;
+      
+      // Skip frames on mobile for better performance
+      if (perfSettings.animationFrameSkip > 0 && frameCount % 2 !== 0) {
+        sceneRef.current.animationId = requestAnimationFrame(animate);
+        return;
+      }
+
       time += 0.01;
       const loopTime = (time % loopDuration) / loopDuration; // 0 to 1
 
