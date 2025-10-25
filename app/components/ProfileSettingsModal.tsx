@@ -53,11 +53,18 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
 
       if (res.ok) {
         setSaveSuccess(true)
+        // Refresh the page to update all username references
+        router.refresh()
         setTimeout(() => {
           setSaveSuccess(false)
           onUpdate?.()
           onClose()
+          // Force a full page reload to ensure all data is fresh
+          window.location.reload()
         }, 1500)
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to update profile')
       }
     } catch (error) {
       console.error('Failed to update profile:', error)

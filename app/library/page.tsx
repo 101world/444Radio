@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
@@ -48,6 +48,7 @@ export default function LibraryPage() {
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [combinedItems, setCombinedItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
 
   // ESC key handler for desktop navigation to profile
@@ -62,12 +63,12 @@ export default function LibraryPage() {
     return () => window.removeEventListener('keydown', handleEscKey)
   }, [router, user])
 
-  useEffect(() => {
-    fetchLibrary()
-  }, [])
-
-  const fetchLibrary = async () => {
-    setIsLoading(true)
+  const fetchLibrary = async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
     try {
       const [musicRes, imagesRes, combinedRes] = await Promise.all([
         fetch('/api/library/music'),
@@ -94,8 +95,32 @@ export default function LibraryPage() {
       console.error('Error fetching library:', error)
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
+
+  useEffect(() => {
+    fetchLibrary()
+    
+    // Auto-refresh when page becomes visible (catches new generations)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchLibrary()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Also refresh when window gains focus
+    const handleFocus = () => fetchLibrary()
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleDelete = async (type: 'music' | 'images' | 'combined', id: string) => {
     if (!confirm('Are you sure you want to delete this item?')) return
@@ -181,6 +206,22 @@ export default function LibraryPage() {
 
       {/* Main Content - Starts from top */}
       <div className="max-w-7xl mx-auto px-4 pt-20 md:pt-24 pb-8">
+        {/* Header with Refresh Button */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
+            My Library
+          </h1>
+          <button
+            onClick={() => fetchLibrary(true)}
+            disabled={isRefreshing}
+            className={`px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-all flex items-center gap-2 ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Refresh library"
+          >
+            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            <span className="text-sm font-medium">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+        </div>
+        
         {/* Category Tabs - Clean & Prominent */}
         <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-cyan-500/20 -mx-4 px-4 py-4 mb-6">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide">

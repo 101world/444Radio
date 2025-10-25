@@ -83,13 +83,39 @@ export async function POST(req: NextRequest) {
       .from('users')
       .update({
         username,
-        ...(avatar && { avatar })
+        ...(avatar && { avatar }),
+        updated_at: new Date().toISOString()
       })
       .eq('clerk_user_id', userId)
 
     if (updateError) {
       console.error('Error updating user in database:', updateError)
-      // Don't fail the request if Supabase update fails, Clerk update succeeded
+      return NextResponse.json(
+        { success: false, error: 'Failed to update database. Please try again.' },
+        { status: 500 }
+      )
+    }
+    
+    // Also update username in combined_media table for published posts
+    const { error: mediaUpdateError } = await supabase
+      .from('combined_media')
+      .update({ username })
+      .eq('user_id', userId)
+    
+    if (mediaUpdateError) {
+      console.warn('Warning: Failed to update username in combined_media:', mediaUpdateError)
+      // Don't fail the request, but log the warning
+    }
+    
+    // Update username in posts table
+    const { error: postsUpdateError } = await supabase
+      .from('posts')
+      .update({ username })
+      .eq('user_id', userId)
+    
+    if (postsUpdateError) {
+      console.warn('Warning: Failed to update username in posts:', postsUpdateError)
+      // Don't fail the request, but log the warning
     }
 
     return NextResponse.json({

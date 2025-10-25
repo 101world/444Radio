@@ -175,6 +175,23 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     fetchProfileData()
     fetchStationStatus()
   }, [currentUser, resolvedParams.userId])
+  
+  // Refresh profile data when page regains focus (catches username changes)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchProfileData()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', fetchProfileData)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', fetchProfileData)
+    }
+  }, [resolvedParams.userId])
 
   // Fetch station status
   const fetchStationStatus = async () => {
