@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { UserButton, useUser } from '@clerk/nextjs'
@@ -707,11 +708,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           <div className="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/30 mt-3">
                             <div className="text-[10px] text-cyan-400 uppercase mb-1">Now Playing</div>
                             <div className="flex items-center gap-2">
-                              <img
-                                src={currentTrack.imageUrl}
-                                alt={currentTrack.title}
-                                className="w-10 h-10 rounded-lg"
-                              />
+                              <div className="w-10 h-10 rounded-lg overflow-hidden">
+                                <Image
+                                  src={currentTrack.imageUrl || '/radio-logo.svg'}
+                                  alt={currentTrack.title || 'Cover'}
+                                  width={40}
+                                  height={40}
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <h4 className="text-white font-bold text-sm truncate">{currentTrack.title}</h4>
                                 <p className="text-xs text-gray-400 truncate">@{profile.username}</p>
@@ -803,11 +809,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       <div className="flex h-full">
                         {profile.combinedMedia.slice(0, 10).map((media, index) => (
                           <div key={media.id} className="relative w-full h-full flex-shrink-0">
-                            <img 
-                              src={media.image_url} 
-                              alt={media.title || 'Cover art'}
-                              className="w-full h-full object-cover"
-                            />
+                            <div className="absolute inset-0">
+                              <Image
+                                src={media.image_url || '/radio-logo.svg'}
+                                alt={media.title || 'Cover art'}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                           </div>
                         ))}
@@ -1172,11 +1182,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               {/* Post Header */}
                               <div className="p-4 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                  <img
-                                    src={profile?.avatar || '/radio-logo.svg'}
-                                    alt={profile?.username}
-                                    className="w-10 h-10 rounded-full object-cover border border-cyan-400/30"
-                                  />
+                                  <div className="w-10 h-10 rounded-full overflow-hidden border border-cyan-400/30">
+                                    <Image
+                                      src={profile?.avatar || '/radio-logo.svg'}
+                                      alt={profile?.username || 'avatar'}
+                                      width={40}
+                                      height={40}
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                  </div>
                                   <div>
                                     <p className="text-white font-bold text-sm">@{profile?.username}</p>
                                     <p className="text-gray-400 text-xs">
