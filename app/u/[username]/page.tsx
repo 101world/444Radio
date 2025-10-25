@@ -9,17 +9,20 @@ import HolographicBackgroundClient from '@/app/components/HolographicBackgroundC
 import ProfileUploadModal from '@/app/components/ProfileUploadModal'
 import PrivateListModal from '@/app/components/PrivateListModal'
 
-interface ProfileUserData {
+interface ProfileData {
   clerk_user_id: string
   username: string
-  email: string
+  email?: string
   bio?: string
   avatar_url?: string
-  credits: number
-  total_generated: number
-  follower_count: number
-  following_count: number
-  created_at: string
+  credits?: number
+  total_generated?: number
+  follower_count?: number
+  following_count?: number
+  created_at?: string
+  totalPlays: number
+  songCount: number
+  combinedMedia: CombinedMedia[]
 }
 
 interface CombinedMedia {
