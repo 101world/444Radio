@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, User, CreditCard, LogOut, Upload, Check } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
@@ -22,6 +22,12 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
   const [avatarPreview, setAvatarPreview] = useState(currentAvatar || '')
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Update local state when props change
+  useEffect(() => {
+    setUsername(currentUsername)
+    setAvatarPreview(currentAvatar || '')
+  }, [currentUsername, currentAvatar])
 
   if (!isOpen) return null
 
@@ -209,9 +215,20 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
             <div className="space-y-4">
               <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                 <h3 className="font-bold text-white mb-2">Account Information</h3>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-400 mb-4">
                   Manage your account settings, privacy, and security options.
                 </p>
+                
+                {/* Username Display and Edit */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1">Username</label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-mono text-sm">@{currentUsername}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Edit your username in the Profile tab</p>
+                  </div>
+                </div>
               </div>
               
               <button className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-left transition-all border border-white/10">

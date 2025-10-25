@@ -3,13 +3,17 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
-import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard } from 'lucide-react'
+import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard, Settings } from 'lucide-react'
+import ProfileSettingsModal from './ProfileSettingsModal'
 
 export default function FloatingMenu() {
   const { user } = useUser()
   const [isOpen, setIsOpen] = useState(false)
   const [credits, setCredits] = useState<number | null>(null)
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
+  const [username, setUsername] = useState<string>('')
+  const [isLoadingUsername, setIsLoadingUsername] = useState(true)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
 
   // Fetch real credits from API
   useEffect(() => {
@@ -24,6 +28,24 @@ export default function FloatingMenu() {
           console.error('Failed to fetch credits:', err)
           setCredits(0)
           setIsLoadingCredits(false)
+        })
+    }
+  }, [user])
+
+  // Fetch username from Supabase (source of truth)
+  useEffect(() => {
+    if (user) {
+      fetch(`/api/media/profile/${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.username) {
+            setUsername(data.username)
+          }
+          setIsLoadingUsername(false)
+        })
+        .catch(err => {
+          console.error('Failed to fetch username:', err)
+          setIsLoadingUsername(false)
         })
     }
   }, [user])
@@ -62,7 +84,7 @@ export default function FloatingMenu() {
                     <UserButton afterSignOutUrl="/" />
                     <div>
                       <p className="text-white font-semibold">{user.firstName || 'User'}</p>
-                      <p className="text-gray-400 text-sm">@{user.username || 'username'}</p>
+                      <p className="text-gray-400 text-sm">@{isLoadingUsername ? '...' : (username || 'username')}</p>
                     </div>
                   </div>
                   
@@ -261,6 +283,29 @@ export default function FloatingMenu() {
           animation: slideIn 0.3s ease-out;
         }
       `}</style>
+
+      {/* Profile Settings Modal */}
+      {user && (
+        <ProfileSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          currentUsername={username || user.username || 'username'}
+          currentAvatar={user.imageUrl}
+          onUpdate={() => {
+            // Refresh username after update
+            if (user) {
+              fetch(`/api/media/profile/${user.id}`)
+                .then(res => res.json())
+                .then(data => {
+                  if (data.success && data.username) {
+                    setUsername(data.username)
+                  }
+                })
+                .catch(err => console.error('Failed to refresh username:', err))
+            }
+          }}
+        />
+      )}
     </>
   )
 }
