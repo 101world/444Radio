@@ -228,7 +228,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
             <div className="space-y-4">
               <div className="p-6 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl border border-cyan-500/30">
                 <h3 className="text-xl font-bold text-white mb-2">Free Plan</h3>
-                <p className="text-gray-400 mb-4">You're currently on the free plan</p>
+                <p className="text-gray-400 mb-4">You&apos;re currently on the free plan</p>
                 <button className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg font-bold transition-all">
                   Upgrade to Pro
                 </button>

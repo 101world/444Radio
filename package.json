@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
-    "lint": "eslint",
-    "migrate": "node scripts/run-migrations.js"
+  "dev": "next dev --turbopack",
+  "build": "next build --turbopack",
+  "start": "next start",
+  "lint": "eslint . --ext .ts,.tsx,.js,.jsx --quiet",
+  "typecheck": "tsc --noEmit",
+  "test": "echo \"No tests configured\" && exit 0",
+  "migrate": "node scripts/run-migrations.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.913.0",

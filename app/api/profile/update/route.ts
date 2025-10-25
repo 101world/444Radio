@@ -97,10 +97,11 @@ export async function POST(req: NextRequest) {
       username,
       avatar
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Profile update error:', error)
+    const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
+      { success: false, error: message || 'Internal server error' },
       { status: 500 }
     )
   }
