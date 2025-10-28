@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-  "dev": "next dev --turbopack",
-  "build": "next build --turbopack",
-  "start": "next start",
-  "lint": "eslint . --ext .ts,.tsx,.js,.jsx --quiet",
-  "typecheck": "tsc --noEmit",
-  "test": "echo \"No tests configured\" && exit 0",
-  "migrate": "node scripts/run-migrations.js"
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx --quiet",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No tests configured\" && exit 0",
+    "migrate": "node scripts/run-migrations.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.913.0",
@@ -17,6 +17,7 @@
     "@clerk/nextjs": "^6.33.3",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.3.0",
+    "@sentry/nextjs": "^8.0.0",
     "@supabase/supabase-js": "^2.74.0",
     "@types/three": "^0.180.0",
     "lucide-react": "^0.546.0",
@@ -26,8 +27,8 @@
     "replicate": "^1.2.0",
     "svix": "^1.77.0",
     "three": "^0.180.0",
-    "@sentry/nextjs": "^8.0.0",
-    "tone": "^14.8.49"
+    "tone": "^14.8.49",
+    "wavesurfer.js": "^7.11.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -37,9 +38,9 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
+    "pg": "^8.10.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5",
-    "pg": "^8.10.0"
+    "typescript": "^5"
   }
 }
