@@ -19,9 +19,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing songId or prompt' }, { status: 400 })
     }
 
-    // Use MiniMax Music-1.5 for all languages
-    // Note: ACE-Step model version not available on Replicate, using MiniMax for multi-language support
-    const modelName = 'MiniMax Music-1.5'
+    // Determine which model to use based on language
+    const isEnglish = language.toLowerCase() === 'english' || language.toLowerCase() === 'en'
+    const modelName = isEnglish ? 'MiniMax Music-1.5' : 'ACE-Step (Multi-language)'
     
     console.log(`🎵 Starting music generation with ${modelName} for language: ${language}`)
     console.log('🎵 Prompt:', prompt)
@@ -29,32 +29,67 @@ export async function POST(req: NextRequest) {
     
     let finalPrediction: any
 
-    // Use MiniMax Music-1.5 (supports multiple languages)
-    const prediction = await replicate.predictions.create({
-      version: "minimax/music-1.5",
-      input: {
-        lyrics: prompt.substring(0, 600), // Max 600 characters
-        style_strength: params?.style_strength ?? 0.8, // 0.0 to 1.0, default 0.8
-        // reference_audio: optional for style learning
+    if (isEnglish) {
+      // Use MiniMax Music-1.5 for English
+      const prediction = await replicate.predictions.create({
+        version: "minimax/music-1.5",
+        input: {
+          lyrics: prompt.substring(0, 600), // Max 600 characters
+          style_strength: params?.style_strength ?? 0.8, // 0.0 to 1.0, default 0.8
+        }
+      })
+
+      console.log('🎵 MiniMax prediction created:', prediction.id)
+
+      finalPrediction = prediction
+      let attempts = 0
+      const maxAttempts = 60
+      
+      while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        finalPrediction = await replicate.predictions.get(prediction.id)
+        console.log('🎵 Music generation status:', finalPrediction.status)
+        attempts++
       }
-    })
 
-    console.log('🎵 Music prediction created:', prediction.id)
+      if (attempts >= maxAttempts) {
+        throw new Error('Music generation timed out')
+      }
+    } else {
+      // Use ACE-Step for non-English languages
+      const genreTags = prompt.toLowerCase().match(/\b(rock|pop|jazz|blues|electronic|classical|hip hop|rap|country|metal|folk|reggae|indie|funk|soul|rnb|edm|house|techno|ambient|chill|lofi)\b/g) || ['music'];
+      const tags = genreTags.join(',') || 'instrumental,melodic';
 
-    // Poll until completed
-    finalPrediction = prediction
-    let attempts = 0
-    const maxAttempts = 60 // 2 minutes max
-    
-    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Poll every 2 seconds
-      finalPrediction = await replicate.predictions.get(prediction.id)
-      console.log('🎵 Music generation status:', finalPrediction.status)
-      attempts++
-    }
+      const prediction = await replicate.predictions.create({
+        version: "lucataco/ace-step:6b1a5b1e8e82f73fc60e3b9046e56f12b29ad3ac3f5ea43e4f3e84e638385068",
+        input: {
+          tags: tags,
+          lyrics: prompt.substring(0, 600),
+          duration: params?.duration ?? 60,
+          number_of_steps: params?.quality ?? 60,
+          guidance_scale: params?.adherence ?? 15,
+          scheduler: 'euler',
+          guidance_type: 'apg',
+          seed: -1,
+        }
+      })
 
-    if (attempts >= maxAttempts) {
-      throw new Error('Music generation timed out')
+      console.log('🎵 ACE-Step prediction created:', prediction.id)
+
+      finalPrediction = prediction
+      let attempts = 0
+      const maxAttempts = 60
+      
+      while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        finalPrediction = await replicate.predictions.get(prediction.id)
+        console.log('🎵 ACE-Step generation status:', finalPrediction.status)
+        attempts++
+      }
+
+      if (attempts >= maxAttempts) {
+        throw new Error('Music generation timed out')
+      }
     }
 
     if (finalPrediction.status === 'failed') {

@@ -251,22 +251,40 @@ export async function POST(req: NextRequest) {
         throw new Error('Invalid output format from API')
       }
     } else {
-      // Generate music with MusicGen for non-English (fallback to MiniMax)
-      console.log('🎵 Using MusicGen for non-English generation...')
+      // Generate music with ACE-Step for non-English
+      console.log('🎵 Using ACE-Step for non-English generation...')
       try {
-        // For now, use MiniMax for all languages since ACE-Step version is not available
-        // This provides better quality for all languages
-        console.log('🎵 Falling back to MiniMax Music-1.5 for multi-language support')
+        // Use ACE-Step with correct API schema
+        // Required: tags (text prompt describing style)
+        // Optional: lyrics, duration, number_of_steps, guidance_scale
+        
+        // Extract genre/style from prompt for tags
+        const genreTags = prompt.toLowerCase().match(/\b(rock|pop|jazz|blues|electronic|classical|hip hop|rap|country|metal|folk|reggae|indie|funk|soul|rnb|edm|house|techno|ambient|chill|lofi)\b/g) || ['music'];
+        const tags = genreTags.join(',') || 'instrumental,melodic';
+        
+        console.log('🎵 ACE-Step Parameters:', {
+          tags,
+          lyrics: formattedLyrics.substring(0, 300),
+          duration: audio_length_in_s || 60,
+          number_of_steps: num_inference_steps || 60,
+          guidance_scale: guidance_scale || 15
+        })
 
         const prediction = await replicate.predictions.create({
-          version: "minimax/music-1.5",
+          version: "lucataco/ace-step:6b1a5b1e8e82f73fc60e3b9046e56f12b29ad3ac3f5ea43e4f3e84e638385068",
           input: {
-            lyrics: formattedLyrics.substring(0, 600), // Max 600 characters
-            style_strength: 0.8,
+            tags: tags, // REQUIRED: genre/style tags
+            lyrics: formattedLyrics.substring(0, 600), // Optional lyrics
+            duration: audio_length_in_s || 60, // Duration in seconds (1-240)
+            number_of_steps: num_inference_steps || 60, // Inference steps (10-200)
+            guidance_scale: guidance_scale || 15, // Overall guidance (0-30)
+            scheduler: 'euler', // Scheduler type
+            guidance_type: 'apg', // Guidance type
+            seed: -1, // Random seed
           }
         })
 
-        console.log('🎵 Music prediction created:', prediction.id)
+        console.log('🎵 ACE-Step prediction created:', prediction.id)
 
         let finalPrediction = prediction
         let attempts = 0
@@ -290,7 +308,7 @@ export async function POST(req: NextRequest) {
           throw new Error('No audio generated')
         }
       } catch (genError) {
-        console.error('❌ Music generation failed (MiniMax fallback):', genError)
+        console.error('❌ Music generation failed (ACE-Step):', genError)
         // NO credits deducted since generation failed
         return NextResponse.json(
           { 
