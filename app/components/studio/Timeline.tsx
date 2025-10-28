@@ -1,14 +1,16 @@
 /**
- * Timeline - Multi-track waveform display
- * Renders all tracks with WaveSurfer instances and controls
+ * Timeline - Multi-track waveform display with context menu
+ * Renders all tracks with WaveSurfer instances, controls, and effects
  */
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 import { useWaveSurfer } from '@/hooks/useWaveSurfer';
 import { Volume2, VolumeX, Headphones, Trash2 } from 'lucide-react';
+import { ContextMenu, getTrackContextMenuItems } from './ContextMenu';
+import { AudioEffects } from '@/lib/audio-effects';
 
 interface TrackRowProps {
   trackId: string;
@@ -24,10 +26,13 @@ function TrackRow({ trackId }: TrackRowProps) {
     removeTrack,
     isPlaying,
     currentTime,
+    addTrack,
   } = useStudio();
 
   const track = tracks.find((t) => t.id === trackId);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Initialize WaveSurfer for this track
   const wavesurfer = useWaveSurfer({
@@ -57,10 +62,167 @@ function TrackRow({ trackId }: TrackRowProps) {
     }
   }, [isPlaying, wavesurfer.isReady]);
 
+  // Apply effect to track
+  const applyEffect = async (
+    effectFn: (buffer: AudioBuffer, ...args: any[]) => Promise<AudioBuffer>,
+    ...args: any[]
+  ) => {
+    if (!track?.audioUrl || !wavesurfer.wavesurfer) return;
+
+    setIsProcessing(true);
+    try {
+      // Fetch audio
+      const response = await fetch(track.audioUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioContext = new AudioContext();
+      const originalBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+      // Apply effect
+      const processedBuffer = await effectFn(originalBuffer, ...args);
+
+      // Convert back to blob URL
+      const wavBlob = await audioBufferToWavBlob(processedBuffer);
+      const newUrl = URL.createObjectURL(wavBlob);
+
+      // Update track
+      addTrack(`${track.name} (Processed)`, newUrl);
+      console.log(`✅ Applied effect to ${track.name}`);
+    } catch (error) {
+      console.error('Effect processing error:', error);
+      alert('Failed to apply effect. Check console for details.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Helper: AudioBuffer to WAV Blob
+  const audioBufferToWavBlob = async (buffer: AudioBuffer): Promise<Blob> => {
+    const numberOfChannels = buffer.numberOfChannels;
+    const length = buffer.length * numberOfChannels * 2;
+    const wavBuffer = new ArrayBuffer(44 + length);
+    const view = new DataView(wavBuffer);
+
+    // Write WAV header
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + length, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numberOfChannels, true);
+    view.setUint32(24, buffer.sampleRate, true);
+    view.setUint32(28, buffer.sampleRate * numberOfChannels * 2, true);
+    view.setUint16(32, numberOfChannels * 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, length, true);
+
+    // Write PCM samples
+    const offset = 44;
+    let index = offset;
+    for (let i = 0; i < buffer.length; i++) {
+      for (let channel = 0; channel < numberOfChannels; channel++) {
+        const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i]));
+        view.setInt16(index, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+        index += 2;
+      }
+    }
+
+    return new Blob([wavBuffer], { type: 'audio/wav' });
+  };
+
+  // Context menu handlers
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const contextMenuItems = getTrackContextMenuItems({
+    onDelete: () => removeTrack(trackId),
+    onDuplicate: () => {
+      if (track?.audioUrl) {
+        addTrack(`${track.name} Copy`, track.audioUrl);
+      }
+    },
+    onReverse: () => applyEffect(AudioEffects.reverse),
+    onNormalize: () => applyEffect(AudioEffects.normalize),
+    onFadeIn: () => applyEffect(AudioEffects.fadeIn, 2.0),
+    onFadeOut: () => applyEffect(AudioEffects.fadeOut, 2.0),
+    onGain: () => {
+      const gain = prompt('Enter gain amount (0.1 to 5.0):', '1.5');
+      if (gain) applyEffect(AudioEffects.gain, parseFloat(gain));
+    },
+    onDelay: () => {
+      applyEffect(AudioEffects.delay, 0.5, 0.3, 0.5);
+    },
+    onReverb: () => {
+      applyEffect(AudioEffects.reverb, 2.0, 2.0, 0.5);
+    },
+    onCompressor: () => {
+      applyEffect(AudioEffects.compressor, -24, 30, 12, 0.003, 0.25);
+    },
+    onDistortion: () => {
+      applyEffect(AudioEffects.distortion, 50);
+    },
+    onBitcrusher: () => {
+      applyEffect(AudioEffects.bitcrusher, 4);
+    },
+    onTelephonizer: () => {
+      applyEffect(AudioEffects.telephonizer);
+    },
+    onLowPass: () => {
+      const freq = prompt('Enter cutoff frequency (20-20000 Hz):', '1000');
+      if (freq) applyEffect(AudioEffects.lowPass, parseInt(freq), 1);
+    },
+    onHighPass: () => {
+      const freq = prompt('Enter cutoff frequency (20-20000 Hz):', '1000');
+      if (freq) applyEffect(AudioEffects.highPass, parseInt(freq), 1);
+    },
+    onSpeedChange: () => {
+      const rate = prompt('Enter speed rate (0.5 = half speed, 2.0 = double):', '1.5');
+      if (rate) applyEffect(AudioEffects.speedChange, parseFloat(rate));
+    },
+    onVocalRemover: () => {
+      applyEffect(AudioEffects.vocalRemover);
+    },
+    onStereoWiden: () => {
+      applyEffect(AudioEffects.stereoWiden, 0.5);
+    },
+  });
+
   if (!track) return null;
 
   return (
-    <div className="bg-gray-900/50 backdrop-blur-sm rounded-lg border border-purple-500/20 p-3 mb-2">
+    <div 
+      className="bg-gray-900/50 backdrop-blur-sm rounded-lg border border-purple-500/20 p-3 mb-2 relative"
+      onContextMenu={handleContextMenu}
+    >
+      {/* Processing overlay */}
+      {isProcessing && (
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+            <p className="text-white text-sm">Processing effect...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
       {/* Track header */}
       <div className="flex items-center gap-3 mb-2">
         <div
