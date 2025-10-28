@@ -373,13 +373,21 @@ export default function ExplorePage() {
                         <h3 className="font-semibold text-white truncate text-sm leading-tight">
                           {media.title}
                         </h3>
-                        <Link 
-                          href={`/profile/${media.user_id}`}
-                          className="text-xs text-gray-300 hover:text-cyan-400 transition-colors truncate block leading-tight mt-0.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {formatUsername(media.users?.username || media.username)}
-                        </Link>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Link 
+                            href={`/profile/${media.user_id}`}
+                            className="text-xs text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {formatUsername(media.users?.username || media.username)}
+                          </Link>
+                          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                            <div className="flex items-center gap-0.5">
+                              <Play size={9} />
+                              <span>{media.plays || 0}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )
@@ -431,13 +439,21 @@ export default function ExplorePage() {
                         <h3 className="font-semibold text-white truncate leading-tight">
                           {media.title}
                         </h3>
-                        <Link 
-                          href={`/profile/${media.user_id}`}
-                          className="text-sm text-gray-300 hover:text-cyan-400 transition-colors truncate block leading-tight mt-0.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {formatUsername(media.users?.username || media.username)}
-                        </Link>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Link 
+                            href={`/profile/${media.user_id}`}
+                            className="text-sm text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {formatUsername(media.users?.username || media.username)}
+                          </Link>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <div className="flex items-center gap-0.5">
+                              <Play size={10} />
+                              <span>{media.plays || 0}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )
