@@ -5,19 +5,29 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
-import { Upload, Sparkles, Library, Music } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Upload, Sparkles, Library, Music, Plus } from 'lucide-react';
 import { StudioProvider, useStudio } from '@/app/contexts/StudioContext';
 import Timeline from '@/app/components/studio/Timeline';
 import TransportBar from '@/app/components/studio/TransportBar';
 import EffectsRack from '@/app/components/studio/EffectsRack';
 import TimelineRuler from '@/app/components/studio/TimelineRuler';
+import TrackInspector from '@/app/components/studio/TrackInspector';
 
 function StudioContent() {
-  const { addTrack, tracks } = useStudio();
+  const { addTrack, addEmptyTrack, tracks } = useStudio();
   const [showAISidebar, setShowAISidebar] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Add 3 empty tracks on mount (AudioMass style)
+  useEffect(() => {
+    if (tracks.length === 0) {
+      addEmptyTrack();
+      addEmptyTrack();
+      addEmptyTrack();
+    }
+  }, []); // Run once on mount
 
   // Handle file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +115,16 @@ function StudioContent() {
             <Library className="w-4 h-4" />
             Library
           </button>
+
+          {/* Add Empty Track */}
+          <button
+            onClick={addEmptyTrack}
+            className="px-4 py-2 rounded-lg bg-gray-700/50 hover:bg-gray-700 text-gray-300 border border-gray-600 transition-colors flex items-center gap-2"
+            title="Add empty track"
+          >
+            <Plus className="w-4 h-4" />
+            Add Track
+          </button>
         </div>
       </header>
 
@@ -118,56 +138,12 @@ function StudioContent() {
           {/* Timeline ruler with zoom */}
           <TimelineRuler />
 
-          {/* Timeline / Empty state */}
+          {/* Timeline - Always show, with empty tracks */}
           <Timeline />
-
-          {/* Timeline / Empty state */}
-          {tracks.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center bg-black/20 backdrop-blur-xl">
-              <div className="text-center max-w-md px-6">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                  <Music className="w-12 h-12 text-purple-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-3">
-                  Welcome to 444Radio Studio
-                </h2>
-                <p className="text-gray-400 mb-6">
-                  Import audio files to start creating your multi-track masterpiece
-                </p>
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={handleBrowseFiles}
-                    className="px-6 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium transition-all shadow-lg flex items-center justify-center gap-2"
-                  >
-                    <Upload className="w-5 h-5" />
-                    Import Audio Files
-                  </button>
-                  <button
-                    onClick={() => setShowAISidebar(true)}
-                    className="px-6 py-3 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/50 font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Sparkles className="w-5 h-5" />
-                    Generate with AI
-                  </button>
-                  <button
-                    onClick={() => setShowLibrary(true)}
-                    className="px-6 py-3 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 border border-pink-500/50 font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Library className="w-5 h-5" />
-                    Browse Library
-                  </button>
-                </div>
-                <div className="mt-8 pt-8 border-t border-gray-800">
-                  <p className="text-xs text-gray-500">
-                    <strong>Tip:</strong> Drag & drop audio files anywhere on this page
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <Timeline />
-          )}
         </div>
+
+        {/* Track Inspector Sidebar */}
+        <TrackInspector />
       </div>
 
       {/* Transport bar */}

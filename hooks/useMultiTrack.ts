@@ -8,15 +8,34 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getAudioContext } from '@/lib/audio-utils';
 
+export interface AudioClip {
+  id: string;
+  trackId: string; // Which track this clip belongs to
+  audioUrl: string;
+  name: string;
+  startTime: number; // Position on timeline in seconds
+  duration: number; // Clip duration in seconds
+  offset: number; // Start offset within the audio file
+  color: string;
+}
+
 export interface Track {
   id: string;
   name: string;
   color: string;
-  audioUrl: string | null;
+  audioUrl: string | null; // Legacy, kept for backward compat
+  clips: AudioClip[]; // NEW: clips on this track
   volume: number;
   pan: number;
   mute: boolean;
   solo: boolean;
+  effects?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    enabled: boolean;
+    parameters: Record<string, number>;
+  }>;
   // WaveSurfer instance will be managed by Timeline component
   // Audio nodes for mixing
   gainNode: GainNode | null;
@@ -30,7 +49,13 @@ export interface UseMultiTrackReturn {
   masterVolume: number;
   zoom: number;
   duration: number;
-  addTrack: (name: string, audioUrl: string, color?: string) => string;
+  selectedTrackId: string | null;
+  selectedClipId: string | null;
+  addTrack: (name: string, audioUrl?: string, color?: string) => string;
+  addEmptyTrack: () => string;
+  addClipToTrack: (trackId: string, audioUrl: string, name: string, startTime?: number) => void;
+  moveClip: (clipId: string, newStartTime: number) => void;
+  removeClip: (clipId: string) => void;
   removeTrack: (id: string) => void;
   updateTrack: (id: string, updates: Partial<Track>) => void;
   setTrackVolume: (id: string, volume: number) => void;
@@ -39,6 +64,8 @@ export interface UseMultiTrackReturn {
   toggleSolo: (id: string) => void;
   setMasterVolume: (volume: number) => void;
   setZoom: (zoom: number) => void;
+  setSelectedTrack: (id: string | null) => void;
+  setSelectedClip: (id: string | null) => void;
   // Playback controls (will be called from Timeline component)
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -64,6 +91,8 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const [masterVolumeState, setMasterVolumeState] = useState(0.8);
   const [zoom, setZoom] = useState(1.0);
   const [duration, setDuration] = useState(0);
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const masterGainNodeRef = useRef<GainNode | null>(null);
 
@@ -92,17 +121,29 @@ export function useMultiTrack(): UseMultiTrackReturn {
     };
   }, []);
 
-  // Add a new track
-  const addTrack = useCallback((name: string, audioUrl: string, color?: string): string => {
+  // Add a new track (legacy - with audio URL)
+  const addTrack = useCallback((name: string, audioUrl?: string, color?: string): string => {
+    const trackId = `track-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newTrack: Track = {
-      id: `track-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: trackId,
       name,
-      audioUrl,
+      audioUrl: audioUrl || null,
+      clips: audioUrl ? [{
+        id: `clip-${Date.now()}`,
+        trackId, // Add trackId
+        audioUrl,
+        name,
+        startTime: 0,
+        duration: 60, // Will be updated when audio loads
+        offset: 0,
+        color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
+      }] : [],
       color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
       volume: 0.8,
       pan: 0,
       mute: false,
       solo: false,
+      effects: [],
       gainNode: null,
       panNode: null,
     };
@@ -135,7 +176,58 @@ export function useMultiTrack(): UseMultiTrackReturn {
     return newTrack.id;
   }, [tracks.length]);
 
-  // Remove a track
+  // Add empty track (AudioMass style)
+  const addEmptyTrack = useCallback((): string => {
+    return addTrack(`Track ${tracks.length + 1}`);
+  }, [addTrack, tracks.length]);
+
+  // Add clip to existing track
+  const addClipToTrack = useCallback((trackId: string, audioUrl: string, name: string, startTime: number = 0) => {
+    setTracks((prev) =>
+      prev.map((t) => {
+        if (t.id === trackId) {
+          const newClip: AudioClip = {
+            id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            trackId, // Add trackId
+            audioUrl,
+            name,
+            startTime,
+            duration: 60, // Will be updated when audio loads
+            offset: 0,
+            color: t.color,
+          };
+          return { ...t, clips: [...t.clips, newClip] };
+        }
+        return t;
+      })
+    );
+    console.log(`✅ Clip added to track ${trackId}`);
+  }, []);
+
+  // Move clip on timeline
+  const moveClip = useCallback((clipId: string, newStartTime: number) => {
+    setTracks((prev) =>
+      prev.map((t) => ({
+        ...t,
+        clips: t.clips.map((c) =>
+          c.id === clipId ? { ...c, startTime: newStartTime } : c
+        ),
+      }))
+    );
+  }, []);
+
+  // Remove clip from track
+  const removeClip = useCallback((clipId: string) => {
+    setTracks((prev) =>
+      prev.map((t) => ({
+        ...t,
+        clips: t.clips.filter((c) => c.id !== clipId),
+      }))
+    );
+    console.log(`🗑️ Clip removed: ${clipId}`);
+  }, []);
+
+  // Remove track
   const removeTrack = useCallback((id: string) => {
     setTracks((prev) => {
       const track = prev.find((t) => t.id === id);
@@ -272,6 +364,16 @@ export function useMultiTrack(): UseMultiTrackReturn {
     setIsPlaying(playing);
   }, []);
 
+  // Set selected track
+  const setSelectedTrack = useCallback((id: string | null) => {
+    setSelectedTrackId(id);
+  }, []);
+
+  // Set selected clip
+  const setSelectedClip = useCallback((id: string | null) => {
+    setSelectedClipId(id);
+  }, []);
+
   return {
     tracks,
     isPlaying,
@@ -279,7 +381,13 @@ export function useMultiTrack(): UseMultiTrackReturn {
     masterVolume: masterVolumeState,
     zoom,
     duration,
+    selectedTrackId,
+    selectedClipId,
     addTrack,
+    addEmptyTrack,
+    addClipToTrack,
+    moveClip,
+    removeClip,
     removeTrack,
     updateTrack,
     setTrackVolume,
@@ -288,6 +396,8 @@ export function useMultiTrack(): UseMultiTrackReturn {
     toggleSolo,
     setMasterVolume,
     setZoom,
+    setSelectedTrack,
+    setSelectedClip,
     setPlaying,
     setCurrentTime,
   };
