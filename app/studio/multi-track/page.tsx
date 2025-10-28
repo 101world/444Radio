@@ -11,6 +11,7 @@ import { StudioProvider, useStudio } from '@/app/contexts/StudioContext';
 import Timeline from '@/app/components/studio/Timeline';
 import TransportBar from '@/app/components/studio/TransportBar';
 import EffectsRack from '@/app/components/studio/EffectsRack';
+import TimelineRuler from '@/app/components/studio/TimelineRuler';
 
 function StudioContent() {
   const { addTrack, tracks } = useStudio();
@@ -114,7 +115,10 @@ function StudioContent() {
           {/* Effects rack */}
           <EffectsRack />
 
-          {/* Timeline */}
+          {/* Timeline ruler with zoom */}
+          <TimelineRuler />
+
+          {/* Timeline / Empty state */}
           <Timeline />
 
           {/* Timeline / Empty state */}

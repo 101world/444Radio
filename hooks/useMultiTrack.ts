@@ -28,6 +28,8 @@ export interface UseMultiTrackReturn {
   isPlaying: boolean;
   currentTime: number;
   masterVolume: number;
+  zoom: number;
+  duration: number;
   addTrack: (name: string, audioUrl: string, color?: string) => string;
   removeTrack: (id: string) => void;
   updateTrack: (id: string, updates: Partial<Track>) => void;
@@ -36,6 +38,7 @@ export interface UseMultiTrackReturn {
   toggleMute: (id: string) => void;
   toggleSolo: (id: string) => void;
   setMasterVolume: (volume: number) => void;
+  setZoom: (zoom: number) => void;
   // Playback controls (will be called from Timeline component)
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -57,8 +60,10 @@ const TRACK_COLORS = [
 export function useMultiTrack(): UseMultiTrackReturn {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [masterVolume, setMasterVolumeState] = useState(0.8);
+  const [currentTime, setCurrentTimeState] = useState(0);
+  const [masterVolumeState, setMasterVolumeState] = useState(0.8);
+  const [zoom, setZoom] = useState(1.0);
+  const [duration, setDuration] = useState(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const masterGainNodeRef = useRef<GainNode | null>(null);
 
@@ -70,7 +75,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
       // Create master gain node
       const masterGain = ctx.createGain();
-      masterGain.gain.value = masterVolume;
+      masterGain.gain.value = masterVolumeState;
       masterGain.connect(ctx.destination);
       masterGainNodeRef.current = masterGain;
 
@@ -257,6 +262,11 @@ export function useMultiTrack(): UseMultiTrackReturn {
     }
   }, []);
 
+  // Set current time (called from Timeline or TransportBar)
+  const setCurrentTime = useCallback((time: number) => {
+    setCurrentTimeState(time);
+  }, []);
+
   // Set playing state (called from Timeline)
   const setPlaying = useCallback((playing: boolean) => {
     setIsPlaying(playing);
@@ -266,7 +276,9 @@ export function useMultiTrack(): UseMultiTrackReturn {
     tracks,
     isPlaying,
     currentTime,
-    masterVolume,
+    masterVolume: masterVolumeState,
+    zoom,
+    duration,
     addTrack,
     removeTrack,
     updateTrack,
@@ -275,6 +287,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
     toggleMute,
     toggleSolo,
     setMasterVolume,
+    setZoom,
     setPlaying,
     setCurrentTime,
   };

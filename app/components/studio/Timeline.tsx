@@ -1,6 +1,6 @@
 /**
  * Timeline - Multi-track waveform display with context menu
- * Renders all tracks with WaveSurfer instances, controls, and effects
+ * Renders all tracks with WaveSurfer instances, controls, effects, and drag & drop
  */
 
 'use client';
@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 import { useWaveSurfer } from '@/hooks/useWaveSurfer';
-import { Volume2, VolumeX, Headphones, Trash2 } from 'lucide-react';
+import { Volume2, VolumeX, Headphones, Trash2, Upload } from 'lucide-react';
 import { ContextMenu, getTrackContextMenuItems } from './ContextMenu';
 import { AudioEffects } from '@/lib/audio-effects';
 
@@ -27,6 +27,7 @@ function TrackRow({ trackId }: TrackRowProps) {
     isPlaying,
     currentTime,
     addTrack,
+    zoom,
   } = useStudio();
 
   const track = tracks.find((t) => t.id === trackId);
@@ -49,6 +50,13 @@ function TrackRow({ trackId }: TrackRowProps) {
       wavesurfer.loadAudio(track.audioUrl);
     }
   }, [track?.audioUrl, wavesurfer.wavesurfer]);
+
+  // Update zoom when it changes
+  useEffect(() => {
+    if (wavesurfer.wavesurfer) {
+      wavesurfer.wavesurfer.zoom(50 * zoom);
+    }
+  }, [zoom, wavesurfer.wavesurfer]);
 
   // Sync playback
   useEffect(() => {
@@ -319,20 +327,78 @@ function TrackRow({ trackId }: TrackRowProps) {
 }
 
 export default function Timeline() {
-  const { tracks } = useStudio();
+  const { tracks, addTrack, zoom } = useStudio();
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Handle file drag & drop
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    
+    for (const file of files) {
+      if (file.type.startsWith('audio/')) {
+        const audioUrl = URL.createObjectURL(file);
+        const trackName = file.name.replace(/\.[^/.]+$/, '');
+        addTrack(trackName, audioUrl);
+        console.log(`✅ Dropped track: ${trackName}`);
+      } else {
+        console.warn(`⚠️ Skipped non-audio file: ${file.name}`);
+      }
+    }
+  };
 
   return (
-    <div className="flex-1 overflow-auto bg-black/20 backdrop-blur-xl p-4">
+    <div 
+      className={`flex-1 overflow-auto bg-black/20 backdrop-blur-xl p-4 relative ${
+        isDragOver ? 'ring-4 ring-purple-500/50' : ''
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 bg-purple-500/20 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none">
+          <div className="text-center">
+            <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center animate-pulse">
+              <Upload className="w-12 h-12 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">Drop audio files here</h3>
+            <p className="text-gray-300">Add them as new tracks to your project</p>
+          </div>
+        </div>
+      )}
+
       {tracks.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-center">
           <div className="text-gray-400 mb-4">
             <Volume2 className="w-16 h-16 mx-auto mb-3 opacity-50" />
             <h3 className="text-xl font-semibold mb-2">No tracks yet</h3>
-            <p className="text-sm">Generate music with AI or upload from your library</p>
+            <p className="text-sm">Drag & drop audio files, generate with AI, or upload from library</p>
           </div>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div 
+          className="space-y-2"
+          style={{
+            minWidth: `${300 * zoom}px`, // Zoom affects width
+          }}
+        >
           {tracks.map((track) => (
             <TrackRow key={track.id} trackId={track.id} />
           ))}
