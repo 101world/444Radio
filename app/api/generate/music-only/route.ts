@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { prompt, lyrics, duration = 'medium', bitrate = 256000, sample_rate = 44100, audio_format = 'mp3', language = 'English' } = await req.json()
+    const { prompt, lyrics, duration = 'medium', bitrate = 256000, sample_rate = 44100, audio_format = 'mp3', language = 'English', audio_length_in_s, num_inference_steps, guidance_scale, denoising_strength } = await req.json()
 
     // Prompt is REQUIRED
     if (!prompt || prompt.length < 10 || prompt.length > 300) {
@@ -254,19 +254,29 @@ export async function POST(req: NextRequest) {
       // Generate music with ACE-Step for non-English
       console.log('🎵 Using ACE-Step (Multi-language) ...')
       try {
-        const durationMap: Record<string, number> = { short: 30, medium: 45, long: 60 }
-        const audio_length_in_s = durationMap[duration as 'short' | 'medium' | 'long'] ?? 45
+        // Use provided ACE-Step parameters or fallback to defaults
+        const finalAudioLength = audio_length_in_s || 45
+        const finalInferenceSteps = num_inference_steps || 50
+        const finalGuidanceScale = guidance_scale || 7.0
+        const finalDenoisingStrength = denoising_strength || 0.8
+
+        console.log('🎵 ACE-Step Parameters:', {
+          audio_length_in_s: finalAudioLength,
+          num_inference_steps: finalInferenceSteps,
+          guidance_scale: finalGuidanceScale,
+          denoising_strength: finalDenoisingStrength
+        })
 
         const prediction = await replicate.predictions.create({
           version: "lucataco/ace-step:latest",
           input: {
             // Include the lyrics inline to guide melody/words when supported
             prompt: `${prompt.trim()}\n\nLyrics:\n${formattedLyrics.substring(0, 600)}`,
-            audio_length_in_s,
-            num_inference_steps: 50, // balanced
-            guidance_scale: 7.0,
+            audio_length_in_s: finalAudioLength,
+            num_inference_steps: finalInferenceSteps,
+            guidance_scale: finalGuidanceScale,
             seed: Math.floor(Math.random() * 1_000_000),
-            denoising_strength: 0.8
+            denoising_strength: finalDenoisingStrength
           }
         })
 
