@@ -19,9 +19,10 @@ interface GenerationModalProps {
   prompt: string
   outputType: 'image' | 'video'
   onComplete?: (data: { audioUrl: string; coverUrl: string }) => void
+  language?: string // Optional; defaults to English
 }
 
-export default function GenerationModal({ isOpen, onClose, songId, prompt, outputType, onComplete }: GenerationModalProps) {
+export default function GenerationModal({ isOpen, onClose, songId, prompt, outputType, onComplete, language = 'English' }: GenerationModalProps) {
   const [steps, setSteps] = useState<GenerationStep[]>([
     { id: 'music', name: 'Generating Music', status: 'processing', icon: Music },
     { id: 'cover', name: outputType === 'image' ? 'Creating Cover Art' : 'Creating Cover Video', status: 'pending', icon: outputType === 'image' ? ImageIcon : Video },
@@ -63,7 +64,8 @@ export default function GenerationModal({ isOpen, onClose, songId, prompt, outpu
         body: JSON.stringify({ 
           songId, 
           prompt,
-          params: musicParams 
+          params: musicParams,
+          language
         }),
       })
       const musicData = await musicRes.json()

@@ -16,6 +16,7 @@ import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
 import CreatePostModal from '../../components/CreatePostModal'
+import BannerUploadModal from '../../components/BannerUploadModal'
 import { getDisplayUsername, formatUsername } from '../../../lib/username'
 import { createClient } from '@supabase/supabase-js'
 
@@ -108,6 +109,8 @@ interface ProfileData {
   bio?: string
   tagline?: string
   avatar?: string
+  banner_url?: string | null
+  banner_type?: 'image' | 'video' | null
   totalLikes: number
   totalPlays: number
   songCount: number
@@ -127,6 +130,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [showPublishModal, setShowPublishModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showBannerModal, setShowBannerModal] = useState(false)
   const [showStationsModal, setShowStationsModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'feed' | 'stations'>('feed')
   const [isFollowing, setIsFollowing] = useState(false)
@@ -422,6 +426,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           bio: data.bio || undefined,
           tagline: data.tagline || "Creating the future of music",
           avatar: data.avatar || undefined,
+          banner_url: data.banner_url || null,
+          banner_type: data.banner_type || null,
           totalPlays: data.totalPlays,
           songCount: data.trackCount,
           totalLikes: data.totalLikes || 0,
@@ -819,62 +825,80 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                   {/* Mobile Layout - Original Design */}
                   <div className="md:hidden space-y-0">
-                  {/* SECTION 1: TOP BANNER - Cover Art Carousel */}
+                  {/* SECTION 1: TOP BANNER - Banner or Cover Art Carousel */}
                   <div className="relative h-64 overflow-hidden group">
-                    {/* Carousel Images */}
-                    <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
-                      <div className="flex h-full">
-                        {profile.combinedMedia.slice(0, 10).map((media, index) => (
-                          <div key={media.id} className="relative w-full h-full flex-shrink-0">
-                            <div className="absolute inset-0">
-                              <Image
-                                src={media.image_url || '/radio-logo.svg'}
-                                alt={media.title || 'Cover art'}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
-                            </div>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                          </div>
-                        ))}
+                    {profile.banner_url ? (
+                      <div className="absolute inset-0">
+                        {profile.banner_type === 'video' ? (
+                          <video src={profile.banner_url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                        ) : (
+                          <Image src={profile.banner_url} alt="Profile banner" fill className="object-cover" unoptimized />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                       </div>
-                    </div>
-
-                    {/* Carousel Navigation - Left */}
-                    {carouselIndex > 0 && (
+                    ) : (
+                      <>
+                        {/* Carousel Images */}
+                        <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
+                          <div className="flex h-full">
+                            {profile.combinedMedia.slice(0, 10).map((media) => (
+                              <div key={media.id} className="relative w-full h-full flex-shrink-0">
+                                <div className="absolute inset-0">
+                                  <Image
+                                    src={media.image_url || '/radio-logo.svg'}
+                                    alt={media.title || 'Cover art'}
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                  />
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Carousel Navigation - Left */}
+                        {carouselIndex > 0 && (
+                          <button
+                            onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                          >
+                            <ChevronLeft size={20} className="text-white" />
+                          </button>
+                        )}
+                        {/* Carousel Navigation - Right */}
+                        {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
+                          <button
+                            onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                          >
+                            <ChevronRight size={20} className="text-white" />
+                          </button>
+                        )}
+                        {/* Carousel Indicators */}
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                          {profile.combinedMedia.slice(0, 10).map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setCarouselIndex(index)}
+                              className={`w-2 h-2 rounded-full transition-all ${
+                                index === carouselIndex 
+                                  ? 'bg-cyan-400 w-8' 
+                                  : 'bg-white/30 hover:bg-white/50'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {isOwnProfile && (
                       <button
-                        onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                        onClick={() => setShowBannerModal(true)}
+                        className="absolute right-4 bottom-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-xl border border-white/10 text-sm text-white hover:bg-black/60"
                       >
-                        <ChevronLeft size={20} className="text-white" />
+                        Edit banner
                       </button>
                     )}
-
-                    {/* Carousel Navigation - Right */}
-                    {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
-                      <button
-                        onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                      >
-                        <ChevronRight size={20} className="text-white" />
-                      </button>
-                    )}
-
-                    {/* Carousel Indicators */}
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                      {profile.combinedMedia.slice(0, 10).map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setCarouselIndex(index)}
-                          className={`w-2 h-2 rounded-full transition-all ${
-                            index === carouselIndex 
-                              ? 'bg-cyan-400 w-8' 
-                              : 'bg-white/30 hover:bg-white/50'
-                          }`}
-                        />
-                      ))}
-                    </div>
                   </div>
 
                   {/* Mobile Station Access Button */}
@@ -1050,9 +1074,21 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               <h3 className="font-semibold text-white truncate text-sm leading-tight">
                                 {media.title}
                               </h3>
-                              <p className="text-xs text-gray-300 truncate leading-tight mt-0.5">
-                                {formatUsername(profile.username)}
-                              </p>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <p className="text-xs text-gray-400 truncate leading-tight">
+                                  {formatUsername(profile.username)}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <div className="flex items-center gap-1">
+                                    <Play size={10} />
+                                    <span>{media.plays || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Heart size={10} />
+                                    <span>{media.likes || 0}</span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         )
@@ -1105,9 +1141,21 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               <h3 className="font-semibold text-white truncate leading-tight">
                                 {media.title}
                               </h3>
-                              <p className="text-sm text-gray-300 truncate leading-tight mt-0.5">
-                                {formatUsername(profile.username)}
-                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-sm text-gray-400 truncate leading-tight">
+                                  {formatUsername(profile.username)}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <div className="flex items-center gap-1">
+                                    <Play size={12} />
+                                    <span>{media.plays || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Heart size={12} />
+                                    <span>{media.likes || 0}</span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         )
@@ -1160,9 +1208,21 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               <h3 className="font-semibold text-white truncate leading-tight">
                                 {media.title}
                               </h3>
-                              <p className="text-sm text-gray-300 truncate leading-tight mt-0.5">
-                                {formatUsername(profile.username)}
-                              </p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-sm text-gray-400 truncate leading-tight">
+                                  {formatUsername(profile.username)}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <div className="flex items-center gap-1">
+                                    <Play size={12} />
+                                    <span>{media.plays || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Heart size={12} />
+                                    <span>{media.likes || 0}</span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         )
@@ -1944,6 +2004,17 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           isOpen={showUploadModal}
           onClose={() => setShowUploadModal(false)}
           onUploadComplete={() => {
+            fetchProfileData()
+          }}
+        />
+      )}
+
+      {/* Banner Upload Modal */}
+      {showBannerModal && (
+        <BannerUploadModal
+          isOpen={showBannerModal}
+          onClose={() => setShowBannerModal(false)}
+          onSuccess={() => {
             fetchProfileData()
           }}
         />

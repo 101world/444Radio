@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
     }
 
     const formData = await req.formData()
-    const title = formData.get('title') as string
-    const type = formData.get('type') as 'music-image' | 'image' | 'video'
+  const title = formData.get('title') as string
+  const type = formData.get('type') as 'music-image' | 'music' | 'image' | 'video'
 
     if (!title || !type) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Handle different upload types
-    if (type === 'music-image') {
+  if (type === 'music-image') {
       const audioFile = formData.get('audio') as File
       const imageFile = formData.get('image') as File
 
@@ -73,6 +73,36 @@ export async function POST(req: NextRequest) {
       uploadData.image_url = imageUpload.url
 
       // Save to combined_media table
+      const { data, error } = await supabase
+        .from('combined_media')
+        .insert([uploadData])
+        .select()
+
+      if (error) {
+        console.error('Database error:', error)
+        return NextResponse.json({ success: false, error: 'Failed to save to database' }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, data: data[0] })
+
+    } else if (type === 'music') {
+      // Audio-only upload
+      const audioFile = (formData.get('audio') as File) || (formData.get('file') as File)
+
+      if (!audioFile) {
+        return NextResponse.json({ success: false, error: 'Missing audio file' }, { status: 400 })
+      }
+
+      const audioKey = `${userId}/${Date.now()}-${audioFile.name}`
+      const audioUpload = await uploadToR2(audioFile, 'audio-files', audioKey)
+
+      if (!audioUpload.success) {
+        console.error('Audio upload error:', audioUpload.error)
+        return NextResponse.json({ success: false, error: 'Audio upload failed' }, { status: 500 })
+      }
+
+      uploadData.audio_url = audioUpload.url
+
       const { data, error } = await supabase
         .from('combined_media')
         .insert([uploadData])

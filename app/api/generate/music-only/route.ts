@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { prompt, lyrics, duration = 'medium', bitrate = 256000, sample_rate = 44100, audio_format = 'mp3' } = await req.json()
+    const { prompt, lyrics, duration = 'medium', bitrate = 256000, sample_rate = 44100, audio_format = 'mp3', language = 'English' } = await req.json()
 
     // Prompt is REQUIRED
     if (!prompt || prompt.length < 10 || prompt.length > 300) {
@@ -161,13 +161,14 @@ export async function POST(req: NextRequest) {
     }
     
     // Log for debugging
-    console.log('🎵 Music Generation Request:')
+  console.log('🎵 Music Generation Request:')
     console.log('  Prompt:', prompt)
     console.log('  Lyrics length:', formattedLyrics.length)
     console.log('  Lyrics preview:', formattedLyrics.substring(0, 100) + '...')
     console.log('  Bitrate:', bitrate)
     console.log('  Sample rate:', sample_rate)
     console.log('  Format:', audio_format)
+  console.log('  Language:', language)
 
     // Check user credits (music costs 2 credits)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -199,58 +200,112 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${userCredits} credits. Music requires 2 credits.`)
 
-    // Generate music directly with MiniMax Music-1.5
-    console.log('🎵 Calling MiniMax Music-1.5 API...')
-    
-    let output;
-    try {
-      output = await replicate.run(
-        "minimax/music-1.5",
-        {
-          input: {
-            prompt: prompt.trim(),
-            lyrics: formattedLyrics,
-            bitrate,
-            sample_rate,
-            audio_format
-          }
-        }
-      )
-      console.log('✅ MiniMax Music-1.5 API response received')
-    } catch (genError) {
-      console.error('❌ Music generation failed:', genError)
-      // NO credits deducted since generation failed
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: genError instanceof Error ? genError.message : 'Music generation failed',
-          creditsRefunded: false, // No deduction happened
-          creditsRemaining: userCredits
-        },
-        { status: 500 }
-      )
-    }
+    // Choose model based on language
+    const isEnglish = typeof language === 'string' && (language.toLowerCase() === 'english' || language.toLowerCase() === 'en')
 
-    console.log('✅ Generation succeeded, processing output...')
-    console.log('🎵 Output type:', typeof output)
-    console.log('🎵 Output:', output)
-
-    // Output is a file object with url() method
     let audioUrl: string
-    
-    if (typeof output === 'string') {
-      audioUrl = output
-    } else if (output && typeof (output as { url?: () => string }).url === 'function') {
-      audioUrl = (output as { url: () => string }).url()
-    } else if (output && typeof output === 'object' && 'url' in output) {
-      audioUrl = (output as { url: string }).url
+    if (isEnglish) {
+      // Generate music with MiniMax Music-1.5 (English)
+      console.log('🎵 Using MiniMax Music-1.5 (English) ...')
+      let output
+      try {
+        output = await replicate.run(
+          "minimax/music-1.5",
+          {
+            input: {
+              prompt: prompt.trim(),
+              lyrics: formattedLyrics,
+              bitrate,
+              sample_rate,
+              audio_format
+            }
+          }
+        )
+        console.log('✅ MiniMax Music-1.5 API response received')
+      } catch (genError) {
+        console.error('❌ Music generation failed (MiniMax):', genError)
+        // NO credits deducted since generation failed
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: genError instanceof Error ? genError.message : 'Music generation failed',
+            creditsRefunded: false,
+            creditsRemaining: userCredits
+          },
+          { status: 500 }
+        )
+      }
+
+      console.log('✅ Generation succeeded, processing output...')
+      console.log('🎵 Output type:', typeof output)
+      console.log('🎵 Output:', output)
+
+      if (typeof output === 'string') {
+        audioUrl = output
+      } else if (output && typeof (output as { url?: () => string }).url === 'function') {
+        audioUrl = (output as { url: () => string }).url()
+      } else if (output && typeof output === 'object' && 'url' in output) {
+        audioUrl = (output as { url: string }).url
+      } else {
+        console.error('❌ Unexpected output format:', output)
+        throw new Error('Invalid output format from API')
+      }
     } else {
-      console.error('❌ Unexpected output format:', output)
-      throw new Error('Invalid output format from API')
-    }
-    
-    if (!audioUrl) {
-      throw new Error('No audio URL in response')
+      // Generate music with ACE-Step for non-English
+      console.log('🎵 Using ACE-Step (Multi-language) ...')
+      try {
+        const durationMap: Record<string, number> = { short: 30, medium: 45, long: 60 }
+        const audio_length_in_s = durationMap[duration as 'short' | 'medium' | 'long'] ?? 45
+
+        const prediction = await replicate.predictions.create({
+          version: "lucataco/ace-step:latest",
+          input: {
+            // Include the lyrics inline to guide melody/words when supported
+            prompt: `${prompt.trim()}\n\nLyrics:\n${formattedLyrics.substring(0, 600)}`,
+            audio_length_in_s,
+            num_inference_steps: 50, // balanced
+            guidance_scale: 7.0,
+            seed: Math.floor(Math.random() * 1_000_000),
+            denoising_strength: 0.8
+          }
+        })
+
+        console.log('🎵 ACE-Step prediction created:', prediction.id)
+
+        let finalPrediction = prediction
+        let attempts = 0
+        const maxAttempts = 60 // ~2 minutes
+
+        while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          finalPrediction = await replicate.predictions.get(prediction.id)
+          console.log('🎵 ACE-Step generation status:', finalPrediction.status)
+          attempts++
+        }
+
+        if (finalPrediction.status !== 'succeeded') {
+          const err = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Music generation failed'
+          throw new Error(attempts >= maxAttempts ? 'Music generation timed out' : err)
+        }
+
+        const output = finalPrediction.output
+        audioUrl = Array.isArray(output) ? output[0] : output
+        if (!audioUrl) {
+          throw new Error('No audio generated')
+        }
+      } catch (genError) {
+        console.error('❌ Music generation failed (ACE-Step):', genError)
+        // NO credits deducted since generation failed
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: genError instanceof Error ? genError.message : 'Music generation failed',
+            creditsRefunded: false,
+            creditsRemaining: userCredits
+          },
+          { status: 500 }
+        )
+      }
     }
 
     console.log('🎵 Audio URL extracted:', audioUrl)

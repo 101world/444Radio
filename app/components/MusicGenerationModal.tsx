@@ -16,6 +16,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState(initialPrompt)
   const [lyrics, setLyrics] = useState('')
+  const [language, setLanguage] = useState('English')
   const [bitrate, setBitrate] = useState(256000)
   const [sampleRate, setSampleRate] = useState(44100)
   const [audioFormat, setAudioFormat] = useState('mp3')
@@ -63,6 +64,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
           title,
           prompt,
           lyrics, // Required
+          language,
           bitrate,
           sample_rate: sampleRate,
           audio_format: audioFormat
@@ -163,6 +165,30 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
                 maxLength={500}
               />
               <p className="text-xs text-gray-500">{prompt.length}/500</p>
+            </div>
+
+            {/* Language */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white">
+                Language
+              </label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                disabled={isGenerating}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30"
+              >
+                <option value="English">English</option>
+                <option value="Hindi">Hindi</option>
+                <option value="German">German</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="Italian">Italian</option>
+                <option value="Chinese">Chinese</option>
+              </select>
             </div>
 
             {/* Lyrics */}

@@ -46,10 +46,10 @@ export async function GET(
       console.error('Uploads error:', uploadsError)
     }
 
-    // Fetch username
+    // Fetch user profile basics (including banner fields)
     const { data: userData } = await supabase
       .from('users')
-      .select('username')
+      .select('username, avatar_url, bio, tagline, banner_url, banner_type')
       .eq('clerk_user_id', userId)
       .single()
 
@@ -75,6 +75,11 @@ export async function GET(
       combinedMedia: allMedia,
       uploads: uploads,
       username: userData?.username || 'Unknown User',
+      avatar: userData?.avatar_url || null,
+      bio: userData?.bio || null,
+      tagline: userData?.tagline || null,
+      banner_url: userData?.banner_url || null,
+      banner_type: userData?.banner_type || null,
       trackCount: allMedia.length,
       totalPlays: allMedia.reduce((sum, media) => sum + (media.plays || media.views || 0), 0)
     })

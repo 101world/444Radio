@@ -576,7 +576,7 @@ function CreatePageContent() {
     const res = await fetch('/api/generate/music-only', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, title, lyrics, duration })
+      body: JSON.stringify({ prompt, title, lyrics, duration, language: selectedLanguage })
     })
 
     const data = await res.json()
