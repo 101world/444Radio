@@ -1,3 +1,3 @@
-[submodule "vendor/audiomass"]
-	path = vendor/audiomass
-	url = https://github.com/pkalogiros/AudioMass.git
+[submodule "vendor/444studio"]
+	path = vendor/444studio
+	url = https://github.com/444radio/444studio.git
