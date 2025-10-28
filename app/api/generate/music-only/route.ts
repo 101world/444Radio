@@ -271,7 +271,7 @@ export async function POST(req: NextRequest) {
         })
 
         const prediction = await replicate.predictions.create({
-          version: "lucataco/ace-step:6b1a5b1e8e82f73fc60e3b9046e56f12b29ad3ac3f5ea43e4f3e84e638385068",
+          version: "280fc4f9ee507577f880a167f639c02622421d8fecf492454320311217b688f1",
           input: {
             tags: tags, // REQUIRED: genre/style tags
             lyrics: formattedLyrics.substring(0, 600), // Optional lyrics
