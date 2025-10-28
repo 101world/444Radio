@@ -12,6 +12,7 @@ import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackground from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
+import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -79,6 +80,12 @@ function CreatePageContent() {
   const [bpm, setBpm] = useState('')
   const [songDuration, setSongDuration] = useState<'short' | 'medium' | 'long'>('medium')
   const [generateCoverArt, setGenerateCoverArt] = useState(true)
+  
+  // ACE-Step parameters (for non-English)
+  const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
+  const [numInferenceSteps, setNumInferenceSteps] = useState(50)
+  const [guidanceScale, setGuidanceScale] = useState(7.0)
+  const [denoisingStrength, setDenoisingStrength] = useState(0.8)
   
   // Modal states for parameters
   const [showTitleModal, setShowTitleModal] = useState(false)
@@ -573,10 +580,26 @@ function CreatePageContent() {
   }
 
   const generateMusic = async (prompt: string, title?: string, lyrics?: string, duration: 'short' | 'medium' | 'long' = 'medium') => {
+    const requestBody: any = {
+      prompt,
+      title,
+      lyrics,
+      duration,
+      language: selectedLanguage
+    }
+
+    // Add ACE-Step parameters for non-English languages
+    if (selectedLanguage.toLowerCase() !== 'english') {
+      requestBody.audio_length_in_s = audioLengthInSeconds
+      requestBody.num_inference_steps = numInferenceSteps
+      requestBody.guidance_scale = guidanceScale
+      requestBody.denoising_strength = denoisingStrength
+    }
+
     const res = await fetch('/api/generate/music-only', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, title, lyrics, duration, language: selectedLanguage })
+      body: JSON.stringify(requestBody)
     })
 
     const data = await res.json()
@@ -1082,25 +1105,48 @@ function CreatePageContent() {
                   <button
                     onClick={async () => {
                       try {
-                        const params = new URLSearchParams()
-                        if (input && input.trim()) {
-                          params.append('description', input)
-                        }
-                        const url = `/api/lyrics/random${params.toString() ? '?' + params.toString() : ''}`
-                        const response = await fetch(url)
-                        const data = await response.json()
+                        // Check if we have language-specific structure
+                        const languageHook = getLanguageHook(selectedLanguage.toLowerCase())
                         
-                        if (data.success && data.lyrics) {
-                          setCustomLyrics(data.lyrics.lyrics)
-                          if (!genre) setGenre(data.lyrics.genre)
-                          if (!customTitle) setCustomTitle(data.lyrics.title)
+                        if (languageHook && selectedLanguage.toLowerCase() !== 'english') {
+                          // Use language-specific lyrics structure
+                          const structure = getLyricsStructureForLanguage(selectedLanguage.toLowerCase())
+                          setCustomLyrics(structure)
+                          
+                          // Also set a sample genre if available
+                          if (languageHook.genres.length > 0 && !genre) {
+                            setGenre(languageHook.genres[Math.floor(Math.random() * languageHook.genres.length)])
+                          }
+                        } else {
+                          // English: Try API first, fallback to templates
+                          const params = new URLSearchParams()
+                          if (input && input.trim()) {
+                            params.append('description', input)
+                          }
+                          const url = `/api/lyrics/random${params.toString() ? '?' + params.toString() : ''}`
+                          const response = await fetch(url)
+                          const data = await response.json()
+                          
+                          if (data.success && data.lyrics) {
+                            setCustomLyrics(data.lyrics.lyrics)
+                            if (!genre) setGenre(data.lyrics.genre)
+                            if (!customTitle) setCustomTitle(data.lyrics.title)
+                          } else {
+                            // Fallback templates for English
+                            const lyricsTemplates = [
+                              "[verse]\nWalking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day\n\n[chorus]\nLost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
+                              "[verse]\nStaring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow\n\n[chorus]\nHold me close, don't let me go\nIn this moment, we'll take it slow\nFeel the music, let it flow\nThis is all we need to know"
+                            ]
+                            const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
+                            setCustomLyrics(randomLyrics)
+                          }
                         }
                       } catch (error) {
                         console.error('Failed to fetch random lyrics:', error)
+                        // Ultimate fallback
                         const lyricsTemplates = [
-                          "Walking down this empty street\nNeon lights guide my way\nCity sounds beneath my feet\nAnother night, another day",
-                          "Lost in the rhythm of the night\nHeartbeat syncing with the bass\nEverything just feels so right\nLiving life at my own pace",
-                          "Staring at the stars above\nDreaming of a better tomorrow\nSearching for that endless love\nTrying to escape this sorrow"
+                          "[verse]\nWalking down this empty street\nNeon lights guide my way\n\n[chorus]\nLost in the rhythm of the night",
+                          "[verse]\nStaring at the stars above\nDreaming of tomorrow\n\n[chorus]\nHold me close, don't let me go"
                         ]
                         const randomLyrics = lyricsTemplates[Math.floor(Math.random() * lyricsTemplates.length)]
                         setCustomLyrics(randomLyrics)
@@ -1141,18 +1187,129 @@ function CreatePageContent() {
                     paddingRight: '2.5rem'
                   }}
                 >
-                  <option value="English">English</option>
-                  <option value="Hindi">Hindi</option>
-                  <option value="German">German</option>
-                  <option value="Spanish">Spanish</option>
-                  <option value="French">French</option>
-                  <option value="Japanese">Japanese</option>
-                  <option value="Korean">Korean</option>
-                  <option value="Portuguese">Portuguese</option>
-                  <option value="Italian">Italian</option>
-                  <option value="Chinese">Chinese</option>
+                  <option value="English">English (MiniMax)</option>
+                  <option value="chinese">中文 Chinese</option>
+                  <option value="japanese">日本語 Japanese</option>
+                  <option value="korean">한국어 Korean</option>
+                  <option value="spanish">Español Spanish</option>
+                  <option value="french">Français French</option>
+                  <option value="hindi">हिन्दी Hindi</option>
+                  <option value="german">Deutsch German</option>
+                  <option value="portuguese">Português Portuguese</option>
+                  <option value="arabic">العربية Arabic</option>
+                  <option value="italian">Italiano Italian</option>
                 </select>
+                
+                {/* Language-specific genre suggestions */}
+                {(() => {
+                  const languageHook = getLanguageHook(selectedLanguage.toLowerCase())
+                  return languageHook && (
+                    <div className="p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                      <p className="text-[10px] text-cyan-300 mb-1 font-semibold">💡 Popular Genres:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {languageHook.genres.slice(0, 4).map((g, idx) => (
+                          <span key={idx} className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-300 text-[9px] rounded">
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
+
+              {/* ACE-Step Parameters (only for non-English) */}
+              {selectedLanguage.toLowerCase() !== 'english' && (
+                <div className="space-y-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-purple-400 font-semibold text-[10px] uppercase tracking-wide">🎵 ACE-Step Model Parameters</span>
+                  </div>
+
+                  {/* Audio Length */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between">
+                      <span>Audio Length</span>
+                      <span className="text-purple-400">{audioLengthInSeconds}s</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="15"
+                      max="90"
+                      step="5"
+                      value={audioLengthInSeconds}
+                      onChange={(e) => setAudioLengthInSeconds(parseInt(e.target.value))}
+                      className="w-full accent-purple-500 h-1"
+                    />
+                    <div className="flex justify-between text-[9px] text-gray-600">
+                      <span>15s</span>
+                      <span>90s</span>
+                    </div>
+                  </div>
+
+                  {/* Inference Steps */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between">
+                      <span>Quality (Steps)</span>
+                      <span className="text-purple-400">{numInferenceSteps}</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="25"
+                      max="100"
+                      step="5"
+                      value={numInferenceSteps}
+                      onChange={(e) => setNumInferenceSteps(parseInt(e.target.value))}
+                      className="w-full accent-purple-500 h-1"
+                    />
+                    <div className="flex justify-between text-[9px] text-gray-600">
+                      <span>25 (Fast)</span>
+                      <span>100 (Best)</span>
+                    </div>
+                  </div>
+
+                  {/* Guidance Scale */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between">
+                      <span>Prompt Adherence</span>
+                      <span className="text-purple-400">{guidanceScale.toFixed(1)}</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="15"
+                      step="0.5"
+                      value={guidanceScale}
+                      onChange={(e) => setGuidanceScale(parseFloat(e.target.value))}
+                      className="w-full accent-purple-500 h-1"
+                    />
+                    <div className="flex justify-between text-[9px] text-gray-600">
+                      <span>1 (Creative)</span>
+                      <span>15 (Precise)</span>
+                    </div>
+                  </div>
+
+                  {/* Denoising Strength */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between">
+                      <span>Audio Clarity</span>
+                      <span className="text-purple-400">{denoisingStrength.toFixed(2)}</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="1"
+                      step="0.05"
+                      value={denoisingStrength}
+                      onChange={(e) => setDenoisingStrength(parseFloat(e.target.value))}
+                      className="w-full accent-purple-500 h-1"
+                    />
+                    <div className="flex justify-between text-[9px] text-gray-600">
+                      <span>0.5 (Softer)</span>
+                      <span>1.0 (Cleaner)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Genre */}
               <div className="space-y-1.5">

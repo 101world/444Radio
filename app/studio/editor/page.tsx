@@ -57,7 +57,8 @@ export default function StudioEditorPage() {
         src="/studio/index.html"
         className="flex-1 w-full border-0"
         title="444 Studio - AudioMass Editor"
-        allow="microphone; clipboard-read; clipboard-write"
+        allow="microphone; clipboard-read; clipboard-write; autoplay"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
       />
 
       {/* Bottom Save Bar */}
