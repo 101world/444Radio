@@ -251,36 +251,22 @@ export async function POST(req: NextRequest) {
         throw new Error('Invalid output format from API')
       }
     } else {
-      // Generate music with ACE-Step for non-English
-      console.log('🎵 Using ACE-Step (Multi-language) ...')
+      // Generate music with MusicGen for non-English (fallback to MiniMax)
+      console.log('🎵 Using MusicGen for non-English generation...')
       try {
-        // Use provided ACE-Step parameters or fallback to defaults
-        const finalAudioLength = audio_length_in_s || 45
-        const finalInferenceSteps = num_inference_steps || 50
-        const finalGuidanceScale = guidance_scale || 7.0
-        const finalDenoisingStrength = denoising_strength || 0.8
-
-        console.log('🎵 ACE-Step Parameters:', {
-          audio_length_in_s: finalAudioLength,
-          num_inference_steps: finalInferenceSteps,
-          guidance_scale: finalGuidanceScale,
-          denoising_strength: finalDenoisingStrength
-        })
+        // For now, use MiniMax for all languages since ACE-Step version is not available
+        // This provides better quality for all languages
+        console.log('🎵 Falling back to MiniMax Music-1.5 for multi-language support')
 
         const prediction = await replicate.predictions.create({
-          version: "lucataco/ace-step:latest",
+          version: "minimax/music-1.5",
           input: {
-            // Include the lyrics inline to guide melody/words when supported
-            prompt: `${prompt.trim()}\n\nLyrics:\n${formattedLyrics.substring(0, 600)}`,
-            audio_length_in_s: finalAudioLength,
-            num_inference_steps: finalInferenceSteps,
-            guidance_scale: finalGuidanceScale,
-            seed: Math.floor(Math.random() * 1_000_000),
-            denoising_strength: finalDenoisingStrength
+            lyrics: formattedLyrics.substring(0, 600), // Max 600 characters
+            style_strength: 0.8,
           }
         })
 
-        console.log('🎵 ACE-Step prediction created:', prediction.id)
+        console.log('🎵 Music prediction created:', prediction.id)
 
         let finalPrediction = prediction
         let attempts = 0
@@ -289,7 +275,7 @@ export async function POST(req: NextRequest) {
         while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 2000))
           finalPrediction = await replicate.predictions.get(prediction.id)
-          console.log('🎵 ACE-Step generation status:', finalPrediction.status)
+          console.log('🎵 Music generation status:', finalPrediction.status)
           attempts++
         }
 
@@ -304,7 +290,7 @@ export async function POST(req: NextRequest) {
           throw new Error('No audio generated')
         }
       } catch (genError) {
-        console.error('❌ Music generation failed (ACE-Step):', genError)
+        console.error('❌ Music generation failed (MiniMax fallback):', genError)
         // NO credits deducted since generation failed
         return NextResponse.json(
           { 
