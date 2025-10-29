@@ -39,29 +39,29 @@ export default function TimelineRuler() {
   };
 
   return (
-    <div className="h-12 bg-gray-900/80 backdrop-blur-sm border-b border-purple-500/30 flex items-stretch">
+    <div className="h-12 bg-black backdrop-blur-sm border-b border-teal-900/50 flex items-stretch">
       {/* Zoom controls */}
-      <div className="flex items-center gap-1 px-3 border-r border-purple-500/30">
+      <div className="flex items-center gap-1 px-3 border-r border-teal-900/50">
         <button
           onClick={handleZoomOut}
-          className="p-1.5 rounded hover:bg-purple-500/20 text-purple-400 transition-colors"
+          className="p-1.5 rounded hover:bg-teal-700/20 text-teal-400 transition-colors"
           title="Zoom out"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
-        <span className="text-xs text-gray-400 min-w-[40px] text-center">
+        <span className="text-xs text-gray-400 min-w-[40px] text-center font-mono">
           {Math.round(zoom * 100)}%
         </span>
         <button
           onClick={handleZoomIn}
-          className="p-1.5 rounded hover:bg-purple-500/20 text-purple-400 transition-colors"
+          className="p-1.5 rounded hover:bg-teal-700/20 text-teal-400 transition-colors"
           title="Zoom in"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
           onClick={handleZoomFit}
-          className="p-1.5 rounded hover:bg-purple-500/20 text-purple-400 transition-colors ml-1"
+          className="p-1.5 rounded hover:bg-teal-700/20 text-teal-400 transition-colors ml-1"
           title="Fit to window"
         >
           <Maximize2 className="w-4 h-4" />
@@ -85,9 +85,9 @@ export default function TimelineRuler() {
               }}
             >
               {/* Major tick */}
-              <div className="w-px h-4 bg-purple-400/50" />
+              <div className="w-px h-4 bg-teal-400/50" />
               {/* Time label */}
-              <span className="text-[10px] text-gray-400 mt-0.5 select-none">
+              <span className="text-[10px] text-teal-500 mt-0.5 select-none font-mono">
                 {formatTime(time)}
               </span>
             </div>
@@ -95,19 +95,19 @@ export default function TimelineRuler() {
 
           {/* Playhead */}
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 pointer-events-none z-10"
+            className="absolute top-0 bottom-0 w-0.5 bg-teal-400 pointer-events-none z-10 shadow-lg shadow-teal-400/50"
             style={{ 
               left: `${currentTime * zoom * 50}px`,
             }}
           >
-            <div className="w-3 h-3 bg-cyan-400 rounded-full -ml-1.5 -mt-1" />
+            <div className="w-3 h-3 bg-teal-400 rounded-full -ml-1.5 -mt-1 shadow-lg shadow-teal-400/50" />
           </div>
 
           {/* Beat grid (every second) */}
           {Array.from({ length: Math.ceil(maxTime) }).map((_, i) => (
             <div
               key={`grid-${i}`}
-              className="absolute top-0 bottom-0 w-px bg-gray-700/30"
+              className="absolute top-0 bottom-0 w-px bg-teal-900/20"
               style={{ 
                 left: `${i * zoom * 50}px`,
               }}

@@ -96,8 +96,8 @@ export default function AudioClipComponent({
       ref={clipRef}
       className={`absolute top-2 bottom-2 rounded cursor-move transition-shadow ${
         isSelected
-          ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50'
-          : 'ring-1 ring-white/20'
+          ? 'ring-2 ring-teal-400 shadow-lg shadow-teal-500/50'
+          : 'ring-1 ring-teal-900/40'
       } ${isDragging ? 'opacity-70 cursor-grabbing' : 'cursor-grab'}`}
       style={{
         left: `${clipLeft}px`,

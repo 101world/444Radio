@@ -124,11 +124,11 @@ function TrackRow({ trackId }: TrackRowProps) {
 
   return (
     <div
-      className={`bg-gray-900/50 backdrop-blur-sm rounded-lg border p-3 mb-2 relative cursor-pointer transition-all ${
+      className={`bg-black backdrop-blur-sm rounded border p-3 mb-2 relative cursor-pointer transition-all ${
         isSelected
-          ? 'border-purple-500 ring-2 ring-purple-500/50'
-          : 'border-purple-500/20 hover:border-purple-500/40'
-      } ${isDragOver ? 'border-cyan-500 ring-2 ring-cyan-500/50 bg-cyan-500/10' : ''}`}
+          ? 'border-teal-500 ring-2 ring-teal-500/50'
+          : 'border-teal-900/30 hover:border-teal-700/50'
+      } ${isDragOver ? 'border-teal-400 ring-2 ring-teal-400/50 bg-teal-500/10' : ''}`}
       onContextMenu={handleContextMenu}
       onClick={() => setSelectedTrack(trackId)}
       onDragOver={handleDragOver}
@@ -172,7 +172,7 @@ function TrackRow({ trackId }: TrackRowProps) {
               toggleMute(trackId);
             }}
             className={`p-1.5 rounded ${
-              track.mute ? 'bg-red-500/20 text-red-400' : 'bg-gray-700 text-gray-400 hover:text-white'
+              track.mute ? 'bg-red-500/20 text-red-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
             }`}
             title="Mute"
           >
@@ -186,7 +186,7 @@ function TrackRow({ trackId }: TrackRowProps) {
               toggleSolo(trackId);
             }}
             className={`p-1.5 rounded ${
-              track.solo ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700 text-gray-400 hover:text-white'
+              track.solo ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
             }`}
             title="Solo"
           >
@@ -199,7 +199,7 @@ function TrackRow({ trackId }: TrackRowProps) {
               e.stopPropagation();
               removeTrack(trackId);
             }}
-            className="p-1.5 rounded bg-gray-700 text-red-400 hover:bg-red-500/20"
+            className="p-1.5 rounded bg-gray-900 text-red-400 hover:bg-red-500/20 border border-teal-900/30"
             title="Delete track"
           >
             <Trash2 className="w-3 h-3" />
@@ -208,13 +208,13 @@ function TrackRow({ trackId }: TrackRowProps) {
       </div>
 
       {/* Clips area */}
-      <div className="relative h-20 bg-black/20 rounded overflow-x-auto overflow-y-hidden">
+      <div className="relative h-20 bg-black/40 rounded overflow-x-auto overflow-y-hidden border border-teal-900/20">
         {isEmpty ? (
           /* Empty state with drop zone */
-          <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-gray-700 rounded">
+          <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-teal-900/40 rounded">
             <div className="text-center">
-              <Music className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-              <p className="text-xs text-gray-500">Drop audio files here</p>
+              <Music className="w-8 h-8 text-teal-700 mx-auto mb-2" />
+              <p className="text-xs text-teal-600">Drop audio files here</p>
             </div>
           </div>
         ) : (
@@ -244,13 +244,13 @@ export default function Timeline() {
   const { tracks } = useStudio();
 
   return (
-    <div className="flex-1 overflow-y-auto bg-black/20 backdrop-blur-xl p-4">
+    <div className="flex-1 overflow-y-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30">
       {tracks.length === 0 ? (
         <div className="h-full flex items-center justify-center">
           <div className="text-center">
-            <Music className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <Music className="w-16 h-16 text-teal-700 mx-auto mb-4" />
             <p className="text-gray-400 text-lg">No tracks yet</p>
-            <p className="text-gray-500 text-sm">Click "Add Track" to get started</p>
+            <p className="text-teal-600 text-sm">Click "Add Track" to get started</p>
           </div>
         </div>
       ) : (
