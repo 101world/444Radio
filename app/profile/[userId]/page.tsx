@@ -1761,76 +1761,83 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         </div>
                       </div>
 
-                      {/* RIGHT SIDE: Vinyl-Style Digital Player */}
+                      {/* RIGHT SIDE: Profile Banner & Cover Art Grid */}
                       <div className="sticky top-6 self-start space-y-4">
-                        {/* Compact Vinyl Player with Amber Display */}
-                        <div className="relative bg-gradient-to-br from-black via-gray-900 to-black rounded-2xl border border-cyan-500/20 shadow-2xl p-6">
-                          
-                          {/* Amber Display - Retro Style */}
-                          <div className="mb-4 bg-black/60 rounded-xl border-2 border-amber-600/40 p-4">
-                            <div className="bg-gradient-to-br from-amber-900/30 to-amber-950/50 rounded-lg p-4 border border-amber-700/30">
-                              <div className="text-amber-400 font-mono text-center space-y-1">
-                                <div className="text-[10px] text-amber-600/60 uppercase tracking-widest">Now Playing</div>
-                                <div className="text-base font-bold truncate">
-                                  {currentTrack?.title || profile.combinedMedia[0]?.title || 'No track selected'}
-                                </div>
-                                <div className="text-sm text-amber-500/80 truncate">
-                                  @{profile.username}
+                        {/* Banner Section */}
+                        <div className="relative h-64 rounded-2xl overflow-hidden group border border-cyan-500/20 shadow-2xl">
+                          {profile.banner_url ? (
+                            <div className="absolute inset-0">
+                              {profile.banner_type === 'video' ? (
+                                <video src={profile.banner_url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                              ) : (
+                                <Image src={profile.banner_url} alt="Profile banner" fill className="object-cover" unoptimized />
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Carousel Images */}
+                              <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
+                                <div className="flex h-full">
+                                  {profile.combinedMedia.slice(0, 10).map((media) => (
+                                    <div key={media.id} className="relative w-full h-full flex-shrink-0">
+                                      <div className="absolute inset-0">
+                                        <Image
+                                          src={media.image_url || '/radio-logo.svg'}
+                                          alt={media.title || 'Cover art'}
+                                          fill
+                                          className="object-cover"
+                                          unoptimized
+                                        />
+                                      </div>
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
-                            </div>
-                          </div>
-
-                          {/* Compact Vinyl Record */}
-                          <div className="relative w-48 h-48 mx-auto mb-4">
-                            {/* Outer Vinyl Disc */}
-                            <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 via-black to-gray-900 shadow-2xl transition-transform ${
-                              isPlaying ? 'animate-spin-slow' : ''
-                            }`} style={{ animationDuration: '3s' }}>
-                              {/* Vinyl Grooves Effect */}
-                              <div className="absolute inset-0 rounded-full" style={{
-                                background: 'repeating-radial-gradient(circle at center, transparent 0px, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)'
-                              }}></div>
-                              {/* Center Label */}
-                              <div className="absolute inset-[20%] rounded-full bg-gradient-to-br from-cyan-950 to-cyan-900 border-2 border-cyan-500/30 shadow-inner"></div>
-                            </div>
-
-                            {/* Album Cover - Centered on Vinyl */}
-                            <div className={`relative w-[60%] h-[60%] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full overflow-hidden shadow-2xl border-4 border-black/50 transition-transform ${
-                              isPlaying ? 'animate-spin-slow' : ''
-                            }`} style={{ animationDuration: '3s' }}>
-                              <img
-                                src={currentTrack?.imageUrl || profile.combinedMedia[0]?.image_url || '/radio-logo.svg'}
-                                alt={currentTrack?.title || 'Album'}
-                                className="w-full h-full object-cover"
-                              />
-                              {/* Vinyl Shine Effect */}
-                              <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/40"></div>
-                            </div>
-
-                            {/* Center Spindle */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-gradient-to-br from-gray-800 to-black border-2 border-gray-700 shadow-2xl z-10">
-                              <div className="absolute inset-1 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-700 shadow-inner"></div>
-                            </div>
-                          </div>
-
-                          {/* Play/Pause Button */}
-                          <button
-                            onClick={() => {
-                              if (currentTrack && playingId === currentTrack.id) {
-                                togglePlayPause()
-                              } else if (profile.combinedMedia[0]) {
-                                handlePlay(profile.combinedMedia[0])
-                              }
-                            }}
-                            className="w-12 h-12 mx-auto bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/50 hover:from-cyan-500 hover:to-cyan-300 transition-all hover:scale-110"
-                          >
-                            {isPlaying ? (
-                              <Pause className="text-black" size={20} />
-                            ) : (
-                              <Play className="text-black ml-0.5" size={20} />
-                            )}
-                          </button>
+                              {/* Carousel Navigation - Left */}
+                              {carouselIndex > 0 && (
+                                <button
+                                  onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
+                                  className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                                >
+                                  <ChevronLeft size={20} className="text-white" />
+                                </button>
+                              )}
+                              {/* Carousel Navigation - Right */}
+                              {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
+                                <button
+                                  onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                                >
+                                  <ChevronRight size={20} className="text-white" />
+                                </button>
+                              )}
+                              {/* Carousel Indicators */}
+                              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                                {profile.combinedMedia.slice(0, 10).map((_, index) => (
+                                  <button
+                                    key={index}
+                                    onClick={() => setCarouselIndex(index)}
+                                    className={`w-2 h-2 rounded-full transition-all ${
+                                      index === carouselIndex 
+                                        ? 'bg-cyan-400 w-8' 
+                                        : 'bg-white/30 hover:bg-white/50'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                          {/* Edit Banner Button */}
+                          {isOwnProfile && (
+                            <button
+                              onClick={() => setShowBannerModal(true)}
+                              className="absolute right-4 bottom-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-xl border border-white/10 text-sm text-white hover:bg-black/60 transition-colors"
+                            >
+                              Edit banner
+                            </button>
+                          )}
                         </div>
 
                         {/* Hoverable Cover Art Grid */}
