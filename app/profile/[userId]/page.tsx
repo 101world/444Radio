@@ -1532,14 +1532,142 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   </div>
                   {/* End Mobile Layout */}
 
-                  {/* Desktop Layout - Split View */}
+                  {/* Desktop Layout - Full Width Banner + Horizontal Tracks + Vertical List */}
                   <div className="hidden md:block">
-                    <div className="grid grid-cols-2 gap-6 p-6">
-                      {/* LEFT SIDE: Track List / Station Feed */}
-                      <div className="flex flex-col h-[calc(100vh-200px)]">
+                    <div className="space-y-6">
+                      {/* FULL-WIDTH BANNER */}
+                      <div className="relative h-80 rounded-2xl overflow-hidden group border border-cyan-500/20 shadow-2xl">
+                        {profile.banner_url ? (
+                          <div className="absolute inset-0">
+                            {profile.banner_type === 'video' ? (
+                              <video src={profile.banner_url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                            ) : (
+                              <Image src={profile.banner_url} alt="Profile banner" fill className="object-cover" unoptimized />
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Carousel Images */}
+                            <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
+                              <div className="flex h-full">
+                                {profile.combinedMedia.slice(0, 10).map((media) => (
+                                  <div key={media.id} className="relative w-full h-full flex-shrink-0">
+                                    <div className="absolute inset-0">
+                                      <Image
+                                        src={media.image_url || '/radio-logo.svg'}
+                                        alt={media.title || 'Cover art'}
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                      />
+                                    </div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Carousel Navigation - Left */}
+                            {carouselIndex > 0 && (
+                              <button
+                                onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                              >
+                                <ChevronLeft size={20} className="text-white" />
+                              </button>
+                            )}
+                            {/* Carousel Navigation - Right */}
+                            {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
+                              <button
+                                onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
+                              >
+                                <ChevronRight size={20} className="text-white" />
+                              </button>
+                            )}
+                            {/* Carousel Indicators */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                              {profile.combinedMedia.slice(0, 10).map((_, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => setCarouselIndex(index)}
+                                  className={`w-2 h-2 rounded-full transition-all ${
+                                    index === carouselIndex 
+                                      ? 'bg-cyan-400 w-8' 
+                                      : 'bg-white/30 hover:bg-white/50'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                        {/* Edit Banner Button */}
+                        {isOwnProfile && (
+                          <button
+                            onClick={() => setShowBannerModal(true)}
+                            className="absolute right-4 bottom-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-xl border border-white/10 text-sm text-white hover:bg-black/60 transition-colors"
+                          >
+                            Edit banner
+                          </button>
+                        )}
+                      </div>
+
+                      {/* HORIZONTAL SCROLLING RECENT TRACKS */}
+                      <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-cyan-500/20 p-6 shadow-2xl">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-bold text-white">Recent Tracks</h3>
+                          <div className="text-xs text-gray-400">{profile.combinedMedia.length} total</div>
+                        </div>
+                        <div className="relative">
+                          <div className="overflow-x-auto custom-scrollbar pb-2">
+                            <div className="flex gap-4 w-max">
+                              {profile.combinedMedia.slice(0, 20).map((media) => (
+                                <div 
+                                  key={media.id}
+                                  className="group relative w-40 flex-shrink-0"
+                                >
+                                  <div 
+                                    className="relative aspect-square rounded-xl overflow-hidden cursor-pointer border border-cyan-500/20 hover:border-cyan-400/60 transition-all hover:scale-105 shadow-lg"
+                                    onClick={() => handlePlay(media)}
+                                  >
+                                    <img 
+                                      src={media.image_url || '/radio-logo.svg'}
+                                      alt={media.title || 'Cover'}
+                                      className="w-full h-full object-cover"
+                                    />
+                                    {/* Play overlay */}
+                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <div className="w-12 h-12 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg">
+                                        <Play className="text-black ml-0.5" size={20} fill="currentColor" />
+                                      </div>
+                                    </div>
+                                    {/* Playing indicator */}
+                                    {playingId === media.id && isPlaying && (
+                                      <div className="absolute top-2 right-2">
+                                        <div className="flex gap-0.5">
+                                          <div className="w-1 h-3 bg-cyan-400 animate-pulse"></div>
+                                          <div className="w-1 h-4 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                                          <div className="w-1 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="mt-2">
+                                    <p className="text-sm text-white font-semibold truncate">{media.title}</p>
+                                    <p className="text-xs text-gray-400 truncate">{media.likes} likes • {media.plays || 0} plays</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* VERTICAL TRACK LIST WITH TABS */}
+                      <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-cyan-500/20 shadow-2xl overflow-hidden">
                         {/* Sub Tabs */}
-                        <div className="bg-black/90 backdrop-blur-xl border-b border-cyan-500/20 flex-shrink-0">
-                          <div className="flex gap-2 p-3">
+                        <div className="border-b border-cyan-500/20">
+                          <div className="flex gap-2 p-4">
                             <button
                               onClick={() => setActiveSubTab('tracks')}
                               className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
@@ -1566,7 +1694,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
                           {activeSubTab === 'tracks' ? (
                             // Track List View
                             <div className="space-y-2 p-3">
@@ -1758,122 +1886,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               </div>
                             </div>
                           )}
-                        </div>
-                      </div>
-
-                      {/* RIGHT SIDE: Profile Banner & Cover Art Grid */}
-                      <div className="sticky top-6 self-start space-y-4">
-                        {/* Banner Section */}
-                        <div className="relative h-64 rounded-2xl overflow-hidden group border border-cyan-500/20 shadow-2xl">
-                          {profile.banner_url ? (
-                            <div className="absolute inset-0">
-                              {profile.banner_type === 'video' ? (
-                                <video src={profile.banner_url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
-                              ) : (
-                                <Image src={profile.banner_url} alt="Profile banner" fill className="object-cover" unoptimized />
-                              )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                            </div>
-                          ) : (
-                            <>
-                              {/* Carousel Images */}
-                              <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
-                                <div className="flex h-full">
-                                  {profile.combinedMedia.slice(0, 10).map((media) => (
-                                    <div key={media.id} className="relative w-full h-full flex-shrink-0">
-                                      <div className="absolute inset-0">
-                                        <Image
-                                          src={media.image_url || '/radio-logo.svg'}
-                                          alt={media.title || 'Cover art'}
-                                          fill
-                                          className="object-cover"
-                                          unoptimized
-                                        />
-                                      </div>
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                              {/* Carousel Navigation - Left */}
-                              {carouselIndex > 0 && (
-                                <button
-                                  onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
-                                  className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                                >
-                                  <ChevronLeft size={20} className="text-white" />
-                                </button>
-                              )}
-                              {/* Carousel Navigation - Right */}
-                              {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
-                                <button
-                                  onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
-                                  className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                                >
-                                  <ChevronRight size={20} className="text-white" />
-                                </button>
-                              )}
-                              {/* Carousel Indicators */}
-                              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                                {profile.combinedMedia.slice(0, 10).map((_, index) => (
-                                  <button
-                                    key={index}
-                                    onClick={() => setCarouselIndex(index)}
-                                    className={`w-2 h-2 rounded-full transition-all ${
-                                      index === carouselIndex 
-                                        ? 'bg-cyan-400 w-8' 
-                                        : 'bg-white/30 hover:bg-white/50'
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            </>
-                          )}
-                          {/* Edit Banner Button */}
-                          {isOwnProfile && (
-                            <button
-                              onClick={() => setShowBannerModal(true)}
-                              className="absolute right-4 bottom-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-xl border border-white/10 text-sm text-white hover:bg-black/60 transition-colors"
-                            >
-                              Edit banner
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Hoverable Cover Art Grid */}
-                        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-cyan-500/20 p-6 shadow-2xl">
-                          <h3 className="text-lg font-bold text-white mb-4">Recent Tracks</h3>
-                          <div className="grid grid-cols-3 gap-3">
-                            {profile.combinedMedia.slice(0, 12).map((media) => (
-                              <div 
-                                key={media.id}
-                                className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer border border-cyan-500/20 hover:border-cyan-400/60 transition-all hover:scale-105"
-                                onClick={() => handlePlay(media)}
-                              >
-                                <img 
-                                  src={media.image_url || '/radio-logo.svg'}
-                                  alt={media.title || 'Cover'}
-                                  className="w-full h-full object-cover"
-                                />
-                                {/* Play overlay */}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <div className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg">
-                                    <Play className="text-black ml-0.5" size={16} fill="currentColor" />
-                                  </div>
-                                </div>
-                                {/* Playing indicator */}
-                                {playingId === media.id && isPlaying && (
-                                  <div className="absolute top-2 right-2">
-                                    <div className="flex gap-0.5">
-                                      <div className="w-1 h-2 bg-cyan-400 animate-pulse"></div>
-                                      <div className="w-1 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                                      <div className="w-1 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
                         </div>
                       </div>
                     </div>
