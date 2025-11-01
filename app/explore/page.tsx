@@ -379,7 +379,7 @@ export default function ExplorePage() {
                             className="text-xs text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {formatUsername(media.users?.username || media.username)}
+                            {formatUsername(media.users?.username || media.username || media.user_id)}
                           </Link>
                           <div className="flex items-center gap-2 text-[10px] text-gray-500">
                             <div className="flex items-center gap-0.5">
@@ -445,7 +445,7 @@ export default function ExplorePage() {
                             className="text-sm text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {formatUsername(media.users?.username || media.username)}
+                            {formatUsername(media.users?.username || media.username || media.user_id)}
                           </Link>
                           <div className="flex items-center gap-2 text-xs text-gray-500">
                             <div className="flex items-center gap-0.5">

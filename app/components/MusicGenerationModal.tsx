@@ -207,7 +207,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
                 disabled={isGenerating}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30"
               >
-                <option value="English">English (MiniMax)</option>
+                <option value="English">English</option>
                 <option value="chinese">中文 Chinese</option>
                 <option value="japanese">日本語 Japanese</option>
                 <option value="korean">한국어 Korean</option>
@@ -250,8 +250,8 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block text-sm font-medium text-white">
-                  Lyrics
-                  <span className="text-white/40 ml-2">(10-3000 characters)</span>
+                  Lyrics <span className="text-red-500">*</span>
+                  <span className="text-white/40 ml-2">(10-3000 characters, required)</span>
                 </label>
                 <button
                   type="button"
@@ -266,12 +266,14 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
                 value={lyrics}
                 onChange={(e) => setLyrics(e.target.value.slice(0, 3000))}
                 disabled={isGenerating}
+                required
                 placeholder="[intro]&#10;Your intro...&#10;&#10;[verse]&#10;Verse 1 lyrics here...&#10;&#10;[chorus]&#10;Chorus lyrics here...&#10;&#10;[outro]&#10;Your outro..."
                 rows={10}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all resize-none font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 maxLength={3000}
               />
-              <p className="text-xs text-gray-500">{lyrics.length}/3000 • Use tags: [intro] [verse] [chorus] [bridge] [outro]</p>
+              <p className="text-xs text-red-400 font-medium">⚠️ Lyrics are mandatory! Use tags: [intro] [verse] [chorus] [bridge] [outro]</p>
+              <p className="text-xs text-gray-500">{lyrics.length}/3000 characters</p>
             </div>
 
             {/* Advanced Parameters (Collapsible) */}
