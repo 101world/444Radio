@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { X, User, CreditCard, LogOut, Upload, Check } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
+import Toast from './Toast'
 
 interface ProfileSettingsModalProps {
   isOpen: boolean
@@ -22,6 +23,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
   const [avatarPreview, setAvatarPreview] = useState(currentAvatar || '')
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   // Update local state when props change
   useEffect(() => {
@@ -45,6 +47,9 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
 
   const handleSaveProfile = async () => {
     setSaving(true)
+    setSaveSuccess(false)
+    setToast(null)
+    
     try {
       const formData = new FormData()
       formData.append('username', username)
@@ -57,24 +62,50 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
         body: formData
       })
 
-      if (res.ok) {
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        // Show success state
         setSaveSuccess(true)
-        // Refresh the page to update all username references
+        
+        // Update local state with new values from server
+        setUsername(data.username)
+        if (data.avatar) {
+          setAvatarPreview(data.avatar)
+        }
+        
+        // Show success toast
+        setToast({
+          message: 'Profile updated successfully!',
+          type: 'success'
+        })
+        
+        // Call onUpdate callback if provided (refreshes parent component)
+        onUpdate?.()
+        
+        // Use Next.js router.refresh() to update server components
         router.refresh()
+        
+        // Close modal after showing success message
         setTimeout(() => {
           setSaveSuccess(false)
-          onUpdate?.()
           onClose()
-          // Force a full page reload to ensure all data is fresh
-          window.location.reload()
         }, 1500)
       } else {
-        const data = await res.json()
-        alert(data.error || 'Failed to update profile')
+        // Show error toast
+        const errorMsg = data.error || 'Failed to update profile'
+        console.error('Profile update failed:', errorMsg)
+        setToast({
+          message: errorMsg,
+          type: 'error'
+        })
       }
     } catch (error) {
       console.error('Failed to update profile:', error)
-      alert('Failed to update profile')
+      setToast({
+        message: 'Network error. Please check your connection and try again.',
+        type: 'error'
+      })
     } finally {
       setSaving(false)
     }
@@ -283,6 +314,15 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
           </button>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   )
 }
