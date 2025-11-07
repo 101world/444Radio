@@ -163,19 +163,21 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
             {/* Song Title */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white">
-                Song Title
-                <span className="text-white/40 ml-2">(3-100 characters)</span>
+                Song Title <span className="text-red-500">*</span>
+                <span className="text-white/40 ml-2">(3-100 characters, required)</span>
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value.slice(0, 100))}
                 disabled={isGenerating}
+                required
                 placeholder="Enter your song title..."
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 maxLength={100}
               />
-              <p className="text-xs text-gray-500">{title.length}/100</p>
+              <p className="text-xs text-red-400 font-medium">⚠️ Title is mandatory (3-100 characters)</p>
+              <p className="text-xs text-gray-500">{title.length}/100 characters</p>
             </div>
 
             {/* Music Style/Prompt */}
