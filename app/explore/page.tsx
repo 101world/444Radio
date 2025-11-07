@@ -294,15 +294,15 @@ export default function ExplorePage() {
               </div>
             </div>
 
-            {/* LIVE STATIONS - If any are live */}
+            {/* LIVE STATIONS - Compact section if any are live */}
             {liveStations.length > 0 && (
-              <div className="py-6 px-6 border-b border-white/5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                    <RadioIcon className="text-red-500" size={28} />
+              <div className="py-3 px-6 border-b border-white/5">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                    <RadioIcon className="text-red-500" size={16} />
                     Live Now
-                    <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center gap-1">
-                      <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                    <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded-full flex items-center gap-0.5">
+                      <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
                       {liveStations.length}
                     </span>
                   </h2>
@@ -310,17 +310,17 @@ export default function ExplorePage() {
                     href="https://www.thesocialtwin.com/billboard"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                    className="text-cyan-400 hover:text-cyan-300 text-xs font-medium transition-colors"
                   >
-                    View Charts →
+                    Charts →
                   </a>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
                   {liveStations.map(station => (
                     <div
                       key={station.id}
                       onClick={() => router.push(`/profile/${station.owner.userId}`)}
-                      className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl overflow-hidden hover:border-red-500/50 transition-all cursor-pointer group"
+                      className="flex-shrink-0 w-24 bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-lg overflow-hidden hover:border-red-500/50 transition-all cursor-pointer group"
                     >
                       <div className="relative aspect-square bg-gradient-to-br from-red-900/20 to-purple-900/20">
                         {station.coverUrl ? (
@@ -332,23 +332,22 @@ export default function ExplorePage() {
                           />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <RadioIcon className="text-red-400/30" size={48} />
+                            <RadioIcon className="text-red-400/30" size={20} />
                           </div>
                         )}
-                        <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 rounded-full flex items-center gap-1 text-xs font-bold">
-                          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                        <div className="absolute top-1 right-1 px-1 py-0.5 bg-red-500 rounded text-[8px] font-bold flex items-center gap-0.5">
+                          <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
                           LIVE
                         </div>
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Play className="text-white" size={32} fill="white" />
+                          <Play className="text-white" size={20} fill="white" />
                         </div>
                       </div>
-                      <div className="p-3">
-                        <h3 className="font-bold text-sm mb-1 truncate text-white">{station.title}</h3>
-                        <p className="text-xs text-gray-400 truncate">{station.owner.username}</p>
-                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
-                          <Users size={12} />
-                          {station.listenerCount} listening
+                      <div className="p-1.5">
+                        <h3 className="font-bold text-[10px] truncate text-white leading-tight">{station.owner.username}</h3>
+                        <div className="flex items-center gap-0.5 mt-0.5 text-[9px] text-gray-500">
+                          <Users size={8} />
+                          {station.listenerCount}
                         </div>
                       </div>
                     </div>
