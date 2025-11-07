@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 // GET /api/media/[id]/lyrics - Get lyrics for a media item
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth()
@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const mediaId = params.id
+    const { id: mediaId } = await params
 
     // Fetch lyrics from combined_media table
     const { data, error } = await supabase
