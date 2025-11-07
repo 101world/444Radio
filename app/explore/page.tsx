@@ -54,6 +54,7 @@ interface LiveStation {
   isLive: boolean
   listenerCount: number
   owner: {
+    userId: string
     username: string
     profileImage: string | null
   }
@@ -104,11 +105,31 @@ export default function ExplorePage() {
 
   const fetchLiveStations = async () => {
     try {
-      const res = await fetch('/api/station/list')
+      // Get all live stations from existing API
+      const res = await fetch('/api/station')
       const data = await res.json()
-      if (data.success) {
-        // Only show live stations
-        setLiveStations(data.stations.filter((s: LiveStation) => s.isLive))
+      if (data.success && data.stations) {
+        // Format for our interface
+        const formatted = data.stations.map((s: {
+          id: string
+          username: string
+          user_id: string
+          current_track_title: string | null
+          current_track_image: string | null
+          listener_count: number
+        }) => ({
+          id: s.id,
+          title: `${s.username}'s Station`,
+          coverUrl: s.current_track_image || '/radio-logo.svg',
+          isLive: true,
+          listenerCount: s.listener_count || 0,
+          owner: {
+            userId: s.user_id,
+            username: s.username,
+            profileImage: null
+          }
+        }))
+        setLiveStations(formatted)
       }
     } catch (error) {
       console.error('Failed to fetch live stations:', error)
@@ -285,18 +306,20 @@ export default function ExplorePage() {
                       {liveStations.length}
                     </span>
                   </h2>
-                  <Link 
-                    href="/stations"
+                  <a 
+                    href="https://www.thesocialtwin.com/billboard"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
                   >
-                    View All Stations →
-                  </Link>
+                    View Charts →
+                  </a>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {liveStations.map(station => (
                     <div
                       key={station.id}
-                      onClick={() => router.push(`/station/${station.id}`)}
+                      onClick={() => router.push(`/profile/${station.owner.userId}`)}
                       className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl overflow-hidden hover:border-red-500/50 transition-all cursor-pointer group"
                     >
                       <div className="relative aspect-square bg-gradient-to-br from-red-900/20 to-purple-900/20">
