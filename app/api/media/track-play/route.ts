@@ -40,6 +40,35 @@ export async function POST(req: Request) {
       })
     }
 
+    // Check if this user has already played this song today
+    if (userId) {
+      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      
+      // Try to insert play credit (will fail if already exists due to UNIQUE constraint)
+      const { error: playError } = await supabase
+        .from('play_credits')
+        .insert({
+          media_id: mediaId,
+          user_id: userId,
+          played_on: today
+        })
+
+      // If insert failed due to duplicate, user already played today
+      if (playError) {
+        // Check if it's a duplicate error (PostgreSQL code 23505)
+        if (playError.code === '23505') {
+          return NextResponse.json({ 
+            success: true,
+            plays: currentMedia.plays || 0,
+            message: 'Already counted today - 1 play per user per day',
+            alreadyCounted: true
+          })
+        }
+        // Other errors - log but continue
+        console.error('Error inserting play credit:', playError)
+      }
+    }
+
     const currentPlays = currentMedia.plays || 0
 
     // Increment play count
@@ -62,7 +91,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ 
       success: true,
-      plays: data?.plays || 0
+      plays: data?.plays || 0,
+      message: 'Play counted'
     })
   } catch (error) {
     console.error('Error tracking play:', error)
