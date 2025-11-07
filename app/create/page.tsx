@@ -1203,7 +1203,7 @@ function CreatePageContent() {
                     paddingRight: '2.5rem'
                   }}
                 >
-                  <option value="English">English (MiniMax)</option>
+                  <option value="English">English</option>
                   <option value="chinese">中文 Chinese</option>
                   <option value="japanese">日本語 Japanese</option>
                   <option value="korean">한국어 Korean</option>
