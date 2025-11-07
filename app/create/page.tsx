@@ -98,6 +98,9 @@ function CreatePageContent() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<unknown | null>(null)
+  
+  // Title validation state
+  const [showTitleError, setShowTitleError] = useState(false)
 
   // Close all modals
   const closeAllModals = () => {
@@ -340,7 +343,15 @@ function CreatePageContent() {
 
     // MANDATORY: Check for title before music generation
     if (selectedType === 'music' && !customTitle.trim()) {
-      alert('🎵 Please enter a title for your track before generating!')
+      // Open parameters section and highlight title field
+      setShowTitleError(true)
+      // Scroll to parameters section smoothly
+      const paramsSection = document.getElementById('parameters-section')
+      if (paramsSection) {
+        paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      // Auto-clear error after 5 seconds
+      setTimeout(() => setShowTitleError(false), 5000)
       return
     }
 
@@ -348,14 +359,27 @@ function CreatePageContent() {
     if (selectedType === 'music' && customTitle.trim()) {
       const titleLength = customTitle.trim().length
       if (titleLength < 3) {
-        alert('❌ Title must be at least 3 characters long')
+        setShowTitleError(true)
+        const paramsSection = document.getElementById('parameters-section')
+        if (paramsSection) {
+          paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+        setTimeout(() => setShowTitleError(false), 5000)
         return
       }
       if (titleLength > 100) {
-        alert('❌ Title must be 100 characters or less')
+        setShowTitleError(true)
+        const paramsSection = document.getElementById('parameters-section')
+        if (paramsSection) {
+          paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+        setTimeout(() => setShowTitleError(false), 5000)
         return
       }
     }
+
+    // Clear title error if validation passed
+    setShowTitleError(false)
 
     // Check credits before generation
     const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0
@@ -1112,7 +1136,7 @@ function CreatePageContent() {
             </div>
 
             {/* Content - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div id="parameters-section" className="flex-1 overflow-y-auto p-5 space-y-4">
               
               {/* Lyrics - FIRST & MANDATORY */}
               <div className="space-y-1.5">
@@ -1353,7 +1377,11 @@ function CreatePageContent() {
                   minLength={3}
                   maxLength={100}
                   className={`w-full px-3 py-2 bg-white/5 border rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none transition-all ${
-                    customTitle.trim().length > 0 && customTitle.trim().length < 3
+                    showTitleError
+                      ? 'border-red-500 animate-pulse ring-2 ring-red-500/50'
+                      : customTitle.trim().length >= 3
+                      ? 'border-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.5)]'
+                      : customTitle.trim().length > 0 && customTitle.trim().length < 3
                       ? 'border-red-500/50 focus:border-red-500'
                       : 'border-white/10 focus:border-cyan-500/50'
                   }`}
