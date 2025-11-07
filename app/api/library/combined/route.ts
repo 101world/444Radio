@@ -68,6 +68,25 @@ export async function POST(req: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+    // Fetch lyrics from music_library if music_id is provided
+    let lyrics = null
+    if (music_id) {
+      const musicResponse = await fetch(
+        `${supabaseUrl}/rest/v1/music_library?id=eq.${music_id}&select=lyrics`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`
+          }
+        }
+      )
+      const musicData = await musicResponse.json()
+      if (Array.isArray(musicData) && musicData.length > 0 && musicData[0].lyrics) {
+        lyrics = musicData[0].lyrics
+        console.log('✅ Fetched lyrics from music_library:', lyrics.substring(0, 50) + '...')
+      }
+    }
+
     // Save to combined_media_library
     const response = await fetch(
       `${supabaseUrl}/rest/v1/combined_media_library`,
@@ -88,6 +107,7 @@ export async function POST(req: NextRequest) {
           music_prompt,
           image_prompt,
           title,
+          lyrics, // Include lyrics from music_library
           is_published: false // Not published to profile yet
         })
       }
@@ -282,6 +302,7 @@ export async function PATCH(req: NextRequest) {
             audio_prompt: combined.music_prompt || '',
             image_prompt: combined.image_prompt || '',
             title: combined.title || 'Untitled',
+            lyrics: combined.lyrics || null, // Include lyrics
             genre: combined.genre,
             mood: combined.mood,
             bpm: combined.bpm,
