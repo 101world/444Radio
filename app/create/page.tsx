@@ -13,6 +13,7 @@ import HolographicBackground from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
+import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -37,6 +38,7 @@ interface Message {
 function CreatePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { playTrack, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
   const [isMobile, setIsMobile] = useState(false)
   
   useEffect(() => {
@@ -54,7 +56,6 @@ function CreatePageContent() {
   const [input, setInput] = useState('')
   const [selectedType, setSelectedType] = useState<GenerationType>('music')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [playingId, setPlayingId] = useState<string | null>(null)
   const [showMusicModal, setShowMusicModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
   const [showReleaseModal, setShowReleaseModal] = useState(false)
@@ -116,7 +117,6 @@ function CreatePageContent() {
   }
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({})
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -638,24 +638,21 @@ function CreatePageContent() {
     }
   }
 
-  const handlePlayPause = (messageId: string, audioUrl: string) => {
-    const audio = audioRefs.current[messageId]
+  const handlePlayPause = (messageId: string, audioUrl: string, title: string = 'Generated Track') => {
+    const track = {
+      id: messageId,
+      audioUrl: audioUrl,
+      title: title,
+      artist: 'AI Generated',
+      imageUrl: undefined
+    }
     
-    if (!audio) {
-      const newAudio = new Audio(audioUrl)
-      audioRefs.current[messageId] = newAudio
-      newAudio.play()
-      setPlayingId(messageId)
-      
-      newAudio.onended = () => setPlayingId(null)
+    // If this track is already playing, toggle pause/play
+    if (currentTrack?.id === messageId) {
+      togglePlayPause()
     } else {
-      if (playingId === messageId) {
-        audio.pause()
-        setPlayingId(null)
-      } else {
-        audio.play()
-        setPlayingId(messageId)
-      }
+      // Play the new track
+      playTrack(track)
     }
   }
 
@@ -735,10 +732,10 @@ function CreatePageContent() {
                     {/* Header with Big Play Button */}
                     <div className="flex items-center gap-5 p-6 border-b border-white/10">
                       <button
-                        onClick={() => handlePlayPause(message.id, message.result!.audioUrl!)}
+                        onClick={() => handlePlayPause(message.id, message.result!.audioUrl!, message.result!.title || 'Generated Track')}
                         className="w-20 h-20 rounded-full bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-2xl shadow-cyan-500/50 transition-all active:scale-95 hover:scale-105"
                       >
-                        {playingId === message.id ? <Pause size={32} className="text-black" /> : <Play size={32} className="text-black ml-1" />}
+                        {currentTrack?.id === message.id && isPlaying ? <Pause size={32} className="text-black" /> : <Play size={32} className="text-black ml-1" />}
                       </button>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xl font-bold text-white truncate mb-1">{message.result.title}</h4>
@@ -753,7 +750,7 @@ function CreatePageContent() {
                       </button>
                     </div>
 
-                    {/* Audio Player */}
+                    {/* Audio Player - Now using global player, kept for visual reference */}
                     <audio src={message.result.audioUrl} controls className="w-full px-6 py-4" />
 
                     {/* Lyrics */}

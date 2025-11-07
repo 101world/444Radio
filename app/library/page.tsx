@@ -9,6 +9,7 @@ import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
+import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 
 interface LibraryMusic {
   id: string
@@ -43,13 +44,13 @@ interface LibraryCombined {
 export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
+  const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
   const [activeTab, setActiveTab] = useState<'music' | 'images' | 'combined'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [combinedItems, setCombinedItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [playingId, setPlayingId] = useState<string | null>(null)
 
   // ESC key handler for desktop navigation to profile
   useEffect(() => {
@@ -377,23 +378,34 @@ export default function LibraryPage() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => {
-                            if (playingId === item.id) {
-                              const audio = document.getElementById(`audio-${item.id}`) as HTMLAudioElement;
-                              audio?.pause();
-                              setPlayingId(null);
+                            const track = {
+                              id: item.id,
+                              audioUrl: item.audio_url,
+                              title: item.title || 'Untitled',
+                              artist: user?.firstName || 'You',
+                              imageUrl: undefined,
+                              userId: user?.id
+                            }
+                            
+                            // If this track is playing, toggle pause/play
+                            if (currentTrack?.id === item.id) {
+                              togglePlayPause()
                             } else {
-                              musicItems.forEach(i => {
-                                const audio = document.getElementById(`audio-${i.id}`) as HTMLAudioElement;
-                                if (audio) audio.pause();
-                              });
-                              const audio = document.getElementById(`audio-${item.id}`) as HTMLAudioElement;
-                              audio?.play();
-                              setPlayingId(item.id);
+                              // Set playlist to all music items and play this one
+                              const allTracks = musicItems.map(i => ({
+                                id: i.id,
+                                audioUrl: i.audio_url,
+                                title: i.title || 'Untitled',
+                                artist: user?.firstName || 'You',
+                                imageUrl: undefined,
+                                userId: user?.id
+                              }))
+                              setPlaylist(allTracks, musicItems.findIndex(i => i.id === item.id))
                             }
                           }}
                           className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all shadow-lg shadow-cyan-500/20 active:scale-95"
                         >
-                          {playingId === item.id ? (
+                          {currentTrack?.id === item.id && isPlaying ? (
                             <Pause size={18} className="text-black" />
                           ) : (
                             <Play size={18} className="text-black ml-0.5" />
@@ -414,13 +426,6 @@ export default function LibraryPage() {
                           <Trash2 size={16} className="text-red-400" />
                         </button>
                       </div>
-
-                      <audio
-                        id={`audio-${item.id}`}
-                        src={item.audio_url}
-                        onEnded={() => setPlayingId(null)}
-                        className="hidden"
-                      />
                     </div>
                   </div>
                 ))}
