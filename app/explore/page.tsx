@@ -8,7 +8,7 @@ import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
-import { Search, Play, Pause, ArrowLeft, FileText } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users } from 'lucide-react'
 import { formatUsername } from '../../lib/username'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import LyricsModal from '../components/LyricsModal'
@@ -47,10 +47,23 @@ interface Artist {
   trackCount: number
 }
 
+interface LiveStation {
+  id: string
+  title: string
+  coverUrl: string | null
+  isLive: boolean
+  listenerCount: number
+  owner: {
+    username: string
+    profileImage: string | null
+  }
+}
+
 export default function ExplorePage() {
   const router = useRouter()
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
+  const [liveStations, setLiveStations] = useState<LiveStation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchBox, setShowSearchBox] = useState(true)
@@ -86,7 +99,21 @@ export default function ExplorePage() {
 
   useEffect(() => {
     fetchCombinedMedia()
+    fetchLiveStations()
   }, [])
+
+  const fetchLiveStations = async () => {
+    try {
+      const res = await fetch('/api/station/list')
+      const data = await res.json()
+      if (data.success) {
+        // Only show live stations
+        setLiveStations(data.stations.filter((s: LiveStation) => s.isLive))
+      }
+    } catch (error) {
+      console.error('Failed to fetch live stations:', error)
+    }
+  }
 
   const fetchCombinedMedia = async () => {
     setLoading(true)
@@ -245,6 +272,67 @@ export default function ExplorePage() {
                 </div>
               </div>
             </div>
+
+            {/* LIVE STATIONS - If any are live */}
+            {liveStations.length > 0 && (
+              <div className="py-6 px-6 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                    <RadioIcon className="text-red-500" size={28} />
+                    Live Now
+                    <span className="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded-full flex items-center gap-1">
+                      <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      {liveStations.length}
+                    </span>
+                  </h2>
+                  <Link 
+                    href="/stations"
+                    className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                  >
+                    View All Stations →
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {liveStations.map(station => (
+                    <div
+                      key={station.id}
+                      onClick={() => router.push(`/station/${station.id}`)}
+                      className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-xl overflow-hidden hover:border-red-500/50 transition-all cursor-pointer group"
+                    >
+                      <div className="relative aspect-square bg-gradient-to-br from-red-900/20 to-purple-900/20">
+                        {station.coverUrl ? (
+                          <Image
+                            src={station.coverUrl}
+                            alt={station.title}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <RadioIcon className="text-red-400/30" size={48} />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 rounded-full flex items-center gap-1 text-xs font-bold">
+                          <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                          LIVE
+                        </div>
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Play className="text-white" size={32} fill="white" />
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-bold text-sm mb-1 truncate text-white">{station.title}</h3>
+                        <p className="text-xs text-gray-400 truncate">{station.owner.username}</p>
+                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
+                          <Users size={12} />
+                          {station.listenerCount} listening
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* SECTION 2: HORIZONTAL SCROLL - Full Width, Clean, Less Padding */}
             <div className="py-4 px-6 border-b border-white/5">

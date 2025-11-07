@@ -81,6 +81,46 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
+    const id = searchParams.get('id')
+
+    if (id) {
+      // Get station by ID (from new stations table)
+      const { data: station, error } = await supabase
+        .from('stations')
+        .select(`
+          *,
+          users:user_id (
+            clerk_user_id,
+            username,
+            profile_image_url
+          )
+        `)
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        console.error('Failed to fetch station:', error)
+        return NextResponse.json({ error: 'Station not found' }, { status: 404 })
+      }
+
+      const formatted = {
+        id: station.id,
+        title: station.title,
+        description: station.description,
+        coverUrl: station.cover_url,
+        genre: station.genre,
+        isLive: station.is_live,
+        listenerCount: station.listener_count || 0,
+        lastLiveAt: station.last_live_at,
+        owner: {
+          userId: station.users?.clerk_user_id,
+          username: station.users?.username || 'Unknown',
+          profileImage: station.users?.profile_image_url
+        }
+      }
+
+      return NextResponse.json({ success: true, station: formatted })
+    }
 
     if (!userId) {
       // Get all live stations
