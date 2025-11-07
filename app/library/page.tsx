@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
+import LyricsModal from '../components/LyricsModal'
+import CoverArtModal from '../components/CoverArtModal'
 
 interface LibraryMusic {
   id: string
@@ -51,6 +53,14 @@ export default function LibraryPage() {
   const [combinedItems, setCombinedItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  
+  // Modal states
+  const [showLyricsModal, setShowLyricsModal] = useState(false)
+  const [selectedLyricsId, setSelectedLyricsId] = useState<string | null>(null)
+  const [selectedLyricsTitle, setSelectedLyricsTitle] = useState<string | null>(null)
+  const [showCoverModal, setShowCoverModal] = useState(false)
+  const [selectedCoverUrl, setSelectedCoverUrl] = useState<string | null>(null)
+  const [selectedCoverTitle, setSelectedCoverTitle] = useState<string | null>(null)
 
   // ESC key handler for desktop navigation to profile
   useEffect(() => {
@@ -305,6 +315,18 @@ export default function LibraryPage() {
                     {/* Hover Actions */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-end gap-2 p-3">
                       <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedCoverUrl(item.image_url)
+                          setSelectedCoverTitle(item.title || item.prompt)
+                          setShowCoverModal(true)
+                        }}
+                        className="w-full py-2.5 bg-purple-500/20 backdrop-blur-xl rounded-lg hover:bg-purple-500/40 transition-colors border border-purple-500/30 flex items-center justify-center gap-2"
+                      >
+                        <ImageViewIcon size={16} className="text-purple-400" />
+                        <span className="text-purple-400 text-xs font-semibold">View</span>
+                      </button>
+                      <button
                         onClick={(e) => { e.stopPropagation(); handleDownload(item.image_url, `${item.title || 'image'}.webp`); }}
                         className="w-full py-2.5 bg-cyan-500/20 backdrop-blur-xl rounded-lg hover:bg-cyan-500/40 transition-colors border border-cyan-500/30 flex items-center justify-center gap-2"
                       >
@@ -415,8 +437,22 @@ export default function LibraryPage() {
                         <button
                           onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
                           className="hidden sm:flex w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 items-center justify-center transition-all active:scale-95"
+                          title="Download"
                         >
                           <Download size={16} className="text-cyan-400" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedLyricsId(item.id)
+                            setSelectedLyricsTitle(item.title || 'Untitled')
+                            setShowLyricsModal(true)
+                          }}
+                          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-purple-500/30 hover:border-purple-400 hover:bg-purple-500/20 flex items-center justify-center transition-all active:scale-95"
+                          title="View Lyrics"
+                        >
+                          <FileText size={16} className="text-purple-400" />
                         </button>
 
                         <button
@@ -518,6 +554,34 @@ export default function LibraryPage() {
 
       {/* Floating Navigation Button */}
       <FloatingNavButton />
+
+      {/* Lyrics Modal */}
+      {selectedLyricsId && (
+        <LyricsModal
+          isOpen={showLyricsModal}
+          onClose={() => {
+            setShowLyricsModal(false)
+            setSelectedLyricsId(null)
+            setSelectedLyricsTitle(null)
+          }}
+          mediaId={selectedLyricsId}
+          title={selectedLyricsTitle || undefined}
+        />
+      )}
+
+      {/* Cover Art Modal */}
+      {selectedCoverUrl && (
+        <CoverArtModal
+          isOpen={showCoverModal}
+          onClose={() => {
+            setShowCoverModal(false)
+            setSelectedCoverUrl(null)
+            setSelectedCoverTitle(null)
+          }}
+          imageUrl={selectedCoverUrl}
+          title={selectedCoverTitle || undefined}
+        />
+      )}
     </div>
   )
 }

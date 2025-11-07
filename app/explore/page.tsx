@@ -8,9 +8,10 @@ import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
-import { Search, Play, Pause, ArrowLeft } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText } from 'lucide-react'
 import { formatUsername } from '../../lib/username'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
+import LyricsModal from '../components/LyricsModal'
 
 // Lazy load heavy 3D background
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
@@ -53,6 +54,11 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchBox, setShowSearchBox] = useState(true)
+  
+  // Lyrics modal state
+  const [showLyricsModal, setShowLyricsModal] = useState(false)
+  const [selectedLyricsId, setSelectedLyricsId] = useState<string | null>(null)
+  const [selectedLyricsTitle, setSelectedLyricsTitle] = useState<string | null>(null)
   
   const { 
     currentTrack: globalCurrentTrack, 
@@ -389,6 +395,20 @@ export default function ExplorePage() {
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Lyrics Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedLyricsId(media.id)
+                          setSelectedLyricsTitle(media.title)
+                          setShowLyricsModal(true)
+                        }}
+                        className="p-1.5 hover:bg-purple-500/20 rounded-lg transition-colors border border-purple-500/30 flex-shrink-0 opacity-0 group-hover:opacity-100"
+                        title="View Lyrics"
+                      >
+                        <FileText size={14} className="text-purple-400" />
+                      </button>
                     </div>
                   )
                 })}
@@ -455,6 +475,20 @@ export default function ExplorePage() {
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Lyrics Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedLyricsId(media.id)
+                          setSelectedLyricsTitle(media.title)
+                          setShowLyricsModal(true)
+                        }}
+                        className="p-2 hover:bg-purple-500/20 rounded-lg transition-colors border border-purple-500/30 flex-shrink-0"
+                        title="View Lyrics"
+                      >
+                        <FileText size={16} className="text-purple-400" />
+                      </button>
                     </div>
                   )
                 })}
@@ -509,6 +543,20 @@ export default function ExplorePage() {
         showPromptToggle={true}
         onTogglePrompt={() => setShowSearchBox(!showSearchBox)}
       />
+
+      {/* Lyrics Modal */}
+      {selectedLyricsId && (
+        <LyricsModal
+          isOpen={showLyricsModal}
+          onClose={() => {
+            setShowLyricsModal(false)
+            setSelectedLyricsId(null)
+            setSelectedLyricsTitle(null)
+          }}
+          mediaId={selectedLyricsId}
+          title={selectedLyricsTitle || undefined}
+        />
+      )}
     </div>
   )
 }
