@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock } from 'lucide-react'
+import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
+import ProfileSettingsModal from './ProfileSettingsModal'
 
 interface FloatingNavButtonProps {
   onTogglePrompt?: () => void
@@ -13,6 +14,7 @@ interface FloatingNavButtonProps {
 
 export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = false }: FloatingNavButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const pathname = usePathname()
   const { user } = useUser()
 
@@ -94,6 +96,30 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
               </Link>
             )
           })}
+
+          {/* Settings Button - Last Item */}
+          <button
+            onClick={() => {
+              setShowSettingsModal(true)
+              setIsOpen(false)
+            }}
+            className="group relative flex items-center gap-3 transition-all duration-300 animate-slide-in"
+            style={{ animationDelay: `${(showPromptToggle ? navItems.length + 1 : navItems.length) * 50}ms` }}
+          >
+            {/* Label */}
+            <div className="absolute right-16 bg-black/90 backdrop-blur-xl border border-cyan-500/30 rounded-xl px-4 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+              <span className="text-sm font-medium text-cyan-300">Settings</span>
+            </div>
+            
+            {/* Icon Button */}
+            <div className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg bg-black/80 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400 hover:scale-105">
+              <Settings 
+                size={20} 
+                className="text-cyan-400"
+                strokeWidth={2.5}
+              />
+            </div>
+          </button>
         </div>
       )}
 
@@ -118,6 +144,16 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
         <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm -z-10"
           onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && user && (
+        <ProfileSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          currentUsername=""
+          currentAvatar=""
         />
       )}
     </div>
