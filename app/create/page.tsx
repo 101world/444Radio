@@ -338,6 +338,25 @@ function CreatePageContent() {
       return
     }
 
+    // MANDATORY: Check for title before music generation
+    if (selectedType === 'music' && !customTitle.trim()) {
+      alert('🎵 Please enter a title for your track before generating!')
+      return
+    }
+
+    // Validate title length if provided
+    if (selectedType === 'music' && customTitle.trim()) {
+      const titleLength = customTitle.trim().length
+      if (titleLength < 3) {
+        alert('❌ Title must be at least 3 characters long')
+        return
+      }
+      if (titleLength > 100) {
+        alert('❌ Title must be 100 characters or less')
+        return
+      }
+    }
+
     // Check credits before generation
     const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0
     if (userCredits !== null && userCredits < creditsNeeded) {
@@ -1322,14 +1341,26 @@ function CreatePageContent() {
 
               {/* Title */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Title</label>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  Title <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder="Enter song title..."
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                  placeholder="Enter song title... (Required)"
+                  required
+                  minLength={3}
+                  maxLength={100}
+                  className={`w-full px-3 py-2 bg-white/5 border rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none transition-all ${
+                    customTitle.trim().length > 0 && customTitle.trim().length < 3
+                      ? 'border-red-500/50 focus:border-red-500'
+                      : 'border-white/10 focus:border-cyan-500/50'
+                  }`}
                 />
+                {customTitle.trim().length > 0 && customTitle.trim().length < 3 && (
+                  <p className="text-xs text-red-400">Title must be at least 3 characters</p>
+                )}
               </div>
 
               {/* Song Duration */}
