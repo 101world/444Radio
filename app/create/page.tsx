@@ -343,13 +343,17 @@ function CreatePageContent() {
 
     // MANDATORY: Check for title before music generation
     if (selectedType === 'music' && !customTitle.trim()) {
+      // Open the lyrics modal first
+      setShowLyricsModal(true)
       // Open parameters section and highlight title field
       setShowTitleError(true)
-      // Scroll to parameters section smoothly
-      const paramsSection = document.getElementById('parameters-section')
-      if (paramsSection) {
-        paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
+      // Scroll to parameters section smoothly after modal opens
+      setTimeout(() => {
+        const paramsSection = document.getElementById('parameters-section')
+        if (paramsSection) {
+          paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
       // Auto-clear error after 5 seconds
       setTimeout(() => setShowTitleError(false), 5000)
       return
@@ -359,20 +363,26 @@ function CreatePageContent() {
     if (selectedType === 'music' && customTitle.trim()) {
       const titleLength = customTitle.trim().length
       if (titleLength < 3) {
+        setShowLyricsModal(true)
         setShowTitleError(true)
-        const paramsSection = document.getElementById('parameters-section')
-        if (paramsSection) {
-          paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
+        setTimeout(() => {
+          const paramsSection = document.getElementById('parameters-section')
+          if (paramsSection) {
+            paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 100)
         setTimeout(() => setShowTitleError(false), 5000)
         return
       }
       if (titleLength > 100) {
+        setShowLyricsModal(true)
         setShowTitleError(true)
-        const paramsSection = document.getElementById('parameters-section')
-        if (paramsSection) {
-          paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
+        setTimeout(() => {
+          const paramsSection = document.getElementById('parameters-section')
+          if (paramsSection) {
+            paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 100)
         setTimeout(() => setShowTitleError(false), 5000)
         return
       }
