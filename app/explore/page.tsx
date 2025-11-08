@@ -64,7 +64,6 @@ export default function ExplorePage() {
   const router = useRouter()
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
-  const [liveStations, setLiveStations] = useState<LiveStation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchBox, setShowSearchBox] = useState(true)
@@ -100,41 +99,7 @@ export default function ExplorePage() {
 
   useEffect(() => {
     fetchCombinedMedia()
-    fetchLiveStations()
   }, [])
-
-  const fetchLiveStations = async () => {
-    try {
-      // Get all live stations from existing API
-      const res = await fetch('/api/station')
-      const data = await res.json()
-      if (data.success && data.stations) {
-        // Format for our interface
-        const formatted = data.stations.map((s: {
-          id: string
-          username: string
-          user_id: string
-          current_track_title: string | null
-          current_track_image: string | null
-          listener_count: number
-        }) => ({
-          id: s.id,
-          title: `${s.username}'s Station`,
-          coverUrl: s.current_track_image || '/radio-logo.svg',
-          isLive: true,
-          listenerCount: s.listener_count || 0,
-          owner: {
-            userId: s.user_id,
-            username: s.username,
-            profileImage: null
-          }
-        }))
-        setLiveStations(formatted)
-      }
-    } catch (error) {
-      console.error('Failed to fetch live stations:', error)
-    }
-  }
 
   const fetchCombinedMedia = async () => {
     setLoading(true)
@@ -293,68 +258,6 @@ export default function ExplorePage() {
                 </div>
               </div>
             </div>
-
-            {/* LIVE STATIONS - Compact section if any are live */}
-            {liveStations.length > 0 && (
-              <div className="py-3 px-6 border-b border-white/5">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                    <RadioIcon className="text-red-500" size={16} />
-                    Live Now
-                    <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-[10px] rounded-full flex items-center gap-0.5">
-                      <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                      {liveStations.length}
-                    </span>
-                  </h2>
-                  <a 
-                    href="https://www.thesocialtwin.com/billboard"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-cyan-400 hover:text-cyan-300 text-xs font-medium transition-colors"
-                  >
-                    Charts →
-                  </a>
-                </div>
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
-                  {liveStations.map(station => (
-                    <div
-                      key={station.id}
-                      onClick={() => router.push(`/profile/${station.owner.userId}`)}
-                      className="flex-shrink-0 w-24 bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-lg overflow-hidden hover:border-red-500/50 transition-all cursor-pointer group"
-                    >
-                      <div className="relative aspect-square bg-gradient-to-br from-red-900/20 to-purple-900/20">
-                        {station.coverUrl ? (
-                          <Image
-                            src={station.coverUrl}
-                            alt={station.title}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <RadioIcon className="text-red-400/30" size={20} />
-                          </div>
-                        )}
-                        <div className="absolute top-1 right-1 px-1 py-0.5 bg-red-500 rounded text-[8px] font-bold flex items-center gap-0.5">
-                          <span className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                          LIVE
-                        </div>
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Play className="text-white" size={20} fill="white" />
-                        </div>
-                      </div>
-                      <div className="p-1.5">
-                        <h3 className="font-bold text-[10px] truncate text-white leading-tight">{station.owner.username}</h3>
-                        <div className="flex items-center gap-0.5 mt-0.5 text-[9px] text-gray-500">
-                          <Users size={8} />
-                          {station.listenerCount}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* SECTION 2: HORIZONTAL SCROLL - Full Width, Clean, Less Padding */}
             <div className="py-4 px-6 border-b border-white/5">

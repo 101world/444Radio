@@ -901,55 +901,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     )}
                   </div>
 
-                  {/* Mobile Station Access Button */}
-                  {(isLive || isOwnProfile) && (
-                    <div className="px-6 py-4 border-b border-white/5">
-                      <button
-                        onClick={async () => {
-                          if (isOwnProfile && !isLive) {
-                            // Auto go live when owner clicks
-                            await toggleLive()
-                          }
-                          setActiveSubTab('station')
-                        }}
-                        className={`w-full p-4 rounded-xl border transition-all ${
-                          isLive 
-                            ? 'bg-gradient-to-r from-red-900/30 to-red-950/30 border-red-500/30 hover:from-red-900/40 hover:to-red-950/40' 
-                            : 'bg-gradient-to-r from-gray-900/30 to-gray-950/30 border-gray-500/30 hover:from-gray-900/40 hover:to-gray-950/40'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${isLive ? 'bg-red-500/20' : 'bg-gray-500/20'}`}>
-                              <RadioIcon size={20} className={isLive ? 'text-red-400' : 'text-gray-400'} />
-                            </div>
-                            <div className="text-left">
-                              <div className="flex items-center gap-2">
-                                <span className="text-white font-bold">
-                                  {isOwnProfile ? 'My Station' : `${profile.username}'s Station`}
-                                </span>
-                                {isLive && (
-                                  <div className="flex items-center gap-1">
-                                    <Circle size={8} className="fill-red-500 text-red-500 animate-pulse" />
-                                    <span className="text-xs text-red-400 font-bold">LIVE</span>
-                                  </div>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-400">
-                                {isLive 
-                                  ? `${liveListeners} listening now` 
-                                  : isOwnProfile 
-                                    ? 'Start broadcasting' 
-                                    : 'Station offline'}
-                              </p>
-                            </div>
-                          </div>
-                          <ChevronRight size={20} className="text-gray-400" />
-                        </div>
-                      </button>
-                    </div>
-                  )}
-
                   {/* SECTION 2: HORIZONTAL SCROLL - Recent Tracks */}
                   <div className="py-4 px-6 border-b border-white/5">
                     <h2 className="text-2xl font-bold mb-3 relative z-10">🎵 Recent Tracks</h2>
@@ -1950,24 +1901,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-2 md:p-3 shadow-2xl">
             <div className="flex items-center justify-between px-2 md:px-4">
-              {/* Left: Username + Stations + Upload (if own) */}
+              {/* Left: Username + Upload (if own) */}
               <div className="flex items-center gap-1.5 md:gap-3 min-w-0 flex-1">
                 <span className="text-xs md:text-sm font-black text-white truncate">
                   @{profile?.username || 'Loading...'}
                 </span>
-                
-                {/* Stations Button - Hide text on mobile */}
-                <div className="hidden md:block w-px h-4 bg-white/20"></div>
-                <button 
-                  onClick={() => setShowStationsModal(true)}
-                  className="px-2 md:px-3 py-1 bg-gradient-to-r from-cyan-600 to-cyan-800 hover:from-cyan-700 hover:to-cyan-900 rounded-full transition-all shadow-lg hover:scale-105 flex-shrink-0"
-                  title="Stations"
-                >
-                  <div className="flex items-center gap-1 md:gap-1.5">
-                    <Users size={12} className="text-white" />
-                    <span className="hidden md:inline text-xs font-black text-white">Stations</span>
-                  </div>
-                </button>
                 
                 {/* Upload Icon (Only for own profile) */}
                 {isOwnProfile && (
@@ -2037,22 +1975,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             fetchProfileData()
           }}
         />
-      )}
-
-      {/* Stations Modal */}
-      {showStationsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl">
-          <div className="bg-cyan-950/30 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl p-6 max-w-md w-full">
-            <h2 className="text-2xl font-black text-white mb-3">My Stations</h2>
-            <p className="text-gray-400 mb-6 text-sm">Feature coming soon! Create and manage your custom radio stations.</p>
-            <button
-              onClick={() => setShowStationsModal(false)}
-              className="w-full px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg transition-all hover:scale-105 font-bold text-sm"
-            >
-              Close
-            </button>
-          </div>
-        </div>
       )}
 
       {/* Create Post Modal */}
