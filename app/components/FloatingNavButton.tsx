@@ -29,12 +29,12 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
 
   return (
     <>
-      {/* Desktop-only Hamburger Menu */}
+      {/* Mobile-only Hamburger Menu */}
       {!hideOnDesktop && (
         <div 
-          className="fixed z-50 hidden md:block" 
+          className="fixed z-50 md:hidden" 
           style={{ 
-            top: '1rem', 
+            top: '66.67%', 
             right: '1rem'
           }}
         >
