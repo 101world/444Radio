@@ -18,6 +18,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { isLive, currentTrack, username, title } = body
 
+    console.log('📻 Station POST request:', { userId, isLive, username, currentTrack: currentTrack?.id })
+
+    // Get username from users table if not provided
+    let finalUsername = username
+    if (!finalUsername || finalUsername === 'Unknown User') {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('username')
+        .eq('clerk_user_id', userId)
+        .single()
+      
+      if (userError) {
+        console.error('❌ Failed to fetch username:', userError)
+        return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 })
+      }
+      
+      finalUsername = userData?.username || 'Anonymous'
+      console.log('✅ Fetched username from database:', finalUsername)
+    }
+
     // Check if station exists
     const { data: existingStation } = await supabase
       .from('live_stations')
@@ -26,9 +46,11 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (existingStation) {
+      console.log('📝 Updating existing station:', existingStation.id)
       // Update existing station
       const updateData: any = {
         is_live: isLive,
+        username: finalUsername, // Update username in case it changed
         current_track_id: currentTrack?.id || null,
         current_track_title: currentTrack?.title || null,
         current_track_image: currentTrack?.image_url || null,
@@ -48,7 +70,10 @@ export async function POST(request: NextRequest) {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Update error:', error)
+        throw error
+      }
 
       // If going offline, cleanup listeners
       if (!isLive) {
@@ -58,14 +83,16 @@ export async function POST(request: NextRequest) {
           .eq('station_id', existingStation.id)
       }
 
+      console.log('✅ Station updated successfully')
       return NextResponse.json({ success: true, station: data })
     } else {
+      console.log('🆕 Creating new station for user:', userId)
       // Create new station
       const { data, error } = await supabase
         .from('live_stations')
         .insert({
           user_id: userId,
-          username: username,
+          username: finalUsername,
           is_live: isLive,
           current_track_id: currentTrack?.id || null,
           current_track_title: currentTrack?.title || null,
@@ -75,7 +102,12 @@ export async function POST(request: NextRequest) {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Insert error:', error)
+        throw error
+      }
+      
+      console.log('✅ Station created successfully')
       return NextResponse.json({ success: true, station: data })
     }
   } catch (error) {
