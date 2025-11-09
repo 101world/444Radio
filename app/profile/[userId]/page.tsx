@@ -1662,42 +1662,18 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         </div>
                       </div>
 
-                      {/* VERTICAL TRACK LIST WITH TABS */}
+                      {/* VERTICAL TRACK LIST */}
                       <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-cyan-500/20 shadow-2xl overflow-hidden">
-                        {/* Sub Tabs */}
-                        <div className="border-b border-cyan-500/20">
-                          <div className="flex gap-2 p-4">
-                            <button
-                              onClick={() => setActiveSubTab('tracks')}
-                              className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                                activeSubTab === 'tracks'
-                                  ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                              }`}
-                            >
-                              All Tracks
-                            </button>
-                            <button
-                              onClick={() => setActiveSubTab('station')}
-                              className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                                activeSubTab === 'station'
-                                  ? 'bg-gradient-to-r from-red-600 to-red-400 text-white shadow-lg shadow-red-500/30'
-                                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                              }`}
-                            >
-                              <RadioIcon size={16} />
-                              Station
-                              {isLive && <Circle size={8} className="fill-red-500 text-red-500 animate-pulse" />}
-                            </button>
-                          </div>
+                        {/* Header */}
+                        <div className="border-b border-cyan-500/20 p-4">
+                          <h3 className="text-lg font-bold text-white">All Tracks</h3>
                         </div>
 
                         {/* Content Area */}
                         <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-                          {activeSubTab === 'tracks' ? (
-                            // Track List View
-                            <div className="space-y-2 p-3">
-                              {profile.combinedMedia.map((media, index) => {
+                          {/* Track List View */}
+                          <div className="space-y-2 p-3">
+                            {profile.combinedMedia.map((media, index) => {
                                 const isCurrentlyPlaying = playingId === media.id
                                 const hasAudio = !!media.audio_url
                                 
@@ -1763,128 +1739,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             </div>
                           )
                         })}
-                            </div>
-                          ) : (
-                            // Station Feed View
-                            <div className="space-y-4 p-3">
-                              {/* Live Station Header */}
-                              <div className="bg-gradient-to-r from-red-900/30 to-red-950/30 rounded-xl p-4 border border-red-500/30">
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <Circle size={12} className={`fill-red-500 text-red-500 ${isLive ? 'animate-pulse' : ''}`} />
-                                    <span className="text-white font-bold">{isLive ? 'LIVE NOW' : 'OFFLINE'}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                                    <Users size={14} />
-                                    <span>{liveListeners} listening</span>
-                                  </div>
-                                </div>
-                                {isOwnProfile && (
-                                  <button
-                                    onClick={toggleLive}
-                                    className={`p-2 rounded-lg font-bold transition-all flex items-center gap-2 ${
-                                      isLive
-                                        ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30'
-                                        : 'bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30'
-                                    }`}
-                                    title={isLive ? 'End Broadcast' : 'Go Live'}
-                                  >
-                                    {isLive ? (
-                                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
-                                        <rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor"/>
-                                      </svg>
-                                    ) : (
-                                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
-                                        <circle cx="8" cy="8" r="6" fill="currentColor"/>
-                                      </svg>
-                                    )}
-                                    <span className="text-xs">{isLive ? 'End' : 'Go Live'}</span>
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* Currently Playing in Station */}
-                              {isLive && currentTrack && (
-                                <div className="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/30">
-                                  <div className="text-xs text-cyan-400 uppercase mb-2">Now Playing on Station</div>
-                                  <div className="flex items-center gap-3">
-                                    <img
-                                      src={currentTrack.imageUrl}
-                                      alt={currentTrack.title}
-                                      className="w-12 h-12 rounded-lg"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <h4 className="text-white font-bold truncate">{currentTrack.title}</h4>
-                                      <p className="text-sm text-gray-400 truncate">@{profile.username}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Chat/Feed Messages */}
-                              <div className="bg-black/40 rounded-xl border border-white/10 flex flex-col h-[400px]">
-                                {/* Messages */}
-                                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                                  {chatMessages.length === 0 ? (
-                                    <div className="text-center text-gray-500 mt-8">
-                                      <RadioIcon size={32} className="mx-auto mb-2 opacity-50" />
-                                      <p className="text-sm">{isLive ? 'Start the conversation!' : 'Station is offline'}</p>
-                                    </div>
-                                  ) : (
-                                    chatMessages.map((msg) => (
-                                      <div key={msg.id} className={`${
-                                        msg.type === 'track' ? 'bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3' : ''
-                                      }`}>
-                                        {msg.type === 'track' ? (
-                                          <div className="flex items-center gap-2 text-sm">
-                                            <Music size={14} className="text-cyan-400" />
-                                            <span className="text-cyan-400 font-bold">{msg.username}</span>
-                                            <span className="text-gray-400">played</span>
-                                            <span className="text-white font-semibold">{msg.message}</span>
-                                          </div>
-                                        ) : (
-                                          <div>
-                                            <span className="text-cyan-400 font-bold text-sm">{msg.username}: </span>
-                                            <span className="text-white text-sm">{msg.message}</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))
-                                  )}
-                                </div>
-
-                                {/* Chat Input */}
-                                {isLive && (
-                                  <div className="border-t border-white/10 p-3">
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="text"
-                                        value={chatInput}
-                                        onChange={(e) => setChatInput(e.target.value)}
-                                        onKeyPress={(e) => {
-                                          if (e.key === 'Enter' && chatInput.trim()) {
-                                            sendMessage()
-                                          }
-                                        }}
-                                        placeholder="Type a message..."
-                                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500/50"
-                                      />
-                                      <button
-                                        onClick={() => {
-                                          if (chatInput.trim()) {
-                                            sendMessage()
-                                          }
-                                        }}
-                                        className="bg-cyan-600 hover:bg-cyan-500 rounded-lg px-4 py-2 transition-all"
-                                      >
-                                        <Send size={16} className="text-white" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>
