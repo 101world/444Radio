@@ -1153,7 +1153,10 @@ function CreatePageContent() {
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-red-400 uppercase tracking-wide">Lyrics *</label>
                   <button
-                    onClick={async () => {
+                    type="button"
+                    onClick={async (e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                       try {
                         // Check if we have language-specific structure
                         const languageHook = getLanguageHook(selectedLanguage.toLowerCase())
