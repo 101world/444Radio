@@ -145,13 +145,28 @@ export async function GET(request: NextRequest) {
         .eq('is_live', true)
         .order('started_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching live stations:', error)
+        // Return empty stations on error instead of throwing
+        return NextResponse.json({ success: true, stations: [] })
+      }
+      
+      console.log('📻 Fetched live stations:', data?.length || 0)
       
       // Format the response to include profile image
-      const formattedStations = data?.map(station => ({
-        ...station,
-        profile_image: station.users?.avatar_url || null
-      })) || []
+      const formattedStations = data?.map(station => {
+        console.log('Station data:', {
+          id: station.id,
+          username: station.username,
+          user_id: station.user_id,
+          has_users_relation: !!station.users,
+          avatar: station.users?.avatar_url
+        })
+        return {
+          ...station,
+          profile_image: station.users?.avatar_url || null
+        }
+      }) || []
       
       return NextResponse.json({ success: true, stations: formattedStations })
     }

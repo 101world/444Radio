@@ -102,13 +102,24 @@ export default function ExplorePage() {
   useEffect(() => {
     fetchCombinedMedia()
     fetchLiveStations()
+    
+    // Poll for live stations every 30 seconds
+    const liveStationsInterval = setInterval(() => {
+      fetchLiveStations()
+    }, 30000)
+    
+    return () => clearInterval(liveStationsInterval)
   }, [])
 
   const fetchLiveStations = async () => {
     try {
+      console.log('🔄 Fetching live stations...')
       const res = await fetch('/api/station')
       const data = await res.json()
+      console.log('📡 Live stations API response:', data)
+      
       if (data.success && data.stations) {
+        console.log('✅ Found', data.stations.length, 'live stations')
         const liveUsers = data.stations.map((s: {
           id: string
           user_id: string
@@ -128,10 +139,13 @@ export default function ExplorePage() {
             profileImage: s.profile_image || null
           }
         }))
+        console.log('📻 Formatted live stations:', liveUsers)
         setLiveStations(liveUsers)
+      } else {
+        console.log('⚠️ No live stations or invalid response')
       }
     } catch (error) {
-      console.error('Failed to fetch live stations:', error)
+      console.error('❌ Failed to fetch live stations:', error)
     }
   }
 
