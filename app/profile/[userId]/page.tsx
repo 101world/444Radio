@@ -1004,6 +1004,87 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     )}
                   </div>
 
+                  {/* PROFILE INFO SECTION - Username and Stats */}
+                  <div className="px-6 py-4 border-b border-white/5">
+                    <div className="flex items-start gap-4">
+                      {/* Avatar */}
+                      {profile.avatar && (
+                        <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-cyan-500/30 flex-shrink-0">
+                          <Image
+                            src={profile.avatar}
+                            alt={profile.username}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Username and Info */}
+                      <div className="flex-1 min-w-0">
+                        <h1 className="text-2xl md:text-3xl font-black text-white mb-1">
+                          {profile.username}
+                        </h1>
+                        {profile.tagline && (
+                          <p className="text-gray-400 text-sm mb-3">{profile.tagline}</p>
+                        )}
+                        
+                        {/* Stats Row */}
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Music size={14} className="text-cyan-400" />
+                            <span className="text-white font-bold">{profile.songCount}</span>
+                            <span className="text-gray-400">tracks</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Play size={14} className="text-purple-400" />
+                            <span className="text-white font-bold">{profile.totalPlays.toLocaleString()}</span>
+                            <span className="text-gray-400">plays</span>
+                          </div>
+                          {profile.totalLikes > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              <Heart size={14} className="text-red-400" />
+                              <span className="text-white font-bold">{profile.totalLikes.toLocaleString()}</span>
+                              <span className="text-gray-400">likes</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2">
+                        {isOwnProfile ? (
+                          <button
+                            onClick={() => setShowUploadModal(true)}
+                            className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-sm font-bold transition-all flex items-center gap-2"
+                          >
+                            <Upload size={16} />
+                            <span className="hidden md:inline">Upload</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setIsFollowing(!isFollowing)}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                              isFollowing
+                                ? 'bg-white/10 hover:bg-white/20 text-white'
+                                : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white'
+                            }`}
+                          >
+                            <UserPlus size={16} />
+                            <span className="hidden md:inline">{isFollowing ? 'Following' : 'Follow'}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bio */}
+                    {profile.bio && (
+                      <p className="text-gray-300 text-sm mt-4 leading-relaxed">
+                        {profile.bio}
+                      </p>
+                    )}
+                  </div>
+
                   {/* SECTION 2: HORIZONTAL SCROLL - Recent Tracks */}
                   <div className="py-4 px-6 border-b border-white/5">
                     <h2 className="text-2xl font-bold mb-3 relative z-10">🎵 Recent Tracks</h2>
