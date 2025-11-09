@@ -378,7 +378,7 @@ export default function LibraryPage() {
                     {/* Info Overlay */}
                     <div className="absolute bottom-0 left-0 right-0 p-2.5 bg-gradient-to-t from-black to-transparent">
                       <p className="text-xs text-white/90 truncate font-medium">
-                        {item.title || item.prompt.substring(0, 25)}
+                        {item.title || 'Untitled Image'}
                       </p>
                       <p className="text-[10px] text-cyan-400/50 mt-0.5">
                         {new Date(item.created_at).toLocaleDateString()}
@@ -422,7 +422,7 @@ export default function LibraryPage() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">
-                          {item.title || item.prompt.substring(0, 40)}
+                          {item.title || 'Untitled Track'}
                         </h3>
                         <p className="text-cyan-400/50 text-xs mt-0.5">
                           {new Date(item.created_at).toLocaleDateString()}

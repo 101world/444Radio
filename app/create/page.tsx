@@ -782,31 +782,74 @@ function CreatePageContent() {
                 {/* Music Result - Bigger and Cooler */}
                 {message.result?.audioUrl && (
                   <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
-                    {/* Header with Big Play Button */}
-                    <div className="flex items-center gap-5 p-6 border-b border-white/10">
+                    {/* Header with Smaller Play Button */}
+                    <div className="flex items-center gap-3 p-4 border-b border-white/10">
                       <button
                         onClick={() => handlePlayPause(message.id, message.result!.audioUrl!, message.result!.title || 'Generated Track')}
-                        className="w-20 h-20 rounded-full bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-2xl shadow-cyan-500/50 transition-all active:scale-95 hover:scale-105"
+                        className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/30 transition-all active:scale-95 hover:scale-105"
                       >
-                        {currentTrack?.id === message.id && isPlaying ? <Pause size={32} className="text-black" /> : <Play size={32} className="text-black ml-1" />}
+                        {currentTrack?.id === message.id && isPlaying ? <Pause size={20} className="text-black" /> : <Play size={20} className="text-black ml-0.5" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-xl font-bold text-white truncate mb-1">{message.result.title}</h4>
-                        <p className="text-sm text-gray-400 truncate">{message.result.prompt}</p>
+                        <h4 className="text-lg font-bold text-white truncate">{message.result.title}</h4>
                       </div>
                       <button
+                        onClick={() => {
+                          const detailsModal = document.getElementById(`details-${message.id}`)
+                          if (detailsModal) {
+                            (detailsModal as HTMLDialogElement).showModal()
+                          }
+                        }}
+                        className="p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors"
+                        title="View Details"
+                      >
+                        <FileText size={20} className="text-cyan-400" />
+                      </button>
+                      <button
                         onClick={() => handleOpenRelease(message.id, undefined)}
-                        className="p-3 hover:bg-cyan-500/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
                         title="Release"
                       >
-                        <Rocket size={24} className="text-cyan-400" />
+                        <Rocket size={20} className="text-cyan-400" />
                       </button>
                     </div>
 
-                    {/* Audio Player - Now using global player, kept for visual reference */}
-                    <audio src={message.result.audioUrl} controls className="w-full px-6 py-4" />
-
-                    {/* Lyrics */}
+                    {/* Parameters Modal */}
+                    <dialog id={`details-${message.id}`} className="backdrop:bg-black/80 bg-transparent p-0 rounded-2xl">
+                      <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 border-2 border-cyan-500/30 rounded-2xl p-6 max-w-lg w-full">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xl font-bold text-white">Generation Details</h3>
+                          <button
+                            onClick={(e) => {
+                              const dialog = (e.target as HTMLElement).closest('dialog')
+                              if (dialog) (dialog as HTMLDialogElement).close()
+                            }}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <X size={20} className="text-gray-400" />
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs text-cyan-400 font-semibold">Title</label>
+                            <p className="text-white mt-1">{message.result.title}</p>
+                          </div>
+                          {message.result.prompt && (
+                            <div>
+                              <label className="text-xs text-cyan-400 font-semibold">Prompt</label>
+                              <p className="text-gray-300 mt-1 text-sm">{message.result.prompt}</p>
+                            </div>
+                          )}
+                          {message.result.lyrics && (
+                            <div>
+                              <label className="text-xs text-cyan-400 font-semibold">Lyrics</label>
+                              <pre className="text-gray-300 mt-1 text-sm whitespace-pre-wrap max-h-60 overflow-y-auto bg-black/40 p-3 rounded-lg">{message.result.lyrics}</pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </dialog>
+                    {/* Lyrics - Collapsed by default */}
                     {message.result.lyrics && (
                       <details className="border-t border-white/10">
                         <summary className="px-6 py-3 text-sm text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors font-medium">

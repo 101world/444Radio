@@ -516,7 +516,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="text-sm text-green-400 font-semibold truncate">{item.title || item.prompt}</p>
+                          <p className="text-sm text-green-400 font-semibold truncate">{item.title || 'Untitled Track'}</p>
                           <p className="text-xs text-green-400/60 mt-1">
                             {new Date(item.created_at).toLocaleDateString()}
                           </p>
@@ -530,6 +530,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                         controls
                         className="w-full mt-2"
                         style={{ height: '32px' }}
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </button>
                   ))}
@@ -577,7 +578,7 @@ export default function CombineMediaModal({ isOpen, onClose }: CombineMediaModal
                         </div>
                       )}
                       <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
-                        <p className="text-xs text-cyan-400 truncate">{item.prompt}</p>
+                        <p className="text-xs text-cyan-400 truncate">{item.title || 'Untitled Image'}</p>
                       </div>
                     </button>
                   ))}
