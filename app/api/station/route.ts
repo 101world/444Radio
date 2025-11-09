@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { isLive, currentTrack, username } = body
+    const { isLive, currentTrack, username, title } = body
 
     // Check if station exists
     const { data: existingStation } = await supabase
@@ -27,16 +27,23 @@ export async function POST(request: NextRequest) {
 
     if (existingStation) {
       // Update existing station
+      const updateData: any = {
+        is_live: isLive,
+        current_track_id: currentTrack?.id || null,
+        current_track_title: currentTrack?.title || null,
+        current_track_image: currentTrack?.image_url || null,
+        updated_at: new Date().toISOString(),
+        ...(isLive && { started_at: new Date().toISOString() })
+      }
+      
+      // Update title if provided
+      if (title !== undefined) {
+        updateData.title = title
+      }
+
       const { data, error } = await supabase
         .from('live_stations')
-        .update({
-          is_live: isLive,
-          current_track_id: currentTrack?.id || null,
-          current_track_title: currentTrack?.title || null,
-          current_track_image: currentTrack?.image_url || null,
-          updated_at: new Date().toISOString(),
-          ...(isLive && { started_at: new Date().toISOString() })
-        })
+        .update(updateData)
         .eq('user_id', userId)
         .select()
         .single()
@@ -62,7 +69,8 @@ export async function POST(request: NextRequest) {
           is_live: isLive,
           current_track_id: currentTrack?.id || null,
           current_track_title: currentTrack?.title || null,
-          current_track_image: currentTrack?.image_url || null
+          current_track_image: currentTrack?.image_url || null,
+          title: title || null
         })
         .select()
         .single()

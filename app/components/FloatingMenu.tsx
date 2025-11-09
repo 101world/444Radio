@@ -55,7 +55,7 @@ export default function FloatingMenu() {
       {/* Floating Hamburger Button - Desktop Only (hidden on mobile) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="hidden md:block fixed top-6 right-6 z-50 p-3 md:p-4 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl hover:bg-white/20 transition-all active:scale-95"
+        className="hidden md:block fixed top-6 right-6 z-[60] p-3 md:p-4 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl hover:bg-white/20 transition-all active:scale-95"
         aria-label="Menu"
       >
         {isOpen ? (
@@ -70,12 +70,12 @@ export default function FloatingMenu() {
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[55]"
             onClick={() => setIsOpen(false)}
           />
 
           {/* Menu Panel - Responsive Width */}
-          <div className="fixed top-0 right-0 h-full w-full sm:w-96 md:w-80 bg-black/95 md:bg-black/90 backdrop-blur-2xl border-l border-white/10 z-40 shadow-2xl animate-slideIn overflow-y-auto">
+          <div className="fixed top-0 right-0 h-full w-full sm:w-96 md:w-80 bg-black/95 md:bg-black/90 backdrop-blur-2xl border-l border-white/10 z-[55] shadow-2xl animate-slideIn overflow-y-auto">
             <div className="flex flex-col h-full p-6 sm:p-8 pt-20 sm:pt-24">
               
               {/* User Section */}

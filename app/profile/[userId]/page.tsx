@@ -148,6 +148,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [chatInput, setChatInput] = useState('')
   const [liveListeners, setLiveListeners] = useState(0)
   const [stationId, setStationId] = useState<string | null>(null)
+  const [stationTitle, setStationTitle] = useState<string>('')
+  const [editingStationTitle, setEditingStationTitle] = useState(false)
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null)
+  const [editingTrackTitle, setEditingTrackTitle] = useState<string>('')
+  const [showVideo, setShowVideo] = useState(false)
+  const [stream, setStream] = useState<MediaStream | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [showCreatePostModal, setShowCreatePostModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
@@ -341,6 +348,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
     const joinStation = async () => {
       try {
+        // Join as listener
         await fetch('/api/station/listeners', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -349,6 +357,26 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             username: currentUser.username || 'Anonymous'
           })
         })
+
+        // Auto-play the current track if broadcaster is playing something
+        const res = await fetch(`/api/station?userId=${resolvedParams.userId}`)
+        const data = await res.json()
+        if (data.success && data.station?.current_track_id) {
+          // Fetch the track details
+          const audioTracks = profile?.combinedMedia.filter(m => m.media_type === 'music-image' && m.audio_url) || []
+          const currentBroadcastTrack = audioTracks.find(t => t.id === data.station.current_track_id)
+          
+          if (currentBroadcastTrack && currentTrack?.id !== currentBroadcastTrack.id) {
+            // Auto-play the broadcaster's current track
+            playTrack({
+              id: currentBroadcastTrack.id,
+              title: currentBroadcastTrack.title,
+              audioUrl: currentBroadcastTrack.audio_url!,
+              imageUrl: currentBroadcastTrack.image_url,
+              userId: currentBroadcastTrack.user_id
+            })
+          }
+        }
       } catch (error) {
         console.error('Failed to join station:', error)
       }
@@ -362,7 +390,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         method: 'DELETE'
       }).catch(console.error)
     }
-  }, [stationId, isLive, currentUser, isOwnProfile])
+  }, [stationId, isLive, currentUser, isOwnProfile, resolvedParams.userId, profile, currentTrack, playTrack])
 
   // Toggle live status - Memoized with useCallback
   const toggleLive = useCallback(async () => {
@@ -414,6 +442,108 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       console.error('Failed to send message:', error)
     }
   }, [chatInput, stationId, currentUser?.username])
+
+  // Save station title
+  const saveStationTitle = useCallback(async () => {
+    if (!stationId || !stationTitle.trim()) return
+    
+    try {
+      const res = await fetch('/api/station', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stationId,
+          title: stationTitle,
+          username: profile?.username
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setEditingStationTitle(false)
+      }
+    } catch (error) {
+      console.error('Failed to save station title:', error)
+    }
+  }, [stationId, stationTitle, profile?.username])
+
+  // Save track title
+  const saveTrackTitle = useCallback(async (trackId: string, newTitle: string) => {
+    if (!newTitle.trim()) return
+    
+    try {
+      const res = await fetch('/api/media/update-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mediaId: trackId,
+          title: newTitle
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        // Update local state
+        setProfile(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            combinedMedia: prev.combinedMedia.map(m => 
+              m.id === trackId ? { ...m, title: newTitle } : m
+            )
+          }
+        })
+        setEditingTrackId(null)
+        setEditingTrackTitle('')
+      }
+    } catch (error) {
+      console.error('Failed to save track title:', error)
+    }
+  }, [])
+
+  // Start/Stop video stream
+  const toggleVideo = useCallback(async () => {
+    if (stream) {
+      // Stop existing stream
+      stream.getTracks().forEach(track => track.stop())
+      setStream(null)
+      setShowVideo(false)
+      if (videoRef.current) {
+        videoRef.current.srcObject = null
+      }
+    } else {
+      // Start new stream
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 1280, height: 720, facingMode: 'user' },
+          audio: false // Audio is handled separately by the station
+        })
+        setStream(mediaStream)
+        setShowVideo(true)
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream
+        }
+      } catch (error) {
+        console.error('Failed to start video:', error)
+        alert('Camera access denied or not available')
+      }
+    }
+  }, [stream])
+
+  // Cleanup video on unmount or when going offline
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop())
+      }
+    }
+  }, [stream])
+
+  useEffect(() => {
+    if (!isLive && stream) {
+      stream.getTracks().forEach(track => track.stop())
+      setStream(null)
+      setShowVideo(false)
+    }
+  }, [isLive, stream])
 
   const fetchProfileData = async () => {
     setLoading(true)
@@ -1813,9 +1943,56 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         )}
                       </div>
                       <div>
-                        <h2 className="text-xl md:text-2xl font-black text-white mb-1">
-                          {isOwnProfile ? '🎙️ My Station' : `🎙️ ${profile?.username}'s Station`}
-                        </h2>
+                        {editingStationTitle && isOwnProfile ? (
+                          <div className="flex items-center gap-2 mb-1">
+                            <input
+                              type="text"
+                              value={stationTitle}
+                              onChange={(e) => setStationTitle(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  saveStationTitle()
+                                }
+                              }}
+                              placeholder="Enter station title..."
+                              className="bg-white/10 border border-cyan-500/50 rounded-lg px-3 py-1 text-lg font-black text-white focus:outline-none focus:border-cyan-400"
+                              autoFocus
+                            />
+                            <button
+                              onClick={saveStationTitle}
+                              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-xs font-bold transition-all"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingStationTitle(false)
+                                setStationTitle('')
+                              }}
+                              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-bold transition-all"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mb-1">
+                            <h2 className="text-xl md:text-2xl font-black text-white">
+                              {stationTitle || (isOwnProfile ? '🎙️ My Station' : `🎙️ ${profile?.username}'s Station`)}
+                            </h2>
+                            {isOwnProfile && (
+                              <button
+                                onClick={() => {
+                                  setStationTitle(stationTitle || `${profile?.username}'s Live Radio`)
+                                  setEditingStationTitle(true)
+                                }}
+                                className="p-1.5 hover:bg-white/10 rounded-lg transition-all"
+                                title="Edit station title"
+                              >
+                                <Edit2 size={14} className="text-gray-400 hover:text-cyan-400" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                         <div className="flex items-center gap-3 flex-wrap">
                           <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${
                             isLive 
@@ -1835,32 +2012,69 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </div>
                     </div>
 
-                    {/* Right: Go Live / Stop Broadcast Button (Own Profile Only) */}
+                    {/* Right: Go Live / Stop Broadcast + Video Button (Own Profile Only) */}
                     {isOwnProfile && (
-                      <button
-                        onClick={toggleLive}
-                        className={`px-6 py-3 rounded-xl font-bold text-sm transition-all transform hover:scale-105 active:scale-95 shadow-lg ${
-                          isLive
-                            ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white border border-white/20'
-                            : 'bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {isLive ? (
-                            <>
-                              <Circle size={16} className="fill-white text-white" />
-                              <span>Stop Broadcast</span>
-                            </>
-                          ) : (
-                            <>
-                              <RadioIcon size={16} />
-                              <span>Go Live</span>
-                            </>
-                          )}
-                        </div>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {isLive && (
+                          <button
+                            onClick={toggleVideo}
+                            className={`px-4 py-3 rounded-xl font-bold text-sm transition-all transform hover:scale-105 active:scale-95 shadow-lg ${
+                              showVideo
+                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+                                : 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white border border-white/20'
+                            }`}
+                            title={showVideo ? 'Stop Video' : 'Start Video'}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Video size={16} />
+                              <span className="hidden md:inline">{showVideo ? 'Stop Video' : 'Start Video'}</span>
+                            </div>
+                          </button>
+                        )}
+                        <button
+                          onClick={toggleLive}
+                          className={`px-6 py-3 rounded-xl font-bold text-sm transition-all transform hover:scale-105 active:scale-95 shadow-lg ${
+                            isLive
+                              ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white border border-white/20'
+                              : 'bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isLive ? (
+                              <>
+                                <Circle size={16} className="fill-white text-white" />
+                                <span>Stop Broadcast</span>
+                              </>
+                            ) : (
+                              <>
+                                <RadioIcon size={16} />
+                                <span>Go Live</span>
+                              </>
+                            )}
+                          </div>
+                        </button>
+                      </div>
                     )}
                   </div>
+
+                  {/* Live Video Stream */}
+                  {isLive && showVideo && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-2">
+                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                          <span className="text-white font-bold text-xs">LIVE VIDEO</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Currently Playing Track */}
                   {isLive && currentTrack && (
@@ -2081,9 +2295,52 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                                 {/* Track Info */}
                                 <div className="flex-1 min-w-0">
-                                  <div className={`font-bold text-sm truncate ${isCurrentlyPlaying ? 'text-cyan-400' : 'text-white'}`}>
-                                    {media.title}
-                                  </div>
+                                  {editingTrackId === media.id && isOwnProfile ? (
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={editingTrackTitle}
+                                        onChange={(e) => setEditingTrackTitle(e.target.value)}
+                                        onKeyPress={(e) => {
+                                          if (e.key === 'Enter') {
+                                            saveTrackTitle(media.id, editingTrackTitle)
+                                          }
+                                          if (e.key === 'Escape') {
+                                            setEditingTrackId(null)
+                                            setEditingTrackTitle('')
+                                          }
+                                        }}
+                                        className="flex-1 bg-white/10 border border-cyan-500/50 rounded px-2 py-1 text-sm font-bold text-white focus:outline-none focus:border-cyan-400"
+                                        autoFocus
+                                      />
+                                      <button
+                                        onClick={() => saveTrackTitle(media.id, editingTrackTitle)}
+                                        className="p-1 bg-cyan-600 hover:bg-cyan-500 rounded transition-all"
+                                        title="Save"
+                                      >
+                                        <Circle size={12} className="text-white fill-white" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2 group/title">
+                                      <div className={`font-bold text-sm truncate ${isCurrentlyPlaying ? 'text-cyan-400' : 'text-white'}`}>
+                                        {media.title}
+                                      </div>
+                                      {isOwnProfile && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setEditingTrackId(media.id)
+                                            setEditingTrackTitle(media.title)
+                                          }}
+                                          className="opacity-0 group-hover/title:opacity-100 p-1 hover:bg-white/10 rounded transition-all"
+                                          title="Edit title"
+                                        >
+                                          <Edit2 size={10} className="text-gray-400 hover:text-cyan-400" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
                                   {media.audio_prompt && (
                                     <div className="text-xs text-gray-500 truncate">{media.audio_prompt}</div>
                                   )}
