@@ -68,6 +68,7 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchBox, setShowSearchBox] = useState(true)
+  const [activeTab, setActiveTab] = useState<'tracks' | 'stations'>('tracks')
   
   // Lyrics modal state
   const [showLyricsModal, setShowLyricsModal] = useState(false)
@@ -292,21 +293,64 @@ export default function ExplorePage() {
               </div>
             </div>
 
-            {/* LIVE NOW SECTION - Horizontal Scroll Below Banner */}
-            {liveStations.length > 0 && (
-              <div className="py-4 px-6 border-b border-white/5 bg-gradient-to-r from-red-950/20 to-pink-950/20">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xl font-bold relative z-10 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
-                      Live Now
-                    </span>
-                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full border border-red-500/30">
-                      {liveStations.length} broadcasting
-                    </span>
-                  </h2>
+            {/* TAB NAVIGATION */}
+            <div className="border-b border-white/10 bg-black/40 backdrop-blur-sm sticky top-0 z-40">
+              <div className="px-6 py-4">
+                <div className="flex items-center gap-6">
+                  <button
+                    onClick={() => setActiveTab('tracks')}
+                    className={`relative text-lg font-bold transition-all pb-2 ${
+                      activeTab === 'tracks'
+                        ? 'text-cyan-400'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    🎵 All Tracks
+                    {activeTab === 'tracks' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('stations')}
+                    className={`relative text-lg font-bold transition-all pb-2 flex items-center gap-2 ${
+                      activeTab === 'stations'
+                        ? 'text-cyan-400'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    <RadioIcon size={18} />
+                    Live Stations
+                    {liveStations.length > 0 && (
+                      <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-500/30">
+                        {liveStations.length}
+                      </span>
+                    )}
+                    {activeTab === 'stations' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                    )}
+                  </button>
                 </div>
-                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
+              </div>
+            </div>
+
+            {/* TRACKS TAB CONTENT */}
+            {activeTab === 'tracks' && (
+              <>
+                {/* LIVE NOW SECTION - Horizontal Scroll */}
+                {liveStations.length > 0 && (
+                  <div className="py-4 px-6 border-b border-white/5 bg-gradient-to-r from-red-950/20 to-pink-950/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-xl font-bold relative z-10 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        <span className="bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+                          Live Now
+                        </span>
+                        <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full border border-red-500/30">
+                          {liveStations.length} broadcasting
+                        </span>
+                      </h2>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
                   {liveStations.map((station) => (
                     <Link
                       key={station.id}
@@ -603,6 +647,74 @@ export default function ExplorePage() {
                 })}
               </div>
             </div>
+              </>
+            )}
+
+            {/* STATIONS TAB CONTENT */}
+            {activeTab === 'stations' && (
+              <div className="px-6 py-8">
+                {liveStations.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {liveStations.map((station) => (
+                      <Link
+                        key={station.id}
+                        href={`/profile/${station.owner.userId}`}
+                        className="group cursor-pointer transition-all hover:scale-105"
+                      >
+                        <div className="bg-gradient-to-br from-red-950/20 to-pink-950/20 border border-red-500/30 rounded-xl p-6 hover:border-red-400/50 transition-all">
+                          {/* Profile Picture with Live Indicator */}
+                          <div className="relative mb-4 flex justify-center">
+                            <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-red-500 ring-offset-4 ring-offset-black">
+                              {station.owner.profileImage ? (
+                                <Image
+                                  src={station.owner.profileImage}
+                                  alt={station.owner.username}
+                                  width={128}
+                                  height={128}
+                                  className="w-full h-full object-cover"
+                                  unoptimized
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
+                                  <Users size={48} className="text-white" />
+                                </div>
+                              )}
+                            </div>
+                            {/* Live Badge */}
+                            <div className="absolute bottom-0 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-2 animate-pulse">
+                              <div className="w-2 h-2 bg-white rounded-full"></div>
+                              LIVE
+                            </div>
+                          </div>
+                          
+                          {/* Station Info */}
+                          <div className="text-center">
+                            <h3 className="text-xl font-bold text-white mb-2">
+                              {station.title}
+                            </h3>
+                            <p className="text-sm text-gray-400 mb-3">
+                              @{station.owner.username}
+                            </p>
+                            <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <Users size={14} />
+                                <span>{station.listenerCount} {station.listenerCount === 1 ? 'listener' : 'listeners'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20">
+                    <div className="text-6xl mb-4">📻</div>
+                    <h2 className="text-2xl font-bold text-white mb-2">No Live Stations</h2>
+                    <p className="text-gray-400">No one is broadcasting right now. Check back later!</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>
