@@ -9,7 +9,6 @@ import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users } from 'lucide-react'
-import { formatUsername } from '../../lib/username'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import LyricsModal from '../components/LyricsModal'
 
@@ -196,7 +195,7 @@ export default function ExplorePage() {
         title: m.title,
         audioUrl: m.audio_url,
         imageUrl: m.image_url,
-        artist: formatUsername(m.users?.username || m.username)
+        artist: m.users?.username || m.username || 'Unknown Artist'
       })))
       
       // Play the selected track
@@ -205,7 +204,7 @@ export default function ExplorePage() {
         title: media.title,
         audioUrl: media.audio_url,
         imageUrl: media.image_url,
-        artist: formatUsername(media.users?.username || media.username)
+        artist: media.users?.username || media.username || 'Unknown Artist'
       })
       setShowSearchBox(false) // Hide search bar when playing
     }
@@ -485,7 +484,7 @@ export default function ExplorePage() {
                       {/* Artist Name */}
                       <div className="text-center relative z-10">
                         <p className="text-xs font-semibold text-white truncate w-20">
-                          {formatUsername(artist.username)}
+                          {artist.username || 'Unknown Artist'}
                         </p>
                         <p className="text-[10px] text-gray-400">
                           {artist.trackCount} {artist.trackCount === 1 ? 'track' : 'tracks'}
@@ -552,7 +551,7 @@ export default function ExplorePage() {
                             className="text-xs text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {formatUsername(media.users?.username || media.username || media.user_id)}
+                            {media.users?.username || media.username || 'Unknown Artist'}
                           </Link>
                           <div className="flex items-center gap-2 text-[10px] text-gray-500">
                             <div className="flex items-center gap-0.5">
@@ -632,7 +631,7 @@ export default function ExplorePage() {
                             className="text-sm text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {formatUsername(media.users?.username || media.username || media.user_id)}
+                            {media.users?.username || media.username || 'Unknown Artist'}
                           </Link>
                           <div className="flex items-center gap-2 text-xs text-gray-500">
                             <div className="flex items-center gap-0.5">
