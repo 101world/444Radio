@@ -17,7 +17,6 @@ import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
 import CreatePostModal from '../../components/CreatePostModal'
 import BannerUploadModal from '../../components/BannerUploadModal'
-import { getDisplayUsername, formatUsername } from '../../../lib/username'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -1130,7 +1129,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               </h3>
                               <div className="flex items-center gap-3 mt-0.5">
                                 <p className="text-xs text-gray-400 truncate leading-tight">
-                                  {formatUsername(profile.username)}
+                                  {profile.username}
                                 </p>
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
                                   <div className="flex items-center gap-1">
@@ -1197,7 +1196,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               </h3>
                               <div className="flex items-center gap-3 mt-1">
                                 <p className="text-sm text-gray-400 truncate leading-tight">
-                                  {formatUsername(profile.username)}
+                                  {profile.username}
                                 </p>
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
                                   <div className="flex items-center gap-1">
@@ -1264,7 +1263,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               </h3>
                               <div className="flex items-center gap-3 mt-1">
                                 <p className="text-sm text-gray-400 truncate leading-tight">
-                                  {formatUsername(profile.username)}
+                                  {profile.username}
                                 </p>
                                 <div className="flex items-center gap-2 text-xs text-gray-500">
                                   <div className="flex items-center gap-1">
@@ -1783,7 +1782,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                   {media.title}
                                 </h3>
                                 <p className="text-sm text-gray-400 truncate leading-tight mt-1">
-                                  {formatUsername(profile.username)}
+                                  {profile.username}
                                 </p>
                               </div>
 
