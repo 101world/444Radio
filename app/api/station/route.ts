@@ -31,12 +31,17 @@ export async function POST(request: NextRequest) {
       
       if (userError) {
         console.error('❌ Failed to fetch username:', userError)
-        return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 })
+        // Don't fail completely, use fallback
+        finalUsername = 'Anonymous'
+      } else {
+        finalUsername = userData?.username || 'Anonymous'
+        console.log('✅ Fetched username from database:', finalUsername)
       }
-      
-      finalUsername = userData?.username || 'Anonymous'
-      console.log('✅ Fetched username from database:', finalUsername)
+    } else {
+      finalUsername = username || 'Anonymous'
     }
+    
+    console.log('🎯 Final username:', finalUsername)
 
     // Check if station exists
     const { data: existingStation } = await supabase
@@ -112,7 +117,11 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Station POST error:', error)
-    return NextResponse.json({ error: 'Failed to update station' }, { status: 500 })
+    console.error('Error details:', JSON.stringify(error, null, 2))
+    return NextResponse.json({ 
+      error: 'Failed to update station',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
   }
 }
 
