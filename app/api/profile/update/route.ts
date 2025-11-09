@@ -79,13 +79,18 @@ export async function POST(req: NextRequest) {
     })
 
     // Update Supabase users table
+    const updateData: any = {
+      username,
+      updated_at: new Date().toISOString()
+    }
+    
+    if (avatar) {
+      updateData.avatar_url = avatar // Use avatar_url column, not avatar
+    }
+    
     const { error: updateError } = await supabase
       .from('users')
-      .update({
-        username,
-        ...(avatar && { avatar }),
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('clerk_user_id', userId)
 
     if (updateError) {
@@ -94,6 +99,16 @@ export async function POST(req: NextRequest) {
         { success: false, error: 'Failed to update database. Please try again.' },
         { status: 500 }
       )
+    }
+    
+    // Also update username in live_stations table for active broadcasts
+    const { error: stationUpdateError } = await supabase
+      .from('live_stations')
+      .update({ username })
+      .eq('user_id', userId)
+    
+    if (stationUpdateError) {
+      console.warn('Warning: Failed to update username in live_stations:', stationUpdateError)
     }
     
     // Also update username in combined_media table for published posts

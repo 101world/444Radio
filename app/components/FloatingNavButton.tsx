@@ -152,8 +152,12 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
         <ProfileSettingsModal
           isOpen={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
-          currentUsername=""
-          currentAvatar=""
+          currentUsername={user.username || user.firstName || 'User'}
+          currentAvatar={user.imageUrl || ''}
+          onUpdate={() => {
+            // Force page refresh to update displayed data
+            window.location.reload()
+          }}
         />
       )}
     </div>
