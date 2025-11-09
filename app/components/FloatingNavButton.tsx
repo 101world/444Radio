@@ -254,12 +254,12 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
         onClick={() => setIsOpen(!isOpen)}
         className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl active:scale-90 hidden md:flex ${
           isOpen
-            ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-cyan-500/60 rotate-90'
+            ? 'bg-black/90 backdrop-blur-xl border-2 border-cyan-500/40 rotate-90'
             : 'bg-black/90 backdrop-blur-xl border-2 border-cyan-500/40 shadow-cyan-500/30 hover:border-cyan-400 hover:shadow-cyan-500/50 hover:scale-110'
         }`}
       >
         {isOpen ? (
-          <X size={24} className="text-black" strokeWidth={2.5} />
+          <X size={24} className="text-cyan-400" strokeWidth={2.5} />
         ) : (
           <Menu size={24} className="text-cyan-400" strokeWidth={2.5} />
         )}
