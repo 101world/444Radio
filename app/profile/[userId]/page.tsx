@@ -2430,8 +2430,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         }}
       />
 
-      {/* Floating Navigation Button */}
-      <FloatingNavButton />
+      {/* Floating Navigation Button - Desktop hidden on profile */}
+      <FloatingNavButton hideOnDesktop={true} />
     </div>
   )
 }
