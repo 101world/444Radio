@@ -1,5 +1,6 @@
 'use client'
 
+// Hamburger navigation menu for mobile and desktop
 import { useState } from 'react'
 import Link from 'next/link'
 import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings } from 'lucide-react'
