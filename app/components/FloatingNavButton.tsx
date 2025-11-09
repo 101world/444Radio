@@ -30,7 +30,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   return (
     <>
       {/* Mobile Version - Bottom Right at 66.67% */}
-      <div className="md:hidden fixed right-4 z-50" style={{ top: '66.67%' }}>
+      <div className="fixed right-4 z-50 md:hidden" style={{ top: '66.67%' }}>
         {/* Navigation Items - Appear when open */}
         {isOpen && (
           <div className="absolute bottom-16 right-0 flex flex-col gap-3 mb-2">
@@ -167,7 +167,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
 
       {/* Desktop Version - Top Right (hidden on profile pages) */}
       {!hideOnDesktop && (
-        <div className="hidden md:block fixed top-4 right-4 z-50">
+        <div className="fixed top-4 right-4 z-50 hidden md:block">
           {/* Navigation Items - Appear when open */}
           {isOpen && (
             <div className="absolute top-16 right-0 flex flex-col gap-3 mt-2">
