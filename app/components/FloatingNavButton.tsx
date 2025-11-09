@@ -149,20 +149,6 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
           onClick={() => setIsOpen(false)}
         />
       )}
-
-      {/* Settings Modal */}
-      {showSettingsModal && user && (
-        <ProfileSettingsModal
-          isOpen={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          currentUsername={user.username || user.firstName || 'User'}
-          currentAvatar={user.imageUrl || ''}
-          onUpdate={() => {
-            // Force page refresh to update displayed data
-            window.location.reload()
-          }}
-        />
-      )}
       </div>
 
       {/* Desktop Version - Top Right (hidden on profile pages) */}
@@ -287,6 +273,19 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
         />
       )}
 
+      {/* Settings Modal */}
+      {showSettingsModal && user && (
+        <ProfileSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          currentUsername={user.username || user.firstName || 'User'}
+          currentAvatar={user.imageUrl || ''}
+          onUpdate={() => {
+            // Force page refresh to update displayed data
+            window.location.reload()
+          }}
+        />
+      )}
       {/* Settings Modal */}
       {showSettingsModal && user && (
         <ProfileSettingsModal
