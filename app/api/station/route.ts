@@ -63,10 +63,12 @@ export async function POST(request: NextRequest) {
         ...(isLive && { started_at: new Date().toISOString() })
       }
       
-      // Update title if provided
+      // Only update title if provided and column exists
       if (title !== undefined) {
         updateData.title = title
       }
+
+      console.log('🔄 Update data:', updateData)
 
       const { data, error } = await supabase
         .from('live_stations')
@@ -77,6 +79,33 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('❌ Update error:', error)
+        console.error('❌ Update error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        
+        // If it's a column not found error for title, retry without it
+        if (error.message?.includes('title') || error.code === '42703') {
+          console.log('⚠️ Title column not found, retrying without it...')
+          delete updateData.title
+          const { data: retryData, error: retryError } = await supabase
+            .from('live_stations')
+            .update(updateData)
+            .eq('user_id', userId)
+            .select()
+            .single()
+          
+          if (retryError) {
+            console.error('❌ Retry failed:', retryError)
+            throw retryError
+          }
+          
+          console.log('✅ Station updated successfully (without title)')
+          return NextResponse.json({ success: true, station: retryData })
+        }
+        
         throw error
       }
 
@@ -93,22 +122,56 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('🆕 Creating new station for user:', userId)
       // Create new station
+      const insertData: any = {
+        user_id: userId,
+        username: finalUsername,
+        is_live: isLive,
+        current_track_id: currentTrack?.id || null,
+        current_track_title: currentTrack?.title || null,
+        current_track_image: currentTrack?.image_url || null
+      }
+      
+      // Only add title if provided
+      if (title) {
+        insertData.title = title
+      }
+      
+      console.log('🔄 Insert data:', insertData)
+
       const { data, error } = await supabase
         .from('live_stations')
-        .insert({
-          user_id: userId,
-          username: finalUsername,
-          is_live: isLive,
-          current_track_id: currentTrack?.id || null,
-          current_track_title: currentTrack?.title || null,
-          current_track_image: currentTrack?.image_url || null,
-          title: title || null
-        })
+        .insert(insertData)
         .select()
         .single()
 
       if (error) {
         console.error('❌ Insert error:', error)
+        console.error('❌ Insert error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        
+        // If it's a column not found error for title, retry without it
+        if (error.message?.includes('title') || error.code === '42703') {
+          console.log('⚠️ Title column not found, retrying without it...')
+          delete insertData.title
+          const { data: retryData, error: retryError } = await supabase
+            .from('live_stations')
+            .insert(insertData)
+            .select()
+            .single()
+          
+          if (retryError) {
+            console.error('❌ Retry failed:', retryError)
+            throw retryError
+          }
+          
+          console.log('✅ Station created successfully (without title)')
+          return NextResponse.json({ success: true, station: retryData })
+        }
+        
         throw error
       }
       
