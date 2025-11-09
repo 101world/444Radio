@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Music, Loader2, Sparkles } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
+import { useGenerationQueue } from '../contexts/GenerationQueueContext'
 
 interface MusicModalProps {
   isOpen: boolean
@@ -14,6 +15,7 @@ interface MusicModalProps {
 }
 
 export default function MusicGenerationModal({ isOpen, onClose, userCredits, onSuccess, onGenerationStart, initialPrompt = '' }: MusicModalProps) {
+  const { addGeneration, updateGeneration } = useGenerationQueue()
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState(initialPrompt)
   const [lyrics, setLyrics] = useState('')
@@ -67,6 +69,16 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
     setIsGenerating(true)
     setGeneratedAudioUrl(null)
     
+    // Add to persistent generation queue
+    const generationId = addGeneration({
+      type: 'music',
+      prompt: prompt,
+      title: title
+    })
+    
+    // Update status to generating
+    updateGeneration(generationId, { status: 'generating', progress: 10 })
+    
     // Call onGenerationStart to close modal and show chat immediately
     if (onGenerationStart) {
       onGenerationStart(prompt)
@@ -105,6 +117,16 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
       if (data.success) {
         setGeneratedAudioUrl(data.audioUrl)
         
+        // Update generation queue with success
+        updateGeneration(generationId, {
+          status: 'completed',
+          result: {
+            audioUrl: data.audioUrl,
+            title: title,
+            lyrics: lyrics
+          }
+        })
+        
         // Call onSuccess callback if provided
         if (onSuccess) {
           onSuccess(data.audioUrl, prompt)
@@ -112,10 +134,20 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
         
         alert(`🎵 Music generated! ${data.creditsRemaining} credits remaining`)
       } else {
+        // Update generation queue with failure
+        updateGeneration(generationId, {
+          status: 'failed',
+          error: data.error || 'Unknown error'
+        })
         alert(`Error: ${data.error}`)
       }
     } catch (error) {
       console.error('Generation error:', error)
+      // Update generation queue with failure
+      updateGeneration(generationId, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
       alert('Failed to generate music. Please try again.')
     } finally {
       setIsGenerating(false)

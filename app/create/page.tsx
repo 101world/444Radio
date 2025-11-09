@@ -14,6 +14,7 @@ import FloatingNavButton from '../components/FloatingNavButton'
 import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
+import { useGenerationQueue } from '../contexts/GenerationQueueContext'
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
@@ -39,6 +40,7 @@ function CreatePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { playTrack, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
+  const { addGeneration, updateGeneration, generations } = useGenerationQueue()
   const [isMobile, setIsMobile] = useState(false)
   
   useEffect(() => {
@@ -484,9 +486,19 @@ function CreatePageContent() {
       songDuration?: 'short' | 'medium' | 'long'
     }
   ) => {
+    // Add to persistent generation queue
+    const genId = addGeneration({
+      type: type,
+      prompt: params.prompt,
+      title: params.customTitle || params.prompt.substring(0, 50)
+    })
+    
     try {
       // Add to active generations
       setActiveGenerations(prev => new Set(prev).add(messageId))
+      
+      // Update generation queue status
+      updateGeneration(genId, { status: 'generating', progress: 10 })
       
       // Update message to show it's now generating (if it was queued)
       setMessages(prev => prev.map(msg => 
@@ -517,6 +529,24 @@ function CreatePageContent() {
         setUserCredits(result.creditsRemaining)
       }
 
+      // Update persistent generation queue with result
+      if (result.error) {
+        updateGeneration(genId, {
+          status: 'failed',
+          error: result.error
+        })
+      } else {
+        updateGeneration(genId, {
+          status: 'completed',
+          result: {
+            audioUrl: 'audioUrl' in result ? result.audioUrl : undefined,
+            imageUrl: 'imageUrl' in result ? result.imageUrl : undefined,
+            title: result.title,
+            lyrics: 'lyrics' in result ? result.lyrics : undefined
+          }
+        })
+      }
+
       // Update message with result
       setMessages(prev => prev.map(msg => 
         msg.id === messageId
@@ -543,6 +573,13 @@ function CreatePageContent() {
       }
     } catch (error) {
       console.error('Generation error:', error)
+      
+      // Update persistent queue with error
+      updateGeneration(genId, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+      
       setMessages(prev => prev.map(msg => 
         msg.id === messageId
           ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
