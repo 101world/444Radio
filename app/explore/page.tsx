@@ -114,6 +114,7 @@ export default function ExplorePage() {
           username: string
           current_track_image: string | null
           listener_count: number
+          profile_image: string | null
         }) => ({
           id: s.id,
           title: `${s.username}'s Station`,
@@ -123,7 +124,7 @@ export default function ExplorePage() {
           owner: {
             userId: s.user_id,
             username: s.username,
-            profileImage: s.current_track_image
+            profileImage: s.profile_image || null
           }
         }))
         setLiveStations(liveUsers)

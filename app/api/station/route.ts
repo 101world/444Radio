@@ -131,15 +131,29 @@ export async function GET(request: NextRequest) {
     }
 
     if (!userId) {
-      // Get all live stations
+      // Get all live stations with user profile data
       const { data, error } = await supabase
         .from('live_stations')
-        .select('*')
+        .select(`
+          *,
+          users:user_id (
+            clerk_user_id,
+            username,
+            avatar_url
+          )
+        `)
         .eq('is_live', true)
         .order('started_at', { ascending: false })
 
       if (error) throw error
-      return NextResponse.json({ success: true, stations: data })
+      
+      // Format the response to include profile image
+      const formattedStations = data?.map(station => ({
+        ...station,
+        profile_image: station.users?.avatar_url || null
+      })) || []
+      
+      return NextResponse.json({ success: true, stations: formattedStations })
     }
 
     // Get specific user's station
