@@ -81,15 +81,17 @@ export default function LibraryPage() {
       setIsLoading(true)
     }
     try {
-      const [musicRes, imagesRes, combinedRes] = await Promise.all([
+      const [musicRes, imagesRes, combinedRes, publishedRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/library/images'),
-        fetch('/api/library/combined')
+        fetch('/api/library/combined'),
+        fetch('/api/media/profile/' + user?.id) // Get published releases from combined_media table
       ])
 
       const musicData = await musicRes.json()
       const imagesData = await imagesRes.json()
       const combinedData = await combinedRes.json()
+      const publishedData = await publishedRes.json()
 
       if (musicData.success && Array.isArray(musicData.music)) {
         setMusicItems(musicData.music)
@@ -99,8 +101,21 @@ export default function LibraryPage() {
         setImageItems(imagesData.images)
       }
 
-      if (combinedData.success && Array.isArray(combinedData.combined)) {
-        setCombinedItems(combinedData.combined)
+      // Use published releases from combined_media table instead of library
+      if (publishedData.success && Array.isArray(publishedData.media)) {
+        setCombinedItems(publishedData.media.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          audio_url: item.audio_url,
+          image_url: item.image_url,
+          music_prompt: item.audio_prompt,
+          image_prompt: item.image_prompt,
+          is_published: true,
+          created_at: item.created_at
+        })))
+      } else if (combinedData.success && Array.isArray(combinedData.combined)) {
+        // Fallback to unpublished library items if no published releases
+        setCombinedItems(combinedData.combined.filter((item: LibraryCombined) => item.is_published))
       }
     } catch (error) {
       console.error('Error fetching library:', error)
