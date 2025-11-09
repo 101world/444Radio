@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
+import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
+import GenerationMonitor from './components/GenerationMonitor';
 import "./globals.css";
 
 const poppins = Poppins({
@@ -28,8 +30,11 @@ export default function RootLayout({
       >
         <ClerkProvider>
           <AudioPlayerProvider>
-            {children}
-            <ConditionalGlobalPlayer />
+            <GenerationQueueProvider>
+              {children}
+              <ConditionalGlobalPlayer />
+              <GenerationMonitor />
+            </GenerationQueueProvider>
           </AudioPlayerProvider>
         </ClerkProvider>
       </body>
