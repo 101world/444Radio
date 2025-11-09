@@ -131,42 +131,56 @@ export async function GET(request: NextRequest) {
     }
 
     if (!userId) {
-      // Get all live stations with user profile data
-      const { data, error } = await supabase
+      // Get all live stations
+      const { data: liveStationsData, error: stationsError } = await supabase
         .from('live_stations')
-        .select(`
-          *,
-          users:user_id (
-            clerk_user_id,
-            username,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('is_live', true)
         .order('started_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching live stations:', error)
-        // Return empty stations on error instead of throwing
+      if (stationsError) {
+        console.error('Error fetching live stations:', stationsError)
         return NextResponse.json({ success: true, stations: [] })
       }
       
-      console.log('📻 Fetched live stations:', data?.length || 0)
+      console.log('📻 Fetched live stations:', liveStationsData?.length || 0)
+      
+      if (!liveStationsData || liveStationsData.length === 0) {
+        return NextResponse.json({ success: true, stations: [] })
+      }
+
+      // Get user data for all live station owners
+      const userIds = liveStationsData.map(s => s.user_id)
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('clerk_user_id, username, avatar_url')
+        .in('clerk_user_id', userIds)
+
+      if (usersError) {
+        console.error('Error fetching users:', usersError)
+      }
+
+      // Create a map of user data by clerk_user_id
+      const usersMap = new Map()
+      usersData?.forEach(user => {
+        usersMap.set(user.clerk_user_id, user)
+      })
       
       // Format the response to include profile image
-      const formattedStations = data?.map(station => {
+      const formattedStations = liveStationsData.map(station => {
+        const userData = usersMap.get(station.user_id)
         console.log('Station data:', {
           id: station.id,
           username: station.username,
           user_id: station.user_id,
-          has_users_relation: !!station.users,
-          avatar: station.users?.avatar_url
+          has_user_data: !!userData,
+          avatar: userData?.avatar_url
         })
         return {
           ...station,
-          profile_image: station.users?.avatar_url || null
+          profile_image: userData?.avatar_url || null
         }
-      }) || []
+      })
       
       return NextResponse.json({ success: true, stations: formattedStations })
     }
