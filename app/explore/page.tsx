@@ -64,6 +64,7 @@ export default function ExplorePage() {
   const router = useRouter()
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
+  const [liveStations, setLiveStations] = useState<LiveStation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchBox, setShowSearchBox] = useState(true)
@@ -99,7 +100,38 @@ export default function ExplorePage() {
 
   useEffect(() => {
     fetchCombinedMedia()
+    fetchLiveStations()
   }, [])
+
+  const fetchLiveStations = async () => {
+    try {
+      const res = await fetch('/api/station')
+      const data = await res.json()
+      if (data.success && data.stations) {
+        const liveUsers = data.stations.map((s: {
+          id: string
+          user_id: string
+          username: string
+          current_track_image: string | null
+          listener_count: number
+        }) => ({
+          id: s.id,
+          title: `${s.username}'s Station`,
+          coverUrl: s.current_track_image,
+          isLive: true,
+          listenerCount: s.listener_count || 0,
+          owner: {
+            userId: s.user_id,
+            username: s.username,
+            profileImage: s.current_track_image
+          }
+        }))
+        setLiveStations(liveUsers)
+      }
+    } catch (error) {
+      console.error('Failed to fetch live stations:', error)
+    }
+  }
 
   const fetchCombinedMedia = async () => {
     setLoading(true)
@@ -258,6 +290,69 @@ export default function ExplorePage() {
                 </div>
               </div>
             </div>
+
+            {/* LIVE NOW SECTION - Horizontal Scroll Below Banner */}
+            {liveStations.length > 0 && (
+              <div className="py-4 px-6 border-b border-white/5 bg-gradient-to-r from-red-950/20 to-pink-950/20">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xl font-bold relative z-10 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <span className="bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">
+                      Live Now
+                    </span>
+                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full border border-red-500/30">
+                      {liveStations.length} broadcasting
+                    </span>
+                  </h2>
+                </div>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
+                  {liveStations.map((station) => (
+                    <Link
+                      key={station.id}
+                      href={`/profile/${station.owner.userId}`}
+                      className="flex-shrink-0 group cursor-pointer transition-all hover:scale-105"
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        {/* Profile Picture with Live Indicator */}
+                        <div className="relative">
+                          <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-red-500 ring-offset-2 ring-offset-black">
+                            {station.owner.profileImage ? (
+                              <Image
+                                src={station.owner.profileImage}
+                                alt={station.owner.username}
+                                width={64}
+                                height={64}
+                                className="w-full h-full object-cover"
+                                unoptimized
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
+                                <Users size={28} className="text-white" />
+                              </div>
+                            )}
+                          </div>
+                          {/* Live Badge */}
+                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1 animate-pulse">
+                            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                            LIVE
+                          </div>
+                        </div>
+                        {/* Username */}
+                        <div className="text-center">
+                          <div className="text-xs font-bold text-white truncate max-w-[80px]">
+                            {station.owner.username}
+                          </div>
+                          <div className="text-[10px] text-gray-500 flex items-center justify-center gap-1">
+                            <Users size={10} />
+                            {station.listenerCount}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* SECTION 2: HORIZONTAL SCROLL - Full Width, Clean, Less Padding */}
             <div className="py-4 px-6 border-b border-white/5">

@@ -132,6 +132,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showBannerModal, setShowBannerModal] = useState(false)
   const [showStationsModal, setShowStationsModal] = useState(false)
+  const [showViewSwitcher, setShowViewSwitcher] = useState(false)
   const [activeTab, setActiveTab] = useState<'feed' | 'stations'>('feed')
   const [isFollowing, setIsFollowing] = useState(false)
   
@@ -619,6 +620,29 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   const trackCount = useMemo(() => audioTracks.length, [audioTracks])
 
+  // Debounced chat typing indicator (optional)
+  const [isTyping, setIsTyping] = useState(false)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Optimize chat messages with pagination (show last 50)
+  const displayedMessages = useMemo(() => {
+    return chatMessages.slice(-50)
+  }, [chatMessages])
+
+  // Debounced scroll to bottom for chat
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (chatContainerRef.current && displayedMessages.length > 0) {
+      const scrollTimeout = setTimeout(() => {
+        chatContainerRef.current?.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        })
+      }, 100)
+      return () => clearTimeout(scrollTimeout)
+    }
+  }, [displayedMessages.length])
+
   return (
     <div className="min-h-screen bg-black text-white pb-32">
       {/* Holographic 3D Background */}
@@ -646,48 +670,49 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         <span>ESC</span>
       </button>
 
-      {/* Tab Navigation - Feed / Station */}
-      <div className="fixed top-4 right-4 z-50 bg-black/60 backdrop-blur-md border border-white/20 rounded-full p-1 shadow-lg">
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setActiveTab('feed')}
-            className={`px-4 md:px-6 py-2 rounded-full text-xs md:text-sm font-bold transition-all ${
-              activeTab === 'feed'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <Music size={14} />
-              Feed
-            </span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('stations')
-              if (!stationId) {
-                fetchStationStatus()
-              }
-            }}
-            className={`px-4 md:px-6 py-2 rounded-full text-xs md:text-sm font-bold transition-all relative ${
-              activeTab === 'stations'
-                ? 'bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <RadioIcon size={14} />
-              Station
-              {isLive && (
-                <Circle size={8} className="fill-red-400 text-red-400 animate-pulse" />
-              )}
-            </span>
-          </button>
-        </div>
+      {/* View Switcher Icon Buttons - Top Right */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        {/* Feed Icon Button */}
+        <button
+          onClick={() => {
+            setActiveTab('feed')
+            setShowViewSwitcher(false)
+          }}
+          className={`w-10 h-10 md:w-12 md:h-12 rounded-full backdrop-blur-md border transition-all shadow-lg flex items-center justify-center ${
+            activeTab === 'feed'
+              ? 'bg-gradient-to-r from-cyan-600 to-blue-600 border-cyan-400 scale-110'
+              : 'bg-black/60 border-white/20 hover:bg-black/80 hover:border-cyan-400'
+          }`}
+          title="Feed View"
+        >
+          <Music size={18} className={activeTab === 'feed' ? 'text-white' : 'text-gray-400'} />
+        </button>
+
+        {/* Station Icon Button */}
+        <button
+          onClick={() => {
+            setActiveTab('stations')
+            if (!stationId) {
+              fetchStationStatus()
+            }
+            setShowViewSwitcher(false)
+          }}
+          className={`relative w-10 h-10 md:w-12 md:h-12 rounded-full backdrop-blur-md border transition-all shadow-lg flex items-center justify-center ${
+            activeTab === 'stations'
+              ? 'bg-gradient-to-r from-red-600 to-pink-600 border-red-400 scale-110'
+              : 'bg-black/60 border-white/20 hover:bg-black/80 hover:border-red-400'
+          }`}
+          title="Station View"
+        >
+          <RadioIcon size={18} className={activeTab === 'stations' ? 'text-white' : 'text-gray-400'} />
+          {isLive && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border-2 border-black"></div>
+          )}
+        </button>
       </div>
 
       {/* Feed/Stations Content - Full bleed with new layout */}
-      <main className="relative z-10 overflow-y-auto pb-32 pt-16 md:pt-0">
+      <main className="relative z-10 overflow-y-auto pb-32 pt-0">
           
           {activeTab === 'feed' ? (
             <>
@@ -716,160 +741,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 </div>
               ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
                 <div className="space-y-0">
-                  {/* Mobile Station View - Full Screen */}
-                  {activeSubTab === 'station' && (
-                    <div className="md:hidden fixed inset-0 bg-black z-50 flex flex-col safe-area-inset">
-                      {/* Starry Background for Chat */}
-                      <StarryBackground />
-                      
-                      {/* Header */}
-                      <div className="flex-shrink-0 bg-gradient-to-b from-black to-transparent p-3 border-b border-white/10 relative z-10">
-                        <div className="flex items-center justify-between mb-3">
-                          <button
-                            onClick={() => setActiveSubTab('tracks')}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-all active:scale-95"
-                          >
-                            <ChevronLeft size={24} className="text-white" />
-                          </button>
-                          <h1 className="text-lg font-bold">
-                            {isOwnProfile ? 'My Station' : `${profile.username}'s Station`}
-                          </h1>
-                          <div className="w-10"></div>
-                        </div>
-
-                        {/* Live Status Bar */}
-                        <div className="bg-gradient-to-r from-red-900/30 to-red-950/30 rounded-xl p-3 border border-red-500/30">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Circle size={10} className={`fill-red-500 text-red-500 ${isLive ? 'animate-pulse' : ''}`} />
-                              <span className="text-white font-bold text-sm">{isLive ? 'LIVE NOW' : 'OFFLINE'}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                              <Users size={12} />
-                              <span>{liveListeners} listening</span>
-                            </div>
-                          </div>
-                          {isOwnProfile && (
-                            <button
-                              onClick={toggleLive}
-                              className={`w-full p-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2 active:scale-95 ${
-                                isLive
-                                  ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30'
-                                  : 'bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30'
-                              }`}
-                              title={isLive ? 'End Broadcast' : 'Go Live'}
-                            >
-                              {isLive ? (
-                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
-                                  <rect x="3" y="3" width="10" height="10" rx="1" fill="currentColor"/>
-                                </svg>
-                              ) : (
-                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="flex-shrink-0">
-                                  <circle cx="8" cy="8" r="6" fill="currentColor"/>
-                                </svg>
-                              )}
-                              <span className="text-xs">{isLive ? 'End Broadcast' : 'Go Live'}</span>
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Currently Playing */}
-                        {isLive && currentTrack && (
-                          <div className="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/30 mt-3">
-                            <div className="text-[10px] text-cyan-400 uppercase mb-1">Now Playing</div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-10 h-10 rounded-lg overflow-hidden">
-                                <Image
-                                  src={currentTrack.imageUrl || '/radio-logo.svg'}
-                                  alt={currentTrack.title || 'Cover'}
-                                  width={40}
-                                  height={40}
-                                  className="object-cover"
-                                  unoptimized
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-bold text-sm truncate">{currentTrack.title}</h4>
-                                <p className="text-xs text-gray-400 truncate">@{profile.username}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Chat Messages */}
-                      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar relative z-10">
-                        {chatMessages.length === 0 ? (
-                          <div className="text-center text-gray-500 mt-8">
-                            <RadioIcon size={28} className="mx-auto mb-2 opacity-50" />
-                            <p className="text-xs">{isLive ? 'Start the conversation!' : 'Station is offline'}</p>
-                          </div>
-                        ) : (
-                          chatMessages.map((msg) => (
-                            <div key={msg.id} className={`${
-                              msg.type === 'track' ? 'bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-2' : ''
-                            } ${msg.username === 'System' ? 'text-center' : ''}`}>
-                              {msg.username === 'System' ? (
-                                <p className="text-xs text-gray-500 italic">{msg.message}</p>
-                              ) : msg.type === 'track' ? (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <Play size={12} className="text-cyan-400 flex-shrink-0" />
-                                  <span className="text-cyan-400 font-bold">{msg.username}</span>
-                                  <span className="text-gray-400">played</span>
-                                  <span className="text-white truncate">{msg.message}</span>
-                                </div>
-                              ) : (
-                                <div>
-                                  <div className="flex items-baseline gap-2 mb-0.5">
-                                    <span className="font-bold text-white text-xs">{msg.username}</span>
-                                    <span className="text-[10px] text-gray-500">
-                                      {new Date(msg.timestamp).toLocaleTimeString('en-US', { 
-                                        hour: 'numeric', 
-                                        minute: '2-digit',
-                                        hour12: true 
-                                      })}
-                                    </span>
-                                  </div>
-                                  <p className="text-gray-300 text-xs">{msg.message}</p>
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      {/* Chat Input */}
-                      {isLive && (
-                        <div className="flex-shrink-0 p-3 border-t border-white/10 bg-black safe-area-bottom">
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={chatInput}
-                              onChange={(e) => setChatInput(e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter' && chatInput.trim()) {
-                                  sendMessage()
-                                }
-                              }}
-                              placeholder="Type a message..."
-                              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500/50"
-                            />
-                            <button
-                              onClick={() => {
-                                if (chatInput.trim()) {
-                                  sendMessage()
-                                }
-                              }}
-                              className="bg-cyan-600 hover:bg-cyan-500 active:scale-95 rounded-lg px-3 py-2.5 transition-all"
-                            >
-                              <Send size={16} className="text-white" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Mobile Layout - Original Design */}
                   <div className="md:hidden space-y-0">
                   {/* SECTION 1: TOP BANNER - Banner or Cover Art Carousel */}
@@ -2041,8 +1912,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </h3>
                     </div>
 
-                    {/* Chat Messages */}
-                    <div className="h-[400px] md:h-[500px] overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    {/* Chat Messages - Optimized with ref and pagination */}
+                    <div 
+                      ref={chatContainerRef}
+                      className="h-[400px] md:h-[500px] overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+                    >
                       {!isLive ? (
                         <div className="flex items-center justify-center h-full text-center">
                           <div>
@@ -2050,7 +1924,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             <p className="text-gray-500 text-sm">Chat is disabled when station is offline</p>
                           </div>
                         </div>
-                      ) : chatMessages.length === 0 ? (
+                      ) : displayedMessages.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-center">
                           <div>
                             <MessageCircle size={48} className="text-gray-700 mx-auto mb-3" />
@@ -2058,7 +1932,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           </div>
                         </div>
                       ) : (
-                        chatMessages.map((msg) => (
+                        displayedMessages.map((msg) => (
                           <div key={msg.id} className="group">
                             {msg.type === 'track' ? (
                               <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3">
