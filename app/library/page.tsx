@@ -102,20 +102,29 @@ export default function LibraryPage() {
       }
 
       // Use published releases from combined_media table instead of library
-      if (publishedData.success && Array.isArray(publishedData.media)) {
-        setCombinedItems(publishedData.media.map((item: any) => ({
+      if (publishedData.success && Array.isArray(publishedData.combinedMedia)) {
+        // Filter only items with both audio and image (actual music releases)
+        const musicReleases = publishedData.combinedMedia.filter((item: any) => 
+          item.audio_url && item.image_url && item.media_type === 'music-image'
+        )
+        setCombinedItems(musicReleases.map((item: any) => ({
           id: item.id,
-          title: item.title,
+          title: item.title || 'Untitled',
           audio_url: item.audio_url,
           image_url: item.image_url,
-          music_prompt: item.audio_prompt,
+          music_prompt: item.audio_prompt || item.music_prompt,
           image_prompt: item.image_prompt,
           is_published: true,
           created_at: item.created_at
         })))
+        console.log('✅ Loaded', musicReleases.length, 'published releases')
       } else if (combinedData.success && Array.isArray(combinedData.combined)) {
         // Fallback to unpublished library items if no published releases
-        setCombinedItems(combinedData.combined.filter((item: LibraryCombined) => item.is_published))
+        const publishedLibraryItems = combinedData.combined.filter((item: LibraryCombined) => item.is_published)
+        setCombinedItems(publishedLibraryItems)
+        console.log('⚠️ Using library fallback:', publishedLibraryItems.length, 'items')
+      } else {
+        console.log('❌ No releases found')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
