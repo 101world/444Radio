@@ -449,17 +449,31 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   // Toggle live status - Memoized with useCallback
   const toggleLive = useCallback(async () => {
     try {
+      console.log('🔴 Toggling live status...', { 
+        currentIsLive: isLive, 
+        newStatus: !isLive,
+        username: profile?.username,
+        currentTrack: currentTrack?.id
+      })
+      
       const newLiveStatus = !isLive
       const res = await fetch('/api/station', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           isLive: newLiveStatus,
-          currentTrack: newLiveStatus ? currentTrack : null,
+          currentTrack: newLiveStatus && currentTrack ? {
+            id: currentTrack.id,
+            title: currentTrack.title,
+            image_url: currentTrack.imageUrl
+          } : null,
           username: profile?.username
         })
       })
+      
       const data = await res.json()
+      console.log('📡 Station API response:', data)
+      
       if (data.success) {
         setIsLive(newLiveStatus)
         if (data.station.id) {
@@ -470,9 +484,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           setChatMessages([])
           setLiveListeners(0)
         }
+        console.log('✅ Successfully went', newLiveStatus ? 'LIVE' : 'OFFLINE')
+      } else {
+        console.error('❌ Failed to toggle live:', data.error)
+        alert(`Failed to ${newLiveStatus ? 'go live' : 'stop broadcast'}: ${data.error || 'Unknown error'}`)
       }
     } catch (error) {
-      console.error('Failed to toggle live:', error)
+      console.error('❌ Failed to toggle live:', error)
+      alert('Failed to toggle live status. Please check console for details.')
     }
   }, [isLive, currentTrack, profile?.username])
 
