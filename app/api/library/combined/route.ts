@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
 
 /**
  * DELETE /api/library/combined?id=xxx
- * Delete a combined media from library
+ * Delete a combined media from library and published releases
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -173,6 +173,21 @@ export async function DELETE(req: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+    // First, get the audio_url and image_url to find related records in combined_media table
+    const getResponse = await fetch(
+      `${supabaseUrl}/rest/v1/combined_media_library?id=eq.${id}&clerk_user_id=eq.${userId}&select=audio_url,image_url`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+    
+    const combinedData = await getResponse.json()
+    const audioUrl = Array.isArray(combinedData) && combinedData.length > 0 ? combinedData[0].audio_url : null
+    const imageUrl = Array.isArray(combinedData) && combinedData.length > 0 ? combinedData[0].image_url : null
+
     // Delete from combined_media_library
     await fetch(
       `${supabaseUrl}/rest/v1/combined_media_library?id=eq.${id}&clerk_user_id=eq.${userId}`,
@@ -184,6 +199,20 @@ export async function DELETE(req: NextRequest) {
         }
       }
     )
+
+    // If this was published, also delete from combined_media table (explore/profile pages)
+    if (audioUrl && imageUrl) {
+      await fetch(
+        `${supabaseUrl}/rest/v1/combined_media?audio_url=eq.${encodeURIComponent(audioUrl)}&image_url=eq.${encodeURIComponent(imageUrl)}&user_id=eq.${userId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+    }
 
     return NextResponse.json({ success: true })
 

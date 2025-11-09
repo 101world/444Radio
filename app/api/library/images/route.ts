@@ -48,7 +48,7 @@ export async function GET() {
 
 /**
  * DELETE /api/library/images?id=xxx
- * Delete an image from library
+ * Delete an image from library and all related combined media
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -68,6 +68,20 @@ export async function DELETE(req: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+    // First, get the image_url from images_library to find related records
+    const getResponse = await fetch(
+      `${supabaseUrl}/rest/v1/images_library?id=eq.${id}&clerk_user_id=eq.${userId}&select=image_url`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+    
+    const imageData = await getResponse.json()
+    const imageUrl = Array.isArray(imageData) && imageData.length > 0 ? imageData[0].image_url : null
+
     // Delete from images_library
     await fetch(
       `${supabaseUrl}/rest/v1/images_library?id=eq.${id}&clerk_user_id=eq.${userId}`,
@@ -79,6 +93,33 @@ export async function DELETE(req: NextRequest) {
         }
       }
     )
+
+    // If we found the image_url, also delete from combined_media table (published releases)
+    // Note: Only delete if it's a standalone image (no audio_url), otherwise keep the release
+    if (imageUrl) {
+      await fetch(
+        `${supabaseUrl}/rest/v1/combined_media?image_url=eq.${encodeURIComponent(imageUrl)}&user_id=eq.${userId}&audio_url=is.null`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+
+      // Also delete from combined_media_library where image is used alone
+      await fetch(
+        `${supabaseUrl}/rest/v1/combined_media_library?image_url=eq.${encodeURIComponent(imageUrl)}&clerk_user_id=eq.${userId}&audio_url=is.null`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+    }
 
     return NextResponse.json({ success: true })
 

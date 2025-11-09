@@ -27,10 +27,10 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   ]
 
   return (
-    <div className="md:hidden fixed right-4 z-50" style={{ top: '66.67%' }}>
+    <div className="md:hidden fixed top-4 right-4 z-50">
       {/* Navigation Items - Appear when open */}
       {isOpen && (
-        <div className="absolute bottom-16 right-0 flex flex-col gap-3 mb-2">
+        <div className="absolute top-16 right-0 flex flex-col gap-3 mt-2">{/* Changed from bottom-16 to top-16 */}
           {/* Prompt Box Toggle Button - First in list */}
           {showPromptToggle && onTogglePrompt && (
             <button

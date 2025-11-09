@@ -48,7 +48,7 @@ export async function GET() {
 
 /**
  * DELETE /api/library/music?id=xxx
- * Delete a music file from library
+ * Delete a music file from library and all related combined media
  */
 export async function DELETE(req: NextRequest) {
   try {
@@ -68,6 +68,20 @@ export async function DELETE(req: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+    // First, get the audio_url from music_library to find related records
+    const getResponse = await fetch(
+      `${supabaseUrl}/rest/v1/music_library?id=eq.${id}&clerk_user_id=eq.${userId}&select=audio_url`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+    
+    const musicData = await getResponse.json()
+    const audioUrl = Array.isArray(musicData) && musicData.length > 0 ? musicData[0].audio_url : null
+
     // Delete from music_library
     await fetch(
       `${supabaseUrl}/rest/v1/music_library?id=eq.${id}&clerk_user_id=eq.${userId}`,
@@ -79,6 +93,32 @@ export async function DELETE(req: NextRequest) {
         }
       }
     )
+
+    // If we found the audio_url, also delete from combined_media table (published releases)
+    if (audioUrl) {
+      await fetch(
+        `${supabaseUrl}/rest/v1/combined_media?audio_url=eq.${encodeURIComponent(audioUrl)}&user_id=eq.${userId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+
+      // Also delete from combined_media_library (unpublished library items)
+      await fetch(
+        `${supabaseUrl}/rest/v1/combined_media_library?audio_url=eq.${encodeURIComponent(audioUrl)}&clerk_user_id=eq.${userId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+    }
 
     return NextResponse.json({ success: true })
 
