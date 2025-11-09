@@ -153,8 +153,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null)
   const [editingTrackTitle, setEditingTrackTitle] = useState<string>('')
   const [showVideo, setShowVideo] = useState(false)
+  const [broadcasterVideoUrl, setBroadcasterVideoUrl] = useState<string | null>(null)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const broadcasterVideoRef = useRef<HTMLVideoElement>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [showCreatePostModal, setShowCreatePostModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
@@ -252,15 +254,22 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   useEffect(() => {
     if (!stationId) return
 
-    // Subscribe to messages
+    console.log('Setting up realtime subscriptions for station:', stationId)
+
+    // Subscribe to messages with better error handling
     const messagesChannel = supabase
-      .channel(`station_messages:${stationId}`)
+      .channel(`station_messages:${stationId}`, {
+        config: {
+          broadcast: { self: true }
+        }
+      })
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'station_messages',
         filter: `station_id=eq.${stationId}`
       }, (payload) => {
+        console.log('New message received:', payload)
         const msg = payload.new as {
           id: string
           username: string
@@ -268,17 +277,23 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           created_at: string
           message_type: 'chat' | 'track'
         }
-        setChatMessages(prev => [...prev, {
-          id: msg.id,
-          username: msg.username,
-          message: msg.message,
-          timestamp: new Date(msg.created_at),
-          type: msg.message_type
-        }])
+        setChatMessages(prev => {
+          // Prevent duplicates
+          if (prev.some(m => m.id === msg.id)) return prev
+          return [...prev, {
+            id: msg.id,
+            username: msg.username,
+            message: msg.message,
+            timestamp: new Date(msg.created_at),
+            type: msg.message_type
+          }]
+        })
       })
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Messages channel status:', status)
+      })
 
-    // Subscribe to station updates
+    // Subscribe to station updates (including video state and titles)
     const stationChannel = supabase
       .channel(`live_stations:${stationId}`)
       .on('postgres_changes', {
@@ -287,14 +302,26 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         table: 'live_stations',
         filter: `id=eq.${stationId}`
       }, (payload) => {
+        console.log('Station update received:', payload)
         const station = payload.new as {
           is_live: boolean
           listener_count: number
+          title?: string
+          video_enabled?: boolean
+          current_track_title?: string
         }
         setIsLive(station.is_live)
         setLiveListeners(station.listener_count || 0)
+        if (station.title) {
+          setStationTitle(station.title)
+        }
+        if (station.video_enabled !== undefined && !isOwnProfile) {
+          setShowVideo(station.video_enabled)
+        }
       })
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Station channel status:', status)
+      })
 
     // Subscribe to listener changes
     const listenersChannel = supabase
@@ -306,7 +333,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         filter: `station_id=eq.${stationId}`
       }, async (payload) => {
         // Refresh listener count
-        const res = await fetch(`/api/station?userId=${profile?.username}`)
+        const res = await fetch(`/api/station?userId=${resolvedParams.userId}`)
         const data = await res.json()
         if (data.success && data.station) {
           setLiveListeners(data.station.listener_count || 0)
@@ -333,14 +360,42 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           }])
         }
       })
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Listeners channel status:', status)
+      })
+
+    // Subscribe to combined_media updates for realtime title changes
+    const mediaChannel = supabase
+      .channel(`combined_media_updates:${resolvedParams.userId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'combined_media',
+        filter: `user_id=eq.${resolvedParams.userId}`
+      }, (payload) => {
+        console.log('Media update received:', payload)
+        const updatedMedia = payload.new as any
+        setProfile(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            combinedMedia: prev.combinedMedia.map(m => 
+              m.id === updatedMedia.id ? { ...m, title: updatedMedia.title } : m
+            )
+          }
+        })
+      })
+      .subscribe((status) => {
+        console.log('Media channel status:', status)
+      })
 
     return () => {
       messagesChannel.unsubscribe()
       stationChannel.unsubscribe()
       listenersChannel.unsubscribe()
+      mediaChannel.unsubscribe()
     }
-  }, [stationId, profile?.username])
+  }, [stationId, resolvedParams.userId, isOwnProfile])
 
   // Join station as listener when viewing
   useEffect(() => {
@@ -1912,21 +1967,29 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     )}
                   </div>
 
-                  {/* Live Video Stream */}
+                  {/* Live Video Stream - Visible to all when active */}
                   {isLive && showVideo && (
                     <div className="mt-4 pt-4 border-t border-white/10">
-                      <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
+                      <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-red-500/30">
                         <video
-                          ref={videoRef}
+                          ref={isOwnProfile ? videoRef : broadcasterVideoRef}
                           autoPlay
                           playsInline
-                          muted
+                          muted={isOwnProfile}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-2">
+                        <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-2 shadow-lg">
                           <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                           <span className="text-white font-bold text-xs">LIVE VIDEO</span>
                         </div>
+                        {!isOwnProfile && (
+                          <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                            <span className="text-white font-bold text-xs flex items-center gap-1.5">
+                              <Video size={12} />
+                              Broadcaster's Stream
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
