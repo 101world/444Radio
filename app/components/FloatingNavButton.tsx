@@ -249,7 +249,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
         </div>
       )}
 
-      {/* Main Toggle Button */}
+      {/* Main Toggle Button - Desktop */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl active:scale-90 ${
@@ -265,12 +265,14 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
         )}
       </button>
 
-      {/* Backdrop */}
+      {/* Backdrop - Desktop */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/20 backdrop-blur-sm -z-10"
           onClick={() => setIsOpen(false)}
         />
+      )}
+        </div>
       )}
 
       {/* Settings Modal */}
@@ -285,21 +287,6 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
             window.location.reload()
           }}
         />
-      )}
-      {/* Settings Modal */}
-      {showSettingsModal && user && (
-        <ProfileSettingsModal
-          isOpen={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          currentUsername={user.username || user.firstName || 'User'}
-          currentAvatar={user.imageUrl || ''}
-          onUpdate={() => {
-            // Force page refresh to update displayed data
-            window.location.reload()
-          }}
-        />
-      )}
-        </div>
       )}
     </>
   )
