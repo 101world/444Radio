@@ -166,18 +166,20 @@ export async function GET(request: NextRequest) {
         usersMap.set(user.clerk_user_id, user)
       })
       
-      // Format the response to include profile image
+      // Format the response to include profile image and correct username
       const formattedStations = liveStationsData.map(station => {
         const userData = usersMap.get(station.user_id)
         console.log('Station data:', {
           id: station.id,
-          username: station.username,
+          old_username: station.username,
           user_id: station.user_id,
           has_user_data: !!userData,
+          correct_username: userData?.username,
           avatar: userData?.avatar_url
         })
         return {
           ...station,
+          username: userData?.username || station.username, // Use fresh username from users table
           profile_image: userData?.avatar_url || null
         }
       })
