@@ -1029,8 +1029,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     )}
                   </div>
 
-                  {/* SECTION 2: HORIZONTAL SCROLL - Recent Tracks */}
-                  <div className="py-4 px-6 border-b border-white/5 relative z-20 bg-black">
+                  {/* SECTION 2: HORIZONTAL SCROLL - Recent Tracks (Mobile Only) */}
+                  <div className="md:hidden py-4 px-6 border-b border-white/5 relative z-20 bg-black">
                     <h2 className="text-2xl font-bold mb-3 relative z-10">🎵 Recent Tracks</h2>
                     <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 relative z-10" style={{ scrollbarWidth: 'none' }}>
                       {profile.combinedMedia.slice(0, 20).map((media) => {
@@ -1175,140 +1175,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <Heart size={10} />
-                                    <span>{media.likes || 0}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Mobile: Single Column List View */}
-                    <div className="md:hidden space-y-1">
-                      {profile.combinedMedia.map((media) => {
-                        const isCurrentlyPlaying = playingId === media.id
-                        const hasAudio = !!media.audio_url
-                        
-                        return (
-                          <div 
-                            key={media.id} 
-                            className={`group flex items-center gap-3 p-3 rounded-lg transition-all ${
-                              hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                            } ${
-                              isCurrentlyPlaying 
-                                ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
-                                : hasAudio ? 'hover:bg-white/5' : ''
-                            }`}
-                            onClick={() => hasAudio && handlePlay(media)}
-                          >
-                            {/* Thumbnail */}
-                            <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
-                              <img 
-                                src={media.image_url} 
-                                alt={media.title}
-                                className="w-full h-full object-cover"
-                              />
-                              {hasAudio && (
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                    {isCurrentlyPlaying && isPlaying ? (
-                                      <Pause className="text-black" size={14} />
-                                    ) : (
-                                      <Play className="text-black ml-0.5" size={14} />
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              {isCurrentlyPlaying && isPlaying && (
-                                <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse"></div>
-                              )}
-                            </div>
-                            
-                            {/* Track Info */}
-                            <div className="flex-1 min-w-0 relative z-10">
-                              <h3 className="font-semibold text-white truncate leading-tight">
-                                {media.title}
-                              </h3>
-                              <div className="flex items-center gap-3 mt-1">
-                                <p className="text-sm text-gray-400 truncate leading-tight">
-                                  {profile.username}
-                                </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                  <div className="flex items-center gap-1">
-                                    <Play size={12} />
-                                    <span>{media.plays || 0}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Heart size={12} />
-                                    <span>{media.likes || 0}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Mobile: Single Column List View */}
-                    <div className="md:hidden space-y-1">
-                      {profile.combinedMedia.map((media) => {
-                        const isCurrentlyPlaying = playingId === media.id
-                        const hasAudio = !!media.audio_url
-                        
-                        return (
-                          <div 
-                            key={media.id} 
-                            className={`group flex items-center gap-3 p-3 rounded-lg transition-all ${
-                              hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                            } ${
-                              isCurrentlyPlaying 
-                                ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
-                                : hasAudio ? 'hover:bg-white/5' : ''
-                            }`}
-                            onClick={() => hasAudio && handlePlay(media)}
-                          >
-                            {/* Thumbnail */}
-                            <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
-                              <img 
-                                src={media.image_url} 
-                                alt={media.title}
-                                className="w-full h-full object-cover"
-                              />
-                              {hasAudio && (
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                    {isCurrentlyPlaying && isPlaying ? (
-                                      <Pause className="text-black" size={14} />
-                                    ) : (
-                                      <Play className="text-black ml-0.5" size={14} />
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              {isCurrentlyPlaying && isPlaying && (
-                                <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse"></div>
-                              )}
-                            </div>
-                            
-                            {/* Track Info */}
-                            <div className="flex-1 min-w-0 relative z-10">
-                              <h3 className="font-semibold text-white truncate leading-tight">
-                                {media.title}
-                              </h3>
-                              <div className="flex items-center gap-3 mt-1">
-                                <p className="text-sm text-gray-400 truncate leading-tight">
-                                  {profile.username}
-                                </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                  <div className="flex items-center gap-1">
-                                    <Play size={12} />
-                                    <span>{media.plays || 0}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Heart size={12} />
                                     <span>{media.likes || 0}</span>
                                   </div>
                                 </div>
