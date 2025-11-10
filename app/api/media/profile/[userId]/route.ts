@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { clerkClient } from '@clerk/nextjs/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -53,6 +54,39 @@ export async function GET(
       .eq('clerk_user_id', userId)
       .single()
 
+    // If no user found, create one with minimal data
+    if (!userData) {
+      await supabase
+        .from('users')
+        .insert({
+          clerk_user_id: userId,
+          email: '',
+          username: null,
+          credits: 0
+        })
+    }
+
+    // If username is missing in Supabase, fetch from Clerk and sync
+    let finalUsername = userData?.username
+    if (!finalUsername) {
+      try {
+        const client = await clerkClient()
+        const clerkUser = await client.users.getUser(userId)
+        finalUsername = clerkUser.username || clerkUser.firstName || 'User'
+        
+        // Sync the username to Supabase for future lookups
+        if (clerkUser.username) {
+          await supabase
+            .from('users')
+            .update({ username: clerkUser.username })
+            .eq('clerk_user_id', userId)
+        }
+      } catch (clerkError) {
+        console.error('Error fetching from Clerk:', clerkError)
+        finalUsername = 'User'
+      }
+    }
+
     // Combine all media with type indicator
     const allMedia = [
       ...(combinedData || []).map((item) => ({ ...item, media_type: 'music-image' })),
@@ -74,7 +108,7 @@ export async function GET(
       success: true,
       combinedMedia: allMedia,
       uploads: uploads,
-      username: userData?.username || 'Unknown User',
+      username: finalUsername,
       avatar: userData?.avatar_url || null,
       bio: userData?.bio || null,
       tagline: userData?.tagline || null,
