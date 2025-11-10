@@ -486,6 +486,8 @@ function CreatePageContent() {
       songDuration?: 'short' | 'medium' | 'long'
     }
   ) => {
+    console.log('[Generation] Starting generation:', { messageId, type, params })
+    
     // Add to persistent generation queue
     const genId = addGeneration({
       type: type,
@@ -519,9 +521,13 @@ function CreatePageContent() {
         const lyricsToUse = params.customLyrics || undefined
         const durationToUse = params.songDuration || 'medium'
         
+        console.log('[Generation] Calling generateMusic with:', { fullPrompt, titleToUse, lyricsToUse, durationToUse })
         result = await generateMusic(fullPrompt, titleToUse, lyricsToUse, durationToUse)
+        console.log('[Generation] Music generation result:', result)
       } else {
+        console.log('[Generation] Calling generateImage with:', params.prompt)
         result = await generateImage(params.prompt)
+        console.log('[Generation] Image generation result:', result)
       }
 
       // Update credits
@@ -548,16 +554,19 @@ function CreatePageContent() {
       }
 
       // Update message with result
-      setMessages(prev => prev.map(msg => 
-        msg.id === messageId
-          ? {
-              ...msg,
-              isGenerating: false,
-              content: result.error ? `❌ ${result.error}` : (type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
-              result: result.error ? undefined : result
-            }
-          : msg
-      ))
+      setMessages(prev => {
+        console.log('[Generation] Updating message', messageId, 'with result:', result)
+        return prev.map(msg => 
+          msg.id === messageId
+            ? {
+                ...msg,
+                isGenerating: false,
+                content: result.error ? `❌ ${result.error}` : (type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
+                result: result.error ? undefined : result
+              }
+            : msg
+        )
+      })
 
       // Add assistant response
       if (!result.error) {
@@ -569,6 +578,7 @@ function CreatePageContent() {
             : 'Cover art created! Want to combine it with a track?',
           timestamp: new Date()
         }
+        console.log('[Generation] Adding assistant message:', assistantMessage)
         setMessages(prev => [...prev, assistantMessage])
       }
     } catch (error) {
