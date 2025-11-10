@@ -232,6 +232,51 @@ function CreatePageContent() {
     }
   }, [messages])
 
+  // Sync generation queue results with messages on mount and when generations change
+  useEffect(() => {
+    console.log('[Sync] Checking generation queue for completed generations:', generations)
+    
+    // Check if any generations completed while user was away
+    generations.forEach(gen => {
+      if (gen.status === 'completed' && gen.result) {
+        // Find the corresponding message
+        setMessages(prev => {
+          const messageExists = prev.some(msg => 
+            msg.result?.audioUrl === gen.result?.audioUrl || 
+            msg.result?.imageUrl === gen.result?.imageUrl
+          )
+          
+          if (messageExists) {
+            console.log('[Sync] Message already exists for generation:', gen.id)
+            return prev
+          }
+          
+          // Update any generating message for this prompt
+          const hasGeneratingMessage = prev.some(msg => 
+            msg.isGenerating && msg.content.includes(gen.prompt.substring(0, 20))
+          )
+          
+          if (hasGeneratingMessage) {
+            console.log('[Sync] Updating generating message with result:', gen.id)
+            return prev.map(msg => {
+              if (msg.isGenerating && msg.content.includes(gen.prompt.substring(0, 20))) {
+                return {
+                  ...msg,
+                  isGenerating: false,
+                  content: gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!',
+                  result: gen.result
+                }
+              }
+              return msg
+            })
+          }
+          
+          return prev
+        })
+      }
+    })
+  }, [generations])
+
   // Fetch user credits on mount
   useEffect(() => {
     const fetchCredits = async () => {

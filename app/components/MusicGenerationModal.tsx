@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { X, Music, Loader2, Sparkles } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
+import { LYRICS_DATABASE } from '@/lib/lyrics-database'
 
 interface MusicModalProps {
   isOpen: boolean
@@ -289,11 +290,15 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
                 </label>
                 <button
                   type="button"
-                  onClick={() => setLyrics('[intro]\nSynthwave vibes in the night\n\n[verse]\nNeon lights guide my way\nThrough the city after dark\nElectronic dreams at play\n\n[chorus]\nFeel the rhythm, feel the beat\nDancing through the digital heat\nLost in sound, lost in time\nThis moment feels sublime\n\n[outro]\nFading into the night')}
+                  onClick={() => {
+                    // Get random song from lyrics database
+                    const randomSong = LYRICS_DATABASE[Math.floor(Math.random() * LYRICS_DATABASE.length)]
+                    setLyrics(randomSong.lyrics)
+                  }}
                   className="text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-white transition-colors"
                   disabled={isGenerating}
                 >
-                  Use Example
+                  Randomize Lyrics
                 </button>
               </div>
               <textarea
