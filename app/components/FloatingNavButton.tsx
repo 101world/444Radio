@@ -1,7 +1,7 @@
 'use client'
 
 // Hamburger navigation menu for mobile and desktop
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings } from 'lucide-react'
 import { usePathname } from 'next/navigation'
@@ -17,8 +17,33 @@ interface FloatingNavButtonProps {
 export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = false, hideOnDesktop = false }: FloatingNavButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [username, setUsername] = useState<string>('')
+  const [isLoadingUsername, setIsLoadingUsername] = useState(true)
   const pathname = usePathname()
   const { user } = useUser()
+
+  // Fetch username from Supabase (source of truth)
+  useEffect(() => {
+    if (user) {
+      fetchUsername()
+    }
+  }, [user])
+
+  const fetchUsername = async () => {
+    if (!user) return
+    
+    try {
+      const res = await fetch(`/api/media/profile/${user.id}`)
+      const data = await res.json()
+      if (data.success && data.username) {
+        setUsername(data.username)
+      }
+      setIsLoadingUsername(false)
+    } catch (err) {
+      console.error('Failed to fetch username:', err)
+      setIsLoadingUsername(false)
+    }
+  }
 
   const navItems = [
     { href: user?.id ? `/profile/${user.id}` : '/profile', icon: User, label: 'Profile' },
@@ -162,13 +187,11 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
         <ProfileSettingsModal
           isOpen={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
-          currentUsername={user.username || user.firstName || 'User'}
+          currentUsername={username || user.firstName || 'User'}
           currentAvatar={user.imageUrl || ''}
-          onUpdate={async () => {
-            // Reload Clerk user to get updated username
-            await user.reload()
-            // Force page refresh to update all displayed data
-            window.location.reload()
+          onUpdate={() => {
+            // Refetch username from Supabase
+            fetchUsername()
           }}
         />
       )}
