@@ -73,10 +73,16 @@ export async function POST(req: NextRequest) {
 
     // Update Clerk user
     const client = await clerkClient()
-    await client.users.updateUser(userId, {
-      username: username,
-      ...(avatar && { publicMetadata: { avatar } })
-    })
+    const clerkUpdateData: any = {
+      username: username
+    }
+    
+    // If avatar is provided, update the imageUrl in Clerk
+    if (avatar) {
+      clerkUpdateData.publicMetadata = { avatarUrl: avatar }
+    }
+    
+    await client.users.updateUser(userId, clerkUpdateData)
 
     // Update Supabase users table
     const updateData: any = {

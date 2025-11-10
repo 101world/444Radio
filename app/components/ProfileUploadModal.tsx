@@ -65,6 +65,14 @@ export default function ProfileUploadModal({ isOpen, onClose, onUploadComplete }
         body: formData,
       })
 
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('Upload failed with status:', res.status, errorText)
+        alert(`❌ Upload failed (${res.status}): ${errorText}`)
+        setUploading(false)
+        return
+      }
+
       const data = await res.json()
       if (data.success) {
         alert('✅ Upload successful!')
@@ -72,11 +80,12 @@ export default function ProfileUploadModal({ isOpen, onClose, onUploadComplete }
         resetForm()
         onClose()
       } else {
+        console.error('Upload failed:', data.error)
         alert(`❌ Upload failed: ${data.error}`)
       }
     } catch (error) {
       console.error('Upload error:', error)
-      alert('❌ Upload failed')
+      alert(`❌ Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setUploading(false)
     }
