@@ -21,7 +21,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   const { user } = useUser()
 
   const navItems = [
-    { href: user?.username ? `/u/${user.username}` : '/profile', icon: User, label: 'Profile' },
+    { href: user?.id ? `/profile/${user.id}` : '/profile', icon: User, label: 'Profile' },
     { href: '/explore', icon: Compass, label: 'Explore' },
     { href: '/create', icon: PlusCircle, label: 'Create' },
     { href: '/library', icon: Library, label: 'Library' },
