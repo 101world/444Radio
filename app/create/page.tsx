@@ -24,6 +24,7 @@ interface Message {
   type: MessageType
   content: string
   generationType?: GenerationType
+  generationId?: string // Link to GenerationQueue item
   result?: {
     url?: string
     audioUrl?: string
@@ -239,8 +240,32 @@ function CreatePageContent() {
     // Check if any generations completed while user was away
     generations.forEach(gen => {
       if (gen.status === 'completed' && gen.result) {
-        // Find the corresponding message
         setMessages(prev => {
+          // First, try to find message by generationId (exact match)
+          const messageByGenId = prev.find(msg => msg.generationId === gen.id)
+          
+          if (messageByGenId) {
+            // Check if already updated
+            if (!messageByGenId.isGenerating && messageByGenId.result) {
+              console.log('[Sync] Message already updated for generation:', gen.id)
+              return prev
+            }
+            
+            // Update the exact message
+            console.log('[Sync] Updating message by generationId:', gen.id)
+            return prev.map(msg =>
+              msg.generationId === gen.id
+                ? {
+                    ...msg,
+                    isGenerating: false,
+                    content: gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!',
+                    result: gen.result
+                  }
+                : msg
+            )
+          }
+          
+          // Fallback: Check if result already exists by URL
           const messageExists = prev.some(msg => 
             msg.result?.audioUrl === gen.result?.audioUrl || 
             msg.result?.imageUrl === gen.result?.imageUrl
@@ -251,27 +276,45 @@ function CreatePageContent() {
             return prev
           }
           
-          // Update any generating message for this prompt
+          // Fallback: Find ANY generating message of the same type (music/image)
           const hasGeneratingMessage = prev.some(msg => 
-            msg.isGenerating && msg.content.includes(gen.prompt.substring(0, 20))
+            msg.isGenerating && msg.generationType === gen.type
           )
           
           if (hasGeneratingMessage) {
-            console.log('[Sync] Updating generating message with result:', gen.id)
+            console.log('[Sync] Updating first generating message with completed result:', gen.id)
+            // Update the FIRST generating message of this type
+            let updated = false
             return prev.map(msg => {
-              if (msg.isGenerating && msg.content.includes(gen.prompt.substring(0, 20))) {
+              if (!updated && msg.isGenerating && msg.generationType === gen.type) {
+                updated = true
                 return {
                   ...msg,
                   isGenerating: false,
+                  generationId: gen.id,
                   content: gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!',
                   result: gen.result
                 }
               }
               return msg
             })
+          } else {
+            // No generating message found - add the result as a new message
+            console.log('[Sync] No generating message found, adding completed generation as new message:', gen.id)
+            return [
+              ...prev,
+              {
+                id: `sync_${gen.id}`,
+                type: 'generation' as const,
+                content: gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!',
+                generationType: gen.type,
+                generationId: gen.id,
+                isGenerating: false,
+                result: gen.result,
+                timestamp: new Date(gen.completedAt || Date.now())
+              }
+            ]
           }
-          
-          return prev
         })
       }
     })
@@ -539,6 +582,11 @@ function CreatePageContent() {
       prompt: params.prompt,
       title: params.customTitle || params.prompt.substring(0, 50)
     })
+    
+    // Link the message to the generation queue item
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, generationId: genId } : msg
+    ))
     
     try {
       // Add to active generations
