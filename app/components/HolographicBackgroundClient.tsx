@@ -449,6 +449,19 @@ export default function HolographicBackground() {
 
     // Mouse click handler - spin the shape
     const handleClick = (event: MouseEvent) => {
+      // Don't interfere with UI clicks (buttons, links, interactive elements)
+      const target = event.target as HTMLElement;
+      if (target && (
+        target.closest('button') || 
+        target.closest('a') || 
+        target.closest('[role="button"]') ||
+        target.closest('.cursor-pointer') ||
+        target.closest('input') ||
+        target.closest('textarea')
+      )) {
+        return; // Let the UI element handle it
+      }
+      
       event.preventDefault();
       
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;

@@ -1043,8 +1043,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             className={`flex-shrink-0 group cursor-pointer rounded-lg overflow-hidden transition-all ${
                               isCurrentlyPlaying ? 'ring-2 ring-cyan-400 scale-105' : 'hover:scale-105'
                             } ${!hasAudio ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            onClick={() => {
-                              console.log('[Profile] Playing track:', media)
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent event bubbling
+                              console.log('[Profile] Playing track:', media.title, media.audio_url)
                               hasAudio && handlePlay(media)
                             }}
                           >
@@ -1130,7 +1131,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
                                 : hasAudio ? 'hover:bg-white/5' : ''
                             }`}
-                            onClick={() => hasAudio && handlePlay(media)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent event bubbling
+                              hasAudio && handlePlay(media)
+                            }}
                           >
                             {/* Thumbnail */}
                             <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden">
