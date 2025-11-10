@@ -764,6 +764,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   }, [contentTab, resolvedParams.userId])
 
   const handlePlay = async (media: CombinedMedia) => {
+    console.log('[handlePlay] Called with media:', {
+      id: media.id,
+      title: media.title,
+      audioUrl: media.audio_url,
+      imageUrl: media.image_url
+    })
+    
     if (!media.audio_url) return
     
     if (playingId === media.id && isPlaying) {
@@ -1036,7 +1043,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             className={`flex-shrink-0 group cursor-pointer rounded-lg overflow-hidden transition-all ${
                               isCurrentlyPlaying ? 'ring-2 ring-cyan-400 scale-105' : 'hover:scale-105'
                             } ${!hasAudio ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            onClick={() => hasAudio && handlePlay(media)}
+                            onClick={() => {
+                              console.log('[Profile] Playing track:', media)
+                              hasAudio && handlePlay(media)
+                            }}
                           >
                             <div className="relative w-32 h-32">
                               <img 
@@ -1058,6 +1068,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               {isCurrentlyPlaying && isPlaying && (
                                 <div className="absolute top-2 right-2 w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
                               )}
+                            </div>
+                            {/* Show track title below thumbnail */}
+                            <div className="mt-1 px-1">
+                              <p className="text-xs text-white font-medium truncate w-32">{media.title}</p>
                             </div>
                           </div>
                         )
