@@ -132,11 +132,11 @@ export default function UsernameProfilePage() {
       {/* Floating Menu */}
       <FloatingMenu />
 
-      {/* Combined Media Grid - Same as profile page */}
+      {/* Combined Media Grid - Desktop layout for all screen sizes */}
       <main className="pt-20 px-3 md:px-6 pb-8">
         <div className="max-w-7xl mx-auto">
-          {/* Grid Layout - 2-6 columns responsive */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+          {/* Grid Layout - Same 6 columns on all devices (desktop layout everywhere) */}
+          <div className="grid grid-cols-6 gap-3 md:gap-4">
             
             {profile.combinedMedia.length === 0 ? (
               <div className="col-span-full text-center py-20">
