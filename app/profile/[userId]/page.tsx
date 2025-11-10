@@ -1030,9 +1030,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   </div>
 
                   {/* SECTION 2: HORIZONTAL SCROLL - Recent Tracks */}
-                  <div className="py-4 px-6 border-b border-white/5">
+                  <div className="py-4 px-6 border-b border-white/5 relative z-20 bg-black">
                     <h2 className="text-2xl font-bold mb-3 relative z-10">🎵 Recent Tracks</h2>
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 relative z-10" style={{ scrollbarWidth: 'none' }}>
                       {profile.combinedMedia.slice(0, 20).map((media) => {
                         const isCurrentlyPlaying = playingId === media.id
                         const hasAudio = !!media.audio_url
@@ -1081,9 +1081,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   </div>
 
                   {/* SECTION 3: LIST VIEW - All Content with Tabs */}
-                  <div className="px-6 py-4">
+                  <div className="px-6 py-4 relative z-10 bg-black">
                     {/* Tab Buttons */}
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-4 mb-4 relative z-10 pointer-events-auto">
                       <button
                         onClick={() => setContentTab('tracks')}
                         className={`text-xl font-bold transition-all relative pb-2 ${
