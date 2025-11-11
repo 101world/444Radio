@@ -830,150 +830,180 @@ export default function FloatingAudioPlayer() {
         </div>
       )}
 
-      {/* Cover Art Modal - Improved Fullscreen Experience */}
+      {/* Cover Art Modal - Premium Fullscreen Experience */}
       {showCoverArt && currentTrack && (
         <div 
-          className="fixed inset-0 z-[100] bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center p-4 md:p-8"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 animate-fadeIn"
+          style={{
+            background: 'radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.15) 0%, rgba(0, 0, 0, 0.95) 50%, #000 100%)',
+            backdropFilter: 'blur(40px)',
+          }}
           onClick={() => setShowCoverArt(false)}
         >
-          <div className="max-w-4xl w-full space-y-8" onClick={(e) => e.stopPropagation()}>
+          {/* Animated Background Orbs */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          </div>
+
+          <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
             {/* Close Button */}
             <button
               onClick={() => setShowCoverArt(false)}
-              className="absolute top-4 right-4 md:top-8 md:right-8 text-white/60 hover:text-white transition-colors bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full p-3"
+              className="absolute -top-2 -right-2 md:top-0 md:right-0 z-10 text-white/60 hover:text-white transition-all bg-black/50 hover:bg-cyan-500/20 backdrop-blur-md rounded-full p-3 hover:scale-110 hover:rotate-90 duration-300 border border-white/10"
               aria-label="Close"
             >
               <X size={24} />
             </button>
 
-            {/* Cover Art */}
-            {currentTrack.imageUrl && (
-              <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl shadow-cyan-500/20 ring-1 ring-white/10">
-                <Image
-                  src={currentTrack.imageUrl}
-                  alt={currentTrack.title}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-            )}
-
-            {/* Track Info */}
-            <div className="text-center space-y-3">
-              <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight">
-                {currentTrack.title}
-              </h2>
-              {currentTrack.artist && (
-                <p className="text-xl md:text-2xl text-cyan-400">
-                  {currentTrack.artist}
-                </p>
-              )}
-            </div>
-
-            {/* Progress */}
-            <div className="space-y-3">
-              <input
-                type="range"
-                min="0"
-                max={duration || 0}
-                value={currentTime}
-                onChange={handleSeek}
-                className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.2) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.2) 100%)`
-                }}
-              />
-              <div className="flex justify-between text-sm md:text-base text-gray-400">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="flex items-center justify-center gap-4 md:gap-8">
-              <button
-                onClick={toggleShuffle}
-                className={`transition-colors ${isShuffled ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
-                aria-label="Shuffle"
-              >
-                <Shuffle size={28} />
-              </button>
-
-              <button
-                onClick={() => skipBackward(10)}
-                className="text-gray-400 hover:text-white transition-colors"
-                aria-label="Rewind 10s"
-              >
-                <RotateCcw size={28} />
-              </button>
-
-              <button
-                onClick={playPrevious}
-                className="text-gray-400 hover:text-white transition-colors"
-                aria-label="Previous"
-              >
-                <SkipBack size={32} />
-              </button>
-
-              <button
-                onClick={togglePlayPause}
-                className="w-20 h-20 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-2xl shadow-cyan-500/50"
-                aria-label={isPlaying ? "Pause" : "Play"}
-              >
-                {isPlaying ? (
-                  <Pause size={36} className="text-black" fill="currentColor" />
-                ) : (
-                  <Play size={36} className="text-black ml-1" fill="currentColor" />
+            <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+              {/* Left: Cover Art */}
+              <div className="relative group">
+                {currentTrack.imageUrl && (
+                  <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/20 transform transition-transform duration-500 group-hover:scale-[1.02]">
+                    {/* Glowing border effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-transparent to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    <Image
+                      src={currentTrack.imageUrl}
+                      alt={currentTrack.title}
+                      fill
+                      className="object-cover"
+                      priority
+                    />
+                    
+                    {/* Reflection effect */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  </div>
                 )}
-              </button>
+                
+                {/* Glow effect under cover */}
+                <div className="absolute -inset-4 bg-cyan-500/20 rounded-3xl blur-3xl opacity-50 -z-10" />
+              </div>
 
-              <button
-                onClick={playNext}
-                className="text-gray-400 hover:text-white transition-colors"
-                aria-label="Next"
-              >
-                <SkipForward size={32} />
-              </button>
+              {/* Right: Controls & Info */}
+              <div className="space-y-6 md:space-y-8">
+                {/* Track Info */}
+                <div className="space-y-3">
+                  <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight tracking-tight">
+                    {currentTrack.title}
+                  </h2>
+                  {currentTrack.artist && (
+                    <p className="text-2xl md:text-3xl font-medium bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                      {currentTrack.artist}
+                    </p>
+                  )}
+                </div>
 
-              <button
-                onClick={() => skipForward(10)}
-                className="text-gray-400 hover:text-white transition-colors"
-                aria-label="Forward 10s"
-              >
-                <RotateCw size={28} />
-              </button>
+                {/* Progress Bar */}
+                <div className="space-y-3">
+                  <div className="relative">
+                    <input
+                      type="range"
+                      min="0"
+                      max={duration || 0}
+                      value={currentTime}
+                      onChange={handleSeek}
+                      className="w-full h-3 rounded-full appearance-none cursor-pointer transition-all hover:h-4"
+                      style={{
+                        background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.15) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.15) 100%)`
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-base md:text-lg text-gray-300 font-medium">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
 
-              <button
-                onClick={toggleLoop}
-                className={`transition-colors ${isLooping ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
-                aria-label={isLooping ? "Loop: On" : "Loop: Off"}
-              >
-                <Repeat size={28} />
-              </button>
-            </div>
+                {/* Main Controls */}
+                <div className="flex items-center justify-center gap-6 md:gap-10 py-4">
+                  <button
+                    onClick={toggleShuffle}
+                    className={`transition-all hover:scale-110 active:scale-95 ${isShuffled ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'text-gray-400 hover:text-white'}`}
+                    aria-label="Shuffle"
+                  >
+                    <Shuffle size={32} />
+                  </button>
 
-            {/* Volume Control */}
-            <div className="flex items-center gap-4 max-w-md mx-auto">
-              <button
-                onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={handleVolumeChange}
-                className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
-                }}
-              />
-              <span className="text-sm text-gray-400 w-12 text-right">{Math.round(volume * 100)}%</span>
+                  <button
+                    onClick={playPrevious}
+                    className="text-gray-300 hover:text-white transition-all hover:scale-110 active:scale-95"
+                    aria-label="Previous"
+                  >
+                    <SkipBack size={36} />
+                  </button>
+
+                  <button
+                    onClick={togglePlayPause}
+                    className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500 via-cyan-400 to-blue-500 hover:from-cyan-400 hover:via-cyan-300 hover:to-blue-400 flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70"
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? (
+                      <Pause size={42} className="text-black" fill="currentColor" />
+                    ) : (
+                      <Play size={42} className="text-black ml-1" fill="currentColor" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={playNext}
+                    className="text-gray-300 hover:text-white transition-all hover:scale-110 active:scale-95"
+                    aria-label="Next"
+                  >
+                    <SkipForward size={36} />
+                  </button>
+
+                  <button
+                    onClick={toggleLoop}
+                    className={`transition-all hover:scale-110 active:scale-95 ${isLooping ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'text-gray-400 hover:text-white'}`}
+                    aria-label={isLooping ? "Loop: On" : "Loop: Off"}
+                  >
+                    <Repeat size={32} />
+                  </button>
+                </div>
+
+                {/* Secondary Controls */}
+                <div className="flex items-center justify-center gap-4 md:gap-6 opacity-80 hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => skipBackward(10)}
+                    className="text-gray-400 hover:text-cyan-400 transition-all hover:scale-110"
+                    aria-label="Rewind 10s"
+                  >
+                    <RotateCcw size={24} />
+                  </button>
+
+                  <div className="flex items-center gap-3 px-6 py-3 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
+                    <button
+                      onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+                      className="text-gray-400 hover:text-white transition-colors"
+                    >
+                      {volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={volume}
+                      onChange={handleVolumeChange}
+                      className="w-32 h-2 rounded-full appearance-none cursor-pointer"
+                      style={{
+                        background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
+                      }}
+                    />
+                    <span className="text-sm text-gray-400 font-medium w-10 text-right">{Math.round(volume * 100)}%</span>
+                  </div>
+
+                  <button
+                    onClick={() => skipForward(10)}
+                    className="text-gray-400 hover:text-cyan-400 transition-all hover:scale-110"
+                    aria-label="Forward 10s"
+                  >
+                    <RotateCw size={24} />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -981,24 +1011,51 @@ export default function FloatingAudioPlayer() {
 
       {/* Custom slider styles */}
       <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+
         input[type="range"]::-webkit-slider-thumb {
           appearance: none;
-          width: 12px;
-          height: 12px;
+          width: 16px;
+          height: 16px;
           border-radius: 50%;
           background: rgb(34 211 238);
           cursor: pointer;
-          box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+          box-shadow: 0 0 12px rgba(34, 211, 238, 0.8);
+          transition: all 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+          width: 18px;
+          height: 18px;
+          box-shadow: 0 0 16px rgba(34, 211, 238, 1);
         }
 
         input[type="range"]::-moz-range-thumb {
-          width: 12px;
-          height: 12px;
+          width: 16px;
+          height: 16px;
           border-radius: 50%;
           background: rgb(34 211 238);
           cursor: pointer;
           border: none;
-          box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+          box-shadow: 0 0 12px rgba(34, 211, 238, 0.8);
+          transition: all 0.2s;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+          width: 18px;
+          height: 18px;
+          box-shadow: 0 0 16px rgba(34, 211, 238, 1);
         }
       `}</style>
     </div>
