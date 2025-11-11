@@ -157,8 +157,8 @@ export default function ExplorePage() {
   const fetchCombinedMedia = async () => {
     setLoading(true)
     try {
-      // Optimized: Fetch only 30 items initially for faster load
-      const res = await fetch('/api/media/explore?limit=30')
+      // Fetch ALL tracks (increased limit to show all releases)
+      const res = await fetch('/api/media/explore?limit=500')
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)

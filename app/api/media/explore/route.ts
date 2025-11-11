@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const limit = Number(searchParams.get('limit')) || 50 // Increased default for better UX
+    const limit = Number(searchParams.get('limit')) || 500 // Increased to show all tracks
     const offset = Number(searchParams.get('offset')) || 0
 
     // Fetch ALL combined media (no is_public filter)
@@ -32,6 +32,18 @@ export async function GET(req: NextRequest) {
     console.log(`✅ Explore API: Fetched ${data?.length || 0} public tracks (is_public=true)`)
     if (data && data.length > 0) {
       console.log(`📊 First track: "${data[0].title}" by ${data[0].user_id}`)
+      console.log(`📊 Last track: "${data[data.length - 1].title}" by ${data[data.length - 1].user_id}`)
+      
+      // Log unique user count
+      const uniqueUsers = new Set(data.map(d => d.user_id))
+      console.log(`📊 Total unique users: ${uniqueUsers.size}`)
+      
+      // Log count per user
+      const userCounts = new Map()
+      data.forEach(d => {
+        userCounts.set(d.user_id, (userCounts.get(d.user_id) || 0) + 1)
+      })
+      console.log(`📊 Tracks per user:`, Object.fromEntries(userCounts))
     } else {
       console.warn('⚠️ No tracks returned! Check if is_public is set to true in database.')
     }
