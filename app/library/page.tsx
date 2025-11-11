@@ -1,18 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
-import HolographicBackgroundClient from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import LyricsModal from '../components/LyricsModal'
-import CoverArtModal from '../components/CoverArtModal'
-import ReleaseModal from '../components/ReleaseModal'
+import { LibraryTabSkeleton } from '../components/LoadingSkeleton'
+
+// Lazy load heavy components
+const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
+const LyricsModal = lazy(() => import('../components/LyricsModal'))
+const CoverArtModal = lazy(() => import('../components/CoverArtModal'))
+const ReleaseModal = lazy(() => import('../components/ReleaseModal'))
 
 interface LibraryMusic {
   id: string
@@ -209,8 +212,10 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Holographic 3D Background */}
-      <HolographicBackgroundClient />
+      {/* Holographic 3D Background - Lazy Loaded */}
+      <Suspense fallback={null}>
+        <HolographicBackgroundClient />
+      </Suspense>
       
       {/* Credit Indicator - Mobile Only */}
       <div className="md:hidden">
@@ -312,12 +317,9 @@ export default function LibraryPage() {
           </div>
         </div>
 
-        {/* Loading State */}
+        {/* Loading State - Skeleton */}
         {isLoading && (
-          <div className="flex flex-col items-center justify-center py-32">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-500/20 border-t-cyan-400 mb-4"></div>
-            <p className="text-cyan-400/60 font-mono text-sm">Loading your creations...</p>
-          </div>
+          <LibraryTabSkeleton />
         )}
 
         {/* Images Tab */}
@@ -604,51 +606,57 @@ export default function LibraryPage() {
       {/* Floating Navigation Button */}
       <FloatingNavButton />
 
-      {/* Lyrics Modal */}
-      {selectedLyricsId && (
-        <LyricsModal
-          isOpen={showLyricsModal}
-          onClose={() => {
-            setShowLyricsModal(false)
-            setSelectedLyricsId(null)
-            setSelectedLyricsTitle(null)
-          }}
-          mediaId={selectedLyricsId}
-          title={selectedLyricsTitle || undefined}
-        />
-      )}
+      {/* Lyrics Modal - Lazy Loaded */}
+      <Suspense fallback={null}>
+        {selectedLyricsId && (
+          <LyricsModal
+            isOpen={showLyricsModal}
+            onClose={() => {
+              setShowLyricsModal(false)
+              setSelectedLyricsId(null)
+              setSelectedLyricsTitle(null)
+            }}
+            mediaId={selectedLyricsId}
+            title={selectedLyricsTitle || undefined}
+          />
+        )}
+      </Suspense>
 
-      {/* Cover Art Modal */}
-      {selectedCoverUrl && (
-        <CoverArtModal
-          isOpen={showCoverModal}
-          onClose={() => {
-            setShowCoverModal(false)
-            setSelectedCoverUrl(null)
-            setSelectedCoverTitle(null)
-          }}
-          imageUrl={selectedCoverUrl}
-          title={selectedCoverTitle || undefined}
-        />
-      )}
+      {/* Cover Art Modal - Lazy Loaded */}
+      <Suspense fallback={null}>
+        {selectedCoverUrl && (
+          <CoverArtModal
+            isOpen={showCoverModal}
+            onClose={() => {
+              setShowCoverModal(false)
+              setSelectedCoverUrl(null)
+              setSelectedCoverTitle(null)
+            }}
+            imageUrl={selectedCoverUrl}
+            title={selectedCoverTitle || undefined}
+          />
+        )}
+      </Suspense>
 
-      {/* Release Modal */}
-      {selectedReleaseTrack && (
-        <ReleaseModal
-          isOpen={showReleaseModal}
-          onClose={() => {
-            setShowReleaseModal(false)
-            setSelectedReleaseTrack(null)
-          }}
-          musicItem={selectedReleaseTrack}
-          imageItems={imageItems}
-          onSuccess={() => {
-            setShowReleaseToast(true)
-            setTimeout(() => setShowReleaseToast(false), 3000)
-            fetchLibrary(true)
-          }}
-        />
-      )}
+      {/* Release Modal - Lazy Loaded */}
+      <Suspense fallback={null}>
+        {selectedReleaseTrack && (
+          <ReleaseModal
+            isOpen={showReleaseModal}
+            onClose={() => {
+              setShowReleaseModal(false)
+              setSelectedReleaseTrack(null)
+            }}
+            musicItem={selectedReleaseTrack}
+            imageItems={imageItems}
+            onSuccess={() => {
+              setShowReleaseToast(true)
+              setTimeout(() => setShowReleaseToast(false), 3000)
+              fetchLibrary(true)
+            }}
+          />
+        )}
+      </Suspense>
 
       {/* Release Success Toast */}
       {showReleaseToast && (

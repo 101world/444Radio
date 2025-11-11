@@ -10,10 +10,11 @@ import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import LyricsModal from '../components/LyricsModal'
+import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
 
-// Lazy load heavy 3D background
+// Lazy load heavy 3D background and modals
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
+const LyricsModal = lazy(() => import('../components/LyricsModal'))
 
 interface CombinedMedia {
   id: string
@@ -247,28 +248,7 @@ export default function ExplorePage() {
       {/* Main Content - 3 Section Layout */}
       <main className="flex-1 overflow-y-auto pb-32 pt-16 sm:pt-0">
         {loading ? (
-          <div className="space-y-0">
-            {/* Banner skeleton */}
-            <div className="h-64 bg-white/5 animate-pulse"></div>
-            {/* Horizontal scroll skeleton */}
-            <div className="px-6 py-6">
-              <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
-              <div className="flex gap-2 overflow-x-auto">
-                {[...Array(10)].map((_, i) => (
-                  <div key={i} className="w-32 h-32 bg-white/5 rounded-lg flex-shrink-0 animate-pulse"></div>
-                ))}
-              </div>
-            </div>
-            {/* Grid skeleton */}
-            <div className="px-6 py-6">
-              <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
-              <div className="grid grid-cols-5 gap-4">
-                {[...Array(15)].map((_, i) => (
-                  <div key={i} className="bg-white/5 rounded-lg h-48 animate-pulse"></div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <ExploreGridSkeleton />
         ) : combinedMedia.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">🎵</div>
@@ -778,19 +758,21 @@ export default function ExplorePage() {
         onTogglePrompt={() => setShowSearchBox(!showSearchBox)}
       />
 
-      {/* Lyrics Modal */}
-      {selectedLyricsId && (
-        <LyricsModal
-          isOpen={showLyricsModal}
-          onClose={() => {
-            setShowLyricsModal(false)
-            setSelectedLyricsId(null)
-            setSelectedLyricsTitle(null)
-          }}
-          mediaId={selectedLyricsId}
-          title={selectedLyricsTitle || undefined}
-        />
-      )}
+      {/* Lyrics Modal - Lazy Loaded */}
+      <Suspense fallback={null}>
+        {selectedLyricsId && (
+          <LyricsModal
+            isOpen={showLyricsModal}
+            onClose={() => {
+              setShowLyricsModal(false)
+              setSelectedLyricsId(null)
+              setSelectedLyricsTitle(null)
+            }}
+            mediaId={selectedLyricsId}
+            title={selectedLyricsTitle || undefined}
+          />
+        )}
+      </Suspense>
     </div>
   )
 }

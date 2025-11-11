@@ -1,23 +1,25 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
-import HolographicBackground from '../../components/HolographicBackgroundClient'
-import StarryBackground from '../../components/StarryBackground'
 import FloatingNavButton from '../../components/FloatingNavButton'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus } from 'lucide-react'
-import CombineMediaModal from '../../components/CombineMediaModal'
-import ProfileUploadModal from '../../components/ProfileUploadModal'
-import PrivateListModal from '../../components/PrivateListModal'
-import CreatePostModal from '../../components/CreatePostModal'
-import BannerUploadModal from '../../components/BannerUploadModal'
 import { createClient } from '@supabase/supabase-js'
+
+// Lazy load heavy components
+const HolographicBackground = lazy(() => import('../../components/HolographicBackgroundClient'))
+const StarryBackground = lazy(() => import('../../components/StarryBackground'))
+const CombineMediaModal = lazy(() => import('../../components/CombineMediaModal'))
+const ProfileUploadModal = lazy(() => import('../../components/ProfileUploadModal'))
+const PrivateListModal = lazy(() => import('../../components/PrivateListModal'))
+const CreatePostModal = lazy(() => import('../../components/CreatePostModal'))
+const BannerUploadModal = lazy(() => import('../../components/BannerUploadModal'))
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -865,8 +867,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   return (
     <div className="min-h-screen bg-black text-white pb-32">
-      {/* Holographic 3D Background */}
-      {!isMobile && <HolographicBackground />}
+      {/* Holographic 3D Background - Lazy Loaded */}
+      <Suspense fallback={null}>
+        {!isMobile && <HolographicBackground />}
+      </Suspense>
       
       {/* Floating Menu */}
       <FloatingMenu />
@@ -2358,53 +2362,61 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         </div>
       </div>
 
-      {/* Publish Release Modal */}
-      {showPublishModal && (
-        <CombineMediaModal
-          isOpen={showPublishModal}
-          onClose={() => {
-            setShowPublishModal(false)
-            // Refresh profile data
+      {/* Publish Release Modal - Lazy Loaded */}
+      <Suspense fallback={null}>
+        {showPublishModal && (
+          <CombineMediaModal
+            isOpen={showPublishModal}
+            onClose={() => {
+              setShowPublishModal(false)
+              // Refresh profile data
+            }}
+          />
+        )}
+      </Suspense>
+
+      {/* Upload Content Modal - Lazy Loaded */}
+      <Suspense fallback={null}>
+        {showUploadModal && (
+          <ProfileUploadModal
+            isOpen={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+            onUploadComplete={() => {
+              fetchProfileData()
+            }}
+          />
+        )}
+      </Suspense>
+
+      {/* Banner Upload Modal - Lazy Loaded */}
+      <Suspense fallback={null}>
+        {showBannerModal && (
+          <BannerUploadModal
+            isOpen={showBannerModal}
+            onClose={() => setShowBannerModal(false)}
+            onSuccess={() => {
+              fetchProfileData()
+            }}
+          />
+        )}
+      </Suspense>
+
+      {/* Create Post Modal - Lazy Loaded */}
+      <Suspense fallback={null}>
+        <CreatePostModal
+          isOpen={showCreatePostModal}
+          onClose={() => setShowCreatePostModal(false)}
+          userSongs={profile?.combinedMedia.filter(m => m.audio_url).map(m => ({
+            id: m.id,
+            title: m.title,
+            image_url: m.image_url || '/radio-logo.svg',
+            audio_url: m.audio_url || ''
+          })) || []}
+          onPostCreated={() => {
+            fetchPosts()
           }}
         />
-      )}
-
-      {/* Upload Content Modal */}
-      {showUploadModal && (
-        <ProfileUploadModal
-          isOpen={showUploadModal}
-          onClose={() => setShowUploadModal(false)}
-          onUploadComplete={() => {
-            fetchProfileData()
-          }}
-        />
-      )}
-
-      {/* Banner Upload Modal */}
-      {showBannerModal && (
-        <BannerUploadModal
-          isOpen={showBannerModal}
-          onClose={() => setShowBannerModal(false)}
-          onSuccess={() => {
-            fetchProfileData()
-          }}
-        />
-      )}
-
-      {/* Create Post Modal */}
-      <CreatePostModal
-        isOpen={showCreatePostModal}
-        onClose={() => setShowCreatePostModal(false)}
-        userSongs={profile?.combinedMedia.filter(m => m.audio_url).map(m => ({
-          id: m.id,
-          title: m.title,
-          image_url: m.image_url || '/radio-logo.svg',
-          audio_url: m.audio_url || ''
-        })) || []}
-        onPostCreated={() => {
-          fetchPosts()
-        }}
-      />
+      </Suspense>
 
       {/* Floating Navigation Button - Desktop hidden on profile */}
       <FloatingNavButton hideOnDesktop={true} />
