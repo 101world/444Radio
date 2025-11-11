@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     const offset = Number(searchParams.get('offset')) || 0
 
     // Fetch public combined media with optimized query
+    // Only fetches tracks where is_public = true
     const { data, error } = await supabase
       .from('combined_media')
       .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, mood')
@@ -21,14 +22,14 @@ export async function GET(req: NextRequest) {
       .range(offset, offset + limit - 1)
 
     if (error) {
-      console.error('Database error:', error)
+      console.error('❌ Database error:', error)
       return NextResponse.json(
         { error: 'Failed to fetch combined media', details: error.message },
         { status: 500 }
       )
     }
 
-    console.log('📊 Explore API: Fetched', data?.length || 0, 'tracks')
+    console.log(`📊 Explore API: Fetched ${data?.length || 0} public tracks (is_public=true)`)
 
     // Fetch usernames for all user_ids
     const userIds = [...new Set((data || []).map(m => m.user_id))]

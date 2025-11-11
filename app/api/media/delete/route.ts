@@ -22,7 +22,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No ID provided' }, { status: 400 })
     }
 
+    console.log(`🗑️ Deleting release: ${id} for user: ${userId}`)
+
     // Delete from combined_media table (published releases)
+    // This only deletes the SPECIFIC release with this ID
     const { error } = await supabase
       .from('combined_media')
       .delete()
@@ -30,12 +33,14 @@ export async function POST(request: Request) {
       .eq('user_id', userId) // Ensure user owns the release
 
     if (error) {
-      console.error('Error deleting release:', error)
+      console.error('❌ Error deleting release:', error)
       return NextResponse.json({ 
         success: false, 
         error: 'Failed to delete release' 
       }, { status: 500 })
     }
+
+    console.log(`✅ Successfully deleted release: ${id}`)
 
     return NextResponse.json({ 
       success: true, 
