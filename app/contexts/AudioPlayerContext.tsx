@@ -19,6 +19,8 @@ interface AudioPlayerContextType {
   duration: number
   volume: number
   playlist: Track[]
+  isLooping: boolean
+  isShuffled: boolean
   playTrack: (track: Track) => void
   pause: () => void
   resume: () => void
@@ -31,6 +33,10 @@ interface AudioPlayerContextType {
   shufflePlaylist: () => void
   removeFromPlaylist: (trackId: string) => void
   addToPlaylist: (track: Track) => void
+  toggleLoop: () => void
+  toggleShuffle: () => void
+  skipBackward: (seconds?: number) => void
+  skipForward: (seconds?: number) => void
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined)
@@ -44,6 +50,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [volume, setVolumeState] = useState(0.7)
   const [playlist, setPlaylist] = useState<Track[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isLooping, setIsLooping] = useState(false)
+  const [isShuffled, setIsShuffled] = useState(false)
   
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const playTimeRef = useRef<number>(0)
@@ -218,7 +226,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const handlePlaying = () => setIsPlaying(true)
     const handleEnded = () => {
       setIsPlaying(false)
-      playNext()
+      if (isLooping && currentTrack) {
+        // Loop current track
+        audio.currentTime = 0
+        audio.play()
+      } else {
+        // Play next track in playlist
+        playNext()
+      }
     }
 
     audio.addEventListener('timeupdate', handleTimeUpdate)
@@ -298,6 +313,26 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const toggleLoop = () => {
+    setIsLooping(!isLooping)
+  }
+
+  const toggleShuffle = () => {
+    setIsShuffled(!isShuffled)
+  }
+
+  const skipBackward = (seconds: number = 10) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - seconds)
+    }
+  }
+
+  const skipForward = (seconds: number = 10) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + seconds)
+    }
+  }
+
   return (
     <AudioPlayerContext.Provider
       value={{
@@ -307,6 +342,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         duration,
         volume,
         playlist,
+        isLooping,
+        isShuffled,
         playTrack,
         pause,
         resume,
@@ -318,7 +355,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         setPlaylist: setPlaylistAndPlay,
         shufflePlaylist,
         removeFromPlaylist,
-        addToPlaylist
+        addToPlaylist,
+        toggleLoop,
+        toggleShuffle,
+        skipBackward,
+        skipForward
       }}
     >
       {children}

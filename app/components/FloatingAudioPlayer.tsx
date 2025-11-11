@@ -1,7 +1,7 @@
 'use client'
 
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical, ChevronDown, ChevronUp, List, X } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical, ChevronDown, ChevronUp, List, X, Repeat, Repeat1, Shuffle, RotateCcw, RotateCw, Maximize } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 
@@ -20,6 +20,13 @@ export default function FloatingAudioPlayer() {
     playlist,
     playTrack,
     removeFromPlaylist,
+    addToPlaylist,
+    isLooping,
+    isShuffled,
+    toggleLoop,
+    toggleShuffle,
+    skipBackward,
+    skipForward
   } = useAudioPlayer()
 
   // Detect mobile
@@ -31,6 +38,7 @@ export default function FloatingAudioPlayer() {
   const [isExpanded, setIsExpanded] = useState(true)
   const [isMobileCollapsed, setIsMobileCollapsed] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
+  const [showCoverArt, setShowCoverArt] = useState(false)
   const [activeTab, setActiveTab] = useState<'player' | 'queue'>('player')
   const [isDragging, setIsDragging] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
@@ -183,6 +191,16 @@ export default function FloatingAudioPlayer() {
               {/* Playback Controls */}
               {!isMobileCollapsed && (
                 <div className="flex items-center gap-2">
+                  {/* Shuffle */}
+                  <button
+                    onClick={toggleShuffle}
+                    className={`transition-colors ${isShuffled ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+                    title="Shuffle"
+                  >
+                    <Shuffle size={14} />
+                  </button>
+
+                  {/* Previous */}
                   <button
                     onClick={playPrevious}
                     className="text-gray-400 hover:text-white transition-colors"
@@ -191,6 +209,7 @@ export default function FloatingAudioPlayer() {
                     <SkipBack size={16} />
                   </button>
 
+                  {/* Play/Pause */}
                   <button
                     onClick={togglePlayPause}
                     className="w-9 h-9 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/30"
@@ -202,12 +221,22 @@ export default function FloatingAudioPlayer() {
                     )}
                   </button>
 
+                  {/* Next */}
                   <button
                     onClick={playNext}
                     className="text-gray-400 hover:text-white transition-colors"
                     title="Next"
                   >
                     <SkipForward size={16} />
+                  </button>
+
+                  {/* Loop */}
+                  <button
+                    onClick={toggleLoop}
+                    className={`transition-colors ${isLooping ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+                    title={isLooping ? "Loop: On" : "Loop: Off"}
+                  >
+                    <Repeat size={14} />
                   </button>
                 </div>
               )}
@@ -461,89 +490,135 @@ export default function FloatingAudioPlayer() {
       {/* Player Content */}
       {activeTab === 'player' && (
         <div className="px-4 py-3 flex flex-col gap-2">
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-4 no-drag">
-          <button
-            onClick={playPrevious}
-            className="text-gray-400 hover:text-white transition-colors"
-            title="Previous"
-          >
-            <SkipBack size={18} />
-          </button>
+          {/* Main Controls */}
+          <div className="flex items-center justify-center gap-3 no-drag">
+            {/* Shuffle */}
+            <button
+              onClick={toggleShuffle}
+              className={`transition-colors ${isShuffled ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+              title="Shuffle"
+            >
+              <Shuffle size={16} />
+            </button>
 
-          <button
-            onClick={togglePlayPause}
-            className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/30"
-          >
-            {isPlaying ? (
-              <Pause size={18} className="text-black" fill="currentColor" />
-            ) : (
-              <Play size={18} className="text-black ml-0.5" fill="currentColor" />
-            )}
-          </button>
+            {/* Rewind 10s */}
+            <button
+              onClick={() => skipBackward(10)}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Rewind 10s"
+            >
+              <RotateCcw size={16} />
+            </button>
 
-          <button
-            onClick={playNext}
-            className="text-gray-400 hover:text-white transition-colors"
-            title="Next"
-          >
-            <SkipForward size={18} />
-          </button>
+            {/* Previous */}
+            <button
+              onClick={playPrevious}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Previous"
+            >
+              <SkipBack size={18} />
+            </button>
 
-          <div className="flex-1"></div>
+            {/* Play/Pause */}
+            <button
+              onClick={togglePlayPause}
+              className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/30"
+            >
+              {isPlaying ? (
+                <Pause size={18} className="text-black" fill="currentColor" />
+              ) : (
+                <Play size={18} className="text-black ml-0.5" fill="currentColor" />
+              )}
+            </button>
 
-          <button
-            onClick={() => setVolume(volume === 0 ? 0.5 : 0)}
-            className="text-gray-400 hover:text-white transition-colors"
-            title="Volume"
-          >
-            {volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
-          </button>
-        </div>
+            {/* Next */}
+            <button
+              onClick={playNext}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Next"
+            >
+              <SkipForward size={18} />
+            </button>
 
-        {/* Progress Bar */}
-        {isExpanded && (
-          <>
-            <div className="w-full flex items-center gap-2 no-drag">
-              <span className="text-[10px] text-gray-400 w-10 text-right">
-                {formatTime(currentTime)}
-              </span>
-              <input
-                type="range"
-                min="0"
-                max={duration || 0}
-                value={currentTime}
-                onChange={handleSeek}
-                className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) 100%)`
-                }}
-              />
-              <span className="text-[10px] text-gray-400 w-10">
-                {formatTime(duration)}
-              </span>
-            </div>
+            {/* Forward 10s */}
+            <button
+              onClick={() => skipForward(10)}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Forward 10s"
+            >
+              <RotateCw size={16} />
+            </button>
 
-            {/* Volume Slider */}
-            <div className="w-full flex items-center gap-2 no-drag">
-              <Volume2 size={14} className="text-gray-500" />
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={handleVolumeChange}
-                className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${volume * 100}%, rgba(255,255,255,0.1) ${volume * 100}%, rgba(255,255,255,0.1) 100%)`
-                }}
-              />
-              <span className="text-[10px] text-gray-400 w-8 text-right">{Math.round(volume * 100)}%</span>
+            {/* Loop */}
+            <button
+              onClick={toggleLoop}
+              className={`transition-colors ${isLooping ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+              title={isLooping ? "Loop: On" : "Loop: Off"}
+            >
+              <Repeat size={16} />
+            </button>
+          </div>
+
+          {/* Progress Bar & Volume */}
+          {isExpanded && (
+            <>
+              <div className="w-full flex items-center gap-2 no-drag mt-1">
+                <span className="text-[10px] text-gray-400 w-10 text-right">
+                  {formatTime(currentTime)}
+                </span>
+                <input
+                  type="range"
+                  min="0"
+                  max={duration || 0}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.1) 100%)`
+                  }}
+                />
+                <span className="text-[10px] text-gray-400 w-10">
+                  {formatTime(duration)}
+                </span>
+              </div>
+
+              {/* Volume & Cover Art */}
+              <div className="w-full flex items-center gap-3 no-drag">
+                {/* Volume Slider */}
+                <div className="flex items-center gap-2 flex-1">
+                  <button
+                    onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    {volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                  </button>
+                  <input
+                    type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={volume}
+                  onChange={handleVolumeChange}
+                  className="flex-1 h-1 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${volume * 100}%, rgba(255,255,255,0.1) ${volume * 100}%, rgba(255,255,255,0.1) 100%)`
+                  }}
+                />
+                <span className="text-[10px] text-gray-400 w-8 text-right">{Math.round(volume * 100)}%</span>
+              </div>
+
+              {/* Cover Art Button */}
+              <button
+                onClick={() => setShowCoverArt(true)}
+                className="text-gray-400 hover:text-cyan-400 transition-colors p-1"
+                title="View Cover Art"
+              >
+                <Maximize size={16} />
+              </button>
             </div>
           </>
         )}
-        </div>
+      </div>
       )}
 
       {/* Queue Content */}
@@ -631,6 +706,123 @@ export default function FloatingAudioPlayer() {
           <svg className="w-full h-full p-1 text-cyan-400/40 group-hover/resize:text-cyan-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
             <path d="M22 22H20V20H22V22M22 18H20V16H22V18M18 22H16V20H18V22M18 18H16V16H18V18M14 22H12V20H14V22M22 14H20V12H22V14Z"/>
           </svg>
+        </div>
+      )}
+
+      {/* Cover Art Modal */}
+      {showCoverArt && currentTrack && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4"
+          onClick={() => setShowCoverArt(false)}
+        >
+          <div className="max-w-2xl w-full space-y-6" onClick={(e) => e.stopPropagation()}>
+            {/* Close Button */}
+            <button
+              onClick={() => setShowCoverArt(false)}
+              className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors"
+            >
+              <X size={32} />
+            </button>
+
+            {/* Cover Art */}
+            {currentTrack.imageUrl && (
+              <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl">
+                <Image
+                  src={currentTrack.imageUrl}
+                  alt={currentTrack.title}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            )}
+
+            {/* Track Info */}
+            <div className="text-center space-y-2">
+              <h2 className="text-3xl font-bold text-white">
+                {currentTrack.title}
+              </h2>
+              {currentTrack.artist && (
+                <p className="text-xl text-gray-400">
+                  {currentTrack.artist}
+                </p>
+              )}
+            </div>
+
+            {/* Progress */}
+            <div className="space-y-2">
+              <input
+                type="range"
+                min="0"
+                max={duration || 0}
+                value={currentTime}
+                onChange={handleSeek}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.2) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.2) 100%)`
+                }}
+              />
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center justify-center gap-6">
+              <button
+                onClick={toggleShuffle}
+                className={`transition-colors ${isShuffled ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+              >
+                <Shuffle size={24} />
+              </button>
+
+              <button
+                onClick={() => skipBackward(10)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <RotateCcw size={24} />
+              </button>
+
+              <button
+                onClick={playPrevious}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <SkipBack size={28} />
+              </button>
+
+              <button
+                onClick={togglePlayPause}
+                className="w-16 h-16 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/50"
+              >
+                {isPlaying ? (
+                  <Pause size={28} className="text-black" fill="currentColor" />
+                ) : (
+                  <Play size={28} className="text-black ml-1" fill="currentColor" />
+                )}
+              </button>
+
+              <button
+                onClick={playNext}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <SkipForward size={28} />
+              </button>
+
+              <button
+                onClick={() => skipForward(10)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <RotateCw size={24} />
+              </button>
+
+              <button
+                onClick={toggleLoop}
+                className={`transition-colors ${isLooping ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+              >
+                <Repeat size={24} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
