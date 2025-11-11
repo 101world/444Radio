@@ -13,11 +13,12 @@ export async function GET(req: NextRequest) {
     const offset = Number(searchParams.get('offset')) || 0
 
     // Fetch public combined media with optimized query
-    // Only fetches tracks where is_public = true
+    // TEMPORARY: Show all tracks (including NULL) until is_public is fixed in DB
+    // TODO: After running SQL fix, change back to .eq('is_public', true)
     const { data, error } = await supabase
       .from('combined_media')
       .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, mood')
-      .eq('is_public', true)
+      .or('is_public.eq.true,is_public.is.null') // Shows tracks with is_public=true OR NULL
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
