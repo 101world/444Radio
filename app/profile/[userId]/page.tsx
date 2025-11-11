@@ -413,27 +413,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           })
         })
 
-        // Auto-play the current track if broadcaster is playing something
-        // ONLY if user hasn't manually selected a track yet
-        if (!userHasManuallySelectedTrack) {
-          const res = await fetch(`/api/station?userId=${resolvedParams.userId}`)
-          const data = await res.json()
-          if (data.success && data.station?.current_track_id) {
-            const audioTracks = profile?.combinedMedia.filter(m => m.media_type === 'music-image' && m.audio_url) || []
-            const currentBroadcastTrack = audioTracks.find(t => t.id === data.station.current_track_id)
-            
-            if (currentBroadcastTrack) {
-              console.log('[Station] Auto-playing broadcast track on join:', currentBroadcastTrack.title)
-              playTrack({
-                id: currentBroadcastTrack.id,
-                title: currentBroadcastTrack.title,
-                audioUrl: currentBroadcastTrack.audio_url!,
-                imageUrl: currentBroadcastTrack.image_url,
-                userId: currentBroadcastTrack.user_id
-              })
-            }
-          }
-        }
+        // DISABLED: Station auto-play completely removed
+        // Causes issues with manual track selection
       } catch (error) {
         console.error('Failed to join station:', error)
       }
