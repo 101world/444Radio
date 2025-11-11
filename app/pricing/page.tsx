@@ -233,6 +233,9 @@ export default function Pricing() {
 
             <div className="relative">
               <div className="mb-6 mt-2">
+                <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 rounded-full mb-3">
+                  <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">PRO</span>
+                </div>
                 <h2 className="text-2xl font-black text-white mb-1">Pro</h2>
                 <p className="text-cyan-400/50 text-xs">For professionals</p>
               </div>
@@ -371,8 +374,8 @@ export default function Pricing() {
         <div className="mb-24">
           <div className="bg-black/60 border border-cyan-500/40 rounded-2xl p-8 shadow-xl shadow-cyan-500/20">
             <div className="text-center mb-8">
-              <h2 className="text-3xl md:text-4xl font-black text-white mb-2">buy credits</h2>
-              <p className="text-cyan-400/60 text-sm">no subscription needed • pay as u go</p>
+              <h2 className="text-3xl md:text-4xl font-black text-white mb-2">Buy Credits</h2>
+              <p className="text-cyan-400/60 text-sm">No subscription needed • Pay as you go</p>
             </div>
 
             <div className="max-w-3xl mx-auto">
@@ -475,17 +478,21 @@ export default function Pricing() {
 
         {/* Call to Action */}
         <div className="text-center bg-black/60 border border-cyan-500/40 rounded-2xl p-12 mb-16 shadow-lg shadow-cyan-500/20">
-          <h2 className="text-3xl md:text-4xl font-black text-white mb-3">ready to make fire music?</h2>
+          <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Ready to make fire music?</h2>
           <p className="text-cyan-400/60 text-sm mb-8 max-w-2xl mx-auto">
-            join thousands creating with AI • risk-free fr
+            Join thousands creating with AI • Risk-free fr fr
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold text-sm hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 hover:scale-105">
-              let's go
-            </button>
-            <button className="px-8 py-3 bg-white/5 border border-white/20 text-white rounded-xl font-bold text-sm hover:bg-white/10 transition-all duration-300">
-              try free
-            </button>
+            <Link href="/create">
+              <button className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold text-sm hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 hover:scale-105">
+                Let's Go
+              </button>
+            </Link>
+            <Link href="/decrypt">
+              <button className="px-8 py-3 bg-white/5 border border-white/20 text-white rounded-xl font-bold text-sm hover:bg-white/10 transition-all duration-300">
+                Try Free
+              </button>
+            </Link>
           </div>
         </div>
 
