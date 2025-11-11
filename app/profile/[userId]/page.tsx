@@ -136,7 +136,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isFollowing, setIsFollowing] = useState(false)
   
   // Use global audio player context
-  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist } = useAudioPlayer()
+  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist, pause } = useAudioPlayer()
   const playingId = currentTrack?.id || null
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
@@ -764,34 +764,43 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   }, [contentTab, resolvedParams.userId])
 
   const handlePlay = async (media: CombinedMedia) => {
-    const stack = new Error().stack
     console.log('[handlePlay] Called with media:', {
       id: media.id,
       title: media.title,
       audioUrl: media.audio_url,
-      imageUrl: media.image_url,
-      callStack: stack
+      imageUrl: media.image_url
     })
     
-    if (!media.audio_url) return
+    if (!media.audio_url) {
+      console.log('[handlePlay] No audio URL, skipping')
+      return
+    }
     
-    if (playingId === media.id && isPlaying) {
-      togglePlayPause()
-    } else {
-      // Clear any existing playlist to prevent auto-play conflicts
-      setPlaylist([], 0)
-      
-      // Play the single track
-      playTrack({
-        id: media.id,
-        audioUrl: media.audio_url,
-        title: media.title,
-        artist: profile?.username,
-        imageUrl: media.image_url,
-        userId: media.user_id
-      })
-      
-      // If station is live, send track notification to database
+    // Stop any currently playing track first
+    if (isPlaying) {
+      pause()
+      // Small delay to ensure the audio stops before starting new track
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    
+    // Clear any existing playlist to prevent auto-play conflicts
+    console.log('[handlePlay] Clearing playlist and playing single track')
+    setPlaylist([], 0)
+    
+    // Small delay to ensure playlist is cleared
+    await new Promise(resolve => setTimeout(resolve, 50))
+    
+    // Play the single track
+    playTrack({
+      id: media.id,
+      audioUrl: media.audio_url,
+      title: media.title,
+      artist: profile?.username,
+      imageUrl: media.image_url,
+      userId: media.user_id
+    })
+    
+    // If station is live, send track notification to database
       if (isLive && profile && stationId) {
         try {
           await fetch('/api/station/messages', {
@@ -819,7 +828,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           console.error('Failed to send track notification:', error)
         }
       }
-    }
   }
 
   const formatDuration = (seconds?: number) => {
