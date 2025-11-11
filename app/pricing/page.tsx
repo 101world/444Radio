@@ -100,7 +100,6 @@ export default function Pricing() {
                 <div className="inline-block px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-full mb-4">
                   <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">FREE FOREVER</span>
                 </div>
-                <h2 className="text-2xl font-black text-white mb-2">Free Access</h2>
                 <p className="text-cyan-400/50 text-xs">Decrypt to unlock</p>
               </div>
 
@@ -159,7 +158,6 @@ export default function Pricing() {
                 <div className="inline-block px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-full mb-4">
                   <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">CREATOR</span>
                 </div>
-                <h2 className="text-2xl font-black text-white mb-2">Creator</h2>
                 <p className="text-cyan-400/50 text-xs">For music creators</p>
               </div>
 
@@ -214,7 +212,7 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <button className="w-full py-4 px-4 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 rounded-xl font-bold hover:bg-cyan-500/25 hover:border-cyan-400/60 transition-all duration-300 group-hover:scale-105 text-sm">
+              <button className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
                 Get Started
               </button>
             </div>
@@ -236,7 +234,6 @@ export default function Pricing() {
                 <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 rounded-full mb-4">
                   <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">PRO</span>
                 </div>
-                <h2 className="text-2xl font-black text-white mb-2">Pro</h2>
                 <p className="text-cyan-400/50 text-xs">For professionals</p>
               </div>
 
@@ -308,7 +305,6 @@ export default function Pricing() {
                 <div className="inline-block px-3 py-1.5 bg-purple-500/20 border border-purple-400/50 rounded-full mb-4">
                   <span className="text-purple-200 text-xs font-bold uppercase tracking-wider">STUDIO</span>
                 </div>
-                <h2 className="text-2xl font-black text-white mb-2">Studio</h2>
                 <p className="text-cyan-400/50 text-xs">Unlimited everything</p>
               </div>
 
@@ -363,7 +359,7 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <button className="w-full py-4 px-4 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 rounded-xl font-bold hover:bg-cyan-500/25 hover:border-cyan-400/60 transition-all duration-300 group-hover:scale-105 text-sm">
+              <button className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
                 Get Started
               </button>
             </div>
