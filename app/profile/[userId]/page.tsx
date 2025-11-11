@@ -136,7 +136,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isFollowing, setIsFollowing] = useState(false)
   
   // Use global audio player context
-  const { currentTrack, isPlaying, playTrack, togglePlayPause } = useAudioPlayer()
+  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist } = useAudioPlayer()
   const playingId = currentTrack?.id || null
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
@@ -778,6 +778,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     if (playingId === media.id && isPlaying) {
       togglePlayPause()
     } else {
+      // Clear any existing playlist to prevent auto-play conflicts
+      setPlaylist([], 0)
+      
+      // Play the single track
       playTrack({
         id: media.id,
         audioUrl: media.audio_url,
