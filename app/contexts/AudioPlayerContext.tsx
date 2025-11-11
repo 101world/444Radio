@@ -19,6 +19,7 @@ interface AudioPlayerContextType {
   duration: number
   volume: number
   playlist: Track[]
+  queue: Track[]
   isLooping: boolean
   isShuffled: boolean
   playTrack: (track: Track) => void
@@ -33,6 +34,11 @@ interface AudioPlayerContextType {
   shufflePlaylist: () => void
   removeFromPlaylist: (trackId: string) => void
   addToPlaylist: (track: Track) => boolean
+  addToQueue: (track: Track) => boolean
+  removeFromQueue: (trackId: string) => void
+  reorderQueue: (startIndex: number, endIndex: number) => void
+  clearQueue: () => void
+  playFromQueue: (track: Track) => void
   toggleLoop: () => void
   toggleShuffle: () => void
   skipBackward: (seconds?: number) => void
@@ -49,6 +55,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [duration, setDuration] = useState(0)
   const [volume, setVolumeState] = useState(0.7)
   const [playlist, setPlaylist] = useState<Track[]>([])
+  const [queue, setQueue] = useState<Track[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLooping, setIsLooping] = useState(false)
   const [isShuffled, setIsShuffled] = useState(false)
@@ -56,6 +63,31 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const playTimeRef = useRef<number>(0)
   const hasTrackedPlayRef = useRef<boolean>(false)
+
+  // Load queue from localStorage on mount
+  useEffect(() => {
+    const savedQueue = localStorage.getItem('444radio-queue')
+    if (savedQueue) {
+      try {
+        const parsedQueue = JSON.parse(savedQueue)
+        setQueue(parsedQueue)
+        console.log('[Queue] Loaded from localStorage:', parsedQueue.length, 'tracks')
+      } catch (error) {
+        console.error('[Queue] Failed to load from localStorage:', error)
+      }
+    }
+  }, [])
+
+  // Save queue to localStorage whenever it changes
+  useEffect(() => {
+    if (queue.length > 0) {
+      localStorage.setItem('444radio-queue', JSON.stringify(queue))
+      console.log('[Queue] Saved to localStorage:', queue.length, 'tracks')
+    } else {
+      localStorage.removeItem('444radio-queue')
+      console.log('[Queue] Cleared from localStorage')
+    }
+  }, [queue])
 
   const pause = useCallback(() => {
     if (audioRef.current) {
@@ -358,6 +390,50 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const addToQueue = (track: Track) => {
+    const existingTrack = queue.find(t => t.id === track.id)
+    if (!existingTrack) {
+      const newQueue = [...queue, track]
+      setQueue(newQueue)
+      console.log('[Queue] Added to persistent queue:', track.title, 'Total tracks:', newQueue.length)
+      return true
+    } else {
+      console.log('[Queue] Track already in persistent queue:', track.title)
+      return false
+    }
+  }
+
+  const removeFromQueue = (trackId: string) => {
+    const newQueue = queue.filter(t => t.id !== trackId)
+    setQueue(newQueue)
+    console.log('[Queue] Removed from queue, remaining:', newQueue.length)
+  }
+
+  const reorderQueue = (startIndex: number, endIndex: number) => {
+    const result = Array.from(queue)
+    const [removed] = result.splice(startIndex, 1)
+    result.splice(endIndex, 0, removed)
+    setQueue(result)
+    console.log('[Queue] Reordered from index', startIndex, 'to', endIndex)
+  }
+
+  const clearQueue = () => {
+    setQueue([])
+    console.log('[Queue] Cleared all tracks')
+  }
+
+  const playFromQueue = (track: Track) => {
+    // Find the track index in queue
+    const trackIndex = queue.findIndex(t => t.id === track.id)
+    if (trackIndex !== -1) {
+      // Set queue as the active playlist and play from the selected track
+      setPlaylist(queue)
+      setCurrentIndex(trackIndex)
+      playTrack(track)
+      console.log('[Queue] Playing from queue:', track.title, 'at index', trackIndex)
+    }
+  }
+
   const toggleLoop = () => {
     const newLoopState = !isLooping
     setIsLooping(newLoopState)
@@ -397,6 +473,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         duration,
         volume,
         playlist,
+        queue,
         isLooping,
         isShuffled,
         playTrack,
@@ -411,6 +488,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         shufflePlaylist,
         removeFromPlaylist,
         addToPlaylist,
+        addToQueue,
+        removeFromQueue,
+        reorderQueue,
+        clearQueue,
+        playFromQueue,
         toggleLoop,
         toggleShuffle,
         skipBackward,

@@ -1,9 +1,10 @@
 'use client'
 
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical, ChevronDown, ChevronUp, List, X, Repeat, Repeat1, Shuffle, RotateCcw, RotateCw, Maximize } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical, ChevronDown, ChevronUp, List, X, Repeat, Repeat1, Shuffle, RotateCcw, RotateCw, Maximize, Trash2 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
 export default function FloatingAudioPlayer() {
   const {
@@ -18,9 +19,13 @@ export default function FloatingAudioPlayer() {
     playNext,
     playPrevious,
     playlist,
+    queue,
     playTrack,
+    playFromQueue,
     removeFromPlaylist,
-    addToPlaylist,
+    removeFromQueue,
+    reorderQueue,
+    clearQueue,
     isLooping,
     isShuffled,
     toggleLoop,
@@ -624,132 +629,170 @@ export default function FloatingAudioPlayer() {
       {/* Queue Content */}
       {activeTab === 'queue' && isExpanded && (
         <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: `${size.height - 120}px` }}>
-          {playlist.length === 0 ? (
+          {queue.length === 0 ? (
             <div className="py-8 text-center text-gray-400">
               <List size={32} className="mx-auto mb-2 opacity-30" />
-              <p className="text-xs">No tracks in queue</p>
+              <p className="text-xs">Your queue is empty</p>
+              <p className="text-[10px] mt-1 opacity-60">Add tracks to build your playlist</p>
             </div>
           ) : (
-            <div className="space-y-1">
-              {playlist.map((track, index) => {
-                const isCurrentTrack = currentTrack?.id === track.id
-                return (
-                  <div
-                    key={`${track.id}-${index}`}
-                    className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
-                      isCurrentTrack
-                        ? 'bg-cyan-500/20 border border-cyan-500/30'
-                        : 'hover:bg-white/5'
-                    }`}
-                  >
-                    <button
-                      onClick={() => playTrack(track)}
-                      className="flex items-center gap-2 flex-1 min-w-0 text-left"
+            <>
+              {/* Queue Actions */}
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
+                <p className="text-xs text-gray-400">
+                  {queue.length} {queue.length === 1 ? 'track' : 'tracks'}
+                </p>
+                <button
+                  onClick={clearQueue}
+                  className="text-[10px] text-red-400/70 hover:text-red-400 transition-colors flex items-center gap-1"
+                >
+                  <Trash2 size={12} />
+                  Clear All
+                </button>
+              </div>
+
+              {/* Draggable Queue */}
+              <DragDropContext onDragEnd={(result: DropResult) => {
+                if (!result.destination) return
+                reorderQueue(result.source.index, result.destination.index)
+              }}>
+                <Droppable droppableId="queue">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-1"
                     >
-                      <span className="text-[10px] text-gray-500 w-5 font-mono flex-shrink-0">
-                        {index + 1}
-                      </span>
-                      {track.imageUrl && (
-                        <Image
-                          src={track.imageUrl}
-                          alt={track.title}
-                          width={32}
-                          height={32}
-                          className="w-8 h-8 rounded object-cover flex-shrink-0"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[11px] truncate ${
-                          isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
-                        }`}>
-                          {track.title}
-                        </p>
-                        {track.artist && (
-                          <p className="text-[9px] text-gray-400 truncate">
-                            {track.artist}
-                          </p>
-                        )}
-                      </div>
-                      {isCurrentTrack && isPlaying && (
-                        <div className="flex gap-0.5 flex-shrink-0">
-                          <div className="w-0.5 h-2 bg-cyan-400 animate-pulse"></div>
-                          <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                        </div>
-                      )}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeFromPlaylist(track.id)
-                      }}
-                      className="text-gray-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
-                      title="Remove from queue"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
+                      {queue.map((track, index) => {
+                        const isCurrentTrack = currentTrack?.id === track.id
+                        return (
+                          <Draggable key={track.id} draggableId={track.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={`flex items-center gap-2 p-2 rounded-lg transition-all ${
+                                  snapshot.isDragging
+                                    ? 'bg-cyan-500/30 shadow-lg shadow-cyan-500/20 scale-105'
+                                    : isCurrentTrack
+                                    ? 'bg-cyan-500/20 border border-cyan-500/30'
+                                    : 'hover:bg-white/5'
+                                }`}
+                              >
+                                {/* Drag Handle */}
+                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-400 flex-shrink-0">
+                                  <GripVertical size={14} />
+                                </div>
+
+                                {/* Track Number */}
+                                <span className="text-[10px] text-gray-500 w-5 font-mono flex-shrink-0">
+                                  {index + 1}
+                                </span>
+
+                                {/* Track Info */}
+                                <button
+                                  onClick={() => playFromQueue(track)}
+                                  className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                                >
+                                  {track.imageUrl && (
+                                    <Image
+                                      src={track.imageUrl}
+                                      alt={track.title}
+                                      width={32}
+                                      height={32}
+                                      className="w-8 h-8 rounded object-cover flex-shrink-0"
+                                    />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-[11px] truncate ${
+                                      isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
+                                    }`}>
+                                      {track.title}
+                                    </p>
+                                    {track.artist && (
+                                      <p className="text-[9px] text-gray-400 truncate">
+                                        {track.artist}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {isCurrentTrack && isPlaying && (
+                                    <div className="flex gap-0.5 flex-shrink-0">
+                                      <div className="w-0.5 h-2 bg-cyan-400 animate-pulse"></div>
+                                      <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                      <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                                    </div>
+                                  )}
+                                </button>
+
+                                {/* Remove Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    removeFromQueue(track.id)
+                                  }}
+                                  className="text-gray-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                                  title="Remove from queue"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            )}
+                          </Draggable>
+                        )
+                      })}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            </>
           )}
         </div>
       )}
 
-      {/* Resize Handle */}
-      {isExpanded && (
-        <div
-          className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize no-drag group/resize hover:bg-cyan-500/20 rounded-tl-lg transition-colors"
-          onMouseDown={handleResizeStart}
-          title="Drag to resize"
-        >
-          <svg className="w-full h-full p-1 text-cyan-400/40 group-hover/resize:text-cyan-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M22 22H20V20H22V22M22 18H20V16H22V18M18 22H16V20H18V22M18 18H16V16H18V18M14 22H12V20H14V22M22 14H20V12H22V14Z"/>
-          </svg>
-        </div>
-      )}
-
-      {/* Cover Art Modal */}
+      {/* Cover Art Modal - Improved Fullscreen Experience */}
       {showCoverArt && currentTrack && (
         <div 
-          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center p-4 md:p-8"
           onClick={() => setShowCoverArt(false)}
         >
-          <div className="max-w-2xl w-full space-y-6" onClick={(e) => e.stopPropagation()}>
+          <div className="max-w-4xl w-full space-y-8" onClick={(e) => e.stopPropagation()}>
             {/* Close Button */}
             <button
               onClick={() => setShowCoverArt(false)}
-              className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors"
+              className="absolute top-4 right-4 md:top-8 md:right-8 text-white/60 hover:text-white transition-colors bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full p-3"
+              aria-label="Close"
             >
-              <X size={32} />
+              <X size={24} />
             </button>
 
             {/* Cover Art */}
             {currentTrack.imageUrl && (
-              <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl">
+              <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl shadow-cyan-500/20 ring-1 ring-white/10">
                 <Image
                   src={currentTrack.imageUrl}
                   alt={currentTrack.title}
                   fill
                   className="object-cover"
+                  priority
                 />
               </div>
             )}
 
             {/* Track Info */}
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold text-white">
+            <div className="text-center space-y-3">
+              <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight">
                 {currentTrack.title}
               </h2>
               {currentTrack.artist && (
-                <p className="text-xl text-gray-400">
+                <p className="text-xl md:text-2xl text-cyan-400">
                   {currentTrack.artist}
                 </p>
               )}
             </div>
 
             {/* Progress */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <input
                 type="range"
                 min="0"
@@ -761,66 +804,96 @@ export default function FloatingAudioPlayer() {
                   background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.2) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.2) 100%)`
                 }}
               />
-              <div className="flex justify-between text-sm text-gray-400">
+              <div className="flex justify-between text-sm md:text-base text-gray-400">
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
             </div>
 
             {/* Controls */}
-            <div className="flex items-center justify-center gap-6">
+            <div className="flex items-center justify-center gap-4 md:gap-8">
               <button
                 onClick={toggleShuffle}
                 className={`transition-colors ${isShuffled ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+                aria-label="Shuffle"
               >
-                <Shuffle size={24} />
+                <Shuffle size={28} />
               </button>
 
               <button
                 onClick={() => skipBackward(10)}
                 className="text-gray-400 hover:text-white transition-colors"
+                aria-label="Rewind 10s"
               >
-                <RotateCcw size={24} />
+                <RotateCcw size={28} />
               </button>
 
               <button
                 onClick={playPrevious}
                 className="text-gray-400 hover:text-white transition-colors"
+                aria-label="Previous"
               >
-                <SkipBack size={28} />
+                <SkipBack size={32} />
               </button>
 
               <button
                 onClick={togglePlayPause}
-                className="w-16 h-16 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-lg shadow-cyan-500/50"
+                className="w-20 h-20 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all active:scale-95 shadow-2xl shadow-cyan-500/50"
+                aria-label={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? (
-                  <Pause size={28} className="text-black" fill="currentColor" />
+                  <Pause size={36} className="text-black" fill="currentColor" />
                 ) : (
-                  <Play size={28} className="text-black ml-1" fill="currentColor" />
+                  <Play size={36} className="text-black ml-1" fill="currentColor" />
                 )}
               </button>
 
               <button
                 onClick={playNext}
                 className="text-gray-400 hover:text-white transition-colors"
+                aria-label="Next"
               >
-                <SkipForward size={28} />
+                <SkipForward size={32} />
               </button>
 
               <button
                 onClick={() => skipForward(10)}
                 className="text-gray-400 hover:text-white transition-colors"
+                aria-label="Forward 10s"
               >
-                <RotateCw size={24} />
+                <RotateCw size={28} />
               </button>
 
               <button
                 onClick={toggleLoop}
                 className={`transition-colors ${isLooping ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+                aria-label={isLooping ? "Loop: On" : "Loop: Off"}
               >
-                <Repeat size={24} />
+                <Repeat size={28} />
               </button>
+            </div>
+
+            {/* Volume Control */}
+            <div className="flex items-center gap-4 max-w-md mx-auto">
+              <button
+                onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={volume}
+                onChange={handleVolumeChange}
+                className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
+                }}
+              />
+              <span className="text-sm text-gray-400 w-12 text-right">{Math.round(volume * 100)}%</span>
             </div>
           </div>
         </div>

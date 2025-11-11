@@ -136,7 +136,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isFollowing, setIsFollowing] = useState(false)
   
   // Use global audio player context
-  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist, pause, addToPlaylist } = useAudioPlayer()
+  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist, pause, addToQueue } = useAudioPlayer()
   const playingId = currentTrack?.id || null
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
@@ -1154,7 +1154,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        const added = addToPlaylist({
+                                        const added = addToQueue({
                                           id: media.id,
                                           audioUrl: media.audio_url!,
                                           title: media.title,
@@ -1168,7 +1168,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                           setQueueToast(`"${media.title}" already in queue`)
                                         }
                                       }}
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400"
+                                      className="p-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all"
                                       title="Add to Queue"
                                     >
                                       <Plus size={14} />
@@ -1252,7 +1252,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  const added = addToPlaylist({
+                                  const added = addToQueue({
                                     id: media.id,
                                     audioUrl: media.audio_url!,
                                     title: media.title,
@@ -1266,7 +1266,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                     setQueueToast(`"${media.title}" already in queue`)
                                   }
                                 }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400"
+                                className="p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all"
                                 title="Add to Queue"
                               >
                                 <Plus size={16} />
