@@ -88,12 +88,32 @@ export default function LibraryPage() {
       setIsLoading(true)
     }
     try {
-      const [musicRes, imagesRes, combinedRes, publishedRes] = await Promise.all([
-        fetch('/api/library/music'),
-        fetch('/api/library/images'),
-        fetch('/api/library/combined'),
-        fetch('/api/media/profile/' + user?.id) // Get published releases from combined_media table
-      ])
+      // Optimize: Only fetch what's needed for current tab
+      const requests = []
+      
+      if (activeTab === 'music' || isManualRefresh || !isManualRefresh) {
+        requests.push(fetch('/api/library/music'))
+      } else {
+        requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
+      }
+      
+      if (activeTab === 'images' || isManualRefresh || !isManualRefresh) {
+        requests.push(fetch('/api/library/images'))
+      } else {
+        requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
+      }
+      
+      // Combined tab not needed for library
+      requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
+      
+      // Only fetch published releases when on combined tab or manual refresh
+      if (activeTab === 'combined' || isManualRefresh) {
+        requests.push(fetch('/api/media/profile/' + user?.id))
+      } else {
+        requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
+      }
+
+      const [musicRes, imagesRes, combinedRes, publishedRes] = await Promise.all(requests)
 
       const musicData = await musicRes.json()
       const imagesData = await imagesRes.json()
@@ -130,7 +150,8 @@ export default function LibraryPage() {
         const publishedLibraryItems = combinedData.combined.filter((item: LibraryCombined) => item.is_published)
         setCombinedItems(publishedLibraryItems)
         console.log('⚠️ Using library fallback:', publishedLibraryItems.length, 'items')
-      } else {
+      } else if (activeTab === 'combined') {
+        setCombinedItems([])
         console.log('❌ No releases found')
       }
     } catch (error) {
@@ -164,6 +185,14 @@ export default function LibraryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Fetch releases when switching to combined tab
+  useEffect(() => {
+    if (activeTab === 'combined' && combinedItems.length === 0 && !isLoading) {
+      fetchLibrary()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
+
   const handleDelete = async (type: 'music' | 'images' | 'combined', id: string) => {
     if (!confirm('Are you sure you want to delete this item?')) return
 
@@ -178,6 +207,32 @@ export default function LibraryPage() {
       }
     } catch (error) {
       console.error('Delete error:', error)
+    }
+  }
+
+  // Delete published release from combined_media table
+  const handleDeleteRelease = async (id: string) => {
+    if (!confirm('⚠️ Delete this release?\n\nThis will remove it from:\n• Your profile\n• Explore page\n• Release tab\n\n✅ Your original music and images will remain in their tabs.')) return
+
+    try {
+      const res = await fetch('/api/media/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        // Optimistically update UI
+        setCombinedItems(prev => prev.filter(item => item.id !== id))
+        alert('✅ Release deleted successfully!')
+      } else {
+        alert('❌ Failed to delete release. Please try again.')
+      }
+    } catch (error) {
+      console.error('Delete release error:', error)
+      alert('❌ Failed to delete release. Please try again.')
     }
   }
 
@@ -584,12 +639,14 @@ export default function LibraryPage() {
                         <button
                           onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
                           className="hidden sm:flex p-2.5 bg-cyan-500/20 rounded-lg hover:bg-cyan-500/40 transition-all hover:scale-105 border border-cyan-500/30"
+                          title="Download"
                         >
                           <Download size={16} className="text-cyan-400" />
                         </button>
                         <button
-                          onClick={() => handleDelete('combined', item.id)}
+                          onClick={() => handleDeleteRelease(item.id)}
                           className="p-2.5 bg-red-500/20 rounded-lg hover:bg-red-500/40 transition-all hover:scale-105 border border-red-500/30"
+                          title="Delete Release"
                         >
                           <Trash2 size={16} className="text-red-400" />
                         </button>
