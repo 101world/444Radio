@@ -764,11 +764,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   }, [contentTab, resolvedParams.userId])
 
   const handlePlay = async (media: CombinedMedia) => {
+    const stack = new Error().stack
     console.log('[handlePlay] Called with media:', {
       id: media.id,
       title: media.title,
       audioUrl: media.audio_url,
-      imageUrl: media.image_url
+      imageUrl: media.image_url,
+      callStack: stack
     })
     
     if (!media.audio_url) return
