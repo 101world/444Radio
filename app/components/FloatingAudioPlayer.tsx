@@ -830,155 +830,209 @@ export default function FloatingAudioPlayer() {
         </div>
       )}
 
-      {/* Cover Art Modal - Premium Fullscreen Experience */}
+      {/* Cover Art Modal - Ultra Premium Fullscreen Experience */}
       {showCoverArt && currentTrack && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 animate-fadeIn"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 animate-fadeIn overflow-hidden"
           style={{
-            background: 'radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.15) 0%, rgba(0, 0, 0, 0.95) 50%, #000 100%)',
-            backdropFilter: 'blur(40px)',
+            background: 'radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.25) 0%, rgba(0, 0, 0, 0.98) 40%, #000 100%)',
+            backdropFilter: 'blur(60px)',
           }}
           onClick={() => setShowCoverArt(false)}
         >
-          {/* Animated Background Orbs */}
+          {/* Animated Background Orbs - Enhanced */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-cyan-500/20 rounded-full blur-[120px] animate-pulse" />
+            <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-blue-500/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-1/2 left-1/2 w-[400px] h-[400px] bg-purple-500/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '0.5s' }} />
           </div>
 
-          <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
-            {/* Close Button */}
+          {/* Animated particles */}
+          <div className="absolute inset-0 pointer-events-none">
+            {[...Array(30)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-cyan-400/30 rounded-full animate-float"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  animationDuration: `${5 + Math.random() * 10}s`,
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="relative max-w-6xl w-full" onClick={(e) => e.stopPropagation()}>
+            {/* Close Button - Enhanced */}
             <button
               onClick={() => setShowCoverArt(false)}
-              className="absolute -top-2 -right-2 md:top-0 md:right-0 z-10 text-white/60 hover:text-white transition-all bg-black/50 hover:bg-cyan-500/20 backdrop-blur-md rounded-full p-2.5 hover:scale-110 hover:rotate-90 duration-300 border border-white/10"
+              className="absolute -top-4 -right-4 md:-top-6 md:-right-6 z-10 text-white/80 hover:text-white transition-all bg-gradient-to-br from-black/80 to-black/60 hover:from-cyan-500/30 hover:to-blue-500/30 backdrop-blur-xl rounded-full p-4 hover:scale-125 hover:rotate-90 duration-500 border-2 border-white/20 shadow-2xl shadow-cyan-500/30"
               aria-label="Close"
             >
-              <X size={20} />
+              <X size={24} />
             </button>
 
-            <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-center">
-              {/* Left: Cover Art */}
+            <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
+              {/* Left: Cover Art with Epic Effects */}
               <div className="relative group">
                 {currentTrack.imageUrl && (
-                  <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20 transform transition-transform duration-500 group-hover:scale-[1.02]">
-                    {/* Glowing border effect */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-transparent to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="relative">
+                    {/* Outer glow ring */}
+                    <div className="absolute -inset-8 bg-gradient-to-br from-cyan-500/30 via-blue-500/20 to-purple-500/30 rounded-[3rem] blur-3xl opacity-60 group-hover:opacity-100 transition-all duration-700 animate-pulse" />
                     
-                    <Image
-                      src={currentTrack.imageUrl}
-                      alt={currentTrack.title}
-                      fill
-                      className="object-cover"
-                      priority
-                    />
-                    
-                    {/* Reflection effect */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    {/* Main cover container */}
+                    <div className="relative aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl ring-2 ring-white/30 transform transition-all duration-700 group-hover:scale-[1.05] group-hover:ring-cyan-400/50">
+                      {/* Animated gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/30 via-transparent to-blue-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-700 mix-blend-overlay" />
+                      
+                      {/* Rotating border effect */}
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 rounded-[2.5rem] animate-spin-slow opacity-50 blur-xl" />
+                      </div>
+                      
+                      <Image
+                        src={currentTrack.imageUrl}
+                        alt={currentTrack.title}
+                        fill
+                        className="object-cover relative z-10"
+                        priority
+                      />
+                      
+                      {/* Reflection effect */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-20" />
+                      
+                      {/* Shine effect on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 z-30" />
+                    </div>
                   </div>
                 )}
-                
-                {/* Glow effect under cover */}
-                <div className="absolute -inset-4 bg-cyan-500/20 rounded-2xl blur-2xl opacity-50 -z-10" />
               </div>
 
-              {/* Right: Controls & Info */}
-              <div className="space-y-4 md:space-y-5">
-                {/* Track Info */}
-                <div className="space-y-2">
-                  <h2 className="text-2xl md:text-4xl font-bold text-white leading-tight tracking-tight">
-                    {currentTrack.title}
+              {/* Right: Controls & Info - Enhanced */}
+              <div className="space-y-6 md:space-y-8">
+                {/* Track Info with Animations */}
+                <div className="space-y-4">
+                  <h2 className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-none tracking-tighter animate-slideInRight">
+                    <span className="bg-gradient-to-r from-white via-cyan-100 to-white bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+                      {currentTrack.title}
+                    </span>
                   </h2>
                   {currentTrack.artist && (
-                    <p className="text-lg md:text-xl font-medium bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                    <p className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent animate-slideInRight drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]" style={{ animationDelay: '0.1s' }}>
                       {currentTrack.artist}
                     </p>
                   )}
                 </div>
 
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="relative">
+                {/* Progress Bar - Enhanced */}
+                <div className="space-y-3 animate-slideInRight" style={{ animationDelay: '0.2s' }}>
+                  <div className="relative group/progress">
                     <input
                       type="range"
                       min="0"
                       max={duration || 0}
                       value={currentTime}
                       onChange={handleSeek}
-                      className="w-full h-2 rounded-full appearance-none cursor-pointer transition-all hover:h-2.5"
+                      className="w-full h-3 rounded-full appearance-none cursor-pointer transition-all hover:h-4"
                       style={{
-                        background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.15) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.15) 100%)`
+                        background: `linear-gradient(to right, 
+                          rgb(34 211 238) 0%, 
+                          rgb(59 130 246) ${(currentTime / duration) * 50}%,
+                          rgb(34 211 238) ${(currentTime / duration) * 100}%, 
+                          rgba(255,255,255,0.1) ${(currentTime / duration) * 100}%, 
+                          rgba(255,255,255,0.1) 100%)`
                       }}
                     />
+                    {/* Glow effect under progress bar */}
+                    <div className="absolute inset-0 bg-cyan-500/30 blur-xl opacity-0 group-hover/progress:opacity-100 transition-opacity -z-10" />
                   </div>
-                  <div className="flex justify-between text-xs md:text-sm text-gray-300 font-medium">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
+                  <div className="flex justify-between text-sm md:text-base text-gray-300 font-bold">
+                    <span className="text-cyan-400">{formatTime(currentTime)}</span>
+                    <span className="text-blue-400">{formatTime(duration)}</span>
                   </div>
                 </div>
 
-                {/* Main Controls */}
-                <div className="flex items-center justify-center gap-4 md:gap-6 py-2">
+                {/* Main Controls - Ultra Enhanced */}
+                <div className="flex items-center justify-center gap-6 md:gap-10 py-6 animate-slideInRight" style={{ animationDelay: '0.3s' }}>
                   <button
                     onClick={toggleShuffle}
-                    className={`transition-all hover:scale-110 active:scale-95 ${isShuffled ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'text-gray-400 hover:text-white'}`}
+                    className={`transition-all duration-300 hover:scale-125 active:scale-95 ${
+                      isShuffled 
+                        ? 'text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,1)] animate-pulse' 
+                        : 'text-gray-400 hover:text-white hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]'
+                    }`}
                     aria-label="Shuffle"
                   >
-                    <Shuffle size={22} />
+                    <Shuffle size={28} />
                   </button>
 
                   <button
                     onClick={playPrevious}
-                    className="text-gray-300 hover:text-white transition-all hover:scale-110 active:scale-95"
+                    className="text-gray-300 hover:text-white transition-all duration-300 hover:scale-125 active:scale-90 hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]"
                     aria-label="Previous"
                   >
-                    <SkipBack size={24} />
+                    <SkipBack size={32} />
                   </button>
 
-                  <button
-                    onClick={togglePlayPause}
-                    className="w-16 h-16 md:w-18 md:h-18 rounded-full bg-gradient-to-br from-cyan-500 via-cyan-400 to-blue-500 hover:from-cyan-400 hover:via-cyan-300 hover:to-blue-400 flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70"
-                    aria-label={isPlaying ? "Pause" : "Play"}
-                  >
-                    {isPlaying ? (
-                      <Pause size={28} className="text-black" fill="currentColor" />
-                    ) : (
-                      <Play size={28} className="text-black ml-1" fill="currentColor" />
-                    )}
-                  </button>
+                  {/* Epic Play Button */}
+                  <div className="relative">
+                    {/* Rotating ring effect */}
+                    <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 rounded-full opacity-50 blur-xl animate-spin-slow" />
+                    
+                    <button
+                      onClick={togglePlayPause}
+                      className="relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-400 hover:via-blue-400 hover:to-purple-400 flex items-center justify-center transition-all duration-500 hover:scale-125 active:scale-90 shadow-2xl shadow-cyan-500/60 hover:shadow-cyan-400/80 border-4 border-white/20 hover:border-white/40"
+                      aria-label={isPlaying ? "Pause" : "Play"}
+                    >
+                      {/* Inner glow */}
+                      <div className="absolute inset-0 bg-white/20 rounded-full blur-md" />
+                      
+                      {isPlaying ? (
+                        <Pause size={36} className="text-white relative z-10 drop-shadow-lg" fill="currentColor" />
+                      ) : (
+                        <Play size={36} className="text-white ml-1 relative z-10 drop-shadow-lg" fill="currentColor" />
+                      )}
+                    </button>
+                  </div>
 
                   <button
                     onClick={playNext}
-                    className="text-gray-300 hover:text-white transition-all hover:scale-110 active:scale-95"
+                    className="text-gray-300 hover:text-white transition-all duration-300 hover:scale-125 active:scale-90 hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]"
                     aria-label="Next"
                   >
-                    <SkipForward size={24} />
+                    <SkipForward size={32} />
                   </button>
 
                   <button
                     onClick={toggleLoop}
-                    className={`transition-all hover:scale-110 active:scale-95 ${isLooping ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'text-gray-400 hover:text-white'}`}
+                    className={`transition-all duration-300 hover:scale-125 active:scale-95 ${
+                      isLooping 
+                        ? 'text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,1)] animate-pulse' 
+                        : 'text-gray-400 hover:text-white hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]'
+                    }`}
                     aria-label={isLooping ? "Loop: On" : "Loop: Off"}
                   >
-                    <Repeat size={22} />
+                    <Repeat size={28} />
                   </button>
                 </div>
 
-                {/* Secondary Controls */}
-                <div className="flex items-center justify-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                {/* Secondary Controls - Glass Morphism */}
+                <div className="flex items-center justify-center gap-4 animate-slideInRight" style={{ animationDelay: '0.4s' }}>
                   <button
                     onClick={() => skipBackward(10)}
-                    className="text-gray-400 hover:text-cyan-400 transition-all hover:scale-110"
+                    className="text-gray-400 hover:text-cyan-400 transition-all duration-300 hover:scale-125 active:scale-90 hover:drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]"
                     aria-label="Rewind 10s"
                   >
-                    <RotateCcw size={18} />
+                    <RotateCcw size={22} />
                   </button>
 
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
+                  <div className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-xl rounded-full border border-white/20 shadow-xl shadow-cyan-500/10 hover:shadow-cyan-500/30 transition-all duration-500 hover:scale-105">
                     <button
                       onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
-                      className="text-gray-400 hover:text-white transition-colors"
+                      className="text-gray-300 hover:text-white transition-all duration-300 hover:scale-110"
                     >
-                      {volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                      {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
                     </button>
                     <input
                       type="range"
@@ -987,20 +1041,27 @@ export default function FloatingAudioPlayer() {
                       step="0.01"
                       value={volume}
                       onChange={handleVolumeChange}
-                      className="w-24 md:w-28 h-1.5 rounded-full appearance-none cursor-pointer"
+                      className="w-32 md:w-40 h-2 rounded-full appearance-none cursor-pointer"
                       style={{
-                        background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
+                        background: `linear-gradient(to right, 
+                          rgb(34 211 238) 0%, 
+                          rgb(59 130 246) ${volume * 50}%,
+                          rgb(34 211 238) ${volume * 100}%, 
+                          rgba(255,255,255,0.2) ${volume * 100}%, 
+                          rgba(255,255,255,0.2) 100%)`
                       }}
                     />
-                    <span className="text-xs text-gray-400 font-medium w-8 text-right">{Math.round(volume * 100)}%</span>
+                    <span className="text-sm text-cyan-400 font-bold w-10 text-right drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">
+                      {Math.round(volume * 100)}%
+                    </span>
                   </div>
 
                   <button
                     onClick={() => skipForward(10)}
-                    className="text-gray-400 hover:text-cyan-400 transition-all hover:scale-110"
+                    className="text-gray-400 hover:text-cyan-400 transition-all duration-300 hover:scale-125 active:scale-90 hover:drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]"
                     aria-label="Forward 10s"
                   >
-                    <RotateCw size={18} />
+                    <RotateCw size={22} />
                   </button>
                 </div>
               </div>
@@ -1020,42 +1081,88 @@ export default function FloatingAudioPlayer() {
           }
         }
 
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes spin-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0) translateX(0);
+            opacity: 0.3;
+          }
+          50% {
+            transform: translateY(-20px) translateX(10px);
+            opacity: 0.6;
+          }
+        }
+
         .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
+          animation: fadeIn 0.5s ease-out;
+        }
+
+        .animate-slideInRight {
+          animation: slideInRight 0.6s ease-out forwards;
+        }
+
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+        }
+
+        .animate-float {
+          animation: float linear infinite;
         }
 
         input[type="range"]::-webkit-slider-thumb {
           appearance: none;
-          width: 12px;
-          height: 12px;
+          width: 14px;
+          height: 14px;
           border-radius: 50%;
-          background: rgb(34 211 238);
+          background: linear-gradient(135deg, rgb(34 211 238), rgb(59 130 246));
           cursor: pointer;
-          box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
-          transition: all 0.2s;
+          box-shadow: 0 0 15px rgba(34, 211, 238, 1), 0 0 30px rgba(34, 211, 238, 0.5);
+          transition: all 0.3s;
+          border: 2px solid white;
         }
 
         input[type="range"]::-webkit-slider-thumb:hover {
-          width: 14px;
-          height: 14px;
-          box-shadow: 0 0 14px rgba(34, 211, 238, 1);
+          width: 18px;
+          height: 18px;
+          box-shadow: 0 0 20px rgba(34, 211, 238, 1), 0 0 40px rgba(34, 211, 238, 0.8);
+          transform: scale(1.2);
         }
 
         input[type="range"]::-moz-range-thumb {
-          width: 12px;
-          height: 12px;
+          width: 14px;
+          height: 14px;
           border-radius: 50%;
-          background: rgb(34 211 238);
+          background: linear-gradient(135deg, rgb(34 211 238), rgb(59 130 246));
           cursor: pointer;
-          border: none;
-          box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
-          transition: all 0.2s;
+          border: 2px solid white;
+          box-shadow: 0 0 15px rgba(34, 211, 238, 1), 0 0 30px rgba(34, 211, 238, 0.5);
+          transition: all 0.3s;
         }
 
         input[type="range"]::-moz-range-thumb:hover {
-          width: 14px;
-          height: 14px;
-          box-shadow: 0 0 14px rgba(34, 211, 238, 1);
+          width: 18px;
+          height: 18px;
+          box-shadow: 0 0 20px rgba(34, 211, 238, 1), 0 0 40px rgba(34, 211, 238, 0.8);
+          transform: scale(1.2);
         }
       `}</style>
     </div>
