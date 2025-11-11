@@ -15,12 +15,12 @@ export async function GET(
     const { userId } = await params
 
     // Fetch user's combined media (music + image)
-    // Only show public releases (is_public = true)
+    // Shows ALL user tracks regardless of is_public status
     const { data: combinedData, error: combinedError } = await supabase
       .from('combined_media')
       .select('*')
       .eq('user_id', userId)
-      .eq('is_public', true)
+      // NO .eq('is_public', true) - shows everything
       .order('created_at', { ascending: false })
 
     if (combinedError) {
