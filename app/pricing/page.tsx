@@ -90,12 +90,12 @@ export default function Pricing() {
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-32">
           {/* Free Access Card */}
-          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden">
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
             {/* Holographic overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 via-transparent to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-tl from-pink-500/10 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
             
-            <div className="relative">
+            <div className="relative flex flex-col flex-grow">
               <div className="mb-8">
                 <div className="inline-block px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-full mb-4">
                   <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">FREE FOREVER</span>
@@ -112,7 +112,7 @@ export default function Pricing() {
                 <p className="text-cyan-400/40 text-xs">One-time unlock</p>
               </div>
 
-              <ul className="space-y-4 mb-10 min-h-[160px]">
+              <ul className="space-y-4 mb-10 flex-grow">
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,12 +148,12 @@ export default function Pricing() {
           </div>
 
           {/* Creator Plan */}
-          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden">
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
             {/* Holographic overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 via-transparent to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/10 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
-            <div className="relative">
+            <div className="relative flex flex-col flex-grow">
               <div className="mb-8">
                 <div className="inline-block px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-full mb-4">
                   <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">CREATOR</span>
@@ -177,7 +177,7 @@ export default function Pricing() {
                 )}
               </div>
 
-              <ul className="space-y-4 mb-10 min-h-[160px]">
+              <ul className="space-y-4 mb-10 flex-grow">
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,7 +219,7 @@ export default function Pricing() {
           </div>
 
           {/* Pro Plan - Most Popular */}
-          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-400/60 rounded-2xl p-8 pt-12 hover:border-cyan-300/80 transition-all duration-500 hover:scale-[1.02] overflow-visible">
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-400/60 rounded-2xl p-8 pt-12 hover:border-cyan-300/80 transition-all duration-500 hover:scale-[1.02] overflow-visible flex flex-col">
             {/* Most Popular Badge */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-white text-xs font-bold shadow-2xl shadow-cyan-500/60 uppercase tracking-wider z-10">
               ⭐ MOST POPULAR
@@ -229,7 +229,7 @@ export default function Pricing() {
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/30 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-2xl"></div>
             <div className="absolute inset-0 bg-gradient-to-tl from-pink-500/20 via-cyan-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"></div>
 
-            <div className="relative">
+            <div className="relative flex flex-col flex-grow">
               <div className="mb-8">
                 <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 rounded-full mb-4">
                   <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">PRO</span>
@@ -253,7 +253,7 @@ export default function Pricing() {
                 )}
               </div>
 
-              <ul className="space-y-4 mb-10 min-h-[160px]">
+              <ul className="space-y-4 mb-10 flex-grow">
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <svg className="w-3 h-3 text-cyan-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,12 +295,12 @@ export default function Pricing() {
           </div>
 
           {/* Studio Plan */}
-          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden">
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
             {/* Holographic overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 via-transparent to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-tl from-cyan-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
-            <div className="relative">
+            <div className="relative flex flex-col flex-grow">
               <div className="mb-8">
                 <div className="inline-block px-3 py-1.5 bg-purple-500/20 border border-purple-400/50 rounded-full mb-4">
                   <span className="text-purple-200 text-xs font-bold uppercase tracking-wider">STUDIO</span>
@@ -324,7 +324,7 @@ export default function Pricing() {
                 )}
               </div>
 
-              <ul className="space-y-4 mb-10 min-h-[160px]">
+              <ul className="space-y-4 mb-10 flex-grow">
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <svg className="w-3 h-3 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
