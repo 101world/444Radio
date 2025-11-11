@@ -830,7 +830,7 @@ export default function FloatingAudioPlayer() {
         </div>
       )}
 
-      {/* Cover Art Modal - BEAUTIFUL COMPACT FULLSCREEN */}
+      {/* Cover Art Modal - COMPACT PLAYER SIZE */}
       {showCoverArt && currentTrack && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center animate-fadeIn overflow-y-auto bg-black"
@@ -851,28 +851,28 @@ export default function FloatingAudioPlayer() {
             </div>
           )}
 
-          <div className="relative w-full min-h-screen flex flex-col py-4 sm:py-6" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full min-h-screen flex flex-col py-3" onClick={(e) => e.stopPropagation()}>
             {/* Top Bar */}
-            <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 mb-2">
+            <div className="relative z-10 flex items-center justify-between px-4 mb-2">
               <button
                 onClick={() => setShowCoverArt(false)}
-                className="flex items-center gap-2 text-white/60 hover:text-white transition-all"
+                className="flex items-center gap-1.5 text-white/60 hover:text-white transition-all"
               >
-                <div className="w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/50 transition-all">
-                  <X size={14} />
+                <div className="w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/50 transition-all">
+                  <X size={12} />
                 </div>
-                <span className="text-xs font-medium hidden sm:block">ESC</span>
+                <span className="text-[10px] font-medium hidden sm:block">ESC</span>
               </button>
             </div>
 
-            {/* Main Content - Compact Centered */}
-            <div className="flex-1 flex items-center justify-center px-4 sm:px-6">
-              <div className="w-full max-w-4xl">
-                <div className="flex flex-col items-center gap-6 sm:gap-8">
+            {/* Main Content - Very Compact */}
+            <div className="flex-1 flex items-center justify-center px-4">
+              <div className="w-full max-w-sm">
+                <div className="flex flex-col items-center gap-4">
                   
-                  {/* Album Art - Compact */}
+                  {/* Album Art - Small */}
                   {currentTrack.imageUrl ? (
-                    <div className="relative group w-full max-w-[240px] sm:max-w-[300px] md:max-w-[340px]">
+                    <div className="relative w-full max-w-[200px]">
                       <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-2xl ring-1 ring-white/10">
                         <Image
                           src={currentTrack.imageUrl}
@@ -885,28 +885,28 @@ export default function FloatingAudioPlayer() {
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full max-w-[240px] sm:max-w-[300px] md:max-w-[340px] aspect-square rounded-lg bg-gradient-to-br from-gray-900 to-black border border-white/5 flex items-center justify-center">
-                      <Music size={48} className="text-white/10" />
+                    <div className="w-full max-w-[200px] aspect-square rounded-lg bg-gradient-to-br from-gray-900 to-black border border-white/5 flex items-center justify-center">
+                      <Music size={36} className="text-white/10" />
                     </div>
                   )}
 
-                  {/* Track Info - Centered */}
-                  <div className="text-center space-y-1 w-full px-4">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-tight truncate">
+                  {/* Track Info - Compact */}
+                  <div className="text-center space-y-0.5 w-full px-2">
+                    <h1 className="text-lg sm:text-xl font-bold text-white leading-tight truncate">
                       {currentTrack.title}
                     </h1>
                     {currentTrack.artist && (
-                      <p className="text-sm sm:text-base md:text-lg font-medium text-white/50">
+                      <p className="text-xs sm:text-sm font-medium text-white/50 truncate">
                         {currentTrack.artist}
                       </p>
                     )}
                   </div>
 
-                  {/* Controls Section */}
-                  <div className="w-full max-w-lg space-y-4 sm:space-y-5">
+                  {/* Controls Section - Compact */}
+                  <div className="w-full space-y-3">
                     
                     {/* Progress Bar */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <input
                         type="range"
                         min="0"
@@ -922,20 +922,20 @@ export default function FloatingAudioPlayer() {
                             rgba(255,255,255,0.15) 100%)`
                         }}
                       />
-                      <div className="flex justify-between text-[10px] sm:text-xs font-medium text-white/40">
+                      <div className="flex justify-between text-[10px] font-medium text-white/40">
                         <span>{formatTime(currentTime)}</span>
                         <span>{formatTime(duration)}</span>
                       </div>
                     </div>
 
                     {/* Main Playback Controls */}
-                    <div className="flex items-center justify-center gap-4 sm:gap-6">
+                    <div className="flex items-center justify-center gap-4">
                       <button
                         onClick={toggleShuffle}
                         className={`transition-all ${isShuffled ? 'text-white' : 'text-white/30 hover:text-white/70'}`}
                         aria-label="Shuffle"
                       >
-                        <Shuffle size={16} strokeWidth={2.5} />
+                        <Shuffle size={14} strokeWidth={2.5} />
                       </button>
 
                       <button
@@ -943,19 +943,19 @@ export default function FloatingAudioPlayer() {
                         className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
                         aria-label="Previous"
                       >
-                        <SkipBack size={28} fill="currentColor" />
+                        <SkipBack size={22} fill="currentColor" />
                       </button>
 
                       {/* Play/Pause Button */}
                       <button
                         onClick={togglePlayPause}
-                        className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white hover:scale-105 active:scale-95 flex items-center justify-center transition-all shadow-2xl"
+                        className="w-12 h-12 rounded-full bg-white hover:scale-105 active:scale-95 flex items-center justify-center transition-all shadow-2xl"
                         aria-label={isPlaying ? "Pause" : "Play"}
                       >
                         {isPlaying ? (
-                          <Pause size={20} className="text-black" fill="currentColor" />
+                          <Pause size={16} className="text-black" fill="currentColor" />
                         ) : (
-                          <Play size={20} className="text-black ml-0.5" fill="currentColor" />
+                          <Play size={16} className="text-black ml-0.5" fill="currentColor" />
                         )}
                       </button>
 
@@ -964,7 +964,7 @@ export default function FloatingAudioPlayer() {
                         className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
                         aria-label="Next"
                       >
-                        <SkipForward size={28} fill="currentColor" />
+                        <SkipForward size={22} fill="currentColor" />
                       </button>
 
                       <button
@@ -972,28 +972,28 @@ export default function FloatingAudioPlayer() {
                         className={`transition-all ${isLooping ? 'text-white' : 'text-white/30 hover:text-white/70'}`}
                         aria-label={isLooping ? "Loop: On" : "Loop: Off"}
                       >
-                        <Repeat size={16} strokeWidth={2.5} />
+                        <Repeat size={14} strokeWidth={2.5} />
                       </button>
                     </div>
 
-                    {/* Secondary Controls - Compact Row */}
-                    <div className="flex items-center justify-center gap-4">
+                    {/* Secondary Controls - Single Compact Row */}
+                    <div className="flex items-center justify-center gap-3">
                       {/* Time Skip */}
                       <button
                         onClick={() => skipBackward(10)}
                         className="text-white/40 hover:text-white/80 transition-all"
                         aria-label="Rewind 10s"
                       >
-                        <RotateCcw size={14} />
+                        <RotateCcw size={12} />
                       </button>
 
-                      {/* Volume Control - Inline */}
-                      <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                      {/* Volume Control - Compact Inline */}
+                      <div className="flex items-center gap-2 flex-1 max-w-[160px]">
                         <button
                           onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
                           className="text-white/50 hover:text-white transition-all"
                         >
-                          {volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                          {volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
                         </button>
                         <input
                           type="range"
@@ -1018,7 +1018,7 @@ export default function FloatingAudioPlayer() {
                         className="text-white/40 hover:text-white/80 transition-all"
                         aria-label="Forward 10s"
                       >
-                        <RotateCw size={14} />
+                        <RotateCw size={12} />
                       </button>
                     </div>
                   </div>
