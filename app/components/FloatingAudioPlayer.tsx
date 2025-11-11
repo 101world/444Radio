@@ -817,6 +817,19 @@ export default function FloatingAudioPlayer() {
         </div>
       )}
 
+      {/* Resize Handle */}
+      {isExpanded && (
+        <div
+          className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize no-drag group/resize hover:bg-cyan-500/20 rounded-tl-lg transition-colors"
+          onMouseDown={handleResizeStart}
+          title="Drag to resize"
+        >
+          <svg className="w-full h-full p-1 text-cyan-400/40 group-hover/resize:text-cyan-400 transition-colors" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M22 22H20V20H22V22M22 18H20V16H22V18M18 22H16V20H18V22M18 18H16V16H18V18M14 22H12V20H14V22M22 14H20V12H22V14Z"/>
+          </svg>
+        </div>
+      )}
+
       {/* Cover Art Modal - Improved Fullscreen Experience */}
       {showCoverArt && currentTrack && (
         <div 
