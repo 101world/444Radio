@@ -833,7 +833,7 @@ export default function FloatingAudioPlayer() {
       {/* Cover Art Modal - STUNNING SPOTIFY-STYLE FULLSCREEN */}
       {showCoverArt && currentTrack && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center animate-fadeIn overflow-hidden"
+          className="fixed inset-0 z-[100] flex items-center justify-center animate-fadeIn overflow-y-auto"
           style={{
             background: currentTrack.imageUrl 
               ? 'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.95) 100%)'
@@ -843,7 +843,7 @@ export default function FloatingAudioPlayer() {
         >
           {/* Dynamic Background Blur from Cover Art */}
           {currentTrack.imageUrl && (
-            <div className="absolute inset-0 overflow-hidden">
+            <div className="fixed inset-0 overflow-hidden">
               <div 
                 className="absolute inset-0 scale-110 blur-[100px] opacity-30"
                 style={{
@@ -857,14 +857,14 @@ export default function FloatingAudioPlayer() {
           )}
 
           {/* Ambient Glow Effects */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="fixed inset-0 pointer-events-none overflow-hidden">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-cyan-500/10 rounded-full blur-[150px]" />
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-purple-500/8 rounded-full blur-[120px]" />
           </div>
 
-          <div className="relative w-full h-full flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full min-h-screen flex flex-col py-6" onClick={(e) => e.stopPropagation()}>
             {/* Top Bar */}
-            <div className="relative z-10 flex items-center justify-between px-8 py-6">
+            <div className="relative z-10 flex items-center justify-between px-6 md:px-8 mb-4">
               <button
                 onClick={() => setShowCoverArt(false)}
                 className="flex items-center gap-2 text-white/70 hover:text-white transition-all group"
@@ -877,18 +877,18 @@ export default function FloatingAudioPlayer() {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex items-center justify-center px-6 md:px-12 lg:px-20 pb-12">
-              <div className="w-full max-w-[1600px]">
-                <div className="grid lg:grid-cols-[minmax(400px,550px),1fr] gap-12 lg:gap-20 items-center">
+            <div className="flex-1 flex items-center justify-center px-4 md:px-8 lg:px-12 pb-8">
+              <div className="w-full max-w-7xl">
+                <div className="grid lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
                   
                   {/* LEFT: Album Art */}
-                  <div className="flex justify-center lg:justify-end">
+                  <div className="flex justify-center">
                     {currentTrack.imageUrl ? (
-                      <div className="relative group">
+                      <div className="relative group w-full max-w-md">
                         {/* Reflection shadow */}
                         <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-[90%] h-24 bg-gradient-to-b from-cyan-500/20 to-transparent blur-3xl opacity-60" />
                         
-                        <div className="relative w-[340px] h-[340px] md:w-[440px] md:h-[440px] lg:w-[520px] lg:h-[520px] rounded-2xl overflow-hidden shadow-[0_25px_80px_-15px_rgba(0,0,0,0.8)] ring-1 ring-white/10 group-hover:ring-cyan-400/30 transition-all duration-500">
+                        <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-[0_25px_80px_-15px_rgba(0,0,0,0.8)] ring-1 ring-white/10 group-hover:ring-cyan-400/30 transition-all duration-500">
                           <Image
                             src={currentTrack.imageUrl}
                             alt={currentTrack.title}
@@ -905,22 +905,22 @@ export default function FloatingAudioPlayer() {
                         </div>
                       </div>
                     ) : (
-                      <div className="w-[340px] h-[340px] md:w-[440px] md:h-[440px] lg:w-[520px] lg:h-[520px] rounded-2xl bg-gradient-to-br from-gray-900 to-black border border-white/5 flex items-center justify-center">
+                      <div className="relative aspect-square w-full max-w-md rounded-2xl bg-gradient-to-br from-gray-900 to-black border border-white/5 flex items-center justify-center">
                         <Music size={80} className="text-white/10" />
                       </div>
                     )}
                   </div>
 
                   {/* RIGHT: Track Info & Controls */}
-                  <div className="space-y-8 lg:pl-8">
+                  <div className="space-y-6 md:space-y-8">
                     
                     {/* Track Title & Artist */}
                     <div className="space-y-2">
-                      <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black text-white leading-[0.9] tracking-tight mb-4">
+                      <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[0.9] tracking-tight">
                         {currentTrack.title}
                       </h1>
                       {currentTrack.artist && (
-                        <p className="text-xl sm:text-2xl lg:text-3xl font-semibold text-white/60">
+                        <p className="text-lg sm:text-xl md:text-2xl font-semibold text-white/60">
                           {currentTrack.artist}
                         </p>
                       )}
@@ -950,7 +950,7 @@ export default function FloatingAudioPlayer() {
                     </div>
 
                     {/* Main Playback Controls */}
-                    <div className="flex items-center justify-between max-w-md pt-4">
+                    <div className="flex items-center justify-center gap-4 md:gap-6 pt-2">
                       <button
                         onClick={toggleShuffle}
                         className={`transition-all ${
@@ -968,19 +968,19 @@ export default function FloatingAudioPlayer() {
                         className="text-white/60 hover:text-white transition-all hover:scale-110"
                         aria-label="Previous"
                       >
-                        <SkipBack size={32} fill="currentColor" />
+                        <SkipBack size={28} fill="currentColor" />
                       </button>
 
                       {/* Play/Pause - Hero Button */}
                       <button
                         onClick={togglePlayPause}
-                        className="w-16 h-16 rounded-full bg-white hover:bg-white/90 hover:scale-105 active:scale-100 flex items-center justify-center transition-all shadow-2xl shadow-white/25"
+                        className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white hover:bg-white/90 hover:scale-105 active:scale-100 flex items-center justify-center transition-all shadow-2xl shadow-white/25"
                         aria-label={isPlaying ? "Pause" : "Play"}
                       >
                         {isPlaying ? (
-                          <Pause size={24} className="text-black" fill="currentColor" />
+                          <Pause size={22} className="text-black" fill="currentColor" />
                         ) : (
-                          <Play size={24} className="text-black ml-1" fill="currentColor" />
+                          <Play size={22} className="text-black ml-0.5" fill="currentColor" />
                         )}
                       </button>
 
@@ -989,7 +989,7 @@ export default function FloatingAudioPlayer() {
                         className="text-white/60 hover:text-white transition-all hover:scale-110"
                         aria-label="Next"
                       >
-                        <SkipForward size={32} fill="currentColor" />
+                        <SkipForward size={28} fill="currentColor" />
                       </button>
 
                       <button
@@ -1006,7 +1006,7 @@ export default function FloatingAudioPlayer() {
                     </div>
 
                     {/* Secondary Controls */}
-                    <div className="flex items-center gap-8 pt-2">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
                       {/* Time Skip Controls */}
                       <div className="flex items-center gap-4">
                         <button
@@ -1026,7 +1026,7 @@ export default function FloatingAudioPlayer() {
                       </div>
 
                       {/* Volume Control */}
-                      <div className="flex items-center gap-3 flex-1 max-w-xs">
+                      <div className="flex items-center gap-3 w-full sm:flex-1 max-w-xs">
                         <button
                           onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
                           className="text-white/60 hover:text-white transition-all"
