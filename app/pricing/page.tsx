@@ -48,11 +48,11 @@ export default function Pricing() {
         </div>
 
         <div className="text-center mb-16">
-          <h1 className="text-6xl md:text-7xl font-black mb-6 bg-gradient-to-r from-cyan-400 via-cyan-300 to-white bg-clip-text text-transparent leading-tight">
-            Simple Pricing
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-white to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight">
+            pricing
           </h1>
-          <p className="text-cyan-400/70 text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed">
-            Choose the perfect plan for your music creation needs. Flexible billing options.
+          <p className="text-cyan-400/60 text-base md:text-lg max-w-2xl mx-auto">
+            pick ur vibe • flex billing • no cap
           </p>
         </div>
 
@@ -88,302 +88,310 @@ export default function Pricing() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-32">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-32">
           {/* Free Access Card */}
-          <div className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-950/20 to-black/90 border-2 border-cyan-500/30 rounded-3xl p-8 hover:border-cyan-400/60 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-cyan-500/30">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-6 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.03] overflow-hidden">
+            {/* Holographic overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 via-transparent to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-tl from-pink-500/10 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" style={{ animationDelay: '0.2s' }}></div>
+            
             <div className="relative">
-              <div className="mb-8">
-                <div className="inline-block px-4 py-1.5 bg-cyan-500/20 border border-cyan-400/30 rounded-full mb-4">
-                  <span className="text-cyan-300 text-xs font-bold uppercase tracking-wider">Free Forever</span>
+              <div className="mb-6">
+                <div className="inline-block px-3 py-1 bg-cyan-500/15 border border-cyan-400/40 rounded-full mb-3">
+                  <span className="text-cyan-300 text-[10px] font-bold uppercase tracking-wider">free 4ever</span>
                 </div>
-                <h2 className="text-3xl font-black text-white mb-2">Free Access</h2>
-                <p className="text-cyan-400/60 text-sm">Decrypt to unlock</p>
+                <h2 className="text-2xl font-black text-white mb-1">Free Access</h2>
+                <p className="text-cyan-400/50 text-xs">decrypt to unlock</p>
               </div>
 
-              <div className="mb-10">
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-6xl font-black bg-gradient-to-br from-white to-cyan-200 bg-clip-text text-transparent">
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-5xl font-black bg-gradient-to-br from-white via-cyan-200 to-purple-200 bg-clip-text text-transparent">
                     $0
                   </span>
                 </div>
-                <p className="text-cyan-400/50 text-sm">One-time unlock</p>
+                <p className="text-cyan-400/40 text-xs">one-time unlock</p>
               </div>
 
-              <ul className="space-y-4 mb-10 min-h-[160px]">
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <ul className="space-y-3 mb-8 min-h-[140px]">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm"><span className="font-bold text-white">20 credits</span> one-time</span>
+                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">20 credits</span> one-time</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">~10 songs or 20 covers</span>
+                  <span className="text-gray-300 text-xs">~10 songs or 20 covers</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Solve code puzzle</span>
+                  <span className="text-gray-300 text-xs">solve code puzzle</span>
                 </li>
               </ul>
 
               <Link href="/decrypt">
-                <button className="w-full py-4 px-6 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
-                  Decrypt Now
+                <button className="w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-xs">
+                  decrypt now
                 </button>
               </Link>
             </div>
           </div>
 
           {/* Creator Plan */}
-          <div className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-950/20 to-black/90 border-2 border-cyan-500/30 rounded-3xl p-8 hover:border-cyan-400/60 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-cyan-500/30">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-6 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.03] overflow-hidden">
+            {/* Holographic overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 via-transparent to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/10 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
             <div className="relative">
-              <div className="mb-8">
-                <h2 className="text-3xl font-black text-white mb-2">Creator</h2>
-                <p className="text-cyan-400/60 text-sm">For music creators</p>
+              <div className="mb-6">
+                <h2 className="text-2xl font-black text-white mb-1">Creator</h2>
+                <p className="text-cyan-400/50 text-xs">for music creators</p>
               </div>
 
-              <div className="mb-10">
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-6xl font-black bg-gradient-to-br from-white to-cyan-200 bg-clip-text text-transparent">
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-5xl font-black bg-gradient-to-br from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent">
                     ${billingCycle === 'monthly' ? '5' : '48'}
                   </span>
-                  <span className="text-cyan-400/50 text-sm">
+                  <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
                   </span>
                 </div>
                 {billingCycle === 'annual' && (
-                  <div className="inline-block px-3 py-1 bg-cyan-500/20 border border-cyan-400/30 rounded-full">
-                    <span className="text-cyan-300 text-xs font-bold">Save 20%</span>
+                  <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
+                    <span className="text-cyan-300 text-[10px] font-bold">-20%</span>
                   </div>
                 )}
               </div>
 
-              <ul className="space-y-4 mb-10 min-h-[160px]">
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <ul className="space-y-3 mb-8 min-h-[140px]">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm"><span className="font-bold text-white">200 credits</span> per month</span>
+                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">200 credits</span> /mo</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">~100 songs or 200 covers</span>
+                  <span className="text-gray-300 text-xs">~100 songs or 200 covers</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Commercial license</span>
+                  <span className="text-gray-300 text-xs">commercial use</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Priority support</span>
+                  <span className="text-gray-300 text-xs">priority support</span>
                 </li>
               </ul>
 
-              <button className="w-full py-4 px-6 bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-xl font-bold hover:bg-cyan-500/30 hover:border-cyan-400/60 transition-all duration-300 group-hover:scale-105 text-sm">
-                Get Started
+              <button className="w-full py-3 px-4 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 rounded-xl font-bold hover:bg-cyan-500/25 hover:border-cyan-400/60 transition-all duration-300 group-hover:scale-105 text-xs">
+                get started
               </button>
             </div>
           </div>
 
           {/* Pro Plan - Most Popular */}
-          <div className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-600/30 to-black/90 border-2 border-cyan-400/60 rounded-3xl p-8 hover:border-cyan-300 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-cyan-400/40 lg:-mt-4">
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-400/60 rounded-2xl p-6 hover:border-cyan-300/80 transition-all duration-500 hover:scale-[1.03] overflow-hidden lg:-mt-2">
             {/* Most Popular Badge */}
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-white text-xs font-bold shadow-lg shadow-cyan-500/50 uppercase tracking-wider">
-              ✨ Most Popular
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-white text-[10px] font-bold shadow-lg shadow-cyan-500/50 uppercase tracking-wider">
+              ✨ most popular
             </div>
 
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            {/* Holographic overlay - stronger */}
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/30 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-tl from-pink-500/20 via-cyan-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
             <div className="relative">
-              <div className="mb-8">
-                <h2 className="text-3xl font-black text-white mb-2">Pro</h2>
-                <p className="text-cyan-400/60 text-sm">For professionals</p>
+              <div className="mb-6 mt-2">
+                <h2 className="text-2xl font-black text-white mb-1">Pro</h2>
+                <p className="text-cyan-400/50 text-xs">for professionals</p>
               </div>
 
-              <div className="mb-10">
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-6xl font-black bg-gradient-to-br from-white to-cyan-200 bg-clip-text text-transparent">
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-5xl font-black bg-gradient-to-br from-white via-cyan-200 to-purple-200 bg-clip-text text-transparent">
                     ${billingCycle === 'monthly' ? '15' : '144'}
                   </span>
-                  <span className="text-cyan-400/50 text-sm">
+                  <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
                   </span>
                 </div>
                 {billingCycle === 'annual' && (
-                  <div className="inline-block px-3 py-1 bg-cyan-500/20 border border-cyan-400/30 rounded-full">
-                    <span className="text-cyan-300 text-xs font-bold">Save 20%</span>
+                  <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
+                    <span className="text-cyan-300 text-[10px] font-bold">-20%</span>
                   </div>
                 )}
               </div>
 
-              <ul className="space-y-4 mb-10 min-h-[160px]">
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <ul className="space-y-3 mb-8 min-h-[140px]">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm"><span className="font-bold text-white">600 credits</span> per month</span>
+                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">600 credits</span> /mo</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">~300 songs or 600 covers</span>
+                  <span className="text-gray-300 text-xs">~300 songs or 600 covers</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Commercial license</span>
+                  <span className="text-gray-300 text-xs">commercial use</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-cyan-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Premium support</span>
+                  <span className="text-gray-300 text-xs">premium support</span>
                 </li>
               </ul>
 
-              <button className="w-full py-4 px-6 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
-                Get Started
+              <button className="w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-xs">
+                get started
               </button>
             </div>
           </div>
 
           {/* Studio Plan */}
-          <div className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-950/20 to-black/90 border-2 border-cyan-500/30 rounded-3xl p-8 hover:border-cyan-400/60 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-cyan-500/30">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-6 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.03] overflow-hidden">
+            {/* Holographic overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 via-transparent to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-tl from-cyan-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
             <div className="relative">
-              <div className="mb-8">
-                <h2 className="text-3xl font-black text-white mb-2">Studio</h2>
-                <p className="text-cyan-400/60 text-sm">For production studios</p>
+              <div className="mb-6">
+                <h2 className="text-2xl font-black text-white mb-1">Studio</h2>
+                <p className="text-cyan-400/50 text-xs">unlimited everything</p>
               </div>
 
-              <div className="mb-10">
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-6xl font-black bg-gradient-to-br from-white to-cyan-200 bg-clip-text text-transparent">
+              <div className="mb-8">
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-5xl font-black bg-gradient-to-br from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
                     ${billingCycle === 'monthly' ? '35' : '336'}
                   </span>
-                  <span className="text-cyan-400/50 text-sm">
+                  <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
                   </span>
                 </div>
                 {billingCycle === 'annual' && (
-                  <div className="inline-block px-3 py-1 bg-cyan-500/20 border border-cyan-400/30 rounded-full">
-                    <span className="text-cyan-300 text-xs font-bold">Save 20%</span>
+                  <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
+                    <span className="text-cyan-300 text-[10px] font-bold">-20%</span>
                   </div>
                 )}
               </div>
 
-              <ul className="space-y-4 mb-10 min-h-[160px]">
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <ul className="space-y-3 mb-8 min-h-[140px]">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm"><span className="font-bold text-white">Unlimited</span> credits</span>
+                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">∞ credits</span> unlimited</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Unlimited generations</span>
+                  <span className="text-gray-300 text-xs">unlimited generations</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Enterprise license</span>
+                  <span className="text-gray-300 text-xs">enterprise license</span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Dedicated support</span>
+                  <span className="text-gray-300 text-xs">dedicated support</span>
                 </li>
               </ul>
 
-              <button className="w-full py-4 px-6 bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-xl font-bold hover:bg-cyan-500/30 hover:border-cyan-400/60 transition-all duration-300 group-hover:scale-105 text-sm">
-                Get Started
+              <button className="w-full py-3 px-4 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 rounded-xl font-bold hover:bg-cyan-500/25 hover:border-cyan-400/60 transition-all duration-300 group-hover:scale-105 text-xs">
+                get started
               </button>
             </div>
           </div>
         </div>
 
         {/* Buy Credits Section */}
-        <div className="mb-32">
-          <div className="bg-gradient-to-br from-cyan-950/30 to-black/90 border-2 border-cyan-500/30 rounded-3xl p-12 shadow-2xl shadow-cyan-500/20">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Buy Credits</h2>
-              <p className="text-cyan-400/70 text-lg">Purchase credits on-demand without a subscription</p>
+        <div className="mb-24">
+          <div className="bg-black/60 border border-cyan-500/40 rounded-2xl p-8 shadow-xl shadow-cyan-500/20">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-black text-white mb-2">buy credits</h2>
+              <p className="text-cyan-400/60 text-sm">no subscription needed • pay as u go</p>
             </div>
 
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-3xl mx-auto">
               {/* Amount Display */}
-              <div className="text-center mb-12">
-                <div className="inline-block bg-black/60 backdrop-blur-xl border border-cyan-500/40 rounded-3xl p-10 mb-8 shadow-xl shadow-cyan-500/20">
-                  <div className="flex items-baseline justify-center gap-3 mb-3">
-                    <span className="text-7xl font-black bg-gradient-to-br from-white to-cyan-200 bg-clip-text text-transparent">
+              <div className="text-center mb-8">
+                <div className="inline-block bg-black/80 backdrop-blur-xl border border-cyan-500/50 rounded-2xl p-8 mb-6 shadow-lg shadow-cyan-500/30">
+                  <div className="flex items-baseline justify-center gap-2 mb-2">
+                    <span className="text-6xl font-black bg-gradient-to-br from-white via-cyan-200 to-purple-200 bg-clip-text text-transparent">
                       ${creditAmount}
                     </span>
                   </div>
-                  <div className="text-cyan-400/60 text-sm mb-6">Purchase Amount</div>
-                  <div className="border-t border-cyan-500/30 pt-6 mt-6">
-                    <div className="text-5xl font-black text-cyan-400 mb-3">
+                  <div className="text-cyan-400/50 text-xs mb-4">purchase amount</div>
+                  <div className="border-t border-cyan-500/30 pt-4 mt-4">
+                    <div className="text-4xl font-black text-cyan-400 mb-2">
                       {creditsFromDollars.toLocaleString()} credits
                     </div>
-                    <div className="text-cyan-400/60 text-base">
-                      ≈ {Math.floor(creditsFromDollars / 2)} songs or {creditsFromDollars} cover arts
+                    <div className="text-cyan-400/50 text-xs">
+                      ≈ {Math.floor(creditsFromDollars / 2)} songs or {creditsFromDollars} covers
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Slider */}
-              <div className="mb-12">
+              <div className="mb-8">
                 <input
                   type="range"
                   min="0"
@@ -422,15 +430,15 @@ export default function Pricing() {
                 />
                 
                 {/* Slider Labels */}
-                <div className="flex justify-between mt-4 px-1">
+                <div className="flex justify-between mt-3 px-1">
                   {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50].map((value) => (
                     <button
                       key={value}
                       onClick={() => setCreditAmount(value)}
-                      className={`text-xs transition-all duration-300 ${
+                      className={`text-[10px] transition-all duration-300 ${
                         creditAmount === value 
                           ? 'text-cyan-400 font-bold scale-110' 
-                          : 'text-cyan-400/40 hover:text-cyan-400/70'
+                          : 'text-cyan-400/30 hover:text-cyan-400/60'
                       }`}
                     >
                       ${value}
@@ -443,16 +451,16 @@ export default function Pricing() {
               <div className="text-center">
                 <button 
                   disabled={creditAmount === 0}
-                  className={`px-12 py-5 rounded-xl font-bold text-base transition-all duration-300 ${
+                  className={`px-10 py-4 rounded-xl font-bold text-sm transition-all duration-300 ${
                     creditAmount === 0
                       ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white hover:from-cyan-700 hover:to-cyan-500 shadow-xl shadow-cyan-500/40 hover:scale-105'
+                      : 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white hover:from-cyan-700 hover:to-cyan-500 shadow-lg shadow-cyan-500/40 hover:scale-105'
                   }`}
                 >
-                  {creditAmount === 0 ? 'Select Amount' : `Purchase ${creditsFromDollars.toLocaleString()} Credits for $${creditAmount}`}
+                  {creditAmount === 0 ? 'select amount' : `cop ${creditsFromDollars.toLocaleString()} credits for $${creditAmount}`}
                 </button>
-                <p className="text-cyan-400/50 text-sm mt-5">
-                  1 credit = $0.026 • Credits never expire • Use anytime
+                <p className="text-cyan-400/40 text-xs mt-4">
+                  1 credit = $0.026 • never expires • use anytime
                 </p>
               </div>
             </div>
@@ -460,60 +468,59 @@ export default function Pricing() {
         </div>
 
         {/* Call to Action */}
-        <div className="text-center bg-gradient-to-r from-cyan-950/30 to-black/90 border-2 border-cyan-500/30 rounded-3xl p-16 mb-20 shadow-2xl shadow-cyan-500/20">
-          <h2 className="text-4xl md:text-5xl font-black text-white mb-5">Ready to Create Amazing Music?</h2>
-          <p className="text-cyan-400/70 text-xl mb-10 max-w-3xl mx-auto leading-relaxed">
-            Join thousands of creators who trust 444RADIO for their music generation needs.
-            Start creating today with our risk-free guarantee.
+        <div className="text-center bg-black/60 border border-cyan-500/40 rounded-2xl p-12 mb-16 shadow-lg shadow-cyan-500/20">
+          <h2 className="text-3xl md:text-4xl font-black text-white mb-3">ready to make fire music?</h2>
+          <p className="text-cyan-400/60 text-sm mb-8 max-w-2xl mx-auto">
+            join thousands creating with AI • risk-free fr
           </p>
-          <div className="flex flex-col sm:flex-row gap-5 justify-center">
-            <button className="px-10 py-5 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold text-base hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-xl shadow-cyan-500/40 hover:scale-105">
-              Get Started Now
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold text-sm hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 hover:scale-105">
+              let's go
             </button>
-            <button className="px-10 py-5 bg-white/10 border-2 border-white/20 text-white rounded-xl font-bold text-base hover:bg-white/20 transition-all duration-300">
-              Try Free Demo
+            <button className="px-8 py-3 bg-white/5 border border-white/20 text-white rounded-xl font-bold text-sm hover:bg-white/10 transition-all duration-300">
+              try free
             </button>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-20 text-center">
-          <p className="text-cyan-400/70 text-base mb-4">
-            All plans include high-quality music generation • Flexible billing • Cancel anytime
+        <div className="mt-16 text-center">
+          <p className="text-cyan-400/60 text-xs mb-3">
+            high-quality AI music • flex billing • cancel anytime
           </p>
-          <p className="text-cyan-400/70 text-base mb-3">
-            <strong>Credits system:</strong> 1 song = 2 credits • 1 cover art = 1 credit
+          <p className="text-cyan-400/60 text-xs mb-2">
+            <strong>credits:</strong> 1 song = 2 credits • 1 cover = 1 credit
           </p>
-          <p className="text-cyan-400/50 text-sm mt-3">
-            Questions? Contact us at support@444radio.com • © 2025 444RADIO
+          <p className="text-cyan-400/40 text-[10px] mt-2">
+            questions? hit us up → support@444radio.com • © 2025 444RADIO
           </p>
 
           {/* Social Media Links */}
-          <div className="mt-10 flex justify-center gap-8">
+          <div className="mt-6 flex justify-center gap-6">
             <a
               href="https://youtube.com/@444radioog?si=k0Def96c20mleUbS"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300 hover:scale-110"
+              className="text-cyan-400/50 hover:text-cyan-400 transition-colors duration-300 hover:scale-110"
               aria-label="Follow us on YouTube"
             >
-              <Youtube className="w-7 h-7" />
+              <Youtube className="w-5 h-5" />
             </a>
             <a
               href="mailto:444radioog@gmail.com"
-              className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300 hover:scale-110"
+              className="text-cyan-400/50 hover:text-cyan-400 transition-colors duration-300 hover:scale-110"
               aria-label="Email us"
             >
-              <Mail className="w-7 h-7" />
+              <Mail className="w-5 h-5" />
             </a>
             <a
               href="https://www.instagram.com/444radioog"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300 hover:scale-110"
+              className="text-cyan-400/50 hover:text-cyan-400 transition-colors duration-300 hover:scale-110"
               aria-label="Follow us on Instagram"
             >
-              <Instagram className="w-7 h-7" />
+              <Instagram className="w-5 h-5" />
             </a>
           </div>
         </div>
