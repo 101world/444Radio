@@ -12,12 +12,12 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get('limit')) || 50 // Increased default for better UX
     const offset = Number(searchParams.get('offset')) || 0
 
-    // Fetch ALL combined media tracks (temporarily ignoring is_public filter)
-    // EMERGENCY FIX: Show all tracks to restore explore page
+    // Fetch public combined media with optimized query
+    // Only show tracks with is_public = true (all tracks should have this after SQL fix)
     const { data, error } = await supabase
       .from('combined_media')
       .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, mood')
-      // Removed .or('is_public.eq.true,is_public.is.null') to show ALL tracks
+      .eq('is_public', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -29,15 +29,11 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    console.log(`📊 Explore API: Fetched ${data?.length || 0} tracks from combined_media table`)
+    console.log(`✅ Explore API: Fetched ${data?.length || 0} public tracks (is_public=true)`)
     if (data && data.length > 0) {
-      console.log(`📊 Sample track:`, {
-        id: data[0].id,
-        title: data[0].title,
-        user_id: data[0].user_id,
-        has_audio: !!data[0].audio_url,
-        has_image: !!data[0].image_url
-      })
+      console.log(`📊 First track: "${data[0].title}" by ${data[0].user_id}`)
+    } else {
+      console.warn('⚠️ No tracks returned! Check if is_public is set to true in database.')
     }
 
     // Fetch usernames for all user_ids
