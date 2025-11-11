@@ -32,7 +32,7 @@ interface AudioPlayerContextType {
   setPlaylist: (tracks: Track[], startIndex?: number) => void
   shufflePlaylist: () => void
   removeFromPlaylist: (trackId: string) => void
-  addToPlaylist: (track: Track) => void
+  addToPlaylist: (track: Track) => boolean
   toggleLoop: () => void
   toggleShuffle: () => void
   skipBackward: (seconds?: number) => void
@@ -111,17 +111,52 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   const playNext = useCallback(() => {
     if (playlist.length === 0) return
-    const nextIndex = (currentIndex + 1) % playlist.length
+    
+    let nextIndex: number
+    if (isShuffled) {
+      // Pick a random track (not the current one)
+      const availableIndices = playlist
+        .map((_, index) => index)
+        .filter(index => index !== currentIndex)
+      
+      if (availableIndices.length === 0) {
+        // Only one track, just replay it
+        nextIndex = 0
+      } else {
+        nextIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)]
+      }
+    } else {
+      // Normal sequential play
+      nextIndex = (currentIndex + 1) % playlist.length
+    }
+    
     setCurrentIndex(nextIndex)
     playTrack(playlist[nextIndex])
-  }, [playlist, currentIndex, playTrack])
+  }, [playlist, currentIndex, playTrack, isShuffled])
 
   const playPrevious = useCallback(() => {
     if (playlist.length === 0) return
-    const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1
+    
+    let prevIndex: number
+    if (isShuffled) {
+      // Pick a random track (not the current one)
+      const availableIndices = playlist
+        .map((_, index) => index)
+        .filter(index => index !== currentIndex)
+      
+      if (availableIndices.length === 0) {
+        prevIndex = 0
+      } else {
+        prevIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)]
+      }
+    } else {
+      // Normal sequential play
+      prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1
+    }
+    
     setCurrentIndex(prevIndex)
     playTrack(playlist[prevIndex])
-  }, [playlist, currentIndex, playTrack])
+  }, [playlist, currentIndex, playTrack, isShuffled])
 
   // Initialize audio element once on mount
   useEffect(() => {
@@ -283,11 +318,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   const shufflePlaylist = () => {
-    const shuffled = [...playlist].sort(() => Math.random() - 0.5)
-    setPlaylist(shuffled)
-    setCurrentIndex(0)
-    if (shuffled.length > 0) {
-      playTrack(shuffled[0])
+    // Don't actually shuffle the playlist array, just enable shuffle mode
+    // The playNext/playPrevious functions will handle random selection
+    const newShuffleState = !isShuffled
+    setIsShuffled(newShuffleState)
+    
+    // If enabling shuffle, disable loop
+    if (newShuffleState && isLooping) {
+      setIsLooping(false)
     }
   }
 
@@ -308,17 +346,34 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   const addToPlaylist = (track: Track) => {
     // Check if track already exists in playlist
-    if (!playlist.find(t => t.id === track.id)) {
-      setPlaylist([...playlist, track])
+    const existingTrack = playlist.find(t => t.id === track.id)
+    if (!existingTrack) {
+      const newPlaylist = [...playlist, track]
+      setPlaylist(newPlaylist)
+      console.log('[Queue] Added to playlist:', track.title, 'Total tracks:', newPlaylist.length)
+      return true
+    } else {
+      console.log('[Queue] Track already in playlist:', track.title)
+      return false
     }
   }
 
   const toggleLoop = () => {
-    setIsLooping(!isLooping)
+    const newLoopState = !isLooping
+    setIsLooping(newLoopState)
+    // If enabling loop, disable shuffle
+    if (newLoopState && isShuffled) {
+      setIsShuffled(false)
+    }
   }
 
   const toggleShuffle = () => {
-    setIsShuffled(!isShuffled)
+    const newShuffleState = !isShuffled
+    setIsShuffled(newShuffleState)
+    // If enabling shuffle, disable loop
+    if (newShuffleState && isLooping) {
+      setIsLooping(false)
+    }
   }
 
   const skipBackward = (seconds: number = 10) => {

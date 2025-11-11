@@ -164,6 +164,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [comments, setComments] = useState<{[key: string]: Comment[]}>({})
   const [commentInput, setCommentInput] = useState<{[key: string]: string}>({})
   const [isMobile, setIsMobile] = useState(false)
+  const [queueToast, setQueueToast] = useState<string | null>(null)
 
   // Detect mobile device
   useEffect(() => {
@@ -181,6 +182,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     window.addEventListener('keydown', handleEscKey)
     return () => window.removeEventListener('keydown', handleEscKey)
   }, [router])
+
+  // Auto-hide queue toast
+  useEffect(() => {
+    if (queueToast) {
+      const timer = setTimeout(() => setQueueToast(null), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [queueToast])
 
   useEffect(() => {
     if (currentUser) {
@@ -1145,7 +1154,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        addToPlaylist({
+                                        const added = addToPlaylist({
                                           id: media.id,
                                           audioUrl: media.audio_url!,
                                           title: media.title,
@@ -1153,6 +1162,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                           imageUrl: media.image_url,
                                           userId: media.user_id
                                         })
+                                        if (added) {
+                                          setQueueToast(`Added "${media.title}" to queue`)
+                                        } else {
+                                          setQueueToast(`"${media.title}" already in queue`)
+                                        }
                                       }}
                                       className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400"
                                       title="Add to Queue"
@@ -1238,7 +1252,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  addToPlaylist({
+                                  const added = addToPlaylist({
                                     id: media.id,
                                     audioUrl: media.audio_url!,
                                     title: media.title,
@@ -1246,6 +1260,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                     imageUrl: media.image_url,
                                     userId: media.user_id
                                   })
+                                  if (added) {
+                                    setQueueToast(`Added "${media.title}" to queue`)
+                                  } else {
+                                    setQueueToast(`"${media.title}" already in queue`)
+                                  }
                                 }}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400"
                                 title="Add to Queue"
@@ -2389,6 +2408,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
       {/* Floating Navigation Button - Desktop hidden on profile */}
       <FloatingNavButton hideOnDesktop={true} />
+
+      {/* Queue Toast Notification */}
+      {queueToast && (
+        <div className="fixed bottom-24 right-6 z-50 bg-cyan-500/90 backdrop-blur-md text-white px-4 py-3 rounded-lg shadow-xl shadow-cyan-500/30 animate-fade-in max-w-xs">
+          <p className="text-sm font-medium">{queueToast}</p>
+        </div>
+      )}
     </div>
   )
 }
