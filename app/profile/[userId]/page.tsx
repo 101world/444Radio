@@ -1068,6 +1068,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     {/* All Tracks Tab Content */}
                     {contentTab === 'tracks' && profile && profile.combinedMedia && (
                       <>
+                        {console.log('[Profile Tracks]', {
+                          totalTracks: profile.combinedMedia.length,
+                          firstTrack: profile.combinedMedia[0]?.title,
+                          viewingUserId: resolvedParams.userId
+                        })}
                         {/* Desktop: 4 Column List View */}
                         <div className="hidden md:block">
                           <div className="grid grid-cols-4 gap-x-6 gap-y-1">
@@ -1087,6 +1092,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                   }`}
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    console.log('[Desktop Click]', media.title, 'ID:', media.id)
                                     hasAudio && handlePlay(media)
                                   }}
                                 >
@@ -1158,6 +1164,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             }`}
                             onClick={(e) => {
                               e.stopPropagation()
+                              console.log('[Mobile Click]', media.title, 'ID:', media.id)
                               hasAudio && handlePlay(media)
                             }}
                           >
