@@ -966,7 +966,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                       </div>
-                    ) : (
+                    ) : profile && profile.combinedMedia && profile.combinedMedia.length > 0 ? (
                       <>
                         {/* Carousel Images */}
                         <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
@@ -1020,6 +1020,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           ))}
                         </div>
                       </>
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 via-blue-900/50 to-black"></div>
                     )}
                     {isOwnProfile && (
                       <button
@@ -1064,7 +1066,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     </div>
                     
                     {/* All Tracks Tab Content */}
-                    {contentTab === 'tracks' && (
+                    {contentTab === 'tracks' && profile && profile.combinedMedia && (
                       <>
                         {/* Desktop: 4 Column List View */}
                         <div className="hidden md:block">
