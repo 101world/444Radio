@@ -830,167 +830,174 @@ export default function FloatingAudioPlayer() {
         </div>
       )}
 
-      {/* Cover Art Modal - STUNNING NO-SCROLL DESIGN */}
+      {/* Cover Art Modal - COMPACT PLAYER SIZE */}
       {showCoverArt && currentTrack && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center animate-fadeIn overflow-hidden bg-black"
           onClick={() => setShowCoverArt(false)}
         >
-          {/* Dynamic Background Blur from Cover Art with Pulse Effect */}
+          {/* Dynamic Background Blur from Cover Art */}
           {currentTrack.imageUrl && (
             <div className="fixed inset-0 overflow-hidden">
               <div 
-                className="absolute inset-0 scale-110 blur-[80px] opacity-20 animate-pulse"
+                className="absolute inset-0 scale-110 blur-[80px] opacity-20"
                 style={{
                   backgroundImage: `url(${currentTrack.imageUrl})`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/80 to-black/90" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
             </div>
           )}
 
-          <div className="relative w-full h-full flex flex-col items-center justify-center py-6 px-4" onClick={(e) => e.stopPropagation()}>
+          <div className="relative w-full min-h-screen flex flex-col py-3" onClick={(e) => e.stopPropagation()}>
             {/* Top Bar */}
-            <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
+            <div className="relative z-10 flex items-center justify-between px-4 mb-2">
               <button
                 onClick={() => setShowCoverArt(false)}
-                className="flex items-center gap-1.5 text-white/60 hover:text-white transition-all duration-300 hover:scale-110"
+                className="flex items-center gap-1.5 text-white/60 hover:text-white transition-all"
               >
-                <div className="w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/50 transition-all duration-300 hover:rotate-90">
+                <div className="w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/50 transition-all">
                   <X size={12} />
                 </div>
                 <span className="text-[10px] font-medium hidden sm:block">ESC</span>
               </button>
             </div>
 
-            {/* Main Content - Centered, No Scroll */}
-            <div className="w-full max-w-sm">
-              <div className="flex flex-col items-center gap-4">
-                
-                {/* Album Art - With Stunning Glow */}
-                {currentTrack.imageUrl ? (
-                  <div className="relative w-full max-w-[200px] group">
-                    {/* Animated Glow Ring */}
-                    <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/40 via-purple-500/40 to-pink-500/40 rounded-full blur-2xl group-hover:blur-3xl transition-all duration-500 animate-pulse" />
-                    
-                    <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
-                      <Image
-                        src={currentTrack.imageUrl}
-                        alt={currentTrack.title}
-                        fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        priority
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full max-w-[200px] aspect-square rounded-2xl bg-gradient-to-br from-gray-900 to-black border border-white/5 flex items-center justify-center">
-                    <Music size={36} className="text-white/10" />
-                  </div>
-                )}
-
-                {/* Track Info - Compact */}
-                <div className="text-center space-y-0.5 w-full px-2">
-                  <h1 className="text-lg sm:text-xl font-bold text-white leading-tight truncate">
-                    {currentTrack.title}
-                  </h1>
-                  {currentTrack.artist && (
-                    <p className="text-xs sm:text-sm font-medium text-white/50 truncate">
-                      {currentTrack.artist}
-                    </p>
-                  )}
-                </div>
-
-                {/* Controls Section - Compact */}
-                <div className="w-full space-y-3">
+            {/* Main Content - Very Compact */}
+            <div className="flex-1 flex items-center justify-center px-4">
+              <div className="w-full max-w-sm">
+                <div className="flex flex-col items-center gap-4">
                   
-                  {/* Progress Bar - Gradient & Glow */}
-                  <div className="space-y-1">
-                    <div className="relative h-1.5 bg-white/10 rounded-full overflow-hidden group cursor-pointer">
-                      <div 
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full transition-all duration-100 group-hover:h-2 shadow-lg shadow-purple-500/50"
-                        style={{ width: `${(currentTime / duration) * 100}%` }}
-                      />
+                  {/* Album Art - Small */}
+                  {currentTrack.imageUrl ? (
+                    <div className="relative w-full max-w-[200px]">
+                      <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-2xl ring-1 ring-white/10">
+                        <Image
+                          src={currentTrack.imageUrl}
+                          alt={currentTrack.title}
+                          fill
+                          className="object-cover"
+                          priority
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                      </div>
                     </div>
-                    <div className="flex justify-between text-[10px] font-medium text-white/40">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
+                  ) : (
+                    <div className="w-full max-w-[200px] aspect-square rounded-lg bg-gradient-to-br from-gray-900 to-black border border-white/5 flex items-center justify-center">
+                      <Music size={36} className="text-white/10" />
                     </div>
+                  )}
+
+                  {/* Track Info - Compact */}
+                  <div className="text-center space-y-0.5 w-full px-2">
+                    <h1 className="text-lg sm:text-xl font-bold text-white leading-tight truncate">
+                      {currentTrack.title}
+                    </h1>
+                    {currentTrack.artist && (
+                      <p className="text-xs sm:text-sm font-medium text-white/50 truncate">
+                        {currentTrack.artist}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Main Playback Controls - With Hover Effects */}
-                  <div className="flex items-center justify-center gap-4">
-                    <button
-                      onClick={toggleShuffle}
-                      className={`transition-all duration-300 hover:scale-110 ${isShuffled ? 'text-cyan-400' : 'text-white/30 hover:text-white/70'}`}
-                      aria-label="Shuffle"
-                    >
-                      <Shuffle size={14} strokeWidth={2.5} />
-                    </button>
-
-                    <button
-                      onClick={playPrevious}
-                      className="text-white/70 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95"
-                      aria-label="Previous"
-                    >
-                      <SkipBack size={22} fill="currentColor" />
-                    </button>
-
-                    {/* Play/Pause Button - Stunning Gradient */}
-                    <button
-                      onClick={togglePlayPause}
-                      className="w-14 h-14 rounded-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 hover:scale-110 active:scale-95 flex items-center justify-center transition-all duration-300 shadow-2xl shadow-purple-500/40 hover:shadow-purple-500/60"
-                      aria-label={isPlaying ? "Pause" : "Play"}
-                    >
-                      {isPlaying ? (
-                        <Pause size={18} className="text-white" fill="currentColor" />
-                      ) : (
-                        <Play size={18} className="text-white ml-0.5" fill="currentColor" />
-                      )}
-                    </button>
-
-                    <button
-                      onClick={playNext}
-                      className="text-white/70 hover:text-white transition-all duration-300 hover:scale-110 active:scale-95"
-                      aria-label="Next"
-                    >
-                      <SkipForward size={22} fill="currentColor" />
-                    </button>
-
-                    <button
-                      onClick={toggleLoop}
-                      className={`transition-all duration-300 hover:scale-110 ${isLooping ? 'text-pink-400' : 'text-white/30 hover:text-white/70'}`}
-                      aria-label={isLooping ? "Loop: On" : "Loop: Off"}
-                    >
-                      <Repeat size={14} strokeWidth={2.5} />
-                    </button>
-                  </div>
-
-                  {/* Secondary Controls - Single Compact Row */}
-                  <div className="flex items-center justify-center gap-3">
-                    {/* Time Skip */}
-                    <button
-                      onClick={() => skipBackward(10)}
-                      className="text-white/40 hover:text-white/80 transition-all duration-300 hover:scale-110"
-                      aria-label="Rewind 10s"
-                    >
-                      <RotateCcw size={12} />
-                    </button>
-
-                    {/* Volume Control - Compact Inline */}
-                    <div className="flex items-center gap-2 flex-1 max-w-[160px]">
-                      <button
-                        onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
-                        className="text-white/50 hover:text-white transition-all duration-300 hover:scale-110"
-                      >
-                        {volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                      </button>
+                  {/* Controls Section - Compact */}
+                  <div className="w-full space-y-3">
+                    
+                    {/* Progress Bar */}
+                    <div className="space-y-1">
                       <input
                         type="range"
                         min="0"
+                        max={duration || 0}
+                        value={currentTime}
+                        onChange={handleSeek}
+                        className="w-full h-1 rounded-full appearance-none cursor-pointer hover:h-1.5 transition-all"
+                        style={{
+                          background: `linear-gradient(to right, 
+                            rgb(255 255 255) 0%, 
+                            rgb(255 255 255) ${(currentTime / duration) * 100}%, 
+                            rgba(255,255,255,0.15) ${(currentTime / duration) * 100}%, 
+                            rgba(255,255,255,0.15) 100%)`
+                        }}
+                      />
+                      <div className="flex justify-between text-[10px] font-medium text-white/40">
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(duration)}</span>
+                      </div>
+                    </div>
+
+                    {/* Main Playback Controls */}
+                    <div className="flex items-center justify-center gap-4">
+                      <button
+                        onClick={toggleShuffle}
+                        className={`transition-all ${isShuffled ? 'text-white' : 'text-white/30 hover:text-white/70'}`}
+                        aria-label="Shuffle"
+                      >
+                        <Shuffle size={14} strokeWidth={2.5} />
+                      </button>
+
+                      <button
+                        onClick={playPrevious}
+                        className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
+                        aria-label="Previous"
+                      >
+                        <SkipBack size={22} fill="currentColor" />
+                      </button>
+
+                      {/* Play/Pause Button */}
+                      <button
+                        onClick={togglePlayPause}
+                        className="w-12 h-12 rounded-full bg-white hover:scale-105 active:scale-95 flex items-center justify-center transition-all shadow-2xl"
+                        aria-label={isPlaying ? "Pause" : "Play"}
+                      >
+                        {isPlaying ? (
+                          <Pause size={16} className="text-black" fill="currentColor" />
+                        ) : (
+                          <Play size={16} className="text-black ml-0.5" fill="currentColor" />
+                        )}
+                      </button>
+
+                      <button
+                        onClick={playNext}
+                        className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
+                        aria-label="Next"
+                      >
+                        <SkipForward size={22} fill="currentColor" />
+                      </button>
+
+                      <button
+                        onClick={toggleLoop}
+                        className={`transition-all ${isLooping ? 'text-white' : 'text-white/30 hover:text-white/70'}`}
+                        aria-label={isLooping ? "Loop: On" : "Loop: Off"}
+                      >
+                        <Repeat size={14} strokeWidth={2.5} />
+                      </button>
+                    </div>
+
+                    {/* Secondary Controls - Single Compact Row */}
+                    <div className="flex items-center justify-center gap-3">
+                      {/* Time Skip */}
+                      <button
+                        onClick={() => skipBackward(10)}
+                        className="text-white/40 hover:text-white/80 transition-all"
+                        aria-label="Rewind 10s"
+                      >
+                        <RotateCcw size={12} />
+                      </button>
+
+                      {/* Volume Control - Compact Inline */}
+                      <div className="flex items-center gap-2 flex-1 max-w-[160px]">
+                        <button
+                          onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
+                          className="text-white/50 hover:text-white transition-all"
+                        >
+                          {volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                        </button>
+                        <input
+                          type="range"
+                          min="0"
                           max="1"
                           step="0.01"
                           value={volume}
