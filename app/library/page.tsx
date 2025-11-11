@@ -109,7 +109,7 @@ export default function LibraryPage() {
       if (publishedData.success && Array.isArray(publishedData.combinedMedia)) {
         // Filter only items with both audio and image (actual music releases)
         const musicReleases = publishedData.combinedMedia.filter((item: any) => 
-          item.audio_url && item.image_url && item.media_type === 'music-image'
+          item.audio_url && item.image_url
         )
         setCombinedItems(musicReleases.map((item: any) => ({
           id: item.id,
