@@ -49,10 +49,10 @@ export default function Pricing() {
 
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-white to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight">
-            pricing
+            Pricing
           </h1>
           <p className="text-cyan-400/60 text-base md:text-lg max-w-2xl mx-auto">
-            pick ur vibe • flex billing • no cap
+            Choose your plan • Flexible billing • Cancel anytime
           </p>
         </div>
 
@@ -97,11 +97,11 @@ export default function Pricing() {
             
             <div className="relative">
               <div className="mb-6">
-                <div className="inline-block px-3 py-1 bg-cyan-500/15 border border-cyan-400/40 rounded-full mb-3">
-                  <span className="text-cyan-300 text-[10px] font-bold uppercase tracking-wider">free 4ever</span>
+                <div className="inline-block px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-full mb-3">
+                  <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">FREE FOREVER</span>
                 </div>
                 <h2 className="text-2xl font-black text-white mb-1">Free Access</h2>
-                <p className="text-cyan-400/50 text-xs">decrypt to unlock</p>
+                <p className="text-cyan-400/50 text-xs">Decrypt to unlock</p>
               </div>
 
               <div className="mb-8">
@@ -110,7 +110,7 @@ export default function Pricing() {
                     $0
                   </span>
                 </div>
-                <p className="text-cyan-400/40 text-xs">one-time unlock</p>
+                <p className="text-cyan-400/40 text-xs">One-time unlock</p>
               </div>
 
               <ul className="space-y-3 mb-8 min-h-[140px]">
@@ -120,7 +120,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">20 credits</span> one-time</span>
+                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">20 credits</span> included</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -136,13 +136,13 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">solve code puzzle</span>
+                  <span className="text-gray-300 text-xs">Solve puzzle to access</span>
                 </li>
               </ul>
 
               <Link href="/decrypt">
                 <button className="w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-xs">
-                  decrypt now
+                  Unlock Now
                 </button>
               </Link>
             </div>
@@ -157,7 +157,7 @@ export default function Pricing() {
             <div className="relative">
               <div className="mb-6">
                 <h2 className="text-2xl font-black text-white mb-1">Creator</h2>
-                <p className="text-cyan-400/50 text-xs">for music creators</p>
+                <p className="text-cyan-400/50 text-xs">For music creators</p>
               </div>
 
               <div className="mb-8">
@@ -171,7 +171,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
-                    <span className="text-cyan-300 text-[10px] font-bold">-20%</span>
+                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 20%</span>
                   </div>
                 )}
               </div>
@@ -183,7 +183,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">200 credits</span> /mo</span>
+                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">200 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -199,7 +199,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">commercial use</span>
+                  <span className="text-gray-300 text-xs">Commercial license</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -207,12 +207,12 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">priority support</span>
+                  <span className="text-gray-300 text-xs">Priority support</span>
                 </li>
               </ul>
 
               <button className="w-full py-3 px-4 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 rounded-xl font-bold hover:bg-cyan-500/25 hover:border-cyan-400/60 transition-all duration-300 group-hover:scale-105 text-xs">
-                get started
+                Get Started
               </button>
             </div>
           </div>
@@ -220,8 +220,8 @@ export default function Pricing() {
           {/* Pro Plan - Most Popular */}
           <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-400/60 rounded-2xl p-6 hover:border-cyan-300/80 transition-all duration-500 hover:scale-[1.03] overflow-hidden lg:-mt-2">
             {/* Most Popular Badge */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-white text-[10px] font-bold shadow-lg shadow-cyan-500/50 uppercase tracking-wider">
-              ✨ most popular
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-5 py-1.5 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-white text-xs font-bold shadow-xl shadow-cyan-500/60 uppercase tracking-wider">
+              ⭐ MOST POPULAR
             </div>
 
             {/* Holographic overlay - stronger */}
@@ -231,7 +231,7 @@ export default function Pricing() {
             <div className="relative">
               <div className="mb-6 mt-2">
                 <h2 className="text-2xl font-black text-white mb-1">Pro</h2>
-                <p className="text-cyan-400/50 text-xs">for professionals</p>
+                <p className="text-cyan-400/50 text-xs">For professionals</p>
               </div>
 
               <div className="mb-8">
@@ -245,7 +245,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
-                    <span className="text-cyan-300 text-[10px] font-bold">-20%</span>
+                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 20%</span>
                   </div>
                 )}
               </div>
@@ -257,7 +257,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">600 credits</span> /mo</span>
+                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">600 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -273,7 +273,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">commercial use</span>
+                  <span className="text-gray-300 text-xs">Commercial license</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -281,12 +281,12 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">premium support</span>
+                  <span className="text-gray-300 text-xs">Premium support</span>
                 </li>
               </ul>
 
               <button className="w-full py-3 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-xs">
-                get started
+                Get Started
               </button>
             </div>
           </div>
@@ -300,7 +300,7 @@ export default function Pricing() {
             <div className="relative">
               <div className="mb-6">
                 <h2 className="text-2xl font-black text-white mb-1">Studio</h2>
-                <p className="text-cyan-400/50 text-xs">unlimited everything</p>
+                <p className="text-cyan-400/50 text-xs">Unlimited everything</p>
               </div>
 
               <div className="mb-8">
@@ -314,7 +314,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
-                    <span className="text-cyan-300 text-[10px] font-bold">-20%</span>
+                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 20%</span>
                   </div>
                 )}
               </div>
@@ -326,7 +326,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">∞ credits</span> unlimited</span>
+                  <span className="text-gray-300 text-xs"><span className="font-bold text-white">Unlimited</span> credits</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -334,7 +334,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">unlimited generations</span>
+                  <span className="text-gray-300 text-xs">Unlimited generations</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -342,7 +342,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">enterprise license</span>
+                  <span className="text-gray-300 text-xs">Enterprise license</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -350,12 +350,12 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">dedicated support</span>
+                  <span className="text-gray-300 text-xs">Dedicated support</span>
                 </li>
               </ul>
 
               <button className="w-full py-3 px-4 bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 rounded-xl font-bold hover:bg-cyan-500/25 hover:border-cyan-400/60 transition-all duration-300 group-hover:scale-105 text-xs">
-                get started
+                Get Started
               </button>
             </div>
           </div>
