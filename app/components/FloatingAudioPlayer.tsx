@@ -846,21 +846,21 @@ export default function FloatingAudioPlayer() {
             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
           </div>
 
-          <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
             {/* Close Button */}
             <button
               onClick={() => setShowCoverArt(false)}
-              className="absolute -top-2 -right-2 md:top-0 md:right-0 z-10 text-white/60 hover:text-white transition-all bg-black/50 hover:bg-cyan-500/20 backdrop-blur-md rounded-full p-3 hover:scale-110 hover:rotate-90 duration-300 border border-white/10"
+              className="absolute -top-2 -right-2 md:top-0 md:right-0 z-10 text-white/60 hover:text-white transition-all bg-black/50 hover:bg-cyan-500/20 backdrop-blur-md rounded-full p-2.5 hover:scale-110 hover:rotate-90 duration-300 border border-white/10"
               aria-label="Close"
             >
-              <X size={24} />
+              <X size={20} />
             </button>
 
-            <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+            <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-center">
               {/* Left: Cover Art */}
               <div className="relative group">
                 {currentTrack.imageUrl && (
-                  <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/20 transform transition-transform duration-500 group-hover:scale-[1.02]">
+                  <div className="relative aspect-square rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20 transform transition-transform duration-500 group-hover:scale-[1.02]">
                     {/* Glowing border effect */}
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-transparent to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     
@@ -878,25 +878,25 @@ export default function FloatingAudioPlayer() {
                 )}
                 
                 {/* Glow effect under cover */}
-                <div className="absolute -inset-4 bg-cyan-500/20 rounded-3xl blur-3xl opacity-50 -z-10" />
+                <div className="absolute -inset-4 bg-cyan-500/20 rounded-2xl blur-2xl opacity-50 -z-10" />
               </div>
 
               {/* Right: Controls & Info */}
-              <div className="space-y-6 md:space-y-8">
+              <div className="space-y-4 md:space-y-5">
                 {/* Track Info */}
-                <div className="space-y-3">
-                  <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight tracking-tight">
+                <div className="space-y-2">
+                  <h2 className="text-2xl md:text-4xl font-bold text-white leading-tight tracking-tight">
                     {currentTrack.title}
                   </h2>
                   {currentTrack.artist && (
-                    <p className="text-2xl md:text-3xl font-medium bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                    <p className="text-lg md:text-xl font-medium bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                       {currentTrack.artist}
                     </p>
                   )}
                 </div>
 
                 {/* Progress Bar */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="relative">
                     <input
                       type="range"
@@ -904,26 +904,26 @@ export default function FloatingAudioPlayer() {
                       max={duration || 0}
                       value={currentTime}
                       onChange={handleSeek}
-                      className="w-full h-3 rounded-full appearance-none cursor-pointer transition-all hover:h-4"
+                      className="w-full h-2 rounded-full appearance-none cursor-pointer transition-all hover:h-2.5"
                       style={{
                         background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.15) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.15) 100%)`
                       }}
                     />
                   </div>
-                  <div className="flex justify-between text-base md:text-lg text-gray-300 font-medium">
+                  <div className="flex justify-between text-xs md:text-sm text-gray-300 font-medium">
                     <span>{formatTime(currentTime)}</span>
                     <span>{formatTime(duration)}</span>
                   </div>
                 </div>
 
                 {/* Main Controls */}
-                <div className="flex items-center justify-center gap-6 md:gap-10 py-4">
+                <div className="flex items-center justify-center gap-4 md:gap-6 py-2">
                   <button
                     onClick={toggleShuffle}
                     className={`transition-all hover:scale-110 active:scale-95 ${isShuffled ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'text-gray-400 hover:text-white'}`}
                     aria-label="Shuffle"
                   >
-                    <Shuffle size={32} />
+                    <Shuffle size={22} />
                   </button>
 
                   <button
@@ -931,18 +931,18 @@ export default function FloatingAudioPlayer() {
                     className="text-gray-300 hover:text-white transition-all hover:scale-110 active:scale-95"
                     aria-label="Previous"
                   >
-                    <SkipBack size={36} />
+                    <SkipBack size={24} />
                   </button>
 
                   <button
                     onClick={togglePlayPause}
-                    className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500 via-cyan-400 to-blue-500 hover:from-cyan-400 hover:via-cyan-300 hover:to-blue-400 flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70"
+                    className="w-16 h-16 md:w-18 md:h-18 rounded-full bg-gradient-to-br from-cyan-500 via-cyan-400 to-blue-500 hover:from-cyan-400 hover:via-cyan-300 hover:to-blue-400 flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70"
                     aria-label={isPlaying ? "Pause" : "Play"}
                   >
                     {isPlaying ? (
-                      <Pause size={42} className="text-black" fill="currentColor" />
+                      <Pause size={28} className="text-black" fill="currentColor" />
                     ) : (
-                      <Play size={42} className="text-black ml-1" fill="currentColor" />
+                      <Play size={28} className="text-black ml-1" fill="currentColor" />
                     )}
                   </button>
 
@@ -951,7 +951,7 @@ export default function FloatingAudioPlayer() {
                     className="text-gray-300 hover:text-white transition-all hover:scale-110 active:scale-95"
                     aria-label="Next"
                   >
-                    <SkipForward size={36} />
+                    <SkipForward size={24} />
                   </button>
 
                   <button
@@ -959,26 +959,26 @@ export default function FloatingAudioPlayer() {
                     className={`transition-all hover:scale-110 active:scale-95 ${isLooping ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'text-gray-400 hover:text-white'}`}
                     aria-label={isLooping ? "Loop: On" : "Loop: Off"}
                   >
-                    <Repeat size={32} />
+                    <Repeat size={22} />
                   </button>
                 </div>
 
                 {/* Secondary Controls */}
-                <div className="flex items-center justify-center gap-4 md:gap-6 opacity-80 hover:opacity-100 transition-opacity">
+                <div className="flex items-center justify-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => skipBackward(10)}
                     className="text-gray-400 hover:text-cyan-400 transition-all hover:scale-110"
                     aria-label="Rewind 10s"
                   >
-                    <RotateCcw size={24} />
+                    <RotateCcw size={18} />
                   </button>
 
-                  <div className="flex items-center gap-3 px-6 py-3 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
                     <button
                       onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
                       className="text-gray-400 hover:text-white transition-colors"
                     >
-                      {volume === 0 ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                      {volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
                     </button>
                     <input
                       type="range"
@@ -987,12 +987,12 @@ export default function FloatingAudioPlayer() {
                       step="0.01"
                       value={volume}
                       onChange={handleVolumeChange}
-                      className="w-32 h-2 rounded-full appearance-none cursor-pointer"
+                      className="w-24 md:w-28 h-1.5 rounded-full appearance-none cursor-pointer"
                       style={{
                         background: `linear-gradient(to right, rgb(34 211 238) 0%, rgb(34 211 238) ${volume * 100}%, rgba(255,255,255,0.2) ${volume * 100}%, rgba(255,255,255,0.2) 100%)`
                       }}
                     />
-                    <span className="text-sm text-gray-400 font-medium w-10 text-right">{Math.round(volume * 100)}%</span>
+                    <span className="text-xs text-gray-400 font-medium w-8 text-right">{Math.round(volume * 100)}%</span>
                   </div>
 
                   <button
@@ -1000,7 +1000,7 @@ export default function FloatingAudioPlayer() {
                     className="text-gray-400 hover:text-cyan-400 transition-all hover:scale-110"
                     aria-label="Forward 10s"
                   >
-                    <RotateCw size={24} />
+                    <RotateCw size={18} />
                   </button>
                 </div>
               </div>
@@ -1026,36 +1026,36 @@ export default function FloatingAudioPlayer() {
 
         input[type="range"]::-webkit-slider-thumb {
           appearance: none;
-          width: 16px;
-          height: 16px;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
           background: rgb(34 211 238);
           cursor: pointer;
-          box-shadow: 0 0 12px rgba(34, 211, 238, 0.8);
+          box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
           transition: all 0.2s;
         }
 
         input[type="range"]::-webkit-slider-thumb:hover {
-          width: 18px;
-          height: 18px;
-          box-shadow: 0 0 16px rgba(34, 211, 238, 1);
+          width: 14px;
+          height: 14px;
+          box-shadow: 0 0 14px rgba(34, 211, 238, 1);
         }
 
         input[type="range"]::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
+          width: 12px;
+          height: 12px;
           border-radius: 50%;
           background: rgb(34 211 238);
           cursor: pointer;
           border: none;
-          box-shadow: 0 0 12px rgba(34, 211, 238, 0.8);
+          box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
           transition: all 0.2s;
         }
 
         input[type="range"]::-moz-range-thumb:hover {
-          width: 18px;
-          height: 18px;
-          box-shadow: 0 0 16px rgba(34, 211, 238, 1);
+          width: 14px;
+          height: 14px;
+          box-shadow: 0 0 14px rgba(34, 211, 238, 1);
         }
       `}</style>
     </div>
