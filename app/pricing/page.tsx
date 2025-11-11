@@ -84,20 +84,20 @@ export default function Pricing() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-          {/* Starter Plan */}
+          {/* Starter Plan - Now Creator */}
           <div className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-950/30 to-black border border-cyan-500/20 rounded-3xl p-8 hover:border-cyan-400/60 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
             <div className="relative">
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">Starter</h2>
-                <p className="text-cyan-400/60 text-sm">Perfect for trying out</p>
+                <h2 className="text-2xl font-bold text-white mb-2">Creator</h2>
+                <p className="text-cyan-400/60 text-sm">For music creators</p>
               </div>
 
               <div className="mb-8">
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-black text-white">
-                    ${billingCycle === 'monthly' ? '3' : '28.80'}
+                    ${billingCycle === 'monthly' ? '5' : '48'}
                   </span>
                   <span className="text-cyan-400/60 text-lg">
                     /{billingCycle === 'monthly' ? 'month' : 'year'}
@@ -105,7 +105,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <p className="text-green-400/80 text-sm mt-2">
-                    🎉 Early bird: Save 20% ($7.20/year) - First 500 users only!
+                    🎉 Save 20% ($12/year)
                   </p>
                 )}
               </div>
@@ -115,19 +115,19 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300"><span className="font-bold text-white">25 songs</span> per month</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">200 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300">High quality audio (320kbps)</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">~50 songs</span> (2 credits each)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300"><span className="font-bold text-white">50 cover arts</span></span>
+                  <span className="text-gray-300"><span className="font-bold text-white">~100 cover arts</span> (1 credit each)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,7 +139,7 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300">Basic support</span>
+                  <span className="text-gray-300">Commercial use allowed</span>
                 </li>
               </ul>
 
@@ -149,7 +149,7 @@ export default function Pricing() {
             </div>
           </div>
 
-          {/* Popular Plan */}
+          {/* Popular Plan - Now Pro */}
           <div className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-600/20 to-black border-2 border-cyan-400 rounded-3xl p-8 hover:border-cyan-300 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-400/30 md:-mt-4">
             {/* Popular Badge */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-2 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full text-white text-sm font-bold shadow-lg shadow-cyan-500/50">
@@ -160,14 +160,14 @@ export default function Pricing() {
 
             <div className="relative">
               <div className="mb-6 mt-4">
-                <h2 className="text-2xl font-bold text-white mb-2">Creator</h2>
-                <p className="text-cyan-300/80 text-sm">Best value for creators</p>
+                <h2 className="text-2xl font-bold text-white mb-2">Pro</h2>
+                <p className="text-cyan-300/80 text-sm">Best for professionals</p>
               </div>
 
               <div className="mb-8">
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-black text-white">
-                    ${billingCycle === 'monthly' ? '7' : '67.20'}
+                    ${billingCycle === 'monthly' ? '15' : '144'}
                   </span>
                   <span className="text-cyan-300/80 text-lg">
                     /{billingCycle === 'monthly' ? 'month' : 'year'}
@@ -175,7 +175,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <p className="text-green-400/80 text-sm mt-2">
-                    🎉 Early bird: Save 20% ($16.80/year) - First 500 users only!
+                    🎉 Save 20% ($36/year)
                   </p>
                 )}
               </div>
@@ -185,31 +185,37 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200"><span className="font-bold text-white">150 songs</span> per month</span>
+                  <span className="text-gray-200"><span className="font-bold text-white">600 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200">Premium quality audio (320kbps)</span>
+                  <span className="text-gray-200"><span className="font-bold text-white">~150 songs</span> (2 credits each)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200"><span className="font-bold text-white">200 cover arts</span></span>
+                  <span className="text-gray-200"><span className="font-bold text-white">~300 cover arts</span> (1 credit each)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-200">Commercial use allowed</span>
+                  <span className="text-gray-200">Higher generation limit</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
                   <span className="text-gray-200">Download & own forever</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span className="text-gray-200">Commercial use allowed</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,20 +231,20 @@ export default function Pricing() {
             </div>
           </div>
 
-          {/* Unlimited Plan */}
+          {/* Unlimited Plan - Now Studio */}
           <div className="group relative backdrop-blur-xl bg-gradient-to-br from-cyan-950/30 to-black border border-cyan-500/20 rounded-3xl p-8 hover:border-cyan-400/60 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20">
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
             <div className="relative">
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">Pro</h2>
-                <p className="text-cyan-400/60 text-sm">For serious creators</p>
+                <h2 className="text-2xl font-bold text-white mb-2">Studio</h2>
+                <p className="text-cyan-400/60 text-sm">Unlimited everything</p>
               </div>
 
               <div className="mb-8">
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl font-black text-white">
-                    ${billingCycle === 'monthly' ? '29' : '278.40'}
+                    ${billingCycle === 'monthly' ? '35' : '336'}
                   </span>
                   <span className="text-cyan-400/60 text-lg">
                     /{billingCycle === 'monthly' ? 'month' : 'year'}
@@ -246,7 +252,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <p className="text-green-400/80 text-sm mt-2">
-                    🎉 Early bird: Save 20% ($69.60/year) - First 500 users only!
+                    🎉 Save 20% ($84/year)
                   </p>
                 )}
               </div>
@@ -256,13 +262,13 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300"><span className="font-bold text-white">Unlimited songs</span> per month</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">Unlimited credits</span></span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300">Premium quality audio (320kbps)</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">Unlimited songs</span></span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,7 +280,13 @@ export default function Pricing() {
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span className="text-gray-300"><span className="font-bold text-white">Audio Suite</span> (Full production tools)</span>
+                  <span className="text-gray-300"><span className="font-bold text-white">Studio tools</span> (Full production suite)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span className="text-gray-300">Priority queue</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,12 +299,6 @@ export default function Pricing() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
                   <span className="text-gray-300">Commercial license included</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  <span className="text-gray-300">Early access to new features</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -424,8 +430,11 @@ export default function Pricing() {
 
         {/* Footer */}
         <div className="mt-20 text-center">
-          <p className="text-cyan-400/60 text-sm">
+          <p className="text-cyan-400/60 text-sm mb-3">
             All plans include high-quality music generation • Flexible billing • Cancel anytime
+          </p>
+          <p className="text-cyan-400/60 text-sm mb-2">
+            <strong>Credits system:</strong> 1 song = 2 credits • 1 cover art = 1 credit
           </p>
           <p className="text-cyan-400/40 text-xs mt-2">
             Questions? Contact us at support@444radio.com • © 2025 444RADIO
