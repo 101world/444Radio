@@ -100,8 +100,13 @@ export default function ExplorePage() {
   const isPlaying = globalIsPlaying
 
   useEffect(() => {
+    // Prioritize main content first
     fetchCombinedMedia()
-    fetchLiveStations()
+    
+    // Defer live stations fetch to not block initial render
+    setTimeout(() => {
+      fetchLiveStations()
+    }, 500)
     
     // Poll for live stations every 30 seconds
     const liveStationsInterval = setInterval(() => {
@@ -152,31 +157,29 @@ export default function ExplorePage() {
   const fetchCombinedMedia = async () => {
     setLoading(true)
     try {
-      // Add limit parameter to reduce initial load time
-      const res = await fetch('/api/media/explore?limit=50')
+      // Optimized: Fetch only 30 items initially for faster load
+      const res = await fetch('/api/media/explore?limit=30')
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)
         
-        // Extract unique artists
+        // Extract unique artists (optimized)
         const artistMap = new Map<string, Artist>()
         data.combinedMedia.forEach((media: CombinedMedia) => {
           const username = media.users?.username || media.username
           const userId = media.user_id
-          if (username && userId) {
-            if (artistMap.has(userId)) {
-              artistMap.get(userId)!.trackCount++
-            } else {
-              artistMap.set(userId, {
-                username,
-                user_id: userId,
-                trackCount: 1,
-                avatar: media.image_url
-              })
-            }
+          if (username && userId && !artistMap.has(userId)) {
+            artistMap.set(userId, {
+              username,
+              user_id: userId,
+              trackCount: 1,
+              avatar: media.image_url
+            })
+          } else if (artistMap.has(userId)) {
+            artistMap.get(userId)!.trackCount++
           }
         })
-        setArtists(Array.from(artistMap.values()))
+        setArtists(Array.from(artistMap.values()).slice(0, 10)) // Only show top 10 artists
       }
     } catch (error) {
       console.error('Failed to fetch media:', error)

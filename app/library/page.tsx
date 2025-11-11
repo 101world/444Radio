@@ -88,26 +88,28 @@ export default function LibraryPage() {
       setIsLoading(true)
     }
     try {
-      // Optimize: Only fetch what's needed for current tab
+      // Optimize: Only fetch data for current tab to reduce load time
       const requests = []
       
-      if (activeTab === 'music' || isManualRefresh || !isManualRefresh) {
+      // Fetch music on initial load or when on music tab
+      if (activeTab === 'music' || !musicItems.length) {
         requests.push(fetch('/api/library/music'))
       } else {
         requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       }
       
-      if (activeTab === 'images' || isManualRefresh || !isManualRefresh) {
+      // Fetch images on initial load or when on images tab
+      if (activeTab === 'images' || !imageItems.length) {
         requests.push(fetch('/api/library/images'))
       } else {
         requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       }
       
-      // Combined tab not needed for library
+      // Skip combined_media_library (not needed)
       requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       
-      // Only fetch published releases when on combined tab or manual refresh
-      if (activeTab === 'combined' || isManualRefresh) {
+      // Only fetch published releases when on combined tab
+      if (activeTab === 'combined') {
         requests.push(fetch('/api/media/profile/' + user?.id))
       } else {
         requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
@@ -483,10 +485,10 @@ export default function LibraryPage() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">
-                          {item.title || 'Untitled Track'}
+                          {item.title || item.prompt || 'Untitled Track'}
                         </h3>
-                        <p className="text-cyan-400/50 text-xs mt-0.5">
-                          {new Date(item.created_at).toLocaleDateString()}
+                        <p className="text-cyan-400/50 text-xs mt-0.5 truncate">
+                          {item.title ? (item.prompt ? `${item.prompt.substring(0, 40)}...` : new Date(item.created_at).toLocaleDateString()) : new Date(item.created_at).toLocaleDateString()}
                         </p>
                       </div>
 
