@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Insert combined media into database with full metadata
+    // Note: All releases through this endpoint are PUBLIC by default
     const { data, error } = await supabase
       .from('combined_media')
       .insert({
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
         title: title || 'Untitled Track',
         audio_prompt: audioPrompt || '',
         image_prompt: imagePrompt || '',
-        is_public: isPublic !== undefined ? isPublic : true,
+        is_public: true, // Always public for releases (explore/profile visibility)
         // Metadata fields
         genre: metadata.genre,
         mood: metadata.mood,
