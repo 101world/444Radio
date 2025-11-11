@@ -128,7 +128,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">~10 songs or 20 covers</span>
+                  <span className="text-gray-300 text-xs">~10 songs or 20 cover art</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -156,6 +156,9 @@ export default function Pricing() {
 
             <div className="relative">
               <div className="mb-6">
+                <div className="inline-block px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-full mb-3">
+                  <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">CREATOR</span>
+                </div>
                 <h2 className="text-2xl font-black text-white mb-1">Creator</h2>
                 <p className="text-cyan-400/50 text-xs">For music creators</p>
               </div>
@@ -191,7 +194,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">~100 songs or 200 covers</span>
+                  <span className="text-gray-300 text-xs">~100 songs or 200 cover art</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -265,7 +268,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs">~300 songs or 600 covers</span>
+                  <span className="text-gray-300 text-xs">~300 songs or 600 cover art</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -299,6 +302,9 @@ export default function Pricing() {
 
             <div className="relative">
               <div className="mb-6">
+                <div className="inline-block px-3 py-1.5 bg-purple-500/20 border border-purple-400/50 rounded-full mb-3">
+                  <span className="text-purple-200 text-xs font-bold uppercase tracking-wider">STUDIO</span>
+                </div>
                 <h2 className="text-2xl font-black text-white mb-1">Studio</h2>
                 <p className="text-cyan-400/50 text-xs">Unlimited everything</p>
               </div>
