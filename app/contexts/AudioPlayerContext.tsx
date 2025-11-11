@@ -229,7 +229,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       if (isLooping && currentTrack) {
         // Loop current track
         audio.currentTime = 0
-        audio.play()
+        audio.play().catch(err => console.error('Loop play error:', err))
       } else {
         // Play next track in playlist
         playNext()
@@ -251,7 +251,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener('playing', handlePlaying)
       audio.removeEventListener('ended', handleEnded)
     }
-  }, [playNext])
+  }, [isLooping, currentTrack, playNext])
 
   const togglePlayPause = () => {
     if (isPlaying) {

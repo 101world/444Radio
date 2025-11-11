@@ -11,7 +11,7 @@ import HolographicBackground from '../../components/HolographicBackgroundClient'
 import StarryBackground from '../../components/StarryBackground'
 import FloatingNavButton from '../../components/FloatingNavButton'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
-import { Edit2, Grid, List, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2 } from 'lucide-react'
+import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus } from 'lucide-react'
 import CombineMediaModal from '../../components/CombineMediaModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import PrivateListModal from '../../components/PrivateListModal'
@@ -136,7 +136,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isFollowing, setIsFollowing] = useState(false)
   
   // Use global audio player context
-  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist, pause } = useAudioPlayer()
+  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist, pause, addToPlaylist } = useAudioPlayer()
   const playingId = currentTrack?.id || null
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
@@ -1139,6 +1139,27 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                       </div>
                                     </div>
                                   </div>
+
+                                  {/* Add to Queue Button */}
+                                  {hasAudio && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        addToPlaylist({
+                                          id: media.id,
+                                          audioUrl: media.audio_url!,
+                                          title: media.title,
+                                          artist: profile.username,
+                                          imageUrl: media.image_url,
+                                          userId: media.user_id
+                                        })
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400"
+                                      title="Add to Queue"
+                                    >
+                                      <Plus size={14} />
+                                    </button>
+                                  )}
                                 </div>
                               )
                             })}
@@ -1211,6 +1232,27 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 </div>
                               </div>
                             </div>
+
+                            {/* Add to Queue Button */}
+                            {hasAudio && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  addToPlaylist({
+                                    id: media.id,
+                                    audioUrl: media.audio_url!,
+                                    title: media.title,
+                                    artist: profile.username,
+                                    imageUrl: media.image_url,
+                                    userId: media.user_id
+                                  })
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400"
+                                title="Add to Queue"
+                              >
+                                <Plus size={16} />
+                              </button>
+                            )}
                           </div>
                         )
                       })}
