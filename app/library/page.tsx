@@ -12,6 +12,7 @@ import FloatingNavButton from '../components/FloatingNavButton'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import LyricsModal from '../components/LyricsModal'
 import CoverArtModal from '../components/CoverArtModal'
+import ReleaseModal from '../components/ReleaseModal'
 
 interface LibraryMusic {
   id: string
@@ -61,6 +62,9 @@ export default function LibraryPage() {
   const [showCoverModal, setShowCoverModal] = useState(false)
   const [selectedCoverUrl, setSelectedCoverUrl] = useState<string | null>(null)
   const [selectedCoverTitle, setSelectedCoverTitle] = useState<string | null>(null)
+  const [showReleaseModal, setShowReleaseModal] = useState(false)
+  const [selectedReleaseTrack, setSelectedReleaseTrack] = useState<LibraryMusic | null>(null)
+  const [showReleaseToast, setShowReleaseToast] = useState(false)
 
   // ESC key handler for desktop navigation to profile
   useEffect(() => {
@@ -489,6 +493,18 @@ export default function LibraryPage() {
                         </button>
 
                         <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedReleaseTrack(item)
+                            setShowReleaseModal(true)
+                          }}
+                          className="w-10 h-10 rounded-full bg-gradient-to-r from-green-600/20 to-emerald-500/20 backdrop-blur-xl border border-green-500/30 hover:border-green-400 hover:from-green-500/30 hover:to-emerald-400/30 flex items-center justify-center transition-all active:scale-95"
+                          title="Release Track"
+                        >
+                          <Send size={16} className="text-green-400" />
+                        </button>
+
+                        <button
                           onClick={() => handleDelete('music', item.id)}
                           className="w-10 h-10 rounded-full bg-red-500/10 backdrop-blur-xl border border-red-500/30 hover:border-red-400 hover:bg-red-500/20 flex items-center justify-center transition-all active:scale-95"
                         >
@@ -614,6 +630,37 @@ export default function LibraryPage() {
           imageUrl={selectedCoverUrl}
           title={selectedCoverTitle || undefined}
         />
+      )}
+
+      {/* Release Modal */}
+      {selectedReleaseTrack && (
+        <ReleaseModal
+          isOpen={showReleaseModal}
+          onClose={() => {
+            setShowReleaseModal(false)
+            setSelectedReleaseTrack(null)
+          }}
+          musicItem={selectedReleaseTrack}
+          imageItems={imageItems}
+          onSuccess={() => {
+            setShowReleaseToast(true)
+            setTimeout(() => setShowReleaseToast(false), 3000)
+            fetchLibrary(true)
+          }}
+        />
+      )}
+
+      {/* Release Success Toast */}
+      {showReleaseToast && (
+        <div className="fixed bottom-6 right-6 z-[110] animate-fadeIn">
+          <div className="bg-gradient-to-r from-green-600 to-emerald-500 text-white px-6 py-4 rounded-xl shadow-2xl shadow-green-500/30 border border-green-400/30 flex items-center gap-3">
+            <Send size={20} className="text-white" />
+            <div>
+              <div className="font-bold">Track Released!</div>
+              <div className="text-sm text-white/80">Your track is now live on your profile</div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
