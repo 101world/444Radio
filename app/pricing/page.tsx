@@ -9,6 +9,10 @@ import FloatingMenu from '../components/FloatingMenu'
 export default function Pricing() {
   const router = useRouter()
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
+  const [creditAmount, setCreditAmount] = useState(5) // Default $5
+  
+  // Calculate credits based on amount (1 credit = $0.026)
+  const creditsFromDollars = Math.floor(creditAmount / 0.026)
   
   // ESC key handler to go back to explore
   useEffect(() => {
@@ -435,6 +439,110 @@ export default function Pricing() {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Buy Credits Section */}
+        <div className="mb-20">
+          <div className="bg-gradient-to-br from-purple-950/30 to-black border border-purple-500/20 rounded-3xl p-10">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-white mb-3">Buy Credits</h2>
+              <p className="text-purple-400/60 text-lg">Purchase credits on-demand without a subscription</p>
+            </div>
+
+            <div className="max-w-3xl mx-auto">
+              {/* Amount Display */}
+              <div className="text-center mb-8">
+                <div className="inline-block bg-black/50 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-8 mb-6">
+                  <div className="flex items-baseline justify-center gap-3 mb-2">
+                    <span className="text-6xl font-black text-white">
+                      ${creditAmount}
+                    </span>
+                  </div>
+                  <div className="text-purple-400/60 text-sm mb-4">Purchase Amount</div>
+                  <div className="border-t border-purple-500/20 pt-4 mt-4">
+                    <div className="text-4xl font-bold text-purple-400 mb-2">
+                      {creditsFromDollars.toLocaleString()} credits
+                    </div>
+                    <div className="text-purple-400/60 text-sm">
+                      ≈ {Math.floor(creditsFromDollars / 2)} songs or {creditsFromDollars} cover arts
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Slider */}
+              <div className="mb-8">
+                <input
+                  type="range"
+                  min="0"
+                  max="50"
+                  step="5"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(Number(e.target.value))}
+                  className="w-full h-3 bg-purple-950/30 rounded-lg appearance-none cursor-pointer 
+                    [&::-webkit-slider-thumb]:appearance-none 
+                    [&::-webkit-slider-thumb]:w-6 
+                    [&::-webkit-slider-thumb]:h-6 
+                    [&::-webkit-slider-thumb]:rounded-full 
+                    [&::-webkit-slider-thumb]:bg-gradient-to-r 
+                    [&::-webkit-slider-thumb]:from-purple-500 
+                    [&::-webkit-slider-thumb]:to-purple-400
+                    [&::-webkit-slider-thumb]:cursor-pointer
+                    [&::-webkit-slider-thumb]:shadow-lg
+                    [&::-webkit-slider-thumb]:shadow-purple-500/50
+                    [&::-webkit-slider-thumb]:hover:scale-110
+                    [&::-webkit-slider-thumb]:transition-transform
+                    [&::-moz-range-thumb]:w-6 
+                    [&::-moz-range-thumb]:h-6 
+                    [&::-moz-range-thumb]:rounded-full 
+                    [&::-moz-range-thumb]:bg-gradient-to-r 
+                    [&::-moz-range-thumb]:from-purple-500 
+                    [&::-moz-range-thumb]:to-purple-400
+                    [&::-moz-range-thumb]:border-0
+                    [&::-moz-range-thumb]:cursor-pointer
+                    [&::-moz-range-thumb]:shadow-lg
+                    [&::-moz-range-thumb]:shadow-purple-500/50"
+                  style={{
+                    background: `linear-gradient(to right, rgb(168 85 247 / 0.4) 0%, rgb(168 85 247 / 0.4) ${(creditAmount / 50) * 100}%, rgb(88 28 135 / 0.3) ${(creditAmount / 50) * 100}%, rgb(88 28 135 / 0.3) 100%)`
+                  }}
+                />
+                
+                {/* Slider Labels */}
+                <div className="flex justify-between mt-3 px-1">
+                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50].map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setCreditAmount(value)}
+                      className={`text-xs transition-colors ${
+                        creditAmount === value 
+                          ? 'text-purple-400 font-bold' 
+                          : 'text-purple-400/40 hover:text-purple-400/70'
+                      }`}
+                    >
+                      ${value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Purchase Button */}
+              <div className="text-center">
+                <button 
+                  disabled={creditAmount === 0}
+                  className={`px-12 py-5 rounded-xl font-bold text-lg transition-all duration-300 ${
+                    creditAmount === 0
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-600 to-purple-400 text-white hover:from-purple-700 hover:to-purple-500 shadow-lg shadow-purple-500/30 hover:scale-105'
+                  }`}
+                >
+                  {creditAmount === 0 ? 'Select Amount' : `Purchase ${creditsFromDollars.toLocaleString()} Credits for $${creditAmount}`}
+                </button>
+                <p className="text-purple-400/40 text-xs mt-4">
+                  1 credit = $0.026 • Credits never expire • Use anytime
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
