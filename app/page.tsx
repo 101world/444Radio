@@ -102,8 +102,8 @@ export default function HomePage() {
         </Suspense>
       </div>
 
-      {/* Glassmorphism overlay - blur the background */}
-      <div className="fixed inset-0 backdrop-blur-md bg-black/30 -z-5"></div>
+      {/* Minimal blur overlay - only 5% blur */}
+      <div className="fixed inset-0 backdrop-blur-[0.5px] bg-black/10 -z-5"></div>
 
       {/* Credit Indicator */}
       <div className="fixed top-4 right-4 z-50">
