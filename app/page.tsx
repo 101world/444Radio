@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Music, Play, Pause } from 'lucide-react'
+import { Music, Play, Pause, Sparkles } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
+import CreditIndicator from './components/CreditIndicator'
 import FloatingNavButton from './components/FloatingNavButton'
 
 // Lazy load heavy 3D components for better performance
@@ -29,18 +30,6 @@ export default function HomePage() {
     fetchAllTracks()
   }, [])
 
-  // Spacebar play/pause handler
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && e.target === document.body) {
-        e.preventDefault()
-        handlePlayAll()
-      }
-    }
-    window.addEventListener('keydown', handleKeyPress)
-    return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [tracks, currentTrack, isPlaying])
-
   const fetchAllTracks = async () => {
     try {
       const res = await fetch('/api/media/explore')
@@ -49,19 +38,21 @@ export default function HomePage() {
         interface MediaItem {
           id: string
           title?: string
-          users?: { username?: string }
-          username?: string
-          audio_url: string
+          artist?: string
+          audio_url?: string
           image_url?: string
         }
-        const formattedTracks = data.combinedMedia.map((media: MediaItem) => ({
-          id: media.id,
-          title: media.title || 'Untitled',
-          artist: media.users?.username || media.username || 'Unknown Artist',
-          audio_url: media.audio_url,
-          image_url: media.image_url
-        }))
-        setTracks(formattedTracks)
+        
+        const audioTracks: Track[] = data.combinedMedia
+          .filter((item: MediaItem) => item.audio_url)
+          .map((item: MediaItem) => ({
+            id: item.id,
+            title: item.title || 'Untitled',
+            artist: item.artist || 'Unknown Artist',
+            audio_url: item.audio_url!,
+            image_url: item.image_url
+          }))
+        setTracks(audioTracks)
       }
     } catch (error) {
       console.error('Failed to fetch tracks:', error)
@@ -71,96 +62,81 @@ export default function HomePage() {
   }
 
   const handlePlayAll = () => {
-    if (tracks.length === 0) return
-    if (currentTrack && isPlaying) {
-      togglePlayPause()
-      return
-    }
+    if (!tracks.length) return
+    
+    // Convert tracks to audio player format and start playing
     const playerTracks = tracks.map(t => ({
       id: t.id,
       audioUrl: t.audio_url,
       title: t.title,
       artist: t.artist,
-      imageUrl: t.image_url
+      coverUrl: t.image_url
     }))
-    setPlaylist(playerTracks, 0)
+    
+    setPlaylist(playerTracks)
     playTrack(playerTracks[0])
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col relative overflow-hidden">
-      <Suspense fallback={null}>
-        <HolographicBackgroundClient />
-      </Suspense>
-      <Suspense fallback={null}>
-        <FloatingGenres />
-      </Suspense>
-      
-      <div className="absolute inset-0 bg-black/60 z-[2]" />
-      
-      <div className="relative z-10 flex-1 flex flex-col">
-        <FloatingMenu />
-        
-        <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-8 w-full max-w-4xl">
-            {/* 444 RADIO Title */}
-            <h1 
-              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-transparent bg-gradient-to-r from-cyan-400 via-cyan-300 to-cyan-400 bg-clip-text tracking-wider leading-tight"
-              style={{
-                fontFamily: 'Anton, Impact, Arial Black, sans-serif',
-                textShadow: '0 0 30px rgba(34, 211, 238, 0.9), 0 0 60px rgba(34, 211, 238, 0.6), 0 0 90px rgba(34, 211, 238, 0.4)',
-                fontWeight: 900
-              }}
-            >
-              444 RADIO
-            </h1>
+    <>
+      {/* 3D Background with lazy loading */}
+      <div className="fixed inset-0 -z-10">
+        <Suspense fallback={<div className="w-full h-full bg-gradient-to-b from-gray-950 via-gray-900 to-black" />}>
+          <HolographicBackgroundClient />
+        </Suspense>
+      </div>
 
-            {/* Play Button */}
-            <div className="flex justify-center">
-              <button
-                onClick={handlePlayAll}
-                disabled={tracks.length === 0 || loading}
-                className="group relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300 disabled:from-gray-600 disabled:to-gray-500 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-2xl shadow-cyan-500/50 hover:shadow-cyan-400/70 disabled:shadow-gray-500/30"
-              >
-                {currentTrack && isPlaying ? (
-                  <Pause className="w-10 h-10 md:w-12 md:h-12 text-black" fill="currentColor" />
-                ) : (
-                  <Play className="w-10 h-10 md:w-12 md:h-12 text-black ml-1" fill="currentColor" />
-                )}
-                {(!currentTrack || !isPlaying) && tracks.length > 0 && !loading && (
-                  <div className="absolute inset-0 rounded-full bg-cyan-400/30 animate-ping"></div>
-                )}
-              </button>
+      {/* Floating genres animation */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <Suspense fallback={null}>
+          <FloatingGenres />
+        </Suspense>
+      </div>
+
+      {/* Credit Indicator */}
+      <div className="fixed top-4 right-4 z-50">
+        <CreditIndicator />
+      </div>
+
+      <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10">
+        {/* Landing View - Centered Hero */}
+        <div className="max-w-7xl w-full">
+          <div className="flex flex-col items-center justify-center text-center space-y-4 md:space-y-8 mb-6 md:mb-12">
+            
+            {/* Minimalist logo/icon above title */}
+            <div className="relative group transition-all duration-300 hover:scale-105">
+              <div className="absolute inset-0 bg-cyan-500/20 blur-3xl rounded-full group-hover:bg-cyan-500/30 transition-all duration-300" />
+              <Music 
+                className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 text-cyan-400 relative z-10"
+                strokeWidth={1.5}
+              />
             </div>
 
-            {/* Describe Bar */}
-            <div className="w-full max-w-3xl mx-auto">
-              <div
-                className="group relative cursor-pointer active:scale-95 md:hover:scale-105 transition-transform duration-200"
-                onClick={() => router.push('/create')}
+            {/* Main title - no glow */}
+            <div>
+              <h1 
+                className="text-3xl md:text-6xl lg:text-8xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight"
+                style={{
+                  fontFamily: 'Anton, Impact, Arial Black, sans-serif',
+                  fontWeight: 900
+                }}
               >
-                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-3xl blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>
-                <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl rounded-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
-                  <Music
-                    size={20}
-                    className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]"
-                  />
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="text-sm md:text-lg font-light text-gray-200 tracking-wide">
-                      Describe your sound...
-                    </div>
-                    <div className="text-xs text-cyan-400/60 mt-0.5 font-mono hidden md:block">
-                      Click to start creating
-                    </div>
-                  </div>
-                </div>
-              </div>
+                444 RADIO
+              </h1>
             </div>
+
           </div>
         </div>
       </div>
 
-      <FloatingNavButton showPromptToggle={false} onTogglePrompt={() => {}} />
-    </div>
+      {/* Floating Navigation Button */}
+      <FloatingNavButton 
+        showPromptToggle={false}
+        onTogglePrompt={() => {}}        
+      />
+
+      {/* Floating Menu */}
+      <FloatingMenu />
+    </>
   )
 }
