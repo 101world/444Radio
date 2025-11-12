@@ -438,8 +438,8 @@ function CreatePageContent() {
       return
     }
 
-    // MANDATORY: Check for title before music generation
-    if (selectedType === 'music' && !customTitle.trim()) {
+    // MANDATORY: Check for title before music generation (ONLY for regular music, NOT instrumental)
+    if (selectedType === 'music' && !isInstrumental && !customTitle.trim()) {
       // Open the lyrics modal first
       setShowLyricsModal(true)
       // Open parameters section and highlight title field
@@ -456,8 +456,8 @@ function CreatePageContent() {
       return
     }
 
-    // Validate title length if provided
-    if (selectedType === 'music' && customTitle.trim()) {
+    // Validate title length if provided (ONLY for regular music, NOT instrumental)
+    if (selectedType === 'music' && !isInstrumental && customTitle.trim()) {
       const titleLength = customTitle.trim().length
       if (titleLength < 3) {
         setShowLyricsModal(true)
@@ -1321,23 +1321,25 @@ function CreatePageContent() {
             {/* Divider */}
             <div className="w-px h-8 bg-cyan-500/30"></div>
 
-            {/* Lyrics Button */}
-            <button
-              onClick={() => setShowLyricsModal(true)}
-              className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
-                customTitle || genre || customLyrics || bpm
-                  ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105'
-                  : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
-              }`}
-              title="Lyrics & Settings"
-            >
-              <Edit3 
-                size={18} 
-                className={`${
-                  customTitle || genre || customLyrics || bpm ? 'text-cyan-300' : 'text-cyan-400'
-                } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]`}
-              />
-            </button>
+            {/* Lyrics Button - Only show for regular music, not instrumental */}
+            {selectedType === 'music' && !isInstrumental && (
+              <button
+                onClick={() => setShowLyricsModal(true)}
+                className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
+                  customTitle || genre || customLyrics || bpm
+                    ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105'
+                    : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
+                }`}
+                title="Lyrics & Settings"
+              >
+                <Edit3 
+                  size={18} 
+                  className={`${
+                    customTitle || genre || customLyrics || bpm ? 'text-cyan-300' : 'text-cyan-400'
+                  } drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]`}
+                />
+              </button>
+            )}
 
             {/* Rocket Button */}
             <button
