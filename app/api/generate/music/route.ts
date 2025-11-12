@@ -6,6 +6,25 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 })
 
+async function createPredictionWithRetry(replicateClient: Replicate, version: string, input: any, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const prediction = await replicateClient.predictions.create({ version, input })
+      return prediction
+    } catch (error: any) {
+      const is502or500 = error?.message?.includes('502') || error?.message?.includes('500') || error?.response?.status === 502 || error?.response?.status === 500
+      
+      if (is502or500 && attempt < maxRetries) {
+        console.log(`⚠️ Replicate API error (attempt ${attempt}/${maxRetries}), retrying in ${attempt * 2}s...`)
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000)) // Exponential backoff
+        continue
+      }
+      throw error
+    }
+  }
+  throw new Error('Failed to create prediction after retries')
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
@@ -30,14 +49,15 @@ export async function POST(req: NextRequest) {
     let finalPrediction: any
 
     if (isEnglish) {
-      // Use MiniMax Music-1.5 for English
-      const prediction = await replicate.predictions.create({
-        version: "minimax/music-1.5",
-        input: {
+      // Use MiniMax Music-1.5 for English with retry logic
+      const prediction = await createPredictionWithRetry(
+        replicate,
+        "minimax/music-1.5",
+        {
           lyrics: prompt.substring(0, 600), // Max 600 characters
           style_strength: params?.style_strength ?? 0.8, // 0.0 to 1.0, default 0.8
         }
-      })
+      )
 
       console.log('🎵 MiniMax prediction created:', prediction.id)
 
@@ -56,13 +76,14 @@ export async function POST(req: NextRequest) {
         throw new Error('Music generation timed out')
       }
     } else {
-      // Use ACE-Step for non-English languages
+      // Use ACE-Step for non-English languages with retry logic
       const genreTags = prompt.toLowerCase().match(/\b(rock|pop|jazz|blues|electronic|classical|hip hop|rap|country|metal|folk|reggae|indie|funk|soul|rnb|edm|house|techno|ambient|chill|lofi)\b/g) || ['music'];
       const tags = genreTags.join(',') || 'instrumental,melodic';
 
-      const prediction = await replicate.predictions.create({
-        version: "280fc4f9ee507577f880a167f639c02622421d8fecf492454320311217b688f1",
-        input: {
+      const prediction = await createPredictionWithRetry(
+        replicate,
+        "280fc4f9ee507577f880a167f639c02622421d8fecf492454320311217b688f1",
+        {
           tags: tags,
           lyrics: prompt.substring(0, 600),
           duration: params?.duration ?? 60,
@@ -72,7 +93,7 @@ export async function POST(req: NextRequest) {
           guidance_type: 'apg',
           seed: -1,
         }
-      })
+      )
 
       console.log('🎵 ACE-Step prediction created:', prediction.id)
 
@@ -135,12 +156,25 @@ export async function POST(req: NextRequest) {
       message: 'Music generated successfully' 
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Music generation error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate music'
+    
+    // Better error messages for users
+    let errorMessage = 'Failed to generate music'
+    const is502or500 = error?.message?.includes('502') || error?.message?.includes('500')
+    
+    if (is502or500) {
+      errorMessage = 'Replicate API is temporarily unavailable. Please try again in a few minutes.'
+    } else if (error?.message?.includes('timeout')) {
+      errorMessage = 'Music generation timed out. Please try again with a shorter prompt.'
+    } else if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    
     return NextResponse.json({ 
       success: false,
-      error: errorMessage
+      error: errorMessage,
+      retry: is502or500 // Tell frontend it can retry
     }, { status: 500 })
   }
 }

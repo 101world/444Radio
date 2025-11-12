@@ -6,6 +6,25 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 })
 
+async function createPredictionWithRetry(replicateClient: Replicate, version: string, input: any, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const prediction = await replicateClient.predictions.create({ version, input })
+      return prediction
+    } catch (error: any) {
+      const is502or500 = error?.message?.includes('502') || error?.message?.includes('500') || error?.response?.status === 502 || error?.response?.status === 500
+      
+      if (is502or500 && attempt < maxRetries) {
+        console.log(`⚠️ Replicate API error (attempt ${attempt}/${maxRetries}), retrying in ${attempt * 2}s...`)
+        await new Promise(resolve => setTimeout(resolve, attempt * 2000)) // Exponential backoff
+        continue
+      }
+      throw error
+    }
+  }
+  throw new Error('Failed to create prediction after retries')
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
@@ -27,10 +46,11 @@ export async function POST(req: NextRequest) {
     // Create a visual prompt for album cover
     const coverPrompt = `Album cover art for: ${prompt}. Professional music album artwork, vibrant colors, artistic, high quality, studio lighting`
     
-    // Create prediction with custom parameters
-    const prediction = await replicate.predictions.create({
-      version: "black-forest-labs/flux-schnell",
-      input: {
+    // Create prediction with custom parameters and retry logic
+    const prediction = await createPredictionWithRetry(
+      replicate,
+      "black-forest-labs/flux-schnell",
+      {
         prompt: coverPrompt,
         num_outputs: params?.num_outputs ?? 1,
         aspect_ratio: params?.aspect_ratio ?? "1:1",
@@ -40,7 +60,7 @@ export async function POST(req: NextRequest) {
         num_inference_steps: params?.num_inference_steps ?? 4, // 1-4 steps for schnell
         disable_safety_checker: false
       }
-    })
+    )
 
     console.log('🎨 Cover art prediction created:', prediction.id)
 
@@ -108,12 +128,23 @@ export async function POST(req: NextRequest) {
       message: 'Cover art generated successfully' 
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Image generation error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate cover art'
+    
+    // Better error messages for users
+    let errorMessage = 'Failed to generate cover art'
+    const is502or500 = error?.message?.includes('502') || error?.message?.includes('500')
+    
+    if (is502or500) {
+      errorMessage = 'Replicate API is temporarily unavailable. Please try again in a few minutes.'
+    } else if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    
     return NextResponse.json({ 
       success: false,
-      error: errorMessage
+      error: errorMessage,
+      retry: is502or500 // Tell frontend it can retry
     }, { status: 500 })
   }
 }
