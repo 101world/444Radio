@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { supabase } from '@/lib/supabase'
+import { corsResponse, handleOptions } from '@/lib/cors'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
@@ -26,17 +27,21 @@ async function createPredictionWithRetry(replicateClient: Replicate, version: st
   throw new Error('Failed to create prediction after retries')
 }
 
+export async function OPTIONS() {
+  return handleOptions()
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const { prompt, duration = 60, steps = 90 } = await req.json()
 
     if (!prompt) {
-      return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
+      return corsResponse(NextResponse.json({ error: 'Missing prompt' }, { status: 400 }))
     }
 
     // Validate and clamp steps between 20-150
@@ -50,15 +55,15 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (userError || !userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return corsResponse(NextResponse.json({ error: 'User not found' }, { status: 404 }))
     }
 
     if (userData.credits < 5) {
-      return NextResponse.json({ 
+      return corsResponse(NextResponse.json({ 
         error: 'Insufficient credits. You need 5 credits for instrumental generation.',
         creditsNeeded: 5,
         creditsAvailable: userData.credits
-      }, { status: 402 })
+      }, { status: 402 }))
     }
 
     // Deduct credits immediately
@@ -72,7 +77,7 @@ export async function POST(req: NextRequest) {
 
     if (deductError) {
       console.error('Failed to deduct credits:', deductError)
-      return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 })
+      return corsResponse(NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 }))
     }
 
     console.log(`🎹 Starting instrumental generation for user ${userId}`)
@@ -151,14 +156,14 @@ export async function POST(req: NextRequest) {
     console.log('✅ Instrumental generated:', audioUrl)
     console.log('💰 Credits charged: 5, User credits now:', userData.credits - 5)
 
-    return NextResponse.json({ 
+    return corsResponse(NextResponse.json({ 
       success: true, 
       audioUrl,
       creditsUsed: 5,
       creditsRemaining: userData.credits - 5,
       duration,
       message: 'Instrumental music generated successfully' 
-    })
+    }))
 
   } catch (error: any) {
     console.error('Instrumental generation error:', error)
@@ -175,10 +180,10 @@ export async function POST(req: NextRequest) {
       errorMessage = error.message
     }
     
-    return NextResponse.json({ 
+    return corsResponse(NextResponse.json({ 
       success: false,
       error: errorMessage,
       retry: is502or500
-    }, { status: 500 })
+    }, { status: 500 }))
   }
 }
