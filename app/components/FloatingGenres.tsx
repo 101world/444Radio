@@ -30,13 +30,25 @@ export default function FloatingGenres() {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext('2d', { alpha: true })
+    const ctx = canvas.getContext('2d', { 
+      alpha: true,
+      desynchronized: true,
+      willReadFrequently: false
+    })
     if (!ctx) return
 
-    // Set canvas size
+    // Set canvas size with crisp rendering
     const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = window.innerWidth * dpr
+      canvas.height = window.innerHeight * dpr
+      canvas.style.width = window.innerWidth + 'px'
+      canvas.style.height = window.innerHeight + 'px'
+      ctx.scale(dpr, dpr)
+      
+      // Enable crisp text rendering
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
     }
     resize()
     window.addEventListener('resize', resize)
@@ -106,37 +118,42 @@ export default function FloatingGenres() {
         item.vx *= 0.995
         item.vy *= 0.995
 
-        // Draw text
+        // Draw text with enhanced glow
         ctx.save()
         ctx.translate(item.x, item.y)
         ctx.rotate((item.rotation * Math.PI) / 180)
 
-        // Font - Impact/Anton style bold
-        const fontSize = 28 * item.scale
-        ctx.font = `900 ${fontSize}px Impact, "Arial Black", sans-serif`
+        // Font - Impact/Anton style bold, crisper rendering
+        const fontSize = 32 * item.scale
+        ctx.font = `900 ${fontSize}px Impact, Anton, "Arial Black", sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
 
-        // Cyan glow effect
-        ctx.shadowColor = 'rgba(34, 211, 238, 0.8)'
-        ctx.shadowBlur = 20
+        // Multiple glow layers for crisp, bright effect
+        const isRadio = item.text === '444 Radio'
         
-        // Gradient fill - cyan to white
+        // Outer glow
+        ctx.shadowColor = isRadio ? 'rgba(34, 211, 238, 1)' : 'rgba(34, 211, 238, 0.6)'
+        ctx.shadowBlur = isRadio ? 30 : 20
+        
+        // Gradient fill - brighter and more vibrant
         const gradient = ctx.createLinearGradient(-50, -50, 50, 50)
-        if (item.text === '444 Radio') {
-          gradient.addColorStop(0, 'rgba(34, 211, 238, 0.9)') // Brighter cyan for 444 Radio
-          gradient.addColorStop(1, 'rgba(255, 255, 255, 0.9)')
+        if (isRadio) {
+          gradient.addColorStop(0, 'rgba(34, 211, 238, 1)') // Full cyan
+          gradient.addColorStop(1, 'rgba(255, 255, 255, 1)') // Pure white
         } else {
-          gradient.addColorStop(0, 'rgba(34, 211, 238, 0.4)')
-          gradient.addColorStop(1, 'rgba(255, 255, 255, 0.4)')
+          gradient.addColorStop(0, 'rgba(34, 211, 238, 0.8)')
+          gradient.addColorStop(1, 'rgba(255, 255, 255, 0.8)')
         }
         ctx.fillStyle = gradient
 
-        // Draw text with slight stroke
-        ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)'
-        ctx.lineWidth = 1
-        ctx.strokeText(item.text, 0, 0)
+        // Draw text - no blur, crisp edges
         ctx.fillText(item.text, 0, 0)
+        
+        // Add bright stroke for definition
+        ctx.strokeStyle = isRadio ? 'rgba(34, 211, 238, 0.6)' : 'rgba(34, 211, 238, 0.3)'
+        ctx.lineWidth = isRadio ? 2 : 1
+        ctx.strokeText(item.text, 0, 0)
 
         ctx.restore()
       })
