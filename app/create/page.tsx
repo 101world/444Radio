@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
@@ -1596,6 +1596,62 @@ function CreatePageContent() {
                     onClick={async (e) => {
                       e.preventDefault()
                       e.stopPropagation()
+                      
+                      if (!input || !input.trim()) {
+                        alert('⚠️ Please enter a prompt first!')
+                        return
+                      }
+
+                      if (isGeneratingAtomLyrics) return
+
+                      try {
+                        setIsGeneratingAtomLyrics(true)
+
+                        // Call Atom API to generate lyrics
+                        const response = await fetch('/api/generate/atom-lyrics', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            prompt: input
+                          })
+                        })
+
+                        const result = await response.json()
+
+                        if (result.success && result.lyrics) {
+                          setCustomLyrics(result.lyrics)
+                        } else {
+                          alert('❌ Failed to generate lyrics: ' + (result.error || 'Unknown error'))
+                        }
+                      } catch (error) {
+                        console.error('Atom lyrics generation error:', error)
+                        alert('❌ Failed to generate lyrics. Please try again.')
+                      } finally {
+                        setIsGeneratingAtomLyrics(false)
+                      }
+                    }}
+                    disabled={isGeneratingAtomLyrics}
+                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Atom size={12} className={isGeneratingAtomLyrics ? 'animate-spin' : ''} />
+                    {isGeneratingAtomLyrics ? 'Generating...' : 'Create with Atom'}
+                  </button>
+                </div>
+                <div className="relative">
+                  <textarea
+                    value={customLyrics}
+                    onChange={(e) => setCustomLyrics(e.target.value)}
+                    placeholder="Enter custom lyrics (required)..."
+                    className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
+                    rows={6}
+                    required
+                  />
+                  {/* Dice Button - Bottom Right */}
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
                       try {
                         // Check if we have language-specific structure
                         const languageHook = getLanguageHook(selectedLanguage.toLowerCase())
@@ -1644,65 +1700,12 @@ function CreatePageContent() {
                         setCustomLyrics(randomLyrics)
                       }
                     }}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors"
+                    className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/40 hover:bg-black/60 opacity-30 hover:opacity-100 transition-all duration-200"
+                    title="Randomize lyrics"
                   >
-                    <Sparkles size={12} />
-                    Randomize
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      
-                      if (!input || !input.trim()) {
-                        alert('⚠️ Please enter a prompt first!')
-                        return
-                      }
-
-                      if (isGeneratingAtomLyrics) return
-
-                      try {
-                        setIsGeneratingAtomLyrics(true)
-
-                        // Call Atom API to generate lyrics
-                        const response = await fetch('/api/generate/atom-lyrics', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            prompt: input
-                          })
-                        })
-
-                        const result = await response.json()
-
-                        if (result.success && result.lyrics) {
-                          setCustomLyrics(result.lyrics)
-                        } else {
-                          alert('❌ Failed to generate lyrics: ' + (result.error || 'Unknown error'))
-                        }
-                      } catch (error) {
-                        console.error('Atom lyrics generation error:', error)
-                        alert('❌ Failed to generate lyrics. Please try again.')
-                      } finally {
-                        setIsGeneratingAtomLyrics(false)
-                      }
-                    }}
-                    disabled={isGeneratingAtomLyrics}
-                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Atom size={12} className={isGeneratingAtomLyrics ? 'animate-spin' : ''} />
-                    {isGeneratingAtomLyrics ? 'Generating...' : 'Create with Atom'}
+                    <Dices size={14} className="text-cyan-400" />
                   </button>
                 </div>
-                <textarea
-                  value={customLyrics}
-                  onChange={(e) => setCustomLyrics(e.target.value)}
-                  placeholder="Enter custom lyrics (required)..."
-                  className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
-                  rows={6}
-                  required
-                />
                 <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
               </div>
               )}
