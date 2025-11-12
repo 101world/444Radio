@@ -33,11 +33,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { prompt, duration = 60 } = await req.json()
+    const { prompt, duration = 60, steps = 90 } = await req.json()
 
     if (!prompt) {
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 })
     }
+
+    // Validate and clamp steps between 20-150
+    const validSteps = Math.min(Math.max(steps, 20), 150)
 
     // Check if user has enough credits (5 credits required)
     const { data: userData, error: userError } = await supabase
@@ -75,6 +78,7 @@ export async function POST(req: NextRequest) {
     console.log(`🎹 Starting instrumental generation for user ${userId}`)
     console.log('🎹 Prompt (tags):', prompt)
     console.log('🎹 Duration:', duration, 'seconds')
+    console.log('🎹 Steps (creativity):', validSteps)
     console.log('💰 Deducted 5 credits, remaining:', userData.credits - 5)
 
     // Use ACE-Step for instrumental music generation
@@ -87,7 +91,7 @@ export async function POST(req: NextRequest) {
         tags: prompt, // Tags describe the instrumental style
         lyrics: "[inst]", // Instrumental tag - no lyrics
         duration: Math.min(Math.max(duration, 1), 240), // Clamp between 1-240 seconds
-        number_of_steps: 60, // Quality steps (default 60)
+        number_of_steps: validSteps, // Quality/creativity steps (20-150, default 90)
         guidance_scale: 15, // Adherence to prompt (default 15)
         scheduler: "euler",
         guidance_type: "apg",

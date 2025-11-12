@@ -88,6 +88,7 @@ function CreatePageContent() {
   // Instrumental mode
   const [isInstrumental, setIsInstrumental] = useState(false)
   const [instrumentalDuration, setInstrumentalDuration] = useState(60) // Default 60 seconds, max 240
+  const [instrumentalSteps, setInstrumentalSteps] = useState(90) // Default 90 steps (creativity/quality), range 20-150
   
   // ACE-Step parameters (for non-English)
   const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
@@ -523,7 +524,8 @@ function CreatePageContent() {
       // Process instrumental queue
       processInstrumentalQueue(generatingMessage.id, {
         prompt: input,
-        duration: instrumentalDuration
+        duration: instrumentalDuration,
+        steps: instrumentalSteps
       })
 
       return
@@ -743,6 +745,7 @@ function CreatePageContent() {
     params: {
       prompt: string
       duration: number
+      steps: number
     }
   ) => {
     console.log('[Instrumental] Starting generation:', { messageId, params })
@@ -780,7 +783,8 @@ function CreatePageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: params.prompt,
-          duration: params.duration
+          duration: params.duration,
+          steps: params.steps
         })
       })
 
@@ -1517,31 +1521,62 @@ function CreatePageContent() {
               
               {/* Instrumental Duration Slider - Only show when instrumental mode is active */}
               {isInstrumental && (
-                <div className="space-y-2 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-purple-400 uppercase tracking-wide flex items-center gap-2">
-                      <Music2 size={14} className="text-purple-400" />
-                      Instrumental Duration
-                    </label>
-                    <span className="text-sm font-bold text-purple-300">{instrumentalDuration}s</span>
+                <>
+                  <div className="space-y-2 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-purple-400 uppercase tracking-wide flex items-center gap-2">
+                        <Music2 size={14} className="text-purple-400" />
+                        Instrumental Duration
+                      </label>
+                      <span className="text-sm font-bold text-purple-300">{instrumentalDuration}s</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="240"
+                      step="10"
+                      value={instrumentalDuration}
+                      onChange={(e) => setInstrumentalDuration(Number(e.target.value))}
+                      className="w-full h-2 bg-purple-900/30 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    />
+                    <div className="flex justify-between text-xs text-purple-400/60">
+                      <span>10s</span>
+                      <span>240s (4 min)</span>
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min="10"
-                    max="240"
-                    step="10"
-                    value={instrumentalDuration}
-                    onChange={(e) => setInstrumentalDuration(Number(e.target.value))}
-                    className="w-full h-2 bg-purple-900/30 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                  />
-                  <div className="flex justify-between text-xs text-purple-400/60">
-                    <span>10s</span>
-                    <span>240s (4 min)</span>
+
+                  <div className="space-y-2 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-purple-400 uppercase tracking-wide flex items-center gap-2">
+                        <Sparkles size={14} className="text-purple-400" />
+                        Creativity / Quality
+                      </label>
+                      <span className="text-sm font-bold text-purple-300">{instrumentalSteps} steps</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="20"
+                      max="150"
+                      step="10"
+                      value={instrumentalSteps}
+                      onChange={(e) => setInstrumentalSteps(Number(e.target.value))}
+                      className="w-full h-2 bg-purple-900/30 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    />
+                    <div className="flex justify-between text-xs text-purple-400/60">
+                      <span>20 (Fast)</span>
+                      <span>150 (Best Quality)</span>
+                    </div>
+                    <p className="text-xs text-purple-300/80 bg-purple-500/10 px-3 py-2 rounded">
+                      ✨ Higher values = better quality but longer generation time
+                    </p>
                   </div>
-                  <p className="text-xs text-purple-300/80 bg-purple-500/10 px-3 py-2 rounded">
-                    💰 <span className="font-bold">5 credits</span> • Instrumental music based on your tags/prompt
-                  </p>
-                </div>
+
+                  <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                    <p className="text-xs text-purple-300/80">
+                      💰 <span className="font-bold">5 credits</span> • Instrumental music based on your tags/prompt
+                    </p>
+                  </div>
+                </>
               )}
               
               {/* Lyrics - FIRST & MANDATORY (Hidden in instrumental mode) */}
