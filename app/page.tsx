@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Music, Play, Pause, Sparkles } from 'lucide-react'
+import { Play, Pause } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
@@ -24,6 +24,7 @@ export default function HomePage() {
   const router = useRouter()
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
+  const [promptText, setPromptText] = useState('')
   const { setPlaylist, playTrack, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
 
   useEffect(() => {
@@ -64,7 +65,11 @@ export default function HomePage() {
   const handlePlayAll = () => {
     if (!tracks.length) return
     
-    // Convert tracks to audio player format and start playing
+    if (currentTrack && isPlaying) {
+      togglePlayPause()
+      return
+    }
+    
     const playerTracks = tracks.map(t => ({
       id: t.id,
       audioUrl: t.audio_url,
@@ -100,22 +105,28 @@ export default function HomePage() {
 
       <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10">
         {/* Landing View - Centered Hero */}
-        <div className="max-w-7xl w-full">
-          <div className="flex flex-col items-center justify-center text-center space-y-4 md:space-y-8 mb-6 md:mb-12">
+        <div className="max-w-4xl w-full">
+          <div className="flex flex-col items-center justify-center text-center space-y-6">
             
-            {/* Minimalist logo/icon above title */}
-            <div className="relative group transition-all duration-300 hover:scale-105">
-              <div className="absolute inset-0 bg-cyan-500/20 blur-3xl rounded-full group-hover:bg-cyan-500/30 transition-all duration-300" />
-              <Music 
-                className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 text-cyan-400 relative z-10"
-                strokeWidth={1.5}
-              />
-            </div>
+            {/* Play button replacing music icon */}
+            <button
+              onClick={handlePlayAll}
+              className="relative group transition-all duration-300 hover:scale-105 active:scale-95"
+            >
+              <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full group-hover:bg-cyan-500/30 transition-all duration-300" />
+              <div className="relative bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-full p-6 transition-all duration-300">
+                {isPlaying && currentTrack ? (
+                  <Pause className="w-12 h-12 text-cyan-400" strokeWidth={2} fill="currentColor" />
+                ) : (
+                  <Play className="w-12 h-12 text-cyan-400 ml-1" strokeWidth={2} fill="currentColor" />
+                )}
+              </div>
+            </button>
 
-            {/* Main title - no glow */}
+            {/* Smaller title */}
             <div>
               <h1 
-                className="text-3xl md:text-6xl lg:text-8xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight"
+                className="text-4xl md:text-5xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight"
                 style={{
                   fontFamily: 'Anton, Impact, Arial Black, sans-serif',
                   fontWeight: 900
@@ -123,6 +134,23 @@ export default function HomePage() {
               >
                 444 RADIO
               </h1>
+            </div>
+
+            {/* Aesthetic describe your sound bar */}
+            <div className="w-full max-w-2xl mt-4">
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-cyan-400/20 to-cyan-500/20 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-300"></div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="describe your sound..."
+                    value={promptText}
+                    onChange={(e) => setPromptText(e.target.value)}
+                    className="w-full px-6 py-4 bg-black/40 backdrop-blur-xl border border-cyan-500/30 rounded-2xl text-white placeholder-cyan-400/40 focus:outline-none focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 text-center text-sm md:text-base"
+                  />
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/5 via-transparent to-cyan-500/5 pointer-events-none"></div>
+                </div>
+              </div>
             </div>
 
           </div>
