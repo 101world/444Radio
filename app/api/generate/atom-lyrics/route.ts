@@ -33,38 +33,21 @@ export async function POST(req: NextRequest) {
     console.log('🔬 [ATOM] Full prompt:', fullPrompt)
 
     // Use GPT-5 Nano model from Replicate
-    const prediction = await replicate.predictions.create({
-      version: "openai/gpt-5-nano:0md8y8cyx1rm80ctf8ers6fa60",
-      input: {
-        prompt: fullPrompt
+    // Note: The prediction ID from Replicate is not the version hash
+    // We need to use the actual model version - checking if this is the right format
+    const output = await replicate.run(
+      "openai/gpt-5-nano" as any,
+      {
+        input: {
+          prompt: fullPrompt,
+          max_tokens: 600
+        }
       }
-    })
+    )
 
-    console.log('🔬 [ATOM] Prediction created:', prediction.id)
-
-    // Poll until completed
-    let finalPrediction = prediction
-    let attempts = 0
-    const maxAttempts = 30 // 1 minute timeout (2s intervals)
-
-    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      finalPrediction = await replicate.predictions.get(prediction.id)
-      console.log('🔬 [ATOM] Status:', finalPrediction.status)
-      attempts++
-    }
-
-    if (attempts >= maxAttempts) {
-      throw new Error('Lyrics generation timed out')
-    }
-
-    if (finalPrediction.status === 'failed') {
-      const errorMsg = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Lyrics generation failed'
-      throw new Error(errorMsg)
-    }
+    console.log('🔬 [ATOM] Generation complete')
 
     // Get the generated lyrics from output
-    const output = finalPrediction.output
     let lyrics = ''
 
     if (Array.isArray(output)) {

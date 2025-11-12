@@ -106,6 +106,7 @@ function CreatePageContent() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<unknown | null>(null)
+  const [isGeneratingAtomLyrics, setIsGeneratingAtomLyrics] = useState(false)
   
   // Title validation state
   const [showTitleError, setShowTitleError] = useState(false)
@@ -1659,11 +1660,10 @@ function CreatePageContent() {
                         return
                       }
 
+                      if (isGeneratingAtomLyrics) return
+
                       try {
-                        // Show loading state
-                        const originalText = e.currentTarget.textContent
-                        e.currentTarget.textContent = 'Generating...'
-                        e.currentTarget.disabled = true
+                        setIsGeneratingAtomLyrics(true)
 
                         // Call Atom API to generate lyrics
                         const response = await fetch('/api/generate/atom-lyrics', {
@@ -1681,21 +1681,18 @@ function CreatePageContent() {
                         } else {
                           alert('❌ Failed to generate lyrics: ' + (result.error || 'Unknown error'))
                         }
-
-                        // Restore button state
-                        e.currentTarget.textContent = originalText
-                        e.currentTarget.disabled = false
                       } catch (error) {
                         console.error('Atom lyrics generation error:', error)
                         alert('❌ Failed to generate lyrics. Please try again.')
-                        e.currentTarget.textContent = 'Create with Atom'
-                        e.currentTarget.disabled = false
+                      } finally {
+                        setIsGeneratingAtomLyrics(false)
                       }
                     }}
+                    disabled={isGeneratingAtomLyrics}
                     className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Atom size={12} />
-                    Create with Atom
+                    <Atom size={12} className={isGeneratingAtomLyrics ? 'animate-spin' : ''} />
+                    {isGeneratingAtomLyrics ? 'Generating...' : 'Create with Atom'}
                   </button>
                 </div>
                 <textarea
