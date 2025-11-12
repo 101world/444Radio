@@ -105,9 +105,6 @@ export default function HolographicBackground() {
         transparent: true,
         opacity: 0.95,
       });
-      // Add emissive glow
-      (material as any).emissive = color;
-      (material as any).emissiveIntensity = 0.8;
 
       const blob = new THREE.Mesh(blobGeometry, material);
       blob.position.set(
@@ -134,9 +131,6 @@ export default function HolographicBackground() {
         transparent: true,
         opacity: 0.85,
       });
-      // Add glow to wireframes
-      (material as any).emissive = color;
-      (material as any).emissiveIntensity = 0.6;
 
       const block = new THREE.Mesh(blockGeometry, material);
       block.position.set(
@@ -176,9 +170,6 @@ export default function HolographicBackground() {
         transparent: true,
         opacity: 0.9,
       });
-      // Add glow to rings
-      (material as any).emissive = color;
-      (material as any).emissiveIntensity = 0.7;
 
       const ring = new THREE.Mesh(ringGeometry, material);
       ring.position.set(
@@ -221,9 +212,6 @@ export default function HolographicBackground() {
         transparent: true,
         opacity: 0.8,
       });
-      // Add glow to shapes
-      (material as any).emissive = color;
-      (material as any).emissiveIntensity = 0.6;
 
       const shape = new THREE.Mesh(shapeGeometries[i], material);
       shape.position.set(
@@ -265,11 +253,10 @@ export default function HolographicBackground() {
 
     const particleMaterial = new THREE.PointsMaterial({
       color: 0xffffff,
-      size: 1.2, // Bigger particles
+      size: 1.2,
       transparent: true,
-      opacity: 1, // Full brightness
+      opacity: 0.8,
       sizeAttenuation: true,
-      blending: THREE.AdditiveBlending, // Additive blending for glow
     });
 
     const particles = new THREE.Points(particleGeometry, particleMaterial);

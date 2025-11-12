@@ -129,31 +129,21 @@ export default function FloatingGenres() {
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
 
-        // Multiple glow layers for crisp, bright effect
+        // Clean crisp text - no glow
         const isRadio = item.text === '444 Radio'
         
-        // Outer glow
-        ctx.shadowColor = isRadio ? 'rgba(34, 211, 238, 1)' : 'rgba(34, 211, 238, 0.6)'
-        ctx.shadowBlur = isRadio ? 30 : 20
+        // No shadow/glow
+        ctx.shadowBlur = 0
         
-        // Gradient fill - brighter and more vibrant
-        const gradient = ctx.createLinearGradient(-50, -50, 50, 50)
+        // Simple solid color - crisp and clean
         if (isRadio) {
-          gradient.addColorStop(0, 'rgba(34, 211, 238, 1)') // Full cyan
-          gradient.addColorStop(1, 'rgba(255, 255, 255, 1)') // Pure white
+          ctx.fillStyle = 'rgba(34, 211, 238, 1)' // Cyan
         } else {
-          gradient.addColorStop(0, 'rgba(34, 211, 238, 0.8)')
-          gradient.addColorStop(1, 'rgba(255, 255, 255, 0.8)')
+          ctx.fillStyle = 'rgba(34, 211, 238, 0.85)' // Slightly transparent cyan
         }
-        ctx.fillStyle = gradient
 
-        // Draw text - no blur, crisp edges
+        // Draw text - crisp, no blur
         ctx.fillText(item.text, 0, 0)
-        
-        // Add bright stroke for definition
-        ctx.strokeStyle = isRadio ? 'rgba(34, 211, 238, 0.6)' : 'rgba(34, 211, 238, 0.3)'
-        ctx.lineWidth = isRadio ? 2 : 1
-        ctx.strokeText(item.text, 0, 0)
 
         ctx.restore()
       })
