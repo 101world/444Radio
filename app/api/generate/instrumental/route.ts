@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     // Check if user has enough credits (5 credits required)
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('credits')
+      .select('credits, total_generated')
       .eq('clerk_user_id', userId)
       .single()
 
@@ -77,20 +77,21 @@ export async function POST(req: NextRequest) {
     console.log('🎹 Duration:', duration, 'seconds')
     console.log('💰 Deducted 5 credits, remaining:', userData.credits - 5)
 
-    // Use MusicGen (Meta's model) for instrumental music generation
-    // Version: stereofy/musicgen-stereo-chord
-    // This model generates instrumental music based on text prompts
+    // Use ACE-Step for instrumental music generation
+    // Model: lucataco/ace-step (as per user's request)
+    // This model generates instrumental music based on text tags
     const prediction = await createPredictionWithRetry(
       replicate,
-      "facebookresearch/musicgen:671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb",
+      "lucataco/ace-step:280fc4f9ee507577f880a167f639c02622421d8fecf492454320311217b688f1",
       {
-        model_version: "stereo-large",
-        prompt: prompt, // Tags become the prompt
+        tags: prompt, // Tags describe the instrumental style
+        lyrics: "[inst]", // Instrumental tag - no lyrics
         duration: Math.min(Math.max(duration, 1), 240), // Clamp between 1-240 seconds
-        temperature: 1.0,
-        top_k: 250,
-        top_p: 0.0,
-        classifier_free_guidance: 3
+        number_of_steps: 60, // Quality steps (default 60)
+        guidance_scale: 15, // Adherence to prompt (default 15)
+        scheduler: "euler",
+        guidance_type: "apg",
+        seed: -1 // Random seed
       }
     )
 
