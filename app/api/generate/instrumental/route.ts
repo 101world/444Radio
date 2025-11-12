@@ -32,15 +32,20 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('🎹 [INSTRUMENTAL API] Request received')
   try {
     const { userId } = await auth()
+    console.log('🎹 [INSTRUMENTAL API] User ID:', userId)
     if (!userId) {
+      console.log('🎹 [INSTRUMENTAL API] No user ID - unauthorized')
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const { prompt, duration = 60, steps = 90 } = await req.json()
+    console.log('🎹 [INSTRUMENTAL API] Received params:', { prompt, duration, steps })
 
     if (!prompt) {
+      console.log('🎹 [INSTRUMENTAL API] No prompt provided')
       return corsResponse(NextResponse.json({ error: 'Missing prompt' }, { status: 400 }))
     }
 
@@ -48,17 +53,24 @@ export async function POST(req: NextRequest) {
     const validSteps = Math.min(Math.max(steps, 20), 150)
 
     // Check if user has enough credits (5 credits required)
+    console.log('🎹 [INSTRUMENTAL API] Checking user credits...')
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('credits, total_generated')
       .eq('clerk_user_id', userId)
       .single()
 
+    console.log('🎹 [INSTRUMENTAL API] User data:', userData, 'Error:', userError)
+
     if (userError || !userData) {
+      console.log('🎹 [INSTRUMENTAL API] User not found in database')
       return corsResponse(NextResponse.json({ error: 'User not found' }, { status: 404 }))
     }
 
+    console.log('🎹 [INSTRUMENTAL API] User credits:', userData.credits)
+
     if (userData.credits < 5) {
+      console.log('🎹 [INSTRUMENTAL API] Insufficient credits')
       return corsResponse(NextResponse.json({ 
         error: 'Insufficient credits. You need 5 credits for instrumental generation.',
         creditsNeeded: 5,
@@ -67,6 +79,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Deduct credits immediately
+    console.log('🎹 [INSTRUMENTAL API] Deducting 5 credits...')
     const { error: deductError } = await supabase
       .from('users')
       .update({ 
@@ -76,10 +89,11 @@ export async function POST(req: NextRequest) {
       .eq('clerk_user_id', userId)
 
     if (deductError) {
-      console.error('Failed to deduct credits:', deductError)
+      console.error('🎹 [INSTRUMENTAL API] Failed to deduct credits:', deductError)
       return corsResponse(NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 }))
     }
 
+    console.log('🎹 [INSTRUMENTAL API] Credits deducted successfully! New balance:', userData.credits - 5)
     console.log(`🎹 Starting instrumental generation for user ${userId}`)
     console.log('🎹 Prompt (tags):', prompt)
     console.log('🎹 Duration:', duration, 'seconds')

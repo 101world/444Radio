@@ -778,6 +778,7 @@ function CreatePageContent() {
 
       // Call instrumental API
       console.log('[Instrumental] Calling API with:', params)
+      console.log('[Instrumental] API URL:', '/api/generate/instrumental')
       const response = await fetch('/api/generate/instrumental', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -788,10 +789,13 @@ function CreatePageContent() {
         })
       })
 
+      console.log('[Instrumental] Response status:', response.status, response.statusText)
       const result = await response.json()
       console.log('[Instrumental] API response:', result)
+      console.log('[Instrumental] Response OK?', response.ok, 'Result success?', result.success)
 
       if (!response.ok || !result.success) {
+        console.error('[Instrumental] Generation failed:', result.error)
         throw new Error(result.error || 'Instrumental generation failed')
       }
 
