@@ -500,13 +500,13 @@ export default function HolographicBackground() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Animation loop
-    let time = 0;
+    // Animation loop with delta time for consistent speed
+    let lastTime = performance.now();
     let frameCount = 0;
     const loopDuration = 20; // 20 seconds for complete loop
     const initialCameraZ = 25;
 
-    const animate = () => {
+    const animate = (currentTime: number = performance.now()) => {
       frameCount++;
       
       // Skip frames on mobile for better performance
@@ -515,7 +515,11 @@ export default function HolographicBackground() {
         return;
       }
 
-      time += 0.01;
+      // Calculate delta time for frame-independent animation
+      const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.1); // Cap at 0.1s
+      lastTime = currentTime;
+      
+      const time = currentTime * 0.001; // Use actual time in seconds
       const loopTime = (time % loopDuration) / loopDuration; // 0 to 1
 
       // Camera dolly - smooth loop using sine wave + scroll parallax
