@@ -1,12 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Music, Play, Pause } from 'lucide-react'
+import { Music, Play, Pause, Sparkles } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
+import CreditIndicator from './components/CreditIndicator'
 import FloatingNavButton from './components/FloatingNavButton'
 
+// Lazy load heavy 3D components for better performance
 const HolographicBackgroundClient = lazy(() => import('./components/HolographicBackgroundClient'))
 const FloatingGenres = lazy(() => import('./components/FloatingGenres'))
 
@@ -27,6 +29,19 @@ export default function HomePage() {
   useEffect(() => {
     fetchAllTracks()
   }, [])
+
+  // Spacebar play/pause handler for desktop
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault()
+        handlePlayAll()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [tracks, currentTrack, isPlaying])
 
   const fetchAllTracks = async () => {
     try {
@@ -59,10 +74,14 @@ export default function HomePage() {
 
   const handlePlayAll = () => {
     if (tracks.length === 0) return
+
+    // If already playing and has a track, just toggle
     if (currentTrack && isPlaying) {
       togglePlayPause()
       return
     }
+
+    // Convert tracks to audio player format and start playing
     const playerTracks = tracks.map(t => ({
       id: t.id,
       audioUrl: t.audio_url,
@@ -70,28 +89,37 @@ export default function HomePage() {
       artist: t.artist,
       imageUrl: t.image_url
     }))
+
     setPlaylist(playerTracks, 0)
     playTrack(playerTracks[0])
   }
 
-  const handleFocus = () => {
-    router.push('/create')
-  }
-
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative overflow-hidden">
+      {/* Holographic 3D Background */}
       <Suspense fallback={null}>
         <HolographicBackgroundClient />
       </Suspense>
+
+      {/* Floating Genre Texts */}
       <Suspense fallback={null}>
         <FloatingGenres />
       </Suspense>
+
+      {/* Dark overlay to reduce clutter */}
       <div className="absolute inset-0 bg-black/60 z-[2]" />
+
+      {/* Main Content Wrapper */}
       <div className="relative z-10 flex-1 flex flex-col transition-opacity duration-500">
+        {/* Floating Menu */}
         <FloatingMenu />
+
+        {/* Landing View */}
         <div className="flex-1 flex flex-col items-center md:justify-center px-4 sm:px-6 lg:px-8 pt-16 md:py-8">
+          {/* Welcome Text */}
           <div className="text-center space-y-2 md:space-y-6 md:mb-16 will-change-auto flex-shrink-0">
-            <div className="flex-col items-center justify-center gap-2 md:gap-5 md:flex-row">
+            {/* Logo & Title */}
+            <div className="flex flex-col items-center justify-center gap-2 md:gap-5 md:flex-row">
               <img
                 src="/radio-logo.svg"
                 alt="444 Radio"
@@ -109,9 +137,13 @@ export default function HomePage() {
                 444 RADIO
               </h1>
             </div>
+
+            {/* Tagline */}
             <p className="text-xs md:text-xl lg:text-2xl text-gray-300 font-light tracking-wide max-w-2xl mx-auto px-4">
               A world where music feels infinite.
             </p>
+
+            {/* Feature Pills - Desktop Only */}
             <div className="hidden md:flex flex-wrap items-center justify-center gap-2 lg:gap-3 px-4 max-w-2xl mx-auto mt-8">
               {['Instant Generation', 'High Quality', 'Unlimited Ideas'].map((feature) => (
                 <div
@@ -122,6 +154,8 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+
+            {/* Play Button - Always Visible */}
             <div className="mt-6 md:mt-10">
               <button
                 onClick={handlePlayAll}
@@ -142,15 +176,22 @@ export default function HomePage() {
               </p>
             </div>
           </div>
+
+          {/* Spacer for mobile */}
           <div className="flex-1 md:hidden"></div>
         </div>
+
+        {/* Prompt Input - Fixed to bottom */}
         <div className="fixed bottom-0 left-0 right-0 md:relative md:bottom-auto px-4 sm:px-6 lg:px-8 pb-safe md:pb-0 z-20">
           <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
             <div
               className="group relative cursor-pointer active:scale-95 md:hover:scale-105 transition-transform duration-200"
-              onClick={handleFocus}
+              onClick={() => router.push('/create')}
             >
+              {/* Glow Effect */}
               <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 rounded-3xl blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>
+
+              {/* Input Container */}
               <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl rounded-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
                 <Music
                   size={20}
@@ -166,6 +207,8 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+
+            {/* Quick Info */}
             <div className="flex items-center justify-center gap-2 mt-2 md:mt-6 text-xs md:text-sm mb-2">
               <span className="text-cyan-400/60 font-mono tracking-wider">
                 ✨ Tap to create
@@ -174,6 +217,8 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Navigation Button */}
       <FloatingNavButton showPromptToggle={false} onTogglePrompt={() => {}} />
     </div>
   )
