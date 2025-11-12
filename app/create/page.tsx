@@ -324,20 +324,22 @@ function CreatePageContent() {
     })
   }, [generations])
 
+  // Fetch user credits function
+  const fetchCredits = async () => {
+    try {
+      const res = await fetch('/api/credits')
+      const data = await res.json()
+      setUserCredits(data.credits || 0)
+    } catch (error) {
+      console.error('Failed to fetch credits:', error)
+      setUserCredits(0)
+    } finally {
+      setIsLoadingCredits(false)
+    }
+  }
+
   // Fetch user credits on mount
   useEffect(() => {
-    const fetchCredits = async () => {
-      try {
-        const res = await fetch('/api/credits')
-        const data = await res.json()
-        setUserCredits(data.credits || 0)
-      } catch (error) {
-        console.error('Failed to fetch credits:', error)
-        setUserCredits(0)
-      } finally {
-        setIsLoadingCredits(false)
-      }
-    }
     fetchCredits()
   }, [])
 
