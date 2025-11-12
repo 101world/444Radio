@@ -1650,13 +1650,49 @@ function CreatePageContent() {
                   </button>
                   <button
                     type="button"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      // Placeholder for Create with Atom functionality
-                      alert('Create with Atom feature coming soon!')
+                      
+                      if (!input || !input.trim()) {
+                        alert('⚠️ Please enter a prompt first!')
+                        return
+                      }
+
+                      try {
+                        // Show loading state
+                        const originalText = e.currentTarget.textContent
+                        e.currentTarget.textContent = 'Generating...'
+                        e.currentTarget.disabled = true
+
+                        // Call Atom API to generate lyrics
+                        const response = await fetch('/api/generate/atom-lyrics', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            prompt: input
+                          })
+                        })
+
+                        const result = await response.json()
+
+                        if (result.success && result.lyrics) {
+                          setCustomLyrics(result.lyrics)
+                        } else {
+                          alert('❌ Failed to generate lyrics: ' + (result.error || 'Unknown error'))
+                        }
+
+                        // Restore button state
+                        e.currentTarget.textContent = originalText
+                        e.currentTarget.disabled = false
+                      } catch (error) {
+                        console.error('Atom lyrics generation error:', error)
+                        alert('❌ Failed to generate lyrics. Please try again.')
+                        e.currentTarget.textContent = 'Create with Atom'
+                        e.currentTarget.disabled = false
+                      }
                     }}
-                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors"
+                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Atom size={12} />
                     Create with Atom
