@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getRandomLyrics, getRandomLyricsByGenre, getRandomLyricsByMood } from '@/lib/lyrics-database'
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
+import { corsResponse, handleOptions } from '@/lib/cors'
 
 /**
  * GET /api/lyrics/random
@@ -12,6 +13,11 @@ import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
  * - genre: Filter by genre (lofi, hiphop, jazz, chill, rnb)
  * - mood: Filter by mood (melancholic, empowering, romantic, etc.)
  */
+
+export async function OPTIONS() {
+  return handleOptions()
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
@@ -29,20 +35,20 @@ export async function GET(req: Request) {
     else if (genre) {
       lyrics = getRandomLyricsByGenre(genre)
       if (!lyrics) {
-        return NextResponse.json(
+        return corsResponse(NextResponse.json(
           { error: `No lyrics found for genre: ${genre}` },
           { status: 404 }
-        )
+        ))
       }
     } 
     // Priority 3: Filter by mood
     else if (mood) {
       lyrics = getRandomLyricsByMood(mood)
       if (!lyrics) {
-        return NextResponse.json(
+        return corsResponse(NextResponse.json(
           { error: `No lyrics found for mood: ${mood}` },
           { status: 404 }
-        )
+        ))
       }
     } 
     // Priority 4: Pure random
@@ -50,15 +56,15 @@ export async function GET(req: Request) {
       lyrics = getRandomLyrics()
     }
 
-    return NextResponse.json({
+    return corsResponse(NextResponse.json({
       success: true,
       lyrics
-    })
+    }))
   } catch (error) {
     console.error('Error getting random lyrics:', error)
-    return NextResponse.json(
+    return corsResponse(NextResponse.json(
       { error: 'Failed to get random lyrics' },
       { status: 500 }
-    )
+    ))
   }
 }
