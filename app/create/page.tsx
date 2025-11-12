@@ -85,6 +85,10 @@ function CreatePageContent() {
   const [songDuration, setSongDuration] = useState<'short' | 'medium' | 'long'>('medium')
   const [generateCoverArt, setGenerateCoverArt] = useState(true)
   
+  // Instrumental mode
+  const [isInstrumental, setIsInstrumental] = useState(false)
+  const [instrumentalDuration, setInstrumentalDuration] = useState(60) // Default 60 seconds, max 240
+  
   // ACE-Step parameters (for non-English)
   const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
   const [numInferenceSteps, setNumInferenceSteps] = useState(50)
@@ -482,7 +486,7 @@ function CreatePageContent() {
     setShowTitleError(false)
 
     // Check credits before generation
-    const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0
+    const creditsNeeded = isInstrumental ? 5 : (selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0)
     if (userCredits !== null && userCredits < creditsNeeded) {
       alert(`⚡ Insufficient credits! You need ${creditsNeeded} credits but only have ${userCredits}. Visit the pricing page to get more.`)
       return
@@ -490,6 +494,38 @@ function CreatePageContent() {
 
     // Close any open parameter modals
     closeAllModals()
+
+    // For instrumental generation - Different workflow
+    if (selectedType === 'music' && isInstrumental) {
+      const generationId = Date.now().toString()
+      const userMessage: Message = {
+        id: generationId,
+        type: 'user',
+        content: `🎹 Generate instrumental (${instrumentalDuration}s): "${input}"`,
+        timestamp: new Date()
+      }
+
+      const generatingMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'generation',
+        content: activeGenerations.size > 0 ? '🎹 Queued - will start soon...' : '🎹 Generating instrumental track...',
+        generationType: 'music',
+        isGenerating: true,
+        timestamp: new Date()
+      }
+
+      setMessages(prev => [...prev, userMessage, generatingMessage])
+      setGenerationQueue(prev => [...prev, generatingMessage.id])
+      setInput('')
+
+      // Process instrumental queue
+      processInstrumentalQueue(generatingMessage.id, {
+        prompt: input,
+        duration: instrumentalDuration
+      })
+
+      return
+    }
 
     // For music generation - Generate directly without modal
     if (selectedType === 'music') {
@@ -686,6 +722,126 @@ function CreatePageContent() {
       setMessages(prev => prev.map(msg => 
         msg.id === messageId
           ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
+          : msg
+      ))
+    } finally {
+      // Remove from queue and active generations
+      setGenerationQueue(prev => prev.filter(id => id !== messageId))
+      setActiveGenerations(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(messageId)
+        return newSet
+      })
+    }
+  }
+
+  // Instrumental queue processing function
+  const processInstrumentalQueue = async (
+    messageId: string,
+    params: {
+      prompt: string
+      duration: number
+    }
+  ) => {
+    console.log('[Instrumental] Starting generation:', { messageId, params })
+    
+    // Add to persistent generation queue
+    const genId = addGeneration({
+      type: 'music',
+      prompt: params.prompt,
+      title: `Instrumental: ${params.prompt.substring(0, 40)}`
+    })
+    
+    // Link the message to the generation queue item
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, generationId: genId } : msg
+    ))
+    
+    try {
+      // Add to active generations
+      setActiveGenerations(prev => new Set(prev).add(messageId))
+      
+      // Update generation queue status
+      updateGeneration(genId, { status: 'generating', progress: 10 })
+      
+      // Update message to generating
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, content: '🎹 Generating instrumental track...', isGenerating: true }
+          : msg
+      ))
+
+      // Call instrumental API
+      console.log('[Instrumental] Calling API with:', params)
+      const response = await fetch('/api/generate/instrumental', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: params.prompt,
+          duration: params.duration
+        })
+      })
+
+      const result = await response.json()
+      console.log('[Instrumental] API response:', result)
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Instrumental generation failed')
+      }
+
+      // Update generation queue with success
+      updateGeneration(genId, {
+        status: 'completed',
+        progress: 100,
+        result: {
+          audioUrl: result.audioUrl,
+          title: `Instrumental: ${params.prompt.substring(0, 40)}`,
+          prompt: params.prompt
+        }
+      })
+
+      // Update message with result
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId
+          ? {
+              ...msg,
+              isGenerating: false,
+              content: '✅ Instrumental track generated!',
+              result: {
+                audioUrl: result.audioUrl,
+                title: `Instrumental: ${params.prompt.substring(0, 40)}`,
+                prompt: params.prompt
+              }
+            }
+          : msg
+      ))
+
+      // Refresh credits
+      fetchUserCredits()
+
+      // Add assistant response
+      if (!result.error) {
+        const assistantMessage: Message = {
+          id: (Date.now() + Math.random()).toString(),
+          type: 'assistant',
+          content: `Your ${params.duration}s instrumental track is ready! Used 5 credits. ${result.creditsRemaining} credits remaining.`,
+          timestamp: new Date()
+        }
+        console.log('[Instrumental] Adding assistant message:', assistantMessage)
+        setMessages(prev => [...prev, assistantMessage])
+      }
+    } catch (error) {
+      console.error('Instrumental generation error:', error)
+      
+      // Update persistent queue with error
+      updateGeneration(genId, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+      
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId
+          ? { ...msg, isGenerating: false, content: '❌ Instrumental generation failed. Please try again.' }
           : msg
       ))
     } finally {
@@ -1133,6 +1289,34 @@ function CreatePageContent() {
             {/* Divider */}
             <div className="w-px h-8 bg-cyan-500/30"></div>
 
+            {/* Instrumental Toggle - Only show for music */}
+            {selectedType === 'music' && (
+              <button
+                onClick={() => setIsInstrumental(!isInstrumental)}
+                className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
+                  isInstrumental
+                    ? 'bg-gradient-to-r from-purple-600/20 via-purple-500/20 to-purple-400/20 border-2 border-purple-400 scale-105'
+                    : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
+                }`}
+                title={isInstrumental ? "Instrumental Mode (5 credits)" : "Switch to Instrumental"}
+              >
+                <Music2 
+                  size={18} 
+                  className={`${
+                    isInstrumental ? 'text-purple-300' : 'text-cyan-400'
+                  } drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]`}
+                />
+                {isInstrumental && (
+                  <div className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-purple-500 rounded-full text-[8px] font-bold text-white">
+                    {instrumentalDuration}s
+                  </div>
+                )}
+              </button>
+            )}
+
+            {/* Divider */}
+            <div className="w-px h-8 bg-cyan-500/30"></div>
+
             {/* Lyrics Button */}
             <button
               onClick={() => setShowLyricsModal(true)}
@@ -1173,7 +1357,7 @@ function CreatePageContent() {
                 {isLoadingCredits ? '...' : userCredits}
               </span>
               <span className="text-xs text-cyan-400/60 font-mono">
-                {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : ''}
+                {isInstrumental ? '(-5)' : (selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : '')}
               </span>
             </div>
           </div>
@@ -1331,7 +1515,37 @@ function CreatePageContent() {
             {/* Content - Scrollable */}
             <div id="parameters-section" className="flex-1 overflow-y-auto p-5 space-y-4">
               
-              {/* Lyrics - FIRST & MANDATORY */}
+              {/* Instrumental Duration Slider - Only show when instrumental mode is active */}
+              {isInstrumental && (
+                <div className="space-y-2 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-purple-400 uppercase tracking-wide flex items-center gap-2">
+                      <Music2 size={14} className="text-purple-400" />
+                      Instrumental Duration
+                    </label>
+                    <span className="text-sm font-bold text-purple-300">{instrumentalDuration}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="240"
+                    step="10"
+                    value={instrumentalDuration}
+                    onChange={(e) => setInstrumentalDuration(Number(e.target.value))}
+                    className="w-full h-2 bg-purple-900/30 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                  <div className="flex justify-between text-xs text-purple-400/60">
+                    <span>10s</span>
+                    <span>240s (4 min)</span>
+                  </div>
+                  <p className="text-xs text-purple-300/80 bg-purple-500/10 px-3 py-2 rounded">
+                    💰 <span className="font-bold">5 credits</span> • Instrumental music based on your tags/prompt
+                  </p>
+                </div>
+              )}
+              
+              {/* Lyrics - FIRST & MANDATORY (Hidden in instrumental mode) */}
+              {!isInstrumental && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-red-400 uppercase tracking-wide">Lyrics *</label>
@@ -1404,6 +1618,7 @@ function CreatePageContent() {
                 />
                 <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
               </div>
+              )}
 
               {/* Language Selector - DROPDOWN */}
               <div className="space-y-1.5">
