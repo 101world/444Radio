@@ -795,8 +795,7 @@ function CreatePageContent() {
         progress: 100,
         result: {
           audioUrl: result.audioUrl,
-          title: `Instrumental: ${params.prompt.substring(0, 40)}`,
-          prompt: params.prompt
+          title: `Instrumental: ${params.prompt.substring(0, 40)}`
         }
       })
 
@@ -809,15 +808,14 @@ function CreatePageContent() {
               content: '✅ Instrumental track generated!',
               result: {
                 audioUrl: result.audioUrl,
-                title: `Instrumental: ${params.prompt.substring(0, 40)}`,
-                prompt: params.prompt
+                title: `Instrumental: ${params.prompt.substring(0, 40)}`
               }
             }
           : msg
       ))
 
       // Refresh credits
-      fetchUserCredits()
+      fetchCredits()
 
       // Add assistant response
       if (!result.error) {
