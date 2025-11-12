@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
-import { supabase } from '@/lib/supabase'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { createClient } from '@supabase/supabase-js'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 })
+
+// Use service role key for server-side operations (bypasses RLS)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 async function createPredictionWithRetry(replicateClient: Replicate, version: string, input: any, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
