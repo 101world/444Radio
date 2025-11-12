@@ -31,6 +31,24 @@ export default function HomePage() {
     fetchAllTracks()
   }, [])
 
+  // Spacebar to play/pause
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === ' ') {
+        // Don't trigger if user is typing in an input
+        if (document.activeElement?.tagName === 'INPUT' || 
+            document.activeElement?.tagName === 'TEXTAREA') {
+          return
+        }
+        e.preventDefault()
+        handlePlayAll()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [tracks, currentTrack, isPlaying])
+
   const fetchAllTracks = async () => {
     try {
       const res = await fetch('/api/media/explore')
