@@ -82,6 +82,10 @@ export default function HomePage() {
     playTrack(playerTracks[0])
   }
 
+  const handleInputClick = () => {
+    router.push('/create')
+  }
+
   return (
     <>
       {/* 3D Background with lazy loading */}
@@ -97,6 +101,9 @@ export default function HomePage() {
           <FloatingGenres />
         </Suspense>
       </div>
+
+      {/* Glassmorphism overlay - blur the background */}
+      <div className="fixed inset-0 backdrop-blur-md bg-black/30 -z-5"></div>
 
       {/* Credit Indicator */}
       <div className="fixed top-4 right-4 z-50">
@@ -114,7 +121,7 @@ export default function HomePage() {
               className="relative group transition-all duration-300 hover:scale-105 active:scale-95"
             >
               <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full group-hover:bg-cyan-500/30 transition-all duration-300" />
-              <div className="relative bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-full p-6 transition-all duration-300">
+              <div className="relative bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-full p-6 transition-all duration-300 backdrop-blur-xl">
                 {isPlaying && currentTrack ? (
                   <Pause className="w-12 h-12 text-cyan-400" strokeWidth={2} fill="currentColor" />
                 ) : (
@@ -136,18 +143,14 @@ export default function HomePage() {
               </h1>
             </div>
 
-            {/* Aesthetic describe your sound bar */}
+            {/* Aesthetic describe your sound bar - navigates to create page */}
             <div className="w-full max-w-2xl mt-4">
-              <div className="relative group">
+              <div className="relative group cursor-pointer" onClick={handleInputClick}>
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-cyan-400/20 to-cyan-500/20 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-300"></div>
                 <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="describe your sound..."
-                    value={promptText}
-                    onChange={(e) => setPromptText(e.target.value)}
-                    className="w-full px-6 py-4 bg-black/40 backdrop-blur-xl border border-cyan-500/30 rounded-2xl text-white placeholder-cyan-400/40 focus:outline-none focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 text-center text-sm md:text-base"
-                  />
+                  <div className="w-full px-6 py-4 bg-black/60 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl text-cyan-400/60 group-hover:text-cyan-400/80 group-hover:border-cyan-400/50 focus:outline-none transition-all duration-300 text-center text-sm md:text-base">
+                    describe your sound...
+                  </div>
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/5 via-transparent to-cyan-500/5 pointer-events-none"></div>
                 </div>
               </div>
