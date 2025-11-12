@@ -90,7 +90,7 @@ export default function Pricing() {
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-32">
           {/* Free Access Card */}
-          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 pt-12 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
             {/* Holographic overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 via-transparent to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-tl from-pink-500/10 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
@@ -148,7 +148,7 @@ export default function Pricing() {
           </div>
 
           {/* Creator Plan */}
-          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 pt-12 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
             {/* Holographic overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 via-transparent to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/10 via-transparent to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
@@ -295,7 +295,7 @@ export default function Pricing() {
           </div>
 
           {/* Studio Plan */}
-          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
+          <div className="group relative backdrop-blur-xl bg-black/60 border border-cyan-500/40 rounded-2xl p-8 pt-12 hover:border-cyan-400/80 transition-all duration-500 hover:scale-[1.02] overflow-hidden flex flex-col">
             {/* Holographic overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 via-transparent to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-tl from-cyan-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
