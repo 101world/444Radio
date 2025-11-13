@@ -11,6 +11,7 @@ import FloatingNavButton from '../../components/FloatingNavButton'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus, User } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
+import LikeButton from '../../components/LikeButton'
 
 // Lazy load heavy components
 const HolographicBackground = lazy(() => import('../../components/HolographicBackgroundClient'))
@@ -1243,12 +1244,18 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                     <Play size={12} />
                                     <span>{media.plays || 0}</span>
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <Heart size={12} />
-                                    <span>{media.likes || 0}</span>
-                                  </div>
                                 </div>
                               </div>
+                            </div>
+
+                            {/* Like Button */}
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <LikeButton
+                                releaseId={media.id}
+                                initialLikesCount={media.likes || 0}
+                                size="sm"
+                                showCount={true}
+                              />
                             </div>
 
                             {/* Add to Queue Button */}
@@ -1706,7 +1713,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                   </div>
                                   <div className="mt-2">
                                     <p className="text-sm text-white font-semibold truncate">{media.title}</p>
-                                    <p className="text-xs text-gray-400 truncate">{media.likes} likes • {media.plays || 0} plays</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <LikeButton
+                                        releaseId={media.id}
+                                        initialLikesCount={media.likes || 0}
+                                        size="sm"
+                                        showCount={true}
+                                      />
+                                      <span className="text-xs text-gray-400">• {media.plays || 0} plays</span>
+                                    </div>
                                   </div>
                                 </div>
                               ))}
@@ -1783,6 +1798,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 <p className="text-sm text-gray-400 truncate leading-tight mt-1">
                                   {profile.username}
                                 </p>
+                              </div>
+
+                              {/* Like Button */}
+                              <div onClick={(e) => e.stopPropagation()}>
+                                <LikeButton
+                                  releaseId={media.id}
+                                  initialLikesCount={media.likes || 0}
+                                  size="sm"
+                                  showCount={true}
+                                />
                               </div>
 
                               {/* Duration */}
