@@ -4,7 +4,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -45,22 +45,15 @@ interface LibraryCombined {
   image_prompt: string | null
   is_published: boolean
   created_at: string
-  duration?: number
-  user_id?: string
-}
-
-interface LikedTrack extends LibraryCombined {
-  liked_at: string
 }
 
 export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'music' | 'images' | 'liked' | 'combined'>('music')
+  const [activeTab, setActiveTab] = useState<'music' | 'images' | 'combined'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
-  const [likedItems, setLikedItems] = useState<LikedTrack[]>([])
   const [combinedItems, setCombinedItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -99,7 +92,6 @@ export default function LibraryPage() {
       // Otherwise, optimize by only fetching current tab + empty tabs
       const fetchMusic = isManualRefresh || activeTab === 'music' || !musicItems.length
       const fetchImages = isManualRefresh || activeTab === 'images' || !imageItems.length
-      const fetchLiked = isManualRefresh || activeTab === 'liked' || !likedItems.length
       const fetchReleases = isManualRefresh || activeTab === 'combined' || !combinedItems.length
       
       const requests = []
@@ -118,13 +110,6 @@ export default function LibraryPage() {
         requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       }
       
-      // Fetch liked tracks
-      if (fetchLiked) {
-        requests.push(fetch('/api/library/liked'))
-      } else {
-        requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
-      }
-      
       // Skip combined_media_library (not needed)
       requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       
@@ -135,11 +120,10 @@ export default function LibraryPage() {
         requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       }
 
-      const [musicRes, imagesRes, likedRes, combinedRes, publishedRes] = await Promise.all(requests)
+      const [musicRes, imagesRes, combinedRes, publishedRes] = await Promise.all(requests)
 
       const musicData = await musicRes.json()
       const imagesData = await imagesRes.json()
-      const likedData = await likedRes.json()
       const combinedData = await combinedRes.json()
       const publishedData = await publishedRes.json()
 
@@ -160,11 +144,6 @@ export default function LibraryPage() {
         }
       } else {
         console.warn('⚠️ Images fetch failed or empty:', imagesData)
-      }
-
-      if (likedData.success && Array.isArray(likedData.liked)) {
-        setLikedItems(likedData.liked)
-        console.log('❤️ Loaded', likedData.liked.length, 'liked tracks')
       }
 
       // Use published releases from combined_media table instead of library
@@ -231,8 +210,6 @@ export default function LibraryPage() {
     } else if (activeTab === 'images' && imageItems.length === 0 && !isLoading) {
       fetchLibrary()
     } else if (activeTab === 'music' && musicItems.length === 0 && !isLoading) {
-      fetchLibrary()
-    } else if (activeTab === 'liked' && likedItems.length === 0 && !isLoading) {
       fetchLibrary()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -401,18 +378,6 @@ export default function LibraryPage() {
               <Music size={18} />
               <span>Music</span>
               <span className="ml-1 text-xs opacity-60">({musicItems.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('liked')}
-              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'liked'
-                  ? 'bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg shadow-red-500/30'
-                  : 'bg-white/5 text-red-400/60 hover:bg-red-500/10 hover:text-red-400'
-              }`}
-            >
-              <Heart size={18} />
-              <span>Liked</span>
-              <span className="ml-1 text-xs opacity-60">({likedItems.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('combined')}
@@ -625,107 +590,6 @@ export default function LibraryPage() {
                           <Trash2 size={16} className="text-red-400" />
                         </button>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Liked Songs Tab */}
-        {!isLoading && activeTab === 'liked' && (
-          <div>
-            {likedItems.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-red-500/20 to-pink-400/10 border border-red-500/30 flex items-center justify-center">
-                  <Heart size={32} className="text-red-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No liked songs yet</h3>
-                <p className="text-red-400/50 mb-6 text-sm">Like tracks to save them here</p>
-                <Link href="/explore" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-xl font-bold hover:from-red-700 hover:to-pink-700 transition-all shadow-lg shadow-red-500/20">
-                  <Music size={18} />
-                  Explore Music
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {likedItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group flex items-center gap-4 p-4 rounded-xl bg-black/40 backdrop-blur-xl border border-white/10 hover:border-red-400/40 hover:bg-white/5 transition-all cursor-pointer"
-                  >
-                    {/* Album Art */}
-                    <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden">
-                      <img
-                        src={item.image_url}
-                        alt={item.title || 'Track'}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                          <Play className="text-white ml-0.5" size={14} fill="currentColor" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Track Info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white truncate">{item.title || 'Untitled'}</h3>
-                      <p className="text-sm text-gray-400 truncate mt-1">
-                        Liked {new Date(item.liked_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-
-                    {/* Duration */}
-                    <div className="text-sm text-gray-400 flex-shrink-0 font-mono hidden sm:block">
-                      {item.duration ? Math.floor(item.duration / 60) + ':' + String(item.duration % 60).padStart(2, '0') : '3:00'}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          const track = {
-                            id: item.id,
-                            audioUrl: item.audio_url,
-                            title: item.title || 'Untitled',
-                            artist: user?.firstName || 'Unknown',
-                            imageUrl: item.image_url,
-                            userId: item.user_id
-                          }
-                          
-                          if (currentTrack?.id === item.id) {
-                            togglePlayPause()
-                          } else {
-                            const allTracks = likedItems.map(i => ({
-                              id: i.id,
-                              audioUrl: i.audio_url,
-                              title: i.title || 'Untitled',
-                              artist: user?.firstName || 'Unknown',
-                              imageUrl: i.image_url,
-                              userId: i.user_id
-                            }))
-                            setPlaylist(allTracks, likedItems.findIndex(i => i.id === item.id))
-                          }
-                        }}
-                        className="w-10 h-10 rounded-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 flex items-center justify-center transition-all shadow-lg shadow-red-500/20 active:scale-95"
-                      >
-                        {currentTrack?.id === item.id && isPlaying ? (
-                          <Pause size={18} className="text-white" />
-                        ) : (
-                          <Play size={18} className="text-white ml-0.5" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
-                        className="hidden sm:flex w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-red-500/30 hover:border-red-400 hover:bg-red-500/20 items-center justify-center transition-all active:scale-95"
-                        title="Download"
-                      >
-                        <Download size={16} className="text-red-400" />
-                      </button>
                     </div>
                   </div>
                 ))}
