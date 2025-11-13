@@ -9,6 +9,7 @@ export async function OPTIONS() {
 /**
  * GET /api/library/music
  * Get all music files from user's library
+ * RESTORED: Reading from combined_media like it was working before
  */
 export async function GET() {
   try {
@@ -21,9 +22,9 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch user's music library
+    // Fetch user's music from combined_media (where it was working before)
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
+      `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&audio_url=not.is.null&order=created_at.desc`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -32,10 +33,22 @@ export async function GET() {
       }
     )
 
-    const music = await response.json()
+    const media = await response.json()
 
-    // Ensure it's always an array
-    const musicArray = Array.isArray(music) ? music : []
+    // Transform to match expected music format
+    const musicArray = Array.isArray(media) ? media.map(item => ({
+      id: item.id,
+      clerk_user_id: item.user_id,
+      title: item.title,
+      prompt: item.audio_prompt || 'Generated track',
+      lyrics: item.lyrics,
+      audio_url: item.audio_url,
+      duration: item.duration,
+      audio_format: 'mp3',
+      status: 'ready',
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    })) : []
 
     return corsResponse(NextResponse.json({
       success: true,
