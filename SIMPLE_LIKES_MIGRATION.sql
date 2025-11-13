@@ -1,7 +1,7 @@
 -- =====================================================
 -- 444 RADIO: LIKE SYSTEM MIGRATION (SIMPLIFIED)
 -- =====================================================
--- Migration 005: Likes System
+-- Run this in Supabase SQL Editor
 -- =====================================================
 
 -- Step 1: Add likes_count column to combined_media
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS user_likes (
   UNIQUE(user_id, release_id)
 );
 
--- Step 3: Add foreign key constraint (conditionally)
+-- Step 3: Add foreign key constraint
 DO $$ 
 BEGIN
   IF NOT EXISTS (
@@ -41,7 +41,7 @@ DROP POLICY IF EXISTS "Anyone can view likes" ON user_likes;
 DROP POLICY IF EXISTS "Users can create own likes" ON user_likes;
 DROP POLICY IF EXISTS "Users can delete own likes" ON user_likes;
 
--- Step 7: Create RLS policies (API uses Service Role Key which bypasses these)
+-- Step 7: Create simple RLS policies (API uses Service Role Key which bypasses these)
 CREATE POLICY "Anyone can view likes" ON user_likes FOR SELECT USING (true);
 CREATE POLICY "Users can create own likes" ON user_likes FOR INSERT WITH CHECK (true);
 CREATE POLICY "Users can delete own likes" ON user_likes FOR DELETE USING (true);
@@ -71,4 +71,24 @@ CREATE TRIGGER trigger_update_likes_count
 -- Step 10: Initialize likes_count to 0 for all existing records
 UPDATE combined_media SET likes_count = 0 WHERE likes_count IS NULL;
 
--- Migration complete! ✅
+-- =====================================================
+-- VERIFY IT WORKED
+-- =====================================================
+-- Run these queries to verify:
+
+-- Check if user_likes table exists
+SELECT EXISTS (
+  SELECT FROM information_schema.tables 
+  WHERE table_schema = 'public' 
+  AND table_name = 'user_likes'
+) AS user_likes_exists;
+
+-- Check if likes_count column exists
+SELECT EXISTS (
+  SELECT FROM information_schema.columns 
+  WHERE table_schema = 'public' 
+  AND table_name = 'combined_media' 
+  AND column_name = 'likes_count'
+) AS likes_count_exists;
+
+-- If both return 'true', migration succeeded! 🎉
