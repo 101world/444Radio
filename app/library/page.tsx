@@ -89,23 +89,32 @@ export default function LibraryPage() {
       setIsLoading(true)
     }
     try {
-      // Fetch all 4 tabs
-      const [musicRes, imagesRes, releasesRes, likesRes] = await Promise.all([
+      // Fetch from database AND R2
+      const [musicRes, r2Res, imagesRes, releasesRes, likesRes] = await Promise.all([
         fetch('/api/library/music'),
+        fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
         fetch('/api/library/releases'),
         fetch('/api/library/likes')
       ])
 
       const musicData = await musicRes.json()
+      const r2Data = await r2Res.json()
       const imagesData = await imagesRes.json()
       const releasesData = await releasesRes.json()
       const likesData = await likesRes.json()
 
-      if (musicData.success && Array.isArray(musicData.music)) {
-        setMusicItems(musicData.music)
-        console.log('✅ Loaded', musicData.music.length, 'music items')
-      }
+      // Combine database + R2 files, deduplicate by audio_url
+      const dbMusic = (musicData.success && Array.isArray(musicData.music)) ? musicData.music : []
+      const r2Music = (r2Data.success && Array.isArray(r2Data.music)) ? r2Data.music : []
+      
+      const allMusic = [...dbMusic, ...r2Music]
+      const uniqueMusic = Array.from(
+        new Map(allMusic.map(item => [item.audio_url, item])).values()
+      )
+      
+      setMusicItems(uniqueMusic)
+      console.log('✅ Loaded', dbMusic.length, 'from DB +', r2Music.length, 'from R2 =', uniqueMusic.length, 'unique tracks')
 
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
