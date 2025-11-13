@@ -23,34 +23,72 @@ export async function GET() {
       }
     })
 
-    const bucketName = process.env.R2_BUCKET_NAME || 'audio-files'
-    console.log('🪣 Listing bucket:', bucketName)
+    const primaryBucket = (process.env.R2_BUCKET_NAME || '').trim()
+    const fallbackBucket = 'audio-files'
+    const bucketsToTry = Array.from(new Set([primaryBucket, fallbackBucket].filter(Boolean)))
 
-    const command = new ListObjectsV2Command({
-      Bucket: bucketName
-    })
-    
-    const response = await s3Client.send(command)
-    const files = response.Contents || []
-    
     const audioBaseUrl = process.env.NEXT_PUBLIC_R2_AUDIO_URL!
-    
-    // Transform R2 files to library format
-    const tracks = files.map((file, index) => ({
+
+    const listAll = async (bucket: string) => {
+      let isTruncated: boolean = true
+      let continuationToken: string | undefined = undefined
+      const objects: any[] = []
+      while (isTruncated) {
+        const resp: any = await s3Client.send(new ListObjectsV2Command({
+          Bucket: bucket,
+          ContinuationToken: continuationToken
+        }))
+        const page: any[] = resp?.Contents || []
+        objects.push(...page)
+        isTruncated = !!resp?.IsTruncated
+        continuationToken = resp?.NextContinuationToken
+      }
+      return objects
+    }
+
+    let files: any[] = []
+    let usedBucket = ''
+    let lastError: any = null
+
+    for (const b of bucketsToTry) {
+      try {
+        console.log('🪣 Trying to list bucket:', b)
+        const listed = await listAll(b)
+        if (listed.length > 0) {
+          files = listed
+          usedBucket = b
+          break
+        }
+        // If zero, still accept but continue to try fallback
+        if (files.length === 0) {
+          files = listed
+          usedBucket = b
+        }
+      } catch (err) {
+        lastError = err
+        console.warn('⚠️ Failed listing bucket', b, err)
+        continue
+      }
+    }
+
+    const tracks = (files || []).map((file, index) => ({
       id: file.Key || `r2-${index}`,
-      title: file.Key?.replace('.mp3', '').replace('.wav', '') || `Track ${index + 1}`,
+      title: (file.Key || '').replace(/\.(mp3|wav|ogg)$/i, '') || `Track ${index + 1}`,
       prompt: 'Generated music',
       lyrics: null,
       audio_url: `${audioBaseUrl}/${file.Key}`,
-      created_at: file.LastModified?.toISOString() || new Date().toISOString(),
+      created_at: (file.LastModified ? new Date(file.LastModified).toISOString() : new Date().toISOString()),
       file_size: file.Size || 0,
       source: 'r2'
     }))
 
     return NextResponse.json({
       success: true,
+      bucketTried: bucketsToTry,
+      bucketUsed: usedBucket,
       music: tracks,
-      count: tracks.length
+      count: tracks.length,
+      error: tracks.length === 0 && lastError ? String(lastError) : undefined
     })
 
   } catch (error: any) {
