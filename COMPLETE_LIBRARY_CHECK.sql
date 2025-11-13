@@ -80,7 +80,7 @@ WITH all_tracks AS (
     image_url,
     audio_prompt as prompt,
     lyrics,
-    is_published,
+    COALESCE(is_published, FALSE) as is_published,
     created_at
   FROM combined_media 
   WHERE user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R' AND audio_url IS NOT NULL
@@ -95,7 +95,7 @@ WITH all_tracks AS (
     image_url,
     music_prompt as prompt,
     lyrics,
-    is_published,
+    COALESCE(is_published, FALSE) as is_published,
     created_at
   FROM combined_media_library 
   WHERE clerk_user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R'
