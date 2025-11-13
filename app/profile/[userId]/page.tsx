@@ -1833,16 +1833,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                     })
                                     setQueueToast(`Added "${media.title}" to queue`)
                                   }}
-                                  className="p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all mr-2"
+                                  className="p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all"
                                   title="Add to Queue"
                                 >
                                   <Plus size={16} />
                                 </button>
                               )}
 
-                              {/* Duration - hide since we don't have accurate duration */}
-                              <div className="text-sm text-gray-400 flex-shrink-0 font-mono w-12 text-right">
-                                <Play size={14} className="inline" />
+                              {/* Duration */}
+                              <div className="text-sm text-gray-400 flex-shrink-0 font-mono w-14 text-right">
+                                {media.duration ? formatDuration(media.duration) : '--:--'}
                               </div>
                             </div>
                           )
