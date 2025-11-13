@@ -4,7 +4,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -51,10 +51,10 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'music' | 'images' | 'videos'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'releases'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
-  const [videoItems, setVideoItems] = useState<any[]>([])
+  const [releaseItems, setReleaseItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   
@@ -88,18 +88,32 @@ export default function LibraryPage() {
       setIsLoading(true)
     }
     try {
-      // Fetch all user's content
-      const [musicRes, imagesRes] = await Promise.all([
+      // Fetch all user's content from DB, R2, and releases
+      const [musicRes, r2Res, imagesRes, releasesRes] = await Promise.all([
         fetch('/api/library/music'),
-        fetch('/api/library/images')
+        fetch('/api/r2/list-audio'),
+        fetch('/api/library/images'),
+        fetch('/api/library/releases')
       ])
 
       const musicData = await musicRes.json()
+      const r2Data = await r2Res.json()
       const imagesData = await imagesRes.json()
+      const releasesData = await releasesRes.json()
 
+      // Merge database music with R2 files, deduplicate by audio_url
       if (musicData.success && Array.isArray(musicData.music)) {
-        setMusicItems(musicData.music)
-        console.log('✅ Loaded', musicData.music.length, 'music tracks')
+        const dbMusic = musicData.music
+        const r2Music = r2Data.success && Array.isArray(r2Data.music) ? r2Data.music : []
+        
+        // Combine and deduplicate
+        const allMusic = [...dbMusic, ...r2Music]
+        const uniqueMusic = Array.from(
+          new Map(allMusic.map(item => [item.audio_url, item])).values()
+        )
+        
+        setMusicItems(uniqueMusic)
+        console.log('✅ Loaded', uniqueMusic.length, 'music tracks (DB:', dbMusic.length, '+ R2:', r2Music.length, ')')
       }
 
       if (imagesData.success && Array.isArray(imagesData.images)) {
@@ -107,8 +121,10 @@ export default function LibraryPage() {
         console.log('✅ Loaded', imagesData.images.length, 'images')
       }
 
-      // Videos can be added later
-      setVideoItems([])
+      if (releasesData.success && Array.isArray(releasesData.releases)) {
+        setReleaseItems(releasesData.releases)
+        console.log('✅ Loaded', releasesData.releases.length, 'releases')
+      }
     } catch (error) {
       console.error('Error fetching library:', error)
     } finally {
@@ -154,12 +170,41 @@ export default function LibraryPage() {
       })
 
       if (res.ok) {
-        // Refresh library
-        fetchLibrary()
+        // Optimistically update UI
+        if (type === 'music') {
+          setMusicItems(prev => prev.filter(item => item.id !== id))
+        } else if (type === 'images') {
+          setImageItems(prev => prev.filter(item => item.id !== id))
+        } else if (type === 'releases') {
+          setReleaseItems(prev => prev.filter(item => item.id !== id))
+        }
+        alert('✅ Deleted successfully!')
       }
     } catch (error) {
       console.error('Delete error:', error)
+      alert('❌ Failed to delete. Please try again.')
     }
+  }
+
+  const handleSendToLabel = async (musicId: string) => {
+    // Open release modal to select cover art
+    const track = musicItems.find(m => m.id === musicId)
+    if (track) {
+      setSelectedReleaseTrack(track)
+      setShowReleaseModal(true)
+    }
+  }
+
+  const handleReleaseSuccess = () => {
+    setShowReleaseModal(false)
+    setSelectedReleaseTrack(null)
+    setShowReleaseToast(true)
+    fetchLibrary() // Refresh to show new release
+    
+    // Hide toast after 3 seconds
+    setTimeout(() => {
+      setShowReleaseToast(false)
+    }, 3000)
   }
 
   const handleDownload = (url: string, filename: string) => {
@@ -264,16 +309,16 @@ export default function LibraryPage() {
               <span className="ml-1 text-xs opacity-60">({musicItems.length})</span>
             </button>
             <button
-              onClick={() => setActiveTab('videos')}
+              onClick={() => setActiveTab('releases')}
               className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'videos'
-                  ? 'bg-gradient-to-r from-purple-600 to-purple-400 text-white shadow-lg shadow-purple-500/30'
-                  : 'bg-white/5 text-purple-400/60 hover:bg-purple-500/10 hover:text-purple-400'
+                activeTab === 'releases'
+                  ? 'bg-gradient-to-r from-green-600 to-green-400 text-white shadow-lg shadow-green-500/30'
+                  : 'bg-white/5 text-green-400/60 hover:bg-green-500/10 hover:text-green-400'
               }`}
             >
-              <Layers size={18} />
-              <span>Videos</span>
-              <span className="ml-1 text-xs opacity-60">({videoItems.length})</span>
+              <Send size={18} />
+              <span>Releases</span>
+              <span className="ml-1 text-xs opacity-60">({releaseItems.length})</span>
             </button>
           </div>
         </div>
@@ -482,36 +527,47 @@ export default function LibraryPage() {
           </div>
         )}
 
-        {/* Videos Tab */}
-        {!isLoading && activeTab === 'videos' && (
+        {/* Releases Tab */}
+        {!isLoading && activeTab === 'releases' && (
           <div>
-            {videoItems.length === 0 ? (
+            {releaseItems.length === 0 ? (
               <div className="text-center py-20">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-400/10 border border-purple-500/30 flex items-center justify-center">
-                  <Layers size={32} className="text-purple-400" />
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-green-500/20 to-green-400/10 border border-green-500/30 flex items-center justify-center">
+                  <Send size={32} className="text-green-400" />
                 </div>
-                <h3 className="text-xl font-bold text-white/80 mb-2">No videos yet</h3>
-                <p className="text-purple-400/50 mb-6 text-sm">Generate videos to see them here</p>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No releases yet</h3>
+                <p className="text-green-400/50 mb-6 text-sm">Release your tracks from the Music tab to see them here</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {videoItems.map((item) => (
+                {releaseItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative bg-black/40 backdrop-blur-xl border border-purple-500/20 rounded-xl overflow-hidden hover:border-purple-400/60 transition-all duration-300"
+                    className="group relative bg-black/40 backdrop-blur-xl border border-green-500/20 rounded-xl overflow-hidden hover:border-green-400/60 transition-all duration-300"
                   >
                     <div className="flex items-center gap-3 p-3">
-                      {/* Video Thumbnail */}
-                      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-purple-500/30 bg-purple-500/10 flex items-center justify-center">
-                        <Layers size={24} className="text-purple-400" />
+                      {/* Cover Art */}
+                      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-green-500/30">
+                        <img
+                          src={item.image_url}
+                          alt={item.title || 'Release'}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm truncate">
-                          {item.title || 'Video'}
-                        </h3>
-                        <p className="text-purple-400/50 text-xs">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <h3 className="text-white font-semibold text-sm truncate">
+                            {item.title || 'Release'}
+                          </h3>
+                          {item.is_published && (
+                            <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-green-400 rounded-full text-[10px] font-bold text-white shadow-lg shadow-green-500/20 flex-shrink-0">
+                              ✨ Live
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-green-400/50 text-xs">
                           {new Date(item.created_at).toLocaleDateString()}
                         </p>
                       </div>
@@ -519,16 +575,30 @@ export default function LibraryPage() {
                       {/* Actions */}
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                          onClick={() => handleDownload(item.video_url, `${item.title || 'video'}.mp4`)}
-                          className="p-2.5 bg-purple-500/20 rounded-lg hover:bg-purple-500/40 transition-all hover:scale-105 border border-purple-500/30"
-                          title="Download"
+                          onClick={() => {
+                            const track = {
+                              id: item.id,
+                              title: item.title || 'Untitled',
+                              artist: 'Unknown Artist',
+                              audioUrl: item.audio_url,
+                              coverUrl: item.image_url
+                            }
+                            setPlaylist([track])
+                            playTrack(track)
+                          }}
+                          className="p-2.5 bg-green-500/20 rounded-lg hover:bg-green-500/40 transition-all hover:scale-105 border border-green-500/30"
+                          title="Play"
                         >
-                          <Download size={16} className="text-purple-400" />
+                          {currentTrack?.id === item.id && isPlaying ? (
+                            <Pause size={16} className="text-green-400" />
+                          ) : (
+                            <Play size={16} className="text-green-400" />
+                          )}
                         </button>
                         <button
-                          onClick={() => handleDelete('images', item.id)}
+                          onClick={() => handleDelete('releases', item.id)}
                           className="p-2.5 bg-red-500/20 rounded-lg hover:bg-red-500/40 transition-all hover:scale-105 border border-red-500/30"
-                          title="Delete Video"
+                          title="Delete Release"
                         >
                           <Trash2 size={16} className="text-red-400" />
                         </button>
