@@ -12,6 +12,7 @@ export default function FloatingMenu() {
   const [credits, setCredits] = useState<number | null>(null)
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
   const [username, setUsername] = useState<string>('')
+  const [avatarUrl, setAvatarUrl] = useState<string>('')
   const [isLoadingUsername, setIsLoadingUsername] = useState(true)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
 
@@ -35,20 +36,31 @@ export default function FloatingMenu() {
   // Fetch username from Supabase (source of truth)
   useEffect(() => {
     if (user) {
-      fetch(`/api/media/profile/${user.id}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.username) {
-            setUsername(data.username)
-          }
-          setIsLoadingUsername(false)
-        })
-        .catch(err => {
-          console.error('Failed to fetch username:', err)
-          setIsLoadingUsername(false)
-        })
+      fetchUserProfile()
     }
   }, [user])
+  
+  const fetchUserProfile = () => {
+    if (!user) return
+    
+    fetch(`/api/media/profile/${user.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          if (data.username) {
+            setUsername(data.username)
+          }
+          if (data.avatar_url) {
+            setAvatarUrl(data.avatar_url)
+          }
+        }
+        setIsLoadingUsername(false)
+      })
+      .catch(err => {
+        console.error('Failed to fetch username:', err)
+        setIsLoadingUsername(false)
+      })
+  }
 
   return (
     <>
@@ -313,19 +325,10 @@ export default function FloatingMenu() {
           isOpen={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
           currentUsername={username || 'Loading...'}
-          currentAvatar={user.imageUrl}
+          currentAvatar={avatarUrl || user.imageUrl}
           onUpdate={() => {
-            // Refresh username after update
-            if (user) {
-              fetch(`/api/media/profile/${user.id}`)
-                .then(res => res.json())
-                .then(data => {
-                  if (data.success && data.username) {
-                    setUsername(data.username)
-                  }
-                })
-                .catch(err => console.error('Failed to refresh username:', err))
-            }
+            // Refresh user profile data (username + avatar) after update
+            fetchUserProfile()
           }}
         />
       )}

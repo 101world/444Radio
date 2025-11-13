@@ -18,29 +18,35 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   const [isOpen, setIsOpen] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [username, setUsername] = useState<string>('')
+  const [avatarUrl, setAvatarUrl] = useState<string>('')
   const [isLoadingUsername, setIsLoadingUsername] = useState(true)
   const pathname = usePathname()
   const { user } = useUser()
 
-  // Fetch username from Supabase (source of truth)
+  // Fetch username and avatar from Supabase (source of truth)
   useEffect(() => {
     if (user) {
-      fetchUsername()
+      fetchUserProfile()
     }
   }, [user])
 
-  const fetchUsername = async () => {
+  const fetchUserProfile = async () => {
     if (!user) return
     
     try {
       const res = await fetch(`/api/media/profile/${user.id}`)
       const data = await res.json()
-      if (data.success && data.username) {
-        setUsername(data.username)
+      if (data.success) {
+        if (data.username) {
+          setUsername(data.username)
+        }
+        if (data.avatar_url) {
+          setAvatarUrl(data.avatar_url)
+        }
       }
       setIsLoadingUsername(false)
     } catch (err) {
-      console.error('Failed to fetch username:', err)
+      console.error('Failed to fetch user profile:', err)
       setIsLoadingUsername(false)
     }
   }
@@ -189,10 +195,10 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
           isOpen={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
           currentUsername={username || user.firstName || 'User'}
-          currentAvatar={user.imageUrl || ''}
+          currentAvatar={avatarUrl || user.imageUrl || ''}
           onUpdate={() => {
-            // Refetch username from Supabase
-            fetchUsername()
+            // Refetch user profile (username + avatar) from Supabase
+            fetchUserProfile()
           }}
         />
       )}
