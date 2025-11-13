@@ -33,6 +33,9 @@ interface DBData {
     duplicateCount: number
     expectedTotal: number
     missing: number
+    totalR2Files?: number
+    totalInDatabase?: number
+    orphanedFiles?: number
   }
   byTable: {
     combined_media: Song[]
@@ -42,6 +45,8 @@ interface DBData {
   allSongs: Song[]
   duplicates: Duplicate[]
   uniqueUrls: string[]
+  r2Files?: any[]
+  orphanedFiles?: any[]
 }
 
 export default function R2DebugPage() {
@@ -131,7 +136,7 @@ export default function R2DebugPage() {
         </div>
 
         {/* Orphaned Files */}
-        {data && data.orphanedFiles.length > 0 && (
+        {data && data.orphanedFiles && data.orphanedFiles.length > 0 && (
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4 text-red-400">
               🚨 Orphaned Files (In R2 but NOT in Database)
@@ -149,7 +154,7 @@ export default function R2DebugPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.orphanedFiles.map((file, idx) => (
+                    {data.orphanedFiles?.map((file: any, idx: number) => (
                       <tr key={file.key} className="border-t border-gray-800 hover:bg-gray-800/50">
                         <td className="px-4 py-3">{idx + 1}</td>
                         <td className="px-4 py-3 font-mono text-sm">{file.key}</td>
@@ -192,7 +197,7 @@ export default function R2DebugPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.r2Files.map((file, idx) => (
+                  {data?.r2Files?.map((file: any, idx: number) => (
                     <tr key={file.key} className="border-t border-gray-800 hover:bg-gray-800/50">
                       <td className="px-4 py-3">{idx + 1}</td>
                       <td className="px-4 py-3 font-mono text-sm">{file.key}</td>
