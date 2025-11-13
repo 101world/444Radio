@@ -764,7 +764,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       id: media.id,
       title: media.title,
       audioUrl: media.audio_url,
-      imageUrl: media.image_url
+      imageUrl: media.image_url,
+      currentlyPlaying: playingId === media.id
     })
     
     if (!media.audio_url) {
@@ -772,24 +773,35 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       return
     }
     
+    // If clicking the same track that's already playing, toggle play/pause
+    if (playingId === media.id && isPlaying) {
+      console.log('[handlePlay] Pausing current track')
+      togglePlayPause()
+      return
+    }
+    
+    // If clicking the same track that's paused, resume it
+    if (playingId === media.id && !isPlaying) {
+      console.log('[handlePlay] Resuming current track')
+      togglePlayPause()
+      return
+    }
+    
     // Mark that user has manually selected a track (prevents station auto-play override)
     setUserHasManuallySelectedTrack(true)
     
-    // Stop any currently playing track first
-    if (isPlaying) {
-      pause()
-      // Small delay to ensure the audio stops before starting new track
-      await new Promise(resolve => setTimeout(resolve, 100))
-    }
+    // Play new track - set playlist with all profile tracks
+    console.log('[handlePlay] Playing new track with playlist')
+    const allTracks = profile?.combinedMedia.filter(m => m.audio_url).map(m => ({
+      id: m.id,
+      audioUrl: m.audio_url!,
+      title: m.title,
+      artist: profile?.username,
+      imageUrl: m.image_url,
+      userId: m.user_id
+    })) || []
     
-    // Clear any existing playlist to prevent auto-play conflicts
-    console.log('[handlePlay] Clearing playlist and playing single track')
-    setPlaylist([], 0)
-    
-    // Small delay to ensure playlist is cleared
-    await new Promise(resolve => setTimeout(resolve, 50))
-    
-    // Play the single track
+    setPlaylist(allTracks)
     playTrack({
       id: media.id,
       audioUrl: media.audio_url,
