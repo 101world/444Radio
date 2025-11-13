@@ -24,7 +24,7 @@ INSERT INTO music_library (
 SELECT DISTINCT ON (audio_url)
   user_id as clerk_user_id,
   title,
-  COALESCE(audio_prompt, prompt, 'Generated track') as prompt,
+  COALESCE(audio_prompt, 'Generated track') as prompt,
   lyrics,
   audio_url,
   duration,
