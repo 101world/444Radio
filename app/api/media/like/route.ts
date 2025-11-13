@@ -13,11 +13,15 @@ export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
     
+    console.log('[Like API] POST request, userId:', userId)
+    
     if (!userId) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const { releaseId } = await req.json()
+    
+    console.log('[Like API] releaseId:', releaseId)
 
     if (!releaseId) {
       return corsResponse(NextResponse.json(
@@ -28,6 +32,14 @@ export async function POST(req: NextRequest) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    if (!supabaseKey) {
+      console.error('[Like API] SUPABASE_SERVICE_ROLE_KEY is not set!')
+      return corsResponse(NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      ))
+    }
 
     // Check if user already liked this release
     const checkResponse = await fetch(
@@ -108,9 +120,13 @@ export async function POST(req: NextRequest) {
     }))
 
   } catch (error) {
-    console.error('Like/unlike error:', error)
+    console.error('[Like API] Error:', error)
+    console.error('[Like API] Error stack:', error instanceof Error ? error.stack : 'No stack')
     return corsResponse(NextResponse.json(
-      { error: 'Failed to update like status' },
+      { 
+        error: 'Failed to update like status',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     ))
   }
@@ -126,12 +142,16 @@ export async function GET(req: NextRequest) {
   try {
     const { userId } = await auth()
     
+    console.log('[Like API] GET request, userId:', userId)
+    
     if (!userId) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const { searchParams } = new URL(req.url)
     const releaseId = searchParams.get('releaseId')
+    
+    console.log('[Like API] GET releaseId:', releaseId)
 
     if (!releaseId) {
       return corsResponse(NextResponse.json(
@@ -142,6 +162,14 @@ export async function GET(req: NextRequest) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    if (!supabaseKey) {
+      console.error('[Like API] SUPABASE_SERVICE_ROLE_KEY is not set!')
+      return corsResponse(NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      ))
+    }
 
     // Check if user liked this release
     const likeResponse = await fetch(
@@ -178,9 +206,13 @@ export async function GET(req: NextRequest) {
     }))
 
   } catch (error) {
-    console.error('Get like status error:', error)
+    console.error('[Like API] GET Error:', error)
+    console.error('[Like API] GET Error stack:', error instanceof Error ? error.stack : 'No stack')
     return corsResponse(NextResponse.json(
-      { error: 'Failed to check like status' },
+      { 
+        error: 'Failed to check like status',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     ))
   }
