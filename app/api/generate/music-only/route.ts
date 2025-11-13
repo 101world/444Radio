@@ -382,8 +382,15 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    const savedMusic = await saveResponse.json()
-    console.log('✅ Saved to library:', savedMusic)
+    let savedMusic: any = null
+    if (!saveResponse.ok) {
+      const errorText = await saveResponse.text()
+      console.error('❌ Failed to save to music_library:', saveResponse.status, errorText)
+      // Continue anyway - don't fail the whole generation
+    } else {
+      savedMusic = await saveResponse.json()
+      console.log('✅ Saved to library:', savedMusic)
+    }
 
     // NOW deduct credits (-2 for music) since everything succeeded
     console.log(`💰 Deducting 2 credits from user (${userCredits} → ${userCredits - 2})`)
