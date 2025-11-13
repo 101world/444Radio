@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { corsResponse, handleOptions } from '@/lib/cors'
+
+export async function OPTIONS() {
+  return handleOptions()
+}
 
 /**
  * GET /api/library/images
@@ -10,7 +15,7 @@ export async function GET() {
     const { userId } = await auth()
     
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -36,18 +41,18 @@ export async function GET() {
 
     console.log(`📸 Images Library: Fetched ${imageArray.length} images (total: ${totalCount})`)
 
-    return NextResponse.json({
+    return corsResponse(NextResponse.json({
       success: true,
       images: imageArray,
       total: parseInt(totalCount)
-    })
+    }))
 
   } catch (error) {
     console.error('Error fetching images library:', error)
-    return NextResponse.json(
+    return corsResponse(NextResponse.json(
       { error: 'Failed to fetch images library' },
       { status: 500 }
-    )
+    ))
   }
 }
 
@@ -67,7 +72,7 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'Missing image ID' }, { status: 400 })
+      return corsResponse(NextResponse.json({ error: 'Missing image ID' }, { status: 400 }))
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -126,14 +131,14 @@ export async function DELETE(req: NextRequest) {
       )
     }
 
-    return NextResponse.json({ success: true })
+    return corsResponse(NextResponse.json({ success: true }))
 
   } catch (error) {
     console.error('Error deleting image:', error)
-    return NextResponse.json(
+    return corsResponse(NextResponse.json(
       { error: 'Failed to delete image' },
       { status: 500 }
-    )
+    ))
   }
 }
 

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { corsResponse, handleOptions } from '@/lib/cors'
+
+export async function OPTIONS() {
+  return handleOptions()
+}
 
 /**
  * GET /api/library/music
@@ -10,7 +15,7 @@ export async function GET() {
     const { userId } = await auth()
     
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -32,17 +37,17 @@ export async function GET() {
     // Ensure it's always an array
     const musicArray = Array.isArray(music) ? music : []
 
-    return NextResponse.json({
+    return corsResponse(NextResponse.json({
       success: true,
       music: musicArray
-    })
+    }))
 
   } catch (error) {
     console.error('Error fetching music library:', error)
-    return NextResponse.json(
+    return corsResponse(NextResponse.json(
       { error: 'Failed to fetch music library' },
       { status: 500 }
-    )
+    ))
   }
 }
 
@@ -62,7 +67,7 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'Missing music ID' }, { status: 400 })
+      return corsResponse(NextResponse.json({ error: 'Missing music ID' }, { status: 400 }))
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -120,14 +125,14 @@ export async function DELETE(req: NextRequest) {
       )
     }
 
-    return NextResponse.json({ success: true })
+    return corsResponse(NextResponse.json({ success: true }))
 
   } catch (error) {
     console.error('Error deleting music:', error)
-    return NextResponse.json(
+    return corsResponse(NextResponse.json(
       { error: 'Failed to delete music' },
       { status: 500 }
-    )
+    ))
   }
 }
 
