@@ -21,9 +21,20 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch from music_library using BOTH clerk_user_id OR user_id
+    // All historical user IDs
+    const allUserIds = [
+      userId,
+      'user_34TAjF6JtnxUyWn8nXx9tq7A3VC',
+      'user_35HWELeD4pRQTRxTfGvWP28TnIP',
+      'user_34vm60RVmcQgL18b0bpS1sTYhZ',
+      'user_34ThsuzQnqd8zqkK5dGPrfREyoU',
+      'user_34tKVS04YVAZHi7iHSr3aaZlU60',
+      'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
+    ]
+
+    // Fetch from music_library using ALL user IDs in BOTH columns
     const mlResponse = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?or=(clerk_user_id.eq.${userId},user_id.eq.${userId})&order=created_at.desc`,
+      `${supabaseUrl}/rest/v1/music_library?or=(clerk_user_id.in.(${allUserIds.join(',')}),user_id.in.(${allUserIds.join(',')}))&order=created_at.desc`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -34,15 +45,9 @@ export async function GET() {
     const musicLibraryData = await mlResponse.json()
 
     // ALSO fetch from combined_media where audio exists (uses user_id)
-    // NOTE: Fetching for BOTH known user IDs to show ALL historical songs
-    const userIds = [
-      userId, // Current logged-in user
-      'user_34ThsuzQnqd8zqkK5dGPrfREyoU', // Historical user ID 1
-      'user_34tKVS04YVAZHi7iHSr3aaZlU60'  // Historical user ID 2
-    ]
-    
+    // NOTE: Fetching for ALL known user IDs to show ALL historical songs
     const cmResponse = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?user_id=in.(${userIds.join(',')})&audio_url=not.is.null&order=created_at.desc`,
+      `${supabaseUrl}/rest/v1/combined_media?user_id=in.(${allUserIds.join(',')})&audio_url=not.is.null&order=created_at.desc`,
       {
         headers: {
           'apikey': supabaseKey,
