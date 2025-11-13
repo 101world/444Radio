@@ -84,6 +84,15 @@ export default function LikeButton({
       // Update with server response
       setLiked(data.liked)
       setLikesCount(data.likesCount)
+
+      // Broadcast to other tabs in this browser so UI updates instantly
+      try {
+        const bc = new BroadcastChannel('like-updates')
+        bc.postMessage({ releaseId, liked: data.liked, likesCount: data.likesCount })
+        bc.close()
+      } catch (err) {
+        // No-op if BroadcastChannel unsupported
+      }
     } catch (error) {
       console.error('Like error:', error)
       // Already reverted in optimistic update

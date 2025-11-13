@@ -210,6 +210,32 @@ export default function LibraryPage() {
     }
   }, [user?.id])
 
+  // BroadcastChannel listener for in-browser immediate updates
+  useEffect(() => {
+    try {
+      const bc = new BroadcastChannel('like-updates')
+      bc.onmessage = (ev) => {
+        const { releaseId, liked, likesCount } = ev.data as any
+        if (liked) {
+          // Add to liked items if not already present
+          (async () => {
+            const resp = await fetch('/api/library/combined')
+            if (resp.ok) {
+              const json = await resp.json()
+              const combined = (json.combined || []).find((c: any) => c.id === releaseId)
+              if (combined) setLikedItems(prev => [combined, ...prev])
+            }
+          })()
+        } else {
+          setLikedItems(prev => prev.filter(i => i.id !== releaseId))
+        }
+      }
+      return () => bc.close()
+    } catch (error) {
+      // BroadcastChannel may not be supported
+    }
+  }, [])
+
   // Subscribe to combined_media updates for likes_count changes etc.
   useEffect(() => {
     const mediaChannel = supabaseClient
