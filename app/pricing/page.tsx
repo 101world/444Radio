@@ -508,7 +508,7 @@ export default function Pricing() {
             <strong>credits:</strong> 1 song = 2 credits • 1 cover = 1 credit
           </p>
           <p className="text-cyan-400/40 text-[10px] mt-2">
-            questions? hit us up → support@444radio.com • © 2025 444RADIO
+            questions? hit us up → 444radioog@gmail.com • © 2025 444RADIO
           </p>
 
           {/* Social Media Links */}
