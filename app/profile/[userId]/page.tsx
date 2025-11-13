@@ -2208,6 +2208,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         audioTracks.map((media, index) => {
                             const isCurrentlyPlaying = playingId === media.id
                             
+                          function formatDuration(duration: number): import("react").ReactNode {
+                            throw new Error('Function not implemented.')
+                          }
+
                             return (
                               <div
                                 key={media.id}
@@ -2308,9 +2312,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                       <Play size={10} />
                                       {media.plays || 0}
                                     </span>
-                                    {media.duration && (
-                                      <span className="text-xs text-gray-600">{formatDuration(media.duration)}</span>
-                                    )}
                                   </div>
                                 </div>
                               </div>
