@@ -9,7 +9,7 @@ import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import FloatingNavButton from '../../components/FloatingNavButton'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
-import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus } from 'lucide-react'
+import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus, User } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 
 // Lazy load heavy components
@@ -2319,8 +2319,21 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         <div className="max-w-7xl mx-auto">
           <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-2 md:p-3 shadow-2xl">
             <div className="flex items-center justify-between px-2 md:px-4">
-              {/* Left: Username + Upload (if own) */}
+              {/* Left: Profile Picture + Username + Upload (if own) */}
               <div className="flex items-center gap-1.5 md:gap-3 min-w-0 flex-1">
+                {/* Profile Picture */}
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 flex-shrink-0 border-2 border-white/30">
+                  {profile?.avatar ? (
+                    <img 
+                      src={profile.avatar} 
+                      alt={profile.username} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User size={16} className="text-white w-full h-full p-1.5" />
+                  )}
+                </div>
+                
                 <span className="text-xs md:text-sm font-black text-white truncate">
                   @{profile?.username || 'Loading...'}
                 </span>
