@@ -559,9 +559,7 @@ export default function LibraryPage() {
                               id: item.id,
                               audioUrl: item.audio_url,
                               title: item.title || 'Untitled',
-                              artist: user?.firstName || 'You',
-                              imageUrl: undefined,
-                              userId: user?.id
+                              artist: user?.firstName || 'You'
                             }
                             
                             // If this track is playing, toggle pause/play
@@ -573,9 +571,7 @@ export default function LibraryPage() {
                                 id: i.id,
                                 audioUrl: i.audio_url,
                                 title: i.title || 'Untitled',
-                                artist: user?.firstName || 'You',
-                                imageUrl: undefined,
-                                userId: user?.id
+                                artist: user?.firstName || 'You'
                               }))
                               setPlaylist(allTracks, musicItems.findIndex(i => i.id === item.id))
                             }
