@@ -16,28 +16,43 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch ALL songs from combined_media (source of truth - has all 55 songs)
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&order=created_at.desc`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
+    // Fetch from BOTH tables using both user_id and clerk_user_id to catch all user's music
+    const [combinedMediaResponse, libraryResponse] = await Promise.all([
+      // combined_media - has audio_url directly, uses user_id column
+      fetch(
+        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&order=created_at.desc`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
         }
-      }
-    )
+      ),
+      // combined_media_library - uses clerk_user_id column
+      fetch(
+        `${supabaseUrl}/rest/v1/combined_media_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+    ])
 
-    const data = await response.json()
+    const combinedMediaData = await combinedMediaResponse.json()
+    const libraryData = await libraryResponse.json()
 
-    // Transform combined_media format to match music_library format
-    const musicArray = Array.isArray(data) ? data.map(item => ({
+    // Transform combined_media format
+    const combinedMediaMusic = Array.isArray(combinedMediaData) ? combinedMediaData.map(item => ({
       id: item.id,
       clerk_user_id: item.user_id,
       user_id: item.user_id,
       title: item.title || 'Untitled',
-      prompt: item.audio_prompt || 'Generated music',
+      prompt: item.audio_prompt || item.music_prompt || 'Generated music',
       lyrics: item.lyrics,
       audio_url: item.audio_url,
+      image_url: item.image_url,
       duration: item.duration,
       audio_format: 'mp3',
       status: 'ready',
@@ -45,9 +60,32 @@ export async function GET() {
       updated_at: item.updated_at
     })) : []
 
+    // Transform combined_media_library format
+    const libraryMusic = Array.isArray(libraryData) ? libraryData.map(item => ({
+      id: item.id,
+      clerk_user_id: item.clerk_user_id,
+      user_id: item.clerk_user_id,
+      title: item.title || 'Untitled',
+      prompt: item.music_prompt || 'Generated music',
+      lyrics: item.lyrics,
+      audio_url: item.audio_url,
+      image_url: item.image_url,
+      duration: item.duration,
+      audio_format: 'mp3',
+      status: 'ready',
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    })) : []
+
+    // Combine and deduplicate by audio_url
+    const allMusic = [...combinedMediaMusic, ...libraryMusic]
+    const uniqueMusic = Array.from(
+      new Map(allMusic.map(item => [item.audio_url, item])).values()
+    )
+
     return NextResponse.json({
       success: true,
-      music: musicArray
+      music: uniqueMusic
     })
 
   } catch (error) {

@@ -4,7 +4,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Layers, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Disc3, Heart } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -51,10 +51,11 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'music' | 'images' | 'combined'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'releases' | 'likes'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
-  const [combinedItems, setCombinedItems] = useState<LibraryCombined[]>([])
+  const [releaseItems, setReleaseItems] = useState<LibraryCombined[]>([])
+  const [likeItems, setLikeItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   
@@ -88,44 +89,18 @@ export default function LibraryPage() {
       setIsLoading(true)
     }
     try {
-      // On manual refresh, always fetch ALL tabs to ensure fresh data
-      // Otherwise, optimize by only fetching current tab + empty tabs
-      const fetchMusic = isManualRefresh || activeTab === 'music' || !musicItems.length
-      const fetchImages = isManualRefresh || activeTab === 'images' || !imageItems.length
-      const fetchReleases = isManualRefresh || activeTab === 'combined' || !combinedItems.length
-      
-      const requests = []
-      
-      // Fetch music
-      if (fetchMusic) {
-        requests.push(fetch('/api/library/music'))
-      } else {
-        requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
-      }
-      
-      // Fetch images
-      if (fetchImages) {
-        requests.push(fetch('/api/library/images'))
-      } else {
-        requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
-      }
-      
-      // Skip combined_media_library (not needed)
-      requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
-      
-      // Fetch published releases
-      if (fetchReleases && user?.id) {
-        requests.push(fetch('/api/media/profile/' + user.id))
-      } else {
-        requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
-      }
-
-      const [musicRes, imagesRes, combinedRes, publishedRes] = await Promise.all(requests)
+      // Fetch all 4 tabs
+      const [musicRes, imagesRes, releasesRes, likesRes] = await Promise.all([
+        fetch('/api/library/music'),
+        fetch('/api/library/images'),
+        fetch('/api/library/releases'),
+        fetch('/api/library/likes')
+      ])
 
       const musicData = await musicRes.json()
       const imagesData = await imagesRes.json()
-      const combinedData = await combinedRes.json()
-      const publishedData = await publishedRes.json()
+      const releasesData = await releasesRes.json()
+      const likesData = await likesRes.json()
 
       if (musicData.success && Array.isArray(musicData.music)) {
         setMusicItems(musicData.music)
@@ -135,42 +110,16 @@ export default function LibraryPage() {
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
         console.log('✅ Loaded', imagesData.images.length, 'images')
-        console.log('📸 Images data:', imagesData)
-        
-        // Debug: Check if all images have required fields
-        const invalidImages = imagesData.images.filter((img: any) => !img.image_url || !img.id)
-        if (invalidImages.length > 0) {
-          console.warn('⚠️ Found', invalidImages.length, 'images with missing data:', invalidImages)
-        }
-      } else {
-        console.warn('⚠️ Images fetch failed or empty:', imagesData)
       }
 
-      // Use published releases from combined_media table instead of library
-      if (publishedData.success && Array.isArray(publishedData.combinedMedia)) {
-        // Filter only items with both audio and image (actual music releases)
-        const musicReleases = publishedData.combinedMedia.filter((item: any) => 
-          item.audio_url && item.image_url
-        )
-        setCombinedItems(musicReleases.map((item: any) => ({
-          id: item.id,
-          title: item.title || 'Untitled',
-          audio_url: item.audio_url,
-          image_url: item.image_url,
-          music_prompt: item.audio_prompt || item.music_prompt,
-          image_prompt: item.image_prompt,
-          is_published: true,
-          created_at: item.created_at
-        })))
-        console.log('✅ Loaded', musicReleases.length, 'published releases')
-      } else if (combinedData.success && Array.isArray(combinedData.combined)) {
-        // Fallback to unpublished library items if no published releases
-        const publishedLibraryItems = combinedData.combined.filter((item: LibraryCombined) => item.is_published)
-        setCombinedItems(publishedLibraryItems)
-        console.log('⚠️ Using library fallback:', publishedLibraryItems.length, 'items')
-      } else if (fetchReleases) {
-        setCombinedItems([])
-        console.log('❌ No releases found')
+      if (releasesData.success && Array.isArray(releasesData.releases)) {
+        setReleaseItems(releasesData.releases)
+        console.log('✅ Loaded', releasesData.releases.length, 'releases')
+      }
+
+      if (likesData.success && Array.isArray(likesData.likes)) {
+        setLikeItems(likesData.likes)
+        console.log('✅ Loaded', likesData.likes.length, 'likes')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -203,19 +152,12 @@ export default function LibraryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Fetch releases when switching to combined tab
+  // Fetch data when switching tabs if needed
   useEffect(() => {
-    if (activeTab === 'combined' && combinedItems.length === 0 && !isLoading) {
-      fetchLibrary()
-    } else if (activeTab === 'images' && imageItems.length === 0 && !isLoading) {
-      fetchLibrary()
-    } else if (activeTab === 'music' && musicItems.length === 0 && !isLoading) {
-      fetchLibrary()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Data already fetched on mount, no need to refetch
   }, [activeTab])
 
-  const handleDelete = async (type: 'music' | 'images' | 'combined', id: string) => {
+  const handleDelete = async (type: 'music' | 'images' | 'releases', id: string) => {
     if (!confirm('Are you sure you want to delete this item?')) return
 
     try {
@@ -234,7 +176,7 @@ export default function LibraryPage() {
 
   // Delete published release from combined_media table
   const handleDeleteRelease = async (id: string) => {
-    if (!confirm('⚠️ Delete this release?\n\nThis will remove it from:\n• Your profile\n• Explore page\n• Release tab\n\n✅ Your original music and images will remain in their tabs.')) return
+    if (!confirm('⚠️ Delete this release?\n\nThis will remove it from your published releases.')) return
 
     try {
       const res = await fetch('/api/media/delete', {
@@ -247,7 +189,7 @@ export default function LibraryPage() {
 
       if (res.ok && data.success) {
         // Optimistically update UI
-        setCombinedItems(prev => prev.filter(item => item.id !== id))
+        setReleaseItems(prev => prev.filter(item => item.id !== id))
         alert('✅ Release deleted successfully!')
       } else {
         alert('❌ Failed to delete release. Please try again.')
@@ -380,16 +322,28 @@ export default function LibraryPage() {
               <span className="ml-1 text-xs opacity-60">({musicItems.length})</span>
             </button>
             <button
-              onClick={() => setActiveTab('combined')}
+              onClick={() => setActiveTab('releases')}
               className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'combined'
+                activeTab === 'releases'
                   ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
                   : 'bg-white/5 text-cyan-400/60 hover:bg-cyan-500/10 hover:text-cyan-400'
               }`}
             >
-              <Layers size={18} />
+              <Disc3 size={18} />
               <span>Releases</span>
-              <span className="ml-1 text-xs opacity-60">({combinedItems.length})</span>
+              <span className="ml-1 text-xs opacity-60">({releaseItems.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('likes')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'likes'
+                  ? 'bg-gradient-to-r from-pink-600 to-pink-400 text-white shadow-lg shadow-pink-500/30'
+                  : 'bg-white/5 text-pink-400/60 hover:bg-pink-500/10 hover:text-pink-400'
+              }`}
+            >
+              <Heart size={18} />
+              <span>Likes</span>
+              <span className="ml-1 text-xs opacity-60">({likeItems.length})</span>
             </button>
           </div>
         </div>
@@ -599,23 +553,19 @@ export default function LibraryPage() {
         )}
 
         {/* Releases Tab */}
-        {!isLoading && activeTab === 'combined' && (
+        {!isLoading && activeTab === 'releases' && (
           <div>
-            {combinedItems.length === 0 ? (
+            {releaseItems.length === 0 ? (
               <div className="text-center py-20">
                 <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-400/10 border border-cyan-500/30 flex items-center justify-center">
-                  <Layers size={32} className="text-cyan-400" />
+                  <Disc3 size={32} className="text-cyan-400" />
                 </div>
                 <h3 className="text-xl font-bold text-white/80 mb-2">No releases yet</h3>
-                <p className="text-cyan-400/50 mb-6 text-sm">Combine music with cover art</p>
-                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/20">
-                  <Layers size={18} />
-                  Create Release
-                </Link>
+                <p className="text-cyan-400/50 mb-6 text-sm">Publish your tracks to see them here</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {combinedItems.map((item) => (
+                {releaseItems.map((item) => (
                   <div
                     key={item.id}
                     className="group relative bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-xl overflow-hidden hover:border-cyan-400/60 transition-all duration-300"
@@ -671,6 +621,78 @@ export default function LibraryPage() {
                           title="Delete Release"
                         >
                           <Trash2 size={16} className="text-red-400" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Likes Tab */}
+        {!isLoading && activeTab === 'likes' && (
+          <div>
+            {likeItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-400/10 border border-pink-500/30 flex items-center justify-center">
+                  <Heart size={32} className="text-pink-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No liked tracks yet</h3>
+                <p className="text-pink-400/50 mb-6 text-sm">Like tracks from Explore to see them here</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {likeItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="group relative bg-black/40 backdrop-blur-xl border border-pink-500/20 rounded-xl overflow-hidden hover:border-pink-400/60 transition-all duration-300"
+                  >
+                    <div className="flex items-center gap-3 p-3">
+                      {/* Cover Art */}
+                      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-pink-500/30">
+                        <img
+                          src={item.image_url}
+                          alt={item.title || 'Liked Track'}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Track Info */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-white truncate">{item.title || 'Untitled'}</h4>
+                        <p className="text-xs text-pink-400/60 truncate">Liked Track</p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => {
+                            const track = {
+                              id: item.id,
+                              title: item.title || 'Untitled',
+                              artist: 'Unknown Artist',
+                              audioUrl: item.audio_url,
+                              coverUrl: item.image_url
+                            }
+                            setPlaylist(likeItems.map(i => ({
+                              id: i.id,
+                              title: i.title || 'Untitled',
+                              artist: 'Unknown Artist',
+                              audioUrl: i.audio_url,
+                              coverUrl: i.image_url
+                            })))
+                            playTrack(track)
+                          }}
+                          className="p-2.5 bg-pink-500/20 rounded-lg hover:bg-pink-500/40 transition-all hover:scale-105 border border-pink-500/30"
+                          title="Play"
+                        >
+                          {currentTrack?.id === item.id && isPlaying ? (
+                            <Pause size={16} className="text-pink-400" />
+                          ) : (
+                            <Play size={16} className="text-pink-400" />
+                          )}
                         </button>
                       </div>
                     </div>

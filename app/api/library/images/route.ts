@@ -21,30 +21,59 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch user's images library (with explicit limit to get all)
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/images_library?clerk_user_id=eq.${userId}&order=created_at.desc&limit=1000`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Prefer': 'count=exact'
+    // Fetch from BOTH tables using both user_id and clerk_user_id
+    const [imagesLibraryResponse, combinedMediaResponse] = await Promise.all([
+      // images_library - uses clerk_user_id
+      fetch(
+        `${supabaseUrl}/rest/v1/images_library?clerk_user_id=eq.${userId}&order=created_at.desc&limit=1000`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
         }
-      }
+      ),
+      // combined_media - has image_url, uses user_id column
+      fetch(
+        `${supabaseUrl}/rest/v1/combined_media?image_url=not.is.null&user_id=eq.${userId}&order=created_at.desc`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+    ])
+
+    const imagesLibraryData = await imagesLibraryResponse.json()
+    const combinedMediaData = await combinedMediaResponse.json()
+
+    // Transform images_library format
+    const libraryImages = Array.isArray(imagesLibraryData) ? imagesLibraryData : []
+
+    // Transform combined_media format to match images_library
+    const combinedImages = Array.isArray(combinedMediaData) ? combinedMediaData.map(item => ({
+      id: item.id,
+      clerk_user_id: item.user_id,
+      title: item.title || 'Untitled',
+      prompt: item.image_prompt || 'Generated image',
+      image_url: item.image_url,
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    })) : []
+
+    // Combine and deduplicate by image_url
+    const allImages = [...libraryImages, ...combinedImages]
+    const uniqueImages = Array.from(
+      new Map(allImages.map(item => [item.image_url, item])).values()
     )
 
-    const images = await response.json()
-    const totalCount = response.headers.get('Content-Range')?.split('/')[1] || '0'
-
-    // Ensure it's always an array
-    const imageArray = Array.isArray(images) ? images : []
-
-    console.log(`📸 Images Library: Fetched ${imageArray.length} images (total: ${totalCount})`)
+    console.log(`📸 Images Library: Fetched ${uniqueImages.length} unique images (${libraryImages.length} from library + ${combinedImages.length} from combined_media)`)
 
     return corsResponse(NextResponse.json({
       success: true,
-      images: imageArray,
-      total: parseInt(totalCount)
+      images: uniqueImages,
+      total: uniqueImages.length
     }))
 
   } catch (error) {
