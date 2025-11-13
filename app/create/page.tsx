@@ -1188,43 +1188,59 @@ function CreatePageContent() {
 
                 {/* Image Result - Bigger and Cooler */}
                 {message.result?.imageUrl && (
-                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all max-w-md mx-auto">
-                    {/* Image with Overlay Button */}
-                    <div className="relative">
+                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-2xl overflow-hidden group hover:border-cyan-400/50 transition-all max-w-xs mx-auto hover:scale-105 cursor-pointer">
+                    {/* Image - Click to Expand */}
+                    <div 
+                      className="relative"
+                      onClick={() => window.open(message.result!.imageUrl!, '_blank')}
+                    >
                       <img
                         src={message.result.imageUrl}
                         alt={message.result.title}
                         className="w-full h-auto aspect-square object-cover"
                       />
+                      {/* Expand Hint */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="bg-black/80 backdrop-blur-md rounded-full p-3">
+                            <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
                       <button
-                        onClick={() => handleOpenRelease(undefined, message.id)}
-                        className="absolute top-4 right-4 p-3.5 bg-black/70 hover:bg-cyan-500/50 backdrop-blur-xl border-2 border-cyan-500/40 rounded-xl transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenRelease(undefined, message.id)
+                        }}
+                        className="absolute top-2 right-2 p-2 bg-black/70 hover:bg-cyan-500/50 backdrop-blur-xl border border-cyan-500/40 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
                         title="Release"
                       >
-                        <Rocket size={24} className="text-cyan-400" />
+                        <Rocket size={16} className="text-cyan-400" />
                       </button>
                     </div>
 
-                    {/* Info - Combined Title and Prompt */}
-                    <div className="p-6 border-t border-white/10">
-                      <h4 className="text-lg font-bold text-white mb-1">{message.result.title}</h4>
-                      <p className="text-xs text-gray-500 italic line-clamp-2">{message.result.prompt}</p>
+                    {/* Info - Compact */}
+                    <div className="p-3 border-t border-white/10">
+                      <h4 className="text-sm font-bold text-white mb-0.5 line-clamp-1">{message.result.title}</h4>
+                      <p className="text-[10px] text-gray-500 italic line-clamp-1">{message.result.prompt}</p>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Action Buttons - Compact */}
                     <div className="flex border-t border-white/10">
                       <button
                         onClick={() => handleDownload(message.result!.imageUrl!, `${message.result!.title}.webp`)}
-                        className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/10"
+                        className="flex-1 px-3 py-2 hover:bg-white/10 text-xs font-medium text-cyan-400 flex items-center justify-center gap-1.5 transition-colors border-r border-white/10"
                       >
-                        <Download size={18} />
-                        Download
+                        <Download size={14} />
+                        Save
                       </button>
                       <Link
                         href="/library"
-                        className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors"
+                        className="flex-1 px-3 py-2 hover:bg-white/10 text-xs font-medium text-cyan-400 flex items-center justify-center gap-1.5 transition-colors"
                       >
-                        <Layers size={18} />
+                        <Layers size={14} />
                         Library
                       </Link>
                     </div>
