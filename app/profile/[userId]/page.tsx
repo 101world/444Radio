@@ -1275,7 +1275,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  const added = addToQueue({
+                                  addToQueue({
                                     id: media.id,
                                     audioUrl: media.audio_url!,
                                     title: media.title,
@@ -1283,11 +1283,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                     imageUrl: media.image_url,
                                     userId: media.user_id
                                   })
-                                  if (added) {
-                                    setQueueToast(`Added "${media.title}" to queue`)
-                                  } else {
-                                    setQueueToast(`"${media.title}" already in queue`)
-                                  }
+                                  setQueueToast(`Added "${media.title}" to queue`)
                                 }}
                                 className="p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all"
                                 title="Add to Queue"
@@ -1822,9 +1818,31 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 />
                               </div>
 
-                              {/* Duration */}
-                              <div className="text-sm text-gray-400 flex-shrink-0 font-mono">
-                                {formatDuration(media.duration || 180)}
+                              {/* Add to Queue Button */}
+                              {hasAudio && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    addToQueue({
+                                      id: media.id,
+                                      audioUrl: media.audio_url!,
+                                      title: media.title,
+                                      artist: profile.username,
+                                      imageUrl: media.image_url,
+                                      userId: media.user_id
+                                    })
+                                    setQueueToast(`Added "${media.title}" to queue`)
+                                  }}
+                                  className="p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all mr-2"
+                                  title="Add to Queue"
+                                >
+                                  <Plus size={16} />
+                                </button>
+                              )}
+
+                              {/* Duration - hide since we don't have accurate duration */}
+                              <div className="text-sm text-gray-400 flex-shrink-0 font-mono w-12 text-right">
+                                <Play size={14} className="inline" />
                               </div>
                             </div>
                           )
