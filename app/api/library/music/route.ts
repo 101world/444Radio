@@ -16,21 +16,9 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // All historical user IDs to fetch ALL songs
-    const allUserIds = [
-      userId,
-      'user_34tKVS04YVAZHi7iHSr3aaZlU60',
-      'user_34J8MP3KCfczODGn9yKMolWPX9R',
-      'user_34ThsuzQnqd8zqkK5dGPrfREyoU',
-      'user_34vm60RVmcQgL18b0bpS1sTYhZ',
-      'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB',
-      'user_35HWELeD4pRQTRxTfGvWP28TnIP',
-      'user_34TAjF6JtnxUyWn8nXx9tq7A3VC'
-    ]
-
-    // Fetch user's music library from ALL historical user IDs
+    // Fetch ALL songs from music_library (no user filter - show everything)
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?or=(clerk_user_id.in.(${allUserIds.join(',')}),user_id.in.(${allUserIds.join(',')}))&order=created_at.desc`,
+      `${supabaseUrl}/rest/v1/music_library?order=created_at.desc`,
       {
         headers: {
           'apikey': supabaseKey,
