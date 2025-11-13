@@ -841,13 +841,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       }
   }
 
-  const formatDuration = (seconds?: number) => {
-    if (!seconds) return '0:00'
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
   // Memoized computed values for performance
   const audioTracks = useMemo(() => {
     return profile?.combinedMedia.filter(m => m.audio_url) || []
@@ -1839,11 +1832,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                   <Plus size={16} />
                                 </button>
                               )}
-
-                              {/* Duration */}
-                              <div className="text-sm text-gray-400 flex-shrink-0 font-mono w-14 text-right">
-                                {media.duration ? formatDuration(media.duration) : '--:--'}
-                              </div>
                             </div>
                           )
                         })}
