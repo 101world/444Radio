@@ -167,7 +167,7 @@ export default function HomePage() {
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-cyan-400/20 to-cyan-500/20 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-300"></div>
                 <div className="relative">
                   <div className="w-full px-6 py-4 bg-black/60 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl text-cyan-400/60 group-hover:text-cyan-400/80 group-hover:border-cyan-400/50 focus:outline-none transition-all duration-300 text-center text-sm md:text-base">
-                    describe your sound...
+                    Describe Your Sound...
                   </div>
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-cyan-500/5 via-transparent to-cyan-500/5 pointer-events-none"></div>
                 </div>

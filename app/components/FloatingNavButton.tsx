@@ -3,7 +3,7 @@
 // Hamburger navigation menu for mobile and desktop
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings } from 'lucide-react'
+import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings, CreditCard } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import ProfileSettingsModal from './ProfileSettingsModal'
@@ -50,6 +50,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
     { href: '/explore', icon: Compass, label: 'Explore' },
     { href: '/create', icon: PlusCircle, label: 'Create' },
     { href: '/library', icon: Library, label: 'Library' },
+    { href: '/pricing', icon: CreditCard, label: 'Pricing' },
     { href: '/decrypt', icon: Unlock, label: 'Decrypt', highlight: true },
   ]
 
