@@ -535,7 +535,7 @@ export default function Pricing() {
                   {creditAmount === 0 ? 'Select Amount' : `Purchase ${creditsFromDollars.toLocaleString()} Credits for $${creditAmount}`}
                 </button>
                 <p className="text-purple-400/40 text-xs mt-4">
-                  1 credit = $0.026 • Credits never expire • Use anytime
+                  1 credit = $0.04
                 </p>
               </div>
             </div>

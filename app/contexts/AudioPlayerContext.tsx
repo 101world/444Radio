@@ -206,6 +206,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined' && !audioRef.current) {
       audioRef.current = new Audio()
+      audioRef.current.crossOrigin = 'anonymous'
       audioRef.current.volume = volume
       console.log('Audio element initialized')
 

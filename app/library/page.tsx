@@ -691,7 +691,7 @@ export default function LibraryPage() {
                               title: item.title || 'Untitled',
                               artist: 'Unknown Artist',
                               audioUrl: item.audio_url,
-                              coverUrl: item.image_url
+                              imageUrl: item.image_url
                             }
                             setPlaylist([track])
                             playTrack(track)
@@ -749,7 +749,7 @@ export default function LibraryPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button onClick={() => {
-                            const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audio_url, coverUrl: item.image_url }
+                            const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audio_url, imageUrl: item.image_url }
                             setPlaylist([track])
                             playTrack(track)
                           }}

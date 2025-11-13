@@ -475,7 +475,7 @@ export default function Pricing() {
                   {creditAmount === 0 ? 'select amount' : `cop ${creditsFromDollars.toLocaleString()} credits for $${creditAmount}`}
                 </button>
                 <p className="text-cyan-400/40 text-xs mt-4">
-                  1 credit = ${buyRate.toFixed(2)}$ (on-demand) • 1 credit = ${subscriptionRate.toFixed(2)}$ (subscription) • never expires • use anytime
+                  1 credit = $0.04
                 </p>
               </div>
             </div>

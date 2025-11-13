@@ -361,7 +361,7 @@ export default function Pricing() {
           <div className="bg-gradient-to-br from-cyan-950/30 to-black/90 border-2 border-cyan-500/30 rounded-3xl p-12 shadow-2xl shadow-cyan-500/20">
             <div className="text-center mb-12">
               <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Buy Credits</h2>
-              <p className="text-cyan-400/70 text-lg">Purchase credits on-demand without a subscription</p>
+                        <p className="text-cyan-400/70 text-lg">Purchase credits on-demand without a subscription</p>
             </div>
 
             <div className="max-w-4xl mx-auto">
@@ -455,7 +455,7 @@ export default function Pricing() {
                   {creditAmount === 0 ? 'Select Amount' : `Purchase ${creditsFromDollars.toLocaleString()} Credits for $${creditAmount}`}
                 </button>
                 <p className="text-cyan-400/50 text-sm mt-5">
-                  1 credit = ${buyRate.toFixed(2)}$ • Credits never expire • Use anytime
+                  1 credit = $0.04
                 </p>
               </div>
             </div>

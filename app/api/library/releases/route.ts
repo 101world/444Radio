@@ -50,10 +50,10 @@ export async function GET() {
     const combinedMediaData = await combinedMediaResponse.json()
     const libraryData = await libraryResponse.json()
 
-    // Transform combined_media format - only include items where is_published=true (true releases)
+    // Transform combined_media format - include ALL items with both audio and image
+    // (is_published can be true, false, or null - we show all complete releases)
     const combinedReleases = Array.isArray(combinedMediaData) 
       ? combinedMediaData
-          .filter(item => item.is_published === true)
           .map(item => ({
             id: item.id,
             clerk_user_id: item.user_id,
@@ -69,10 +69,10 @@ export async function GET() {
           }))
       : []
 
-    // Transform combined_media_library format - only include published items
+    // Transform combined_media_library format - include ALL items with both audio and image
     const libraryReleases = Array.isArray(libraryData) 
       ? libraryData
-          .filter(item => item.is_published === true)
+          .filter(item => item.audio_url && item.image_url)
           .map(item => ({
             id: item.id,
             clerk_user_id: item.clerk_user_id,
