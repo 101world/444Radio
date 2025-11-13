@@ -11,6 +11,7 @@ import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
+import LikeButton from '../components/LikeButton'
 
 // Lazy load heavy 3D background and modals
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
@@ -545,6 +546,16 @@ export default function ExplorePage() {
                         </div>
                       </div>
                       
+                      {/* Like Button */}
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <LikeButton
+                          releaseId={media.id}
+                          initialLikesCount={media.likes || 0}
+                          size="sm"
+                          showCount={true}
+                        />
+                      </div>
+                      
                       {/* Lyrics Button */}
                       <button
                         onClick={(e) => {
@@ -623,6 +634,16 @@ export default function ExplorePage() {
                             </div>
                           </div>
                         </div>
+                      </div>
+                      
+                      {/* Like Button */}
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <LikeButton
+                          releaseId={media.id}
+                          initialLikesCount={media.likes || 0}
+                          size="sm"
+                          showCount={true}
+                        />
                       </div>
                       
                       {/* Lyrics Button */}
