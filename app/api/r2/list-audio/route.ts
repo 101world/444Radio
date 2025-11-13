@@ -23,8 +23,11 @@ export async function GET() {
       }
     })
 
+    const bucketName = process.env.R2_BUCKET_NAME || 'audio-files'
+    console.log('🪣 Listing bucket:', bucketName)
+
     const command = new ListObjectsV2Command({
-      Bucket: 'audio-files'
+      Bucket: bucketName
     })
     
     const response = await s3Client.send(command)
