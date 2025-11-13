@@ -21,9 +21,9 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch from music_library (uses clerk_user_id)
+    // Fetch from music_library using BOTH clerk_user_id OR user_id
     const mlResponse = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
+      `${supabaseUrl}/rest/v1/music_library?or=(clerk_user_id.eq.${userId},user_id.eq.${userId})&order=created_at.desc`,
       {
         headers: {
           'apikey': supabaseKey,
