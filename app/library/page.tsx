@@ -88,18 +88,23 @@ export default function LibraryPage() {
       setIsLoading(true)
     }
     try {
-      // Optimize: Only fetch data for current tab to reduce load time
+      // On manual refresh, always fetch ALL tabs to ensure fresh data
+      // Otherwise, optimize by only fetching current tab + empty tabs
+      const fetchMusic = isManualRefresh || activeTab === 'music' || !musicItems.length
+      const fetchImages = isManualRefresh || activeTab === 'images' || !imageItems.length
+      const fetchReleases = isManualRefresh || activeTab === 'combined' || !combinedItems.length
+      
       const requests = []
       
-      // Fetch music on initial load or when on music tab
-      if (activeTab === 'music' || !musicItems.length) {
+      // Fetch music
+      if (fetchMusic) {
         requests.push(fetch('/api/library/music'))
       } else {
         requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       }
       
-      // Fetch images on initial load or when on images tab
-      if (activeTab === 'images' || !imageItems.length) {
+      // Fetch images
+      if (fetchImages) {
         requests.push(fetch('/api/library/images'))
       } else {
         requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
@@ -108,9 +113,9 @@ export default function LibraryPage() {
       // Skip combined_media_library (not needed)
       requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       
-      // Only fetch published releases when on combined tab
-      if (activeTab === 'combined') {
-        requests.push(fetch('/api/media/profile/' + user?.id))
+      // Fetch published releases
+      if (fetchReleases && user?.id) {
+        requests.push(fetch('/api/media/profile/' + user.id))
       } else {
         requests.push(Promise.resolve({ json: async () => ({ success: false }) }))
       }
@@ -124,10 +129,12 @@ export default function LibraryPage() {
 
       if (musicData.success && Array.isArray(musicData.music)) {
         setMusicItems(musicData.music)
+        console.log('✅ Loaded', musicData.music.length, 'music items')
       }
 
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
+        console.log('✅ Loaded', imagesData.images.length, 'images')
       }
 
       // Use published releases from combined_media table instead of library
@@ -152,7 +159,7 @@ export default function LibraryPage() {
         const publishedLibraryItems = combinedData.combined.filter((item: LibraryCombined) => item.is_published)
         setCombinedItems(publishedLibraryItems)
         console.log('⚠️ Using library fallback:', publishedLibraryItems.length, 'items')
-      } else if (activeTab === 'combined') {
+      } else if (fetchReleases) {
         setCombinedItems([])
         console.log('❌ No releases found')
       }
@@ -190,6 +197,10 @@ export default function LibraryPage() {
   // Fetch releases when switching to combined tab
   useEffect(() => {
     if (activeTab === 'combined' && combinedItems.length === 0 && !isLoading) {
+      fetchLibrary()
+    } else if (activeTab === 'images' && imageItems.length === 0 && !isLoading) {
+      fetchLibrary()
+    } else if (activeTab === 'music' && musicItems.length === 0 && !isLoading) {
       fetchLibrary()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
