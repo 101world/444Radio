@@ -516,6 +516,9 @@ export default function HolographicBackground() {
     let frameCount = 0;
     const loopDuration = 20; // 20 seconds for complete loop
     const initialCameraZ = 25;
+    
+    // Reusable Vector3 to avoid creating new instances
+    const tempVector = new THREE.Vector3();
 
     const animate = (currentTime: number = performance.now()) => {
       frameCount++;
@@ -532,6 +535,10 @@ export default function HolographicBackground() {
       
       const time = currentTime * 0.001; // Use actual time in seconds
       const loopTime = (time % loopDuration) / loopDuration; // 0 to 1
+      
+      // Pre-calculate common values
+      const mouseX = mouseRef.current.x;
+      const mouseY = mouseRef.current.y;
 
       // Camera dolly - smooth loop using sine wave + scroll parallax
       const dollyDistance = Math.sin(loopTime * Math.PI * 2) * 5;
@@ -549,8 +556,8 @@ export default function HolographicBackground() {
         blob.position.x += Math.cos(time * speed * 0.7) * 0.02;
 
         // Cursor interaction - scale and glow on hover
-        const distX = mouseRef.current.x * 30 - blob.position.x;
-        const distY = mouseRef.current.y * 30 - blob.position.y;
+        const distX = mouseX * 30 - blob.position.x;
+        const distY = mouseY * 30 - blob.position.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
         
         if (distance < 25) {
@@ -560,8 +567,9 @@ export default function HolographicBackground() {
           // Increase opacity
           (blob.material as THREE.MeshBasicMaterial).opacity = 1.0;
         } else {
-          // Return to normal
-          blob.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+          // Return to normal - use temp vector to avoid garbage collection
+          tempVector.set(1, 1, 1);
+          blob.scale.lerp(tempVector, 0.1);
           (blob.material as THREE.MeshBasicMaterial).opacity = 0.9;
         }
 
@@ -583,8 +591,8 @@ export default function HolographicBackground() {
         logoMesh.rotation.z = Math.sin(time * floatSpeed * 0.5) * 0.1;
         
         // React to mouse position
-        const distX = mouseRef.current.x * 20 - logoMesh.position.x;
-        const distY = mouseRef.current.y * 20 - logoMesh.position.y;
+        const distX = mouseX * 20 - logoMesh.position.x;
+        const distY = mouseY * 20 - logoMesh.position.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
         
         if (distance < 30) {
@@ -606,8 +614,8 @@ export default function HolographicBackground() {
         textMesh.rotation.y += 0.001;
         
         // React to mouse position
-        const distX = mouseRef.current.x * 20 - textMesh.position.x;
-        const distY = mouseRef.current.y * 20 - textMesh.position.y;
+        const distX = mouseX * 20 - textMesh.position.x;
+        const distY = mouseY * 20 - textMesh.position.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
         
         if (distance < 30) {
@@ -633,8 +641,8 @@ export default function HolographicBackground() {
         block.position.x += Math.cos(time * 0.0003 + i) * 0.015;
 
         // Subtle cursor interaction - slight attraction
-        const distX = mouseRef.current.x * 30 - block.position.x;
-        const distY = mouseRef.current.y * 30 - block.position.y;
+        const distX = mouseX * 30 - block.position.x;
+        const distY = mouseY * 30 - block.position.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
         
         if (distance < 30) {
@@ -664,8 +672,8 @@ export default function HolographicBackground() {
         ring.position.x += Math.cos(time * 0.0004 + i) * 0.02;
 
         // Cursor interaction - scale and glow
-        const distX = mouseRef.current.x * 30 - ring.position.x;
-        const distY = mouseRef.current.y * 30 - ring.position.y;
+        const distX = mouseX * 30 - ring.position.x;
+        const distY = mouseY * 30 - ring.position.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
         
         if (distance < 35) {
@@ -678,8 +686,9 @@ export default function HolographicBackground() {
           ring.position.x += distX * 0.004 * attractStrength;
           ring.position.y += distY * 0.004 * attractStrength;
         } else {
-          // Return to normal
-          ring.scale.lerp(new THREE.Vector3(1, 1, 1), 0.05);
+          // Return to normal - use temp vector
+          tempVector.set(1, 1, 1);
+          ring.scale.lerp(tempVector, 0.05);
           (ring.material as THREE.MeshBasicMaterial).opacity = 0.7;
         }
 
@@ -700,8 +709,8 @@ export default function HolographicBackground() {
         shape.position.x += Math.cos(time * 0.0002 + i) * 0.02;
 
         // Cursor interaction - attract shapes slightly toward cursor
-        const distX = mouseRef.current.x * 25 - shape.position.x;
-        const distY = mouseRef.current.y * 25 - shape.position.y;
+        const distX = mouseX * 25 - shape.position.x;
+        const distY = mouseY * 25 - shape.position.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
         
         if (distance < 35) {
@@ -719,27 +728,29 @@ export default function HolographicBackground() {
       });
 
       // Camera parallax movement based on mouse
-      camera.position.x = mouseRef.current.x * 3;
-      camera.position.y = mouseRef.current.y * 3;
+      camera.position.x = mouseX * 3;
+      camera.position.y = mouseY * 3;
       camera.lookAt(0, 0, 0);
 
-      // Animate particles - slow drift with cursor avoidance
-      const positions = particleGeometry.attributes.position.array as Float32Array;
-      for (let i = 0; i < positions.length; i += 3) {
-        positions[i + 1] += Math.sin(time * 0.001 + positions[i]) * 0.02;
-        
-        // Cursor interaction - particles move away
-        const distX = mouseRef.current.x * 50 - positions[i];
-        const distY = mouseRef.current.y * 50 - positions[i + 1];
-        const dist = Math.sqrt(distX * distX + distY * distY);
-        
-        if (dist < 20) {
-          const pushStrength = (20 - dist) / 20;
-          positions[i] -= distX * 0.002 * pushStrength;
-          positions[i + 1] -= distY * 0.002 * pushStrength;
+      // Animate particles - slow drift with cursor avoidance (optimized - update every 3rd frame)
+      if (frameCount % 3 === 0) {
+        const positions = particleGeometry.attributes.position.array as Float32Array;
+        for (let i = 0; i < positions.length; i += 3) {
+          positions[i + 1] += Math.sin(time * 0.001 + positions[i]) * 0.02;
+          
+          // Cursor interaction - particles move away
+          const distX = mouseX * 50 - positions[i];
+          const distY = mouseY * 50 - positions[i + 1];
+          const dist = Math.sqrt(distX * distX + distY * distY);
+          
+          if (dist < 20) {
+            const pushStrength = (20 - dist) / 20;
+            positions[i] -= distX * 0.002 * pushStrength;
+            positions[i + 1] -= distY * 0.002 * pushStrength;
+          }
         }
+        particleGeometry.attributes.position.needsUpdate = true;
       }
-      particleGeometry.attributes.position.needsUpdate = true;
       particles.rotation.y += 0.0001;
 
       // Animate light rays with cursor glow
@@ -747,8 +758,8 @@ export default function HolographicBackground() {
         ray.rotation.z += 0.0005 * (i + 1);
         
         // Cursor interaction - increase glow intensity when cursor is near
-        const distX = mouseRef.current.x * 30 - ray.position.x;
-        const distY = mouseRef.current.y * 30 - ray.position.y;
+        const distX = mouseX * 30 - ray.position.x;
+        const distY = mouseY * 30 - ray.position.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
         
         if (distance < 30) {
@@ -766,7 +777,7 @@ export default function HolographicBackground() {
         shaft.rotation.z += 0.0002 * (i + 1);
         
         // Subtle glow increase when cursor moves
-        const mouseMovement = Math.abs(mouseRef.current.x) + Math.abs(mouseRef.current.y);
+        const mouseMovement = Math.abs(mouseX) + Math.abs(mouseY);
         const baseOpacity = 0.1 + Math.sin(time * 0.05 + i) * 0.05;
         (shaft.material as THREE.MeshBasicMaterial).opacity = baseOpacity + mouseMovement * 0.05;
       });
