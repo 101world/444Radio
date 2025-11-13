@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { corsResponse, handleOptions } from '@/lib/cors'
-
-export async function OPTIONS() {
-  return handleOptions()
-}
 
 /**
  * GET /api/library/music
@@ -13,15 +8,15 @@ export async function OPTIONS() {
 export async function GET() {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
-      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // All historical user IDs
+    // All historical user IDs to fetch ALL songs
     const allUserIds = [
       userId,
       'user_34TAjF6JtnxUyWn8nXx9tq7A3VC',
@@ -32,8 +27,8 @@ export async function GET() {
       'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
     ]
 
-    // Fetch from music_library using ALL user IDs in BOTH columns
-    const mlResponse = await fetch(
+    // Fetch user's music library from ALL historical user IDs
+    const response = await fetch(
       `${supabaseUrl}/rest/v1/music_library?or=(clerk_user_id.in.(${allUserIds.join(',')}),user_id.in.(${allUserIds.join(',')}))&order=created_at.desc`,
       {
         headers: {
@@ -42,58 +37,23 @@ export async function GET() {
         }
       }
     )
-    const musicLibraryData = await mlResponse.json()
 
-    // ALSO fetch from combined_media where audio exists (uses user_id)
-    // NOTE: Fetching for ALL known user IDs to show ALL historical songs
-    const cmResponse = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?user_id=in.(${allUserIds.join(',')})&audio_url=not.is.null&order=created_at.desc`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        }
-      }
-    )
-    const combinedMediaData = await cmResponse.json()
+    const music = await response.json()
 
-    // Combine both sources, removing duplicates by audio_url
-    const allMusic = [
-      ...(Array.isArray(musicLibraryData) ? musicLibraryData : []),
-      ...(Array.isArray(combinedMediaData) ? combinedMediaData.map(item => ({
-        id: item.id,
-        clerk_user_id: item.user_id,
-        title: item.title || 'Untitled',
-        prompt: item.audio_prompt || 'Generated music',
-        lyrics: item.lyrics,
-        audio_url: item.audio_url,
-        duration: item.duration,
-        audio_format: 'mp3',
-        status: 'ready',
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      })) : [])
-    ]
+    // Ensure it's always an array
+    const musicArray = Array.isArray(music) ? music : []
 
-    // Remove duplicates by audio_url
-    const seen = new Set()
-    const musicArray = allMusic.filter(item => {
-      if (seen.has(item.audio_url)) return false
-      seen.add(item.audio_url)
-      return true
-    })
-
-    return corsResponse(NextResponse.json({
+    return NextResponse.json({
       success: true,
       music: musicArray
-    }))
+    })
 
   } catch (error) {
     console.error('Error fetching music library:', error)
-    return corsResponse(NextResponse.json(
+    return NextResponse.json(
       { error: 'Failed to fetch music library' },
       { status: 500 }
-    ))
+    )
   }
 }
 
@@ -113,7 +73,7 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id')
 
     if (!id) {
-      return corsResponse(NextResponse.json({ error: 'Missing music ID' }, { status: 400 }))
+      return NextResponse.json({ error: 'Missing music ID' }, { status: 400 })
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -171,14 +131,14 @@ export async function DELETE(req: NextRequest) {
       )
     }
 
-    return corsResponse(NextResponse.json({ success: true }))
+    return NextResponse.json({ success: true })
 
   } catch (error) {
     console.error('Error deleting music:', error)
-    return corsResponse(NextResponse.json(
+    return NextResponse.json(
       { error: 'Failed to delete music' },
       { status: 500 }
-    ))
+    )
   }
 }
 
