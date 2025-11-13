@@ -129,9 +129,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       .then(() => {
         setIsPlaying(true)
       })
-      .catch(error => {
-        console.error('Error playing audio:', error)
+      .catch(async (error) => {
+        console.error('Error playing audio directly:', error)
         setIsPlaying(false)
+
+        // Attempt to proxy through server to avoid CORS issues
+        try {
+          const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(track.audioUrl)}`
+          audioRef.current!.src = proxyUrl
+          await audioRef.current!.play()
+          setIsPlaying(true)
+          console.log('Playback succeeded via proxy for', track.title)
+        } catch (proxyError) {
+          console.error('Playback via proxy failed:', proxyError)
+          setIsPlaying(false)
+        }
       })
 
     // Find track in playlist and update index

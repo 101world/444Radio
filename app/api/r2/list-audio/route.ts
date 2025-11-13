@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       }
     })
 
-    const primaryBucket = (process.env.R2_BUCKET_NAME || '').trim()
+    const primaryBucket = (process.env.R2_AUDIO_BUCKET_NAME || process.env.R2_BUCKET_NAME || '').trim()
     const fallbackBucket = 'audio-files'
     const bucketsToTry = Array.from(new Set([primaryBucket, fallbackBucket].filter(Boolean)))
 

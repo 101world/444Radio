@@ -11,8 +11,11 @@ export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [creditAmount, setCreditAmount] = useState(5) // Default $5
   
-  // Calculate credits based on amount (1 credit = $0.026)
-  const creditsFromDollars = Math.floor(creditAmount / 0.026)
+  // Rates
+  const buyRate = 0.04 // $0.04 per credit (on-demand)
+  const subscriptionRate = 0.03 // $0.03 per credit (subscription)
+  // Calculate credits based on amount (buy credits on demand)
+  const creditsFromDollars = Math.floor(creditAmount / buyRate)
   
   // ESC key handler to go back to explore
   useEffect(() => {
@@ -452,7 +455,7 @@ export default function Pricing() {
                   {creditAmount === 0 ? 'Select Amount' : `Purchase ${creditsFromDollars.toLocaleString()} Credits for $${creditAmount}`}
                 </button>
                 <p className="text-cyan-400/50 text-sm mt-5">
-                  1 credit = $0.026 • Credits never expire • Use anytime
+                  1 credit = ${buyRate.toFixed(2)}$ • Credits never expire • Use anytime
                 </p>
               </div>
             </div>

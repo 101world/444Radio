@@ -68,19 +68,26 @@ export async function GET(
         })
     }
 
-    // If username is missing in Supabase, fetch from Clerk and sync
+    // If username or avatar is missing in Supabase, fetch from Clerk and sync
     let finalUsername = userData?.username
-    if (!finalUsername) {
+    let finalAvatar = userData?.avatar_url
+    if (!finalUsername || !finalAvatar) {
       try {
         const client = await clerkClient()
         const clerkUser = await client.users.getUser(userId)
         finalUsername = clerkUser.username || clerkUser.firstName || 'User'
+        // Try to fetch profile image from Clerk
+        const clerkProfileImage = (clerkUser as any).profileImageUrl || (clerkUser as any).imageUrl || null
+        finalAvatar = finalAvatar || clerkProfileImage || null
         
-        // Sync the username to Supabase for future lookups
-        if (clerkUser.username) {
+        // Sync the username/avatar to Supabase for future lookups
+        const updatePayload: any = {}
+        if (clerkUser.username) updatePayload.username = clerkUser.username
+        if (clerkProfileImage) updatePayload.avatar_url = clerkProfileImage
+        if (Object.keys(updatePayload).length > 0) {
           await supabase
             .from('users')
-            .update({ username: clerkUser.username })
+            .update(updatePayload)
             .eq('clerk_user_id', userId)
         }
       } catch (clerkError) {
@@ -111,7 +118,7 @@ export async function GET(
       combinedMedia: allMedia,
       uploads: uploads,
       username: finalUsername,
-      avatar: userData?.avatar_url || null,
+      avatar: userData?.avatar_url || finalAvatar || null,
       bio: userData?.bio || null,
       tagline: userData?.tagline || null,
       banner_url: userData?.banner_url || null,

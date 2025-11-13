@@ -29,7 +29,8 @@ export async function GET(request: Request) {
     })
 
     const imagesBaseUrl = process.env.NEXT_PUBLIC_R2_IMAGES_URL!
-    const bucketName = 'images' // R2 images bucket name
+    const configuredImagesBucket = process.env.R2_IMAGES_BUCKET_NAME || process.env.R2_BUCKET_NAME
+    const bucketName = (configuredImagesBucket && configuredImagesBucket.trim().length > 0) ? configuredImagesBucket : 'images'
 
     const listAll = async (bucket: string, prefix?: string) => {
       let isTruncated: boolean = true

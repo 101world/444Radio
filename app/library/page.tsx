@@ -4,7 +4,8 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon } from 'lucide-react'
+import { createClient } from '@supabase/supabase-js'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -25,6 +26,7 @@ interface LibraryMusic {
   audio_url: string
   created_at: string
   file_size: number | null
+  likes?: number
 }
 
 interface LibraryImage {
@@ -45,18 +47,21 @@ interface LibraryCombined {
   image_prompt: string | null
   is_published: boolean
   created_at: string
+  likes?: number
 }
 
 export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'releases'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'releases' | 'liked'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [releaseItems, setReleaseItems] = useState<LibraryCombined[]>([])
+  const [likedItems, setLikedItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const supabaseClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
   
   // Modal states
   const [showLyricsModal, setShowLyricsModal] = useState(false)
@@ -89,12 +94,13 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, releasesRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, releasesRes, likedRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
         fetch('/api/r2/list-images'),
         fetch('/api/library/releases')
+        ,fetch('/api/library/liked')
       ])
 
       const musicData = await musicRes.json()
@@ -102,6 +108,7 @@ export default function LibraryPage() {
       const imagesData = await imagesRes.json()
       const r2ImagesData = await r2ImagesRes.json()
       const releasesData = await releasesRes.json()
+      const likedData = await likedRes.json()
 
       // Merge database music with R2 files, deduplicate by audio_url
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -137,6 +144,10 @@ export default function LibraryPage() {
         setReleaseItems(releasesData.releases)
         console.log('✅ Loaded', releasesData.releases.length, 'releases')
       }
+      if (likedData.success && Array.isArray(likedData.liked)) {
+        setLikedItems(likedData.liked)
+        console.log('💚 Loaded', likedData.liked.length, 'liked tracks')
+      }
     } catch (error) {
       console.error('Error fetching library:', error)
     } finally {
@@ -166,6 +177,55 @@ export default function LibraryPage() {
       window.removeEventListener('focus', handleFocus)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Subscribe to user_likes changes and update Liked tab realtime
+  useEffect(() => {
+    if (!user?.id) return
+    const channel = supabaseClient
+      .channel(`user_likes:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_likes', filter: `user_id=eq.${user.id}` }, async (payload) => {
+        console.log('[supabase] user_likes change:', payload.eventType, payload)
+        if (payload.eventType === 'INSERT') {
+          const newLike = payload.new as any
+          // Fetch the user's combined library and find the created release
+          const resp = await fetch('/api/library/combined')
+          if (resp.ok) {
+            const json = await resp.json()
+            const combined = (json.combined || []).find((c: any) => c.id === newLike.release_id)
+            if (combined) {
+              setLikedItems(prev => [combined, ...prev])
+            }
+          }
+        }
+        if (payload.eventType === 'DELETE') {
+          const oldLike = payload.old as any
+          setLikedItems(prev => prev.filter(item => item.id !== oldLike.release_id))
+        }
+      })
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [user?.id])
+
+  // Subscribe to combined_media updates for likes_count changes etc.
+  useEffect(() => {
+    const mediaChannel = supabaseClient
+      .channel('combined_media_updates')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'combined_media' }, (payload) => {
+        const updatedMedia = payload.new as any
+        // Update tracks in musicItems, releaseItems, likedItems
+        setMusicItems(prev => prev.map(m => m.id === updatedMedia.id ? { ...m, likes: updatedMedia.likes_count || updatedMedia.likes || m.likes } : m))
+        setReleaseItems(prev => prev.map(m => m.id === updatedMedia.id ? { ...m, likes: updatedMedia.likes_count || updatedMedia.likes || m.likes } : m))
+        setLikedItems(prev => prev.map(m => m.id === updatedMedia.id ? { ...m, likes: updatedMedia.likes_count || updatedMedia.likes || m.likes } : m))
+      })
+      .subscribe()
+
+    return () => {
+      mediaChannel.unsubscribe()
+    }
   }, [])
 
   // Fetch data when switching tabs if needed
@@ -331,6 +391,18 @@ export default function LibraryPage() {
               <Send size={18} />
               <span>Releases</span>
               <span className="ml-1 text-xs opacity-60">({releaseItems.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('liked')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'liked'
+                  ? 'bg-gradient-to-r from-pink-600 to-pink-400 text-white shadow-lg shadow-pink-500/30'
+                  : 'bg-white/5 text-pink-400/60 hover:bg-pink-500/10 hover:text-pink-400'
+              }`}
+            >
+              <Heart size={18} />
+              <span>Liked</span>
+              <span className="ml-1 text-xs opacity-60">({likedItems.length})</span>
             </button>
           </div>
         </div>
@@ -613,6 +685,56 @@ export default function LibraryPage() {
                           title="Delete Release"
                         >
                           <Trash2 size={16} className="text-red-400" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Liked Tab */}
+        {!isLoading && activeTab === 'liked' && (
+          <div>
+            {likedItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-pink-500/20 to-pink-400/10 border border-pink-500/30 flex items-center justify-center">
+                  <Heart size={32} className="text-pink-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No liked tracks yet</h3>
+                <p className="text-pink-400/50 mb-6 text-sm">Like tracks to see them here</p>
+                <Link href="/explore" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-600 to-pink-400 text-white rounded-xl font-bold hover:from-pink-700 hover:to-pink-500 transition-all shadow-lg shadow-pink-500/20">
+                  Explore Music
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {likedItems.map((item: any) => (
+                  <div key={item.id} className="group relative bg-black/40 backdrop-blur-xl border border-pink-500/20 rounded-xl overflow-hidden hover:border-pink-400/60 transition-all duration-300">
+                    <div className="flex items-center gap-3 p-3">
+                      <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-pink-500/30">
+                        <img src={item.image_url} alt={item.title || 'Release'} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">{item.title || 'Release'}</h3>
+                        <p className="text-pink-400/50 text-xs">{new Date(item.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button onClick={() => {
+                            const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audio_url, coverUrl: item.image_url }
+                            setPlaylist([track])
+                            playTrack(track)
+                          }}
+                          className="p-2.5 bg-pink-500/20 rounded-lg hover:bg-pink-500/40 transition-all hover:scale-105 border border-pink-500/30"
+                          title="Play"
+                        >
+                          {currentTrack?.id === item.id && isPlaying ? (
+                            <Pause size={16} className="text-pink-400" />
+                          ) : (
+                            <Play size={16} className="text-pink-400" />
+                          )}
                         </button>
                       </div>
                     </div>

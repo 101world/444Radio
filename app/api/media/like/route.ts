@@ -73,6 +73,23 @@ export async function POST(req: NextRequest) {
       }
 
       console.log(`💔 User ${userId} unliked release ${releaseId}`)
+      // Recompute likes_count and write to combined_media
+      const computeLikesRes = await fetch(
+        `${supabaseUrl}/rest/v1/user_likes?release_id=eq.${releaseId}&select=id`,
+        {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
+        }
+      )
+      const likesArr = await computeLikesRes.json()
+      const newCount = Array.isArray(likesArr) ? likesArr.length : 0
+      await fetch(
+        `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}`,
+        {
+          method: 'PATCH',
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ likes_count: newCount })
+        }
+      )
     } else {
       // Like: Insert new like
       const insertResponse = await fetch(
@@ -97,6 +114,23 @@ export async function POST(req: NextRequest) {
       }
 
       console.log(`❤️ User ${userId} liked release ${releaseId}`)
+        // Recompute likes_count and write to combined_media
+        const computeLikesRes2 = await fetch(
+          `${supabaseUrl}/rest/v1/user_likes?release_id=eq.${releaseId}&select=id`,
+          {
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
+          }
+        )
+        const likesArr2 = await computeLikesRes2.json()
+        const newCount2 = Array.isArray(likesArr2) ? likesArr2.length : 0
+        await fetch(
+          `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}`,
+          {
+            method: 'PATCH',
+            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ likes_count: newCount2 })
+          }
+        )
     }
 
     // Get updated likes count

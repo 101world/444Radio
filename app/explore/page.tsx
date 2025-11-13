@@ -10,6 +10,7 @@ import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
+import { createClient } from '@supabase/supabase-js'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
 import LikeButton from '../components/LikeButton'
 
@@ -69,7 +70,9 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchBox, setShowSearchBox] = useState(true)
-  const [activeTab, setActiveTab] = useState<'tracks' | 'stations'>('tracks')
+  const [activeTab, setActiveTab] = useState<'tracks' | 'genres' | 'stations'>('tracks')
+  const [genres, setGenres] = useState<string[]>([])
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
   
   // Lyrics modal state
   const [showLyricsModal, setShowLyricsModal] = useState(false)
@@ -115,6 +118,20 @@ export default function ExplorePage() {
     }, 30000)
     
     return () => clearInterval(liveStationsInterval)
+  }, [])
+
+  // Subscribe to combined_media updates to update likes count in realtime
+  useEffect(() => {
+    const supabaseClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const channel = supabaseClient
+      .channel('combined_media')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'combined_media' }, (payload) => {
+        const updated = payload.new as any
+        setCombinedMedia(prev => prev.map(m => m.id === updated.id ? { ...m, likes: updated.likes_count || updated.likes || m.likes, plays: updated.plays || m.plays } : m))
+      })
+      .subscribe()
+
+    return () => { channel.unsubscribe() }
   }, [])
 
   const fetchLiveStations = async () => {
@@ -181,6 +198,12 @@ export default function ExplorePage() {
           }
         })
         setArtists(Array.from(artistMap.values()).slice(0, 10)) // Only show top 10 artists
+        // Extract and set genres for Genres tab
+        const genreSet = new Set<string>()
+        data.combinedMedia.forEach((m: CombinedMedia) => {
+          if (m.genre) genreSet.add(m.genre)
+        })
+        setGenres(Array.from(genreSet))
       }
     } catch (error) {
       console.error('Failed to fetch media:', error)
@@ -307,6 +330,20 @@ export default function ExplorePage() {
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
                     )}
                   </button>
+                  <button
+                    onClick={() => setActiveTab('genres')}
+                    className={`relative text-lg font-bold transition-all pb-2 ${
+                      activeTab === 'genres'
+                        ? 'text-cyan-400'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    🎛️ Genres
+                    {activeTab === 'genres' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+                    )}
+                  </button>
+
                   <button
                     onClick={() => setActiveTab('stations')}
                     className={`relative text-lg font-bold transition-all pb-2 flex items-center gap-2 ${
@@ -665,6 +702,35 @@ export default function ExplorePage() {
               </div>
             </div>
               </>
+            )}
+
+            {/* GENRES TAB CONTENT */}
+            {activeTab === 'genres' && (
+              <div className="px-6 py-8">
+                {genres.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-400">No genres found yet</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide">
+                      {genres.map((g) => (
+                        <button key={g} onClick={() => setSelectedGenre(g)} className={`px-4 py-2 rounded-full ${selectedGenre === g ? 'bg-cyan-500 text-white' : 'bg-white/5 text-gray-300'}`}>
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {(selectedGenre ? combinedMedia.filter(m => m.genre === selectedGenre) : combinedMedia).map((media) => (
+                        <div key={media.id} className="bg-black/40 p-4 rounded-lg">
+                          <img src={media.image_url} alt={media.title} className="w-full h-40 object-cover rounded" />
+                          <h3 className="mt-2 text-white font-semibold">{media.title}</h3>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
             {/* STATIONS TAB CONTENT */}

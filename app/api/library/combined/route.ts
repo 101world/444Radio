@@ -340,7 +340,8 @@ export async function PATCH(req: NextRequest) {
             license_type: combined.license_type,
             price: combined.price,
             tags: combined.tags,
-            is_public: true
+            is_public: true,
+            is_published: true
           })
         }
       )
