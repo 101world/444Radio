@@ -7,7 +7,7 @@
 -- Create music_library table
 CREATE TABLE IF NOT EXISTS music_library (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL, -- Clerk user ID
+  clerk_user_id TEXT NOT NULL, -- Clerk user ID
   
   -- Music details
   title TEXT,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS music_library (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_music_library_user ON music_library(user_id);
+CREATE INDEX IF NOT EXISTS idx_music_library_user ON music_library(clerk_user_id);
 CREATE INDEX IF NOT EXISTS idx_music_library_created ON music_library(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_music_library_status ON music_library(status);
 
@@ -68,7 +68,7 @@ CREATE POLICY "Users can delete own music"
 
 -- Add helpful comments
 COMMENT ON TABLE music_library IS 'Stores all generated music files per user';
-COMMENT ON COLUMN music_library.user_id IS 'Clerk user ID who generated this music';
+COMMENT ON COLUMN music_library.clerk_user_id IS 'Clerk user ID who generated this music';
 COMMENT ON COLUMN music_library.audio_url IS 'Permanent R2 URL for audio file';
 COMMENT ON COLUMN music_library.generation_params IS 'JSON object with genre, bpm, etc used for generation';
 

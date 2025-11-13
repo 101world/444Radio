@@ -7,7 +7,7 @@
 -- Create images_library table
 CREATE TABLE IF NOT EXISTS images_library (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL, -- Clerk user ID
+  clerk_user_id TEXT NOT NULL, -- Clerk user ID
   
   -- Image details
   title TEXT,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS images_library (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_images_library_user ON images_library(user_id);
+CREATE INDEX IF NOT EXISTS idx_images_library_user ON images_library(clerk_user_id);
 CREATE INDEX IF NOT EXISTS idx_images_library_created ON images_library(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_images_library_status ON images_library(status);
 
@@ -67,7 +67,7 @@ CREATE POLICY "Users can delete own images"
 
 -- Add helpful comments
 COMMENT ON TABLE images_library IS 'Stores all generated images/cover art per user';
-COMMENT ON COLUMN images_library.user_id IS 'Clerk user ID who generated this image';
+COMMENT ON COLUMN images_library.clerk_user_id IS 'Clerk user ID who generated this image';
 COMMENT ON COLUMN images_library.image_url IS 'Permanent R2 URL for image file';
 COMMENT ON COLUMN images_library.generation_params IS 'JSON object with model, steps, etc used for generation';
 

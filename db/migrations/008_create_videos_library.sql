@@ -7,7 +7,7 @@
 -- Create videos_library table
 CREATE TABLE IF NOT EXISTS videos_library (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL, -- Clerk user ID
+  clerk_user_id TEXT NOT NULL, -- Clerk user ID
   
   -- Video details
   title TEXT,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS videos_library (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_videos_library_user ON videos_library(user_id);
+CREATE INDEX IF NOT EXISTS idx_videos_library_user ON videos_library(clerk_user_id);
 CREATE INDEX IF NOT EXISTS idx_videos_library_created ON videos_library(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_videos_library_status ON videos_library(status);
 
@@ -70,7 +70,7 @@ CREATE POLICY "Users can delete own videos"
 
 -- Add helpful comments
 COMMENT ON TABLE videos_library IS 'Stores all generated videos per user';
-COMMENT ON COLUMN videos_library.user_id IS 'Clerk user ID who generated this video';
+COMMENT ON COLUMN videos_library.clerk_user_id IS 'Clerk user ID who generated this video';
 COMMENT ON COLUMN videos_library.video_url IS 'Permanent R2 URL for video file';
 COMMENT ON COLUMN videos_library.thumbnail_url IS 'R2 URL for video thumbnail image';
 COMMENT ON COLUMN videos_library.generation_params IS 'JSON object with model, resolution, etc used for generation';
