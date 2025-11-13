@@ -16,9 +16,9 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch ALL songs from music_library (no user filter - show everything)
+    // Fetch ALL songs from combined_media (source of truth - has all 55 songs)
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/music_library?order=created_at.desc`,
+      `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&order=created_at.desc`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -27,10 +27,23 @@ export async function GET() {
       }
     )
 
-    const music = await response.json()
+    const data = await response.json()
 
-    // Ensure it's always an array
-    const musicArray = Array.isArray(music) ? music : []
+    // Transform combined_media format to match music_library format
+    const musicArray = Array.isArray(data) ? data.map(item => ({
+      id: item.id,
+      clerk_user_id: item.user_id,
+      user_id: item.user_id,
+      title: item.title || 'Untitled',
+      prompt: item.audio_prompt || 'Generated music',
+      lyrics: item.lyrics,
+      audio_url: item.audio_url,
+      duration: item.duration,
+      audio_format: 'mp3',
+      status: 'ready',
+      created_at: item.created_at,
+      updated_at: item.updated_at
+    })) : []
 
     return NextResponse.json({
       success: true,
