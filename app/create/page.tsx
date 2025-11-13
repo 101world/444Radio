@@ -1194,7 +1194,7 @@ function CreatePageContent() {
                       <img
                         src={message.result.imageUrl}
                         alt={message.result.title}
-                        className="w-full min-h-[400px] md:min-h-[500px] object-cover"
+                        className="w-full h-auto aspect-square object-cover"
                       />
                       <button
                         onClick={() => handleOpenRelease(undefined, message.id)}
