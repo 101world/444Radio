@@ -37,6 +37,49 @@ export async function POST(req: NextRequest) {
       throw new Error('Failed to finalize song')
     }
 
+    // ALSO save to music_library for new library system
+    console.log('💾 Saving to music_library...')
+    
+    // Get song details first
+    const songRes = await fetch(`${supabaseUrl}/rest/v1/songs?id=eq.${songId}&select=*`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+      }
+    })
+    const [songData] = await songRes.json()
+    
+    if (songData) {
+      const libraryEntry = {
+        clerk_user_id: userId,
+        user_id: userId, // Save to BOTH columns
+        title: songData.title || songData.prompt?.substring(0, 100) || 'Untitled',
+        prompt: songData.prompt || 'Generated music',
+        lyrics: songData.lyrics,
+        audio_url: audioUrl,
+        duration: songData.duration,
+        audio_format: 'mp3',
+        status: 'ready'
+      }
+
+      const saveRes = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(libraryEntry)
+      })
+
+      if (saveRes.ok) {
+        console.log('✅ Saved to music_library')
+      } else {
+        console.error('⚠️ Failed to save to music_library:', await saveRes.text())
+      }
+    }
+
     console.log('✅ Song finalized:', songId)
 
     return NextResponse.json({ 

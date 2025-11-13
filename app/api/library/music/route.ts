@@ -34,8 +34,15 @@ export async function GET() {
     const musicLibraryData = await mlResponse.json()
 
     // ALSO fetch from combined_media where audio exists (uses user_id)
+    // NOTE: Fetching for BOTH known user IDs to show ALL historical songs
+    const userIds = [
+      userId, // Current logged-in user
+      'user_34ThsuzQnqd8zqkK5dGPrfREyoU', // Historical user ID 1
+      'user_34tKVS04YVAZHi7iHSr3aaZlU60'  // Historical user ID 2
+    ]
+    
     const cmResponse = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&audio_url=not.is.null&order=created_at.desc`,
+      `${supabaseUrl}/rest/v1/combined_media?user_id=in.(${userIds.join(',')})&audio_url=not.is.null&order=created_at.desc`,
       {
         headers: {
           'apikey': supabaseKey,
