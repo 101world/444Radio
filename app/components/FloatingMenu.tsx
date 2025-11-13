@@ -94,7 +94,30 @@ export default function FloatingMenu() {
               {user && (
                 <div className="mb-8 pb-6 border-b border-white/10">
                   <div className="flex items-center gap-3 mb-4">
-                    <UserButton afterSignOutUrl="/" />
+                    {/* Custom Avatar Display */}
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 border-2 border-white/20">
+                        {avatarUrl ? (
+                          <img 
+                            src={avatarUrl} 
+                            alt={username || 'User'} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : user.imageUrl ? (
+                          <img 
+                            src={user.imageUrl} 
+                            alt={user.firstName || 'User'} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User size={24} className="text-white w-full h-full p-2" />
+                        )}
+                      </div>
+                      {/* Clerk UserButton (hidden, just for account management menu) */}
+                      <div className="absolute -bottom-1 -right-1">
+                        <UserButton afterSignOutUrl="/" />
+                      </div>
+                    </div>
                     <div>
                       <p className="text-white font-semibold">{user.firstName || 'User'}</p>
                       <p className="text-gray-400 text-sm">@{isLoadingUsername ? '...' : (username || 'username')}</p>

@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       username: username
     }
     
-    // If avatar is provided, update the imageUrl in Clerk
+    // Store avatar URL in Clerk's publicMetadata for reference
     if (avatar) {
       clerkUpdateData.publicMetadata = { avatarUrl: avatar }
     }

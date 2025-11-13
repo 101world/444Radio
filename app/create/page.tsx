@@ -1188,7 +1188,7 @@ function CreatePageContent() {
 
                 {/* Image Result - Bigger and Cooler */}
                 {message.result?.imageUrl && (
-                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
+                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all max-w-md mx-auto">
                     {/* Image with Overlay Button */}
                     <div className="relative">
                       <img
@@ -1205,10 +1205,10 @@ function CreatePageContent() {
                       </button>
                     </div>
 
-                    {/* Info */}
+                    {/* Info - Combined Title and Prompt */}
                     <div className="p-6 border-t border-white/10">
-                      <h4 className="text-xl font-bold text-white mb-2">{message.result.title}</h4>
-                      <p className="text-sm text-gray-400">{message.result.prompt}</p>
+                      <h4 className="text-lg font-bold text-white mb-1">{message.result.title}</h4>
+                      <p className="text-xs text-gray-500 italic line-clamp-2">{message.result.prompt}</p>
                     </div>
 
                     {/* Action Buttons */}
