@@ -89,22 +89,24 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2Res, imagesRes, releasesRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, releasesRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
+        fetch('/api/r2/list-images'),
         fetch('/api/library/releases')
       ])
 
       const musicData = await musicRes.json()
-      const r2Data = await r2Res.json()
+      const r2AudioData = await r2AudioRes.json()
       const imagesData = await imagesRes.json()
+      const r2ImagesData = await r2ImagesRes.json()
       const releasesData = await releasesRes.json()
 
       // Merge database music with R2 files, deduplicate by audio_url
       if (musicData.success && Array.isArray(musicData.music)) {
         const dbMusic = musicData.music
-        const r2Music = r2Data.success && Array.isArray(r2Data.music) ? r2Data.music : []
+        const r2Music = r2AudioData.success && Array.isArray(r2AudioData.music) ? r2AudioData.music : []
         
         // Combine and deduplicate
         const allMusic = [...dbMusic, ...r2Music]
@@ -116,9 +118,19 @@ export default function LibraryPage() {
         console.log('✅ Loaded', uniqueMusic.length, 'music tracks (DB:', dbMusic.length, '+ R2:', r2Music.length, ')')
       }
 
+      // Merge database images with R2 images, deduplicate by image_url
       if (imagesData.success && Array.isArray(imagesData.images)) {
-        setImageItems(imagesData.images)
-        console.log('✅ Loaded', imagesData.images.length, 'images')
+        const dbImages = imagesData.images
+        const r2Images = r2ImagesData.success && Array.isArray(r2ImagesData.images) ? r2ImagesData.images : []
+        
+        // Combine and deduplicate
+        const allImages = [...dbImages, ...r2Images]
+        const uniqueImages = Array.from(
+          new Map(allImages.map(item => [item.image_url, item])).values()
+        )
+        
+        setImageItems(uniqueImages)
+        console.log('✅ Loaded', uniqueImages.length, 'images (DB:', dbImages.length, '+ R2:', r2Images.length, ')')
       }
 
       if (releasesData.success && Array.isArray(releasesData.releases)) {

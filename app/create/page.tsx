@@ -241,45 +241,49 @@ function CreatePageContent() {
 
   // Sync generation queue results with messages on mount and when generations change
   useEffect(() => {
-    console.log('[Sync] Checking generation queue for completed generations:', generations)
+    console.log('[Sync] Checking generation queue for completed generations:', generations.length)
     
-    // Check if any generations completed while user was away
+    // Check if any generations completed while user was away or during generation
     generations.forEach(gen => {
-      if (gen.status === 'completed' && gen.result) {
+      if ((gen.status === 'completed' || gen.status === 'failed') && gen.result) {
         setMessages(prev => {
           // First, try to find message by generationId (exact match)
           const messageByGenId = prev.find(msg => msg.generationId === gen.id)
           
           if (messageByGenId) {
             // Check if already updated
-            if (!messageByGenId.isGenerating && messageByGenId.result) {
+            if (!messageByGenId.isGenerating && messageByGenId.result && gen.status === 'completed') {
               console.log('[Sync] Message already updated for generation:', gen.id)
               return prev
             }
             
             // Update the exact message
-            console.log('[Sync] Updating message by generationId:', gen.id)
+            console.log('[Sync] Updating message by generationId:', gen.id, 'status:', gen.status)
             return prev.map(msg =>
               msg.generationId === gen.id
                 ? {
                     ...msg,
                     isGenerating: false,
-                    content: gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!',
-                    result: gen.result
+                    content: gen.status === 'failed' 
+                      ? `❌ ${gen.error || 'Generation failed'}` 
+                      : (gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
+                    result: gen.status === 'completed' ? gen.result : undefined
                   }
                 : msg
             )
           }
           
           // Fallback: Check if result already exists by URL
-          const messageExists = prev.some(msg => 
-            msg.result?.audioUrl === gen.result?.audioUrl || 
-            msg.result?.imageUrl === gen.result?.imageUrl
-          )
-          
-          if (messageExists) {
-            console.log('[Sync] Message already exists for generation:', gen.id)
-            return prev
+          if (gen.status === 'completed') {
+            const messageExists = prev.some(msg => 
+              msg.result?.audioUrl === gen.result?.audioUrl || 
+              msg.result?.imageUrl === gen.result?.imageUrl
+            )
+            
+            if (messageExists) {
+              console.log('[Sync] Message already exists for generation:', gen.id)
+              return prev
+            }
           }
           
           // Fallback: Find ANY generating message of the same type (music/image)
@@ -287,7 +291,7 @@ function CreatePageContent() {
             msg.isGenerating && msg.generationType === gen.type
           )
           
-          if (hasGeneratingMessage) {
+          if (hasGeneratingMessage && gen.status === 'completed') {
             console.log('[Sync] Updating first generating message with completed result:', gen.id)
             // Update the FIRST generating message of this type
             let updated = false
@@ -304,8 +308,10 @@ function CreatePageContent() {
               }
               return msg
             })
-          } else {
-            // No generating message found - add the result as a new message
+          }
+          
+          // Only add as new message if status is completed and not failed
+          if (gen.status === 'completed' && gen.result && !hasGeneratingMessage) {
             console.log('[Sync] No generating message found, adding completed generation as new message:', gen.id)
             return [
               ...prev,
@@ -321,6 +327,9 @@ function CreatePageContent() {
               }
             ]
           }
+          
+          // Return unchanged if no conditions met
+          return prev
         })
       }
     })

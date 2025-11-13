@@ -22,10 +22,12 @@ export async function GET() {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
     // Fetch published releases from BOTH tables
+    // Note: We fetch items with EITHER is_published=true OR is_public=true to catch all releases
     const [combinedMediaResponse, libraryResponse] = await Promise.all([
-      // combined_media - published items with both audio and image, uses user_id
+      // combined_media - items with both audio and image, uses user_id
+      // Fetch all items with audio+image, then filter by is_published OR is_public in code
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&is_published=eq.true&audio_url=not.is.null&image_url=not.is.null&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&audio_url=not.is.null&image_url=not.is.null&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -33,9 +35,9 @@ export async function GET() {
           }
         }
       ),
-      // combined_media_library - uses clerk_user_id, filter published in code
+      // combined_media_library - uses clerk_user_id
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media_library?clerk_user_id=eq.${userId}&is_published=eq.true&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -48,35 +50,43 @@ export async function GET() {
     const combinedMediaData = await combinedMediaResponse.json()
     const libraryData = await libraryResponse.json()
 
-    // Transform combined_media format
-    const combinedReleases = Array.isArray(combinedMediaData) ? combinedMediaData.map(item => ({
-      id: item.id,
-      clerk_user_id: item.user_id,
-      title: item.title || 'Untitled',
-      music_prompt: item.audio_prompt || item.music_prompt,
-      image_prompt: item.image_prompt,
-      audio_url: item.audio_url,
-      image_url: item.image_url,
-      lyrics: item.lyrics,
-      is_published: true,
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    })) : []
+    // Transform combined_media format - only include items that are published (is_published=true OR is_public=true)
+    const combinedReleases = Array.isArray(combinedMediaData) 
+      ? combinedMediaData
+          .filter(item => item.is_published === true || item.is_public === true)
+          .map(item => ({
+            id: item.id,
+            clerk_user_id: item.user_id,
+            title: item.title || 'Untitled',
+            music_prompt: item.audio_prompt || item.music_prompt,
+            image_prompt: item.image_prompt,
+            audio_url: item.audio_url,
+            image_url: item.image_url,
+            lyrics: item.lyrics,
+            is_published: true,
+            created_at: item.created_at,
+            updated_at: item.updated_at
+          }))
+      : []
 
-    // Transform combined_media_library format
-    const libraryReleases = Array.isArray(libraryData) ? libraryData.map(item => ({
-      id: item.id,
-      clerk_user_id: item.clerk_user_id,
-      title: item.title || 'Untitled',
-      music_prompt: item.music_prompt,
-      image_prompt: item.image_prompt,
-      audio_url: item.audio_url,
-      image_url: item.image_url,
-      lyrics: item.lyrics,
-      is_published: true,
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    })) : []
+    // Transform combined_media_library format - only include published items
+    const libraryReleases = Array.isArray(libraryData) 
+      ? libraryData
+          .filter(item => item.is_published === true || item.is_public === true)
+          .map(item => ({
+            id: item.id,
+            clerk_user_id: item.clerk_user_id,
+            title: item.title || 'Untitled',
+            music_prompt: item.music_prompt,
+            image_prompt: item.image_prompt,
+            audio_url: item.audio_url,
+            image_url: item.image_url,
+            lyrics: item.lyrics,
+            is_published: true,
+            created_at: item.created_at,
+            updated_at: item.updated_at
+          }))
+      : []
 
     // Combine and deduplicate by audio_url
     const allReleases = [...combinedReleases, ...libraryReleases]

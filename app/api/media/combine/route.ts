@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
         audio_prompt: audioPrompt || '',
         image_prompt: imagePrompt || '',
         is_public: true, // Always public for releases (explore/profile visibility)
+        is_published: true, // Mark as published so releases tab can find it
         // Metadata fields
         genre: metadata.genre,
         mood: metadata.mood,
