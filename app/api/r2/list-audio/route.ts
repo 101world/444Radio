@@ -6,13 +6,20 @@ import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
  * GET /api/r2/list-audio
  * Lists ALL audio files from R2 bucket
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { userId } = await auth()
-    
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // Allow optional query param all=true for admin/full listing (not filtered by user)
+    const url = new URL(request.url)
+    const listAllParam = url.searchParams.get('all') === 'true'
+    // Optional folder override (?folder=music|images)
+    const folder = url.searchParams.get('folder') || 'music'
+    // Prefix to restrict objects to current user
+    const userPrefix = `users/${userId}/${folder}/`
 
     const s3Client = new S3Client({
       region: 'auto',
@@ -29,14 +36,15 @@ export async function GET() {
 
     const audioBaseUrl = process.env.NEXT_PUBLIC_R2_AUDIO_URL!
 
-    const listAll = async (bucket: string) => {
+    const listAll = async (bucket: string, prefix?: string) => {
       let isTruncated: boolean = true
       let continuationToken: string | undefined = undefined
       const objects: any[] = []
       while (isTruncated) {
         const resp: any = await s3Client.send(new ListObjectsV2Command({
           Bucket: bucket,
-          ContinuationToken: continuationToken
+          ContinuationToken: continuationToken,
+          Prefix: prefix
         }))
         const page: any[] = resp?.Contents || []
         objects.push(...page)
@@ -52,8 +60,8 @@ export async function GET() {
 
     for (const b of bucketsToTry) {
       try {
-        console.log('🪣 Trying to list bucket:', b)
-        const listed = await listAll(b)
+        console.log('🪣 Listing bucket:', b, 'prefix:', listAllParam ? '(all objects)' : userPrefix)
+        const listed = await listAll(b, listAllParam ? undefined : userPrefix)
         if (listed.length > 0) {
           files = listed
           usedBucket = b
@@ -71,21 +79,29 @@ export async function GET() {
       }
     }
 
-    const tracks = (files || []).map((file, index) => ({
-      id: file.Key || `r2-${index}`,
-      title: (file.Key || '').replace(/\.(mp3|wav|ogg)$/i, '') || `Track ${index + 1}`,
-      prompt: 'Generated music',
-      lyrics: null,
-      audio_url: `${audioBaseUrl}/${file.Key}`,
-      created_at: (file.LastModified ? new Date(file.LastModified).toISOString() : new Date().toISOString()),
-      file_size: file.Size || 0,
-      source: 'r2'
-    }))
+    const tracks = (files || []).filter(f => !!f.Key && /\.(mp3|wav|ogg)$/i.test(f.Key)).map((file, index) => {
+      const key: string = file.Key
+      // Extract original filename for title
+      const baseName = key.split('/').pop() || key
+      const title = baseName.replace(/\.(mp3|wav|ogg)$/i, '')
+      return {
+        id: key,
+        title: title || `Track ${index + 1}`,
+        prompt: 'Generated music',
+        lyrics: null,
+        audio_url: `${audioBaseUrl}/${key}`,
+        created_at: (file.LastModified ? new Date(file.LastModified).toISOString() : new Date().toISOString()),
+        file_size: file.Size || 0,
+        source: 'r2'
+      }
+    })
 
     return NextResponse.json({
       success: true,
       bucketTried: bucketsToTry,
       bucketUsed: usedBucket,
+      prefixUsed: listAllParam ? null : userPrefix,
+      scope: listAllParam ? 'all' : 'user',
       music: tracks,
       count: tracks.length,
       error: tracks.length === 0 && lastError ? String(lastError) : undefined
