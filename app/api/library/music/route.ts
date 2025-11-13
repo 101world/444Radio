@@ -19,12 +19,13 @@ export async function GET() {
     // All historical user IDs to fetch ALL songs
     const allUserIds = [
       userId,
-      'user_34TAjF6JtnxUyWn8nXx9tq7A3VC',
-      'user_35HWELeD4pRQTRxTfGvWP28TnIP',
-      'user_34vm60RVmcQgL18b0bpS1sTYhZ',
-      'user_34ThsuzQnqd8zqkK5dGPrfREyoU',
       'user_34tKVS04YVAZHi7iHSr3aaZlU60',
-      'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
+      'user_34J8MP3KCfczODGn9yKMolWPX9R',
+      'user_34ThsuzQnqd8zqkK5dGPrfREyoU',
+      'user_34vm60RVmcQgL18b0bpS1sTYhZ',
+      'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB',
+      'user_35HWELeD4pRQTRxTfGvWP28TnIP',
+      'user_34TAjF6JtnxUyWn8nXx9tq7A3VC'
     ]
 
     // Fetch user's music library from ALL historical user IDs
