@@ -21,8 +21,8 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch user's music library
-    const response = await fetch(
+    // Fetch from music_library (uses clerk_user_id)
+    const mlResponse = await fetch(
       `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
       {
         headers: {
@@ -31,11 +31,45 @@ export async function GET() {
         }
       }
     )
+    const musicLibraryData = await mlResponse.json()
 
-    const music = await response.json()
+    // ALSO fetch from combined_media where audio exists (uses user_id)
+    const cmResponse = await fetch(
+      `${supabaseUrl}/rest/v1/combined_media?user_id=eq.${userId}&audio_url=not.is.null&order=created_at.desc`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+    const combinedMediaData = await cmResponse.json()
 
-    // Ensure it's always an array
-    const musicArray = Array.isArray(music) ? music : []
+    // Combine both sources, removing duplicates by audio_url
+    const allMusic = [
+      ...(Array.isArray(musicLibraryData) ? musicLibraryData : []),
+      ...(Array.isArray(combinedMediaData) ? combinedMediaData.map(item => ({
+        id: item.id,
+        clerk_user_id: item.user_id,
+        title: item.title || 'Untitled',
+        prompt: item.audio_prompt || 'Generated music',
+        lyrics: item.lyrics,
+        audio_url: item.audio_url,
+        duration: item.duration,
+        audio_format: 'mp3',
+        status: 'ready',
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      })) : [])
+    ]
+
+    // Remove duplicates by audio_url
+    const seen = new Set()
+    const musicArray = allMusic.filter(item => {
+      if (seen.has(item.audio_url)) return false
+      seen.add(item.audio_url)
+      return true
+    })
 
     return corsResponse(NextResponse.json({
       success: true,
