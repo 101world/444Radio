@@ -80,7 +80,6 @@ WITH all_tracks AS (
     image_url,
     audio_prompt as prompt,
     lyrics,
-    COALESCE(is_published, FALSE) as is_published,
     created_at
   FROM combined_media 
   WHERE user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R' AND audio_url IS NOT NULL
@@ -95,7 +94,6 @@ WITH all_tracks AS (
     image_url,
     music_prompt as prompt,
     lyrics,
-    COALESCE(is_published, FALSE) as is_published,
     created_at
   FROM combined_media_library 
   WHERE clerk_user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R'
@@ -110,7 +108,6 @@ WITH all_tracks AS (
     NULL as image_url,
     prompt,
     lyrics,
-    FALSE as is_published,
     created_at
   FROM music_library 
   WHERE clerk_user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R'
@@ -125,7 +122,6 @@ SELECT
   source,
   title,
   prompt,
-  CASE WHEN is_published THEN '✅ Published' ELSE '⏳ Draft' END as status,
   created_at::date as date_created
 FROM ranked
 WHERE rn = 1
@@ -157,25 +153,21 @@ ORDER BY COUNT(*) DESC;
 -- ==========================================
 SELECT '💿 PUBLISHED RELEASES' as section;
 
-WITH all_published AS (
-  SELECT id, title, audio_url, image_url, created_at
-  FROM combined_media 
+-- Note: Skipping published check until we confirm column names
+SELECT 
+  COUNT(DISTINCT cm.audio_url) as total_releases_with_covers,
+  '(Tracks with both audio and image)' as note
+FROM (
+  SELECT audio_url FROM combined_media 
   WHERE user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R' 
-    AND is_published = TRUE 
     AND audio_url IS NOT NULL 
     AND image_url IS NOT NULL
-  
   UNION
-  
-  SELECT id, title, audio_url, image_url, created_at
-  FROM combined_media_library 
-  WHERE clerk_user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R' 
-    AND is_published = TRUE
-)
-SELECT 
-  COUNT(DISTINCT audio_url) as total_published_releases,
-  '(This is what should show in Releases tab)' as note
-FROM all_published;
+  SELECT audio_url FROM combined_media_library 
+  WHERE clerk_user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R'
+    AND audio_url IS NOT NULL 
+    AND image_url IS NOT NULL
+) cm;
 
 -- ==========================================
 -- SUMMARY
@@ -211,9 +203,9 @@ UNION ALL
 SELECT 
   'Releases Tab' as tab,
   COUNT(DISTINCT audio_url) as count,
-  'Published tracks only' as description
+  'Tracks with both audio and image' as description
 FROM (
-  SELECT audio_url FROM combined_media WHERE user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R' AND is_published = TRUE AND audio_url IS NOT NULL AND image_url IS NOT NULL
+  SELECT audio_url FROM combined_media WHERE user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R' AND audio_url IS NOT NULL AND image_url IS NOT NULL
   UNION
-  SELECT audio_url FROM combined_media_library WHERE clerk_user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R' AND is_published = TRUE
+  SELECT audio_url FROM combined_media_library WHERE clerk_user_id = 'user_34J8MP3KCfczODGn9yKMolWPX9R' AND audio_url IS NOT NULL AND image_url IS NOT NULL
 ) all_releases;
