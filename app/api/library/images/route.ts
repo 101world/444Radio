@@ -16,25 +16,30 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch user's images library
+    // Fetch user's images library (with explicit limit to get all)
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/images_library?clerk_user_id=eq.${userId}&order=created_at.desc`,
+      `${supabaseUrl}/rest/v1/images_library?clerk_user_id=eq.${userId}&order=created_at.desc&limit=1000`,
       {
         headers: {
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'count=exact'
         }
       }
     )
 
     const images = await response.json()
+    const totalCount = response.headers.get('Content-Range')?.split('/')[1] || '0'
 
     // Ensure it's always an array
     const imageArray = Array.isArray(images) ? images : []
 
+    console.log(`📸 Images Library: Fetched ${imageArray.length} images (total: ${totalCount})`)
+
     return NextResponse.json({
       success: true,
-      images: imageArray
+      images: imageArray,
+      total: parseInt(totalCount)
     })
 
   } catch (error) {

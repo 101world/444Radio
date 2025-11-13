@@ -135,6 +135,15 @@ export default function LibraryPage() {
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
         console.log('✅ Loaded', imagesData.images.length, 'images')
+        console.log('📸 Images data:', imagesData)
+        
+        // Debug: Check if all images have required fields
+        const invalidImages = imagesData.images.filter((img: any) => !img.image_url || !img.id)
+        if (invalidImages.length > 0) {
+          console.warn('⚠️ Found', invalidImages.length, 'images with missing data:', invalidImages)
+        }
+      } else {
+        console.warn('⚠️ Images fetch failed or empty:', imagesData)
       }
 
       // Use published releases from combined_media table instead of library
