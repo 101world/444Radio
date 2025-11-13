@@ -35,7 +35,7 @@ SELECT DISTINCT ON (audio_url)
 FROM combined_media
 WHERE audio_url IS NOT NULL
   AND audio_url != ''
-  AND (type = 'audio' OR audio_url LIKE '%.mp3' OR audio_url LIKE '%.wav')
+  AND (audio_url LIKE '%.mp3' OR audio_url LIKE '%.wav' OR audio_url LIKE '%music%')
 ORDER BY audio_url, created_at DESC;
 
 -- Show results
