@@ -32,15 +32,16 @@ export async function POST(req: NextRequest) {
 
     console.log('🔬 [ATOM] Full prompt:', fullPrompt)
 
-    // Use GPT-5 Nano model from Replicate
-    // Note: The prediction ID from Replicate is not the version hash
-    // We need to use the actual model version - checking if this is the right format
+    // Use Meta Llama 3.1 8B Instruct for lyrics generation
+    // This is a reliable text generation model available on Replicate
     const output = await replicate.run(
-      "openai/gpt-5-nano" as any,
+      "meta/meta-llama-3.1-8b-instruct",
       {
         input: {
           prompt: fullPrompt,
-          max_tokens: 600
+          max_tokens: 600,
+          temperature: 0.8,
+          top_p: 0.9
         }
       }
     )

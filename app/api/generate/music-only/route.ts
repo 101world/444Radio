@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { title, prompt, lyrics, duration = 'medium', bitrate = 256000, sample_rate = 44100, audio_format = 'mp3', language = 'English', audio_length_in_s, num_inference_steps, guidance_scale, denoising_strength } = await req.json()
+    const { title, prompt, lyrics, duration = 'medium', genre, bpm, bitrate = 256000, sample_rate = 44100, audio_format = 'mp3', language = 'English', audio_length_in_s, num_inference_steps, guidance_scale, denoising_strength } = await req.json()
 
     // Title is REQUIRED (3-100 characters)
     if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 100) {
@@ -80,6 +80,14 @@ export async function POST(req: NextRequest) {
     if (!prompt || prompt.length < 10 || prompt.length > 300) {
       return NextResponse.json({ error: 'Prompt is required (10-300 characters)' }, { status: 400 })
     }
+    
+    console.log('🎵 Music Generation Parameters:')
+    console.log('  Title:', title)
+    console.log('  Prompt:', prompt)
+    console.log('  Genre:', genre || 'not specified')
+    console.log('  BPM:', bpm || 'not specified')
+    console.log('  Duration:', duration)
+    console.log('  Language:', language)
 
     // If lyrics not provided, use intelligent default from dataset
     let formattedLyrics: string

@@ -655,17 +655,21 @@ function CreatePageContent() {
       let result
       
       if (type === 'music') {
-        // Build prompt with optional parameters
-        let fullPrompt = params.prompt
-        if (params.genre) fullPrompt += ` [${params.genre}]`
-        if (params.bpm) fullPrompt += ` [${params.bpm} BPM]`
-        
         const titleToUse = params.customTitle || undefined
         const lyricsToUse = params.customLyrics || undefined
         const durationToUse = params.songDuration || 'medium'
+        const genreToUse = params.genre || undefined
+        const bpmToUse = params.bpm || undefined
         
-        console.log('[Generation] Calling generateMusic with:', { fullPrompt, titleToUse, lyricsToUse, durationToUse })
-        result = await generateMusic(fullPrompt, titleToUse, lyricsToUse, durationToUse)
+        console.log('[Generation] Calling generateMusic with:', { 
+          prompt: params.prompt, 
+          titleToUse, 
+          lyricsToUse, 
+          durationToUse,
+          genreToUse,
+          bpmToUse
+        })
+        result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse)
         console.log('[Generation] Music generation result:', result)
       } else {
         console.log('[Generation] Calling generateImage with:', params.prompt)
@@ -946,13 +950,27 @@ function CreatePageContent() {
     setInput('')
   }
 
-  const generateMusic = async (prompt: string, title?: string, lyrics?: string, duration: 'short' | 'medium' | 'long' = 'medium') => {
+  const generateMusic = async (
+    prompt: string, 
+    title?: string, 
+    lyrics?: string, 
+    duration: 'short' | 'medium' | 'long' = 'medium',
+    genreParam?: string,
+    bpmParam?: string
+  ) => {
+    // Build full prompt with genre/BPM if provided
+    let fullPrompt = prompt
+    if (genreParam) fullPrompt += ` [${genreParam}]`
+    if (bpmParam) fullPrompt += ` [${bpmParam} BPM]`
+    
     const requestBody: any = {
-      prompt,
+      prompt: fullPrompt,
       title,
       lyrics,
       duration,
-      language: selectedLanguage
+      language: selectedLanguage,
+      genre: genreParam,
+      bpm: bpmParam ? parseInt(bpmParam) : undefined
     }
 
     // Add ACE-Step parameters for non-English languages
