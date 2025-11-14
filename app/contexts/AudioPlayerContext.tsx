@@ -122,28 +122,33 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     hasTrackedPlayRef.current = false
 
     setCurrentTrack(track)
-    audioRef.current.src = track.audioUrl
+    
+    // Always use proxy for R2 URLs to avoid CORS issues
+    const isR2Url = track.audioUrl.includes('.r2.dev') || track.audioUrl.includes('.r2.cloudflarestorage.com')
+    const finalUrl = isR2Url 
+      ? `/api/r2/proxy?url=${encodeURIComponent(track.audioUrl)}`
+      : track.audioUrl
+    
+    console.log('Using URL:', isR2Url ? 'proxy' : 'direct', finalUrl)
+    
+    // Pause any existing playback first to prevent interruption errors
+    if (audioRef.current.src) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+    
+    audioRef.current.src = finalUrl
+    audioRef.current.load() // Explicitly load the new source
     
     // Set isPlaying to true after play promise resolves
     audioRef.current.play()
       .then(() => {
         setIsPlaying(true)
+        console.log('Playback started successfully for', track.title)
       })
-      .catch(async (error) => {
-        console.error('Error playing audio directly:', error)
+      .catch((error) => {
+        console.error('Error playing audio:', error)
         setIsPlaying(false)
-
-        // Attempt to proxy through server to avoid CORS issues
-        try {
-          const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(track.audioUrl)}`
-          audioRef.current!.src = proxyUrl
-          await audioRef.current!.play()
-          setIsPlaying(true)
-          console.log('Playback succeeded via proxy for', track.title)
-        } catch (proxyError) {
-          console.error('Playback via proxy failed:', proxyError)
-          setIsPlaying(false)
-        }
       })
 
     // Find track in playlist and update index
