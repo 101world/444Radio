@@ -155,8 +155,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         console.error('Error playing audio:', error)
         setIsPlaying(false)
       })
-        setIsPlaying(false)
-      })
 
     // Find track in playlist and update index
     const index = playlist.findIndex(t => t.id === track.id)
