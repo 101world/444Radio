@@ -50,12 +50,9 @@ export async function POST(req: NextRequest) {
         audio_url: audioUrl,
         image_url: imageUrl,
         title: title || 'Untitled Track',
-        audio_prompt: audioPrompt || '',
-        image_prompt: imagePrompt || '',
-        content_type: 'music-image',
-        is_public: true,
-        is_published: true,
-        metadata
+        created_at: new Date().toISOString(),
+        likes: 0,
+        plays: 0
       })
       return NextResponse.json(
         { error: 'Failed to save combined media', details: error.message, code: error.code },
