@@ -55,8 +55,21 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('Database error:', error)
+      console.error('Full error details:', JSON.stringify(error, null, 2))
+      console.error('Attempted insert data:', {
+        user_id: userId,
+        audio_url: audioUrl,
+        image_url: imageUrl,
+        title: title || 'Untitled Track',
+        audio_prompt: audioPrompt || '',
+        image_prompt: imagePrompt || '',
+        content_type: 'music-image',
+        is_public: true,
+        is_published: true,
+        metadata
+      })
       return NextResponse.json(
-        { error: 'Failed to save combined media', details: error.message },
+        { error: 'Failed to save combined media', details: error.message, code: error.code },
         { status: 500 }
       )
     }
