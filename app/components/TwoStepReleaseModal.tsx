@@ -129,7 +129,7 @@ export default function TwoStepReleaseModal({
       }
 
       // Combine media with full metadata
-      const combineRes = await fetch('/api/media/combine', {
+      const combineRes = await fetch('/api/library/combined', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

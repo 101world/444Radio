@@ -45,7 +45,7 @@ export default function ReleaseModal({ isOpen, onClose, musicItem, imageItems, o
     setError(null)
 
     try {
-      const response = await fetch('/api/media/combine', {
+      const response = await fetch('/api/library/combined', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -56,8 +56,8 @@ export default function ReleaseModal({ isOpen, onClose, musicItem, imageItems, o
           imagePrompt: selectedImage.prompt,
           isPublic: true,
           metadata: {
-            genre: 'unknown', // Could extract from prompt or make user select
-            mood: 'unknown', // Could extract from prompt or make user select
+            genre: 'unknown',
+            mood: 'unknown',
             tags: [],
             description: musicItem.prompt,
             vocals: musicItem.lyrics ? 'with-lyrics' : 'instrumental',
