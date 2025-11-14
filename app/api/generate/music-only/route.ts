@@ -331,29 +331,38 @@ export async function POST(req: NextRequest) {
 
     // Upload to R2 for permanent storage
     console.log('📦 Uploading to R2 for permanent storage...')
-    const fileName = `${prompt.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${audio_format}`
+    const fileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${audio_format}`
     
-    const r2Result = await downloadAndUploadToR2(
-      audioUrl,
-      userId,
-      'music',
-      fileName
-    )
+    let finalAudioUrl = audioUrl // Default to Replicate URL
+    
+    try {
+      const r2Result = await downloadAndUploadToR2(
+        audioUrl,
+        userId,
+        'music',
+        fileName
+      )
 
-    if (!r2Result.success) {
-      console.error('⚠️ R2 upload failed, using Replicate URL:', r2Result.error)
-      // Continue with Replicate URL if R2 fails
-    } else {
-      console.log('✅ R2 upload successful:', r2Result.url)
-      // Use permanent R2 URL instead of temporary Replicate URL
-      audioUrl = r2Result.url
+      if (!r2Result.success) {
+        console.error('⚠️ R2 upload failed, using Replicate URL:', r2Result.error)
+        // Continue with Replicate URL if R2 fails - DON'T fail the whole request
+      } else {
+        console.log('✅ R2 upload successful:', r2Result.url)
+        // Use permanent R2 URL instead of temporary Replicate URL
+        finalAudioUrl = r2Result.url
+      }
+    } catch (r2Error) {
+      console.error('⚠️ R2 upload exception, using Replicate URL:', r2Error)
+      // Continue with Replicate URL if R2 throws
     }
+    
+    audioUrl = finalAudioUrl
 
     // Save to music_library table first
     console.log('💾 Saving to music library...')
     const libraryEntry = {
       clerk_user_id: userId,
-      title: prompt.substring(0, 100), // Use first 100 chars of prompt as title
+      title: title, // Use the actual title from request
       prompt: prompt,
       lyrics: formattedLyrics,
       audio_url: audioUrl,
@@ -363,7 +372,8 @@ export async function POST(req: NextRequest) {
       generation_params: {
         bitrate,
         sample_rate,
-        audio_format
+        audio_format,
+        language
       },
       status: 'ready'
     }
@@ -386,9 +396,12 @@ export async function POST(req: NextRequest) {
     if (!saveResponse.ok) {
       const errorText = await saveResponse.text()
       console.error('❌ Failed to save to music_library:', saveResponse.status, errorText)
+      console.error('❌ Library entry that failed:', JSON.stringify(libraryEntry, null, 2))
       // Continue anyway - don't fail the whole generation
+      // The audio was generated successfully, just failed to save metadata
     } else {
-      savedMusic = await saveResponse.json()
+      const saveData = await saveResponse.json()
+      savedMusic = Array.isArray(saveData) ? saveData[0] : saveData
       console.log('✅ Saved to library:', savedMusic)
     }
 
@@ -430,10 +443,13 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ Music generated successfully:', audioUrl)
     
+    // Return proper response with all required fields
     return NextResponse.json({
       success: true,
       audioUrl,
-      libraryId: savedMusic[0]?.id,
+      title: title, // Use the actual title from request
+      lyrics: formattedLyrics, // Return the formatted lyrics
+      libraryId: savedMusic?.id || null,
       creditsRemaining: userCredits - 2,
       creditsDeducted: 2
     })
