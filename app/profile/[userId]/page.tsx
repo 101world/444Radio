@@ -10,7 +10,7 @@ import FloatingMenu from '../../components/FloatingMenu'
 import FloatingNavButton from '../../components/FloatingNavButton'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus, User } from 'lucide-react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 import LikeButton from '../../components/LikeButton'
 
 // Lazy load heavy components
@@ -22,10 +22,6 @@ const PrivateListModal = lazy(() => import('../../components/PrivateListModal'))
 const CreatePostModal = lazy(() => import('../../components/CreatePostModal'))
 const BannerUploadModal = lazy(() => import('../../components/BannerUploadModal'))
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 const THUMBNAIL_SHAPES = [
   'rounded-2xl', // square
   'rounded-full', // circle

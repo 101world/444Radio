@@ -10,7 +10,7 @@ import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
 import LikeButton from '../components/LikeButton'
 
@@ -122,7 +122,7 @@ export default function ExplorePage() {
 
   // Subscribe to combined_media updates to update likes count in realtime
   useEffect(() => {
-    const supabaseClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const supabaseClient = supabase
     const channel = supabaseClient
       .channel('combined_media')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'combined_media' }, (payload) => {
