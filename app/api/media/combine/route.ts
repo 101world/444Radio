@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { audioUrl, imageUrl, title, audioPrompt, imagePrompt, isPublic, metadata } = await req.json()
+    const { audioUrl, imageUrl, title, audioPrompt, imagePrompt, isPublic } = await req.json()
 
     if (!audioUrl || !imageUrl) {
       return NextResponse.json(
@@ -26,33 +26,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Build insert object with only core fields (combined_media table has limited columns)
-    const insertData: any = {
-      user_id: userId,
-      audio_url: audioUrl,
-      image_url: imageUrl,
-      title: title || 'Untitled Track',
-      audio_prompt: audioPrompt || '',
-      image_prompt: imagePrompt || '',
-      is_public: isPublic !== false, // Default to true
-      is_published: true // Mark as published so releases tab can find it
-    }
-
-    // Add metadata fields only if they exist in the schema
-    if (metadata) {
-      if (metadata.genre) insertData.genre = metadata.genre
-      if (metadata.mood) insertData.mood = metadata.mood
-      if (metadata.tags) insertData.tags = metadata.tags
-      if (metadata.description) insertData.description = metadata.description
-      if (metadata.bpm) insertData.bpm = metadata.bpm
-      if (metadata.vocals) insertData.vocals = metadata.vocals
-      if (metadata.language) insertData.language = metadata.language
-    }
-
-    // Insert combined media into database
+    // Insert combined media with only the core fields that exist in the table
     const { data, error } = await supabase
       .from('combined_media')
-      .insert(insertData)
+      .insert({
+        user_id: userId,
+        audio_url: audioUrl,
+        image_url: imageUrl,
+        title: title || 'Untitled Track',
+        content_type: 'music-image',
+        is_public: isPublic !== false,
+        created_at: new Date().toISOString()
+      })
       .select()
       .single()
 
