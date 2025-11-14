@@ -131,30 +131,32 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     
     console.log('Using URL:', isR2Url ? 'proxy' : 'direct', finalUrl)
     
-    // Pause any existing playback first and wait for it to complete
-    if (audioRef.current.src) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-      // Small delay to ensure pause completes
-      await new Promise(resolve => setTimeout(resolve, 50))
+    const audio = audioRef.current
+    
+    // Stop any existing playback completely
+    audio.pause()
+    audio.src = ''
+    audio.load()
+    
+    // Wait for cleanup to complete
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Now set the new source and load it
+    audio.src = finalUrl
+    audio.load()
+    
+    // Wait for the new source to be ready
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Now play
+    try {
+      await audio.play()
+      setIsPlaying(true)
+      console.log('Playback started successfully for', track.title)
+    } catch (error) {
+      console.error('Error playing audio:', error)
+      setIsPlaying(false)
     }
-    
-    audioRef.current.src = finalUrl
-    audioRef.current.load() // Explicitly load the new source
-    
-    // Wait for load to complete before playing
-    await new Promise(resolve => setTimeout(resolve, 50))
-    
-    // Set isPlaying to true after play promise resolves
-    audioRef.current.play()
-      .then(() => {
-        setIsPlaying(true)
-        console.log('Playback started successfully for', track.title)
-      })
-      .catch((error) => {
-        console.error('Error playing audio:', error)
-        setIsPlaying(false)
-      })
 
     // Find track in playlist and update index
     const index = playlist.findIndex(t => t.id === track.id)
