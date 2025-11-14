@@ -32,16 +32,13 @@ export async function POST(req: NextRequest) {
 
     console.log('🔬 [ATOM] Full prompt:', fullPrompt)
 
-    // Use Meta Llama 3.1 8B Instruct for lyrics generation
-    // This is a reliable text generation model available on Replicate
+    // Use OpenAI GPT-5 Nano for lyrics generation
+    // https://replicate.com/openai/gpt-5-nano
     const output = await replicate.run(
-      "meta/meta-llama-3.1-8b-instruct",
+      "openai/gpt-5-nano",
       {
         input: {
-          prompt: fullPrompt,
-          max_tokens: 600,
-          temperature: 0.8,
-          top_p: 0.9
+          prompt: fullPrompt
         }
       }
     )
