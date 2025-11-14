@@ -26,36 +26,33 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Validate mandatory metadata
-    if (!metadata?.genre || !metadata?.mood) {
-      return NextResponse.json(
-        { error: 'Genre and Mood are required' },
-        { status: 400 }
-      )
+    // Build insert object with only core fields (combined_media table has limited columns)
+    const insertData: any = {
+      user_id: userId,
+      audio_url: audioUrl,
+      image_url: imageUrl,
+      title: title || 'Untitled Track',
+      audio_prompt: audioPrompt || '',
+      image_prompt: imagePrompt || '',
+      is_public: isPublic !== false, // Default to true
+      is_published: true // Mark as published so releases tab can find it
     }
 
-    // Insert combined media into database with full metadata
-    // Note: All releases through this endpoint are PUBLIC by default
+    // Add metadata fields only if they exist in the schema
+    if (metadata) {
+      if (metadata.genre) insertData.genre = metadata.genre
+      if (metadata.mood) insertData.mood = metadata.mood
+      if (metadata.tags) insertData.tags = metadata.tags
+      if (metadata.description) insertData.description = metadata.description
+      if (metadata.bpm) insertData.bpm = metadata.bpm
+      if (metadata.vocals) insertData.vocals = metadata.vocals
+      if (metadata.language) insertData.language = metadata.language
+    }
+
+    // Insert combined media into database
     const { data, error } = await supabase
       .from('combined_media')
-      .insert({
-        user_id: userId,
-        audio_url: audioUrl,
-        image_url: imageUrl,
-        title: title || 'Untitled Track',
-        audio_prompt: audioPrompt || '',
-        image_prompt: imagePrompt || '',
-        is_public: true, // Always public for releases (explore/profile visibility)
-        is_published: true, // Mark as published so releases tab can find it
-        // Metadata fields
-        genre: metadata.genre,
-        mood: metadata.mood,
-        tags: metadata.tags || [],
-        description: metadata.description || '',
-        bpm: metadata.bpm || null,
-        vocals: metadata.vocals || 'none',
-        language: metadata.language || 'instrumental'
-      })
+      .insert(insertData)
       .select()
       .single()
 
