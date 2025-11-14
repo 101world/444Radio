@@ -93,7 +93,7 @@ export default function HomePage() {
       audioUrl: t.audio_url,
       title: t.title,
       artist: t.artist,
-      coverUrl: t.image_url
+      imageUrl: t.image_url
     }))
     
     setPlaylist(playerTracks)

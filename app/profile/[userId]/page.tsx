@@ -797,8 +797,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       audioUrl: m.audio_url!,
       title: m.title,
       artist: profile?.username,
-      imageUrl: m.image_url,
-      userId: m.user_id
+      imageUrl: m.image_url
     })) || []
     
     setPlaylist(allTracks)
@@ -807,8 +806,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       audioUrl: media.audio_url,
       title: media.title,
       artist: profile?.username,
-      imageUrl: media.image_url,
-      userId: media.user_id
+      imageUrl: media.image_url
     })
     
     // If station is live, send track notification to database

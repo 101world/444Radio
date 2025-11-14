@@ -1010,8 +1010,7 @@ function CreatePageContent() {
       id: messageId,
       audioUrl: audioUrl,
       title: title,
-      artist: 'AI Generated',
-      imageUrl: undefined
+      artist: 'AI Generated'
     }
     
     // If this track is already playing, toggle pause/play
