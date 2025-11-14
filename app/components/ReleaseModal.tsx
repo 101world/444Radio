@@ -45,7 +45,7 @@ export default function ReleaseModal({ isOpen, onClose, musicItem, imageItems, o
     setError(null)
 
     try {
-      const response = await fetch('/api/library/combined', {
+      const response = await fetch('/api/media/combine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
