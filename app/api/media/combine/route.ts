@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { audioUrl, imageUrl, title, audioPrompt, imagePrompt, isPublic } = await req.json()
+    const { audioUrl, imageUrl, title, audioPrompt, imagePrompt, isPublic, metadata } = await req.json()
 
     if (!audioUrl || !imageUrl) {
       return NextResponse.json(
@@ -26,7 +26,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Insert combined media with only the core fields that exist in the table
+    // Insert combined media into database with full metadata
+    // Note: All releases through this endpoint are PUBLIC by default
     const { data, error } = await supabase
       .from('combined_media')
       .insert({
@@ -34,9 +35,20 @@ export async function POST(req: NextRequest) {
         audio_url: audioUrl,
         image_url: imageUrl,
         title: title || 'Untitled Track',
+        audio_prompt: audioPrompt || '',
+        image_prompt: imagePrompt || '',
         content_type: 'music-image',
-        is_public: isPublic !== false,
-        created_at: new Date().toISOString()
+        is_public: true, // Always public for releases (explore/profile visibility)
+        is_published: true, // Mark as published so releases tab can find it
+        created_at: new Date().toISOString(),
+        // Metadata fields (will be added via migration)
+        genre: metadata?.genre || 'unknown',
+        mood: metadata?.mood || 'unknown',
+        tags: metadata?.tags || [],
+        description: metadata?.description || '',
+        bpm: metadata?.bpm || null,
+        vocals: metadata?.vocals || 'none',
+        language: metadata?.language || 'instrumental'
       })
       .select()
       .single()
