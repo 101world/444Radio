@@ -109,7 +109,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const playTrack = useCallback((track: Track) => {
+  const playTrack = useCallback(async (track: Track) => {
     if (!audioRef.current) {
       console.error('Audio ref not initialized')
       return
@@ -131,14 +131,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     
     console.log('Using URL:', isR2Url ? 'proxy' : 'direct', finalUrl)
     
-    // Pause any existing playback first to prevent interruption errors
+    // Pause any existing playback first and wait for it to complete
     if (audioRef.current.src) {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
+      // Small delay to ensure pause completes
+      await new Promise(resolve => setTimeout(resolve, 50))
     }
     
     audioRef.current.src = finalUrl
     audioRef.current.load() // Explicitly load the new source
+    
+    // Wait for load to complete before playing
+    await new Promise(resolve => setTimeout(resolve, 50))
     
     // Set isPlaying to true after play promise resolves
     audioRef.current.play()
@@ -148,6 +153,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       })
       .catch((error) => {
         console.error('Error playing audio:', error)
+        setIsPlaying(false)
+      })
         setIsPlaying(false)
       })
 
