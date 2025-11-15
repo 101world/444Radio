@@ -28,6 +28,7 @@ import TimelineRuler from '@/app/components/studio/TimelineRuler';
 import TrackInspector from '@/app/components/studio/TrackInspector';
 import BeatGenerationModal from '@/app/components/studio/BeatGenerationModal';
 import SongGenerationModal from '@/app/components/studio/SongGenerationModal';
+import ExportModal from '@/app/components/studio/ExportModal';
 import type { ToolType } from '@/app/components/studio/Toolbar';
 import { useUser } from '@clerk/nextjs';
 
@@ -50,6 +51,7 @@ function StudioContent() {
   const [showBeatModal, setShowBeatModal] = useState(false);
   const [showSongModal, setShowSongModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Show notification helper
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -260,9 +262,8 @@ function StudioContent() {
   }, [showNotification]);
 
   const handleExportAudio = useCallback(() => {
-    showNotification('Export audio feature coming soon', 'info');
-    // TODO: Implement audio export/mixdown functionality
-  }, [showNotification]);
+    setShowExportModal(true);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -570,11 +571,11 @@ function StudioContent() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Timeline */}
         <div className="flex-1 flex flex-col">
-          {/* Timeline ruler with zoom */}
-          <TimelineRuler />
+          {/* Timeline ruler with zoom + BPM grid */}
+          <TimelineRuler bpm={bpm} timeSig={timeSig} snapEnabled={snapEnabled} />
 
           {/* Timeline - Always show, with empty tracks */}
-          <Timeline />
+          <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} />
         </div>
 
         {/* Track Inspector Sidebar */}
@@ -699,6 +700,30 @@ function StudioContent() {
         isOpen={showSongModal}
         onClose={() => setShowSongModal(false)}
         onGenerate={handleSongGenerated}
+      />
+
+      {/* Export Modal (stub) */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onStartExport={(fmt) => {
+          showNotification(`Export started (${fmt.toUpperCase()}) — stub`, 'info')
+        }}
+        projectName={projectName}
+        bpm={bpm}
+        timeSig={timeSig}
+        session={{
+          tracks: tracks.map(t => ({
+            id: t.id,
+            name: t.name,
+            color: t.color,
+            volume: t.volume,
+            pan: t.pan,
+            mute: t.mute,
+            solo: t.solo,
+            clips: t.clips,
+          }))
+        }}
       />
     </div>
   );

@@ -22,8 +22,12 @@ export interface AudioClip {
 interface AudioClipComponentProps {
   clip: AudioClip;
   zoom: number;
+  bpm: number;
+  snapEnabled: boolean;
+  activeTool: 'select' | 'cut' | 'zoom' | 'move' | 'pan';
   onMove: (clipId: string, newStartTime: number) => void;
-  onResize: (clipId: string, newDuration: number, newOffset: number) => void;
+  onResize: (clipId: string, newDuration: number, newOffset: number, newStartTime?: number) => void;
+  onSplit: (clipId: string, splitTime: number) => void;
   onDelete: (clipId: string) => void;
   onSelect: (clipId: string) => void;
   isSelected: boolean;
@@ -32,24 +36,45 @@ interface AudioClipComponentProps {
 export default function AudioClipComponent({
   clip,
   zoom,
+  bpm,
+  snapEnabled,
+  activeTool,
   onMove,
   onResize,
+  onSplit,
   onDelete,
   onSelect,
   isSelected,
 }: AudioClipComponentProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+  const [resizing, setResizing] = useState<null | 'left' | 'right'>(null);
   const clipRef = useRef<HTMLDivElement>(null);
 
   const pixelsPerSecond = 50 * zoom;
   const clipWidth = clip.duration * pixelsPerSecond;
   const clipLeft = clip.startTime * pixelsPerSecond;
 
+  const beat = 60 / Math.max(1, bpm);
+  const grid = !snapEnabled ? 0 : (zoom > 2 ? beat / 4 : zoom > 1 ? beat / 2 : beat);
+  const quantize = (t: number) => snapEnabled && grid > 0 ? Math.round(t / grid) * grid : t;
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only left click
     e.stopPropagation();
     
+    // Cut tool: split at clicked position
+    if (activeTool === 'cut') {
+      const container = clipRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const relX = e.clientX - rect.left;
+        const timeAtPointer = clip.startTime + relX / pixelsPerSecond;
+        onSplit(clip.id, quantize(timeAtPointer));
+        return;
+      }
+    }
+
     setIsDragging(true);
     const rect = clipRef.current?.getBoundingClientRect();
     if (rect) {
@@ -59,7 +84,7 @@ export default function AudioClipComponent({
   };
 
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isDragging && !resizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const timelineContainer = clipRef.current?.parentElement?.parentElement;
@@ -67,13 +92,35 @@ export default function AudioClipComponent({
 
       const rect = timelineContainer.getBoundingClientRect();
       const relativeX = e.clientX - rect.left - dragOffset;
-      const newStartTime = Math.max(0, relativeX / pixelsPerSecond);
-      
-      onMove(clip.id, newStartTime);
+
+      if (isDragging) {
+        const rawStart = Math.max(0, relativeX / pixelsPerSecond);
+        const snapped = quantize(rawStart);
+        onMove(clip.id, snapped);
+      } else if (resizing) {
+        const mouseX = e.clientX - rect.left;
+        if (resizing === 'left') {
+          // New start cannot go past right edge
+          const newStartPx = Math.min(clipLeft + clipWidth - 5, Math.max(0, mouseX));
+          const newStartTime = quantize(newStartPx / pixelsPerSecond);
+          let newDur = (clip.startTime + clip.duration) - newStartTime;
+          if (newDur < 0.05) newDur = 0.05;
+          const newOff = clip.offset + (clip.startTime - newStartTime);
+          onResize(clip.id, newDur, Math.max(0, newOff), newStartTime);
+        } else {
+          // Right resize: adjust duration only
+          const newEndPx = Math.max(clipLeft + 5, mouseX);
+          const newEndTime = quantize(newEndPx / pixelsPerSecond);
+          let newDur = newEndTime - clip.startTime;
+          if (newDur < 0.05) newDur = 0.05;
+          onResize(clip.id, newDur, clip.offset, clip.startTime);
+        }
+      }
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      setResizing(null);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -83,7 +130,7 @@ export default function AudioClipComponent({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragOffset, pixelsPerSecond, clip.id, onMove]);
+  }, [isDragging, resizing, dragOffset, pixelsPerSecond, clip.id, onMove, onResize, clipLeft, clipWidth, clip.startTime, clip.duration, clip.offset, quantize]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -150,14 +197,14 @@ export default function AudioClipComponent({
             className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-cyan-400/30 hover:bg-cyan-400/50"
             onMouseDown={(e) => {
               e.stopPropagation();
-              // TODO: Implement trim start
+              setResizing('left');
             }}
           />
           <div
             className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-cyan-400/30 hover:bg-cyan-400/50"
             onMouseDown={(e) => {
               e.stopPropagation();
-              // TODO: Implement trim end
+              setResizing('right');
             }}
           />
         </>

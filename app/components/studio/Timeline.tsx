@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 import { Volume2, VolumeX, Headphones, Trash2, Music, Repeat } from 'lucide-react';
 import { ContextMenu, getTrackContextMenuItems } from './ContextMenu';
@@ -14,9 +14,12 @@ import AudioClip from './AudioClip';
 
 interface TrackRowProps {
   trackId: string;
+  snapEnabled: boolean;
+  bpm: number;
+  activeTool: 'select' | 'cut' | 'zoom' | 'move' | 'pan';
 }
 
-function TrackRow({ trackId }: TrackRowProps) {
+function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
   const {
     tracks,
     setTrackVolume,
@@ -28,12 +31,15 @@ function TrackRow({ trackId }: TrackRowProps) {
     isTrackLooping,
     addClipToTrack,
     moveClip,
+    resizeClip,
+    splitClip,
     removeClip,
     zoom,
     selectedTrackId,
     setSelectedTrack,
     selectedClipId,
     setSelectedClip,
+    reorderTrack,
   } = useStudio();
 
   const track = tracks.find((t) => t.id === trackId);
@@ -73,7 +79,10 @@ function TrackRow({ trackId }: TrackRowProps) {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const pixelsPerSecond = 50 * zoom;
-    const startTime = Math.max(0, x / pixelsPerSecond);
+    const rawTime = Math.max(0, x / pixelsPerSecond);
+    const beat = 60 / Math.max(1, bpm);
+    const grid = !snapEnabled ? 0 : (zoom > 2 ? beat / 4 : zoom > 1 ? beat / 2 : beat);
+    const startTime = snapEnabled ? Math.round(rawTime / grid) * grid : rawTime;
 
     // Add each file as a clip to this track
     for (const file of files) {
@@ -124,6 +133,28 @@ function TrackRow({ trackId }: TrackRowProps) {
   const isSelected = selectedTrackId === trackId;
   const isEmpty = track.clips.length === 0;
 
+  const thisIndex = tracks.findIndex(t => t?.id === trackId);
+
+  const handleRowDragStart = (e: React.DragEvent) => {
+    if (activeTool !== 'pan') return;
+    e.dataTransfer.setData('text/track-id', trackId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleRowDragOver = (e: React.DragEvent) => {
+    if (activeTool !== 'pan') return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleRowDrop = (e: React.DragEvent) => {
+    if (activeTool !== 'pan') return;
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData('text/track-id');
+    if (!draggedId) return;
+    reorderTrack(draggedId, thisIndex);
+  };
+
   return (
     <div
       className={`bg-black backdrop-blur-sm rounded border p-3 mb-2 relative cursor-pointer transition-all ${
@@ -136,6 +167,10 @@ function TrackRow({ trackId }: TrackRowProps) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      draggable={activeTool === 'pan'}
+      onDragStart={handleRowDragStart}
+      onDragOverCapture={handleRowDragOver}
+      onDropCapture={handleRowDrop}
     >
       {/* Context menu */}
       {contextMenu && (
@@ -240,13 +275,14 @@ function TrackRow({ trackId }: TrackRowProps) {
               key={clip.id}
               clip={clip}
               zoom={zoom}
+              bpm={bpm}
+              snapEnabled={snapEnabled}
+              activeTool={activeTool}
               isSelected={selectedClipId === clip.id}
               onSelect={() => setSelectedClip(clip.id)}
               onMove={(clipId, newStartTime) => moveClip(clipId, newStartTime)}
-              onResize={(clipId, newDuration, newOffset) => {
-                // TODO: Implement clip resize
-                console.log('Resize clip:', clipId, newDuration, newOffset);
-              }}
+              onResize={(clipId, newDuration, newOffset, newStartTime) => resizeClip(clipId, newDuration, newOffset, newStartTime)}
+              onSplit={(clipId, splitTime) => splitClip(clipId, splitTime)}
               onDelete={(clipId) => removeClip(clipId)}
             />
           ))
@@ -256,7 +292,7 @@ function TrackRow({ trackId }: TrackRowProps) {
   );
 }
 
-export default function Timeline() {
+export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan' }) {
   const { tracks, currentTime, isPlaying } = useStudio();
 
   return (
@@ -287,7 +323,9 @@ export default function Timeline() {
           </div>
         </div>
       ) : (
-        tracks.map((track) => <TrackRow key={track.id} trackId={track.id} />)
+        tracks.map((track) => (
+          <TrackRow key={track.id} trackId={track.id} snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} />
+        ))
       )}
     </div>
   );

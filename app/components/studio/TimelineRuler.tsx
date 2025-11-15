@@ -6,10 +6,13 @@
 'use client';
 
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { useRef, useCallback, useMemo } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
-export default function TimelineRuler() {
-  const { zoom, setZoom, currentTime, duration } = useStudio();
+export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled = true }: { bpm?: number; timeSig?: '4/4' | '3/4' | '6/8'; snapEnabled?: boolean }) {
+  const { zoom, setZoom, currentTime, duration, setCurrentTime, isPlaying, setPlaying } = useStudio();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{ dragging: boolean; wasPlaying: boolean } | null>(null);
 
   const handleZoomIn = () => {
     setZoom(Math.min(zoom * 1.5, 10));
@@ -23,13 +26,79 @@ export default function TimelineRuler() {
     setZoom(1);
   };
 
-  // Generate time markers
-  const markers = [];
-  const markerInterval = zoom > 2 ? 1 : zoom > 0.5 ? 5 : 10; // seconds
-  const maxTime = duration || 300; // Default 5 minutes
+  const pxPerSecond = 50 * zoom;
 
-  for (let i = 0; i <= maxTime; i += markerInterval) {
-    markers.push(i);
+  const beatsPerBar = useMemo(() => {
+    const n = parseInt(String(timeSig).split('/')[0] || '4', 10);
+    return Number.isFinite(n) && n > 0 ? n : 4;
+  }, [timeSig]);
+
+  const safeBpm = Math.max(1, bpm || 120);
+  const beatDuration = 60 / safeBpm; // seconds per beat
+  const barDuration = beatsPerBar * beatDuration; // seconds per bar
+
+  const getTimeFromEvent = useCallback((e: PointerEvent | React.PointerEvent) => {
+    const scroller = scrollRef.current;
+    if (!scroller) return 0;
+    const rect = scroller.getBoundingClientRect();
+    const clientX = 'clientX' in e ? e.clientX : 0;
+    const x = clientX - rect.left + scroller.scrollLeft;
+    const t = Math.max(0, x / pxPerSecond);
+    return t;
+  }, [pxPerSecond]);
+
+  const updateFromEvent = useCallback((e: PointerEvent | React.PointerEvent) => {
+    const t = getTimeFromEvent(e);
+    setCurrentTime(t);
+  }, [getTimeFromEvent, setCurrentTime]);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    // Only handle primary button
+    if (e.button !== 0) return;
+    const wasPlaying = isPlaying;
+    if (wasPlaying) setPlaying(false);
+    dragStateRef.current = { dragging: true, wasPlaying };
+    // Focus and capture pointer to continue receiving events
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    updateFromEvent(e);
+
+    const handleMove = (ev: PointerEvent) => {
+      if (!dragStateRef.current?.dragging) return;
+      updateFromEvent(ev);
+    };
+
+    const handleUp = (ev: PointerEvent) => {
+      if (!dragStateRef.current) return;
+      dragStateRef.current.dragging = false;
+      // Release capture if possible
+      try { (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId); } catch {}
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      // Resume playback if it was playing before
+      if (dragStateRef.current.wasPlaying) setPlaying(true);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  }, [isPlaying, setPlaying, updateFromEvent]);
+
+  // Generate time markers and musical grid
+  const maxTime = duration || 300; // Default 5 minutes
+  const markerInterval = zoom > 2 ? 1 : zoom > 0.5 ? 5 : 10; // seconds for time labels
+  const markers: number[] = [];
+  for (let i = 0; i <= maxTime; i += markerInterval) markers.push(i);
+
+  const barPositions: number[] = [];
+  for (let t = 0; t <= maxTime + 1e-6; t += barDuration) barPositions.push(Number(t.toFixed(6)));
+
+  const beatPositions: Array<{ time: number; isDownbeat: boolean }> = [];
+  for (let barIdx = 0; barIdx < barPositions.length; barIdx++) {
+    const barStart = barPositions[barIdx];
+    for (let b = 0; b < beatsPerBar; b++) {
+      const t = barStart + b * beatDuration;
+      if (t > maxTime) break;
+      beatPositions.push({ time: Number(t.toFixed(6)), isDownbeat: b === 0 });
+    }
   }
 
   const formatTime = (seconds: number) => {
@@ -69,19 +138,44 @@ export default function TimelineRuler() {
       </div>
 
       {/* Timeline ruler */}
-      <div className="flex-1 relative overflow-x-auto">
+      <div
+        ref={scrollRef}
+        className="flex-1 relative overflow-x-auto select-none"
+        onPointerDown={onPointerDown}
+        title="Drag to scrub the playhead"
+      >
         <div 
           className="absolute inset-0 flex items-end"
           style={{ 
-            width: `${maxTime * zoom * 50}px`, // 50px per second at 1x zoom
+            width: `${maxTime * pxPerSecond}px`, // 50px per second at 1x zoom
           }}
         >
+          {/* Musical grid: bars and beats */}
+          {beatPositions.map(({ time, isDownbeat }, idx) => (
+            <div
+              key={`beat-${idx}`}
+              className={`absolute top-0 bottom-0 ${isDownbeat ? (snapEnabled ? 'bg-cyan-700/50' : 'bg-cyan-800/30') : (snapEnabled ? 'bg-teal-800/40' : 'bg-teal-900/25')}`}
+              style={{ left: `${time * pxPerSecond}px`, width: '1px' }}
+            />
+          ))}
+
+          {/* Bar labels (every bar) */}
+          {barPositions.map((time, i) => (
+            <div
+              key={`barlabel-${i}`}
+              className="absolute"
+              style={{ left: `${time * pxPerSecond}px`, bottom: '18px' }}
+            >
+              <span className="text-[10px] text-cyan-400 font-mono select-none">{i + 1}</span>
+            </div>
+          ))}
+
           {markers.map((time) => (
             <div
               key={time}
               className="absolute bottom-0 flex flex-col items-center"
               style={{ 
-                left: `${time * zoom * 50}px`,
+                left: `${time * pxPerSecond}px`,
               }}
             >
               {/* Major tick */}
@@ -97,22 +191,11 @@ export default function TimelineRuler() {
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-teal-400 pointer-events-none z-10 shadow-lg shadow-teal-400/50"
             style={{ 
-              left: `${currentTime * zoom * 50}px`,
+              left: `${currentTime * pxPerSecond}px`,
             }}
           >
             <div className="w-3 h-3 bg-teal-400 rounded-full -ml-1.5 -mt-1 shadow-lg shadow-teal-400/50" />
           </div>
-
-          {/* Beat grid (every second) */}
-          {Array.from({ length: Math.ceil(maxTime) }).map((_, i) => (
-            <div
-              key={`grid-${i}`}
-              className="absolute top-0 bottom-0 w-px bg-teal-900/20"
-              style={{ 
-                left: `${i * zoom * 50}px`,
-              }}
-            />
-          ))}
         </div>
       </div>
     </div>

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { prompt, genre = 'pop', mood = 'upbeat', has_vocals = true, duration = 30 } = await request.json();
+    const { prompt, genre = 'pop', mood = 'upbeat', has_vocals = true, duration = 30, output_format = 'mp3', lyrics } = await request.json();
 
     if (!prompt) {
       return corsResponse(
@@ -34,10 +34,13 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
-    console.log('🎤 Generating song with MiniMax Music 1.5:', { prompt, genre, mood, has_vocals, duration });
+    console.log('🎤 Generating song with MiniMax Music 1.5:', { prompt, genre, mood, has_vocals, duration, output_format, hasLyrics: !!lyrics });
 
     // Build enhanced prompt
-    const enhancedPrompt = `${genre} ${mood} song, ${prompt}${has_vocals ? ', with vocals' : ', instrumental'}`;
+    let enhancedPrompt = `${genre} ${mood} song, ${prompt}${has_vocals ? ', with vocals' : ', instrumental'}`;
+    if (lyrics && typeof lyrics === 'string' && lyrics.trim().length > 0) {
+      enhancedPrompt += `. Use these lyrics: ${lyrics.trim()}`;
+    }
 
     // Create song generation prediction
     const prediction = await replicate.predictions.create({
@@ -91,6 +94,8 @@ export async function POST(request: Request) {
           mood,
           hasVocals: has_vocals,
           duration,
+          outputFormat: output_format,
+          lyrics: lyrics || undefined,
           model: 'minimax-music-1.5',
           predictionId: result.id,
         }

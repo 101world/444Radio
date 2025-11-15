@@ -18,7 +18,9 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
   const [prompt, setPrompt] = useState('');
   const [genre, setGenre] = useState('pop');
   const [mood, setMood] = useState('upbeat');
-  const [hasVocals, setHasVocals] = useState(true);
+  // Simplified UI: remove explicit vocals toggle, add output format and lyrics
+  const [outputFormat, setOutputFormat] = useState<'mp3' | 'wav'>('mp3');
+  const [lyrics, setLyrics] = useState('');
   const [duration, setDuration] = useState(30);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
@@ -40,8 +42,9 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
           prompt,
           genre,
           mood,
-          has_vocals: hasVocals,
           duration,
+          output_format: outputFormat,
+          lyrics: lyrics?.trim() || undefined,
         }),
       });
 
@@ -56,7 +59,8 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
         prompt,
         genre,
         mood,
-        hasVocals,
+        outputFormat,
+        lyrics: lyrics?.trim() || undefined,
         duration,
         type: 'song',
       });
@@ -64,6 +68,7 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
       setTimeout(() => {
         onClose();
         setPrompt('');
+        setLyrics('');
       }, 1500);
 
     } catch (error) {
@@ -90,7 +95,7 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">Generate AI Song</h2>
-              <p className="text-sm text-cyan-400/70">MiniMax Music 1.5 • 16 credits</p>
+              <p className="text-sm text-cyan-400/70">AI Generation • 16 credits</p>
             </div>
           </div>
           <button
@@ -182,34 +187,36 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
               <p className="text-xs text-gray-500 mt-1">15-120 seconds</p>
             </div>
 
-            {/* Vocals */}
+            {/* Output Format */}
             <div>
               <label className="block text-sm font-medium text-cyan-400 mb-2">
-                Vocals
+                Output Format
               </label>
-              <div className="flex items-center gap-4 h-10">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    checked={hasVocals}
-                    onChange={() => setHasVocals(true)}
-                    disabled={isGenerating}
-                    className="w-4 h-4 accent-cyan-500"
-                  />
-                  <span className="text-white text-sm">With Vocals</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    checked={!hasVocals}
-                    onChange={() => setHasVocals(false)}
-                    disabled={isGenerating}
-                    className="w-4 h-4 accent-cyan-500"
-                  />
-                  <span className="text-white text-sm">Instrumental</span>
-                </label>
-              </div>
+              <select
+                value={outputFormat}
+                onChange={(e) => setOutputFormat((e.target.value as 'mp3' | 'wav'))}
+                className="w-full px-4 py-2 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:border-cyan-500/60"
+                disabled={isGenerating}
+              >
+                <option value="mp3">MP3</option>
+                <option value="wav">WAV</option>
+              </select>
             </div>
+          </div>
+
+          {/* Lyrics (optional) */}
+          <div>
+            <label className="block text-sm font-medium text-cyan-400 mb-2">
+              Lyrics (optional)
+            </label>
+            <textarea
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              placeholder="Paste your lyrics here to guide the song..."
+              className="w-full h-28 px-4 py-3 bg-black/50 border border-cyan-500/30 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/60 resize-none"
+              disabled={isGenerating}
+            />
+            <p className="text-xs text-gray-500 mt-2">Optional. If provided, generation will reflect these lyrics.</p>
           </div>
 
           {/* Progress */}

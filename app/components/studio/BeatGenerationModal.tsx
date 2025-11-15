@@ -86,7 +86,7 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">Generate AI Beat</h2>
-              <p className="text-sm text-cyan-400/70">Stable Audio 2.5 • 16 credits</p>
+              <p className="text-sm text-cyan-400/70">AI Generation • 16 credits</p>
             </div>
           </div>
           <button

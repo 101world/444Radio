@@ -55,6 +55,8 @@ export interface UseMultiTrackReturn {
   addEmptyTrack: () => string;
   addClipToTrack: (trackId: string, audioUrl: string, name: string, startTime?: number) => void;
   moveClip: (clipId: string, newStartTime: number) => void;
+  resizeClip: (clipId: string, newDuration: number, newOffset: number, newStartTime?: number) => void;
+  splitClip: (clipId: string, splitTime: number) => void;
   removeClip: (clipId: string) => void;
   removeTrack: (id: string) => void;
   updateTrack: (id: string, updates: Partial<Track>) => void;
@@ -76,6 +78,7 @@ export interface UseMultiTrackReturn {
   playPreviousTrack: () => void;
   toggleTrackLoop: (trackId: string) => void;
   isTrackLooping: (trackId: string) => boolean;
+  reorderTrack: (trackId: string, newIndex: number) => void;
 }
 
 const TRACK_COLORS = [
@@ -239,6 +242,46 @@ export function useMultiTrack(): UseMultiTrackReturn {
       }))
     );
     console.log(`🗑️ Clip removed: ${clipId}`);
+  }, []);
+
+  // Resize clip (adjust duration/offset and optionally startTime)
+  const resizeClip = useCallback((clipId: string, newDuration: number, newOffset: number, newStartTime?: number) => {
+    setTracks((prev) => prev.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id !== clipId) return c;
+        const dur = Math.max(0.05, newDuration); // minimum duration 50ms
+        const off = Math.max(0, newOffset);
+        const start = newStartTime !== undefined ? Math.max(0, newStartTime) : c.startTime;
+        return { ...c, duration: dur, offset: off, startTime: start };
+      }),
+    })));
+    console.log(`✂️ Clip resized: ${clipId}`);
+  }, []);
+
+  // Split clip at absolute project time
+  const splitClip = useCallback((clipId: string, splitTime: number) => {
+    setTracks((prev) => prev.map((t) => {
+      const idx = t.clips.findIndex(c => c.id === clipId);
+      if (idx === -1) return t;
+      const clip = t.clips[idx];
+      if (splitTime <= clip.startTime || splitTime >= clip.startTime + clip.duration) return t; // outside
+      const leftDuration = splitTime - clip.startTime;
+      const rightDuration = clip.duration - leftDuration;
+      const rightOffset = clip.offset + leftDuration;
+      const leftClip: AudioClip = { ...clip, duration: leftDuration };
+      const rightClip: AudioClip = {
+        ...clip,
+        id: `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        startTime: splitTime,
+        duration: rightDuration,
+        offset: rightOffset,
+        name: `${clip.name} (part 2)`,
+      };
+      const newClips = [...t.clips];
+      newClips.splice(idx, 1, leftClip, rightClip);
+      return { ...t, clips: newClips };
+    }))
   }, []);
 
   // Remove track
@@ -548,6 +591,19 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   const isTrackLooping = useCallback((trackId: string) => loopedTracksState.has(trackId), [loopedTracksState]);
 
+  const reorderTrack = useCallback((trackId: string, newIndex: number) => {
+    setTracks((prev) => {
+      const idx = prev.findIndex(t => t.id === trackId);
+      if (idx === -1) return prev;
+      const clampedIndex = Math.max(0, Math.min(newIndex, prev.length - 1));
+      if (idx === clampedIndex) return prev;
+      const newArr = [...prev];
+      const [moved] = newArr.splice(idx, 1);
+      newArr.splice(clampedIndex, 0, moved);
+      return newArr;
+    });
+  }, []);
+
   return {
     tracks,
     isPlaying,
@@ -561,6 +617,8 @@ export function useMultiTrack(): UseMultiTrackReturn {
     addEmptyTrack,
     addClipToTrack,
     moveClip,
+    resizeClip,
+    splitClip,
     removeClip,
     removeTrack,
     updateTrack,
@@ -580,5 +638,6 @@ export function useMultiTrack(): UseMultiTrackReturn {
     playPreviousTrack,
     toggleTrackLoop,
     isTrackLooping,
+    reorderTrack,
   };
 }
