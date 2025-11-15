@@ -1,7 +1,7 @@
 /**
  * TrackInspector - Right sidebar for selected track details
  * Shows track properties, AI-powered effects chain, and controls
- * Logic Pro / Ableton Live-style inspector with Replicate integration
+ * Logic Pro / Ableton Live-style inspector
  */
 
 'use client';
@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
 import { useUser } from '@clerk/nextjs';
@@ -52,8 +53,13 @@ export default function TrackInspector() {
   const [processingType, setProcessingType] = useState<string>('');
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [showEffectsChainModal, setShowEffectsChainModal] = useState(false);
-  const [correctionStrength, setCorrectionStrength] = useState(0.5);
-  const [pitchShift, setPitchShift] = useState(0);
+  const [autotuneScale, setAutotuneScale] = useState('C:maj');
+  const [autotuneFormat, setAutotuneFormat] = useState('wav');
+  const [effectPrompt, setEffectPrompt] = useState('');
+  const [effectDuration, setEffectDuration] = useState(10);
+  const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
+  const [generatedAudioName, setGeneratedAudioName] = useState<string>('');
+  const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
 
   const selectedTrack = tracks.find(t => t.id === selectedTrackId);
 
@@ -64,7 +70,7 @@ export default function TrackInspector() {
     }));
   };
 
-  // Apply pitch correction using Replicate AutoTune
+  // Apply pitch correction using Auto-Tune
   const applyPitchCorrection = useCallback(async () => {
     if (!selectedTrack || selectedTrack.clips.length === 0) {
       alert('No audio clips to process');
@@ -73,22 +79,20 @@ export default function TrackInspector() {
 
     setIsProcessing(true);
     setProcessingType('autotune');
-    setProcessingStatus('Uploading audio...');
+    setProcessingStatus('Processing audio...');
 
     try {
       const firstClip = selectedTrack.clips[0];
       
-      // Call Replicate API
-      setProcessingStatus('Processing with AI...');
+      // Call Auto-Tune API
+      setProcessingStatus('Applying pitch correction...');
       const response = await fetch('/api/studio/autotune', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           audioUrl: firstClip.audioUrl,
-          trackId: selectedTrack.id,
-          trackName: selectedTrack.name,
-          correctionStrength,
-          pitchShift,
+          scale: autotuneScale,
+          outputFormat: autotuneFormat,
         }),
       });
 
@@ -98,98 +102,50 @@ export default function TrackInspector() {
         throw new Error(data.error || 'Processing failed');
       }
 
-      setProcessingStatus('Adding processed track...');
+      setProcessingStatus('Audio processed successfully!');
       
-      // Add the autotuned audio as a new clip
+      // Store generated audio for preview
       if (data.audioUrl) {
-        addClipToTrack(selectedTrack.id, data.audioUrl, `${selectedTrack.name} (Autotuned)`, firstClip.startTime + firstClip.duration + 1);
+        setGeneratedAudioUrl(data.audioUrl);
+        setGeneratedAudioName(`${selectedTrack.name} (Auto-Tuned)`);
+        setRemainingCredits(data.remainingCredits);
       }
 
-      setProcessingStatus('Complete!');
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
-      }, 3000);
+      }, 2000);
 
     } catch (error) {
-      console.error('Autotune error:', error);
+      console.error('Auto-tune error:', error);
       setProcessingStatus('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
       }, 3000);
     }
-  }, [selectedTrack, addClipToTrack, correctionStrength, pitchShift]);
+  }, [selectedTrack, autotuneScale, autotuneFormat]);
 
-  // Apply AI audio effects using Stable Audio
-  const applyAIEffect = useCallback(async (effectPrompt: string) => {
-    if (!selectedTrack || selectedTrack.clips.length === 0) {
-      alert('No audio clips to process');
+  // Generate effect using AI audio synthesis
+  const generateEffectToChain = useCallback(async (variation = false) => {
+    if (!selectedTrack || !user) return;
+
+    if (!effectPrompt.trim()) {
+      alert('Please enter an effect description');
       return;
     }
-
-    setIsProcessing(true);
-    setProcessingType('effect');
-    setProcessingStatus('Generating AI effect...');
-
-    try {
-      const firstClip = selectedTrack.clips[0];
-      
-      const response = await fetch('/api/studio/ai-effect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          audioUrl: firstClip.audioUrl,
-          prompt: effectPrompt,
-          trackId: selectedTrack.id,
-          trackName: selectedTrack.name,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Effect generation failed');
-      }
-
-      setProcessingStatus('Adding effect track...');
-      
-      if (data.audioUrl) {
-        addClipToTrack(selectedTrack.id, data.audioUrl, `${selectedTrack.name} (${effectPrompt})`, firstClip.startTime);
-      }
-
-      setProcessingStatus('Complete!');
-      setTimeout(() => {
-        setIsProcessing(false);
-        setProcessingStatus('');
-      }, 3000);
-
-    } catch (error) {
-      console.error('AI effect error:', error);
-      setProcessingStatus('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      setTimeout(() => {
-        setIsProcessing(false);
-        setProcessingStatus('');
-      }, 3000);
-    }
-  }, [selectedTrack, addClipToTrack]);
-
-  // Generate effect for effects chain (uses MusicGen)
-  const generateEffectToChain = useCallback(async (effectPrompt: string) => {
-    if (!selectedTrack || !user) return;
 
     try {
       setIsProcessing(true);
       setProcessingType('effect');
-      setProcessingStatus('Generating effect with AI...');
+      setProcessingStatus('Generating audio effect...');
 
       const response = await fetch('/api/studio/generate-effect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: effectPrompt,
-          trackId: selectedTrack.id,
-          trackName: selectedTrack.name,
+          secondsTotal: effectDuration,
         }),
       });
 
@@ -199,24 +155,30 @@ export default function TrackInspector() {
         throw new Error(data.error || 'Effect generation failed');
       }
 
-      setProcessingStatus(`Effect generated! "${data.effectName}"`);
+      setProcessingStatus('Effect generated successfully!');
+      
+      // Store generated effect for preview
+      if (data.audioUrl) {
+        setGeneratedAudioUrl(data.audioUrl);
+        setGeneratedAudioName(`Effect: ${effectPrompt.slice(0, 30)}...`);
+        setRemainingCredits(data.remainingCredits);
+      }
+
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
         setShowEffectsChainModal(false);
-        // Effect will appear in the effects chain list
-        // TODO: Store effect metadata in track.effects array
-      }, 3000);
+      }, 2000);
 
     } catch (error) {
-      console.error('Effect chain error:', error);
+      console.error('Effect generation error:', error);
       setProcessingStatus('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
       }, 3000);
     }
-  }, [selectedTrack, user]);
+  }, [selectedTrack, user, effectPrompt, effectDuration]);
 
   if (!selectedTrack) {
     return (
@@ -291,48 +253,62 @@ export default function TrackInspector() {
                 </div>
               )}
 
-              {/* Correction Strength */}
+              {/* Scale Selection */}
               <div>
-                <label className="text-xs text-gray-400 mb-2 block flex items-center justify-between">
-                  <span>Correction Strength</span>
-                  <span className="text-cyan-400 font-mono">{Math.round(correctionStrength * 100)}%</span>
+                <label className="text-xs text-gray-400 mb-2 block">
+                  Musical Scale
                 </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={correctionStrength}
-                  onChange={(e) => setCorrectionStrength(parseFloat(e.target.value))}
+                <select
+                  value={autotuneScale}
+                  onChange={(e) => setAutotuneScale(e.target.value)}
                   disabled={isProcessing}
-                  className="w-full h-2 accent-cyan-500 disabled:opacity-50"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Natural</span>
-                  <span>Robotic</span>
-                </div>
+                  className="w-full px-3 py-2 bg-gray-800/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500/50 disabled:opacity-50"
+                >
+                  <option value="C:maj">C Major</option>
+                  <option value="C:min">C Minor</option>
+                  <option value="D:maj">D Major</option>
+                  <option value="D:min">D Minor</option>
+                  <option value="E:maj">E Major</option>
+                  <option value="E:min">E Minor</option>
+                  <option value="F:maj">F Major</option>
+                  <option value="F:min">F Minor</option>
+                  <option value="G:maj">G Major</option>
+                  <option value="G:min">G Minor</option>
+                  <option value="A:maj">A Major</option>
+                  <option value="A:min">A Minor</option>
+                  <option value="B:maj">B Major</option>
+                  <option value="B:min">B Minor</option>
+                </select>
               </div>
 
-              {/* Pitch Shift */}
+              {/* Output Format */}
               <div>
-                <label className="text-xs text-gray-400 mb-2 block flex items-center justify-between">
-                  <span>Pitch Shift (semitones)</span>
-                  <span className="text-cyan-400 font-mono">{pitchShift > 0 ? '+' : ''}{pitchShift}</span>
+                <label className="text-xs text-gray-400 mb-2 block">
+                  Output Format
                 </label>
-                <input
-                  type="range"
-                  min="-12"
-                  max="12"
-                  step="1"
-                  value={pitchShift}
-                  onChange={(e) => setPitchShift(parseInt(e.target.value))}
-                  disabled={isProcessing}
-                  className="w-full h-2 accent-cyan-500 disabled:opacity-50"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>-12</span>
-                  <span>0</span>
-                  <span>+12</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setAutotuneFormat('wav')}
+                    disabled={isProcessing}
+                    className={`flex-1 px-3 py-2 rounded-lg font-medium transition-all disabled:opacity-50 ${
+                      autotuneFormat === 'wav'
+                        ? 'bg-cyan-500 text-white'
+                        : 'bg-gray-800/50 border border-gray-600 text-gray-400 hover:border-cyan-500/50'
+                    }`}
+                  >
+                    WAV
+                  </button>
+                  <button
+                    onClick={() => setAutotuneFormat('mp3')}
+                    disabled={isProcessing}
+                    className={`flex-1 px-3 py-2 rounded-lg font-medium transition-all disabled:opacity-50 ${
+                      autotuneFormat === 'mp3'
+                        ? 'bg-cyan-500 text-white'
+                        : 'bg-gray-800/50 border border-gray-600 text-gray-400 hover:border-cyan-500/50'
+                    }`}
+                  >
+                    MP3
+                  </button>
                 </div>
               </div>
 
@@ -355,12 +331,76 @@ export default function TrackInspector() {
                 )}
               </button>
 
-              <p className="text-xs text-gray-500 text-center">
-                Powered by Replicate AI • Creates new clip
+              <p className="text-xs text-cyan-400/80 text-center">
+                💰 0.5 credits per generation
               </p>
             </div>
           )}
         </div>
+
+        {/* Generated Audio Preview Section */}
+        {generatedAudioUrl && (
+          <div className="border-b border-cyan-500/20">
+            <div className="px-4 py-3 bg-cyan-500/5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-sm font-semibold text-cyan-400">Generated Audio</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setGeneratedAudioUrl(null);
+                    setGeneratedAudioName('');
+                  }}
+                  className="p-1 rounded hover:bg-gray-700 text-gray-400 transition-colors"
+                  title="Clear generated audio"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="bg-gray-800/50 border border-cyan-500/30 rounded-lg p-3 mb-3">
+                <p className="text-xs text-gray-400 mb-2">{generatedAudioName}</p>
+                <audio 
+                  src={generatedAudioUrl} 
+                  controls 
+                  className="w-full"
+                  style={{ height: '32px' }}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <button
+                  onClick={() => {
+                    if (selectedTrack && generatedAudioUrl) {
+                      const lastClip = selectedTrack.clips[selectedTrack.clips.length - 1];
+                      const startTime = lastClip ? lastClip.startTime + lastClip.duration + 1 : 0;
+                      addClipToTrack(selectedTrack.id, generatedAudioUrl, generatedAudioName, startTime);
+                      setGeneratedAudioUrl(null);
+                      setGeneratedAudioName('');
+                    }
+                  }}
+                  className="px-3 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-medium transition-all"
+                >
+                  Send to Track
+                </button>
+                <a
+                  href={generatedAudioUrl}
+                  download={generatedAudioName}
+                  className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition-all text-center"
+                >
+                  Download
+                </a>
+              </div>
+
+              {remainingCredits !== null && (
+                <p className="text-xs text-cyan-400/60 text-center">
+                  {remainingCredits} credits remaining
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Track Properties Section - HIDDEN per user request */}
         {/* Properties are now controlled via Timeline track headers */}
@@ -493,7 +533,7 @@ export default function TrackInspector() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-lg font-bold text-white">Generate Effect</h3>
+                <h3 className="text-lg font-bold text-white">Generate Audio Effect</h3>
               </div>
               <button
                 onClick={() => setShowEffectsChainModal(false)}
@@ -505,41 +545,59 @@ export default function TrackInspector() {
 
             <div className="mb-4">
               <label className="text-sm text-gray-400 mb-2 block">
-                Describe the audio effect you want to create:
+                Describe the audio effect:
               </label>
               <textarea
-                id="effect-chain-prompt"
-                placeholder="e.g., 'warm analog tape saturation with subtle compression' or 'spacious hall reverb with long decay'"
-                className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50 resize-none h-32"
+                value={effectPrompt}
+                onChange={(e) => setEffectPrompt(e.target.value)}
+                placeholder="e.g., 'warm analog tape saturation' or 'spacious hall reverb'"
+                className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50 resize-none h-24"
               />
+            </div>
+
+            <div className="mb-4">
+              <label className="text-sm text-gray-400 mb-2 block flex items-center justify-between">
+                <span>Duration</span>
+                <span className="text-cyan-400 font-mono">{effectDuration}s</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="25"
+                step="1"
+                value={effectDuration}
+                onChange={(e) => setEffectDuration(parseInt(e.target.value))}
+                disabled={isProcessing}
+                className="w-full h-2 accent-cyan-500 disabled:opacity-50"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>0s</span>
+                <span>12.5s</span>
+                <span>25s</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => {
-                  const promptInput = document.getElementById('effect-chain-prompt') as HTMLTextAreaElement;
-                  const prompt = promptInput?.value.trim();
-                  if (prompt) {
-                    generateEffectToChain(prompt);
-                  }
-                }}
-                disabled={isProcessing}
+                onClick={() => generateEffectToChain(false)}
+                disabled={isProcessing || !effectPrompt.trim()}
                 className="flex-1 px-4 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? 'Generating...' : 'Generate Effect'}
               </button>
               <button
-                onClick={() => setShowEffectsChainModal(false)}
-                disabled={isProcessing}
-                className="px-4 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium transition-all disabled:opacity-50"
+                onClick={() => generateEffectToChain(true)}
+                disabled={isProcessing || !effectPrompt.trim()}
+                className="px-4 py-2.5 rounded-lg bg-cyan-600/50 hover:bg-cyan-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Generate a new variation with same settings"
               >
-                Cancel
+                New Variation
               </button>
             </div>
 
             <div className="mt-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
               <p className="text-xs text-cyan-400">
-                💰 Costs 0.5 credits per generation
+                💰 {Math.ceil(effectDuration / 5) * 0.5} credits ({effectDuration}s)
               </p>
             </div>
 

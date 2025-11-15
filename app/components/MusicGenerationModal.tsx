@@ -61,7 +61,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
       return
     }
 
-    // Lyrics are REQUIRED by MiniMax Music API
+    // Lyrics are REQUIRED by Music API
     if (!lyrics.trim() || lyrics.length < 10 || lyrics.length > 3000) {
       alert('⚠️ Lyrics are required! Please enter 10-3000 characters with structure tags like [verse] [chorus]')
       return
@@ -87,7 +87,7 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
     }
     
     try {
-      // Build request body based on language (MiniMax vs ACE-Step)
+      // Build request body based on language
       const requestBody: any = {
         title,
         prompt,
@@ -424,11 +424,11 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
                   </div>
                 )}
 
-                {/* MiniMax Parameters (only for English) */}
+                {/* Music Parameters (only for English) */}
                 {isEnglish && (
                   <div className="pb-4 mb-4 border-b border-white/10">
                     <div className="flex items-center gap-2 mb-4">
-                      <span className="text-pink-400 font-semibold text-sm">🎵 MiniMax Music 1.5 (English)</span>
+                      <span className="text-pink-400 font-semibold text-sm">🎵 AI Music (English)</span>
                     </div>
                   </div>
                 )}

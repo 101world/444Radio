@@ -234,7 +234,7 @@ export default function StudioFullPage() {
                 onChange={(e) => setAiLanguage(e.target.value)}
                 className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
-                <option value="en">English (MiniMax)</option>
+                <option value="en">English</option>
                 <option value="es">Spanish (ACE-Step)</option>
                 <option value="fr">French (ACE-Step)</option>
                 <option value="de">German (ACE-Step)</option>

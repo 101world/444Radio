@@ -1,6 +1,6 @@
 /**
- * Beat Generation Modal - Stable Audio 2.5
- * Professional beat generation using Stability AI
+ * Beat Generation Modal - AI Beat Generator
+ * Professional beat generation using AI
  */
 
 'use client';
@@ -43,10 +43,10 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        // Parse Replicate validation errors
+        // Parse validation errors
         let errorMsg = errorData.error || `Request failed (${response.status})`;
         if (errorData.detail) {
-          errorMsg = `Replicate error: ${errorData.detail}`;
+          errorMsg = `Error: ${errorData.detail}`;
         }
         throw new Error(errorMsg);
       }

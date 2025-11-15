@@ -34,7 +34,7 @@ export default function GenerationModal({ isOpen, onClose, songId, prompt, outpu
   
   // Prediction parameters for advanced options
   const [musicParams, setMusicParams] = useState({
-    style_strength: 0.8, // 0.0 to 1.0 for MiniMax
+    style_strength: 0.8, // 0.0 to 1.0
   })
   
   const [imageParams, setImageParams] = useState({
@@ -56,7 +56,7 @@ export default function GenerationModal({ isOpen, onClose, songId, prompt, outpu
 
   const startGeneration = async () => {
     try {
-      // Step 1: Generate Music with MiniMax
+      // Step 1: Generate Music
       updateStep('music', 'processing')
       const musicRes = await fetch('/api/generate/music', {
         method: 'POST',
@@ -177,7 +177,7 @@ export default function GenerationModal({ isOpen, onClose, songId, prompt, outpu
               
               {/* Music Parameters */}
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-cyan-400">Music Generation (MiniMax)</h4>
+                <h4 className="text-sm font-semibold text-cyan-400">Music Generation</h4>
                 <div>
                   <label className="block text-sm text-green-400/80 mb-2">
                     Style Strength: {musicParams.style_strength}

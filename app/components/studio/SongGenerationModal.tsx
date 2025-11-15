@@ -1,5 +1,5 @@
 /**
- * Song Generation Modal - MiniMax Music 1.5
+ * Song Generation Modal - AI Music Generator
  * Professional song generation with vocals
  */
 
@@ -84,7 +84,7 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
         const errorData = await response.json().catch(() => ({ error: response.statusText }));
         let errorMsg = errorData.error || `Request failed (${response.status})`;
         if (errorData.detail) {
-          errorMsg = `Replicate error: ${errorData.detail}`;
+          errorMsg = `Error: ${errorData.detail}`;
         }
         throw new Error(errorMsg);
       }

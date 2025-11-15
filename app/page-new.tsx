@@ -132,7 +132,7 @@ export default function HomePage() {
               <div className="backdrop-blur-xl bg-black/40 border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all">
                 <div className="text-4xl mb-3">🎵</div>
                 <h3 className="text-xl font-bold text-green-400 mb-2">AI Music Generation</h3>
-                <p className="text-green-100/60">Create unique tracks with MiniMax Music-1.5</p>
+                <p className="text-green-100/60">Create unique tracks with AI Music Generation</p>
               </div>
               <div className="backdrop-blur-xl bg-black/40 border border-cyan-500/20 rounded-2xl p-6 hover:border-cyan-500/40 transition-all">
                 <div className="text-4xl mb-3">🎨</div>
@@ -179,7 +179,7 @@ export default function HomePage() {
                       Generate unique music tracks with AI
                     </p>
                     <div className="text-sm text-green-400/60">
-                      MiniMax Music-1.5
+                      AI Music Generator
                     </div>
                     <div className="mt-6 flex items-center gap-2 px-4 py-2 bg-green-500/20 rounded-full">
                       <span className="text-xl">⚡</span>
