@@ -54,13 +54,13 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
-    // Create stable-audio prediction
+    // Create music generation prediction
     const prediction = await replicate.predictions.create({
-      version: "a5ac1caa88116a0c3fb4b4ecceaba2b1e3f10fcd0d3ca8f3a81d6db83d9d8a55",
+      version: "671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb",
       input: {
         prompt: `Audio effect: ${prompt}`,
-        seconds_total: 10, // Short effect duration
-        steps: 20,
+        duration: 10,
+        model_version: "stereo-large",
       }
     });
 

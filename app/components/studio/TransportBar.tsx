@@ -31,8 +31,8 @@ export default function TransportBar() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handlePlayPause = () => {
-    setPlaying(!isPlaying);
+  const handlePlayPause = async () => {
+    await setPlaying(!isPlaying);
   };
 
   const handleStop = () => {

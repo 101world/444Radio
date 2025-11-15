@@ -24,7 +24,6 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
-import MasterChannel from './MasterChannel';
 import { useUser } from '@clerk/nextjs';
 
 interface Effect {
@@ -232,9 +231,6 @@ export default function TrackInspector() {
           <h2 className="text-lg font-bold text-cyan-400">Track Inspector</h2>
         </div>
         
-        {/* Always show Master Channel */}
-        <MasterChannel />
-        
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center text-gray-400">
             <Settings className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -269,9 +265,6 @@ export default function TrackInspector() {
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
-        {/* Master Channel at top */}
-        <MasterChannel />
-        
         {/* Track Properties Section */}
         <div className="border-b border-cyan-500/20">
           <button

@@ -257,10 +257,27 @@ function TrackRow({ trackId }: TrackRowProps) {
 }
 
 export default function Timeline() {
-  const { tracks } = useStudio();
+  const { tracks, currentTime, isPlaying } = useStudio();
 
   return (
-    <div className="flex-1 overflow-y-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30">
+    <div className="flex-1 overflow-y-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
+      {/* Playhead */}
+      {currentTime > 0 && (
+        <div
+          className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 z-20 pointer-events-none"
+          style={{
+            left: `${16 + (currentTime * 100)}px`, // 16px padding + time position
+          }}
+        >
+          <div className="absolute -top-1 -left-2 w-4 h-4 bg-cyan-400 rotate-45" />
+          {isPlaying && (
+            <div className="absolute top-0 -left-4 w-8 h-8">
+              <div className="absolute inset-0 bg-cyan-400/20 rounded-full animate-ping" />
+            </div>
+          )}
+        </div>
+      )}
+
       {tracks.length === 0 ? (
         <div className="h-full flex items-center justify-center">
           <div className="text-center">

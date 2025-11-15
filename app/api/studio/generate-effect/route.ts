@@ -1,6 +1,6 @@
 /**
  * Generate Effect API - Creates audio effects for effects chain
- * Uses Replicate stable-audio model (0.5 credits per generation)
+ * Uses Replicate Meta MusicGen model (0.5 credits per generation)
  */
 
 import { NextResponse } from 'next/server';
@@ -54,13 +54,13 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
-    // Create stable-audio prediction for effect
+    // Create music generation prediction for effect (using Meta MusicGen)
     const prediction = await replicate.predictions.create({
-      version: "a5ac1caa88116a0c3fb4b4ecceaba2b1e3f10fcd0d3ca8f3a81d6db83d9d8a55",
+      version: "671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb",
       input: {
         prompt: prompt,
-        seconds_total: 30, // 30 second effect
-        steps: 100,
+        duration: 30,
+        model_version: "stereo-large",
       }
     });
 
