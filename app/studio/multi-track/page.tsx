@@ -58,6 +58,7 @@ function StudioContent() {
   const [stemSplitClip, setStemSplitClip] = useState<{id: string; url: string; name: string} | null>(null);
   const [isSplittingStem, setIsSplittingStem] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const clipsScrollRef = useRef<HTMLDivElement | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showReleaseModal, setShowReleaseModal] = useState(false);
   const [savedProjects, setSavedProjects] = useState<Array<{id: string; name: string; timestamp: number; trackCount: number}>>([]);
@@ -1174,10 +1175,10 @@ function StudioContent() {
         {/* Timeline */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Timeline ruler with zoom + BPM grid */}
-          <TimelineRuler bpm={bpm} timeSig={timeSig} snapEnabled={snapEnabled} />
+          <TimelineRuler bpm={bpm} timeSig={timeSig} snapEnabled={snapEnabled} scrollContainerRef={clipsScrollRef} />
 
           {/* Timeline - Always show, with empty tracks */}
-          <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} playheadLocked={playheadLocked} onSplitStems={handleSplitStems} />
+          <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} playheadLocked={playheadLocked} onSplitStems={handleSplitStems} clipsContainerRef={clipsScrollRef} />
           
           {/* Add Track Button - Always visible below tracks */}
           <div className="px-4 py-2 border-t border-cyan-500/20 bg-black/40 shrink-0">

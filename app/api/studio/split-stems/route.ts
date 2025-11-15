@@ -112,30 +112,57 @@ export async function POST(request: Request) {
     let prediction: any
     let lastError: any = null
 
-    try {
-      console.log('🎵 Starting stem separation:', { audioUrl, outputFormat })
-      // Using cjwbw/demucs model - Facebook's Demucs v4 (state-of-the-art stem separation)
-      // https://replicate.com/cjwbw/demucs
-      prediction = await replicate.predictions.create({
-        version: "07afda7a710da69773c01f50d61e0f7f0c75e4c2f0c7b5fce4ae29e31c59b88c",
-        input: {
-          audio: audioUrl,
-          // Demucs v4 supports multiple output formats
-          output_format: outputFormat, // 'mp3' or 'wav'
-          // Optional: stems can be 'vocals', 'drums', 'bass', 'other' or 'all' (default: all)
-          stems: "all"
+    // Attempt prediction creation with retry+backoff for transient errors
+    const MAX_ATTEMPTS = 3
+    const BASE_DELAY_MS = 1000
+    let attempt = 0
+    const createPrediction = async () => {
+      attempt++
+      try {
+        console.log('🎵 Starting stem separation (attempt', attempt, ')', { audioUrl, outputFormat })
+        const resp = await replicate.predictions.create({
+          version: '07afda7a710da69773c01f50d61e0f7f0c75e4c2f0c7b5fce4ae29e31c59b88c',
+          input: {
+            audio: audioUrl,
+            output_format: outputFormat,
+            stems: 'all',
+          },
+        })
+        console.log('✅ Prediction created:', resp?.id)
+        return resp
+      } catch (e: any) {
+        lastError = e
+        const status = e?.response?.status
+        console.error(`❌ Demucs stem separation error (attempt ${attempt}):`, {
+          message: e?.message,
+          status,
+          statusText: e?.response?.statusText,
+          data: e?.response?.data,
+          stack: e?.stack,
+        })
+
+        // For 4xx errors (client), don't retry except for 429 (rate limit)
+        if (status && status >= 400 && status < 500 && status !== 429) {
+          throw e
         }
-      })
-      console.log('✅ Prediction created:', prediction?.id)
-    } catch (e: any) {
+
+        if (attempt < MAX_ATTEMPTS) {
+          const wait = BASE_DELAY_MS * Math.pow(2, attempt - 1)
+          console.log(`⏳ Retrying in ${wait}ms...`)
+          await new Promise((r) => setTimeout(r, wait))
+          return createPrediction()
+        }
+        // else fall through to return undefined / throw
+        throw e
+      }
+    }
+
+    try {
+      prediction = await createPrediction()
+    } catch (e) {
+      // Non-retryable error or repeated failures
       lastError = e
-      console.error('❌ Demucs stem separation error:', {
-        message: e?.message,
-        status: e?.response?.status,
-        statusText: e?.response?.statusText,
-        data: e?.response?.data,
-        stack: e?.stack
-      })
+      console.error('❌ Demucs stem separation final error:', e)
     }
 
     if (!prediction) {

@@ -196,9 +196,11 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: Track
   );
 }
 
-export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true, onSplitStems }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean; onSplitStems?: (clipId: string, audioUrl: string) => void }) {
-  const { tracks, currentTime, isPlaying, zoom, leftGutterWidth, setLeftGutterWidth } = useStudio();
-  const clipsScrollRef = useRef<HTMLDivElement>(null);
+export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true, onSplitStems, clipsContainerRef }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean; onSplitStems?: (clipId: string, audioUrl: string) => void; clipsContainerRef?: React.RefObject<HTMLDivElement | null> }) {
+  const { tracks, currentTime, isPlaying, zoom, leftGutterWidth, setLeftGutterWidth, setZoom } = useStudio();
+  const internalClipsRef = useRef<HTMLDivElement | null>(null);
+  const clipsScrollRef = clipsContainerRef ?? internalClipsRef;
+  const rootScrollRef = useRef<HTMLDivElement>(null);
   const leftColumnRef = useRef<HTMLDivElement>(null);
 
   // Fixed 5-minute timeline view (300 seconds)
@@ -220,6 +222,31 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
       container.scrollLeft = target;
     }
   }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked, timelineWidth]);
+
+  // Wheel handler - keyboard modifiers map to actions
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!clipsScrollRef.current) return;
+    const delta = e.deltaY;
+    // Alt + wheel -> zoom in/out
+    if (e.altKey) {
+      e.preventDefault();
+      const factor = delta < 0 ? 1.06 : 0.94;
+      setZoom(Math.max(0.1, Math.min(10, zoom * factor)));
+      return;
+    }
+    // Ctrl + wheel -> vertical scroll of the whole timeline
+    if (e.ctrlKey) {
+      e.preventDefault();
+      const root = rootScrollRef.current || document.scrollingElement || document.body;
+      if (root) {
+        root.scrollTop += delta;
+      }
+      return;
+    }
+    // Default: map wheel to horizontal scroll
+    e.preventDefault();
+    clipsScrollRef.current.scrollLeft += delta;
+  };
 
   // Observe left column width and update studio context
   useEffect(() => {
@@ -248,7 +275,7 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
   };
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden bg-black/95 backdrop-blur-xl border-t border-teal-900/30 relative">
+    <div ref={rootScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden bg-black/95 backdrop-blur-xl border-t border-teal-900/30 relative timeline-scrollbar-hidden">
       {/* Single scrollable container for both headers and clips */}
       <div className="space-y-0">
         {tracks.length === 0 ? (
@@ -268,10 +295,11 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
               </div>
               
               {/* Track Clips Area (Right - only first track scrollable for unified scrollbar) */}
-              <div 
+                <div 
                 ref={index === 0 ? clipsScrollRef : undefined}
                 onScroll={index === 0 ? handleScroll : undefined}
-                className={index === 0 ? "flex-1 overflow-x-auto relative" : "flex-1 overflow-hidden relative"}
+                onWheel={index === 0 ? handleWheel : undefined}
+                className={index === 0 ? "flex-1 overflow-x-auto relative timeline-scrollbar-hidden" : "flex-1 overflow-hidden relative"}
               >
                 <div style={{ minWidth: `${timelineWidth}px` }} className="relative h-full">
                   {/* Playhead - only show on first track, but extends through all */}

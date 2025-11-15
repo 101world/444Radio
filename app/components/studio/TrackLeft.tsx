@@ -8,7 +8,7 @@ import { Volume2, GripVertical, Edit2, Check, X, Download } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
 export default function TrackLeft({ trackId }: { trackId: string }) {
-  const { tracks, setTrackVolume, setTrackPan, toggleMute, toggleSolo, removeTrack, setSelectedTrack, selectedTrackId, trackHeight, setTrackHeight, renameTrack, reorderTrack } = useStudio();
+  const { tracks, setTrackVolume, setTrackPan, toggleMute, toggleSolo, removeTrack, setSelectedTrack, selectedTrackId, trackHeight, setTrackHeight, renameTrack, reorderTrack, addTrack } = useStudio();
   const track = tracks.find(t => t.id === trackId);
   const [isResizing, setIsResizing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -131,11 +131,30 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const draggedTrackId = e.dataTransfer.getData('text/plain');
+    // Try to parse JSON for library track votes
+    const jsonData = e.dataTransfer.getData('application/json');
     if (draggedTrackId && draggedTrackId !== trackId) {
       const draggedIndex = tracks.findIndex(t => t.id === draggedTrackId);
       const targetIndex = tracks.findIndex(t => t.id === trackId);
       if (draggedIndex !== -1 && targetIndex !== -1) {
         reorderTrack(draggedTrackId, targetIndex);
+      }
+    }
+    // If a library track was dropped, create a new track at this location
+    if (!draggedTrackId && jsonData) {
+      try {
+        const parsed = JSON.parse(jsonData);
+        if (parsed?.type === 'library-track' && parsed?.trackData) {
+          const lib = parsed.trackData;
+          const newTrackId = addTrack(lib.title || 'Library Track', lib.audio_url || lib.audioUrl);
+          const targetIndex = tracks.findIndex(t => t.id === trackId);
+          if (newTrackId && targetIndex !== -1) {
+            // Place new track in the desired position
+            reorderTrack(newTrackId, targetIndex);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to parse library-drop JSON', err);
       }
     }
   };

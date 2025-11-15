@@ -22,6 +22,8 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
     selectedClipId,
     setSelectedClip,
     trackHeight,
+    addTrack,
+    reorderTrack,
   } = useStudio();
 
   const track = tracks.find(t => t.id === trackId);
@@ -64,8 +66,10 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
     const pixelsPerSecond = 50 * zoom;
     const startTime = Math.max(0, x / pixelsPerSecond);
 
+    let files: File[] = [];
+    let jsonData: string | null = null;
     try {
-      const jsonData = e.dataTransfer.getData('application/json');
+      jsonData = e.dataTransfer.getData('application/json');
       
       if (jsonData && jsonData.trim()) {
         const parsed = JSON.parse(jsonData);
@@ -87,7 +91,7 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
       }
 
       // Handle file drops
-      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
+      files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
       if (!files.length) return;
       
       for (const file of files) {
@@ -104,6 +108,24 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
       }
     } catch (err) {
       console.error('Drop error:', err);
+    }
+    // If library track dropped on clip area, create a new track at this index
+    if (!files.length && jsonData) {
+      try {
+        const parsed = JSON.parse(jsonData);
+        if (parsed?.type === 'library-track' && parsed?.trackData) {
+          const lib = parsed.trackData;
+          const newTrackId = addTrack(lib.title || 'Library Track', lib.audio_url || lib.audioUrl);
+          // Reorder track so it's inserted just below the current track
+          const targetIndex = tracks.findIndex(t => t.id === trackId);
+          if (newTrackId && targetIndex !== -1) {
+            // move the new track to this track's index
+            reorderTrack(newTrackId, targetIndex);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to parse library track drop JSON:', err);
+      }
     }
   };
 

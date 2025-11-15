@@ -9,9 +9,10 @@ import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { useRef, useCallback, useMemo, useEffect } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
-export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled = true }: { bpm?: number; timeSig?: '4/4' | '3/4' | '6/8'; snapEnabled?: boolean }) {
+export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled = true, scrollContainerRef }: { bpm?: number; timeSig?: '4/4' | '3/4' | '6/8'; snapEnabled?: boolean; scrollContainerRef?: React.RefObject<HTMLDivElement | null> }) {
   const { zoom, setZoom, currentTime, duration, setCurrentTime, isPlaying, setPlaying, leftGutterWidth, setLeftGutterWidth, setTrackHeight } = useStudio();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const internalScrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = scrollContainerRef ?? internalScrollRef;
   const dragStateRef = useRef<{ dragging: boolean; wasPlaying: boolean } | null>(null);
 
   const handleZoomIn = () => {
@@ -160,15 +161,10 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
       </div>
 
       {/* Timeline ruler */}
+      {/* Use the top-level timeline scroll container for a single unified scrollbar */}
       <div
         ref={scrollRef}
-        className="flex-1 relative overflow-x-auto select-none"
-        onScroll={(e) => {
-          const left = (e.currentTarget as HTMLDivElement).scrollLeft;
-          try {
-            window.dispatchEvent(new CustomEvent('studio:timeline-scroll', { detail: { left } } as any));
-          } catch {}
-        }}
+        className="flex-1 relative overflow-hidden select-none"
         onPointerDown={onPointerDown}
         title="Drag to scrub the playhead"
       >
