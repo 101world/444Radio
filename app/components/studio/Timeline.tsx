@@ -196,80 +196,55 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
         />
       )}
 
-      {/* Compact header */}
-      <div className="px-4 pt-3 pb-1">
+      {/* Left track column (Logic-style) */}
+      <div className="w-56 shrink-0 bg-white/5 border-r border-teal-900/30 backdrop-blur-md rounded-l p-3 flex flex-col gap-3">
+        {/* Name */}
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: track.color }} />
-          <span className="text-white font-medium text-sm">{track.name}</span>
+          <span className="text-white font-semibold text-sm truncate" title={track.name}>{track.name}</span>
         </div>
-      </div>
-
-      {/* Sleek pinned toolbar (right) */}
-      <div className="absolute right-3 top-3 z-10 flex flex-col items-center gap-2 bg-black/40 border border-teal-900/40 rounded-xl px-2 py-2 backdrop-blur-md">
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={track.volume}
-          onChange={(e) => setTrackVolume(trackId, parseFloat(e.target.value))}
-          className="w-24 h-1 accent-cyan-500"
-          onClick={(e) => e.stopPropagation()}
-        />
-        <span className="text-[10px] text-gray-400">{Math.round(track.volume * 100)}%</span>
-        <div className="flex flex-col gap-1">
+        {/* Controls row */}
+        <div className="flex items-center gap-1">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleMute(trackId);
-            }}
-            className={`p-1.5 rounded ${
-              track.mute ? 'bg-red-500/20 text-red-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
-            }`}
-            title="Mute"
-          >
-            {track.mute ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-          </button>
+            onClick={(e) => { e.stopPropagation(); toggleMute(trackId); }}
+            className={`px-2 py-1 rounded text-xs font-semibold ${track.mute ? 'bg-red-600/30 text-red-300' : 'bg-gray-900/70 text-gray-300 hover:text-white border border-teal-900/40'}`}
+            title="Mute (M)"
+          >M</button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleSolo(trackId);
-            }}
-            className={`p-1.5 rounded ${
-              track.solo ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
-            }`}
-            title="Solo"
-          >
-            <Headphones className="w-3 h-3" />
-          </button>
+            onClick={(e) => { e.stopPropagation(); toggleSolo(trackId); }}
+            className={`px-2 py-1 rounded text-xs font-semibold ${track.solo ? 'bg-cyan-600/30 text-cyan-200' : 'bg-gray-900/70 text-gray-300 hover:text-white border border-teal-900/40'}`}
+            title="Solo (S)"
+          >S</button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleTrackLoop(trackId);
-            }}
-            className={`p-1.5 rounded ${
-              isTrackLooping(trackId) ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
-            }`}
-            title="Loop current clip on this track"
-          >
-            <Repeat className="w-3 h-3" />
-          </button>
+            onClick={(e) => { e.stopPropagation(); toggleTrackLoop(trackId); }}
+            className={`px-2 py-1 rounded text-xs font-semibold ${isTrackLooping(trackId) ? 'bg-teal-600/30 text-teal-200' : 'bg-gray-900/70 text-gray-300 hover:text-white border border-teal-900/40'}`}
+            title="Loop (L)"
+          >L</button>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              removeTrack(trackId);
-            }}
-            className="p-1.5 rounded bg-gray-900 text-red-400 hover:bg-red-500/20 border border-teal-900/30"
-            title="Delete track"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
+            onClick={(e) => { e.stopPropagation(); removeTrack(trackId); }}
+            className="px-2 py-1 rounded text-xs font-semibold bg-gray-900/70 text-red-300 hover:bg-red-600/20 border border-teal-900/40"
+            title="Delete"
+          >✕</button>
+        </div>
+        {/* Volume */}
+        <div className="flex items-center gap-2">
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={track.volume}
+            onChange={(e) => setTrackVolume(trackId, parseFloat(e.target.value))}
+            className="w-full h-1 accent-cyan-500"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span className="text-[10px] text-gray-400 w-8 text-right">{Math.round(track.volume * 100)}%</span>
         </div>
       </div>
 
       {/* SCROLLABLE CLIPS AREA */}
       <div 
-        className="relative h-24 bg-black/40 flex-1 overflow-x-auto overflow-y-hidden pr-36"
+        className="relative h-24 bg-black/40 flex-1 overflow-x-auto overflow-y-hidden rounded-r"
         onContextMenu={handleContextMenu}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
