@@ -55,36 +55,61 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
       role="button"
       aria-pressed={isSelected}
       tabIndex={0}
-      className={`w-56 shrink-0 bg-gradient-to-b from-gray-950 to-black border-r border-teal-900/30 backdrop-blur-md p-4 flex flex-col gap-3 justify-center transition-all relative ${isSelected ? 'border-teal-500 ring-1 ring-teal-500/50 shadow-lg shadow-cyan-900/20' : 'hover:brightness-110'}`}
+      className={`w-56 shrink-0 bg-gradient-to-br from-gray-950 via-black to-gray-900 border-r backdrop-blur-md p-4 flex flex-col gap-3 justify-center transition-all duration-200 relative group ${
+        isSelected 
+          ? 'border-teal-400/60 ring-2 ring-teal-500/40 shadow-2xl shadow-teal-500/20' 
+          : 'border-teal-900/20 hover:border-teal-700/40 hover:brightness-110 hover:shadow-lg hover:shadow-black/30'
+      }`}
       style={{ height: `${trackHeight}px` }}
       onClick={() => setSelectedTrack(trackId)}
       onKeyDown={(e) => { if (e.key === 'Enter') setSelectedTrack(trackId); }}
     >
-      {/* Name */}
+      {/* Name - Enhanced */}
       <div className="flex items-center gap-2">
-        <div className="w-6 h-6 rounded-md bg-teal-700/20 flex items-center justify-center text-[11px] text-teal-300 font-semibold">{number}</div>
-        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: track.color }} />
-        <span className="text-white font-semibold text-sm truncate" title={track.name}>{track.name}</span>
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-600/30 to-cyan-600/30 border border-teal-500/30 flex items-center justify-center text-xs text-teal-300 font-bold shadow-inner">
+          {number}
+        </div>
+        <div 
+          className="w-3 h-3 rounded-full shadow-lg ring-1 ring-white/20" 
+          style={{ 
+            backgroundColor: track.color,
+            boxShadow: `0 0 8px ${track.color}80`
+          }} 
+        />
+        <span className="text-white font-bold text-sm truncate drop-shadow-lg" title={track.name}>
+          {track.name}
+        </span>
       </div>
-      {/* Controls row */}
+      
+      {/* Controls row - Enhanced */}
       <div className="flex items-center gap-2">
         <button
           onClick={(e: MouseEvent) => { e.stopPropagation(); toggleMute(trackId); }}
-          className={`px-2 py-1 rounded text-xs font-semibold ${track.mute ? 'bg-red-600/30 text-red-300' : 'bg-gray-900/70 text-gray-300 hover:text-white border border-teal-900/40'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+            track.mute 
+              ? 'bg-gradient-to-br from-red-600/40 to-pink-600/40 text-red-200 border border-red-400/40 shadow-lg shadow-red-500/30' 
+              : 'bg-gray-900/80 text-gray-300 hover:text-white border border-teal-900/30 hover:border-teal-700/50 hover:bg-gray-800/80'
+          }`}
           title="Mute (M)"
           aria-label={`Mute ${track.name}`}
         >
-          <Volume2 className="w-4 h-4 text-gray-200" />
+          <Volume2 className="w-4 h-4" />
         </button>
         <button
           onClick={(e: MouseEvent) => { e.stopPropagation(); toggleSolo(trackId); }}
-          className={`px-2 py-1 rounded text-xs font-semibold ${track.solo ? 'bg-cyan-600/30 text-cyan-200' : 'bg-gray-900/70 text-gray-300 hover:text-white border border-teal-900/40'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+            track.solo 
+              ? 'bg-gradient-to-br from-cyan-600/40 to-blue-600/40 text-cyan-200 border border-cyan-400/40 shadow-lg shadow-cyan-500/30' 
+              : 'bg-gray-900/80 text-gray-300 hover:text-white border border-teal-900/30 hover:border-teal-700/50 hover:bg-gray-800/80'
+          }`}
           title="Solo (S)"
           aria-label={`Solo ${track.name}`}
-        >S</button>
+        >
+          S
+        </button>
         <button
           onClick={(e: MouseEvent) => { e.stopPropagation(); removeTrack(trackId); }}
-          className="px-2 py-1 rounded text-xs font-semibold bg-gray-900/70 text-red-300 hover:bg-red-600/20 border border-teal-900/40"
+          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-900/80 text-red-300 hover:bg-gradient-to-br hover:from-red-600/30 hover:to-pink-600/30 border border-teal-900/30 hover:border-red-500/40 transition-all duration-200 hover:shadow-lg hover:shadow-red-500/20"
           title="Delete"
           aria-label={`Delete ${track.name}`}
         >
@@ -92,7 +117,7 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
         </button>
       </div>
 
-      {/* Volume */}
+      {/* Volume - Enhanced */}
       <div className="flex items-center gap-2">
         <input
           type="range"
@@ -101,20 +126,22 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
           step="0.01"
           value={track.volume}
           onChange={(e) => setTrackVolume(trackId, parseFloat(e.target.value))}
-          className="w-full h-1 accent-cyan-500"
+          className="w-full h-2 bg-gray-900/80 rounded-full appearance-none cursor-pointer accent-teal-500 border border-teal-900/30 hover:border-teal-700/50 transition-all [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-teal-400 [&::-webkit-slider-thumb]:to-cyan-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-teal-500/40"
         />
-        <span className="text-[10px] text-gray-400 w-8 text-right">{Math.round(track.volume * 100)}%</span>
+        <span className="text-[10px] text-gray-400 w-10 text-right font-mono font-semibold">{Math.round(track.volume * 100)}%</span>
       </div>
 
-      {/* Resize handle */}
+      {/* Resize handle - Enhanced */}
       <div
-        className={`absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-teal-500/50 transition-colors group ${isResizing ? 'bg-teal-500' : 'bg-transparent'}`}
+        className={`absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize flex items-center justify-center border-t transition-all duration-200 ${
+          isResizing 
+            ? 'bg-teal-500/30 border-teal-400/60' 
+            : 'bg-transparent hover:bg-teal-500/10 border-teal-900/20 hover:border-teal-500/40'
+        }`}
         onMouseDown={handleResizeStart}
         title="Drag to resize track height"
       >
-        <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <GripVertical className="w-3 h-3 text-teal-400" />
-        </div>
+        <GripVertical className={`w-4 h-4 transition-colors duration-200 ${isResizing ? 'text-teal-300' : 'text-teal-700/50 hover:text-teal-400'}`} />
       </div>
     </div>
   )

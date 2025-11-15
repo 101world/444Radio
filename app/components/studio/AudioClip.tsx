@@ -53,6 +53,7 @@ export default function AudioClipComponent({
   const [dragOffset, setDragOffset] = useState(0);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragMode, setDragMode] = useState<'none' | 'mouse' | 'html5'>('none');
+  const [dragPreviewPos, setDragPreviewPos] = useState({ x: 0, y: 0 });
   // Resizing is disabled for a simplified, consistent visual style requested by user
   // const [resizing, setResizing] = useState<null | 'left' | 'right'>(null);
   const clipRef = useRef<HTMLDivElement>(null);
@@ -130,6 +131,8 @@ export default function AudioClipComponent({
     if (!isDragging || dragMode !== 'mouse') return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      setDragPreviewPos({ x: e.clientX, y: e.clientY });
+      
       const timelineContainer = clipRef.current?.parentElement?.parentElement;
       if (!timelineContainer) return;
 
@@ -161,38 +164,40 @@ export default function AudioClipComponent({
   };
 
   return (
-    <div
-      ref={clipRef}
-      draggable={activeTool === 'select' || activeTool === 'move'}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      className={`absolute top-3 bottom-3 rounded-lg cursor-move transition-shadow ${
-        isSelected
-          ? 'ring-2 ring-teal-400 shadow-lg shadow-teal-500/60'
-          : 'ring-1 ring-teal-900/40 hover:shadow-md hover:shadow-teal-500/20'
-      } ${isDragging ? 'opacity-70 cursor-grabbing' : 'cursor-grab'}`}
-      style={{
-        left: `${clipLeft}px`,
-        width: `${clipWidth}px`,
-        backgroundColor: clip.color,
-        backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.02) 100%)`,
-        backgroundSize: `${pixelsPerSecond}px 100%`,
-      }}
-      onMouseDown={handleMouseDown}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(clip.id);
-      }}
-      onContextMenu={handleContextMenu}
-    >
+    <>
+      <div
+        ref={clipRef}
+        draggable={activeTool === 'select' || activeTool === 'move'}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        className={`absolute top-2 bottom-2 rounded-xl transition-all duration-150 ${
+          isSelected
+            ? 'ring-2 ring-teal-400 shadow-2xl shadow-teal-500/50 scale-[1.02] z-10'
+            : 'ring-1 ring-white/10 hover:ring-teal-500/40 hover:shadow-xl hover:shadow-teal-500/20 hover:scale-[1.01]'
+        } ${isDragging ? 'opacity-50 scale-105 z-20' : ''} ${
+          activeTool === 'select' || activeTool === 'move' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+        }`}
+        style={{
+          left: `${clipLeft}px`,
+          width: `${clipWidth}px`,
+          background: `linear-gradient(135deg, ${clip.color}ee 0%, ${clip.color}dd 50%, ${clip.color}cc 100%)`,
+          backdropFilter: 'blur(8px)',
+        }}
+        onMouseDown={handleMouseDown}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(clip.id);
+        }}
+        onContextMenu={handleContextMenu}
+      >
       {/* Clip content */}
-      <div className="h-full flex flex-col justify-center p-4 gap-2 overflow-hidden">
-        <div className="flex items-start justify-between gap-3">
+      <div className="h-full flex flex-col justify-between p-3 gap-2 overflow-hidden relative">
+        <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="text-white text-sm font-semibold truncate">
+            <div className="text-white text-sm font-bold truncate drop-shadow-lg">
               {clip.name}
             </div>
-            <div className="text-white/80 text-[11px]">
+            <div className="text-white/70 text-[10px] font-medium">
               {formatTime(clip.duration)}
             </div>
           </div>
@@ -202,53 +207,75 @@ export default function AudioClipComponent({
                 e.stopPropagation();
                 onDelete(clip.id);
               }}
-              className="p-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-colors"
+              className="p-1.5 rounded-lg bg-black/40 backdrop-blur-sm hover:bg-red-500/30 text-red-400 hover:text-red-300 transition-all border border-red-500/20 hover:border-red-400/40 shadow-lg"
               title="Delete clip"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
-        {/* Waveform placeholder */}
-        <div className="h-14 bg-black/10 rounded-lg overflow-hidden">
-          <ClipWaveform audioUrl={clip.audioUrl} width={Math.max(1, Math.round(clipWidth))} height={48} />
+        {/* Waveform */}
+        <div className="flex-1 bg-black/20 backdrop-blur-sm rounded-lg overflow-hidden border border-white/5 shadow-inner">
+          <ClipWaveform audioUrl={clip.audioUrl} width={Math.max(1, Math.round(clipWidth))} height={56} />
         </div>
       </div>
 
       {/* Resize handles hidden to support fixed, clean UI */}
+      </div>
 
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed bg-gray-900 border border-teal-500/30 rounded-lg shadow-xl z-50 py-1 min-w-[160px]"
+          className="fixed bg-gray-950/95 backdrop-blur-xl border border-teal-500/40 rounded-xl shadow-2xl shadow-black/50 z-50 py-2 min-w-[180px] overflow-hidden"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           {onSplitStems && (
             <button
-              className="w-full px-4 py-2 text-left text-sm text-white hover:bg-teal-500/20 flex items-center gap-2 transition-colors"
+              className="w-full px-4 py-2.5 text-left text-sm font-medium text-white hover:bg-gradient-to-r hover:from-teal-500/20 hover:to-cyan-500/20 flex items-center gap-3 transition-all border-b border-white/5"
               onClick={() => {
                 onSplitStems(clip.id, clip.audioUrl);
                 setContextMenu(null);
               }}
             >
-              <Scissors className="w-4 h-4" />
+              <Scissors className="w-4 h-4 text-teal-400" />
               Split into Stems
             </button>
           )}
           <button
-            className="w-full px-4 py-2 text-left text-sm text-white hover:bg-teal-500/20 flex items-center gap-2 transition-colors"
+            className="w-full px-4 py-2.5 text-left text-sm font-medium text-white hover:bg-gradient-to-r hover:from-red-500/20 hover:to-pink-500/20 flex items-center gap-3 transition-all"
             onClick={() => {
               onDelete(clip.id);
               setContextMenu(null);
             }}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-4 h-4 text-red-400" />
             Delete Clip
           </button>
         </div>
       )}
-    </div>
+
+      {/* Drag Preview Ghost - shown while dragging */}
+      {isDragging && dragMode === 'mouse' && (
+        <div
+          className="fixed pointer-events-none z-[9999] rounded-xl shadow-2xl shadow-teal-500/60 opacity-80 animate-pulse"
+          style={{
+            left: dragPreviewPos.x - 50,
+            top: dragPreviewPos.y - 20,
+            width: `${Math.min(clipWidth, 200)}px`,
+            height: '40px',
+            background: `linear-gradient(135deg, ${clip.color}ff 0%, ${clip.color}ee 50%, ${clip.color}dd 100%)`,
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <div className="h-full flex items-center justify-center px-3">
+            <span className="text-white text-xs font-bold truncate drop-shadow-lg">
+              {clip.name}
+            </span>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

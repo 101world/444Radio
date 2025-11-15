@@ -864,15 +864,15 @@ function StudioContent() {
       </header>
 
       {/* Unified Toolbar with ALL controls */}
-      <div className="h-14 bg-gradient-to-r from-gray-950 to-black border-b border-teal-900/30 flex items-center px-6 gap-4 shrink-0 shadow-lg">
-        {/* Selection Tools Group */}
-        <div className="flex items-center gap-1 bg-black/40 rounded-lg p-1 border border-teal-900/20">
+      <div className="h-16 bg-gradient-to-r from-gray-950 via-black to-gray-950 border-b border-teal-900/30 flex items-center px-6 gap-4 shrink-0 shadow-2xl backdrop-blur-xl">
+        {/* Selection Tools Group - Enhanced */}
+        <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-xl p-2 border border-teal-500/20 shadow-xl shadow-black/40">
           <button
             onClick={() => setActiveTool('select')}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-2.5 rounded-lg transition-all duration-200 ${
               activeTool === 'select'
-                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
-                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+                ? 'bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-2xl shadow-teal-500/50 scale-110'
+                : 'text-gray-400 hover:bg-gray-800/80 hover:text-teal-300 hover:scale-105'
             }`}
             title="Selection Tool (V)"
           >
@@ -881,10 +881,10 @@ function StudioContent() {
           
           <button
             onClick={() => setActiveTool('cut')}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-2.5 rounded-lg transition-all duration-200 ${
               activeTool === 'cut'
-                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
-                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+                ? 'bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-2xl shadow-teal-500/50 scale-110'
+                : 'text-gray-400 hover:bg-gray-800/80 hover:text-teal-300 hover:scale-105'
             }`}
             title="Cut Tool (C)"
           >
@@ -893,10 +893,10 @@ function StudioContent() {
           
           <button
             onClick={() => setActiveTool('zoom')}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-2.5 rounded-lg transition-all duration-200 ${
               activeTool === 'zoom'
-                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
-                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+                ? 'bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-2xl shadow-teal-500/50 scale-110'
+                : 'text-gray-400 hover:bg-gray-800/80 hover:text-teal-300 hover:scale-105'
             }`}
             title="Zoom Tool (Z)"
           >
@@ -905,10 +905,10 @@ function StudioContent() {
           
           <button
             onClick={() => setActiveTool('move')}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-2.5 rounded-lg transition-all duration-200 ${
               activeTool === 'move'
-                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
-                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+                ? 'bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-2xl shadow-teal-500/50 scale-110'
+                : 'text-gray-400 hover:bg-gray-800/80 hover:text-teal-300 hover:scale-105'
             }`}
             title="Move Tool (M)"
           >
@@ -917,10 +917,10 @@ function StudioContent() {
           
           <button
             onClick={() => setActiveTool('pan')}
-            className={`p-2 rounded-md transition-all ${
+            className={`p-2.5 rounded-lg transition-all duration-200 ${
               activeTool === 'pan'
-                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
-                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+                ? 'bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-2xl shadow-teal-500/50 scale-110'
+                : 'text-gray-400 hover:bg-gray-800/80 hover:text-teal-300 hover:scale-105'
             }`}
             title="Pan Tool (H)"
           >
@@ -928,20 +928,28 @@ function StudioContent() {
           </button>
         </div>
 
-        {/* Project Controls Group */}
-        <div className="flex items-center gap-2">
+        {/* Project Controls Group - Enhanced */}
+        <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md rounded-xl p-2 border border-teal-500/20 shadow-xl shadow-black/40">
           <button
             onClick={() => { setSnapEnabled(!snapEnabled); showNotification(`Snap ${!snapEnabled ? 'ON' : 'OFF'}`, 'info') }}
-            className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${snapEnabled ? 'bg-teal-700/40 text-teal-300 border border-teal-500/30' : 'bg-gray-900/40 text-gray-400 hover:text-teal-300 border border-teal-900/20'}`}
+            className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 ${
+              snapEnabled 
+                ? 'bg-gradient-to-br from-teal-600/60 to-cyan-600/60 text-teal-200 border border-teal-400/40 shadow-lg shadow-teal-500/30' 
+                : 'bg-gray-900/60 text-gray-400 hover:text-teal-300 border border-teal-900/30 hover:border-teal-700/40'
+            }`}
             title="Snap to grid"
           >
             <Magnet className="w-4 h-4" />
-            <span className="text-xs font-medium">Snap</span>
+            <span className="text-xs font-semibold">Snap</span>
           </button>
 
           <button
             onClick={() => { setPlayheadLocked(!playheadLocked); showNotification(`Playhead ${!playheadLocked ? 'Locked' : 'Unlocked'}`, 'info') }}
-            className={`p-2 rounded-lg transition-all ${playheadLocked ? 'bg-teal-700/40 text-teal-300 border border-teal-500/30' : 'bg-gray-900/40 text-gray-400 hover:text-teal-300 border border-teal-900/20'}`}
+            className={`p-2.5 rounded-lg transition-all duration-200 ${
+              playheadLocked 
+                ? 'bg-gradient-to-br from-teal-600/60 to-cyan-600/60 text-teal-200 border border-teal-400/40 shadow-lg shadow-teal-500/30' 
+                : 'bg-gray-900/60 text-gray-400 hover:text-teal-300 border border-teal-900/30 hover:border-teal-700/40'
+            }`}
             title={`${playheadLocked ? 'Unlock' : 'Lock'} playhead tracking`}
           >
             {playheadLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
