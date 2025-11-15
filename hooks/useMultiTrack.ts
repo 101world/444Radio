@@ -99,7 +99,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTimeState] = useState(0);
-  const [masterVolumeState, setMasterVolumeState] = useState(0.8);
+  const [masterVolumeState, setMasterVolumeState] = useState(0.8); // 80% default, per requirement
   const [zoom, setZoom] = useState(1.0);
   const [duration, setDuration] = useState(0);
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
@@ -157,7 +157,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
         color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
       }] : [],
       color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
-      volume: 0.8,
+      volume: 1.0,
       pan: 0,
       mute: false,
       solo: false,
@@ -170,7 +170,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
     if (audioContextRef.current && masterGainNodeRef.current) {
       try {
         const gainNode = audioContextRef.current.createGain();
-        gainNode.gain.value = newTrack.volume;
+        gainNode.gain.value = newTrack.volume; // 1.0 (100%) by default
 
         const panNode = audioContextRef.current.createStereoPanner();
         panNode.pan.value = newTrack.pan;
@@ -462,11 +462,19 @@ export function useMultiTrack(): UseMultiTrackReturn {
     const cache = bufferCacheRef.current;
     if (cache.has(url)) return cache.get(url)!;
     if (!audioContextRef.current) throw new Error('AudioContext not initialized');
-    const res = await fetch(url);
-    const arr = await res.arrayBuffer();
-    const buf = await audioContextRef.current.decodeAudioData(arr);
-    cache.set(url, buf);
-    return buf;
+    try {
+      const res = await fetch(url, { mode: 'cors' as RequestMode });
+      if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+      const arr = await res.arrayBuffer();
+      const buf = await audioContextRef.current.decodeAudioData(arr);
+      cache.set(url, buf);
+      return buf;
+    } catch (e) {
+      console.error('Failed to load audio buffer:', url, e);
+      // Notify UI if available
+      try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Failed to load audio (CORS or network)', type: 'error' } })); } catch {}
+      throw e;
+    }
   }, []);
 
   const stopAllSources = useCallback(() => {

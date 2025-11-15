@@ -81,14 +81,48 @@ export async function POST(request: Request) {
 
     console.log('🎨 Generating effect:', { prompt, duration });
 
-    // Create effect generation prediction
-    const prediction = await replicate.predictions.create({
-      model: "smaerdlatigid/stable-audio",
-      input: {
-        prompt,
-        seconds_total: duration,
+    // Try candidate models in order, to avoid 404s on unavailable slugs
+    const candidateModels = [
+      'smaerdlatigid/stable-audio',
+      'stability-ai/stable-audio',
+      'stability-ai/stable-audio-open',
+    ];
+
+    let prediction: any = null;
+    let lastError: any = null;
+    for (const model of candidateModels) {
+      try {
+        prediction = await replicate.predictions.create({
+          model,
+          input: {
+            prompt,
+            seconds_total: duration,
+          }
+        });
+        if (prediction) break;
+      } catch (err: any) {
+        lastError = err;
+        // Try next candidate on 404/Not Found
+        if (err?.status === 404 || /not found/i.test(String(err?.message || ''))) {
+          continue;
+        } else {
+          break;
+        }
       }
-    });
+    }
+
+    if (!prediction) {
+      // Refund on failure to create prediction
+      await supabase
+        .from('users')
+        .update({ credits: (userData.credits || 0) })
+        .eq('clerk_user_id', userId);
+
+      const msg = lastError instanceof Error ? lastError.message : 'Unable to start effect generation';
+      return corsResponse(
+        NextResponse.json({ success: false, error: msg }, { status: 502 })
+      );
+    }
 
     // Wait for completion (90 second timeout)
     let result = prediction;
