@@ -126,17 +126,33 @@ export function useMultiTrack(): UseMultiTrackReturn {
       masterGain.connect(ctx.destination);
       masterGainNodeRef.current = masterGain;
 
-      console.log('✅ Multi-track audio context initialized');
+      console.log('✅ Multi-track audio context initialized, state:', ctx.state);
+      
+      // Auto-resume on first user interaction (handles browser autoplay policy)
+      const resumeAudio = async () => {
+        if (ctx.state === 'suspended') {
+          try {
+            await ctx.resume();
+            console.log('🔓 AudioContext auto-resumed on user interaction');
+          } catch (e) {
+            console.warn('Auto-resume failed:', e);
+          }
+        }
+      };
+      
+      // Listen for any user interaction
+      document.addEventListener('click', resumeAudio, { once: true });
+      document.addEventListener('keydown', resumeAudio, { once: true });
+      
+      return () => {
+        // Cleanup audio nodes
+        if (masterGainNodeRef.current) {
+          masterGainNodeRef.current.disconnect();
+        }
+      };
     } catch (error) {
       console.error('❌ Failed to initialize audio context:', error);
     }
-
-    return () => {
-      // Cleanup audio nodes
-      if (masterGainNodeRef.current) {
-        masterGainNodeRef.current.disconnect();
-      }
-    };
   }, []);
 
   // Add a new track (legacy - with audio URL)
@@ -564,34 +580,65 @@ export function useMultiTrack(): UseMultiTrackReturn {
   }, []);
 
   const setPlaying = useCallback(async (playing: boolean) => {
-    if (!audioContextRef.current) return;
+    if (!audioContextRef.current) {
+      console.error('❌ AudioContext not initialized');
+      try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Audio engine not ready', type: 'error' } })); } catch {}
+      return;
+    }
+    
     if (playing) {
       try {
+        // Resume AudioContext (required by browser autoplay policy)
         if (audioContextRef.current.state === 'suspended') {
           await audioContextRef.current.resume();
-          console.log('🔁 AudioContext resumed');
+          console.log('🔁 AudioContext resumed from suspended state');
         }
+        
+        // Verify we have tracks with clips
+        const tracksWithClips = tracks.filter(t => t.clips.length > 0);
+        if (tracksWithClips.length === 0) {
+          console.warn('⚠️ No clips to play');
+          try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'No audio clips on timeline', type: 'info' } })); } catch {}
+          return;
+        }
+        
+        console.log(`🎵 Starting playback with ${tracksWithClips.length} tracks at time ${currentTime.toFixed(2)}s`);
+        
+        // Always stop sources before starting
+        stopAllSources();
+        clearTicker();
+        setIsPlaying(false);
+        
+        // Small delay to ensure clean state
+        await new Promise(resolve => setTimeout(resolve, 10));
+        
+        // Start each track at currentTime
+        const startPromises = tracksWithClips.map(async (t) => {
+          try {
+            await startTrackAtTime(t, currentTime);
+          } catch (err) {
+            console.error(`Failed to start track ${t.name}:`, err);
+          }
+        });
+        await Promise.all(startPromises);
+        
+        startTicker();
+        setIsPlaying(true);
+        console.log('▶️ Playback started at', currentTime);
       } catch (e) {
-        console.warn('AudioContext resume failed:', e);
+        console.error('❌ Playback start failed:', e);
+        try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Playback failed: ' + (e instanceof Error ? e.message : 'Unknown error'), type: 'error' } })); } catch {}
+        clearTicker();
+        stopAllSources();
+        setIsPlaying(false);
       }
-      // Always stop sources before starting
-      stopAllSources();
-      clearTicker();
-      setIsPlaying(false);
-      // Small delay to ensure clean state
-      await new Promise(resolve => setTimeout(resolve, 10));
-      // Start each track at currentTime
-      await Promise.all(tracks.map(t => startTrackAtTime(t, currentTime)));
-      startTicker();
-      setIsPlaying(true);
-      console.log('▶️ Playback started at', currentTime);
     } else {
       clearTicker();
       stopAllSources();
       setIsPlaying(false);
       console.log('⏸️ Playback stopped at', currentTime);
     }
-  }, [isPlaying, tracks, currentTime, startTrackAtTime, startTicker, clearTicker, stopAllSources]);
+  }, [tracks, currentTime, startTrackAtTime, startTicker, clearTicker, stopAllSources]);
 
   // Set selected track
   const setSelectedTrack = useCallback((id: string | null) => {
