@@ -22,7 +22,9 @@ interface CombinedMedia {
   id: string
   title: string
   audio_url: string
+  audioUrl?: string // Normalized field for frontend compatibility
   image_url: string
+  imageUrl?: string // Normalized field for frontend compatibility
   audio_prompt: string
   image_prompt: string
   user_id: string
@@ -221,8 +223,8 @@ export default function ExplorePage() {
       setPlaylist(combinedMedia.map(m => ({
         id: m.id,
         title: m.title,
-        audioUrl: m.audio_url,
-        imageUrl: m.image_url,
+        audioUrl: m.audioUrl || m.audio_url, // Use normalized field with fallback
+        imageUrl: m.imageUrl || m.image_url, // Use normalized field with fallback
         artist: m.users?.username || m.username || 'Unknown Artist'
       })))
       
@@ -230,8 +232,8 @@ export default function ExplorePage() {
       playTrack({
         id: media.id,
         title: media.title,
-        audioUrl: media.audio_url,
-        imageUrl: media.image_url,
+        audioUrl: media.audioUrl || media.audio_url, // Use normalized field with fallback
+        imageUrl: media.imageUrl || media.image_url, // Use normalized field with fallback
         artist: media.users?.username || media.username || 'Unknown Artist'
       })
       setShowSearchBox(false) // Hide search bar when playing

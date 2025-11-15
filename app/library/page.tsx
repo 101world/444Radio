@@ -24,6 +24,7 @@ interface LibraryMusic {
   prompt: string
   lyrics: string | null
   audio_url: string
+  audioUrl?: string // Normalized field for frontend compatibility
   created_at: string
   file_size: number | null
   likes?: number
@@ -34,6 +35,7 @@ interface LibraryImage {
   title: string | null
   prompt: string
   image_url: string
+  imageUrl?: string // Normalized field for frontend compatibility
   created_at: string
   file_size: number | null
 }
@@ -42,12 +44,15 @@ interface LibraryCombined {
   id: string
   title: string | null
   audio_url: string
+  audioUrl?: string // Normalized field for frontend compatibility
   image_url: string
+  imageUrl?: string // Normalized field for frontend compatibility
   music_prompt: string | null
   image_prompt: string | null
   is_published: boolean
   created_at: string
   likes?: number
+  username?: string
 }
 
 export default function LibraryPage() {
@@ -557,7 +562,7 @@ export default function LibraryPage() {
                           onClick={async () => {
                             const track = {
                               id: item.id,
-                              audioUrl: item.audio_url,
+                              audioUrl: item.audioUrl || item.audio_url, // Use normalized field with fallback
                               title: item.title || 'Untitled',
                               artist: user?.firstName || 'You'
                             }
@@ -569,7 +574,7 @@ export default function LibraryPage() {
                               // Set playlist to all music items and play this one
                               const allTracks = musicItems.map(i => ({
                                 id: i.id,
-                                audioUrl: i.audio_url,
+                                audioUrl: i.audioUrl || i.audio_url, // Use normalized field with fallback
                                 title: i.title || 'Untitled',
                                 artist: user?.firstName || 'You'
                               }))
@@ -686,8 +691,8 @@ export default function LibraryPage() {
                               id: item.id,
                               title: item.title || 'Untitled',
                               artist: 'Unknown Artist',
-                              audioUrl: item.audio_url,
-                              imageUrl: item.image_url
+                              audioUrl: item.audioUrl || item.audio_url,
+                              imageUrl: item.imageUrl || item.image_url
                             }
                             setPlaylist([track])
                             playTrack(track)
@@ -745,7 +750,7 @@ export default function LibraryPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button onClick={async () => {
-                            const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audio_url, imageUrl: item.image_url }
+                            const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audioUrl || item.audio_url, imageUrl: item.imageUrl || item.image_url }
                             await setPlaylist([track])
                             await playTrack(track)
                           }}
