@@ -369,7 +369,9 @@ export default function TrackInspector() {
               <div className="bg-gray-800/50 border border-cyan-500/30 rounded-lg p-3 mb-3">
                 <p className="text-xs text-gray-400 mb-2">{generatedAudioName}</p>
                 <audio 
-                  src={generatedAudioUrl} 
+                  src={(generatedAudioUrl && (generatedAudioUrl.includes('.r2.dev') || generatedAudioUrl.includes('.r2.cloudflarestorage.com')))
+                    ? `/api/r2/proxy?url=${encodeURIComponent(generatedAudioUrl)}`
+                    : generatedAudioUrl || ''}
                   controls 
                   className="w-full"
                   style={{ height: '32px' }}
@@ -394,7 +396,9 @@ export default function TrackInspector() {
                   Send to Track
                 </button>
                 <a
-                  href={generatedAudioUrl}
+                  href={(generatedAudioUrl && (generatedAudioUrl.includes('.r2.dev') || generatedAudioUrl.includes('.r2.cloudflarestorage.com')))
+                    ? `/api/r2/proxy?url=${encodeURIComponent(generatedAudioUrl)}`
+                    : generatedAudioUrl || ''}
                   download={generatedAudioName}
                   className="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition-all text-center"
                 >

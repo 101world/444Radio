@@ -479,7 +479,11 @@ export function useMultiTrack(): UseMultiTrackReturn {
     if (cache.has(url)) return cache.get(url)!;
     if (!audioContextRef.current) throw new Error('AudioContext not initialized');
     try {
-      const res = await fetch(url, { mode: 'cors' as RequestMode });
+      // Route R2 URLs through server proxy to avoid CORS issues
+      const isR2 = url.includes('.r2.dev') || url.includes('.r2.cloudflarestorage.com');
+      const fetchUrl = isR2 ? `/api/r2/proxy?url=${encodeURIComponent(url)}` : url;
+
+      const res = await fetch(fetchUrl, { mode: 'cors' as RequestMode });
       if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
       const arr = await res.arrayBuffer();
       const buf = await audioContextRef.current.decodeAudioData(arr);

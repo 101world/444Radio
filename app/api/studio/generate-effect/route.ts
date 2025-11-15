@@ -84,32 +84,58 @@ export async function POST(request: Request) {
     // Use latest stable-audio version (smaerdlatigid/stable-audio)
     const stableAudioVersion = '80d7a3ff48781aadfe37bd4c0c0317ffa94c67698d661f4792b1b01129a29689';
     const configuredModel = process.env.REPLICATE_EFFECTS_MODEL;
-    const configuredVersion = process.env.REPLICATE_EFFECTS_VERSION || stableAudioVersion;
+    const configuredVersionEnv = process.env.REPLICATE_EFFECTS_VERSION;
 
     let prediction: any = null;
     let lastError: any = null;
     let usedModel = '';
 
-    // 1. Try configured version first (most reliable)
-    if (configuredVersion && !prediction) {
+    // Helper to sanitize error strings to avoid leaking model names/URLs to client logs
+    const sanitizeError = (msg: string) =>
+      msg
+        .replace(/https?:\/\/[^\s]+/g, 'https://api.replicate.com/...')
+        .replace(/stability-ai\/stable-audio-open/gi, 'audio-model')
+        .replace(/meta\/musicgen/gi, 'audio-model')
+        .replace(/smaerdlatigid\/stable-audio/gi, 'audio-model');
+
+    // 1. Always try pinned stable-audio version first (most reliable)
+    if (!prediction) {
       try {
-        console.log('🎯 Trying configured version:', configuredVersion.slice(0, 12) + '...');
+        console.log('🎯 Trying pinned version:', stableAudioVersion.slice(0, 12) + '...');
         prediction = await replicate.predictions.create({
-          version: configuredVersion,
+          version: stableAudioVersion,
           input: {
             prompt,
             seconds_total: duration,
           }
         });
-        usedModel = 'configured-version';
+        usedModel = 'pinned-version';
       } catch (err: any) {
         lastError = err;
-        console.warn('❌ Configured version failed:', err.message);
+        console.warn('❌ Pinned version failed:', err?.message || err);
       }
     }
 
-    // 2. Try configured model slug
-    if (configuredModel && !prediction) {
+    // 2. Try env-configured version if provided and different
+    if (configuredVersionEnv && configuredVersionEnv !== stableAudioVersion && !prediction) {
+      try {
+        console.log('🎯 Trying env version:', configuredVersionEnv.slice(0, 12) + '...');
+        prediction = await replicate.predictions.create({
+          version: configuredVersionEnv,
+          input: {
+            prompt,
+            seconds_total: duration,
+          }
+        });
+        usedModel = 'env-version';
+      } catch (err: any) {
+        lastError = err;
+        console.warn('❌ Env version failed:', err?.message || err);
+      }
+    }
+
+    // 3. Optionally try configured model slug unless it's a known-bad slug
+    if (configuredModel && !/stability-ai\/stable-audio-open/i.test(configuredModel) && !prediction) {
       try {
         console.log('🎯 Trying configured model:', configuredModel);
         prediction = await replicate.predictions.create({
@@ -122,11 +148,11 @@ export async function POST(request: Request) {
         usedModel = configuredModel;
       } catch (err: any) {
         lastError = err;
-        console.warn('❌ Configured model failed:', err.message);
+        console.warn('❌ Configured model failed:', err?.message || err);
       }
     }
 
-    // 3. Fallback to meta/musicgen (widely available, reliable)
+    // 4. Fallback to a common audio model
     if (!prediction) {
       try {
         console.log('🎯 Trying fallback: meta/musicgen');
@@ -140,7 +166,7 @@ export async function POST(request: Request) {
         usedModel = 'meta/musicgen';
       } catch (err: any) {
         lastError = err;
-        console.warn('❌ Fallback model failed:', err.message);
+        console.warn('❌ Fallback model failed:', err?.message || err);
       }
     }
 
@@ -151,10 +177,10 @@ export async function POST(request: Request) {
         .update({ credits: (userData.credits || 0) })
         .eq('clerk_user_id', userId);
 
-      const hint = configuredVersion || configuredModel
-        ? 'Configured audio model unavailable. Check REPLICATE_EFFECTS_MODEL or REPLICATE_EFFECTS_VERSION.'
+      const hint = configuredVersionEnv || configuredModel
+        ? 'Configured audio model unavailable. Check server audio model settings.'
         : 'Audio generation unavailable. Please contact support.';
-      const msg = lastError instanceof Error ? `${lastError.message}. ${hint}` : hint;
+      const msg = lastError instanceof Error ? `${sanitizeError(lastError.message)}. ${hint}` : hint;
       console.error('❌ All models failed. Last error:', lastError);
       return corsResponse(
         NextResponse.json({ success: false, error: msg }, { status: 502 })
