@@ -1,12 +1,12 @@
 /**
  * TrackInspector - Right sidebar for selected track details
- * Shows track properties, effects chain, and controls
- * Logic Pro / Ableton Live-style inspector
+ * Shows track properties, AI-powered effects chain, and controls
+ * Logic Pro / Ableton Live-style inspector with Replicate integration
  */
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { 
   Volume2, 
   VolumeX, 
@@ -17,9 +17,15 @@ import {
   Sparkles,
   ChevronDown,
   ChevronRight,
+  Wand2,
+  Music2,
+  Loader2,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
 import MasterChannel from './MasterChannel';
+import { useUser } from '@clerk/nextjs';
 
 interface Effect {
   id: string;
@@ -38,12 +44,22 @@ export default function TrackInspector() {
     setTrackPan,
     toggleMute,
     removeTrack,
+    addClipToTrack,
   } = useStudio();
+  const { user } = useUser();
   
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     properties: true,
     effects: true,
+    aiTools: true,
   });
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingType, setProcessingType] = useState<string>('');
+  const [processingStatus, setProcessingStatus] = useState<string>('');
+  const [autotuneEnabled, setAutotuneEnabled] = useState(false);
+  const [showEffectModal, setShowEffectModal] = useState(false);
+  const [selectedEffectType, setSelectedEffectType] = useState<string>('');
 
   const selectedTrack = tracks.find(t => t.id === selectedTrackId);
 
@@ -54,11 +70,120 @@ export default function TrackInspector() {
     }));
   };
 
+  // Apply pitch correction using Replicate AutoTune
+  const applyPitchCorrection = useCallback(async () => {
+    if (!selectedTrack || selectedTrack.clips.length === 0) {
+      alert('No audio clips to process');
+      return;
+    }
+
+    setIsProcessing(true);
+    setProcessingType('autotune');
+    setProcessingStatus('Uploading audio...');
+
+    try {
+      const firstClip = selectedTrack.clips[0];
+      
+      // Call Replicate API
+      setProcessingStatus('Processing with AI...');
+      const response = await fetch('/api/studio/autotune', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioUrl: firstClip.audioUrl,
+          trackId: selectedTrack.id,
+          trackName: selectedTrack.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Processing failed');
+      }
+
+      setProcessingStatus('Adding processed track...');
+      
+      // Add the autotuned audio as a new clip
+      if (data.audioUrl) {
+        addClipToTrack(selectedTrack.id, data.audioUrl, `${selectedTrack.name} (Autotuned)`, firstClip.startTime + firstClip.duration + 1);
+      }
+
+      setProcessingStatus('Complete!');
+      setTimeout(() => {
+        setIsProcessing(false);
+        setProcessingStatus('');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Autotune error:', error);
+      setProcessingStatus('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      setTimeout(() => {
+        setIsProcessing(false);
+        setProcessingStatus('');
+      }, 3000);
+    }
+  }, [selectedTrack, addClipToTrack]);
+
+  // Apply AI audio effects using Stable Audio
+  const applyAIEffect = useCallback(async (effectPrompt: string) => {
+    if (!selectedTrack || selectedTrack.clips.length === 0) {
+      alert('No audio clips to process');
+      return;
+    }
+
+    setIsProcessing(true);
+    setProcessingType('effect');
+    setProcessingStatus('Generating AI effect...');
+
+    try {
+      const firstClip = selectedTrack.clips[0];
+      
+      const response = await fetch('/api/studio/ai-effect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioUrl: firstClip.audioUrl,
+          prompt: effectPrompt,
+          trackId: selectedTrack.id,
+          trackName: selectedTrack.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Effect generation failed');
+      }
+
+      setProcessingStatus('Adding effect track...');
+      
+      if (data.audioUrl) {
+        addClipToTrack(selectedTrack.id, data.audioUrl, `${selectedTrack.name} (${effectPrompt})`, firstClip.startTime);
+      }
+
+      setProcessingStatus('Complete!');
+      setTimeout(() => {
+        setIsProcessing(false);
+        setProcessingStatus('');
+        setShowEffectModal(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error('AI effect error:', error);
+      setProcessingStatus('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      setTimeout(() => {
+        setIsProcessing(false);
+        setProcessingStatus('');
+      }, 3000);
+    }
+  }, [selectedTrack, addClipToTrack]);
+
   if (!selectedTrack) {
     return (
-      <div className="w-80 bg-gradient-to-b from-gray-900/95 to-gray-800/95 backdrop-blur-xl border-l border-purple-500/30 flex flex-col">
-        <div className="h-16 border-b border-purple-500/30 flex items-center justify-between px-4">
-          <h2 className="text-lg font-bold text-purple-400">Track Inspector</h2>
+      <div className="w-80 bg-gradient-to-b from-black via-cyan-950/40 to-black backdrop-blur-xl border-l border-cyan-500/30 flex flex-col">
+        <div className="h-16 border-b border-cyan-500/30 flex items-center justify-between px-4">
+          <h2 className="text-lg font-bold text-cyan-400">Track Inspector</h2>
         </div>
         
         {/* Always show Master Channel */}
@@ -75,9 +200,9 @@ export default function TrackInspector() {
   }
 
   return (
-    <div className="w-80 bg-gradient-to-b from-gray-900/95 to-gray-800/95 backdrop-blur-xl border-l border-purple-500/30 flex flex-col overflow-hidden">
+    <div className="w-80 bg-gradient-to-b from-black via-cyan-950/40 to-black backdrop-blur-xl border-l border-cyan-500/30 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="h-16 border-b border-purple-500/30 flex items-center justify-between px-4 shrink-0">
+      <div className="h-16 border-b border-cyan-500/30 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-2">
           <div
             className="w-4 h-4 rounded-full"
@@ -102,12 +227,12 @@ export default function TrackInspector() {
         <MasterChannel />
         
         {/* Track Properties Section */}
-        <div className="border-b border-gray-700">
+        <div className="border-b border-cyan-500/20">
           <button
             onClick={() => toggleSection('properties')}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/50 transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-cyan-500/10 transition-colors"
           >
-            <span className="text-sm font-semibold text-purple-400">Properties</span>
+            <span className="text-sm font-semibold text-cyan-400">Properties</span>
             {expandedSections.properties ? (
               <ChevronDown className="w-4 h-4 text-gray-400" />
             ) : (
@@ -124,7 +249,7 @@ export default function TrackInspector() {
                   {selectedTrack.mute ? (
                     <VolumeX className="w-4 h-4 text-gray-400" />
                   ) : (
-                    <Volume2 className="w-4 h-4 text-purple-400" />
+                    <Volume2 className="w-4 h-4 text-cyan-400" />
                   )}
                   <input
                     type="range"
@@ -133,7 +258,7 @@ export default function TrackInspector() {
                     step="0.01"
                     value={selectedTrack.volume}
                     onChange={(e) => setTrackVolume(selectedTrack.id, parseFloat(e.target.value))}
-                    className="flex-1 h-2 accent-purple-500"
+                    className="flex-1 h-2 accent-cyan-500"
                   />
                   <span className="text-xs text-gray-400 w-12 text-right">
                     {Math.round(selectedTrack.volume * 100)}%
@@ -153,7 +278,7 @@ export default function TrackInspector() {
                     step="0.01"
                     value={selectedTrack.pan}
                     onChange={(e) => setTrackPan(selectedTrack.id, parseFloat(e.target.value))}
-                    className="flex-1 h-2 accent-purple-500"
+                    className="flex-1 h-2 accent-cyan-500"
                   />
                   <span className="text-xs text-gray-400 w-4">R</span>
                   <span className="text-xs text-gray-400 w-8 text-right">
@@ -191,13 +316,114 @@ export default function TrackInspector() {
           )}
         </div>
 
+        {/* AI Tools Section */}
+        <div className="border-b border-cyan-500/20">
+          <button
+            onClick={() => toggleSection('aiTools')}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-cyan-500/10 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Wand2 className="w-4 h-4 text-cyan-400" />
+              <span className="text-sm font-semibold text-cyan-400">AI Tools</span>
+            </div>
+            {expandedSections.aiTools ? (
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+
+          {expandedSections.aiTools && (
+            <div className="px-4 pb-4 space-y-3">
+              {/* Processing indicator */}
+              {isProcessing && (
+                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                    <span className="text-sm font-medium text-cyan-400">
+                      {processingType === 'autotune' ? 'Auto-Tuning...' : 'Generating Effect...'}
+                    </span>
+                  </div>
+                  {processingStatus && (
+                    <p className="text-xs text-gray-400">{processingStatus}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Autotune toggle */}
+              <button
+                onClick={applyPitchCorrection}
+                disabled={isProcessing || !selectedTrack.clips.length}
+                className={`w-full px-4 py-2.5 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                  autotuneEnabled
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                    : 'bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30'
+                } ${isProcessing || !selectedTrack.clips.length ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Music2 className="w-4 h-4" />
+                {autotuneEnabled ? 'Auto-Tune Active' : 'Apply Auto-Tune'}
+              </button>
+
+              {/* AI Effect buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedEffectType('reverb');
+                    setShowEffectModal(true);
+                  }}
+                  disabled={isProcessing || !selectedTrack.clips.length}
+                  className="px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-cyan-500/10 text-gray-300 hover:text-cyan-400 border border-gray-600 hover:border-cyan-500/30 font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Reverb
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedEffectType('delay');
+                    setShowEffectModal(true);
+                  }}
+                  disabled={isProcessing || !selectedTrack.clips.length}
+                  className="px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-cyan-500/10 text-gray-300 hover:text-cyan-400 border border-gray-600 hover:border-cyan-500/30 font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Delay
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedEffectType('chorus');
+                    setShowEffectModal(true);
+                  }}
+                  disabled={isProcessing || !selectedTrack.clips.length}
+                  className="px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-cyan-500/10 text-gray-300 hover:text-cyan-400 border border-gray-600 hover:border-cyan-500/30 font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Chorus
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedEffectType('distortion');
+                    setShowEffectModal(true);
+                  }}
+                  disabled={isProcessing || !selectedTrack.clips.length}
+                  className="px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-cyan-500/10 text-gray-300 hover:text-cyan-400 border border-gray-600 hover:border-cyan-500/30 font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Distortion
+                </button>
+              </div>
+
+              {!selectedTrack.clips.length && (
+                <p className="text-xs text-gray-500 italic">
+                  Add clips to this track to use AI tools
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Effects Chain Section */}
-        <div className="border-b border-gray-700">
+        <div className="border-b border-cyan-500/20">
           <button
             onClick={() => toggleSection('effects')}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/50 transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-cyan-500/10 transition-colors"
           >
-            <span className="text-sm font-semibold text-purple-400">Effects Chain</span>
+            <span className="text-sm font-semibold text-cyan-400">Effects Chain</span>
             {expandedSections.effects ? (
               <ChevronDown className="w-4 h-4 text-gray-400" />
             ) : (
@@ -212,11 +438,11 @@ export default function TrackInspector() {
                 selectedTrack.effects.map((effect: Effect) => (
                   <div
                     key={effect.id}
-                    className="bg-gray-800/50 border border-purple-500/20 rounded-lg p-3"
+                    className="bg-gray-800/50 border border-cyan-500/20 rounded-lg p-3"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-purple-400" />
+                        <Sparkles className="w-4 h-4 text-cyan-400" />
                         <span className="text-sm font-medium text-white">
                           {effect.name}
                         </span>
@@ -250,7 +476,7 @@ export default function TrackInspector() {
               )}
 
               {/* Add Effect Button */}
-              <button className="w-full px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/50 font-medium transition-all flex items-center justify-center gap-2 mt-3">
+              <button className="w-full px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/50 font-medium transition-all flex items-center justify-center gap-2 mt-3">
                 <Plus className="w-4 h-4" />
                 Add Effect
               </button>
@@ -259,12 +485,12 @@ export default function TrackInspector() {
         </div>
 
         {/* Audio Info Section */}
-        <div className="border-b border-gray-700">
+        <div className="border-b border-cyan-500/20">
           <button
             onClick={() => toggleSection('info')}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/50 transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-cyan-500/10 transition-colors"
           >
-            <span className="text-sm font-semibold text-purple-400">Audio Info</span>
+            <span className="text-sm font-semibold text-cyan-400">Audio Info</span>
             {expandedSections.info ? (
               <ChevronDown className="w-4 h-4 text-gray-400" />
             ) : (
@@ -294,6 +520,72 @@ export default function TrackInspector() {
           )}
         </div>
       </div>
+
+      {/* AI Effect Modal */}
+      {showEffectModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gradient-to-b from-gray-900 to-black border border-cyan-500/30 rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Wand2 className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-lg font-bold text-white">
+                  Apply {selectedEffectType?.charAt(0).toUpperCase() + selectedEffectType?.slice(1)}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEffectModal(false);
+                  setSelectedEffectType('');
+                }}
+                className="p-1 rounded hover:bg-gray-700 text-gray-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-sm text-gray-400 mb-2 block">
+                Describe the effect you want (optional):
+              </label>
+              <textarea
+                id="effect-prompt-input"
+                placeholder={`e.g., "subtle ${selectedEffectType} with long tail" or "heavy ${selectedEffectType} for dramatic effect"`}
+                className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50 resize-none h-24"
+                defaultValue={`${selectedEffectType} effect`}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  const promptInput = document.getElementById('effect-prompt-input') as HTMLTextAreaElement;
+                  const prompt = promptInput?.value || `${selectedEffectType} effect`;
+                  applyAIEffect(prompt);
+                }}
+                disabled={isProcessing}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Generate Effect
+              </button>
+              <button
+                onClick={() => {
+                  setShowEffectModal(false);
+                  setSelectedEffectType('');
+                }}
+                className="px-4 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="mt-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+              <p className="text-xs text-cyan-400">
+                💡 AI will process your track with {selectedEffectType} and add it as a new clip
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
