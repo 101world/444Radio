@@ -54,18 +54,32 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
-    // Run stable-audio model for effect generation
-    const output = await replicate.run(
-      "smaerdlatigid/stable-audio:a5ac1caa88116a0c3fb4b4ecceaba2b1e3f10fcd0d3ca8f3a81d6db83d9d8a55",
-      {
-        input: {
-          prompt: `Audio effect: ${prompt}`,
-          seconds_total: 10, // Short effect duration
-          steps: 20,
-        }
+    // Create stable-audio prediction
+    const prediction = await replicate.predictions.create({
+      model: "stability-ai/stable-audio",
+      input: {
+        prompt: `Audio effect: ${prompt}`,
+        seconds_total: 10, // Short effect duration
+        steps: 20,
       }
-    ) as unknown as string;
+    });
 
+    // Wait for completion (60 second timeout)
+    let result = prediction;
+    const startTime = Date.now();
+    while (result.status !== 'succeeded' && result.status !== 'failed') {
+      if (Date.now() - startTime > 60000) {
+        throw new Error('AI effect generation timed out');
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      result = await replicate.predictions.get(result.id);
+    }
+
+    if (result.status === 'failed') {
+      throw new Error('AI effect generation failed');
+    }
+
+    const output = result.output as string;
     if (!output) {
       throw new Error('No output from stable-audio model');
     }

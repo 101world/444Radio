@@ -34,17 +34,31 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
-    // Run autotune model
-    const output = await replicate.run(
-      "nateraw/autotune:0dee5fee28e8ec4e7e9e04bd1ee70d9ffc49c58ee78f7f26f3ca99d2e3ddd6b7",
-      {
-        input: {
-          audio: audioUrl,
-          correction_strength: 0.5, // Moderate pitch correction
-        }
+    // Create autotune prediction (use latest version)
+    const prediction = await replicate.predictions.create({
+      model: "nateraw/autotune",
+      input: {
+        audio: audioUrl,
+        correction_strength: 0.5, // Moderate pitch correction
       }
-    ) as unknown as string;
+    });
 
+    // Wait for completion (60 second timeout)
+    let result = prediction;
+    const startTime = Date.now();
+    while (result.status !== 'succeeded' && result.status !== 'failed') {
+      if (Date.now() - startTime > 60000) {
+        throw new Error('Auto-tune timed out');
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      result = await replicate.predictions.get(result.id);
+    }
+
+    if (result.status === 'failed') {
+      throw new Error('Auto-tune processing failed');
+    }
+
+    const output = result.output as string;
     if (!output) {
       throw new Error('No output from autotune model');
     }

@@ -113,7 +113,8 @@ export default function TrackInspector() {
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
-      }, 2000);
+        setAutotuneEnabled(false);
+      }, 3000);
 
     } catch (error) {
       console.error('Autotune error:', error);
@@ -121,6 +122,7 @@ export default function TrackInspector() {
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
+        setAutotuneEnabled(false);
       }, 3000);
     }
   }, [selectedTrack, addClipToTrack]);
@@ -167,7 +169,7 @@ export default function TrackInspector() {
         setIsProcessing(false);
         setProcessingStatus('');
         setShowEffectModal(false);
-      }, 2000);
+      }, 3000);
 
     } catch (error) {
       console.error('AI effect error:', error);
