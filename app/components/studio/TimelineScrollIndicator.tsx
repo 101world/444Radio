@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 interface ScrollIndicatorProps {
-  scrollContainerRef: React.RefObject<HTMLElement>
+  scrollContainerRef: React.RefObject<HTMLElement | null>
 }
 
 export default function TimelineScrollIndicator({ scrollContainerRef }: ScrollIndicatorProps) {

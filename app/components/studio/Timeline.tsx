@@ -11,6 +11,7 @@ import { Volume2, VolumeX, Headphones, Trash2, Music, Repeat } from 'lucide-reac
 import { ContextMenu, getTrackContextMenuItems } from './ContextMenu';
 import TrackLeft from './TrackLeft';
 import TrackClips from './TrackClips';
+import TimelineScrollIndicator from './TimelineScrollIndicator';
 
 interface TrackRowProps {
   trackId: string;
@@ -303,6 +304,9 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
           ))
         )}
       </div>
+
+      {/* Glassmorphism Scroll Indicator */}
+      <TimelineScrollIndicator scrollContainerRef={clipsScrollRef} />
     </div>
   );
 }
