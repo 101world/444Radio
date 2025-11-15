@@ -81,33 +81,66 @@ export async function POST(request: Request) {
 
     console.log('🎨 Generating effect:', { prompt, duration });
 
-    // Try candidate models in order, to avoid 404s on unavailable slugs
-    const candidateModels = [
-      'smaerdlatigid/stable-audio',
-      'stability-ai/stable-audio',
-      'stability-ai/stable-audio-open',
-    ];
+    // Use latest stable-audio version (smaerdlatigid/stable-audio)
+    const stableAudioVersion = '80d7a3ff48781aadfe37bd4c0c0317ffa94c67698d661f4792b1b01129a29689';
+    const configuredModel = process.env.REPLICATE_EFFECTS_MODEL;
+    const configuredVersion = process.env.REPLICATE_EFFECTS_VERSION || stableAudioVersion;
 
     let prediction: any = null;
     let lastError: any = null;
-    for (const model of candidateModels) {
+    let usedModel = '';
+
+    // 1. Try configured version first (most reliable)
+    if (configuredVersion && !prediction) {
       try {
+        console.log('🎯 Trying configured version:', configuredVersion.slice(0, 12) + '...');
         prediction = await replicate.predictions.create({
-          model,
+          version: configuredVersion,
           input: {
             prompt,
             seconds_total: duration,
           }
         });
-        if (prediction) break;
+        usedModel = 'configured-version';
       } catch (err: any) {
         lastError = err;
-        // Try next candidate on 404/Not Found
-        if (err?.status === 404 || /not found/i.test(String(err?.message || ''))) {
-          continue;
-        } else {
-          break;
-        }
+        console.warn('❌ Configured version failed:', err.message);
+      }
+    }
+
+    // 2. Try configured model slug
+    if (configuredModel && !prediction) {
+      try {
+        console.log('🎯 Trying configured model:', configuredModel);
+        prediction = await replicate.predictions.create({
+          model: configuredModel,
+          input: {
+            prompt,
+            seconds_total: duration,
+          }
+        });
+        usedModel = configuredModel;
+      } catch (err: any) {
+        lastError = err;
+        console.warn('❌ Configured model failed:', err.message);
+      }
+    }
+
+    // 3. Fallback to meta/musicgen (widely available, reliable)
+    if (!prediction) {
+      try {
+        console.log('🎯 Trying fallback: meta/musicgen');
+        prediction = await replicate.predictions.create({
+          model: 'meta/musicgen',
+          input: {
+            prompt,
+            duration: Math.min(duration, 30), // musicgen max is 30s
+          }
+        });
+        usedModel = 'meta/musicgen';
+      } catch (err: any) {
+        lastError = err;
+        console.warn('❌ Fallback model failed:', err.message);
       }
     }
 
@@ -118,11 +151,17 @@ export async function POST(request: Request) {
         .update({ credits: (userData.credits || 0) })
         .eq('clerk_user_id', userId);
 
-      const msg = lastError instanceof Error ? lastError.message : 'Unable to start effect generation';
+      const hint = configuredVersion || configuredModel
+        ? 'Configured audio model unavailable. Check REPLICATE_EFFECTS_MODEL or REPLICATE_EFFECTS_VERSION.'
+        : 'Audio generation unavailable. Please contact support.';
+      const msg = lastError instanceof Error ? `${lastError.message}. ${hint}` : hint;
+      console.error('❌ All models failed. Last error:', lastError);
       return corsResponse(
         NextResponse.json({ success: false, error: msg }, { status: 502 })
       );
     }
+
+    console.log('✅ Using model:', usedModel);
 
     // Wait for completion (90 second timeout)
     let result = prediction;
