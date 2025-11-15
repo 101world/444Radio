@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
     // Create stable-audio prediction
     const prediction = await replicate.predictions.create({
-      model: "stability-ai/stable-audio",
+      version: "a5ac1caa88116a0c3fb4b4ecceaba2b1e3f10fcd0d3ca8f3a81d6db83d9d8a55",
       input: {
         prompt: `Audio effect: ${prompt}`,
         seconds_total: 10, // Short effect duration
