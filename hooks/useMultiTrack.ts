@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { getAudioContext } from '@/lib/audio-utils';
+import { PrecisionAudioScheduler, ScheduledClip, TrackState } from '@/lib/audio-scheduler';
 
 export interface AudioClip {
   id: string;
@@ -129,6 +130,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const playStartProjectTimeRef = useRef<number>(0);
   const playStartContextTimeRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
+  const schedulerRef = useRef<PrecisionAudioScheduler | null>(null);
 
   // Helper: create audio nodes for a track (if missing) and connect them
   const createAudioNodesForTrack = useCallback((track: Track) => {
@@ -193,16 +195,60 @@ export function useMultiTrack(): UseMultiTrackReturn {
       // On init, ensure all tracks get nodes if audio context is ready
       setTracks(prev => prev.map(t => createAudioNodesForTrack(t)));
 
+      // Initialize scheduler
+      const trackStates = new Map<string, TrackState>();
+      tracks.forEach(track => {
+        if (track.gainNode && track.panNode) {
+          trackStates.set(track.id, {
+            id: track.id,
+            gainNode: track.gainNode,
+            panNode: track.panNode,
+            volume: track.volume,
+            pan: track.pan,
+            mute: track.mute,
+            solo: track.solo,
+          });
+        }
+      });
+      schedulerRef.current = new PrecisionAudioScheduler(ctx, trackStates);
+
       return () => {
         // Cleanup audio nodes
         if (masterGainNodeRef.current) {
           masterGainNodeRef.current.disconnect();
+        }
+        // Cleanup scheduler
+        if (schedulerRef.current) {
+          schedulerRef.current.destroy();
         }
       };
     } catch (error) {
       console.error('❌ Failed to initialize audio context:', error);
     }
   }, []);
+
+  // Update scheduler when tracks change
+  useEffect(() => {
+    if (!schedulerRef.current || !audioContextRef.current) return;
+
+    const trackStates = new Map<string, TrackState>();
+    tracks.forEach(track => {
+      if (track.gainNode && track.panNode) {
+        trackStates.set(track.id, {
+          id: track.id,
+          gainNode: track.gainNode,
+          panNode: track.panNode,
+          volume: track.volume,
+          pan: track.pan,
+          mute: track.mute,
+          solo: track.solo,
+        });
+      }
+    });
+
+    // Update scheduler's track map
+    schedulerRef.current = new PrecisionAudioScheduler(audioContextRef.current, trackStates);
+  }, [tracks]);
 
   // Add a new track (legacy - with audio URL)
   const addTrack = useCallback((name: string, audioUrl?: string, color?: string, initialClipDuration?: number): string => {
@@ -473,103 +519,89 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   // Set track volume
   const setTrackVolume = useCallback((id: string, volume: number) => {
+    // Hot-swap via scheduler (smooth ramp)
+    if (schedulerRef.current) {
+      schedulerRef.current.setTrackVolume(id, volume, false);
+    }
+
+    // Update React state
     setTracks((prev) =>
-      prev.map((t) => {
-        if (t.id === id) {
-          // Update audio node
-          if (t.gainNode && audioContextRef.current) {
-            t.gainNode.gain.setValueAtTime(
-              t.mute ? 0 : volume,
-              audioContextRef.current.currentTime
-            );
-          }
-          return { ...t, volume };
-        }
-        return t;
-      })
+      prev.map((t) =>
+        t.id === id ? { ...t, volume } : t
+      )
     );
   }, []);
 
   // Set track pan
   const setTrackPan = useCallback((id: string, pan: number) => {
+    // Hot-swap via scheduler (smooth ramp)
+    if (schedulerRef.current) {
+      schedulerRef.current.setTrackPan(id, pan);
+    }
+
+    // Update React state
     setTracks((prev) =>
-      prev.map((t) => {
-        if (t.id === id) {
-          // Update audio node
-          if (t.panNode && audioContextRef.current) {
-            t.panNode.pan.setValueAtTime(pan, audioContextRef.current.currentTime);
-          }
-          return { ...t, pan };
-        }
-        return t;
-      })
+      prev.map((t) =>
+        t.id === id ? { ...t, pan } : t
+      )
     );
   }, []);
 
   // Toggle mute
   const toggleMute = useCallback((id: string) => {
+    const track = tracks.find(t => t.id === id);
+    if (!track) return;
+
+    const newMute = !track.mute;
+
+    // Hot-swap via scheduler (no playback restart)
+    if (schedulerRef.current) {
+      schedulerRef.current.setTrackMute(id, newMute);
+    }
+
+    // Update React state
     setTracks((prev) =>
-      prev.map((t) => {
-        if (t.id === id) {
-          const newMute = !t.mute;
-          // Update audio node with smooth ramp to prevent clicks
-          if (t.gainNode && audioContextRef.current) {
-            const now = audioContextRef.current.currentTime;
-            const targetGain = newMute ? 0 : t.volume;
-            // 20ms smooth ramp for instant feel without clicks
-            t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
-            t.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.02);
-          }
-          console.log(`🔇 Track ${id} mute:`, newMute);
-          return { ...t, mute: newMute };
-        }
-        return t;
-      })
+      prev.map((t) =>
+        t.id === id ? { ...t, mute: newMute } : t
+      )
     );
-  }, []);
+    console.log(`🔇 Track ${id} mute:`, newMute);
+  }, [tracks]);
 
   // Toggle solo
   const toggleSolo = useCallback((id: string) => {
-    setTracks((prev) => {
-      const track = prev.find((t) => t.id === id);
-      if (!track) return prev;
+    const track = tracks.find(t => t.id === id);
+    if (!track) return;
 
-      const newSolo = !track.solo;
+    const newSolo = !track.solo;
+
+    // Hot-swap via scheduler
+    if (schedulerRef.current) {
+      schedulerRef.current.setTrackSolo(
+        id,
+        newSolo,
+        tracks.map(t => t.id)
+      );
+    }
+
+    // Update React state
+    setTracks((prev) => {
       const anySolo = newSolo || prev.some((t) => t.id !== id && t.solo);
-      const now = audioContextRef.current?.currentTime || 0;
 
       return prev.map((t) => {
         if (t.id === id) {
-          // Toggle this track's solo
           console.log(`🎧 Track ${id} solo:`, newSolo);
-          // Update gain immediately for the toggled track
-          if (t.gainNode && audioContextRef.current) {
-            const targetGain = newSolo ? t.volume : (anySolo ? 0 : t.volume);
-            t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
-            t.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.02);
-          }
           return { ...t, solo: newSolo };
         } else if (anySolo) {
           // Mute other non-solo tracks when any track is soloed
-          if (t.gainNode && audioContextRef.current) {
-            const shouldMute = !t.solo;
-            const targetGain = shouldMute ? 0 : t.volume;
-            t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
-            t.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.02);
-          }
           return t;
         } else {
           // Un-mute all tracks when no track is soloed
-          if (t.gainNode && audioContextRef.current) {
-            const targetGain = t.mute ? 0 : t.volume;
-            t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
-            t.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.02);
-          }
           return t;
         }
       });
     });
-  }, []);
+  }, [tracks]);
 
   // Set master volume
   const setMasterVolume = useCallback((volume: number) => {
@@ -789,15 +821,20 @@ export function useMultiTrack(): UseMultiTrackReturn {
       try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Audio engine not ready', type: 'error' } })); } catch {}
       return;
     }
-    
+    if (!schedulerRef.current) {
+      console.error('❌ Scheduler not initialized');
+      try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Audio scheduler not ready', type: 'error' } })); } catch {}
+      return;
+    }
+
     if (playing) {
       try {
-        // Resume AudioContext (required by browser autoplay policy)
+        // Resume AudioContext if suspended
         if (audioContextRef.current.state === 'suspended') {
           await audioContextRef.current.resume();
           console.log('🔁 AudioContext resumed from suspended state');
         }
-        
+
         // Verify we have tracks with clips
         const tracksWithClips = tracks.filter(t => t.clips.length > 0);
         if (tracksWithClips.length === 0) {
@@ -805,31 +842,49 @@ export function useMultiTrack(): UseMultiTrackReturn {
           try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'No audio clips on timeline', type: 'info' } })); } catch {}
           return;
         }
-        
+
         console.log(`🎵 Starting playback with ${tracksWithClips.length} tracks at time ${currentTime.toFixed(2)}s`);
         console.log('📋 Tracks:', tracksWithClips.map(t => `${t.name} (${t.clips.length} clips)`).join(', '));
-        
-        // Always stop sources before starting
-        stopAllSources();
-        clearTicker();
-        setIsPlaying(false);
-        
-        // Small delay to ensure clean state
-        await new Promise(resolve => setTimeout(resolve, 10));
-        
-        // Start each track at currentTime
-        let successCount = 0;
-        const startPromises = tracksWithClips.map(async (t) => {
-          try {
-            await startTrackAtTime(t, currentTime);
-            successCount++;
-          } catch (err) {
-            console.error(`❌ Failed to start track ${t.name}:`, err);
+
+        // Build ScheduledClip array from all tracks
+        const scheduledClips: ScheduledClip[] = [];
+
+        for (const track of tracksWithClips) {
+          for (const clip of track.clips) {
+            // Load buffer if not cached
+            let buffer = bufferCacheRef.current.get(clip.audioUrl);
+            if (!buffer) {
+              try {
+                buffer = await loadBuffer(clip.audioUrl);
+                bufferCacheRef.current.set(clip.audioUrl, buffer);
+              } catch (error) {
+                console.error(`Failed to load ${clip.audioUrl}:`, error);
+                continue;
+              }
+            }
+
+            scheduledClips.push({
+              trackId: track.id,
+              clipId: clip.id,
+              buffer,
+              startTime: clip.startTime,
+              duration: clip.duration,
+              offset: clip.offset,
+              loop: loopTracksStateRef.current.has(track.id),
+            });
           }
-        });
-        await Promise.all(startPromises);
-        console.log(`🎶 Started ${successCount}/${tracksWithClips.length} tracks successfully`);
-        
+        }
+
+        // Start precision scheduler
+        schedulerRef.current.start(
+          scheduledClips,
+          currentTime,
+          () => {
+            console.log('All clips scheduled');
+          }
+        );
+
+        // Start RAF ticker for UI updates
         startTicker();
         setIsPlaying(true);
         console.log('▶️ Playback started at', currentTime);
@@ -837,16 +892,17 @@ export function useMultiTrack(): UseMultiTrackReturn {
         console.error('❌ Playback start failed:', e);
         try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Playback failed: ' + (e instanceof Error ? e.message : 'Unknown error'), type: 'error' } })); } catch {}
         clearTicker();
-        stopAllSources();
+        schedulerRef.current?.stop();
         setIsPlaying(false);
       }
     } else {
+      // Stop scheduler
+      schedulerRef.current.stop();
       clearTicker();
-      stopAllSources();
       setIsPlaying(false);
       console.log('⏸️ Playback stopped at', currentTime);
     }
-  }, [tracks, currentTime, startTrackAtTime, startTicker, clearTicker, stopAllSources]);
+  }, [tracks, currentTime, startTicker, clearTicker]);
 
   // Set selected track
   const setSelectedTrack = useCallback((id: string | null) => {
