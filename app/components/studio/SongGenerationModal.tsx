@@ -48,10 +48,23 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        let errorMsg = errorData.error || `Request failed (${response.status})`;
+        if (errorData.detail) {
+          errorMsg = `Replicate error: ${errorData.detail}`;
+        }
+        throw new Error(errorMsg);
+      }
+
       const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.error || 'Generation failed');
+      }
+
+      if (!data.audioUrl) {
+        throw new Error('No audio URL returned from generation');
       }
 
       setProgress('Song generated successfully!');
@@ -73,12 +86,13 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
 
     } catch (error) {
       console.error('Song generation error:', error);
-      setProgress('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setProgress(`❌ ${errorMsg}`);
     } finally {
       setTimeout(() => {
         setIsGenerating(false);
         setProgress('');
-      }, 2000);
+      }, 3000);
     }
   };
 

@@ -41,10 +41,24 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        // Parse Replicate validation errors
+        let errorMsg = errorData.error || `Request failed (${response.status})`;
+        if (errorData.detail) {
+          errorMsg = `Replicate error: ${errorData.detail}`;
+        }
+        throw new Error(errorMsg);
+      }
+
       const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.error || 'Generation failed');
+      }
+
+      if (!data.audioUrl) {
+        throw new Error('No audio URL returned from generation');
       }
 
       setProgress('Beat generated successfully!');
@@ -64,12 +78,13 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
 
     } catch (error) {
       console.error('Beat generation error:', error);
-      setProgress('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setProgress(`❌ ${errorMsg}`);
     } finally {
       setTimeout(() => {
         setIsGenerating(false);
         setProgress('');
-      }, 2000);
+      }, 3000);
     }
   };
 
