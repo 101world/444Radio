@@ -196,78 +196,70 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
         />
       )}
 
-      {/* PINNED LEFT CONTROLS */}
-      <div className="sticky left-0 z-10 bg-gradient-to-r from-black via-black to-transparent p-4 pr-6 flex flex-col gap-2 border-r border-teal-900/30 shrink-0">
-        {/* Track name & color */}
+      {/* Compact header */}
+      <div className="px-4 pt-3 pb-1">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: track.color }} />
-          <span className="text-white font-medium text-sm whitespace-nowrap">{track.name}</span>
+          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: track.color }} />
+          <span className="text-white font-medium text-sm">{track.name}</span>
         </div>
+      </div>
 
-        {/* Track controls */}
-        <div className="flex items-center gap-2">
-          {/* Volume */}
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={track.volume}
-            onChange={(e) => setTrackVolume(trackId, parseFloat(e.target.value))}
-            className="w-16 h-1 accent-cyan-500"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <span className="text-xs text-gray-400 w-8 shrink-0">{Math.round(track.volume * 100)}%</span>
-
-          {/* Mute */}
+      {/* Sleek pinned toolbar (right) */}
+      <div className="absolute right-3 top-3 z-10 flex flex-col items-center gap-2 bg-black/40 border border-teal-900/40 rounded-xl px-2 py-2 backdrop-blur-md">
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={track.volume}
+          onChange={(e) => setTrackVolume(trackId, parseFloat(e.target.value))}
+          className="w-24 h-1 accent-cyan-500"
+          onClick={(e) => e.stopPropagation()}
+        />
+        <span className="text-[10px] text-gray-400">{Math.round(track.volume * 100)}%</span>
+        <div className="flex flex-col gap-1">
           <button
             onClick={(e) => {
               e.stopPropagation();
               toggleMute(trackId);
             }}
-            className={`p-1.5 rounded shrink-0 ${
+            className={`p-1.5 rounded ${
               track.mute ? 'bg-red-500/20 text-red-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
             }`}
             title="Mute"
           >
             {track.mute ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
           </button>
-
-          {/* Solo */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               toggleSolo(trackId);
             }}
-            className={`p-1.5 rounded shrink-0 ${
+            className={`p-1.5 rounded ${
               track.solo ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
             }`}
             title="Solo"
           >
             <Headphones className="w-3 h-3" />
           </button>
-
-          {/* Loop Track */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               toggleTrackLoop(trackId);
             }}
-            className={`p-1.5 rounded shrink-0 ${
+            className={`p-1.5 rounded ${
               isTrackLooping(trackId) ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
             }`}
             title="Loop current clip on this track"
           >
             <Repeat className="w-3 h-3" />
           </button>
-
-          {/* Delete */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               removeTrack(trackId);
             }}
-            className="p-1.5 rounded bg-gray-900 text-red-400 hover:bg-red-500/20 border border-teal-900/30 shrink-0"
+            className="p-1.5 rounded bg-gray-900 text-red-400 hover:bg-red-500/20 border border-teal-900/30"
             title="Delete track"
           >
             <Trash2 className="w-3 h-3" />
@@ -277,7 +269,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
 
       {/* SCROLLABLE CLIPS AREA */}
       <div 
-        className="relative h-24 bg-black/40 flex-1 overflow-x-auto overflow-y-hidden"
+        className="relative h-24 bg-black/40 flex-1 overflow-x-auto overflow-y-hidden pr-36"
         onContextMenu={handleContextMenu}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -326,30 +318,23 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
 
   // Auto-scroll to keep playhead centered during playback ONLY if locked
   useEffect(() => {
-    if (!isPlaying || !containerRef.current || !playheadLocked) return;
-
+    if (!containerRef.current || !playheadLocked) return;
     const container = containerRef.current;
     const playheadPosition = currentTime * pixelsPerSecond;
     const containerWidth = container.clientWidth;
-    const centerOffset = containerWidth / 2;
-
-    // Scroll to keep playhead centered
-    const targetScroll = playheadPosition - centerOffset + 16; // +16 for padding
-    
-    // Smooth scroll during playback
-    container.scrollTo({
-      left: Math.max(0, targetScroll),
-      behavior: 'smooth'
-    });
-  }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked]);
+    const maxScroll = Math.max(0, timelineWidth - containerWidth);
+    if (isPlaying) {
+      const target = Math.min(maxScroll, Math.max(0, playheadPosition - containerWidth / 2 + 16));
+      container.scrollLeft = target;
+    }
+  }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked, timelineWidth]);
 
   return (
     <div ref={containerRef} className="flex-1 overflow-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
       {/* Inner container with fixed 5-minute width */}
       <div style={{ minWidth: `${timelineWidth}px` }} className="relative">
         {/* Playhead */}
-        {currentTime > 0 && (
-          <div
+        <div
             className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 z-20 pointer-events-none"
             style={{
               left: `${16 + (currentTime * pixelsPerSecond)}px`, // 16px padding + time position with zoom
@@ -362,7 +347,6 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
               </div>
             )}
           </div>
-        )}
 
         {tracks.length === 0 ? (
           <div className="h-full flex items-center justify-center">
