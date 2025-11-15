@@ -71,8 +71,13 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
     setIsDragOver(false);
 
     // Calculate drop position on timeline
+    const scroller = document.querySelector('.studio-timeline-scroller') as HTMLElement | null;
+    const inner = document.querySelector('[data-testid="timeline-inner"]') as HTMLElement | null;
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    const scrollLeft = scroller?.scrollLeft || 0;
+    const paddingLeft = inner ? parseFloat(window.getComputedStyle(inner).paddingLeft || '0') || 0 : 0;
+    // x is the position within the actual content area (0 = start of timeline content)
+    const x = scrollLeft + (e.clientX - rect.left) - paddingLeft;
     const pixelsPerSecond = 50 * zoom;
     const rawTime = Math.max(0, x / pixelsPerSecond);
     const beat = 60 / Math.max(1, bpm);
@@ -187,6 +192,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
           : 'border-teal-900/30 hover:border-teal-700/50'
       } ${isDragOver ? 'border-teal-400 ring-2 ring-teal-400/50 bg-teal-500/10' : ''}`}
       onClick={() => setSelectedTrack(trackId)}
+      data-track-id={trackId}
       draggable={activeTool === 'pan'}
       onDragStart={handleRowDragStart}
       onDragOverCapture={handleRowDragOver}
@@ -203,7 +209,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
       )}
 
       {/* Left track column (Logic-style) */}
-      <div className="w-56 shrink-0 bg-white/5 border-r border-teal-900/30 backdrop-blur-md rounded-l p-3 flex flex-col gap-3">
+      <div className={`studio-left-column shrink-0 bg-white/5 border-r border-teal-900/30 backdrop-blur-md rounded-l p-3 flex flex-col gap-3`} style={{ width: 'var(--studio-left-column-width)' }}>
         {/* Name */}
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: track.color }} />
@@ -247,10 +253,12 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
           <span className="text-[10px] text-gray-400 w-8 text-right">{Math.round(track.volume * 100)}%</span>
         </div>
       </div>
+      {/* Per-row resizer removed — global resizer will be rendered at the Timeline root */}
 
       {/* SCROLLABLE CLIPS AREA */}
       <div 
-        className="relative h-24 bg-black/40 flex-1 overflow-x-auto overflow-y-hidden rounded-r"
+        data-testid={`track-clips-area-${trackId}`}
+        className="relative h-24 bg-black/40 flex-1 overflow-x-visible overflow-y-hidden rounded-r"
         onContextMenu={handleContextMenu}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -288,14 +296,13 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
   );
 }
 
-export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean }) {
+export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean; }) {
   const { tracks, currentTime, isPlaying, zoom } = useStudio();
   const containerRef = useRef<HTMLDivElement>(null);
+  const resizerRef = useRef<HTMLDivElement | null>(null);
 
   // Fixed 5-minute timeline view (300 seconds)
   const TIMELINE_DURATION = 300; // 5 minutes
-  // Left gutter for pinned track header (Tailwind w-56 = 14rem = 224px)
-  const LEFT_GUTTER = 224;
   const pixelsPerSecond = 50 * zoom;
   const timelineWidth = TIMELINE_DURATION * pixelsPerSecond;
 
@@ -312,6 +319,53 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
     }
   }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked, timelineWidth]);
 
+  // Left column resize handling - pointer drag to resize project left column width
+  useEffect(() => {
+    const resizer = resizerRef.current;
+    if (!resizer) return;
+
+    let dragging = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    const minWidth = 120; // px
+    const maxWidth = 600; // px
+
+    const onPointerDown = (e: PointerEvent) => {
+      dragging = true;
+      startX = e.clientX;
+      const cssWidth = getComputedStyle(document.documentElement).getPropertyValue('--studio-left-column-width');
+      startWidth = cssWidth ? parseFloat(cssWidth) : 224;
+      (e.target as HTMLElement).setPointerCapture?.((e as any).pointerId);
+      document.documentElement.style.setProperty('user-select', 'none');
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const newWidth = Math.min(maxWidth, Math.max(minWidth, Math.round(startWidth + dx)));
+      document.documentElement.style.setProperty('--studio-left-column-width', `${newWidth}px`);
+      // Persist
+      try { localStorage.setItem('studio.leftColumnWidth', String(newWidth)); } catch {}
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      dragging = false;
+      try { (e.target as HTMLElement).releasePointerCapture?.((e as any).pointerId); } catch {}
+      document.documentElement.style.removeProperty('user-select');
+    };
+
+    resizer.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+
+    return () => {
+      resizer.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, []);
+
   const handleScroll = () => {
     if (!containerRef.current) return;
     const left = containerRef.current.scrollLeft;
@@ -321,15 +375,24 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
   };
 
   return (
-    <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
+    <div ref={containerRef} onScroll={handleScroll} className="studio-timeline-scroller flex-1 overflow-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
+      {/* Global resizer */}
+      <div
+        ref={resizerRef}
+        role="separator"
+        aria-orientation="vertical"
+        className="absolute top-0 bottom-0 z-40"
+        style={{ left: 'calc(var(--studio-left-column-width) - 2px)', width: '6px', cursor: 'col-resize' }}
+      />
       {/* Inner container with fixed 5-minute width */}
-      <div style={{ minWidth: `${timelineWidth}px`, paddingLeft: `${LEFT_GUTTER}px` }} className="relative">
+      <div data-testid="timeline-inner" style={{ minWidth: `${timelineWidth}px`, paddingLeft: 'var(--studio-left-column-width)' }} className="relative">
         {/* Playhead */}
         <div
             className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 z-20 pointer-events-none"
             style={{
-              left: `${LEFT_GUTTER + currentTime * pixelsPerSecond}px`,
+              left: `calc(var(--studio-left-column-width) + ${currentTime * pixelsPerSecond}px)`,
             }}
+            data-testid="timeline-playhead"
           >
             <div className="absolute -top-1 -left-2 w-4 h-4 bg-cyan-400 rotate-45" />
             {isPlaying && (

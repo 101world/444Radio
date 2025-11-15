@@ -9,6 +9,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { createClient } from '@supabase/supabase-js'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { uploadToR2 } from '@/lib/r2-upload'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -166,9 +167,56 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'No stems returned', raw: result.output }, { status: 502 }))
     }
 
-    // Do not upload stems to R2 here; return direct URLs for immediate placement
+    // Upload each stem to R2 and save to combined_media with metadata
+    const uploadedStems: Record<string, any> = {}
+    for (const [key, url] of Object.entries(stems)) {
+      try {
+        const resp = await fetch(url)
+        if (!resp.ok) throw new Error(`Stem download failed (${resp.status})`)
+        const arr = await resp.arrayBuffer()
+        const contentType = resp.headers.get('content-type') || 'audio/mpeg'
+        const ext = contentType.includes('wav') ? 'wav' : contentType.includes('ogg') ? 'ogg' : 'mp3'
+        const filename = `${Date.now()}-${key}.${ext}`
+        const r2Key = `users/${userId}/stems/${filename}`
+        const blob = new Blob([arr], { type: contentType })
+        // @ts-ignore File is available in Next runtime
+        const file = new File([blob], filename, { type: contentType })
+        const upload = await uploadToR2(file, 'audio-files', r2Key)
+        let finalUrl = url
+        if (upload.success && upload.url) {
+          finalUrl = upload.url
+        }
+
+        // Insert to combined_media
+        try {
+          await supabase
+            .from('combined_media')
+            .insert({
+              user_id: userId,
+              type: 'stem',
+              title: `Stem: ${key}`,
+              audio_url: finalUrl,
+              metadata: {
+                predictionId: result.id,
+                stemKey: key,
+                source: upload.success ? 'r2' : 'replicate',
+                creditsUsed: CREDITS_COST,
+                originalAudio: audioUrl,
+              }
+            })
+        } catch (dbErr) {
+          console.warn('Failed to save stem to combined_media (non-critical):', dbErr)
+        }
+
+        uploadedStems[key] = finalUrl
+      } catch (err) {
+        console.warn('Stem processing failed for', key, err)
+        uploadedStems[key] = url
+      }
+    }
+
     const remainingCredits = currentCredits - CREDITS_COST
-    return corsResponse(NextResponse.json({ success: true, stems, predictionId: result.id, remainingCredits }))
+    return corsResponse(NextResponse.json({ success: true, stems: uploadedStems, predictionId: result.id, remainingCredits }))
   } catch (error) {
     console.error('❌ Split-stems error:', error)
     return corsResponse(NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Split-stems failed' }, { status: 500 }))

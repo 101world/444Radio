@@ -62,6 +62,17 @@ function StudioContent() {
   const [credits, setCredits] = useState<number | null>(null);
   const [playheadLocked, setPlayheadLocked] = useState(true); // Track playhead lock state
   const [seekToEarliestOnPlay, setSeekToEarliestOnPlay] = useState(true);
+  const [leftColumnExpanded, setLeftColumnExpanded] = useState(false);
+  const [leftPulse, setLeftPulse] = useState(false);
+  // Read saved left column width on mount and store in CSS var
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('studio.leftColumnWidth');
+      if (saved) {
+        document.documentElement.style.setProperty('--studio-left-column-width', `${saved}px`);
+      }
+    } catch {}
+  }, []);
 
   // Show notification helper
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -84,6 +95,13 @@ function StudioContent() {
       setSavedProjects(index);
     } catch {}
   }, []); // Run once on mount
+
+  // Trigger a pulse when left column expanded toggles
+  useEffect(() => {
+    setLeftPulse(true);
+    const t = setTimeout(() => setLeftPulse(false), 420);
+    return () => clearTimeout(t);
+  }, [leftColumnExpanded]);
 
   // Fetch credits on mount and listen for updates from children
   useEffect(() => {
@@ -637,6 +655,8 @@ function StudioContent() {
   return (
     <div 
       className="min-h-screen max-h-screen flex flex-col bg-black relative overflow-x-hidden overflow-y-hidden"
+      style={{ ['--studio-left-column-width' as any]: leftColumnExpanded ? '18rem' : '14rem' }}
+      data-left-pulse={leftPulse}
       onDragOver={handleDragOverRoot}
       onDragLeave={handleDragLeaveRoot}
       onDrop={handleDropRoot}
@@ -740,8 +760,26 @@ function StudioContent() {
           <div className="flex items-center gap-2">
             {/* Credits Badge */}
             <div className="px-3 py-1 rounded-full bg-black/40 border border-cyan-900/50 text-cyan-300 text-xs font-medium select-none" title="Available credits">
-              {credits === null ? 'Credits: …' : `Credits: ${credits}`}
-            </div>
+                {credits === null ? 'Credits: …' : `Credits: ${credits}`}
+              </div>
+              <button
+                onClick={() => {
+                  try {
+                    // Toggle between two reasonable widths in px
+                    const current = document.documentElement.style.getPropertyValue('--studio-left-column-width');
+                    const curPx = current ? parseFloat(current) : 224;
+                    const newVal = curPx > 240 ? 224 : 288; // toggle small/big
+                    document.documentElement.style.setProperty('--studio-left-column-width', `${newVal}px`);
+                    localStorage.setItem('studio.leftColumnWidth', String(newVal));
+                    setLeftPulse(true);
+                    setTimeout(() => setLeftPulse(false), 420);
+                  } catch {}
+                }}
+                className="ml-3 p-1 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 transition-all text-xs"
+                title="Toggle left column width"
+              >
+                Left Col
+              </button>
           {/* Beat Generation */}
           <button
             onClick={() => setShowBeatModal(true)}

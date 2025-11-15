@@ -76,9 +76,18 @@ export default function AudioClipComponent({
     }
 
     setIsDragging(true);
-    const rect = clipRef.current?.getBoundingClientRect();
-    if (rect) {
-      setDragOffset(e.clientX - rect.left);
+    const scroller = document.querySelector('.studio-timeline-scroller') as HTMLElement | null;
+    const scrollerRect = scroller?.getBoundingClientRect();
+    const inner = document.querySelector('[data-testid="timeline-inner"]') as HTMLElement | null;
+    const paddingLeft = inner ? (parseFloat(window.getComputedStyle(inner).paddingLeft || '0') || 0) : 0;
+    const clipRect = clipRef.current?.getBoundingClientRect();
+    if (scroller && scrollerRect && clipRect) {
+    const contentX = scroller.scrollLeft + (e.clientX - scrollerRect.left) - paddingLeft;
+      const clipLeftPx = clip.startTime * pixelsPerSecond;
+      setDragOffset(contentX - clipLeftPx);
+    } else {
+      const rect = clipRef.current?.getBoundingClientRect();
+      if (rect) setDragOffset(e.clientX - rect.left);
     }
     onSelect(clip.id);
   };
@@ -103,18 +112,22 @@ export default function AudioClipComponent({
     if (!isDragging && !resizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const timelineContainer = clipRef.current?.parentElement?.parentElement;
+      const scroller = document.querySelector('.studio-timeline-scroller') as HTMLElement | null;
+      const timelineContainer = scroller;
       if (!timelineContainer) return;
 
       const rect = timelineContainer.getBoundingClientRect();
-      const relativeX = e.clientX - rect.left - dragOffset;
+      const innerEl = document.querySelector('[data-testid="timeline-inner"]') as HTMLElement | null;
+      const paddingLeft2 = innerEl ? parseFloat(window.getComputedStyle(innerEl).paddingLeft || '0') || 0 : 0;
+      const contentX = timelineContainer.scrollLeft + (e.clientX - rect.left) - paddingLeft2;
+      const relativeX = contentX - dragOffset;
 
       if (isDragging) {
         const rawStart = Math.max(0, relativeX / pixelsPerSecond);
         const snapped = quantize(rawStart);
         onMove(clip.id, snapped);
       } else if (resizing) {
-        const mouseX = e.clientX - rect.left;
+        const mouseX = contentX;
         if (resizing === 'left') {
           // New start cannot go past right edge
           const newStartPx = Math.min(clipLeft + clipWidth - 5, Math.max(0, mouseX));
