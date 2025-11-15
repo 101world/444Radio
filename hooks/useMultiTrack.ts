@@ -69,6 +69,13 @@ export interface UseMultiTrackReturn {
   // Playback controls (will be called from Timeline component)
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
+  // Transport helpers
+  skipBackward: (seconds?: number) => void;
+  skipForward: (seconds?: number) => void;
+  playNextTrack: () => void;
+  playPreviousTrack: () => void;
+  toggleTrackLoop: (trackId: string) => void;
+  isTrackLooping: (trackId: string) => boolean;
 }
 
 const TRACK_COLORS = [
@@ -95,6 +102,13 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const masterGainNodeRef = useRef<GainNode | null>(null);
+  const bufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
+  const activeSourcesRef = useRef<Map<string, { source: AudioBufferSourceNode; clipId: string }>>(new Map());
+  const loopTracksStateRef = useRef<Set<string>>(new Set());
+  const [loopedTracksState, setLoopedTracksState] = useState<Set<string>>(new Set());
+  const playStartProjectTimeRef = useRef<number>(0);
+  const playStartContextTimeRef = useRef<number>(0);
+  const rafRef = useRef<number | null>(null);
 
   // Initialize audio context and master gain
   useEffect(() => {
@@ -356,13 +370,122 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   // Set current time (called from Timeline or TransportBar)
   const setCurrentTime = useCallback((time: number) => {
-    setCurrentTimeState(time);
+    setCurrentTimeState(Math.max(0, time));
   }, []);
 
   // Set playing state (called from Timeline)
-  const setPlaying = useCallback((playing: boolean) => {
-    setIsPlaying(playing);
+  const loadBuffer = useCallback(async (url: string): Promise<AudioBuffer> => {
+    const cache = bufferCacheRef.current;
+    if (cache.has(url)) return cache.get(url)!;
+    if (!audioContextRef.current) throw new Error('AudioContext not initialized');
+    const res = await fetch(url);
+    const arr = await res.arrayBuffer();
+    const buf = await audioContextRef.current.decodeAudioData(arr);
+    cache.set(url, buf);
+    return buf;
   }, []);
+
+  const stopAllSources = useCallback(() => {
+    activeSourcesRef.current.forEach(({ source }) => {
+      try { source.stop(0); } catch {}
+    });
+    activeSourcesRef.current.clear();
+  }, []);
+
+  const findActiveClip = (track: Track, t: number): { clip: AudioClip; offset: number } | null => {
+    for (const clip of track.clips) {
+      const start = clip.startTime;
+      const end = clip.startTime + clip.duration;
+      if (t >= start && t < end) {
+        const offset = clip.offset + (t - start);
+        return { clip, offset };
+      }
+    }
+    return null;
+  };
+
+  const startTrackAtTime = useCallback(async (track: Track, projectTime: number) => {
+    if (!audioContextRef.current) return;
+    if (!track.gainNode) return;
+    const active = findActiveClip(track, projectTime);
+    if (!active) return; // nothing to play at this time on this track
+    const { clip, offset } = active;
+    const buffer = await loadBuffer(clip.audioUrl);
+    const src = audioContextRef.current.createBufferSource();
+    src.buffer = buffer;
+    const isLoop = loopTracksStateRef.current.has(track.id);
+    if (isLoop) {
+      src.loop = true;
+      src.loopStart = clip.offset;
+      src.loopEnd = clip.offset + clip.duration;
+    }
+    src.connect(track.gainNode);
+    try {
+      src.start(0, Math.max(0, offset));
+    } catch (e) {
+      console.warn('Source start error:', e);
+    }
+    src.onended = () => {
+      // If looping, onended will not fire until stop; if not looping, try advance to next clip
+      if (!isLoop && isPlaying) {
+        const nowProject = playStartProjectTimeRef.current + ((audioContextRef.current!.currentTime - playStartContextTimeRef.current));
+        const next = track.clips
+          .filter(c => c.startTime >= (clip.startTime + clip.duration))
+          .sort((a, b) => a.startTime - b.startTime)[0];
+        if (next) {
+          // If we are past next.startTime, compute offset; else start when reached (simplify: start immediately with computed offset if any)
+          const nextOffset = Math.max(0, (nowProject - next.startTime) + next.offset);
+          const advance = audioContextRef.current!;
+          const src2 = advance.createBufferSource();
+          src2.buffer = bufferCacheRef.current.get(next.audioUrl) || null;
+          const proceed = async () => {
+            if (!src2.buffer) src2.buffer = await loadBuffer(next.audioUrl);
+            src2.connect(track.gainNode!);
+            try { src2.start(0, nextOffset); } catch {}
+            activeSourcesRef.current.set(track.id, { source: src2, clipId: next.id });
+          };
+          proceed();
+        } else {
+          // No next clip; do nothing
+        }
+      }
+    };
+    activeSourcesRef.current.set(track.id, { source: src, clipId: clip.id });
+  }, [loadBuffer, isPlaying]);
+
+  const startTicker = useCallback(() => {
+    if (!audioContextRef.current) return;
+    playStartContextTimeRef.current = audioContextRef.current.currentTime;
+    playStartProjectTimeRef.current = currentTime;
+    const tick = () => {
+      const ctx = audioContextRef.current!;
+      const t = playStartProjectTimeRef.current + (ctx.currentTime - playStartContextTimeRef.current);
+      setCurrentTimeState(t);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, [currentTime]);
+
+  const clearTicker = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+  }, []);
+
+  const setPlaying = useCallback(async (playing: boolean) => {
+    if (playing === isPlaying) return;
+    if (!audioContextRef.current) return;
+    if (playing) {
+      stopAllSources();
+      // Start each track at currentTime
+      await Promise.all(tracks.map(t => startTrackAtTime(t, currentTime)));
+      startTicker();
+      setIsPlaying(true);
+    } else {
+      clearTicker();
+      stopAllSources();
+      setIsPlaying(false);
+    }
+  }, [isPlaying, tracks, currentTime, startTrackAtTime, startTicker, clearTicker, stopAllSources]);
 
   // Set selected track
   const setSelectedTrack = useCallback((id: string | null) => {
@@ -373,6 +496,57 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const setSelectedClip = useCallback((id: string | null) => {
     setSelectedClipId(id);
   }, []);
+
+  const skipBackward = useCallback((seconds: number = 10) => {
+    const newTime = Math.max(0, currentTime - seconds);
+    setCurrentTimeState(newTime);
+    if (isPlaying) {
+      // Restart playback at new position
+      setPlaying(true);
+    }
+  }, [currentTime, isPlaying, setPlaying]);
+
+  const skipForward = useCallback((seconds: number = 10) => {
+    const newTime = currentTime + seconds;
+    setCurrentTimeState(newTime);
+    if (isPlaying) {
+      setPlaying(true);
+    }
+  }, [currentTime, isPlaying, setPlaying]);
+
+  const playNextTrack = useCallback(() => {
+    if (tracks.length === 0) return;
+    const idx = selectedTrackId ? tracks.findIndex(t => t.id === selectedTrackId) : -1;
+    const nextIdx = (idx + 1) % tracks.length;
+    setSelectedTrackId(tracks[nextIdx].id);
+  }, [tracks, selectedTrackId]);
+
+  const playPreviousTrack = useCallback(() => {
+    if (tracks.length === 0) return;
+    const idx = selectedTrackId ? tracks.findIndex(t => t.id === selectedTrackId) : 0;
+    const prevIdx = (idx - 1 + tracks.length) % tracks.length;
+    setSelectedTrackId(tracks[prevIdx].id);
+  }, [tracks, selectedTrackId]);
+
+  const toggleTrackLoop = useCallback((trackId: string) => {
+    const setRef = loopTracksStateRef.current;
+    const next = new Set(loopedTracksState);
+    if (setRef.has(trackId)) {
+      setRef.delete(trackId);
+      next.delete(trackId);
+    } else {
+      setRef.add(trackId);
+      next.add(trackId);
+    }
+    setLoopedTracksState(next);
+    // If currently playing and this track has a source, update loop flag if looping current clip
+    const entry = activeSourcesRef.current.get(trackId);
+    if (entry) {
+      entry.source.loop = setRef.has(trackId);
+    }
+  }, [loopedTracksState]);
+
+  const isTrackLooping = useCallback((trackId: string) => loopedTracksState.has(trackId), [loopedTracksState]);
 
   return {
     tracks,
@@ -400,5 +574,11 @@ export function useMultiTrack(): UseMultiTrackReturn {
     setSelectedClip,
     setPlaying,
     setCurrentTime,
+    skipBackward,
+    skipForward,
+    playNextTrack,
+    playPreviousTrack,
+    toggleTrackLoop,
+    isTrackLooping,
   };
 }

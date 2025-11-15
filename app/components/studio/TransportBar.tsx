@@ -5,7 +5,7 @@
 
 'use client';
 
-import { Play, Pause, Square, SkipBack, SkipForward, Rewind, FastForward, Circle, Volume2 } from 'lucide-react';
+import { Play, Pause, Square, SkipBack, SkipForward, Rewind, FastForward, Circle, Volume2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
 import { useState } from 'react';
 
@@ -17,6 +17,10 @@ export default function TransportBar() {
     setPlaying,
     setCurrentTime,
     setMasterVolume,
+    skipBackward,
+    skipForward,
+    playNextTrack,
+    playPreviousTrack,
   } = useStudio();
 
   const [isRecording, setIsRecording] = useState(false);
@@ -41,11 +45,11 @@ export default function TransportBar() {
   };
 
   const handleRewind = () => {
-    setCurrentTime(Math.max(0, currentTime - 5));
+    skipBackward(10);
   };
 
   const handleFastForward = () => {
-    setCurrentTime(currentTime + 5);
+    skipForward(10);
   };
 
   const handleRecord = () => {
@@ -68,11 +72,11 @@ export default function TransportBar() {
             <SkipBack className="w-4 h-4" />
           </button>
 
-          {/* Rewind 5s */}
+          {/* Rewind 10s */}
           <button
             onClick={handleRewind}
             className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
-            title="Rewind 5s (Left Arrow)"
+            title="Rewind 10s (Left Arrow)"
           >
             <Rewind className="w-4 h-4" />
           </button>
@@ -105,13 +109,30 @@ export default function TransportBar() {
             <Square className="w-4 h-4" />
           </button>
 
-          {/* Fast forward 5s */}
+          {/* Fast forward 10s */}
           <button
             onClick={handleFastForward}
             className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
-            title="Fast forward 5s (Right Arrow)"
+            title="Fast forward 10s (Right Arrow)"
           >
             <FastForward className="w-4 h-4" />
+          </button>
+
+          {/* Previous/Next track selection */}
+          <div className="w-px h-8 bg-teal-900/50 mx-2" />
+          <button
+            onClick={playPreviousTrack}
+            className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
+            title="Previous Track"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={playNextTrack}
+            className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
+            title="Next Track"
+          >
+            <ChevronRight className="w-4 h-4" />
           </button>
 
           {/* Record (AudioMass feature) */}

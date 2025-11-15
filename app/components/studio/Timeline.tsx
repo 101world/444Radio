@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
-import { Volume2, VolumeX, Headphones, Trash2, Music } from 'lucide-react';
+import { Volume2, VolumeX, Headphones, Trash2, Music, Repeat } from 'lucide-react';
 import { ContextMenu, getTrackContextMenuItems } from './ContextMenu';
 import { AudioEffects } from '@/lib/audio-effects';
 import AudioClip from './AudioClip';
@@ -24,6 +24,8 @@ function TrackRow({ trackId }: TrackRowProps) {
     toggleMute,
     toggleSolo,
     removeTrack,
+    toggleTrackLoop,
+    isTrackLooping,
     addClipToTrack,
     moveClip,
     removeClip,
@@ -191,6 +193,20 @@ function TrackRow({ trackId }: TrackRowProps) {
             title="Solo"
           >
             <Headphones className="w-3 h-3" />
+          </button>
+
+          {/* Loop Track */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleTrackLoop(trackId);
+            }}
+            className={`p-1.5 rounded ${
+              isTrackLooping(trackId) ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
+            }`}
+            title="Loop current clip on this track"
+          >
+            <Repeat className="w-3 h-3" />
           </button>
 
           {/* Delete */}
