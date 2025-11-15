@@ -165,7 +165,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [playlist])
 
-  const playNext = useCallback(() => {
+  const playNext = useCallback(async () => {
     if (playlist.length === 0) return
     
     let nextIndex: number
@@ -187,10 +187,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
     
     setCurrentIndex(nextIndex)
-    playTrack(playlist[nextIndex])
+    await playTrack(playlist[nextIndex])
   }, [playlist, currentIndex, playTrack, isShuffled])
 
-  const playPrevious = useCallback(() => {
+  const playPrevious = useCallback(async () => {
     if (playlist.length === 0) return
     
     let prevIndex: number
@@ -211,7 +211,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
     
     setCurrentIndex(prevIndex)
-    playTrack(playlist[prevIndex])
+    await playTrack(playlist[prevIndex])
   }, [playlist, currentIndex, playTrack, isShuffled])
 
   // Initialize audio element once on mount
@@ -366,11 +366,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const setPlaylistAndPlay = (tracks: Track[], startIndex: number = 0) => {
+  const setPlaylistAndPlay = async (tracks: Track[], startIndex: number = 0) => {
     setPlaylist(tracks)
     setCurrentIndex(startIndex)
     if (tracks.length > 0) {
-      playTrack(tracks[startIndex])
+      await playTrack(tracks[startIndex])
     }
   }
 
