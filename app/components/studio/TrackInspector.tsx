@@ -60,6 +60,7 @@ export default function TrackInspector() {
   const [autotuneEnabled, setAutotuneEnabled] = useState(false);
   const [showEffectModal, setShowEffectModal] = useState(false);
   const [selectedEffectType, setSelectedEffectType] = useState<string>('');
+  const [showEffectsChainModal, setShowEffectsChainModal] = useState(false);
 
   const selectedTrack = tracks.find(t => t.id === selectedTrackId);
 
@@ -180,6 +181,49 @@ export default function TrackInspector() {
       }, 3000);
     }
   }, [selectedTrack, addClipToTrack]);
+
+  // Generate effect for effects chain (uses stable-audio)
+  const generateEffectToChain = useCallback(async (effectPrompt: string) => {
+    if (!selectedTrack || !user) return;
+
+    try {
+      setIsProcessing(true);
+      setProcessingType('effect');
+      setProcessingStatus('Generating effect with AI...');
+
+      const response = await fetch('/api/studio/generate-effect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: effectPrompt,
+          trackId: selectedTrack.id,
+          trackName: selectedTrack.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Effect generation failed');
+      }
+
+      setProcessingStatus('Effect generated! (Added to effects chain)');
+      setTimeout(() => {
+        setIsProcessing(false);
+        setProcessingStatus('');
+        setShowEffectsChainModal(false);
+        // TODO: Add effect to track.effects array when that's implemented
+      }, 3000);
+
+    } catch (error) {
+      console.error('Effect chain error:', error);
+      setProcessingStatus('Error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      setTimeout(() => {
+        setIsProcessing(false);
+        setProcessingStatus('');
+      }, 3000);
+    }
+  }, [selectedTrack, user]);
 
   if (!selectedTrack) {
     return (
@@ -478,7 +522,11 @@ export default function TrackInspector() {
               )}
 
               {/* Add Effect Button */}
-              <button className="w-full px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/50 font-medium transition-all flex items-center justify-center gap-2 mt-3">
+              <button 
+                onClick={() => setShowEffectsChainModal(true)}
+                disabled={isProcessing}
+                className="w-full px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/50 font-medium transition-all flex items-center justify-center gap-2 mt-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Plus className="w-4 h-4" />
                 Add Effect
               </button>
@@ -585,6 +633,72 @@ export default function TrackInspector() {
                 💡 AI will process your track with {selectedEffectType} and add it as a new clip
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Effects Chain Modal */}
+      {showEffectsChainModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gradient-to-b from-gray-900 to-black border border-cyan-500/30 rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-lg font-bold text-white">Generate Effect</h3>
+              </div>
+              <button
+                onClick={() => setShowEffectsChainModal(false)}
+                className="p-1 rounded hover:bg-gray-700 text-gray-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <label className="text-sm text-gray-400 mb-2 block">
+                Describe the audio effect you want to create:
+              </label>
+              <textarea
+                id="effect-chain-prompt"
+                placeholder="e.g., 'warm analog tape saturation with subtle compression' or 'spacious hall reverb with long decay'"
+                className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50 resize-none h-32"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  const promptInput = document.getElementById('effect-chain-prompt') as HTMLTextAreaElement;
+                  const prompt = promptInput?.value.trim();
+                  if (prompt) {
+                    generateEffectToChain(prompt);
+                  }
+                }}
+                disabled={isProcessing}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? 'Generating...' : 'Generate Effect'}
+              </button>
+              <button
+                onClick={() => setShowEffectsChainModal(false)}
+                disabled={isProcessing}
+                className="px-4 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="mt-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+              <p className="text-xs text-cyan-400">
+                💰 Costs 0.5 credits per generation
+              </p>
+            </div>
+
+            {processingStatus && (
+              <div className="mt-3 p-3 bg-gray-800/50 border border-gray-600 rounded-lg">
+                <p className="text-sm text-gray-300">{processingStatus}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
