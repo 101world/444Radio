@@ -72,29 +72,73 @@ export default function ExportModal({ isOpen, onClose, onStartExport, projectNam
         return
       }
 
-      // Render with OfflineAudioContext
-      const buffer = await renderMixdown(session, { sampleRate, normalize })
-
-      let blob: Blob
-      let ext = 'wav'
-      if (format === 'mp3') {
-        setProgress(0.01)
-        blob = await encodeMp3FromAudioBuffer(buffer, { kbps: 192, onProgress: (p) => setProgress(Math.max(0.02, Math.min(0.98, p))) })
-        ext = 'mp3'
-      } else {
-        blob = audioBufferToWav(buffer, normalize)
+      const base = (fileName || projectName).replace(/\s+/g, '_')
+      
+      // Export individual stems (WAV + MP3 for each track)
+      for (let i = 0; i < session.tracks.length; i++) {
+        const track = session.tracks[i]
+        setProgress((i / (session.tracks.length + 2)) * 0.5)
+        
+        // Create a session with just this track
+        const stemSession = {
+          ...session,
+          tracks: [{ ...track, solo: false, mute: false }]
+        }
+        
+        const stemBuffer = await renderMixdown(stemSession, { sampleRate, normalize })
+        
+        // Export as WAV
+        const wavBlob = audioBufferToWav(stemBuffer, normalize)
+        const wavUrl = URL.createObjectURL(wavBlob)
+        const wavLink = document.createElement('a')
+        wavLink.href = wavUrl
+        wavLink.download = `${base}_${track.name.replace(/\s+/g, '_')}.wav`
+        document.body.appendChild(wavLink)
+        wavLink.click()
+        document.body.removeChild(wavLink)
+        URL.revokeObjectURL(wavUrl)
+        
+        // Export as MP3
+        const mp3Blob = await encodeMp3FromAudioBuffer(stemBuffer, { kbps: 192 })
+        const mp3Url = URL.createObjectURL(mp3Blob)
+        const mp3Link = document.createElement('a')
+        mp3Link.href = mp3Url
+        mp3Link.download = `${base}_${track.name.replace(/\s+/g, '_')}.mp3`
+        document.body.appendChild(mp3Link)
+        mp3Link.click()
+        document.body.removeChild(mp3Link)
+        URL.revokeObjectURL(mp3Url)
       }
 
+      // Export master mixdown (all tracks)
+      setProgress(0.6)
+      const masterBuffer = await renderMixdown(session, { sampleRate, normalize })
+
+      // Master WAV
+      setProgress(0.75)
+      const masterWavBlob = audioBufferToWav(masterBuffer, normalize)
+      const masterWavUrl = URL.createObjectURL(masterWavBlob)
+      const masterWavLink = document.createElement('a')
+      masterWavLink.href = masterWavUrl
+      masterWavLink.download = `${base}_Master.wav`
+      document.body.appendChild(masterWavLink)
+      masterWavLink.click()
+      document.body.removeChild(masterWavLink)
+      URL.revokeObjectURL(masterWavUrl)
+
+      // Master MP3
+      setProgress(0.85)
+      const masterMp3Blob = await encodeMp3FromAudioBuffer(masterBuffer, { kbps: 192, onProgress: (p) => setProgress(0.85 + (p * 0.13)) })
+      const masterMp3Url = URL.createObjectURL(masterMp3Blob)
+      const masterMp3Link = document.createElement('a')
+      masterMp3Link.href = masterMp3Url
+      masterMp3Link.download = `${base}_Master.mp3`
+      document.body.appendChild(masterMp3Link)
+      masterMp3Link.click()
+      document.body.removeChild(masterMp3Link)
+      URL.revokeObjectURL(masterMp3Url)
+
       setProgress(0.99)
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      const base = (fileName || projectName).replace(/\s+/g, '_')
-      a.href = url
-      a.download = `${base}.${ext}`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
     } catch (e) {
       console.error('Export failed:', e)
       alert('Export failed. See console for details.')

@@ -175,16 +175,12 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
 
   return (
     <div
-      className={`bg-black backdrop-blur-sm rounded border p-4 mb-3 relative cursor-pointer transition-all min-h-32 ${
+      className={`bg-black backdrop-blur-sm rounded border mb-3 relative cursor-pointer transition-all flex items-center gap-0 ${
         isSelected
           ? 'border-teal-500 ring-2 ring-teal-500/50'
           : 'border-teal-900/30 hover:border-teal-700/50'
       } ${isDragOver ? 'border-teal-400 ring-2 ring-teal-400/50 bg-teal-500/10' : ''}`}
-      onContextMenu={handleContextMenu}
       onClick={() => setSelectedTrack(trackId)}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
       draggable={activeTool === 'pan'}
       onDragStart={handleRowDragStart}
       onDragOverCapture={handleRowDragOver}
@@ -200,10 +196,13 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
         />
       )}
 
-      {/* Track header */}
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: track.color }} />
-        <span className="text-white font-medium text-sm flex-1">{track.name}</span>
+      {/* PINNED LEFT CONTROLS */}
+      <div className="sticky left-0 z-10 bg-gradient-to-r from-black via-black to-transparent p-4 pr-6 flex flex-col gap-2 border-r border-teal-900/30 shrink-0">
+        {/* Track name & color */}
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: track.color }} />
+          <span className="text-white font-medium text-sm whitespace-nowrap">{track.name}</span>
+        </div>
 
         {/* Track controls */}
         <div className="flex items-center gap-2">
@@ -218,7 +217,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
             className="w-16 h-1 accent-cyan-500"
             onClick={(e) => e.stopPropagation()}
           />
-          <span className="text-xs text-gray-400 w-8">{Math.round(track.volume * 100)}%</span>
+          <span className="text-xs text-gray-400 w-8 shrink-0">{Math.round(track.volume * 100)}%</span>
 
           {/* Mute */}
           <button
@@ -226,7 +225,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
               e.stopPropagation();
               toggleMute(trackId);
             }}
-            className={`p-1.5 rounded ${
+            className={`p-1.5 rounded shrink-0 ${
               track.mute ? 'bg-red-500/20 text-red-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
             }`}
             title="Mute"
@@ -240,7 +239,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
               e.stopPropagation();
               toggleSolo(trackId);
             }}
-            className={`p-1.5 rounded ${
+            className={`p-1.5 rounded shrink-0 ${
               track.solo ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
             }`}
             title="Solo"
@@ -254,7 +253,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
               e.stopPropagation();
               toggleTrackLoop(trackId);
             }}
-            className={`p-1.5 rounded ${
+            className={`p-1.5 rounded shrink-0 ${
               isTrackLooping(trackId) ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-900 text-gray-400 hover:text-white border border-teal-900/30'
             }`}
             title="Loop current clip on this track"
@@ -268,7 +267,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
               e.stopPropagation();
               removeTrack(trackId);
             }}
-            className="p-1.5 rounded bg-gray-900 text-red-400 hover:bg-red-500/20 border border-teal-900/30"
+            className="p-1.5 rounded bg-gray-900 text-red-400 hover:bg-red-500/20 border border-teal-900/30 shrink-0"
             title="Delete track"
           >
             <Trash2 className="w-3 h-3" />
@@ -276,8 +275,14 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
         </div>
       </div>
 
-      {/* Clips area */}
-      <div className="relative h-20 bg-black/40 rounded overflow-x-auto overflow-y-hidden border border-teal-900/20">
+      {/* SCROLLABLE CLIPS AREA */}
+      <div 
+        className="relative h-24 bg-black/40 flex-1 overflow-x-auto overflow-y-hidden"
+        onContextMenu={handleContextMenu}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {isEmpty ? (
           /* Empty state with drop zone */
           <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-teal-900/40 rounded">
