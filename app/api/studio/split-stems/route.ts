@@ -53,14 +53,6 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }))
     }
 
-    // Temporarily disabled while we configure the correct Replicate model
-    return corsResponse(NextResponse.json({ 
-      success: false, 
-      error: 'Stem separation is temporarily unavailable while we upgrade to a better AI model. Please check back soon!',
-      temporary: true
-    }, { status: 503 }))
-
-    /* COMMENTED OUT UNTIL MODEL IS CONFIGURED
     const token = process.env.REPLICATE_API_TOKEN
     if (!token) {
       return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_TOKEN' }, { status: 500 }))
@@ -113,29 +105,32 @@ export async function POST(request: Request) {
     let lastError: any = null
 
     try {
-      // Using Spleeter model which is proven to work
+      // Using cjwbw/demucs model - reliable stem separation
       prediction = await replicate.predictions.create({
-        version: "583a48f40b19c2a3af4a7f3e7f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        version: "d60d520194cc7a2eb9bd035a756d7b0d0e828f7e8c7bdb5a46037b3112e44e00",
         input: {
-          audio: audioUrl,
-          stems: "5" // 5 stems: vocals, drums, bass, piano, other
+          audio_path: audioUrl,
+          model: "htdemucs_6s", // 6-stem model: vocals, drums, bass, guitar, piano, other
+          output_format: "mp3"
         }
       })
     } catch (e: any) {
       lastError = e
-      console.error('Stem separation model error:', e)
+      console.error('Demucs stem separation error:', e)
       
-      // Try without specific stems parameter
+      // Try alternative Demucs configuration
       try {
         prediction = await replicate.predictions.create({
-          version: "583a48f40b19c2a3af4a7f3e7f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+          version: "d60d520194cc7a2eb9bd035a756d7b0d0e828f7e8c7bdb5a46037b3112e44e00",
           input: {
-            audio: audioUrl
+            audio_path: audioUrl,
+            model: "htdemucs", // 4-stem model: vocals, drums, bass, other
+            output_format: "mp3"
           }
         })
       } catch (e2: any) {
         lastError = e2
-        console.error('Fallback stem separation failed:', e2)
+        console.error('Fallback Demucs separation failed:', e2)
       }
     }
 
@@ -180,13 +175,12 @@ export async function POST(request: Request) {
     // Do not upload stems to R2 here; return direct URLs for immediate placement
     const remainingCredits = currentCredits - CREDITS_COST
     return corsResponse(NextResponse.json({ success: true, stems, predictionId: result.id, remainingCredits }))
-    */
   } catch (error) {
     console.error('❌ Split-stems error:', error)
     return corsResponse(NextResponse.json({ 
       success: false, 
-      error: 'Stem separation feature is temporarily unavailable',
-      temporary: true 
-    }, { status: 503 }))
+      error: 'An error occurred during stem separation. Please try again.',
+      detail: error instanceof Error ? error.message : String(error)
+    }, { status: 500 }))
   }
 }
