@@ -372,13 +372,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   const setPlaylistAndPlay = async (tracks: Track[], startIndex: number = 0) => {
-    // Filter out invalid tracks
-    const validTracks = tracks.filter(t => t && t.audioUrl);
+    // Normalize audio_url to audioUrl and filter out invalid tracks
+    const normalizedTracks = tracks.map(t => ({
+      ...t,
+      audioUrl: t.audioUrl || (t as any).audio_url, // Handle both formats
+      imageUrl: t.imageUrl || (t as any).image_url, // Handle both formats
+    }));
+    
+    const validTracks = normalizedTracks.filter(t => t && t.audioUrl);
     
     if (validTracks.length === 0) {
       console.warn('[Playlist] No valid tracks provided');
       return;
     }
+    
+    console.log('[Playlist] Normalized and filtered:', validTracks.length, 'valid tracks out of', tracks.length, 'total');
     
     setPlaylist(validTracks);
     setCurrentIndex(startIndex);

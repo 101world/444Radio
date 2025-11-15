@@ -30,10 +30,12 @@ export async function GET() {
 
     const likes = await response.json()
 
-    // Extract the combined_media objects from the likes
+    // Extract the combined_media objects from the likes and normalize field names
     const likedTracks = Array.isArray(likes) 
       ? likes.map((like: any) => ({
           ...like.combined_media,
+          audioUrl: like.combined_media?.audio_url, // Normalized for AudioPlayerContext
+          imageUrl: like.combined_media?.image_url, // Normalized for AudioPlayerContext
           liked_at: like.created_at // When user liked it
         }))
       : []

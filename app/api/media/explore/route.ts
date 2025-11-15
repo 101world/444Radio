@@ -60,12 +60,14 @@ export async function GET(req: NextRequest) {
       (usersData || []).map(u => [u.clerk_user_id, u.username])
     )
 
-    // Add username to each media item
+    // Add username to each media item and normalize field names
     const mediaWithUsers = (data || []).map((media) => {
       const username = usernameMap.get(media.user_id) || 'Unknown User'
       
       return {
         ...media,
+        audioUrl: media.audio_url, // Normalize for AudioPlayerContext
+        imageUrl: media.image_url, // Normalize for AudioPlayerContext
         users: { username }
       }
     })

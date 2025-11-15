@@ -60,8 +60,10 @@ export async function GET() {
             title: item.title || 'Untitled',
             music_prompt: item.audio_prompt || item.music_prompt,
             image_prompt: item.image_prompt,
-            audio_url: item.audio_url,
-            image_url: item.image_url,
+            audioUrl: item.audio_url, // Normalized for AudioPlayerContext
+            audio_url: item.audio_url, // Keep for backward compat
+            imageUrl: item.image_url, // Normalized for AudioPlayerContext
+            image_url: item.image_url, // Keep for backward compat
             lyrics: item.lyrics,
             is_published: true,
             created_at: item.created_at,
@@ -79,8 +81,10 @@ export async function GET() {
             title: item.title || 'Untitled',
             music_prompt: item.music_prompt,
             image_prompt: item.image_prompt,
-            audio_url: item.audio_url,
-            image_url: item.image_url,
+            audioUrl: item.audio_url, // Normalized for AudioPlayerContext
+            audio_url: item.audio_url, // Keep for backward compat
+            imageUrl: item.image_url, // Normalized for AudioPlayerContext
+            image_url: item.image_url, // Keep for backward compat
             lyrics: item.lyrics,
             is_published: true,
             created_at: item.created_at,

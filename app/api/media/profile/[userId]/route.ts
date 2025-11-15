@@ -96,9 +96,14 @@ export async function GET(
       }
     }
 
-    // Combine all media with type indicator
+    // Combine all media with type indicator and normalize field names
     const allMedia = [
-      ...(combinedData || []).map((item) => ({ ...item, media_type: 'music-image' })),
+      ...(combinedData || []).map((item) => ({ 
+        ...item, 
+        media_type: 'music-image',
+        audioUrl: item.audio_url, // Normalize for AudioPlayerContext
+        imageUrl: item.image_url, // Normalize for AudioPlayerContext
+      })),
       ...(profileData || []).map((item) => ({ ...item, media_type: item.content_type }))
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 

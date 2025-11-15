@@ -62,7 +62,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      combinedMedia: data,
+      combinedMedia: {
+        ...data,
+        audioUrl: data.audio_url,
+        imageUrl: data.image_url
+      },
       combinedId: data.id,
       message: 'Combined media saved successfully!'
     })
@@ -98,9 +102,16 @@ export async function GET() {
       )
     }
 
+    // Normalize field names for AudioPlayerContext compatibility
+    const normalizedData = (data || []).map((item: any) => ({
+      ...item,
+      audioUrl: item.audio_url,
+      imageUrl: item.image_url
+    }))
+
     return NextResponse.json({
       success: true,
-      combinedMedia: data
+      combinedMedia: normalizedData
     })
   } catch (error) {
     console.error('Fetch combined media error:', error)

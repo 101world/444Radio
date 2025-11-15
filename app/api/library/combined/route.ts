@@ -29,10 +29,17 @@ export async function GET() {
 
     const combined = await response.json()
     const combinedArray = Array.isArray(combined) ? combined : []
+    
+    // Normalize field names for AudioPlayerContext compatibility
+    const normalizedCombined = combinedArray.map((item: any) => ({
+      ...item,
+      audioUrl: item.audio_url, // Normalized for frontend
+      imageUrl: item.image_url  // Normalized for frontend
+    }))
 
     return NextResponse.json({
       success: true,
-      combined: combinedArray
+      combined: normalizedCombined
     })
 
   } catch (error) {

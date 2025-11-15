@@ -62,8 +62,10 @@ export async function GET() {
       title: item.title || 'Untitled',
       prompt: item.audio_prompt || item.music_prompt || 'Generated music',
       lyrics: item.lyrics,
-      audio_url: item.audio_url,
-      image_url: item.image_url,
+      audioUrl: item.audio_url || item.audioUrl, // Normalize to audioUrl
+      audio_url: item.audio_url, // Keep for backward compat
+      imageUrl: item.image_url || item.imageUrl, // Normalize to imageUrl
+      image_url: item.image_url, // Keep for backward compat
       duration: item.duration,
       audio_format: 'mp3',
       status: 'ready',
@@ -79,8 +81,10 @@ export async function GET() {
       title: item.title || 'Untitled',
       prompt: item.music_prompt || 'Generated music',
       lyrics: item.lyrics,
-      audio_url: item.audio_url,
-      image_url: item.image_url,
+      audioUrl: item.audio_url || item.audioUrl, // Normalize to audioUrl
+      audio_url: item.audio_url, // Keep for backward compat
+      imageUrl: item.image_url || item.imageUrl, // Normalize to imageUrl
+      image_url: item.image_url, // Keep for backward compat
       duration: item.duration,
       audio_format: 'mp3',
       status: 'ready',
