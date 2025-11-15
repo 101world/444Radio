@@ -515,18 +515,24 @@ export function useMultiTrack(): UseMultiTrackReturn {
   }, []);
 
   const setPlaying = useCallback(async (playing: boolean) => {
-    if (playing === isPlaying) return;
     if (!audioContextRef.current) return;
     if (playing) {
+      // Always stop sources before starting
       stopAllSources();
+      clearTicker();
+      setIsPlaying(false);
+      // Small delay to ensure clean state
+      await new Promise(resolve => setTimeout(resolve, 10));
       // Start each track at currentTime
       await Promise.all(tracks.map(t => startTrackAtTime(t, currentTime)));
       startTicker();
       setIsPlaying(true);
+      console.log('▶️ Playback started at', currentTime);
     } else {
       clearTicker();
       stopAllSources();
       setIsPlaying(false);
+      console.log('⏸️ Playback stopped at', currentTime);
     }
   }, [isPlaying, tracks, currentTime, startTrackAtTime, startTicker, clearTicker, stopAllSources]);
 

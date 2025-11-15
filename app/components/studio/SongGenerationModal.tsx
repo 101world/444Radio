@@ -24,6 +24,39 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
   const [duration, setDuration] = useState(30);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
+  const [isGeneratingLyrics, setIsGeneratingLyrics] = useState(false);
+
+  const handleGenerateAtomLyrics = async () => {
+    setIsGeneratingLyrics(true);
+    try {
+      const response = await fetch('/api/generate/atom-lyrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || 'Lyrics generation failed');
+      }
+
+      const data = await response.json();
+      if (data.success && data.lyrics) {
+        setLyrics(data.lyrics);
+        setProgress('✅ Lyrics generated with Atom');
+        setTimeout(() => setProgress(''), 2000);
+      } else {
+        throw new Error(data.error || 'No lyrics returned');
+      }
+    } catch (error) {
+      console.error('Atom lyrics error:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setProgress(`❌ ${errorMsg}`);
+      setTimeout(() => setProgress(''), 3000);
+    } finally {
+      setIsGeneratingLyrics(false);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -109,7 +142,7 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">Generate AI Song</h2>
-              <p className="text-sm text-cyan-400/70">AI Generation • 16 credits</p>
+              <p className="text-sm text-cyan-400/70">AI Generation • 2 credits</p>
             </div>
           </div>
           <button
@@ -220,15 +253,35 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
 
           {/* Lyrics (optional) */}
           <div>
-            <label className="block text-sm font-medium text-cyan-400 mb-2">
-              Lyrics (optional)
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-cyan-400">
+                Lyrics (optional)
+              </label>
+              <button
+                onClick={handleGenerateAtomLyrics}
+                disabled={isGeneratingLyrics || isGenerating || !prompt.trim()}
+                className="px-3 py-1 rounded bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white text-xs font-medium transition-all shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                title="Generate lyrics with Atom AI"
+              >
+                {isGeneratingLyrics ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3" />
+                    Create with Atom
+                  </>
+                )}
+              </button>
+            </div>
             <textarea
               value={lyrics}
               onChange={(e) => setLyrics(e.target.value)}
-              placeholder="Paste your lyrics here to guide the song..."
+              placeholder="Paste your lyrics here or generate with Atom..."
               className="w-full h-28 px-4 py-3 bg-black/50 border border-cyan-500/30 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/60 resize-none"
-              disabled={isGenerating}
+              disabled={isGenerating || isGeneratingLyrics}
             />
             <p className="text-xs text-gray-500 mt-2">Optional. If provided, generation will reflect these lyrics.</p>
           </div>
@@ -244,7 +297,7 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-cyan-500/30">
           <p className="text-sm text-gray-400">
-            Cost: <span className="text-white font-semibold">16 credits</span>
+            Cost: <span className="text-white font-semibold">2 credits</span>
           </p>
           <div className="flex gap-3">
             <button
