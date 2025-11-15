@@ -629,7 +629,7 @@ function StudioContent() {
 
   return (
     <div 
-      className="h-screen flex flex-col bg-black relative"
+      className="min-h-screen max-h-screen flex flex-col bg-black relative overflow-x-hidden overflow-y-hidden"
       onDragOver={handleDragOverRoot}
       onDragLeave={handleDragLeaveRoot}
       onDrop={handleDropRoot}
@@ -1008,9 +1008,9 @@ function StudioContent() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative min-h-0">
         {/* Timeline */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Timeline ruler with zoom + BPM grid */}
           <TimelineRuler bpm={bpm} timeSig={timeSig} snapEnabled={snapEnabled} />
 
@@ -1018,7 +1018,7 @@ function StudioContent() {
           <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} playheadLocked={playheadLocked} />
           
           {/* Add Track Button - Always visible below tracks */}
-          <div className="px-4 py-3 border-t border-cyan-500/20 bg-black/40">
+          <div className="px-4 py-2 border-t border-cyan-500/20 bg-black/40 shrink-0">
             <button
               onClick={() => {
                 const nextNum = tracks.length + 1;
@@ -1026,9 +1026,9 @@ function StudioContent() {
                 showNotification(`Track ${nextNum} added`, 'success');
               }}
               title="Add new track (Shortcut: +)"
-              className="w-full px-4 py-2.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white font-medium transition-all flex items-center justify-center gap-2 group"
+              className="w-full px-4 py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white font-medium transition-all flex items-center justify-center gap-2 group"
             >
-              <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
               <span>Add Track</span>
             </button>
           </div>

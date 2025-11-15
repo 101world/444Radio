@@ -339,7 +339,7 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
   }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked]);
 
   return (
-    <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
+    <div ref={containerRef} className="flex-1 overflow-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
       {/* Inner container with fixed 5-minute width */}
       <div style={{ minWidth: `${timelineWidth}px` }} className="relative">
         {/* Playhead */}
