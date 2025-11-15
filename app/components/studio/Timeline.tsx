@@ -294,6 +294,8 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
 
   // Fixed 5-minute timeline view (300 seconds)
   const TIMELINE_DURATION = 300; // 5 minutes
+  // Left gutter for pinned track header (Tailwind w-56 = 14rem = 224px)
+  const LEFT_GUTTER = 224;
   const pixelsPerSecond = 50 * zoom;
   const timelineWidth = TIMELINE_DURATION * pixelsPerSecond;
 
@@ -321,12 +323,12 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
   return (
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
       {/* Inner container with fixed 5-minute width */}
-      <div style={{ minWidth: `${timelineWidth}px` }} className="relative">
+      <div style={{ minWidth: `${timelineWidth}px`, paddingLeft: `${LEFT_GUTTER}px` }} className="relative">
         {/* Playhead */}
         <div
             className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 z-20 pointer-events-none"
             style={{
-              left: `${currentTime * pixelsPerSecond}px`,
+              left: `${LEFT_GUTTER + currentTime * pixelsPerSecond}px`,
             }}
           >
             <div className="absolute -top-1 -left-2 w-4 h-4 bg-cyan-400 rotate-45" />

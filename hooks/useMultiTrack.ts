@@ -120,6 +120,24 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const playStartContextTimeRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
 
+  // Helper: create audio nodes for a track (if missing) and connect them
+  const createAudioNodesForTrack = useCallback((track: Track) => {
+    if (!audioContextRef.current || !masterGainNodeRef.current) return track;
+    if (track.gainNode && track.panNode) return track;
+    try {
+      const gainNode = audioContextRef.current.createGain();
+      gainNode.gain.value = track.volume;
+      const panNode = audioContextRef.current.createStereoPanner();
+      panNode.pan.value = track.pan;
+      gainNode.connect(panNode);
+      panNode.connect(masterGainNodeRef.current);
+      return { ...track, gainNode, panNode };
+    } catch (err) {
+      console.warn('Failed to create audio nodes for track:', track.name, err);
+      return track;
+    }
+  }, [audioContextRef, masterGainNodeRef]);
+
   // Save state to history for undo/redo
   const saveHistory = useCallback((newTracks: Track[]) => {
     setHistory(prev => {
@@ -162,6 +180,9 @@ export function useMultiTrack(): UseMultiTrackReturn {
       document.addEventListener('click', resumeAudio, { once: true });
       document.addEventListener('keydown', resumeAudio, { once: true });
       
+      // On init, ensure all tracks get nodes if audio context is ready
+      setTracks(prev => prev.map(t => createAudioNodesForTrack(t)));
+
       return () => {
         // Cleanup audio nodes
         if (masterGainNodeRef.current) {
@@ -200,7 +221,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
       panNode: null,
     };
 
-    // Create audio nodes for this track
+    // Create audio nodes for this track if AudioContext ready
     if (audioContextRef.current && masterGainNodeRef.current) {
       try {
         const gainNode = audioContextRef.current.createGain();
@@ -619,9 +640,16 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   const startTrackAtTime = useCallback(async (track: Track, projectTime: number) => {
     if (!audioContextRef.current) return;
-    if (!track.gainNode) {
-      console.warn('⚠️ Track has no gain node:', track.name);
-      return;
+    // Ensure audio nodes exist for this track (create lazily if needed)
+    if (!track.gainNode || !track.panNode) {
+      const newTrack = createAudioNodesForTrack(track);
+      setTracks(prev => prev.map(t => t.id === track.id ? newTrack : t));
+      if (!newTrack.gainNode || !newTrack.panNode) {
+        // If nodes couldn't be created, bail silently
+        return;
+      }
+      // use the updated track
+      track = newTrack as Track;
     }
     const active = findActiveClip(track, projectTime);
     if (!active) {
@@ -650,7 +678,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
       );
     }
     
-    src.connect(track.gainNode);
+    src.connect(track.gainNode!);
     try {
       src.start(0, Math.max(0, offset));
       console.log(`✅ Playback started for "${clip.name}"`);

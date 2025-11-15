@@ -9,7 +9,7 @@ import { Play, Pause, Square, SkipBack, SkipForward, Rewind, FastForward, Circle
 import { useStudio } from '@/app/contexts/StudioContext';
 import { useState } from 'react';
 
-export default function TransportBar() {
+export default function TransportBar({ autoSeekOnPlay = false }: { autoSeekOnPlay?: boolean }) {
   const {
     tracks,
     isPlaying,
@@ -34,7 +34,7 @@ export default function TransportBar() {
 
   const handlePlayPause = async () => {
     // If starting playback at 0, but clips begin later, jump to earliest clip start
-    if (!isPlaying && currentTime <= 0.01) {
+    if (!isPlaying && currentTime <= 0.01 && autoSeekOnPlay) {
       try {
         const allStarts: number[] = (tracks || [])
           .flatMap((t: any) => (t?.clips || []).map((c: any) => c?.startTime || 0))

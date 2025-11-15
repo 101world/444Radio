@@ -61,6 +61,7 @@ function StudioContent() {
   const [showHeaderProjectMenu, setShowHeaderProjectMenu] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const [playheadLocked, setPlayheadLocked] = useState(true); // Track playhead lock state
+  const [seekToEarliestOnPlay, setSeekToEarliestOnPlay] = useState(true);
 
   // Show notification helper
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -848,6 +849,14 @@ function StudioContent() {
         </button>
 
         <button
+          onClick={() => { setSeekToEarliestOnPlay(!seekToEarliestOnPlay); showNotification(`Auto-seek ${!seekToEarliestOnPlay ? 'ON' : 'OFF'} on Play`, 'info') }}
+          className={`p-1.5 rounded transition-all ${seekToEarliestOnPlay ? 'bg-cyan-700 text-white shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-400 hover:text-white border border-cyan-900/30'}`}
+          title={`Toggle auto-seek to earliest clip on Play`}
+        >
+          <Radio className="w-3.5 h-3.5" />
+        </button>
+
+        <button
           onClick={() => { 
             const newBpm = prompt('Enter BPM (60-200):', bpm.toString());
             if (newBpm) {
@@ -1176,7 +1185,7 @@ function StudioContent() {
       </div>
 
       {/* Transport bar */}
-      <TransportBar />
+      <TransportBar autoSeekOnPlay={seekToEarliestOnPlay} />
 
       {/* Global drag overlay */}
       {isDragOver && (
