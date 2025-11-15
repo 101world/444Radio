@@ -31,7 +31,7 @@ interface AudioClipComponentProps {
   onSplit: (clipId: string, splitTime: number) => void;
   onDelete: (clipId: string) => void;
   onSelect: (clipId: string) => void;
-  onSplitStems?: (clipId: string, audioUrl: string) => void;
+  onSplitStems?: (clipId: string, audioUrl: string, clipName?: string) => void;
   isSelected: boolean;
 }
 
@@ -235,7 +235,7 @@ export default function AudioClipComponent({
             <button
               className="w-full px-4 py-2.5 text-left text-sm font-medium text-white hover:bg-gradient-to-r hover:from-teal-500/20 hover:to-cyan-500/20 flex items-center gap-3 transition-all border-b border-white/5"
               onClick={() => {
-                onSplitStems(clip.id, clip.audioUrl);
+                onSplitStems(clip.id, clip.audioUrl, clip.name);
                 setContextMenu(null);
               }}
             >

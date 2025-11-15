@@ -60,8 +60,14 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => null)
     const audioUrl = body?.audioUrl as string | undefined
+    const outputFormat = (body?.outputFormat as string | undefined) || 'mp3' // Default to mp3
+    
     if (!audioUrl || typeof audioUrl !== 'string') {
       return corsResponse(NextResponse.json({ success: false, error: 'audioUrl required' }, { status: 400 }))
+    }
+    
+    if (!['mp3', 'wav'].includes(outputFormat)) {
+      return corsResponse(NextResponse.json({ success: false, error: 'outputFormat must be mp3 or wav' }, { status: 400 }))
     }
 
     // Credits: stems generation costs 15 credits
@@ -97,25 +103,28 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'Credit deduction failed' }, { status: 500 }))
     }
 
-    // Use a working stems separation model
-    // The cjwbw/deezer-spleeter model is reliable and well-tested
+    // Use cjwbw/demucs model - industry-standard stem separation
     const replicate = new Replicate({ auth: token })
 
     let prediction: any
     let lastError: any = null
 
     try {
-      // Using erickluis00/all-in-one-audio model - comprehensive audio processing
+      // Using cjwbw/demucs model - Facebook's Demucs v4 (state-of-the-art stem separation)
+      // https://replicate.com/cjwbw/demucs
       prediction = await replicate.predictions.create({
-        version: "7fb89da0e45e5f25c800b2daf52b6ae49a6cf67c6e5ae62b5ffe9c3040cc2f87",
+        version: "07afda7a710da69773c01f50d61e0f7f0c75e4c2f0c7b5fce4ae29e31c59b88c",
         input: {
           audio: audioUrl,
-          task: "separate_stems"
+          // Demucs v4 supports multiple output formats
+          output_format: outputFormat, // 'mp3' or 'wav'
+          // Optional: stems can be 'vocals', 'drums', 'bass', 'other' or 'all' (default: all)
+          stems: "all"
         }
       })
     } catch (e: any) {
       lastError = e
-      console.error('All-in-one-audio stem separation error:', e)
+      console.error('Demucs stem separation error:', e)
     }
 
     if (!prediction) {

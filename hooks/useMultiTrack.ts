@@ -61,6 +61,7 @@ export interface UseMultiTrackReturn {
   removeClip: (clipId: string) => void;
   removeTrack: (id: string) => void;
   updateTrack: (id: string, updates: Partial<Track>) => void;
+  renameTrack: (id: string, name: string) => void;
   setTrackVolume: (id: string, volume: number) => void;
   setTrackPan: (id: string, pan: number) => void;
   toggleMute: (id: string) => void;
@@ -460,6 +461,13 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const updateTrack = useCallback((id: string, updates: Partial<Track>) => {
     setTracks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+    );
+  }, []);
+
+  // Rename track
+  const renameTrack = useCallback((id: string, name: string) => {
+    setTracks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, name } : t))
     );
   }, []);
 
@@ -947,6 +955,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
     removeClip,
     removeTrack,
     updateTrack,
+    renameTrack,
     setTrackVolume,
     setTrackPan,
     toggleMute,

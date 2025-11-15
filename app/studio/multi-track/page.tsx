@@ -28,6 +28,7 @@ import TimelineRuler from '@/app/components/studio/TimelineRuler';
 import TrackInspector from '@/app/components/studio/TrackInspector';
 import BeatGenerationModal from '@/app/components/studio/BeatGenerationModal';
 import SongGenerationModal from '@/app/components/studio/SongGenerationModal';
+import StemSplitModal from '@/app/components/studio/StemSplitModal';
 import ExportModal from '@/app/components/studio/ExportModal';
 import ReleaseModal from '@/app/components/studio/ReleaseModal';
 import type { ToolType } from '@/app/components/studio/Toolbar';
@@ -53,6 +54,9 @@ function StudioContent() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [showBeatModal, setShowBeatModal] = useState(false);
   const [showSongModal, setShowSongModal] = useState(false);
+  const [showStemModal, setShowStemModal] = useState(false);
+  const [stemSplitClip, setStemSplitClip] = useState<{id: string; url: string; name: string} | null>(null);
+  const [isSplittingStem, setIsSplittingStem] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showReleaseModal, setShowReleaseModal] = useState(false);
@@ -228,15 +232,28 @@ function StudioContent() {
     }
   }, [selectedTrackId, tracks, addClipToTrack, addTrack, showNotification]);
 
-  // Handle Stem Splitting
-  const handleSplitStems = useCallback(async (clipId: string, audioUrl: string) => {
-    showNotification('Splitting stems... This may take a few moments', 'info');
+  // Handle Stem Splitting with format selection
+  const handleSplitStems = useCallback(async (clipId: string, audioUrl: string, clipName?: string) => {
+    // Open modal for format selection
+    setStemSplitClip({ id: clipId, url: audioUrl, name: clipName || 'Audio Clip' });
+    setShowStemModal(true);
+  }, []);
+
+  // Execute stem split with selected format
+  const executeStemSplit = useCallback(async (format: 'mp3' | 'wav') => {
+    if (!stemSplitClip) return;
+    
+    setIsSplittingStem(true);
+    showNotification(`Splitting stems as ${format.toUpperCase()}... This may take a few moments`, 'info');
     
     try {
       const response = await fetch('/api/studio/split-stems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl })
+        body: JSON.stringify({ 
+          audioUrl: stemSplitClip.url,
+          outputFormat: format 
+        })
       });
 
       const data = await response.json();
@@ -261,7 +278,7 @@ function StudioContent() {
         addTrack(trackName, stemUrl as string);
       }
 
-      showNotification(`✨ Created ${stemEntries.length} stem tracks`, 'success');
+      showNotification(`✨ Created ${stemEntries.length} ${format.toUpperCase()} stem tracks`, 'success');
       
       // Dispatch credits update event
       if (data.remainingCredits !== undefined) {
@@ -269,11 +286,17 @@ function StudioContent() {
           detail: { credits: data.remainingCredits } 
         }));
       }
+      
+      // Close modal
+      setShowStemModal(false);
+      setStemSplitClip(null);
     } catch (error) {
       console.error('Stem splitting error:', error);
       showNotification('Failed to split stems', 'error');
+    } finally {
+      setIsSplittingStem(false);
     }
-  }, [addTrack, showNotification]);
+  }, [stemSplitClip, addTrack, showNotification]);
 
   // Load user's library tracks
   const loadLibraryTracks = useCallback(async () => {
@@ -1411,6 +1434,19 @@ function StudioContent() {
         isOpen={showSongModal}
         onClose={() => setShowSongModal(false)}
         onGenerate={handleSongGenerated}
+      />
+
+      {/* Stem Split Modal */}
+      <StemSplitModal
+        isOpen={showStemModal}
+        onClose={() => {
+          setShowStemModal(false);
+          setStemSplitClip(null);
+          setIsSplittingStem(false);
+        }}
+        onSplit={executeStemSplit}
+        clipName={stemSplitClip?.name || 'Audio Clip'}
+        isProcessing={isSplittingStem}
       />
 
       {/* Export Modal (stub) */}

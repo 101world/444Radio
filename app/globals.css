@@ -86,36 +86,46 @@ input, textarea {
   caret-color: white;
 }
 
-/* Custom Scrollbar Styles */
+/* Custom Scrollbar Styles - Unified glassmorphism overlay */
 .custom-scrollbar::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
+  height: 6px;
+  width: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
+  background: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
-  border-radius: 4px;
+  background: rgba(20, 184, 166, 0.3);
+  backdrop-filter: blur(8px);
+  border-radius: 3px;
   transition: all 0.3s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #2dd4bf 0%, #22d3ee 100%);
-  box-shadow: 0 0 8px rgba(20, 184, 166, 0.6);
+  background: rgba(20, 184, 166, 0.5);
+  box-shadow: 0 0 8px rgba(20, 184, 166, 0.4);
 }
 
 .custom-scrollbar::-webkit-scrollbar-corner {
-  background: rgba(0, 0, 0, 0.3);
+  background: transparent;
 }
 
 /* Firefox scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #14b8a6 rgba(0, 0, 0, 0.3);
+  scrollbar-color: rgba(20, 184, 166, 0.3) transparent;
+}
+
+/* Hide default scrollbars in timeline */
+.timeline-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+.timeline-scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Animation keyframes */

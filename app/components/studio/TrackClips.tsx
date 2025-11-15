@@ -94,7 +94,7 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
 
   return (
     <div
-      className={`relative bg-gradient-to-r from-gray-950/30 to-black/50 flex-1 overflow-x-auto overflow-y-hidden border-b border-teal-900/20 custom-scrollbar ${isDragOver ? 'ring-2 ring-teal-500/50 bg-teal-500/5 backdrop-blur-sm' : ''}`}
+      className={`relative bg-gradient-to-r from-gray-950/30 to-black/50 flex-1 overflow-x-auto overflow-y-hidden border-b border-teal-900/20 timeline-scrollbar-hidden ${isDragOver ? 'ring-2 ring-teal-500/50 bg-teal-500/5 backdrop-blur-sm' : ''}`}
       style={{ height: `${trackHeight}px` }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
