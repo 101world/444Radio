@@ -247,36 +247,11 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
-      <div className="flex h-full">
-        {/* Left fixed column: track headers */}
-        <div ref={leftColumnRef} className="w-56 shrink-0 space-y-3 pr-3">
-          {tracks.map((t) => (
-            <TrackLeft key={`left-${t.id}`} trackId={t.id} />
-          ))}
-        </div>
-
-        {/* Scrollable clips area */}
-        <div ref={clipsScrollRef} onScroll={handleScroll} className="flex-1 overflow-x-auto relative">
-          {/* Inner container with fixed 5-minute width */}
-          <div style={{ minWidth: `${timelineWidth}px` }} className="relative">
-        {/* Playhead */}
-          <div
-            className="absolute top-0 bottom-0 w-1 bg-cyan-400 z-20 pointer-events-none"
-            style={{
-              left: `${currentTime * pixelsPerSecond}px`,
-            }}
-          >
-            <div className="absolute -top-2 -left-3 w-5 h-5 bg-cyan-400 rotate-45 shadow-lg" />
-            {isPlaying && (
-              <div className="absolute top-0 -left-4 w-8 h-8">
-                <div className="absolute inset-0 bg-cyan-400/20 rounded-full animate-ping" />
-              </div>
-            )}
-          </div>
-
+    <div className="flex-1 overflow-y-auto overflow-x-hidden bg-black/95 backdrop-blur-xl border-t border-teal-900/30 relative">
+      {/* Single scrollable container for both headers and clips */}
+      <div className="space-y-0">
         {tracks.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
+          <div className="h-96 flex items-center justify-center">
             <div className="text-center">
               <Music className="w-16 h-16 text-teal-700 mx-auto mb-4" />
               <p className="text-gray-400 text-lg">No tracks yet</p>
@@ -284,12 +259,49 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
             </div>
           </div>
         ) : (
-          tracks.map((track) => (
-            <TrackClips key={`clips-${track.id}`} trackId={track.id} snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} onSplitStems={onSplitStems} />
+          tracks.map((track, index) => (
+            <div key={`track-row-${track.id}`} className="flex items-stretch border-b border-teal-900/20 hover:bg-teal-900/5 transition-colors">
+              {/* Track Header (Left) */}
+              <div className="shrink-0">
+                <TrackLeft trackId={track.id} />
+              </div>
+              
+              {/* Track Clips Area (Right - scrollable) */}
+              <div 
+                ref={index === 0 ? clipsScrollRef : undefined}
+                onScroll={index === 0 ? handleScroll : undefined}
+                className="flex-1 overflow-x-auto relative"
+              >
+                <div style={{ minWidth: `${timelineWidth}px` }} className="relative h-full">
+                  {/* Playhead - only show on first track, but extends through all */}
+                  {index === 0 && (
+                    <div
+                      className="fixed top-0 bottom-0 w-1 bg-cyan-400 z-30 pointer-events-none"
+                      style={{
+                        left: `calc(224px + ${currentTime * pixelsPerSecond}px)`,
+                      }}
+                    >
+                      <div className="absolute -top-2 -left-3 w-5 h-5 bg-cyan-400 rotate-45 shadow-lg" />
+                      {isPlaying && (
+                        <div className="absolute top-0 -left-4 w-8 h-8">
+                          <div className="absolute inset-0 bg-cyan-400/20 rounded-full animate-ping" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <TrackClips 
+                    trackId={track.id} 
+                    snapEnabled={snapEnabled} 
+                    bpm={bpm} 
+                    activeTool={activeTool} 
+                    onSplitStems={onSplitStems} 
+                  />
+                </div>
+              </div>
+            </div>
           ))
         )}
-          </div>
-        </div>
       </div>
     </div>
   );

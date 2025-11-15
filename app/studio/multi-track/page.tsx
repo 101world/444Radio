@@ -1227,10 +1227,18 @@ function StudioContent() {
                 ) : (
                   <div className="space-y-2">
                     {libraryTracks.map((track) => (
-                      <button
+                      <div
                         key={track.id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = 'copy';
+                          e.dataTransfer.setData('application/json', JSON.stringify({
+                            type: 'library-track',
+                            trackData: track
+                          }));
+                        }}
                         onClick={() => handleAddFromLibrary(track)}
-                        className="w-full p-3 rounded-lg bg-cyan-900/20 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-500/50 text-left transition-all group"
+                        className="w-full p-3 rounded-lg bg-cyan-900/20 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-500/50 text-left transition-all group cursor-grab active:cursor-grabbing"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded bg-cyan-700/50 flex items-center justify-center shrink-0 group-hover:bg-cyan-600/50 transition-colors">
@@ -1246,7 +1254,7 @@ function StudioContent() {
                           </div>
                           <Plus className="w-5 h-5 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )

@@ -29,30 +29,52 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
 
   if (!track) return null;
 
-  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); };
-  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragOver(false); };
+  const handleDragOver = (e: React.DragEvent) => { 
+    e.preventDefault(); 
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDragOver(true); 
+  };
+  
+  const handleDragLeave = (e: React.DragEvent) => { 
+    e.preventDefault(); 
+    setIsDragOver(false); 
+  };
+  
   const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault(); setIsDragOver(false);
-    // similar to old logic in TrackRow
+    e.preventDefault(); 
+    setIsDragOver(false);
+    
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const pixelsPerSecond = 50 * zoom;
     const startTime = Math.max(0, x / pixelsPerSecond);
 
     try {
-      const clipData = e.dataTransfer.getData('application/json');
-      if (clipData && clipData !== 'undefined' && clipData !== 'null' && clipData.trim() !== '') {
-        try {
-          const { clipId, trackId: sourceTrackId } = JSON.parse(clipData);
-          if (clipId && sourceTrackId !== trackId) {
-            moveClipToTrack(clipId, trackId, startTime);
+      const jsonData = e.dataTransfer.getData('application/json');
+      
+      if (jsonData && jsonData.trim()) {
+        const parsed = JSON.parse(jsonData);
+        
+        // Handle library track drop
+        if (parsed.type === 'library-track' && parsed.trackData) {
+          const { trackData } = parsed;
+          if (trackData.audio_url) {
+            addClipToTrack(trackId, trackData.audio_url, trackData.title || 'Library Track', startTime);
             return;
           }
-        } catch {}
+        }
+        
+        // Handle clip move between tracks
+        if (parsed.clipId && parsed.trackId !== trackId) {
+          moveClipToTrack(parsed.clipId, trackId, startTime);
+          return;
+        }
       }
 
+      // Handle file drops
       const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
       if (!files.length) return;
+      
       for (const file of files) {
         const objectUrl = URL.createObjectURL(file);
         const audio = new Audio(objectUrl);
@@ -61,9 +83,13 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
             addClipToTrack(trackId, objectUrl, file.name, startTime, audio.duration || undefined);
             resolve();
           };
+          audio.onerror = () => resolve();
+          setTimeout(resolve, 2000); // Timeout fallback
         });
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error('Drop error:', err);
+    }
   };
 
   return (

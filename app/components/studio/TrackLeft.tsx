@@ -51,16 +51,15 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
   }, [isResizing, setTrackHeight]);
 
   return (
-    <div className="relative">
-      <div
-        role="button"
-        aria-pressed={isSelected}
-        tabIndex={0}
-        className={`w-56 shrink-0 bg-gradient-to-b from-gray-950 to-black border-r border-teal-900/30 backdrop-blur-md p-4 flex flex-col gap-3 justify-center transition-all ${isSelected ? 'border-teal-500 ring-1 ring-teal-500/50 shadow-lg shadow-cyan-900/20' : 'hover:brightness-110'}`}
-        style={{ height: `${trackHeight}px` }}
-        onClick={() => setSelectedTrack(trackId)}
-        onKeyDown={(e) => { if (e.key === 'Enter') setSelectedTrack(trackId); }}
-      >
+    <div
+      role="button"
+      aria-pressed={isSelected}
+      tabIndex={0}
+      className={`w-56 shrink-0 bg-gradient-to-b from-gray-950 to-black border-r border-teal-900/30 backdrop-blur-md p-4 flex flex-col gap-3 justify-center transition-all relative ${isSelected ? 'border-teal-500 ring-1 ring-teal-500/50 shadow-lg shadow-cyan-900/20' : 'hover:brightness-110'}`}
+      style={{ height: `${trackHeight}px` }}
+      onClick={() => setSelectedTrack(trackId)}
+      onKeyDown={(e) => { if (e.key === 'Enter') setSelectedTrack(trackId); }}
+    >
       {/* Name */}
       <div className="flex items-center gap-2">
         <div className="w-6 h-6 rounded-md bg-teal-700/20 flex items-center justify-center text-[11px] text-teal-300 font-semibold">{number}</div>
@@ -106,18 +105,17 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
         />
         <span className="text-[10px] text-gray-400 w-8 text-right">{Math.round(track.volume * 100)}%</span>
       </div>
-    </div>
 
-    {/* Resize handle */}
-    <div
-      className={`absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-teal-500/50 transition-colors group ${isResizing ? 'bg-teal-500' : 'bg-transparent'}`}
-      onMouseDown={handleResizeStart}
-      title="Drag to resize track height"
-    >
-      <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-        <GripVertical className="w-3 h-3 text-teal-400" />
+      {/* Resize handle */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-teal-500/50 transition-colors group ${isResizing ? 'bg-teal-500' : 'bg-transparent'}`}
+        onMouseDown={handleResizeStart}
+        title="Drag to resize track height"
+      >
+        <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVertical className="w-3 h-3 text-teal-400" />
+        </div>
       </div>
     </div>
-  </div>
   )
 }

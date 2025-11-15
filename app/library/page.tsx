@@ -310,13 +310,79 @@ export default function LibraryPage() {
     }, 3000)
   }
 
-  const handleDownload = (url: string, filename: string) => {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleDownload = async (url: string, filename: string, format: 'mp3' | 'wav' = 'mp3') => {
+    if (format === 'mp3') {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } else {
+      try {
+        const response = await fetch(url)
+        const arrayBuffer = await response.arrayBuffer()
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+        
+        const wavBlob = audioBufferToWav(audioBuffer)
+        const wavUrl = URL.createObjectURL(wavBlob)
+        
+        const link = document.createElement('a')
+        link.href = wavUrl
+        link.download = filename.replace('.mp3', '.wav')
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        URL.revokeObjectURL(wavUrl)
+      } catch (error) {
+        console.error('WAV conversion error:', error)
+        alert('Failed to convert to WAV')
+      }
+    }
+  }
+
+  const audioBufferToWav = (buffer: AudioBuffer): Blob => {
+    const length = buffer.length * buffer.numberOfChannels * 2 + 44
+    const arrayBuffer = new ArrayBuffer(length)
+    const view = new DataView(arrayBuffer)
+    const channels: Float32Array[] = []
+    let offset = 0
+    let pos = 0
+
+    const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2 }
+    const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4 }
+
+    setUint32(0x46464952)
+    setUint32(length - 8)
+    setUint32(0x45564157)
+    setUint32(0x20746d66)
+    setUint32(16)
+    setUint16(1)
+    setUint16(buffer.numberOfChannels)
+    setUint32(buffer.sampleRate)
+    setUint32(buffer.sampleRate * 2 * buffer.numberOfChannels)
+    setUint16(buffer.numberOfChannels * 2)
+    setUint16(16)
+    setUint32(0x61746164)
+    setUint32(length - pos - 4)
+
+    for (let i = 0; i < buffer.numberOfChannels; i++) {
+      channels.push(buffer.getChannelData(i))
+    }
+
+    while (pos < length) {
+      for (let i = 0; i < buffer.numberOfChannels; i++) {
+        let sample = Math.max(-1, Math.min(1, channels[i][offset]))
+        sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF
+        view.setInt16(pos, sample, true)
+        pos += 2
+      }
+      offset++
+    }
+
+    return new Blob([arrayBuffer], { type: 'audio/wav' })
   }
 
   return (
@@ -590,13 +656,24 @@ export default function LibraryPage() {
                           )}
                         </button>
 
-                        <button
-                          onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`)}
-                          className="hidden sm:flex w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 items-center justify-center transition-all active:scale-95"
-                          title="Download"
-                        >
-                          <Download size={16} className="text-cyan-400" />
-                        </button>
+                        <div className="hidden sm:flex gap-1">
+                          <button
+                            onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'mp3')}
+                            className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                            title="Download MP3"
+                          >
+                            <Download size={14} className="text-cyan-400" />
+                            <span className="text-xs text-cyan-400 font-medium">MP3</span>
+                          </button>
+                          <button
+                            onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'wav')}
+                            className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                            title="Download WAV (High Quality)"
+                          >
+                            <Download size={14} className="text-cyan-300" />
+                            <span className="text-xs text-cyan-300 font-medium">WAV</span>
+                          </button>
+                        </div>
 
                         <button
                           onClick={(e) => {
