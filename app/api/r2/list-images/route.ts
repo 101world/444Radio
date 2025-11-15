@@ -28,7 +28,7 @@ export async function GET(request: Request) {
       }
     })
 
-    const imagesBaseUrl = process.env.NEXT_PUBLIC_R2_IMAGES_URL!
+    const imagesBaseUrl = process.env.NEXT_PUBLIC_R2_IMAGES_URL || 'https://pub-e5b60d303c5547e891ae88829c469ed6.r2.dev'
     const configuredImagesBucket = process.env.R2_IMAGES_BUCKET_NAME || process.env.R2_BUCKET_NAME
     const bucketName = (configuredImagesBucket && configuredImagesBucket.trim().length > 0) ? configuredImagesBucket : 'images'
 

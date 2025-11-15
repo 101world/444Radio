@@ -554,7 +554,7 @@ export default function LibraryPage() {
                       {/* Actions */}
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             const track = {
                               id: item.id,
                               audioUrl: item.audio_url,
@@ -573,7 +573,7 @@ export default function LibraryPage() {
                                 title: i.title || 'Untitled',
                                 artist: user?.firstName || 'You'
                               }))
-                              setPlaylist(allTracks, musicItems.findIndex(i => i.id === item.id))
+                              await setPlaylist(allTracks, musicItems.findIndex(i => i.id === item.id))
                             }
                           }}
                           className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-700 hover:to-cyan-500 flex items-center justify-center transition-all shadow-lg shadow-cyan-500/20 active:scale-95"
@@ -744,10 +744,10 @@ export default function LibraryPage() {
                         <p className="text-pink-400/50 text-xs">{new Date(item.created_at).toLocaleDateString()}</p>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <button onClick={() => {
+                        <button onClick={async () => {
                             const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audio_url, imageUrl: item.image_url }
-                            setPlaylist([track])
-                            playTrack(track)
+                            await setPlaylist([track])
+                            await playTrack(track)
                           }}
                           className="p-2.5 bg-pink-500/20 rounded-lg hover:bg-pink-500/40 transition-all hover:scale-105 border border-pink-500/30"
                           title="Play"
