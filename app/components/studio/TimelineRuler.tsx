@@ -9,7 +9,7 @@ import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { useRef, useCallback, useMemo, useEffect } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
-export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled = true }: { bpm?: number; timeSig?: '4/4' | '3/4' | '6/8'; snapEnabled?: boolean; }) {
+export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled = true }: { bpm?: number; timeSig?: '4/4' | '3/4' | '6/8'; snapEnabled?: boolean }) {
   const { zoom, setZoom, currentTime, duration, setCurrentTime, isPlaying, setPlaying } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{ dragging: boolean; wasPlaying: boolean } | null>(null);
@@ -27,7 +27,7 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
   };
 
   const pxPerSecond = 50 * zoom;
-  // left column width controlled by CSS variable --studio-left-column-width
+  const LEFT_GUTTER = 224; // Keep in sync with Timeline left column width (Tailwind w-56 = 224px)
 
   const beatsPerBar = useMemo(() => {
     const n = parseInt(String(timeSig).split('/')[0] || '4', 10);
@@ -168,7 +168,7 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
           className="absolute inset-0 flex items-end"
           style={{ 
             width: `${maxTime * pxPerSecond}px`, // 50px per second at 1x zoom
-            paddingLeft: `var(--studio-left-column-width)`
+            paddingLeft: `${LEFT_GUTTER}px`
           }}
         >
           {/* Musical grid: bars and beats */}
@@ -212,9 +212,8 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-teal-400 pointer-events-none z-10 shadow-lg shadow-teal-400/50"
             style={{ 
-              left: `calc(var(--studio-left-column-width) + ${currentTime * pxPerSecond}px)`,
+              left: `${currentTime * pxPerSecond}px`,
             }}
-            data-testid="ruler-playhead"
           >
             <div className="w-3 h-3 bg-teal-400 rounded-full -ml-1.5 -mt-1 shadow-lg shadow-teal-400/50" />
           </div>
