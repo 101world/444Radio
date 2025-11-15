@@ -19,7 +19,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, Sparkles, Library, Music, Plus, Save, Download, FileAudio, Folder, HelpCircle, Settings, Volume2, Timer, Hash } from 'lucide-react';
+import { Upload, Sparkles, Library, Music, Plus, Save, Download, FileAudio, Folder, HelpCircle, Settings, Volume2, Timer, Hash, Clock, Magnet, Radio, Music2 } from 'lucide-react';
 import { StudioProvider, useStudio } from '@/app/contexts/StudioContext';
 import Timeline from '@/app/components/studio/Timeline';
 import TransportBar from '@/app/components/studio/TransportBar';
@@ -333,76 +333,114 @@ function StudioContent() {
               <h1 className="text-xl font-bold text-white">444Radio Studio</h1>
               <span className="text-[10px] text-cyan-400/70 px-2 py-0.5 rounded-full border border-cyan-800 bg-cyan-900/20">Pro</span>
             </div>
-            <p className="text-xs text-cyan-400">{projectName} • {tracks.length} track{tracks.length !== 1 ? 's' : ''}</p>
+            <div className="flex items-center gap-2">
+              <input 
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                className="w-40 px-2 py-0.5 text-xs rounded bg-black/30 border border-cyan-900/30 text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500/60"
+                placeholder="Untitled Project"
+              />
+              <span className="text-xs text-cyan-400/60">• {tracks.length} track{tracks.length !== 1 ? 's' : ''}</span>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Project name */}
-          <input 
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            className="hidden md:block w-44 px-3 py-2 rounded bg-black/50 border border-cyan-900/50 text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500/60"
-            placeholder="Project name"
-          />
+          {/* AI Generation Buttons */}
+          <button
+            onClick={() => {
+              showNotification('Beat generation coming soon - 16 credits', 'info');
+            }}
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white font-medium transition-all shadow-lg shadow-purple-500/30 flex items-center gap-2"
+            title="Generate AI Beat - 16 credits"
+          >
+            <Radio className="w-4 h-4" />
+            <span>Beat</span>
+            <span className="text-xs opacity-70">16</span>
+          </button>
+
+          <button
+            onClick={() => {
+              showNotification('Song generation coming soon - 16 credits', 'info');
+            }}
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600 text-white font-medium transition-all shadow-lg shadow-pink-500/30 flex items-center gap-2"
+            title="Generate AI Song - 16 credits"
+          >
+            <Music2 className="w-4 h-4" />
+            <span>Song</span>
+            <span className="text-xs opacity-70">16</span>
+          </button>
+
+          <div className="w-px h-8 bg-cyan-900/50 mx-1" />
 
           {/* Snap */}
           <button
             onClick={() => { setSnapEnabled(!snapEnabled); showNotification(`Snap ${!snapEnabled ? 'enabled' : 'disabled'}`, 'info') }}
-            className={`px-3 py-2 rounded text-sm border transition-all ${snapEnabled ? 'bg-cyan-700 text-white border-cyan-500 shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-300 border-cyan-900/50 hover:border-cyan-700'}`}
+            className={`p-2 rounded transition-all ${snapEnabled ? 'bg-cyan-700 text-white shadow-cyan-500/30 shadow' : 'bg-black/40 text-gray-400 hover:text-white'}`}
             title="Snap to grid"
           >
-            <Hash className="w-4 h-4 inline mr-1" /> Snap
+            <Magnet className="w-4 h-4" />
           </button>
 
-          {/* Metronome */}
+          {/* BPM */}
           <button
-            onClick={() => { setMetronomeOn(!metronomeOn); showNotification('Metronome coming soon', 'info') }}
-            className={`px-3 py-2 rounded text-sm border transition-all ${metronomeOn ? 'bg-cyan-700 text-white border-cyan-500 shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-300 border-cyan-900/50 hover:border-cyan-700'}`}
-            title="Metronome"
+            onClick={() => { 
+              const newBpm = prompt('Enter BPM:', bpm.toString());
+              if (newBpm) {
+                const parsed = parseInt(newBpm);
+                if (!isNaN(parsed) && parsed > 0 && parsed < 300) {
+                  setBpm(parsed);
+                  showNotification(`BPM set to ${parsed}`, 'info');
+                }
+              }
+            }}
+            className="px-3 py-2 rounded text-sm bg-black/40 text-gray-300 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1.5"
+            title="Change BPM"
           >
-            <Timer className="w-4 h-4 inline mr-1" /> {bpm} BPM
+            <Clock className="w-4 h-4" />
+            <span>{bpm}</span>
           </button>
 
           {/* Time signature */}
           <button
-            onClick={() => { setTimeSig(timeSig === '4/4' ? '3/4' : timeSig === '3/4' ? '6/8' : '4/4'); showNotification('Time signature UI only', 'info') }}
-            className="px-3 py-2 rounded text-sm border bg-gray-900 text-gray-300 border-cyan-900/50 hover:border-cyan-700 transition-all"
+            onClick={() => { 
+              setTimeSig(timeSig === '4/4' ? '3/4' : timeSig === '3/4' ? '6/8' : '4/4'); 
+              showNotification(`Time signature: ${timeSig === '4/4' ? '3/4' : timeSig === '3/4' ? '6/8' : '4/4'}`, 'info');
+            }}
+            className="px-3 py-2 rounded text-sm bg-black/40 text-gray-300 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1.5"
             title="Time Signature"
           >
-            <Settings className="w-4 h-4 inline mr-1" /> {timeSig}
+            <Hash className="w-4 h-4" />
+            <span>{timeSig}</span>
           </button>
+
+          <div className="w-px h-8 bg-cyan-900/50 mx-1" />
 
           {/* Save Project */}
           <button
             onClick={handleSaveProject}
-            className="px-3 py-2 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/50 transition-all flex items-center gap-2 text-sm"
-            title="Save project (coming soon)"
+            className="p-2 rounded bg-black/40 hover:bg-black/60 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
+            title="Save project"
           >
             <Save className="w-4 h-4" />
-            <span className="hidden sm:inline">Save</span>
           </button>
 
           {/* Export Audio */}
           <button
             onClick={handleExportAudio}
-            className="px-3 py-2 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/50 transition-all flex items-center gap-2 text-sm"
-            title="Export audio (coming soon)"
+            className="p-2 rounded bg-black/40 hover:bg-black/60 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
+            title="Export audio"
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export</span>
           </button>
-
-          {/* Divider */}
-          <div className="w-px h-8 bg-cyan-900/50" />
 
           {/* Import Audio Button */}
           <button
             onClick={handleBrowseFiles}
-            className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-600 text-white font-medium transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2"
+            className="p-2 rounded bg-cyan-700 hover:bg-cyan-600 text-white transition-all shadow-lg shadow-cyan-500/20"
+            title="Import audio"
           >
             <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">Import Audio</span>
           </button>
 
           {/* AI Generation */}
@@ -411,33 +449,32 @@ function StudioContent() {
               setShowAISidebar(!showAISidebar);
               showNotification('AI generation integration coming soon', 'info');
             }}
-            className="px-4 py-2 rounded bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 border border-cyan-800 transition-colors flex items-center gap-2"
+            className="p-2 rounded bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 border border-cyan-800 transition-colors"
+            title="AI Generate"
           >
             <Sparkles className="w-4 h-4" />
-            <span className="hidden sm:inline">AI Generate</span>
           </button>
 
           {/* Shortcuts */}
           <button
             onClick={() => setShowShortcuts(true)}
-            className="px-3 py-2 rounded bg-black/40 hover:bg-black/60 text-cyan-300 border border-cyan-900/50 transition-all flex items-center gap-2 text-sm"
+            className="p-2 rounded bg-black/40 hover:bg-black/60 text-cyan-300 border border-cyan-900/30 hover:border-cyan-700 transition-all"
             title="Keyboard shortcuts"
           >
             <HelpCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Shortcuts</span>
           </button>
 
           {/* Library */}
           <button
             onClick={() => setShowLibrary(!showLibrary)}
-            className={`px-4 py-2 rounded ${
+            className={`p-2 rounded ${
               showLibrary 
                 ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30' 
                 : 'bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 border border-cyan-800'
-            } transition-all flex items-center gap-2`}
+            } transition-all`}
+            title="Library"
           >
             <Library className="w-4 h-4" />
-            <span className="hidden sm:inline">Library</span>
           </button>
 
           {/* Add Empty Track */}
@@ -446,11 +483,10 @@ function StudioContent() {
               addEmptyTrack();
               showNotification('Empty track added', 'success');
             }}
-            className="px-4 py-2 rounded bg-gray-900 hover:bg-gray-800 text-white border border-cyan-900/50 transition-colors flex items-center gap-2"
+            className="p-2 rounded bg-gray-900 hover:bg-gray-800 text-white border border-cyan-900/30 hover:border-cyan-700 transition-colors"
             title="Add empty track"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Track</span>
           </button>
         </div>
       </header>
