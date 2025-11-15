@@ -82,13 +82,17 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
     // Check if this is a clip being dragged from another track
     try {
       const clipData = e.dataTransfer.getData('application/json');
-      if (clipData) {
-        const { clipId, trackId: sourceTrackId } = JSON.parse(clipData);
-        if (clipId && sourceTrackId !== trackId) {
-          // Move clip to this track
-          moveClipToTrack(clipId, trackId, startTime);
-          console.log(`✅ Clip moved to track: ${clipId} → ${trackId}`);
-          return;
+      if (clipData && clipData !== 'undefined' && clipData !== 'null' && clipData.trim() !== '') {
+        try {
+          const { clipId, trackId: sourceTrackId } = JSON.parse(clipData);
+          if (clipId && sourceTrackId !== trackId) {
+            // Move clip to this track
+            moveClipToTrack(clipId, trackId, startTime);
+            console.log(`✅ Clip moved to track: ${clipId} → ${trackId}`);
+            return;
+          }
+        } catch {
+          // ignore malformed data and continue as file drop
         }
       }
     } catch (err) {
@@ -109,7 +113,9 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
       
       await new Promise<void>((resolve) => {
         audio.onloadedmetadata = () => {
-          addClipToTrack(trackId, objectUrl, file.name, startTime);
+          // Use duration from metadata for better clip length
+          const duration = audio.duration || undefined;
+          addClipToTrack(trackId, objectUrl, file.name, startTime, duration);
           resolve();
         };
       });
@@ -304,15 +310,23 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
     }
   }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked, timelineWidth]);
 
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    const left = containerRef.current.scrollLeft;
+    try {
+      window.dispatchEvent(new CustomEvent('studio:timeline-scroll', { detail: { left } } as any));
+    } catch {}
+  };
+
   return (
-    <div ref={containerRef} className="flex-1 overflow-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
+    <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
       {/* Inner container with fixed 5-minute width */}
       <div style={{ minWidth: `${timelineWidth}px` }} className="relative">
         {/* Playhead */}
         <div
             className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 z-20 pointer-events-none"
             style={{
-              left: `${16 + (currentTime * pixelsPerSecond)}px`, // 16px padding + time position with zoom
+              left: `${currentTime * pixelsPerSecond}px`,
             }}
           >
             <div className="absolute -top-1 -left-2 w-4 h-4 bg-cyan-400 rotate-45" />

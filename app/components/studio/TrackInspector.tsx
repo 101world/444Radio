@@ -41,6 +41,7 @@ export default function TrackInspector() {
     toggleMute,
     removeTrack,
     addClipToTrack,
+    addTrack,
   } = useStudio();
   const { user } = useUser();
   
@@ -60,6 +61,8 @@ export default function TrackInspector() {
   const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
   const [generatedAudioName, setGeneratedAudioName] = useState<string>('');
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
+  const [isStemming, setIsStemming] = useState(false);
+  const [stemsStatus, setStemsStatus] = useState<string>('');
 
   const selectedTrack = tracks.find(t => t.id === selectedTrackId);
 
@@ -186,6 +189,73 @@ export default function TrackInspector() {
       }, 3000);
     }
   }, [selectedTrack, user, effectPrompt, effectDuration]);
+
+  // Split current track's first clip into stems via Replicate
+  const splitIntoStems = useCallback(async () => {
+    if (!selectedTrack) {
+      alert('Select a track first');
+      return;
+    }
+    if (!selectedTrack.clips.length) {
+      alert('No audio clip found on this track');
+      return;
+    }
+
+    const firstClip = selectedTrack.clips[0];
+    const startTime = firstClip.startTime || 0;
+
+    try {
+      setIsStemming(true);
+      setStemsStatus('Contacting AI to split stems...');
+
+      const resp = await fetch('/api/studio/split-stems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioUrl: firstClip.audioUrl }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data?.success) {
+        throw new Error(data?.error || 'Stems splitting failed');
+      }
+
+      const stems: Record<string, string> = data.stems || {};
+      const entries = Object.entries(stems);
+      if (!entries.length) throw new Error('No stems returned');
+
+      setStemsStatus('Placing stems on timeline...');
+
+      // Friendly naming map
+      const nameForKey = (k: string) => {
+        const key = k.toLowerCase();
+        if (key.includes('vocals')) return 'Vocals';
+        if (key.includes('drums')) return 'Drums';
+        if (key.includes('bass')) return 'Bass';
+        if (key.includes('other')) return 'Other';
+        if (key.includes('instrumental')) return 'Instrumental';
+        if (key.includes('sonification')) return 'Sonification';
+        return k;
+      };
+
+      // Create new tracks for each stem and add clip aligned with source
+      for (const [key, url] of entries) {
+        const trackName = `${selectedTrack.name} – ${nameForKey(key)}`;
+        const newTrackId = addTrack(trackName);
+        addClipToTrack(newTrackId, url, trackName, startTime);
+      }
+
+      // Notify and finish
+      try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Stems added to new tracks', type: 'success' } })); } catch {}
+      if (typeof data.remainingCredits === 'number') {
+        try { window.dispatchEvent(new CustomEvent('credits:update', { detail: { credits: data.remainingCredits } })); } catch {}
+      }
+      setStemsStatus('');
+      setIsStemming(false);
+    } catch (err) {
+      console.error('Split stems error:', err);
+      setStemsStatus(err instanceof Error ? err.message : 'Stems splitting failed');
+      setTimeout(() => { setIsStemming(false); setStemsStatus(''); }, 3000);
+    }
+  }, [selectedTrack, addTrack, addClipToTrack]);
 
   if (!selectedTrack) {
     return (
@@ -498,6 +568,44 @@ export default function TrackInspector() {
                 <Plus className="w-4 h-4" />
                 Add Effect
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stems Section */}
+        <div className="border-b border-cyan-500/20">
+          <button
+            onClick={() => toggleSection('stems')}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-cyan-500/10 transition-colors"
+          >
+            <span className="text-sm font-semibold text-cyan-400">Stems</span>
+            {expandedSections.stems ? (
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+
+          {expandedSections.stems && (
+            <div className="px-4 pb-4 space-y-3">
+              {isStemming && (
+                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                    <span className="text-sm font-medium text-cyan-400">Splitting into stems...</span>
+                  </div>
+                  {stemsStatus && <p className="text-xs text-gray-400">{stemsStatus}</p>}
+                </div>
+              )}
+
+              <button
+                onClick={splitIntoStems}
+                disabled={isStemming || selectedTrack.clips.length === 0}
+                className="w-full px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isStemming ? 'Processing…' : 'Split Track Into Stems'}
+              </button>
+              <p className="text-xs text-cyan-400/70">Creates new tracks for Vocals, Drums, Bass, etc. 💰 Cost: 15 credits</p>
             </div>
           )}
         </div>

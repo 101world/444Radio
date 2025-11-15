@@ -6,7 +6,7 @@
 'use client';
 
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
-import { useRef, useCallback, useMemo } from 'react';
+import { useRef, useCallback, useMemo, useEffect } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
 export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled = true }: { bpm?: number; timeSig?: '4/4' | '3/4' | '6/8'; snapEnabled?: boolean }) {
@@ -82,6 +82,19 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
     window.addEventListener('pointerup', handleUp);
   }, [isPlaying, setPlaying, updateFromEvent]);
 
+  // Sync scroll with Timeline component
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { left?: number } | undefined;
+      if (!scrollRef.current || !detail || typeof detail.left !== 'number') return;
+      if (Math.abs(scrollRef.current.scrollLeft - detail.left) > 1) {
+        scrollRef.current.scrollLeft = detail.left;
+      }
+    };
+    window.addEventListener('studio:timeline-scroll', handler as EventListener);
+    return () => window.removeEventListener('studio:timeline-scroll', handler as EventListener);
+  }, []);
+
   // Generate time markers and musical grid
   const maxTime = duration || 300; // Default 5 minutes
   const markerInterval = zoom > 2 ? 1 : zoom > 0.5 ? 5 : 10; // seconds for time labels
@@ -141,6 +154,12 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
       <div
         ref={scrollRef}
         className="flex-1 relative overflow-x-auto select-none"
+        onScroll={(e) => {
+          const left = (e.currentTarget as HTMLDivElement).scrollLeft;
+          try {
+            window.dispatchEvent(new CustomEvent('studio:timeline-scroll', { detail: { left } } as any));
+          } catch {}
+        }}
         onPointerDown={onPointerDown}
         title="Drag to scrub the playhead"
       >

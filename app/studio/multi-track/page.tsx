@@ -277,8 +277,14 @@ function StudioContent() {
         // Create object URL for the file
         const audioUrl = URL.createObjectURL(file);
         const trackName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
-        
-        addTrack(trackName, audioUrl);
+        // Probe metadata for duration using HTMLMediaElement
+        const audio = new Audio(audioUrl);
+        const duration = await new Promise<number>((resolve) => {
+          audio.onloadedmetadata = () => resolve(audio.duration || 0);
+          // Fallback after 2s if metadata doesn't load
+          setTimeout(() => resolve(0), 2000);
+        });
+        addTrack(trackName, audioUrl, undefined, duration || undefined);
         successCount++;
         console.log(`✅ Added track: ${trackName}`);
       } catch (error) {
@@ -403,7 +409,7 @@ function StudioContent() {
           // Restore clips to track
           if (Array.isArray(trackData.clips)) {
             trackData.clips.forEach((clipData: any) => {
-              addClipToTrack(newTrackId, clipData.audioUrl, clipData.name, clipData.startTime);
+              addClipToTrack(newTrackId, clipData.audioUrl, clipData.name, clipData.startTime, clipData.duration);
             });
           }
         });
@@ -1034,8 +1040,8 @@ function StudioContent() {
           </div>
         </div>
 
-        {/* Track Inspector Sidebar */}
-        <TrackInspector />
+        {/* Track Inspector Sidebar - show only when a track is selected */}
+        {selectedTrackId ? <TrackInspector /> : null}
 
         {/* Library Sidebar */}
         {showLibrary && (

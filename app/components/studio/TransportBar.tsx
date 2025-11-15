@@ -11,6 +11,7 @@ import { useState } from 'react';
 
 export default function TransportBar() {
   const {
+    tracks,
     isPlaying,
     currentTime,
     masterVolume,
@@ -32,6 +33,18 @@ export default function TransportBar() {
   };
 
   const handlePlayPause = async () => {
+    // If starting playback at 0, but clips begin later, jump to earliest clip start
+    if (!isPlaying && currentTime <= 0.01) {
+      try {
+        const allStarts: number[] = (tracks || [])
+          .flatMap((t: any) => (t?.clips || []).map((c: any) => c?.startTime || 0))
+          .filter((n: number) => typeof n === 'number' && n > 0);
+        if (allStarts.length) {
+          const earliest = Math.min(...allStarts);
+          if (earliest > 0.01) setCurrentTime(earliest);
+        }
+      } catch {}
+    }
     await setPlaying(!isPlaying);
   };
 

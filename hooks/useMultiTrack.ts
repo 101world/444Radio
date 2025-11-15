@@ -51,9 +51,9 @@ export interface UseMultiTrackReturn {
   duration: number;
   selectedTrackId: string | null;
   selectedClipId: string | null;
-  addTrack: (name: string, audioUrl?: string, color?: string) => string;
+  addTrack: (name: string, audioUrl?: string, color?: string, initialClipDuration?: number) => string;
   addEmptyTrack: () => string;
-  addClipToTrack: (trackId: string, audioUrl: string, name: string, startTime?: number) => void;
+  addClipToTrack: (trackId: string, audioUrl: string, name: string, startTime?: number, durationOverride?: number) => void;
   moveClip: (clipId: string, newStartTime: number) => void;
   moveClipToTrack: (clipId: string, targetTrackId: string, newStartTime?: number) => void;
   resizeClip: (clipId: string, newDuration: number, newOffset: number, newStartTime?: number) => void;
@@ -174,19 +174,19 @@ export function useMultiTrack(): UseMultiTrackReturn {
   }, []);
 
   // Add a new track (legacy - with audio URL)
-  const addTrack = useCallback((name: string, audioUrl?: string, color?: string): string => {
+  const addTrack = useCallback((name: string, audioUrl?: string, color?: string, initialClipDuration?: number): string => {
     const trackId = `track-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newTrack: Track = {
       id: trackId,
       name,
       audioUrl: audioUrl || null,
-      clips: audioUrl ? [{
+          clips: audioUrl ? [{
         id: `clip-${Date.now()}`,
         trackId, // Add trackId
         audioUrl,
         name,
         startTime: 0,
-        duration: 60, // Will be updated when audio loads
+            duration: typeof initialClipDuration === 'number' ? initialClipDuration : 60, // Will be updated when audio loads
         offset: 0,
         color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
       }] : [],
@@ -229,6 +229,28 @@ export function useMultiTrack(): UseMultiTrackReturn {
     });
     console.log('✅ Track added:', newTrack.id, newTrack.name);
     
+    // If we received an audioUrl, attempt to probe its duration asynchronously
+    if (audioUrl) {
+      (async () => {
+        try {
+          const buf = await loadBuffer(audioUrl);
+          // Update the clip duration if present
+          setTracks((prev) => prev.map(t => {
+            if (t.id !== newTrack.id) return t;
+            const newClips = t.clips.map(c => {
+              if (c.trackId === newTrack.id && c.audioUrl === audioUrl) {
+                return { ...c, duration: buf.duration };
+              }
+              return c;
+            });
+            return { ...t, clips: newClips };
+          }));
+        } catch (e) {
+          // ignore; leave duration as-is
+        }
+      })();
+    }
+
     return newTrack.id;
   }, [tracks.length, saveHistory]);
 
@@ -238,7 +260,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
   }, [addTrack, tracks.length]);
 
   // Add clip to existing track
-  const addClipToTrack = useCallback((trackId: string, audioUrl: string, name: string, startTime: number = 0) => {
+  const addClipToTrack = useCallback((trackId: string, audioUrl: string, name: string, startTime: number = 0, durationOverride?: number) => {
     setTracks((prev) => {
       const newTracks = prev.map((t) => {
         if (t.id === trackId) {
@@ -248,7 +270,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
             audioUrl,
             name,
             startTime,
-            duration: 60, // Will be updated when audio loads
+            duration: typeof durationOverride === 'number' ? durationOverride : 60, // Will be updated when audio loads
             offset: 0,
             color: t.color,
           };
@@ -260,6 +282,25 @@ export function useMultiTrack(): UseMultiTrackReturn {
       return newTracks;
     });
     console.log(`✅ Clip added to track ${trackId}`);
+
+    // Probe audio duration for better UI positioning/looping (skip if durationOverride provided)
+    if (typeof durationOverride === 'undefined') {
+      (async () => {
+      try {
+        const buf = await loadBuffer(audioUrl);
+        setTracks((prev) => prev.map((t) => {
+          if (t.id !== trackId) return t;
+          const updated = t.clips.map(c => c.audioUrl === audioUrl && Math.abs(c.startTime - startTime) < 0.001 && c.name === name
+            ? { ...c, duration: buf.duration }
+            : c
+          );
+          return { ...t, clips: updated };
+        }));
+      } catch (e) {
+        // ignore errors
+      }
+      })();
+    }
   }, [saveHistory]);
 
   // Move clip on timeline
@@ -533,6 +574,14 @@ export function useMultiTrack(): UseMultiTrackReturn {
       const arr = await res.arrayBuffer();
       const buf = await audioContextRef.current.decodeAudioData(arr);
       cache.set(url, buf);
+      // Update any clips that reference this url with accurate duration
+      setTracks(prev => prev.map(t => ({
+        ...t,
+        clips: t.clips.map(c => c.audioUrl === url && c.duration !== buf.duration
+          ? { ...c, duration: buf.duration }
+          : c
+        )
+      })));
       return buf;
     } catch (e) {
       console.error('Failed to load audio buffer:', url, e);
