@@ -480,8 +480,20 @@ export function useMultiTrack(): UseMultiTrackReturn {
     if (!audioContextRef.current) throw new Error('AudioContext not initialized');
     try {
       // Route R2 URLs through server proxy to avoid CORS issues
-      const isR2 = url.includes('.r2.dev') || url.includes('.r2.cloudflarestorage.com');
-      const fetchUrl = isR2 ? `/api/r2/proxy?url=${encodeURIComponent(url)}` : url;
+      const maybeProxy = (u: string) => {
+        try {
+          const target = new URL(u);
+          const r2Hosts: string[] = [];
+          if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname);
+          if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname);
+          if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname);
+          const isR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com') || r2Hosts.includes(target.hostname);
+          return isR2 ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u;
+        } catch {
+          return u;
+        }
+      };
+      const fetchUrl = maybeProxy(url);
 
       const res = await fetch(fetchUrl, { mode: 'cors' as RequestMode });
       if (!res.ok) throw new Error(`Fetch failed (${res.status})`);

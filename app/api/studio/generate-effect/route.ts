@@ -9,6 +9,7 @@ import { auth } from '@clerk/nextjs/server';
 import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
 import { createClient } from '@supabase/supabase-js';
+import { uploadToR2 } from '@/lib/r2-upload';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -189,11 +190,11 @@ export async function POST(request: Request) {
 
     console.log('✅ Using model:', usedModel);
 
-    // Wait for completion (90 second timeout)
+    // Wait for completion (extend timeout to 180s for larger generations)
     let result = prediction;
     const startTime = Date.now();
     while (result.status !== 'succeeded' && result.status !== 'failed') {
-      if (Date.now() - startTime > 90000) {
+      if (Date.now() - startTime > 180000) {
         // Refund credits on timeout
         await supabase
           .from('users')
@@ -206,6 +207,8 @@ export async function POST(request: Request) {
       }
       await new Promise(resolve => setTimeout(resolve, 2000));
       result = await replicate.predictions.get(result.id);
+      // Server-side logging of status for observability
+      try { console.log('⏳ Effect status:', result.status); } catch {}
     }
 
     if (result.status === 'failed') {
@@ -220,12 +223,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // Extract audio URL
-    const outputUrl = typeof result.output === 'string' 
-      ? result.output 
-      : Array.isArray(result.output) 
-        ? result.output[0] 
-        : result.output?.audio || result.output?.url;
+    // Extract audio URL robustly across models
+    const extractUrl = (out: any): string | undefined => {
+      if (!out) return undefined;
+      if (typeof out === 'string') return out;
+      if (Array.isArray(out)) {
+        for (const item of out) {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object') {
+            if (typeof item.audio === 'string') return item.audio;
+            if (typeof item.url === 'string') return item.url;
+            // common nested structure { audio: { download_uri: '...' } }
+            if (item.audio && typeof item.audio.download_uri === 'string') return item.audio.download_uri;
+          }
+        }
+      }
+      if (typeof out === 'object') {
+        if (typeof out.audio === 'string') return out.audio;
+        if (out.audio && typeof out.audio.download_uri === 'string') return out.audio.download_uri;
+        if (typeof out.url === 'string') return out.url;
+      }
+      return undefined;
+    }
+    const outputUrl = extractUrl(result.output);
 
     if (!outputUrl) {
       // Refund on missing output
@@ -241,19 +261,71 @@ export async function POST(request: Request) {
 
     console.log('✅ Effect generated:', outputUrl);
 
-    return corsResponse(
-      NextResponse.json({
-        success: true,
-        audioUrl: outputUrl,
-        remainingCredits: (userData.credits || 0) - creditsNeeded,
-        metadata: {
-          prompt,
-          duration,
-          creditsUsed: creditsNeeded,
-          predictionId: result.id,
-        }
-      })
-    );
+    // Download the generated audio and upload to our R2 for stable hosting
+    try {
+      const fileResp = await fetch(outputUrl);
+      if (!fileResp.ok) throw new Error(`Download failed (${fileResp.status})`);
+      const contentType = fileResp.headers.get('content-type') || 'audio/mpeg';
+      const ext = contentType.includes('wav') ? 'wav' : contentType.includes('ogg') ? 'ogg' : 'mp3';
+      const arr = await fileResp.arrayBuffer();
+      const filename = `${Date.now()}-effect.${ext}`;
+      const key = `users/${userId}/effects/${filename}`;
+
+      // Create a File object compatible with uploadToR2
+      const blob = new Blob([arr], { type: contentType });
+      // @ts-ignore File is available in Next.js runtime
+      const file = new File([blob], filename, { type: contentType });
+      const upload = await uploadToR2(file, 'audio-files', key);
+      if (upload.success && upload.url) {
+        console.log('☁️ Uploaded effect to R2:', upload.url);
+        return corsResponse(
+          NextResponse.json({
+            success: true,
+            audioUrl: upload.url,
+            remainingCredits: (userData.credits || 0) - creditsNeeded,
+            metadata: {
+              prompt,
+              duration,
+              creditsUsed: creditsNeeded,
+              predictionId: result.id,
+              source: 'replicate',
+            }
+          })
+        );
+      } else {
+        console.warn('R2 upload failed, returning original URL:', upload.error);
+        return corsResponse(
+          NextResponse.json({
+            success: true,
+            audioUrl: outputUrl,
+            remainingCredits: (userData.credits || 0) - creditsNeeded,
+            metadata: {
+              prompt,
+              duration,
+              creditsUsed: creditsNeeded,
+              predictionId: result.id,
+              source: 'replicate-direct',
+            }
+          })
+        );
+      }
+    } catch (e) {
+      console.warn('Effect download/upload to R2 failed, returning original URL:', e);
+      return corsResponse(
+        NextResponse.json({
+          success: true,
+          audioUrl: outputUrl,
+          remainingCredits: (userData.credits || 0) - creditsNeeded,
+          metadata: {
+            prompt,
+            duration,
+            creditsUsed: creditsNeeded,
+            predictionId: result.id,
+            source: 'replicate-direct',
+          }
+        })
+      );
+    }
 
   } catch (error) {
     console.error('❌ Effect generation error:', error);

@@ -129,12 +129,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setCurrentTrack(track)
     
     // Always use proxy for R2 URLs to avoid CORS issues
-    const isR2Url = track.audioUrl.includes('.r2.dev') || track.audioUrl.includes('.r2.cloudflarestorage.com')
-    const finalUrl = isR2Url 
-      ? `/api/r2/proxy?url=${encodeURIComponent(track.audioUrl)}`
-      : track.audioUrl
+    const computeUrl = (u: string) => {
+      try {
+        const target = new URL(u)
+        const r2Hosts: string[] = []
+        if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
+        if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
+        if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
+        const isR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com') || r2Hosts.includes(target.hostname)
+        return isR2 ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
+      } catch { return u }
+    }
+    const finalUrl = computeUrl(track.audioUrl)
     
-    console.log('Using URL:', isR2Url ? 'proxy' : 'direct', finalUrl)
+    const isProxied = finalUrl.startsWith('/api/r2/proxy')
+    console.log('Using URL:', isProxied ? 'proxy' : 'direct', finalUrl)
     
     const audio = audioRef.current
     
