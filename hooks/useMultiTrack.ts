@@ -511,6 +511,9 @@ export function useMultiTrack(): UseMultiTrackReturn {
     try {
       // Route R2 URLs through server proxy to avoid CORS issues
       const maybeProxy = (u: string) => {
+        // Don't proxy blob URLs (from local file uploads)
+        if (u.startsWith('blob:')) return u;
+        
         try {
           const target = new URL(u);
           const r2Hosts: string[] = [];
