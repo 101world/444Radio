@@ -657,18 +657,18 @@ function StudioContent() {
       )}
 
       {/* Header */}
-      <header className="h-14 bg-gradient-to-r from-black via-cyan-950/20 to-black border-b border-cyan-900/50 flex items-center justify-between px-4 shrink-0">
+      <header className="h-10 bg-gradient-to-r from-black via-cyan-950/20 to-black border-b border-cyan-900/50 flex items-center justify-between px-3 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/50">
-            <span className="text-white font-bold">4</span>
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/50">
+            <span className="text-white font-bold text-sm">4</span>
           </div>
           <div className="flex items-center gap-2">
             <div>
-              <h1 className="text-lg font-bold text-white">444Radio Studio</h1>
+              <h1 className="text-base font-bold text-white">444Radio Studio</h1>
               <input 
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                className="w-36 px-2 py-0.5 text-xs rounded bg-black/30 border border-cyan-900/30 text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500/60"
+                className="w-32 px-2 py-0.5 text-xs rounded bg-black/30 border border-cyan-900/30 text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500/60"
                 placeholder="Untitled Project"
               />
             </div>
@@ -757,79 +757,79 @@ function StudioContent() {
       </header>
 
       {/* Unified Toolbar with ALL controls */}
-      <div className="h-12 bg-black border-b border-cyan-900/50 flex items-center px-4 gap-2 shrink-0">
-        <span className="text-xs text-cyan-500 font-medium mr-1">Tools:</span>
+      <div className="h-9 bg-black border-b border-cyan-900/50 flex items-center px-3 gap-1.5 shrink-0">
+        <span className="text-xs text-cyan-500 font-medium">Tools:</span>
         
         {/* Selection Tools */}
         <button
           onClick={() => setActiveTool('select')}
-          className={`p-2 rounded transition-all ${
+          className={`p-1.5 rounded transition-all ${
             activeTool === 'select'
               ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
               : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
           }`}
           title="Selection Tool (V)"
         >
-          <MousePointer2 className="w-4 h-4" />
+          <MousePointer2 className="w-3.5 h-3.5" />
         </button>
         
         <button
           onClick={() => setActiveTool('cut')}
-          className={`p-2 rounded transition-all ${
+          className={`p-1.5 rounded transition-all ${
             activeTool === 'cut'
               ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
               : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
           }`}
           title="Cut Tool (C)"
         >
-          <Scissors className="w-4 h-4" />
+          <Scissors className="w-3.5 h-3.5" />
         </button>
         
         <button
           onClick={() => setActiveTool('zoom')}
-          className={`p-2 rounded transition-all ${
+          className={`p-1.5 rounded transition-all ${
             activeTool === 'zoom'
               ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
               : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
           }`}
           title="Zoom Tool (Z)"
         >
-          <ZoomIn className="w-4 h-4" />
+          <ZoomIn className="w-3.5 h-3.5" />
         </button>
         
         <button
           onClick={() => setActiveTool('move')}
-          className={`p-2 rounded transition-all ${
+          className={`p-1.5 rounded transition-all ${
             activeTool === 'move'
               ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
               : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
           }`}
           title="Move Tool (M)"
         >
-          <Move className="w-4 h-4" />
+          <Move className="w-3.5 h-3.5" />
         </button>
         
         <button
           onClick={() => setActiveTool('pan')}
-          className={`p-2 rounded transition-all ${
+          className={`p-1.5 rounded transition-all ${
             activeTool === 'pan'
               ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
               : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
           }`}
           title="Pan Tool (H)"
         >
-          <Hand className="w-4 h-4" />
+          <Hand className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-px h-8 bg-cyan-900/50 mx-1" />
+        <div className="w-px h-6 bg-cyan-900/50 mx-0.5" />
 
         {/* Project Controls */}
         <button
           onClick={() => { setSnapEnabled(!snapEnabled); showNotification(`Snap ${!snapEnabled ? 'ON' : 'OFF'}`, 'info') }}
-          className={`p-2 rounded transition-all ${snapEnabled ? 'bg-cyan-700 text-white shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-400 hover:text-white border border-cyan-900/30'}`}
+          className={`p-1.5 rounded transition-all ${snapEnabled ? 'bg-cyan-700 text-white shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-400 hover:text-white border border-cyan-900/30'}`}
           title="Snap to grid"
         >
-          <Magnet className="w-4 h-4" />
+          <Magnet className="w-3.5 h-3.5" />
         </button>
 
         <button
@@ -843,10 +843,10 @@ function StudioContent() {
               }
             }
           }}
-          className="px-2 py-1.5 rounded text-xs bg-gray-900 text-gray-300 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1"
+          className="px-1.5 py-1 rounded text-xs bg-gray-900 text-gray-300 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1"
           title="Change BPM"
         >
-          <Clock className="w-3.5 h-3.5" />
+          <Clock className="w-3 h-3" />
           <span>{bpm}</span>
         </button>
 
@@ -855,34 +855,34 @@ function StudioContent() {
             setTimeSig(timeSig === '4/4' ? '3/4' : timeSig === '3/4' ? '6/8' : '4/4'); 
             showNotification(`Time: ${timeSig === '4/4' ? '3/4' : timeSig === '3/4' ? '6/8' : '4/4'}`, 'info');
           }}
-          className="px-2 py-1.5 rounded text-xs bg-gray-900 text-gray-300 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1"
+          className="px-1.5 py-1 rounded text-xs bg-gray-900 text-gray-300 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1"
           title="Time Signature"
         >
-          <Hash className="w-3.5 h-3.5" />
+          <Hash className="w-3 h-3" />
           <span>{timeSig}</span>
         </button>
 
-        <div className="w-px h-8 bg-cyan-900/50 mx-1" />
+        <div className="w-px h-6 bg-cyan-900/50 mx-0.5" />
 
         {/* File Operations */}
         <button
           onClick={handleSaveProject}
-          className="p-2 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
+          className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
           title="Save project (Ctrl+S)"
         >
-          <Save className="w-4 h-4" />
+          <Save className="w-3.5 h-3.5" />
         </button>
 
         {/* Projects Dropdown */}
         <div className="relative">
           <button
             onClick={() => setShowProjectMenu(!showProjectMenu)}
-            className="p-2 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1"
+            className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1"
             title="Load project"
           >
-            <Folder className="w-4 h-4" />
+            <Folder className="w-3.5 h-3.5" />
             {savedProjects.length > 0 && (
-              <span className="text-xs bg-cyan-600 text-white rounded-full w-4 h-4 flex items-center justify-center">
+              <span className="text-xs bg-cyan-600 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[9px]">
                 {savedProjects.length}
               </span>
             )}
@@ -944,46 +944,46 @@ function StudioContent() {
 
         <button
           onClick={handleExportAudio}
-          className="p-2 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
+          className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
           title="Export audio"
         >
-          <Download className="w-4 h-4" />
+          <Download className="w-3.5 h-3.5" />
         </button>
 
         <button
           onClick={() => setShowReleaseModal(true)}
-          className="p-2 rounded bg-cyan-700 hover:bg-cyan-600 text-white transition-all shadow-lg shadow-cyan-500/20"
+          className="p-1.5 rounded bg-cyan-700 hover:bg-cyan-600 text-white transition-all shadow-lg shadow-cyan-500/20"
           title="Release to Explore/Library"
         >
-          <Radio className="w-4 h-4" />
+          <Radio className="w-3.5 h-3.5" />
         </button>
 
         <button
           onClick={handleBrowseFiles}
-          className="p-2 rounded bg-cyan-700 hover:bg-cyan-600 text-white transition-all shadow-lg shadow-cyan-500/20"
+          className="p-1.5 rounded bg-cyan-700 hover:bg-cyan-600 text-white transition-all shadow-lg shadow-cyan-500/20"
           title="Import audio"
         >
-          <Upload className="w-4 h-4" />
+          <Upload className="w-3.5 h-3.5" />
         </button>
 
         <button
           onClick={() => setShowShortcuts(true)}
-          className="p-2 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
+          className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
           title="Keyboard shortcuts"
         >
-          <HelpCircle className="w-4 h-4" />
+          <HelpCircle className="w-3.5 h-3.5" />
         </button>
 
         <button
           onClick={() => setShowLibrary(!showLibrary)}
-          className={`p-2 rounded ${
+          className={`p-1.5 rounded ${
             showLibrary 
               ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30' 
               : 'bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30'
           } transition-all`}
           title="Library"
         >
-          <Library className="w-4 h-4" />
+          <Library className="w-3.5 h-3.5" />
         </button>
 
         <button
@@ -991,10 +991,10 @@ function StudioContent() {
             addEmptyTrack();
             showNotification('Track added', 'success');
           }}
-          className="p-2 rounded bg-cyan-700 hover:bg-cyan-600 text-white border border-cyan-900/30 hover:border-cyan-700 transition-colors"
+          className="p-1.5 rounded bg-cyan-700 hover:bg-cyan-600 text-white border border-cyan-900/30 hover:border-cyan-700 transition-colors"
           title="Add track"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
 

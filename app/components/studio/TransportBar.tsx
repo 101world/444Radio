@@ -59,110 +59,110 @@ export default function TransportBar() {
   };
 
   return (
-    <div className="h-20 bg-black border-t border-teal-900/50">
-      <div className="h-full flex items-center justify-between px-6">
+    <div className="h-12 bg-black border-t border-teal-900/50">
+      <div className="h-full flex items-center justify-between px-4">
         {/* Left: Transport controls (AudioMass style) */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Skip to start */}
           <button
             onClick={handleSkipToStart}
-            className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
+            className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
             title="Skip to start (Home)"
           >
-            <SkipBack className="w-4 h-4" />
+            <SkipBack className="w-3.5 h-3.5" />
           </button>
 
           {/* Rewind 10s */}
           <button
             onClick={handleRewind}
-            className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
+            className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
             title="Rewind 10s (Left Arrow)"
           >
-            <Rewind className="w-4 h-4" />
+            <Rewind className="w-3.5 h-3.5" />
           </button>
 
           {/* Play/Pause */}
           {!isPlaying ? (
             <button
               onClick={handlePlayPause}
-              className="p-3 rounded bg-teal-700 hover:bg-teal-600 text-white transition-all shadow-lg shadow-teal-500/30"
+              className="p-2 rounded bg-teal-700 hover:bg-teal-600 text-white transition-all shadow-lg shadow-teal-500/30"
               title="Play (Space)"
             >
-              <Play className="w-5 h-5" />
+              <Play className="w-4 h-4" />
             </button>
           ) : (
             <button
               onClick={handlePlayPause}
-              className="p-3 rounded bg-teal-700 hover:bg-teal-600 text-white transition-all shadow-lg shadow-teal-500/30"
+              className="p-2 rounded bg-teal-700 hover:bg-teal-600 text-white transition-all shadow-lg shadow-teal-500/30"
               title="Pause (Space)"
             >
-              <Pause className="w-5 h-5" />
+              <Pause className="w-4 h-4" />
             </button>
           )}
 
           {/* Stop */}
           <button
             onClick={handleStop}
-            className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
+            className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
             title="Stop"
           >
-            <Square className="w-4 h-4" />
+            <Square className="w-3.5 h-3.5" />
           </button>
 
           {/* Fast forward 10s */}
           <button
             onClick={handleFastForward}
-            className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
+            className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
             title="Fast forward 10s (Right Arrow)"
           >
-            <FastForward className="w-4 h-4" />
+            <FastForward className="w-3.5 h-3.5" />
           </button>
 
           {/* Previous/Next track selection */}
-          <div className="w-px h-8 bg-teal-900/50 mx-2" />
+          <div className="w-px h-6 bg-teal-900/50 mx-1" />
           <button
             onClick={playPreviousTrack}
-            className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
+            className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
             title="Previous Track"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={playNextTrack}
-            className="p-2.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
+            className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-white border border-teal-900/50 transition-colors"
             title="Next Track"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
 
           {/* Record (AudioMass feature) */}
-          <div className="w-px h-8 bg-teal-900/50 mx-2" />
+          <div className="w-px h-6 bg-teal-900/50 mx-1" />
           <button
             onClick={handleRecord}
-            className={`p-2.5 rounded border transition-all ${
+            className={`p-1.5 rounded border transition-all ${
               isRecording
                 ? 'bg-red-600 border-red-500 text-white animate-pulse'
                 : 'bg-gray-900 hover:bg-gray-800 border-teal-900/50 text-red-400'
             }`}
             title="Record (R)"
           >
-            <Circle className={`w-4 h-4 ${isRecording ? 'fill-current' : ''}`} />
+            <Circle className={`w-3.5 h-3.5 ${isRecording ? 'fill-current' : ''}`} />
           </button>
         </div>
 
         {/* Center: Time display */}
         <div className="flex flex-col items-center">
-          <div className="text-white font-mono text-2xl font-bold tracking-wider">
+          <div className="text-white font-mono text-lg font-bold tracking-wider">
             {formatTime(currentTime)}
           </div>
-          <div className="text-teal-400 text-xs font-medium">
+          <div className="text-teal-400 text-[10px] font-medium">
             {isRecording ? '● REC' : isPlaying ? '▶ Playing' : '⏸ Paused'}
           </div>
         </div>
 
         {/* Right: Master volume */}
-        <div className="flex items-center gap-3">
-          <Volume2 className="w-5 h-5 text-teal-400" />
+        <div className="flex items-center gap-2">
+          <Volume2 className="w-4 h-4 text-teal-400" />
           <div className="flex flex-col items-center">
             <input
               type="range"
@@ -171,10 +171,10 @@ export default function TransportBar() {
               step="0.01"
               value={masterVolume}
               onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
-              className="w-32 h-2 accent-teal-500"
+              className="w-24 h-1.5 accent-teal-500"
               title="Master volume"
             />
-            <span className="text-xs text-teal-400 mt-1 font-medium">
+            <span className="text-[10px] text-teal-400 mt-0.5 font-medium">
               Master: {Math.round(masterVolume * 100)}%
             </span>
           </div>
