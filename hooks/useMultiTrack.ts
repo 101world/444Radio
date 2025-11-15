@@ -517,6 +517,14 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const setPlaying = useCallback(async (playing: boolean) => {
     if (!audioContextRef.current) return;
     if (playing) {
+      try {
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+          console.log('🔁 AudioContext resumed');
+        }
+      } catch (e) {
+        console.warn('AudioContext resume failed:', e);
+      }
       // Always stop sources before starting
       stopAllSources();
       clearTicker();

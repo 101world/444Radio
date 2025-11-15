@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { prompt, genre = 'pop', mood = 'upbeat', has_vocals = true, duration = 30, output_format = 'mp3', lyrics } = await request.json();
+    const { prompt, title, genre = 'pop', output_format = 'mp3', lyrics } = await request.json();
 
     if (!prompt) {
       return corsResponse(
@@ -34,21 +34,33 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
-    console.log('🎤 Generating song with MiniMax Music 1.5:', { prompt, genre, mood, has_vocals, duration, output_format, hasLyrics: !!lyrics });
+    console.log('🎤 Generating song with MiniMax Music 1.5:', { prompt, genre, output_format, hasLyrics: !!lyrics, title });
 
-    // Build enhanced prompt
-    let enhancedPrompt = `${genre} ${mood} song, ${prompt}${has_vocals ? ', with vocals' : ', instrumental'}`;
-    if (lyrics && typeof lyrics === 'string' && lyrics.trim().length > 0) {
-      enhancedPrompt += `. Use these lyrics: ${lyrics.trim()}`;
+    // Ensure lyrics exist: if missing, generate with Atom (GPT-5 Nano on Replicate)
+    let finalLyrics = (typeof lyrics === 'string' ? lyrics.trim() : '') || '';
+    if (!finalLyrics) {
+      try {
+        const atomPrompt = `Generate lyrics based on my prompt - ${prompt}. Structure with [intro] [verse] [chorus] [hook] [bridge] [hook] [chorus] [outro], under 600 characters.`;
+        const atomOutput = await replicate.run("openai/gpt-5-nano", { input: { prompt: atomPrompt } });
+        if (Array.isArray(atomOutput)) finalLyrics = atomOutput.join('');
+        else if (typeof atomOutput === 'string') finalLyrics = atomOutput;
+        if (finalLyrics.length > 600) finalLyrics = finalLyrics.substring(0, 600).trim();
+      } catch (e) {
+        console.warn('⚠️ Atom lyrics generation failed, falling back to prompt as lyrics');
+        finalLyrics = prompt;
+      }
     }
 
-    // Create song generation prediction
+    const finalTitle = typeof title === 'string' && title.trim() ? title.trim() : (prompt.length > 60 ? `${prompt.slice(0, 57)}...` : prompt);
+    const finalGenre = typeof genre === 'string' && genre.trim() ? genre.trim() : 'pop';
+
+    // Create song generation prediction (MiniMax requires lyrics)
     const prediction = await replicate.predictions.create({
       model: "minimax/music-1.5",
       input: {
-        prompt: enhancedPrompt,
-        duration: Math.min(duration, 120), // Max 120 seconds
-        model_type: has_vocals ? "vocals" : "instrumental",
+        lyrics: finalLyrics,
+        title: finalTitle,
+        genre: finalGenre,
       }
     });
 
@@ -79,8 +91,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // Extract audio URL from output
-    const audioUrl = result.output;
+    // Extract audio URL from output (handle array/string/object variants)
+    let audioUrl: string | undefined;
+    const out: any = (result as any).output;
+    if (Array.isArray(out)) {
+      const first = out[0];
+      if (typeof first === 'string') audioUrl = first;
+      else if (first && typeof first === 'object') audioUrl = first.audio || first.url || first.src;
+      if (!audioUrl) {
+        const str = out.find((v: any) => typeof v === 'string');
+        if (str) audioUrl = str;
+      }
+    } else if (typeof out === 'string') {
+      audioUrl = out;
+    } else if (out && typeof out === 'object') {
+      audioUrl = out.audio || out.url || out.src;
+    }
+
+    if (!audioUrl) {
+      return corsResponse(
+        NextResponse.json({ success: false, error: 'No audio URL returned from model', raw: out }, { status: 502 })
+      );
+    }
 
     console.log('✅ Song generated successfully:', audioUrl);
 
@@ -89,13 +121,11 @@ export async function POST(request: Request) {
         success: true,
         audioUrl,
         metadata: {
-          prompt: enhancedPrompt,
-          genre,
-          mood,
-          hasVocals: has_vocals,
-          duration,
+          prompt,
+          title: finalTitle,
+          genre: finalGenre,
           outputFormat: output_format,
-          lyrics: lyrics || undefined,
+          lyrics: finalLyrics,
           model: 'minimax-music-1.5',
           predictionId: result.id,
         }

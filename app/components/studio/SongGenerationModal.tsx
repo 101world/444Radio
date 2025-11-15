@@ -16,8 +16,8 @@ interface SongGenerationModalProps {
 
 export default function SongGenerationModal({ isOpen, onClose, onGenerate }: SongGenerationModalProps) {
   const [prompt, setPrompt] = useState('');
-  const [genre, setGenre] = useState('pop');
-  const [mood, setMood] = useState('upbeat');
+  const [genre, setGenre] = useState('');
+  const [title, setTitle] = useState('');
   // Simplified UI: remove explicit vocals toggle, add output format and lyrics
   const [outputFormat, setOutputFormat] = useState<'mp3' | 'wav'>('mp3');
   const [lyrics, setLyrics] = useState('');
@@ -73,9 +73,8 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
+          title,
           genre,
-          mood,
-          duration,
           output_format: outputFormat,
           lyrics: lyrics?.trim() || undefined,
         }),
@@ -103,11 +102,10 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
       setProgress('Song generated successfully!');
       onGenerate(data.audioUrl, {
         prompt,
+        title,
         genre,
-        mood,
         outputFormat,
         lyrics: lyrics?.trim() || undefined,
-        duration,
         type: 'song',
       });
 
@@ -115,6 +113,7 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
         onClose();
         setPrompt('');
         setLyrics('');
+        setTitle('');
       }, 1500);
 
     } catch (error) {
@@ -173,72 +172,37 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
             </p>
           </div>
 
-          {/* Parameters */}
+          {/* Parameters (Create page style) */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Genre */}
+            {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-cyan-400 mb-2">
-                Genre
-              </label>
-              <select
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                className="w-full px-4 py-2 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:border-cyan-500/60"
-                disabled={isGenerating}
-              >
-                <option value="pop">Pop</option>
-                <option value="rock">Rock</option>
-                <option value="hiphop">Hip Hop</option>
-                <option value="electronic">Electronic</option>
-                <option value="jazz">Jazz</option>
-                <option value="classical">Classical</option>
-                <option value="country">Country</option>
-                <option value="rnb">R&B</option>
-              </select>
-            </div>
-
-            {/* Mood */}
-            <div>
-              <label className="block text-sm font-medium text-cyan-400 mb-2">
-                Mood
-              </label>
-              <select
-                value={mood}
-                onChange={(e) => setMood(e.target.value)}
-                className="w-full px-4 py-2 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:border-cyan-500/60"
-                disabled={isGenerating}
-              >
-                <option value="upbeat">Upbeat</option>
-                <option value="melancholic">Melancholic</option>
-                <option value="energetic">Energetic</option>
-                <option value="calm">Calm</option>
-                <option value="dramatic">Dramatic</option>
-                <option value="romantic">Romantic</option>
-              </select>
-            </div>
-
-            {/* Duration */}
-            <div>
-              <label className="block text-sm font-medium text-cyan-400 mb-2">
-                Duration (seconds)
-              </label>
+              <label className="block text-sm font-medium text-cyan-400 mb-2">Title</label>
               <input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(Math.max(15, Math.min(120, parseInt(e.target.value) || 30)))}
-                min={15}
-                max={120}
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Song title"
                 className="w-full px-4 py-2 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:border-cyan-500/60"
                 disabled={isGenerating}
               />
-              <p className="text-xs text-gray-500 mt-1">15-120 seconds</p>
+            </div>
+
+            {/* Genre (free text) */}
+            <div>
+              <label className="block text-sm font-medium text-cyan-400 mb-2">Genre</label>
+              <input
+                type="text"
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+                placeholder="e.g., Pop, Synthwave, Afrobeat"
+                className="w-full px-4 py-2 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:border-cyan-500/60"
+                disabled={isGenerating}
+              />
             </div>
 
             {/* Output Format */}
             <div>
-              <label className="block text-sm font-medium text-cyan-400 mb-2">
-                Output Format
-              </label>
+              <label className="block text-sm font-medium text-cyan-400 mb-2">Output Format</label>
               <select
                 value={outputFormat}
                 onChange={(e) => setOutputFormat((e.target.value as 'mp3' | 'wav'))}
