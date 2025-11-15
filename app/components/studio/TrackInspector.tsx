@@ -44,7 +44,7 @@ export default function TrackInspector() {
   const { user } = useUser();
   
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    properties: true,
+    autotune: true,
     effects: true,
   });
 
@@ -52,6 +52,8 @@ export default function TrackInspector() {
   const [processingType, setProcessingType] = useState<string>('');
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [showEffectsChainModal, setShowEffectsChainModal] = useState(false);
+  const [correctionStrength, setCorrectionStrength] = useState(0.5);
+  const [pitchShift, setPitchShift] = useState(0);
 
   const selectedTrack = tracks.find(t => t.id === selectedTrackId);
 
@@ -85,6 +87,8 @@ export default function TrackInspector() {
           audioUrl: firstClip.audioUrl,
           trackId: selectedTrack.id,
           trackName: selectedTrack.name,
+          correctionStrength,
+          pitchShift,
         }),
       });
 
@@ -115,7 +119,7 @@ export default function TrackInspector() {
         setProcessingStatus('');
       }, 3000);
     }
-  }, [selectedTrack, addClipToTrack]);
+  }, [selectedTrack, addClipToTrack, correctionStrength, pitchShift]);
 
   // Apply AI audio effects using Stable Audio
   const applyAIEffect = useCallback(async (effectPrompt: string) => {
@@ -255,6 +259,109 @@ export default function TrackInspector() {
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
+        {/* Auto-Tune Section */}
+        <div className="border-b border-cyan-500/20">
+          <button
+            onClick={() => toggleSection('autotune')}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-cyan-500/10 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+              <span className="text-sm font-semibold text-cyan-400">AI Auto-Tune</span>
+            </div>
+            {expandedSections.autotune ? (
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+
+          {expandedSections.autotune && (
+            <div className="px-4 pb-4 space-y-4">
+              {/* Processing indicator */}
+              {isProcessing && processingType === 'autotune' && (
+                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                    <span className="text-sm font-medium text-cyan-400">Processing Audio...</span>
+                  </div>
+                  {processingStatus && (
+                    <p className="text-xs text-gray-400">{processingStatus}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Correction Strength */}
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block flex items-center justify-between">
+                  <span>Correction Strength</span>
+                  <span className="text-cyan-400 font-mono">{Math.round(correctionStrength * 100)}%</span>
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={correctionStrength}
+                  onChange={(e) => setCorrectionStrength(parseFloat(e.target.value))}
+                  disabled={isProcessing}
+                  className="w-full h-2 accent-cyan-500 disabled:opacity-50"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>Natural</span>
+                  <span>Robotic</span>
+                </div>
+              </div>
+
+              {/* Pitch Shift */}
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block flex items-center justify-between">
+                  <span>Pitch Shift (semitones)</span>
+                  <span className="text-cyan-400 font-mono">{pitchShift > 0 ? '+' : ''}{pitchShift}</span>
+                </label>
+                <input
+                  type="range"
+                  min="-12"
+                  max="12"
+                  step="1"
+                  value={pitchShift}
+                  onChange={(e) => setPitchShift(parseInt(e.target.value))}
+                  disabled={isProcessing}
+                  className="w-full h-2 accent-cyan-500 disabled:opacity-50"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>-12</span>
+                  <span>0</span>
+                  <span>+12</span>
+                </div>
+              </div>
+
+              {/* Apply Button */}
+              <button
+                onClick={applyPitchCorrection}
+                disabled={isProcessing || selectedTrack.clips.length === 0}
+                className="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-700 hover:to-cyan-600 text-white font-medium transition-all shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isProcessing && processingType === 'autotune' ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Apply Auto-Tune
+                  </>
+                )}
+              </button>
+
+              <p className="text-xs text-gray-500 text-center">
+                Powered by Replicate AI • Creates new clip
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Track Properties Section - HIDDEN per user request */}
         {/* Properties are now controlled via Timeline track headers */}
 

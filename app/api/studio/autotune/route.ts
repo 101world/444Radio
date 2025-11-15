@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { audioUrl, trackId, trackName } = await request.json();
+    const { audioUrl, trackId, trackName, correctionStrength = 0.5, pitchShift = 0 } = await request.json();
 
     if (!audioUrl) {
       return corsResponse(
@@ -34,12 +34,15 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
+    console.log('🎵 Applying auto-tune:', { correctionStrength, pitchShift });
+
     // Create autotune prediction (use version hash)
     const prediction = await replicate.predictions.create({
       version: "0dee5fee28e8ec4e7e9e04bd1ee70d9ffc49c58ee78f7f26f3ca99d2e3ddd6b7",
       input: {
         audio: audioUrl,
-        correction_strength: 0.5, // Moderate pitch correction
+        correction_strength: correctionStrength,
+        pitch_shift: pitchShift,
       }
     });
 
