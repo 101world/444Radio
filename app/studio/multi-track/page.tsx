@@ -19,7 +19,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, Sparkles, Library, Music, Plus, Save, Download, FileAudio, Folder, HelpCircle, Settings, Volume2, Timer, Hash, Clock, Magnet, Radio, Music2, MousePointer2, Scissors, ZoomIn, Move, Hand } from 'lucide-react';
+import { Upload, Sparkles, Library, Music, Plus, Save, Download, FileAudio, Folder, HelpCircle, Settings, Volume2, Timer, Hash, Clock, Magnet, Radio, Music2, MousePointer2, Scissors, ZoomIn, Move, Hand, X } from 'lucide-react';
 import { StudioProvider, useStudio } from '@/app/contexts/StudioContext';
 import Timeline from '@/app/components/studio/Timeline';
 import TransportBar from '@/app/components/studio/TransportBar';
@@ -34,7 +34,7 @@ import type { ToolType } from '@/app/components/studio/Toolbar';
 import { useUser } from '@clerk/nextjs';
 
 function StudioContent() {
-  const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, selectedTrackId, removeTrack } = useStudio();
+  const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, selectedTrackId, removeTrack, toggleMute } = useStudio();
   const { user } = useUser();
   const [showAISidebar, setShowAISidebar] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -452,48 +452,51 @@ function StudioContent() {
         setPlaying(!isPlaying)
         return
       }
-      // Ctrl+S save
+      // Ctrl+S: save project
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
         handleSaveProject()
         return
       }
-      // Ctrl+O open
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+      // Ctrl+U: Upload/Import files
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
         e.preventDefault()
         handleBrowseFiles()
         return
       }
-      // R restore autosave
-      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'r') {
-        restoreAutosave()
-        return
-      }
-      // Delete: remove selected track
-      if (e.key === 'Delete' && selectedTrackId) {
+      // Delete or Backspace: remove selected track
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTrackId) {
+        e.preventDefault()
         removeTrack(selectedTrackId)
         showNotification('Track removed', 'success')
         return
       }
-      // C: Cursor/Select tool
-      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'c') {
-        setActiveTool('select')
-        showNotification('Cursor tool active', 'info')
-        return
-      }
-      // V: Move tool
+      // V: cursor/select tool
       if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'v') {
-        setActiveTool('move')
-        showNotification('Move tool active', 'info')
+        setActiveTool('select')
+        showNotification('Cursor/Select tool active', 'info')
         return
       }
-      // D: Cut tool (scissors)
-      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'd') {
+      // C: cut/split tool
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'c') {
         setActiveTool('cut')
-        showNotification('Cut tool active', 'info')
+        showNotification('Cut/Split tool active', 'info')
         return
       }
-      // Z: Zoom tool
+      // D: duplicate selected track
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'd') {
+        if (selectedTrackId) {
+          const track = tracks.find(t => t.id === selectedTrackId)
+          if (track) {
+            addTrack(`${track.name} (Copy)`, track.audioUrl || undefined)
+            showNotification(`Duplicated "${track.name}"`, 'success')
+          }
+        } else {
+          showNotification('Select a track to duplicate', 'info')
+        }
+        return
+      }
+      // Z: zoom tool
       if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'z') {
         setActiveTool('zoom')
         showNotification('Zoom tool active', 'info')
@@ -516,23 +519,20 @@ function StudioContent() {
         showNotification(`Track ${nextNum} added`, 'success')
         return
       }
-      // Ctrl+U: Upload/Import files
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
-        e.preventDefault()
-        handleBrowseFiles()
-        return
-      }
-      // E: Toggle effects rack
+      // E: Export modal
       if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'e') {
-        // Toggle effects via AI sidebar toggle (effects are in AI panel)
-        setShowAISidebar(prev => !prev)
-        showNotification(showAISidebar ? 'Effects closed' : 'Effects opened', 'info')
+        setShowExportModal(true)
         return
       }
-      // T: Focus timeline (scroll to top)
+      // T: Enable/disable selected track
       if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 't') {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-        showNotification('Timeline focused', 'info')
+        if (selectedTrackId) {
+          toggleMute(selectedTrackId)
+          const track = tracks.find(t => t.id === selectedTrackId)
+          showNotification(`Track "${track?.name}" ${track?.mute ? 'disabled' : 'enabled'}`, 'info')
+        } else {
+          showNotification('Select a track to enable/disable', 'info')
+        }
         return
       }
       // L: Toggle library
@@ -547,10 +547,15 @@ function StudioContent() {
         setShowShortcuts(prev => !prev)
         return
       }
+      // R: Speed control (placeholder - full implementation needs rate adjustment)
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'r') {
+        showNotification('Speed control: Coming soon', 'info')
+        return
+      }
     }
     window.addEventListener('keydown', onKey, { capture: true })
     return () => window.removeEventListener('keydown', onKey, { capture: true } as any)
-  }, [isPlaying, selectedTrackId, removeTrack, setPlaying, handleSaveProject, restoreAutosave, showNotification, setActiveTool, setShowSongModal, setShowBeatModal, tracks, addTrack, handleBrowseFiles, showAISidebar, setShowAISidebar, showLibrary, setShowLibrary, loadLibraryTracks, setShowShortcuts])
+  }, [isPlaying, selectedTrackId, removeTrack, setPlaying, handleSaveProject, restoreAutosave, showNotification, setActiveTool, setShowSongModal, setShowBeatModal, tracks, addTrack, handleBrowseFiles, showAISidebar, setShowAISidebar, showLibrary, setShowLibrary, loadLibraryTracks, setShowShortcuts, toggleMute, setShowExportModal])
 
   // Drag & drop from desktop
   const handleDragOverRoot = (e: React.DragEvent) => {
@@ -614,14 +619,70 @@ function StudioContent() {
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/50">
             <span className="text-white font-bold">4</span>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">444Radio Studio</h1>
-            <input 
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              className="w-36 px-2 py-0.5 text-xs rounded bg-black/30 border border-cyan-900/30 text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500/60"
-              placeholder="Untitled Project"
-            />
+          <div className="flex items-center gap-2">
+            <div>
+              <h1 className="text-lg font-bold text-white">444Radio Studio</h1>
+              <input 
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                className="w-36 px-2 py-0.5 text-xs rounded bg-black/30 border border-cyan-900/30 text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500/60"
+                placeholder="Untitled Project"
+              />
+            </div>
+            {/* Projects dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowProjectMenu(!showProjectMenu)}
+                className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-cyan-400 border border-cyan-900/50 transition-all"
+                title="Project menu"
+              >
+                <Folder className="w-4 h-4" />
+              </button>
+              {showProjectMenu && (
+                <div className="absolute top-full left-0 mt-2 w-64 bg-gray-900 border border-cyan-500/30 rounded-lg shadow-2xl z-50 max-h-80 overflow-y-auto">
+                  <div className="p-2 border-b border-cyan-900/50">
+                    <div className="text-xs text-cyan-400 font-semibold mb-2">Saved Projects</div>
+                    {savedProjects.length === 0 ? (
+                      <div className="text-xs text-gray-500 py-2 text-center">No saved projects</div>
+                    ) : (
+                      savedProjects.map((proj) => (
+                        <div
+                          key={proj.id}
+                          className="flex items-center justify-between hover:bg-gray-800 rounded px-2 py-1.5 mb-1 group"
+                        >
+                          <button
+                            onClick={() => handleLoadProject(proj.id)}
+                            className="flex-1 text-left"
+                          >
+                            <div className="text-xs text-white font-medium truncate">{proj.name}</div>
+                            <div className="text-[10px] text-gray-400">
+                              {new Date(proj.timestamp).toLocaleDateString()} · {proj.trackCount} tracks
+                            </div>
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteProject(proj.id, e)}
+                            className="p-1 rounded hover:bg-red-500/20 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <button
+                      onClick={() => {
+                        handleSaveProject();
+                        setShowProjectMenu(false);
+                      }}
+                      className="w-full px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium transition-all"
+                    >
+                      Save Current Project
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
