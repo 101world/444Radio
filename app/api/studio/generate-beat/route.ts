@@ -42,7 +42,8 @@ export async function POST(request: Request) {
       input: {
         prompt: `${prompt}, ${bpm} BPM, instrumental beat, high quality`,
         duration: Math.min(duration, 90), // Max 90 seconds for Stable Audio
-        steps: 100,
+        // Stable Audio 2.5 requires steps <= 8
+        steps: 8,
         cfg_scale: 7,
       }
     });
@@ -74,8 +75,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // Extract audio URL from output
-    const audioUrl = result.output;
+    // Extract audio URL from output (handle array/string/object variants)
+    let audioUrl: string | undefined;
+    const out: any = (result as any).output;
+    if (Array.isArray(out)) {
+      // Common: array of URLs or objects
+      const first = out[0];
+      if (typeof first === 'string') audioUrl = first;
+      else if (first && typeof first === 'object') audioUrl = first.audio || first.url || first.src;
+      if (!audioUrl) {
+        // Try find any string in the array
+        const str = out.find((v: any) => typeof v === 'string');
+        if (str) audioUrl = str;
+      }
+    } else if (typeof out === 'string') {
+      audioUrl = out;
+    } else if (out && typeof out === 'object') {
+      audioUrl = out.audio || out.url || out.src;
+    }
+
+    if (!audioUrl) {
+      return corsResponse(
+        NextResponse.json({ 
+          success: false, 
+          error: 'No audio URL returned from model',
+          raw: out
+        }, { status: 502 })
+      );
+    }
 
     console.log('✅ Beat generated successfully:', audioUrl);
 
