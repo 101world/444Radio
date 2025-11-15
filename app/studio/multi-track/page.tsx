@@ -56,6 +56,7 @@ function StudioContent() {
   const [showReleaseModal, setShowReleaseModal] = useState(false);
   const [savedProjects, setSavedProjects] = useState<Array<{id: string; name: string; timestamp: number; trackCount: number}>>([]);
   const [showProjectMenu, setShowProjectMenu] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
 
   // Show notification helper
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -78,6 +79,36 @@ function StudioContent() {
       setSavedProjects(index);
     } catch {}
   }, []); // Run once on mount
+
+  // Fetch credits on mount and listen for updates from children
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const res = await fetch('/api/credits', { method: 'GET' });
+        const data = await res.json().catch(() => null);
+        if (data && typeof data.credits === 'number') {
+          setCredits(data.credits);
+        }
+      } catch {}
+    };
+    fetchCredits();
+
+    const onCreditsUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { credits?: number } | undefined;
+      if (detail && typeof detail.credits === 'number') setCredits(detail.credits);
+      else fetchCredits();
+    };
+    const onNotify = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { message: string; type?: 'success'|'error'|'info' };
+      if (detail?.message) showNotification(detail.message, detail.type || 'info');
+    };
+    window.addEventListener('credits:update', onCreditsUpdate as EventListener);
+    window.addEventListener('studio:notify', onNotify as EventListener);
+    return () => {
+      window.removeEventListener('credits:update', onCreditsUpdate as EventListener);
+      window.removeEventListener('studio:notify', onNotify as EventListener);
+    };
+  }, [showNotification]);
 
   // Autosave (lightweight) project metadata and basic track refs
   useEffect(() => {
@@ -416,7 +447,7 @@ function StudioContent() {
       if (isInput) return
 
       // Space: play/pause
-      if (e.code === 'Space') {
+      if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault()
         setPlaying(!isPlaying)
         return
@@ -517,8 +548,8 @@ function StudioContent() {
         return
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, { capture: true })
+    return () => window.removeEventListener('keydown', onKey, { capture: true } as any)
   }, [isPlaying, selectedTrackId, removeTrack, setPlaying, handleSaveProject, restoreAutosave, showNotification, setActiveTool, setShowSongModal, setShowBeatModal, tracks, addTrack, handleBrowseFiles, showAISidebar, setShowAISidebar, showLibrary, setShowLibrary, loadLibraryTracks, setShowShortcuts])
 
   // Drag & drop from desktop
@@ -594,7 +625,11 @@ function StudioContent() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {/* Credits Badge */}
+            <div className="px-3 py-1 rounded-full bg-black/40 border border-cyan-900/50 text-cyan-300 text-xs font-medium select-none" title="Available credits">
+              {credits === null ? 'Credits: …' : `Credits: ${credits}`}
+            </div>
           {/* Beat Generation */}
           <button
             onClick={() => setShowBeatModal(true)}

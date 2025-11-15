@@ -109,6 +109,10 @@ export default function TrackInspector() {
         setGeneratedAudioUrl(data.audioUrl);
         setGeneratedAudioName(`${selectedTrack.name} (Auto-Tuned)`);
         setRemainingCredits(data.remainingCredits);
+        // Broadcast credits update to studio header
+        if (typeof data.remainingCredits === 'number') {
+          window.dispatchEvent(new CustomEvent('credits:update', { detail: { credits: data.remainingCredits } }));
+        }
       }
 
       setTimeout(() => {
@@ -162,6 +166,9 @@ export default function TrackInspector() {
         setGeneratedAudioUrl(data.audioUrl);
         setGeneratedAudioName(`Effect: ${effectPrompt.slice(0, 30)}...`);
         setRemainingCredits(data.remainingCredits);
+        if (typeof data.remainingCredits === 'number') {
+          window.dispatchEvent(new CustomEvent('credits:update', { detail: { credits: data.remainingCredits } }));
+        }
       }
 
       setTimeout(() => {
@@ -376,6 +383,8 @@ export default function TrackInspector() {
                       const lastClip = selectedTrack.clips[selectedTrack.clips.length - 1];
                       const startTime = lastClip ? lastClip.startTime + lastClip.duration + 1 : 0;
                       addClipToTrack(selectedTrack.id, generatedAudioUrl, generatedAudioName, startTime);
+                      // Notify parent page
+                      window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Generated audio added to track', type: 'success' } }));
                       setGeneratedAudioUrl(null);
                       setGeneratedAudioName('');
                     }

@@ -62,6 +62,14 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
       }
 
       setProgress('Beat generated successfully!');
+      // Inform studio to refresh credits
+      try {
+        const res = await fetch('/api/credits');
+        const c = await res.json();
+        if (typeof c?.credits === 'number') {
+          window.dispatchEvent(new CustomEvent('credits:update', { detail: { credits: c.credits } }));
+        }
+      } catch {}
       onGenerate(data.audioUrl, {
         prompt,
         duration,
