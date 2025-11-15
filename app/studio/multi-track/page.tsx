@@ -19,7 +19,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, Sparkles, Library, Music, Plus, Save, Download, FileAudio, Folder, HelpCircle, Settings, Volume2, Timer, Hash, Clock, Magnet, Radio, Music2, MousePointer2, Scissors, ZoomIn, Move, Hand, X } from 'lucide-react';
+import { Upload, Sparkles, Library, Music, Plus, Save, Download, FileAudio, Folder, HelpCircle, Settings, Volume2, Timer, Hash, Clock, Magnet, Radio, Music2, MousePointer2, Scissors, ZoomIn, Move, Hand, X, Lock, Unlock } from 'lucide-react';
 import { StudioProvider, useStudio } from '@/app/contexts/StudioContext';
 import Timeline from '@/app/components/studio/Timeline';
 import TransportBar from '@/app/components/studio/TransportBar';
@@ -60,6 +60,7 @@ function StudioContent() {
   const [showProjectMenu, setShowProjectMenu] = useState(false);
   const [showHeaderProjectMenu, setShowHeaderProjectMenu] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
+  const [playheadLocked, setPlayheadLocked] = useState(true); // Track playhead lock state
 
   // Show notification helper
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -657,18 +658,18 @@ function StudioContent() {
       )}
 
       {/* Header */}
-      <header className="h-10 bg-gradient-to-r from-black via-cyan-950/20 to-black border-b border-cyan-900/50 flex items-center justify-between px-3 shrink-0">
+      <header className="h-14 bg-gradient-to-r from-black via-cyan-950/20 to-black border-b border-cyan-900/50 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/50">
-            <span className="text-white font-bold text-sm">4</span>
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/50">
+            <span className="text-white font-bold">4</span>
           </div>
           <div className="flex items-center gap-2">
             <div>
-              <h1 className="text-base font-bold text-white">444Radio Studio</h1>
+              <h1 className="text-lg font-bold text-white">444Radio Studio</h1>
               <input 
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                className="w-32 px-2 py-0.5 text-xs rounded bg-black/30 border border-cyan-900/30 text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500/60"
+                className="w-36 px-2 py-0.5 text-xs rounded bg-black/30 border border-cyan-900/30 text-cyan-100 placeholder:text-cyan-400/40 focus:outline-none focus:border-cyan-500/60"
                 placeholder="Untitled Project"
               />
             </div>
@@ -757,7 +758,7 @@ function StudioContent() {
       </header>
 
       {/* Unified Toolbar with ALL controls */}
-      <div className="h-9 bg-black border-b border-cyan-900/50 flex items-center px-3 gap-1.5 shrink-0">
+      <div className="h-12 bg-black border-b border-cyan-900/50 flex items-center px-4 gap-2 shrink-0">
         <span className="text-xs text-cyan-500 font-medium">Tools:</span>
         
         {/* Selection Tools */}
@@ -830,6 +831,14 @@ function StudioContent() {
           title="Snap to grid"
         >
           <Magnet className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          onClick={() => { setPlayheadLocked(!playheadLocked); showNotification(`Playhead ${!playheadLocked ? 'Locked' : 'Unlocked'}`, 'info') }}
+          className={`p-1.5 rounded transition-all ${playheadLocked ? 'bg-cyan-700 text-white shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-400 hover:text-white border border-cyan-900/30'}`}
+          title={`${playheadLocked ? 'Unlock' : 'Lock'} playhead tracking`}
+        >
+          {playheadLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
         </button>
 
         <button
@@ -1006,7 +1015,7 @@ function StudioContent() {
           <TimelineRuler bpm={bpm} timeSig={timeSig} snapEnabled={snapEnabled} />
 
           {/* Timeline - Always show, with empty tracks */}
-          <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} />
+          <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} playheadLocked={playheadLocked} />
           
           {/* Add Track Button - Always visible below tracks */}
           <div className="px-4 py-3 border-t border-cyan-500/20 bg-black/40">

@@ -310,17 +310,18 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
   );
 }
 
-export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan' }) {
+export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean }) {
   const { tracks, currentTime, isPlaying, zoom } = useStudio();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Calculate minimum width to show entire timeline up to current playhead + buffer
+  // Fixed 5-minute timeline view (300 seconds)
+  const TIMELINE_DURATION = 300; // 5 minutes
   const pixelsPerSecond = 50 * zoom;
-  const timelineWidth = Math.max(1000, (currentTime + 60) * pixelsPerSecond); // +60s buffer
+  const timelineWidth = TIMELINE_DURATION * pixelsPerSecond;
 
-  // Auto-scroll to keep playhead centered during playback
+  // Auto-scroll to keep playhead centered during playback ONLY if locked
   useEffect(() => {
-    if (!isPlaying || !containerRef.current) return;
+    if (!isPlaying || !containerRef.current || !playheadLocked) return;
 
     const container = containerRef.current;
     const playheadPosition = currentTime * pixelsPerSecond;
@@ -335,11 +336,11 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
       left: Math.max(0, targetScroll),
       behavior: 'smooth'
     });
-  }, [currentTime, isPlaying, pixelsPerSecond]);
+  }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked]);
 
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
-      {/* Inner container with dynamic width */}
+      {/* Inner container with fixed 5-minute width */}
       <div style={{ minWidth: `${timelineWidth}px` }} className="relative">
         {/* Playhead */}
         {currentTime > 0 && (
