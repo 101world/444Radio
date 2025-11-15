@@ -55,8 +55,11 @@ export async function POST(request: Request) {
 
     const token = process.env.REPLICATE_API_TOKEN
     if (!token) {
+      console.error('❌ REPLICATE_API_TOKEN is not set in environment variables')
       return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_TOKEN' }, { status: 500 }))
     }
+    
+    console.log('✅ Replicate API token found, length:', token.length)
 
     const body = await request.json().catch(() => null)
     const audioUrl = body?.audioUrl as string | undefined
@@ -110,6 +113,7 @@ export async function POST(request: Request) {
     let lastError: any = null
 
     try {
+      console.log('🎵 Starting stem separation:', { audioUrl, outputFormat })
       // Using cjwbw/demucs model - Facebook's Demucs v4 (state-of-the-art stem separation)
       // https://replicate.com/cjwbw/demucs
       prediction = await replicate.predictions.create({
@@ -122,9 +126,16 @@ export async function POST(request: Request) {
           stems: "all"
         }
       })
+      console.log('✅ Prediction created:', prediction?.id)
     } catch (e: any) {
       lastError = e
-      console.error('Demucs stem separation error:', e)
+      console.error('❌ Demucs stem separation error:', {
+        message: e?.message,
+        status: e?.response?.status,
+        statusText: e?.response?.statusText,
+        data: e?.response?.data,
+        stack: e?.stack
+      })
     }
 
     if (!prediction) {

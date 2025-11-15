@@ -267,11 +267,11 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
                 <TrackLeft trackId={track.id} />
               </div>
               
-              {/* Track Clips Area (Right - scrollable) */}
+              {/* Track Clips Area (Right - only first track scrollable for unified scrollbar) */}
               <div 
                 ref={index === 0 ? clipsScrollRef : undefined}
                 onScroll={index === 0 ? handleScroll : undefined}
-                className="flex-1 overflow-x-auto relative"
+                className={index === 0 ? "flex-1 overflow-x-auto relative" : "flex-1 overflow-hidden relative"}
               >
                 <div style={{ minWidth: `${timelineWidth}px` }} className="relative h-full">
                   {/* Playhead - only show on first track, but extends through all */}

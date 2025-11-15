@@ -4,7 +4,7 @@
 
  'use client'
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Music } from 'lucide-react';
 import AudioClip from './AudioClip';
 import { useStudio } from '@/app/contexts/StudioContext';
@@ -26,6 +26,21 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
 
   const track = tracks.find(t => t.id === trackId);
   const [isDragOver, setIsDragOver] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync scroll position from timeline scroll event
+  useEffect(() => {
+    const handleTimelineScroll = (e: any) => {
+      if (containerRef.current) {
+        containerRef.current.scrollLeft = e.detail.left;
+      }
+    };
+
+    window.addEventListener('studio:timeline-scroll', handleTimelineScroll as EventListener);
+    return () => {
+      window.removeEventListener('studio:timeline-scroll', handleTimelineScroll as EventListener);
+    };
+  }, []);
 
   if (!track) return null;
 
@@ -94,7 +109,8 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
 
   return (
     <div
-      className={`relative bg-gradient-to-r from-gray-950/30 to-black/50 flex-1 overflow-x-auto overflow-y-hidden border-b border-teal-900/20 timeline-scrollbar-hidden ${isDragOver ? 'ring-2 ring-teal-500/50 bg-teal-500/5 backdrop-blur-sm' : ''}`}
+      ref={containerRef}
+      className={`relative bg-gradient-to-r from-gray-950/30 to-black/50 flex-1 overflow-x-hidden overflow-y-hidden border-b border-teal-900/20 ${isDragOver ? 'ring-2 ring-teal-500/50 bg-teal-500/5 backdrop-blur-sm' : ''}`}
       style={{ height: `${trackHeight}px` }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

@@ -512,12 +512,13 @@ export function useMultiTrack(): UseMultiTrackReturn {
       prev.map((t) => {
         if (t.id === id) {
           const newMute = !t.mute;
-          // Update audio node
+          // Update audio node with smooth ramp to prevent clicks
           if (t.gainNode && audioContextRef.current) {
-            t.gainNode.gain.setValueAtTime(
-              newMute ? 0 : t.volume,
-              audioContextRef.current.currentTime
-            );
+            const now = audioContextRef.current.currentTime;
+            const targetGain = newMute ? 0 : t.volume;
+            // 20ms smooth ramp for instant feel without clicks
+            t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
+            t.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.02);
           }
           console.log(`🔇 Track ${id} mute:`, newMute);
           return { ...t, mute: newMute };
@@ -535,29 +536,34 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
       const newSolo = !track.solo;
       const anySolo = newSolo || prev.some((t) => t.id !== id && t.solo);
+      const now = audioContextRef.current?.currentTime || 0;
 
       return prev.map((t) => {
         if (t.id === id) {
           // Toggle this track's solo
           console.log(`🎧 Track ${id} solo:`, newSolo);
+          // Update gain immediately for the toggled track
+          if (t.gainNode && audioContextRef.current) {
+            const targetGain = newSolo ? t.volume : (anySolo ? 0 : t.volume);
+            t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
+            t.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.02);
+          }
           return { ...t, solo: newSolo };
         } else if (anySolo) {
-          // Mute other tracks when any track is soloed
+          // Mute other non-solo tracks when any track is soloed
           if (t.gainNode && audioContextRef.current) {
             const shouldMute = !t.solo;
-            t.gainNode.gain.setValueAtTime(
-              shouldMute ? 0 : t.volume,
-              audioContextRef.current.currentTime
-            );
+            const targetGain = shouldMute ? 0 : t.volume;
+            t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
+            t.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.02);
           }
           return t;
         } else {
           // Un-mute all tracks when no track is soloed
           if (t.gainNode && audioContextRef.current) {
-            t.gainNode.gain.setValueAtTime(
-              t.mute ? 0 : t.volume,
-              audioContextRef.current.currentTime
-            );
+            const targetGain = t.mute ? 0 : t.volume;
+            t.gainNode.gain.setValueAtTime(t.gainNode.gain.value, now);
+            t.gainNode.gain.linearRampToValueAtTime(targetGain, now + 0.02);
           }
           return t;
         }

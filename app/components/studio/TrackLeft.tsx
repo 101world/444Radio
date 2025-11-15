@@ -8,11 +8,12 @@ import { Volume2, GripVertical, Edit2, Check, X, Download } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
 export default function TrackLeft({ trackId }: { trackId: string }) {
-  const { tracks, setTrackVolume, setTrackPan, toggleMute, toggleSolo, removeTrack, setSelectedTrack, selectedTrackId, trackHeight, setTrackHeight, renameTrack } = useStudio();
+  const { tracks, setTrackVolume, setTrackPan, toggleMute, toggleSolo, removeTrack, setSelectedTrack, selectedTrackId, trackHeight, setTrackHeight, renameTrack, reorderTrack } = useStudio();
   const track = tracks.find(t => t.id === trackId);
   const [isResizing, setIsResizing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const startYRef = useRef(0);
   const startHeightRef = useRef(0);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -111,16 +112,49 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
     }
   };
 
+  // Track drag-and-drop reordering
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', trackId);
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const draggedTrackId = e.dataTransfer.getData('text/plain');
+    if (draggedTrackId && draggedTrackId !== trackId) {
+      const draggedIndex = tracks.findIndex(t => t.id === draggedTrackId);
+      const targetIndex = tracks.findIndex(t => t.id === trackId);
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        reorderTrack(draggedTrackId, targetIndex);
+      }
+    }
+  };
+
   return (
     <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       role="button"
       aria-pressed={isSelected}
       tabIndex={0}
-      className={`w-56 shrink-0 bg-gradient-to-br from-gray-950 via-black to-gray-900 border-r backdrop-blur-md p-4 flex flex-col gap-3 justify-center transition-all duration-200 relative group ${
+      className={`w-56 shrink-0 bg-gradient-to-br from-gray-950 via-black to-gray-900 border-r backdrop-blur-md p-4 flex flex-col gap-3 justify-center transition-all duration-200 relative group cursor-move ${
         isSelected 
           ? 'border-teal-400/60 ring-2 ring-teal-500/40 shadow-2xl shadow-teal-500/20' 
           : 'border-teal-900/20 hover:border-teal-700/40 hover:brightness-110 hover:shadow-lg hover:shadow-black/30'
-      }`}
+      } ${isDragging ? 'opacity-50' : ''}`}
       style={{ height: `${trackHeight}px` }}
       onClick={() => setSelectedTrack(trackId)}
       onKeyDown={(e) => { if (e.key === 'Enter') setSelectedTrack(trackId); }}
