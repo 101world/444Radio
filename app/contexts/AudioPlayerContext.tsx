@@ -110,12 +110,17 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const playTrack = useCallback(async (track: Track) => {
-    if (!audioRef.current) {
-      console.error('Audio ref not initialized')
-      return
+    if (!track || !track.audioUrl) {
+      console.error('Invalid track - missing audioUrl:', track);
+      return;
     }
 
-    console.log('Playing track:', track.title, track.audioUrl)
+    if (!audioRef.current) {
+      console.error('Audio ref not initialized');
+      return;
+    }
+
+    console.log('Playing track:', track.title, track.audioUrl);
 
     // Reset play tracking
     playTimeRef.current = 0
@@ -367,10 +372,18 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   const setPlaylistAndPlay = async (tracks: Track[], startIndex: number = 0) => {
-    setPlaylist(tracks)
-    setCurrentIndex(startIndex)
-    if (tracks.length > 0) {
-      await playTrack(tracks[startIndex])
+    // Filter out invalid tracks
+    const validTracks = tracks.filter(t => t && t.audioUrl);
+    
+    if (validTracks.length === 0) {
+      console.warn('[Playlist] No valid tracks provided');
+      return;
+    }
+    
+    setPlaylist(validTracks);
+    setCurrentIndex(startIndex);
+    if (validTracks.length > 0 && validTracks[startIndex]) {
+      await playTrack(validTracks[startIndex]);
     }
   }
 
