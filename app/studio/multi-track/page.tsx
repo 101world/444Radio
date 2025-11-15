@@ -99,6 +99,9 @@ function StudioContent() {
       const stored = localStorage.getItem('studio_layout');
       if (stored === '1080') apply1080Preset();
     } catch {}
+    const onLibraryHide = () => setShowLibrary(false);
+    window.addEventListener('studio:library-hide', onLibraryHide as EventListener);
+    return () => window.removeEventListener('studio:library-hide', onLibraryHide as EventListener);
   }, []); // Run once on mount
 
   // 1920x1080 layout preset
@@ -418,9 +421,14 @@ function StudioContent() {
         return;
       }
 
-      addTrack(trackName, audioUrl);
+      const newId = addTrack(trackName, audioUrl);
       showNotification(`Added "${trackName}" to studio`, 'success');
       console.log(`✅ Added library track: ${trackName}`);
+      // Auto-hide library when added
+      setShowLibrary(false);
+      try {
+        window.dispatchEvent(new CustomEvent('studio:library-hide'));
+      } catch {}
     } catch (error) {
       console.error('Failed to add library track:', error);
       showNotification('Failed to add track from library', 'error');
@@ -1268,6 +1276,11 @@ function StudioContent() {
                             type: 'library-track',
                             trackData: track
                           }));
+                          try {
+                            const img = new Image();
+                            img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>';
+                            e.dataTransfer.setDragImage(img, 0, 0);
+                          } catch {}
                         }}
                         onClick={() => handleAddFromLibrary(track)}
                         className="w-full p-3 rounded-lg bg-cyan-900/20 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-500/50 text-left transition-all group cursor-grab active:cursor-grabbing"

@@ -48,12 +48,14 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
 
   const handleDragOver = (e: React.DragEvent) => { 
     e.preventDefault(); 
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
     setIsDragOver(true); 
   };
   
   const handleDragLeave = (e: React.DragEvent) => { 
     e.preventDefault(); 
+    e.stopPropagation();
     setIsDragOver(false); 
   };
   
@@ -115,12 +117,13 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
         const parsed = JSON.parse(jsonData);
         if (parsed?.type === 'library-track' && parsed?.trackData) {
           const lib = parsed.trackData;
-          const newTrackId = addTrack(lib.title || 'Library Track', lib.audio_url || lib.audioUrl);
+            const newTrackId = addTrack(lib.title || 'Library Track', lib.audio_url || lib.audioUrl);
           // Reorder track so it's inserted just below the current track
           const targetIndex = tracks.findIndex(t => t.id === trackId);
           if (newTrackId && targetIndex !== -1) {
             // move the new track to this track's index
             reorderTrack(newTrackId, targetIndex);
+            try { window.dispatchEvent(new CustomEvent('studio:library-hide')) } catch {}
           }
         }
       } catch (err) {

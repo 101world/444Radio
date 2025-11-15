@@ -116,6 +116,12 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', trackId);
+    // Friendly drag image to avoid default ghost image causing flicker
+    try {
+      const img = new Image();
+      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>';
+      e.dataTransfer.setDragImage(img, 0, 0);
+    } catch {}
     setIsDragging(true);
   };
 
@@ -125,6 +131,7 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
   };
 

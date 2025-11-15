@@ -152,6 +152,11 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: Track
     if (activeTool !== 'pan') return;
     e.dataTransfer.setData('text/track-id', trackId);
     e.dataTransfer.effectAllowed = 'move';
+    try {
+      const img = new Image();
+      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>';
+      e.dataTransfer.setDragImage(img, 0, 0);
+    } catch {}
   };
 
   const handleRowDragOver = (e: React.DragEvent) => {
@@ -197,7 +202,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: Track
 }
 
 export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true, onSplitStems, clipsContainerRef }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean; onSplitStems?: (clipId: string, audioUrl: string) => void; clipsContainerRef?: React.RefObject<HTMLDivElement | null> }) {
-  const { tracks, currentTime, isPlaying, zoom, leftGutterWidth, setLeftGutterWidth, setZoom } = useStudio();
+  const { tracks, currentTime, isPlaying, zoom, leftGutterWidth, setLeftGutterWidth, setZoom, trackHeight, setTrackHeight } = useStudio();
   const internalClipsRef = useRef<HTMLDivElement | null>(null);
   const clipsScrollRef = clipsContainerRef ?? internalClipsRef;
   const rootScrollRef = useRef<HTMLDivElement>(null);
@@ -234,18 +239,26 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
       setZoom(Math.max(0.1, Math.min(10, zoom * factor)));
       return;
     }
-    // Ctrl + wheel -> vertical scroll of the whole timeline
+    // Shift + wheel -> resize tracks vertically (change track height)
+    if (e.shiftKey) {
+      e.preventDefault();
+      // Delta positive -> wheel down -> decrease height; wheel up -> increase
+      const deltaDirection = delta > 0 ? -1 : 1;
+      const step = 8; // pixels per scroll increment
+      const newHeight = Math.max(80, Math.min(400, (typeof trackHeight === 'number' ? trackHeight : 144) + deltaDirection * step));
+      setTrackHeight(newHeight);
+      return;
+    }
+    // Ctrl + wheel preserved for compatibility but no-op (prevent page resize/behavior)
     if (e.ctrlKey) {
       e.preventDefault();
-      const root = rootScrollRef.current || document.scrollingElement || document.body;
-      if (root) {
-        root.scrollTop += delta;
-      }
       return;
     }
     // Default: map wheel to horizontal scroll
     e.preventDefault();
-    clipsScrollRef.current.scrollLeft += delta;
+    if (clipsScrollRef.current) {
+      clipsScrollRef.current.scrollLeft += delta;
+    }
   };
 
   // Observe left column width and update studio context
