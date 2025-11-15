@@ -525,15 +525,29 @@ export function useMultiTrack(): UseMultiTrackReturn {
         return { clip, offset };
       }
     }
+    // If no clip at current time, try first clip if time is before it (fallback for time 0)
+    if (t === 0 && track.clips.length > 0) {
+      const first = track.clips.sort((a, b) => a.startTime - b.startTime)[0];
+      if (first.startTime === 0) {
+        return { clip: first, offset: first.offset };
+      }
+    }
     return null;
   };
 
   const startTrackAtTime = useCallback(async (track: Track, projectTime: number) => {
     if (!audioContextRef.current) return;
-    if (!track.gainNode) return;
+    if (!track.gainNode) {
+      console.warn('⚠️ Track has no gain node:', track.name);
+      return;
+    }
     const active = findActiveClip(track, projectTime);
-    if (!active) return; // nothing to play at this time on this track
+    if (!active) {
+      console.log(`⏭️ Track "${track.name}" has no clip at time ${projectTime.toFixed(2)}s`);
+      return; // nothing to play at this time on this track
+    }
     const { clip, offset } = active;
+    console.log(`🎬 Starting clip "${clip.name}" on track "${track.name}" at offset ${offset.toFixed(2)}s`);
     const buffer = await loadBuffer(clip.audioUrl);
     const src = audioContextRef.current.createBufferSource();
     src.buffer = buffer;
@@ -543,11 +557,23 @@ export function useMultiTrack(): UseMultiTrackReturn {
       src.loopStart = clip.offset;
       src.loopEnd = clip.offset + clip.duration;
     }
+    
+    // Apply current mute/solo state to gain before connecting
+    const anySolo = tracks.some(t => t.solo);
+    const shouldMute = track.mute || (anySolo && !track.solo);
+    if (track.gainNode && audioContextRef.current) {
+      track.gainNode.gain.setValueAtTime(
+        shouldMute ? 0 : track.volume,
+        audioContextRef.current.currentTime
+      );
+    }
+    
     src.connect(track.gainNode);
     try {
       src.start(0, Math.max(0, offset));
+      console.log(`✅ Playback started for "${clip.name}"`);
     } catch (e) {
-      console.warn('Source start error:', e);
+      console.error('❌ Source start error:', e);
     }
     src.onended = () => {
       // If looping, onended will not fire until stop; if not looping, try advance to next clip
@@ -619,6 +645,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
         }
         
         console.log(`🎵 Starting playback with ${tracksWithClips.length} tracks at time ${currentTime.toFixed(2)}s`);
+        console.log('📋 Tracks:', tracksWithClips.map(t => `${t.name} (${t.clips.length} clips)`).join(', '));
         
         // Always stop sources before starting
         stopAllSources();
@@ -629,14 +656,17 @@ export function useMultiTrack(): UseMultiTrackReturn {
         await new Promise(resolve => setTimeout(resolve, 10));
         
         // Start each track at currentTime
+        let successCount = 0;
         const startPromises = tracksWithClips.map(async (t) => {
           try {
             await startTrackAtTime(t, currentTime);
+            successCount++;
           } catch (err) {
-            console.error(`Failed to start track ${t.name}:`, err);
+            console.error(`❌ Failed to start track ${t.name}:`, err);
           }
         });
         await Promise.all(startPromises);
+        console.log(`🎶 Started ${successCount}/${tracksWithClips.length} tracks successfully`);
         
         startTicker();
         setIsPlaying(true);
