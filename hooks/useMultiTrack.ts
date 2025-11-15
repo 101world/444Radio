@@ -55,6 +55,7 @@ export interface UseMultiTrackReturn {
   addEmptyTrack: () => string;
   addClipToTrack: (trackId: string, audioUrl: string, name: string, startTime?: number) => void;
   moveClip: (clipId: string, newStartTime: number) => void;
+  moveClipToTrack: (clipId: string, targetTrackId: string, newStartTime?: number) => void;
   resizeClip: (clipId: string, newDuration: number, newOffset: number, newStartTime?: number) => void;
   splitClip: (clipId: string, splitTime: number) => void;
   removeClip: (clipId: string) => void;
@@ -82,15 +83,15 @@ export interface UseMultiTrackReturn {
 }
 
 const TRACK_COLORS = [
-  '#8b5cf6', // purple
-  '#ec4899', // pink
   '#22d3ee', // cyan
+  '#ec4899', // pink
+  '#67e8f9', // light cyan
   '#f59e0b', // amber
   '#10b981', // emerald
   '#ef4444', // red
-  '#a78bfa', // light purple
+  '#06b6d4', // teal
   '#fb7185', // light pink
-  '#06b6d4', // light cyan
+  '#0ea5e9', // blue
   '#fbbf24', // light amber
 ];
 
@@ -231,6 +232,46 @@ export function useMultiTrack(): UseMultiTrackReturn {
         ),
       }))
     );
+  }, []);
+
+  // Move clip to different track
+  const moveClipToTrack = useCallback((clipId: string, targetTrackId: string, newStartTime?: number) => {
+    setTracks((prev) => {
+      // Find the clip
+      let clipToMove: AudioClip | null = null;
+      let sourceTrackId: string | null = null;
+
+      for (const track of prev) {
+        const clip = track.clips.find((c) => c.id === clipId);
+        if (clip) {
+          clipToMove = clip;
+          sourceTrackId = track.id;
+          break;
+        }
+      }
+
+      if (!clipToMove || !sourceTrackId || sourceTrackId === targetTrackId) {
+        return prev; // No change if clip not found or same track
+      }
+
+      // Remove from source track and add to target track
+      return prev.map((t) => {
+        if (t.id === sourceTrackId) {
+          // Remove clip from source
+          return { ...t, clips: t.clips.filter((c) => c.id !== clipId) };
+        } else if (t.id === targetTrackId) {
+          // Add clip to target with new trackId
+          const movedClip = {
+            ...clipToMove,
+            trackId: targetTrackId,
+            startTime: newStartTime !== undefined ? newStartTime : clipToMove.startTime,
+          };
+          return { ...t, clips: [...t.clips, movedClip] };
+        }
+        return t;
+      });
+    });
+    console.log(`🔄 Clip moved to different track: ${clipId} → ${targetTrackId}`);
   }, []);
 
   // Remove clip from track
@@ -631,6 +672,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
     addEmptyTrack,
     addClipToTrack,
     moveClip,
+    moveClipToTrack,
     resizeClip,
     splitClip,
     removeClip,

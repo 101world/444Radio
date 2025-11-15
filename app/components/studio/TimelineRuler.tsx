@@ -108,7 +108,7 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
   };
 
   return (
-    <div className="h-12 bg-black backdrop-blur-sm border-b border-teal-900/50 flex items-stretch">
+    <div className="h-16 bg-black backdrop-blur-sm border-b border-teal-900/50 flex items-stretch">
       {/* Zoom controls */}
       <div className="flex items-center gap-1 px-3 border-r border-teal-900/50">
         <button

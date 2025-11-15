@@ -160,6 +160,29 @@ export async function POST(request: Request) {
 
     console.log('✅ Song generated successfully:', audioUrl);
 
+    // Save to database (combined_media table)
+    try {
+      const { error: dbError } = await supabase
+        .from('combined_media')
+        .insert([{
+          user_id: userId,
+          title: finalTitle || `Song - ${prompt.substring(0, 50)}`,
+          content_type: 'audio',
+          audio_url: audioUrl,
+          is_public: true,
+          created_at: new Date().toISOString(),
+        }]);
+
+      if (dbError) {
+        console.error('⚠️ Failed to save song to database:', dbError);
+        // Don't fail the request, just log the error
+      } else {
+        console.log('💾 Song saved to library');
+      }
+    } catch (dbErr) {
+      console.error('⚠️ Database save error:', dbErr);
+    }
+
     // On success, increment total_generated
     const newTotalGenerated = (userData?.total_generated ?? 0) + 1;
     await supabase

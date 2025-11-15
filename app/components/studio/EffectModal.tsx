@@ -69,7 +69,7 @@ export default function EffectModal({
             <label className="flex items-center justify-between text-sm font-medium text-gray-300">
               <span>{param.label}</span>
               {param.type !== 'checkbox' && (
-                <span className="text-purple-400 font-mono">
+                <span className="text-cyan-400 font-mono">
                   {typeof values[param.id] === 'number' 
                     ? (values[param.id] as number).toFixed(param.step && param.step < 1 ? 2 : 0)
                     : values[param.id]
@@ -87,7 +87,7 @@ export default function EffectModal({
                 step={param.step || 1}
                 value={values[param.id] as number}
                 onChange={(e) => handleChange(param.id, parseFloat(e.target.value))}
-                className="w-full accent-purple-500"
+                className="w-full accent-cyan-500"
               />
             )}
 
@@ -99,7 +99,7 @@ export default function EffectModal({
                 step={param.step || 1}
                 value={values[param.id] as number}
                 onChange={(e) => handleChange(param.id, parseFloat(e.target.value))}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
             )}
 
@@ -107,7 +107,7 @@ export default function EffectModal({
               <select
                 value={values[param.id] as string}
                 onChange={(e) => handleChange(param.id, e.target.value)}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
                 {param.options?.map(opt => (
                   <option key={opt.value} value={opt.value} className="bg-gray-900">
@@ -123,7 +123,7 @@ export default function EffectModal({
                   type="checkbox"
                   checked={values[param.id] as boolean}
                   onChange={(e) => handleChange(param.id, e.target.checked)}
-                  className="w-5 h-5 accent-purple-500 rounded"
+                  className="w-5 h-5 accent-cyan-500 rounded"
                 />
                 <span className="text-gray-400 text-sm">Enable</span>
               </label>

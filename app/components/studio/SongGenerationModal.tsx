@@ -229,7 +229,7 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
               <button
                 onClick={handleGenerateAtomLyrics}
                 disabled={isGeneratingLyrics || isGenerating || !prompt.trim()}
-                className="px-3 py-1 rounded bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white text-xs font-medium transition-all shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className="px-3 py-1 rounded bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-700 hover:to-cyan-600 text-white text-xs font-medium transition-all shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 title="Generate lyrics with Atom AI"
               >
                 {isGeneratingLyrics ? (

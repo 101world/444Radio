@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
+import { createClient } from '@supabase/supabase-js';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -105,6 +106,34 @@ export async function POST(request: Request) {
     }
 
     console.log('✅ Beat generated successfully:', audioUrl);
+
+    // Save to database (combined_media table)
+    try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const { error: dbError } = await supabase
+        .from('combined_media')
+        .insert([{
+          user_id: userId,
+          title: `Beat - ${prompt.substring(0, 50)}`,
+          content_type: 'audio',
+          audio_url: audioUrl,
+          is_public: true,
+          created_at: new Date().toISOString(),
+        }]);
+
+      if (dbError) {
+        console.error('⚠️ Failed to save beat to database:', dbError);
+        // Don't fail the request, just log the error
+      } else {
+        console.log('💾 Beat saved to library');
+      }
+    } catch (dbErr) {
+      console.error('⚠️ Database save error:', dbErr);
+    }
 
     return corsResponse(
       NextResponse.json({

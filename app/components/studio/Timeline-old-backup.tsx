@@ -41,8 +41,8 @@ function TrackRow({ trackId }: TrackRowProps) {
   const wavesurfer = useWaveSurfer({
     container: `#waveform-${trackId}`,
     height: 80,
-    waveColor: track?.color || '#8b5cf6',
-    progressColor: track?.color ? `${track.color}88` : '#8b5cf688',
+    waveColor: track?.color || '#22d3ee',
+    progressColor: track?.color ? `${track.color}88` : '#22d3ee88',
     cursorColor: '#22d3ee',
   });
 
@@ -214,8 +214,8 @@ function TrackRow({ trackId }: TrackRowProps) {
     <div 
       className={`bg-gray-900/50 backdrop-blur-sm rounded-lg border p-3 mb-2 relative cursor-pointer transition-all ${
         isSelected 
-          ? 'border-purple-500 ring-2 ring-purple-500/50' 
-          : 'border-purple-500/20 hover:border-purple-500/40'
+          ? 'border-cyan-500 ring-2 ring-cyan-500/50' 
+          : 'border-cyan-500/20 hover:border-cyan-500/40'
       }`}
       onContextMenu={handleContextMenu}
       onClick={() => setSelectedTrack(trackId)}
@@ -224,7 +224,7 @@ function TrackRow({ trackId }: TrackRowProps) {
       {isProcessing && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
           <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+            <div className="animate-spin w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full mx-auto mb-2"></div>
             <p className="text-white text-sm">Processing effect...</p>
           </div>
         </div>
@@ -255,7 +255,7 @@ function TrackRow({ trackId }: TrackRowProps) {
             {track.mute ? (
               <VolumeX className="w-4 h-4 text-gray-400" />
             ) : (
-              <Volume2 className="w-4 h-4 text-purple-400" />
+              <Volume2 className="w-4 h-4 text-cyan-400" />
             )}
             <input
               type="range"
@@ -264,7 +264,7 @@ function TrackRow({ trackId }: TrackRowProps) {
               step="0.01"
               value={track.volume}
               onChange={(e) => setTrackVolume(trackId, parseFloat(e.target.value))}
-              className="w-16 h-1 accent-purple-500"
+              className="w-16 h-1 accent-cyan-500"
               title="Volume"
             />
             <span className="text-xs text-gray-400 w-8">
@@ -374,7 +374,7 @@ export default function Timeline() {
   return (
     <div 
       className={`flex-1 overflow-auto bg-black/20 backdrop-blur-xl p-4 relative ${
-        isDragOver ? 'ring-4 ring-purple-500/50' : ''
+        isDragOver ? 'ring-4 ring-cyan-500/50' : ''
       }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -382,9 +382,9 @@ export default function Timeline() {
     >
       {/* Drag overlay */}
       {isDragOver && (
-        <div className="absolute inset-0 bg-purple-500/20 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none">
+        <div className="absolute inset-0 bg-cyan-500/20 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none">
           <div className="text-center">
-            <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center animate-pulse">
+            <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-r from-cyan-500 to-pink-500 flex items-center justify-center animate-pulse">
               <Upload className="w-12 h-12 text-white" />
             </div>
             <h3 className="text-2xl font-bold text-white mb-2">Drop audio files here</h3>

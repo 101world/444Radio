@@ -412,7 +412,7 @@ export default function TrackInspector() {
                         <button
                           className={`px-2 py-1 text-xs rounded transition-colors ${
                             effect.enabled
-                              ? 'bg-purple-500/20 text-purple-400'
+                              ? 'bg-cyan-500/20 text-cyan-400'
                               : 'bg-gray-700 text-gray-400'
                           }`}
                         >

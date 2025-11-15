@@ -29,6 +29,7 @@ import TrackInspector from '@/app/components/studio/TrackInspector';
 import BeatGenerationModal from '@/app/components/studio/BeatGenerationModal';
 import SongGenerationModal from '@/app/components/studio/SongGenerationModal';
 import ExportModal from '@/app/components/studio/ExportModal';
+import ReleaseModal from '@/app/components/studio/ReleaseModal';
 import type { ToolType } from '@/app/components/studio/Toolbar';
 import { useUser } from '@clerk/nextjs';
 
@@ -52,6 +53,9 @@ function StudioContent() {
   const [showSongModal, setShowSongModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showReleaseModal, setShowReleaseModal] = useState(false);
+  const [savedProjects, setSavedProjects] = useState<Array<{id: string; name: string; timestamp: number; trackCount: number}>>([]);
+  const [showProjectMenu, setShowProjectMenu] = useState(false);
 
   // Show notification helper
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -59,14 +63,20 @@ function StudioContent() {
     setTimeout(() => setNotification(null), 3000);
   }, []);
 
-  // Add 3 empty tracks on mount (AudioMass style)
+  // Add 3 empty tracks on mount with sequential naming
   useEffect(() => {
     if (tracks.length === 0) {
-      addEmptyTrack();
-      addEmptyTrack();
-      addEmptyTrack();
-      console.log('✅ Studio initialized with 3 empty tracks');
+      addTrack('Track 1');
+      addTrack('Track 2');
+      addTrack('Track 3');
+      console.log('✅ Studio initialized with 3 tracks: Track 1, Track 2, Track 3');
     }
+    
+    // Load saved projects index
+    try {
+      const index = JSON.parse(localStorage.getItem('studio_projects_index') || '[]');
+      setSavedProjects(index);
+    } catch {}
   }, []); // Run once on mount
 
   // Autosave (lightweight) project metadata and basic track refs
@@ -255,15 +265,147 @@ function StudioContent() {
     fileInputRef.current?.click();
   };
 
-  // Export/Save project (placeholder for future implementation)
+  // Save current project to localStorage
   const handleSaveProject = useCallback(() => {
-    showNotification('Save project feature coming soon', 'info');
-    // TODO: Implement project save/load functionality
+    try {
+      const projectId = `project_${Date.now()}`;
+      const projectData = {
+        id: projectId,
+        name: projectName || 'Untitled Project',
+        timestamp: Date.now(),
+        bpm,
+        timeSig,
+        tracks: tracks.map(t => ({
+          id: t.id,
+          name: t.name,
+          color: t.color,
+          volume: t.volume,
+          pan: t.pan,
+          mute: t.mute,
+          solo: t.solo,
+          audioUrl: t.audioUrl,
+          clips: t.clips.map(c => ({
+            id: c.id,
+            name: c.name,
+            audioUrl: c.audioUrl,
+            startTime: c.startTime,
+            duration: c.duration,
+            offset: c.offset,
+          }))
+        }))
+      };
+
+      // Save to localStorage
+      localStorage.setItem(projectId, JSON.stringify(projectData));
+      
+      // Update projects index
+      const existingIndex = JSON.parse(localStorage.getItem('studio_projects_index') || '[]');
+      const newIndex = [
+        { id: projectId, name: projectData.name, timestamp: projectData.timestamp, trackCount: tracks.length },
+        ...existingIndex.filter((p: any) => p.id !== projectId)
+      ];
+      localStorage.setItem('studio_projects_index', JSON.stringify(newIndex));
+      setSavedProjects(newIndex);
+      
+      showNotification(`Project "${projectData.name}" saved`, 'success');
+      console.log('✅ Project saved:', projectId);
+    } catch (error) {
+      console.error('Save failed:', error);
+      showNotification('Failed to save project', 'error');
+    }
+  }, [projectName, bpm, timeSig, tracks, showNotification]);
+
+  // Load a saved project
+  const handleLoadProject = useCallback((projectId: string) => {
+    try {
+      const raw = localStorage.getItem(projectId);
+      if (!raw) {
+        showNotification('Project not found', 'error');
+        return;
+      }
+
+      const projectData = JSON.parse(raw);
+      
+      // Restore project metadata
+      setProjectName(projectData.name || 'Loaded Project');
+      setBpm(projectData.bpm || 120);
+      setTimeSig(projectData.timeSig || '4/4');
+      
+      // Clear existing tracks
+      tracks.forEach(t => removeTrack(t.id));
+      
+      // Restore tracks with clips
+      if (Array.isArray(projectData.tracks)) {
+        projectData.tracks.forEach((trackData: any) => {
+          const newTrackId = addTrack(trackData.name || 'Track', trackData.audioUrl);
+          
+          // Restore clips to track
+          if (Array.isArray(trackData.clips)) {
+            trackData.clips.forEach((clipData: any) => {
+              addClipToTrack(newTrackId, clipData.audioUrl, clipData.name, clipData.startTime);
+            });
+          }
+        });
+      }
+      
+      setShowProjectMenu(false);
+      showNotification(`Project "${projectData.name}" loaded`, 'success');
+      console.log('✅ Project loaded:', projectId);
+    } catch (error) {
+      console.error('Load failed:', error);
+      showNotification('Failed to load project', 'error');
+    }
+  }, [addTrack, addClipToTrack, removeTrack, tracks, setBpm, setTimeSig, showNotification]);
+
+  // Delete a saved project
+  const handleDeleteProject = useCallback((projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      localStorage.removeItem(projectId);
+      const existingIndex = JSON.parse(localStorage.getItem('studio_projects_index') || '[]');
+      const newIndex = existingIndex.filter((p: any) => p.id !== projectId);
+      localStorage.setItem('studio_projects_index', JSON.stringify(newIndex));
+      setSavedProjects(newIndex);
+      showNotification('Project deleted', 'success');
+    } catch (error) {
+      showNotification('Failed to delete project', 'error');
+    }
   }, [showNotification]);
 
   const handleExportAudio = useCallback(() => {
     setShowExportModal(true);
   }, []);
+
+  // Release track to Explore/Library
+  const handleRelease = useCallback(async (title: string, audioBlob: Blob) => {
+    try {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('type', 'music');
+      formData.append('audio', audioBlob, `${title}.wav`);
+
+      const response = await fetch('/api/profile/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      showNotification(`"${title}" released successfully!`, 'success');
+      console.log('✅ Track released:', result.data);
+    } catch (error) {
+      console.error('Release failed:', error);
+      throw error;
+    }
+  }, [showNotification]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -300,11 +442,84 @@ function StudioContent() {
       if (e.key === 'Delete' && selectedTrackId) {
         removeTrack(selectedTrackId)
         showNotification('Track removed', 'success')
+        return
+      }
+      // C: Cursor/Select tool
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'c') {
+        setActiveTool('select')
+        showNotification('Cursor tool active', 'info')
+        return
+      }
+      // V: Move tool
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'v') {
+        setActiveTool('move')
+        showNotification('Move tool active', 'info')
+        return
+      }
+      // D: Cut tool (scissors)
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'd') {
+        setActiveTool('cut')
+        showNotification('Cut tool active', 'info')
+        return
+      }
+      // Z: Zoom tool
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'z') {
+        setActiveTool('zoom')
+        showNotification('Zoom tool active', 'info')
+        return
+      }
+      // A: Song generation modal
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'a') {
+        setShowSongModal(true)
+        return
+      }
+      // B: Beat generation modal
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'b') {
+        setShowBeatModal(true)
+        return
+      }
+      // +: Add new track
+      if (!e.ctrlKey && !e.metaKey && (e.key === '+' || e.key === '=')) {
+        const nextNum = tracks.length + 1
+        addTrack(`Track ${nextNum}`)
+        showNotification(`Track ${nextNum} added`, 'success')
+        return
+      }
+      // Ctrl+U: Upload/Import files
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
+        e.preventDefault()
+        handleBrowseFiles()
+        return
+      }
+      // E: Toggle effects rack
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'e') {
+        // Toggle effects via AI sidebar toggle (effects are in AI panel)
+        setShowAISidebar(prev => !prev)
+        showNotification(showAISidebar ? 'Effects closed' : 'Effects opened', 'info')
+        return
+      }
+      // T: Focus timeline (scroll to top)
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 't') {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        showNotification('Timeline focused', 'info')
+        return
+      }
+      // L: Toggle library
+      if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'l') {
+        setShowLibrary(prev => !prev)
+        if (!showLibrary) loadLibraryTracks()
+        return
+      }
+      // F7: Toggle shortcuts modal
+      if (e.key === 'F7') {
+        e.preventDefault()
+        setShowShortcuts(prev => !prev)
+        return
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isPlaying, selectedTrackId, removeTrack, setPlaying, handleSaveProject])
+  }, [isPlaying, selectedTrackId, removeTrack, setPlaying, handleSaveProject, restoreAutosave, showNotification, setActiveTool, setShowSongModal, setShowBeatModal, tracks, addTrack, handleBrowseFiles, showAISidebar, setShowAISidebar, showLibrary, setShowLibrary, loadLibraryTracks, setShowShortcuts])
 
   // Drag & drop from desktop
   const handleDragOverRoot = (e: React.DragEvent) => {
@@ -384,7 +599,7 @@ function StudioContent() {
           <button
             onClick={() => setShowBeatModal(true)}
             className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-700 hover:to-cyan-600 text-white font-medium transition-all shadow-lg shadow-cyan-500/30 flex items-center gap-2"
-            title="Generate AI Beat - 16 credits"
+            title="Generate AI Beat - Shortcut: B"
           >
             <Radio className="w-4 h-4" />
             <span className="text-sm">Beat</span>
@@ -394,7 +609,7 @@ function StudioContent() {
           <button
             onClick={() => setShowSongModal(true)}
             className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-700 hover:to-cyan-600 text-white font-medium transition-all shadow-lg shadow-cyan-500/30 flex items-center gap-2"
-            title="Generate AI Song - 16 credits"
+            title="Generate AI Song - Shortcut: A"
           >
             <Music2 className="w-4 h-4" />
             <span className="text-sm">Song</span>
@@ -514,10 +729,79 @@ function StudioContent() {
         <button
           onClick={handleSaveProject}
           className="p-2 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all"
-          title="Save project"
+          title="Save project (Ctrl+S)"
         >
           <Save className="w-4 h-4" />
         </button>
+
+        {/* Projects Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowProjectMenu(!showProjectMenu)}
+            className="p-2 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 hover:border-cyan-700 transition-all flex items-center gap-1"
+            title="Load project"
+          >
+            <Folder className="w-4 h-4" />
+            {savedProjects.length > 0 && (
+              <span className="text-xs bg-cyan-600 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                {savedProjects.length}
+              </span>
+            )}
+          </button>
+
+          {showProjectMenu && (
+            <>
+              {/* Backdrop to close menu */}
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setShowProjectMenu(false)}
+              />
+              
+              {/* Dropdown menu */}
+              <div className="absolute top-full mt-2 right-0 w-80 bg-gradient-to-b from-black via-cyan-950/60 to-black border border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-500/20 z-50 max-h-96 overflow-y-auto">
+                <div className="p-3 border-b border-cyan-500/30">
+                  <h3 className="text-sm font-bold text-white">Saved Projects</h3>
+                  <p className="text-xs text-cyan-400/60 mt-0.5">{savedProjects.length} project{savedProjects.length !== 1 ? 's' : ''}</p>
+                </div>
+
+                {savedProjects.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <Folder className="w-10 h-10 text-cyan-700 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm text-gray-400">No saved projects</p>
+                    <p className="text-xs text-cyan-400/60 mt-1">Press Ctrl+S to save</p>
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {savedProjects.map((project) => (
+                      <button
+                        key={project.id}
+                        onClick={() => handleLoadProject(project.id)}
+                        className="w-full p-3 rounded-lg bg-cyan-900/20 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-500/50 text-left transition-all group flex items-start gap-3"
+                      >
+                        <Folder className="w-4 h-4 text-cyan-400 mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">
+                            {project.name}
+                          </p>
+                          <p className="text-xs text-cyan-400/60 mt-0.5">
+                            {project.trackCount} track{project.trackCount !== 1 ? 's' : ''} • {new Date(project.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => handleDeleteProject(project.id, e)}
+                          className="p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Delete project"
+                        >
+                          ×
+                        </button>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
 
         <button
           onClick={handleExportAudio}
@@ -525,6 +809,14 @@ function StudioContent() {
           title="Export audio"
         >
           <Download className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => setShowReleaseModal(true)}
+          className="p-2 rounded bg-cyan-700 hover:bg-cyan-600 text-white transition-all shadow-lg shadow-cyan-500/20"
+          title="Release to Explore/Library"
+        >
+          <Radio className="w-4 h-4" />
         </button>
 
         <button
@@ -576,6 +868,22 @@ function StudioContent() {
 
           {/* Timeline - Always show, with empty tracks */}
           <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} />
+          
+          {/* Add Track Button - Always visible below tracks */}
+          <div className="px-4 py-3 border-t border-cyan-500/20 bg-black/40">
+            <button
+              onClick={() => {
+                const nextNum = tracks.length + 1;
+                addTrack(`Track ${nextNum}`);
+                showNotification(`Track ${nextNum} added`, 'success');
+              }}
+              title="Add new track (Shortcut: +)"
+              className="w-full px-4 py-2.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white font-medium transition-all flex items-center justify-center gap-2 group"
+            >
+              <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span>Add Track</span>
+            </button>
+          </div>
         </div>
 
         {/* Track Inspector Sidebar */}
@@ -677,12 +985,60 @@ function StudioContent() {
               </div>
               <button onClick={() => setShowShortcuts(false)} className="px-3 py-1 rounded bg-gray-900 hover:bg-gray-800 text-gray-300 border border-cyan-900/50">Close</button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-cyan-100 text-sm">
-              <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Play / Pause</span><code className="text-cyan-400">Space</code></div>
-              <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Save Project</span><code className="text-cyan-400">Ctrl + S</code></div>
-              <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Import Audio</span><code className="text-cyan-400">Ctrl + O</code></div>
-              <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Restore Autosave</span><code className="text-cyan-400">R</code></div>
-              <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Delete Track</span><code className="text-cyan-400">Delete</code></div>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {/* Tools */}
+              <div>
+                <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">Tools</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Cursor/Select</span><code className="text-cyan-400">C</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Move</span><code className="text-cyan-400">V</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Cut/Split</span><code className="text-cyan-400">D</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Zoom</span><code className="text-cyan-400">Z</code></div>
+                </div>
+              </div>
+              {/* Transport */}
+              <div>
+                <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">Transport</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Play / Pause</span><code className="text-cyan-400">Space</code></div>
+                </div>
+              </div>
+              {/* Generation */}
+              <div>
+                <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">AI Generation</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Generate Song</span><code className="text-cyan-400">A</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Generate Beat</span><code className="text-cyan-400">B</code></div>
+                </div>
+              </div>
+              {/* Track Management */}
+              <div>
+                <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">Track Management</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Add Track</span><code className="text-cyan-400">+</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Delete Track</span><code className="text-cyan-400">Delete</code></div>
+                </div>
+              </div>
+              {/* File Operations */}
+              <div>
+                <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">File Operations</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Save Project</span><code className="text-cyan-400">Ctrl + S</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Open/Import</span><code className="text-cyan-400">Ctrl + O</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Upload Files</span><code className="text-cyan-400">Ctrl + U</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Restore Autosave</span><code className="text-cyan-400">R</code></div>
+                </div>
+              </div>
+              {/* Navigation */}
+              <div>
+                <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">Navigation</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Toggle Effects</span><code className="text-cyan-400">E</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Focus Timeline</span><code className="text-cyan-400">T</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Toggle Library</span><code className="text-cyan-400">L</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Toggle Shortcuts</span><code className="text-cyan-400">F7</code></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -724,6 +1080,14 @@ function StudioContent() {
             clips: t.clips,
           }))
         }}
+      />
+
+      {/* Release Modal */}
+      <ReleaseModal
+        isOpen={showReleaseModal}
+        onClose={() => setShowReleaseModal(false)}
+        onRelease={handleRelease}
+        projectName={projectName}
       />
     </div>
   );

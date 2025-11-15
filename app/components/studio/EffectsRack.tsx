@@ -21,7 +21,7 @@ export default function EffectsRack() {
   ];
 
   const colorClasses: Record<string, string> = {
-    purple: 'bg-purple-500/20 text-purple-400 border-purple-500/50 hover:bg-purple-500/30',
+    purple: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 hover:bg-cyan-500/30',
     pink: 'bg-pink-500/20 text-pink-400 border-pink-500/50 hover:bg-pink-500/30',
     cyan: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 hover:bg-cyan-500/30',
     amber: 'bg-amber-500/20 text-amber-400 border-amber-500/50 hover:bg-amber-500/30',

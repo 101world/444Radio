@@ -83,6 +83,22 @@ export default function AudioClipComponent({
     onSelect(clip.id);
   };
 
+  // Drag & drop between tracks
+  const handleDragStart = (e: React.DragEvent) => {
+    if (activeTool !== 'select' && activeTool !== 'move') return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      clipId: clip.id,
+      trackId: clip.trackId,
+      clipData: clip,
+    }));
+    onSelect(clip.id);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    // Drag end handled by drop target
+  };
+
   useEffect(() => {
     if (!isDragging && !resizing) return;
 
@@ -141,6 +157,9 @@ export default function AudioClipComponent({
   return (
     <div
       ref={clipRef}
+      draggable={activeTool === 'select' || activeTool === 'move'}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       className={`absolute top-2 bottom-2 rounded cursor-move transition-shadow ${
         isSelected
           ? 'ring-2 ring-teal-400 shadow-lg shadow-teal-500/50'

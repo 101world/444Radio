@@ -31,6 +31,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
     isTrackLooping,
     addClipToTrack,
     moveClip,
+    moveClipToTrack,
     resizeClip,
     splitClip,
     removeClip,
@@ -69,12 +70,6 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
     e.stopPropagation();
     setIsDragOver(false);
 
-    const files = Array.from(e.dataTransfer.files).filter((f) =>
-      f.type.startsWith('audio/')
-    );
-
-    if (files.length === 0) return;
-
     // Calculate drop position on timeline
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -83,6 +78,29 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
     const beat = 60 / Math.max(1, bpm);
     const grid = !snapEnabled ? 0 : (zoom > 2 ? beat / 4 : zoom > 1 ? beat / 2 : beat);
     const startTime = snapEnabled ? Math.round(rawTime / grid) * grid : rawTime;
+
+    // Check if this is a clip being dragged from another track
+    try {
+      const clipData = e.dataTransfer.getData('application/json');
+      if (clipData) {
+        const { clipId, trackId: sourceTrackId } = JSON.parse(clipData);
+        if (clipId && sourceTrackId !== trackId) {
+          // Move clip to this track
+          moveClipToTrack(clipId, trackId, startTime);
+          console.log(`✅ Clip moved to track: ${clipId} → ${trackId}`);
+          return;
+        }
+      }
+    } catch (err) {
+      // Not a clip drag, continue to file handling
+    }
+
+    // Handle audio file drops
+    const files = Array.from(e.dataTransfer.files).filter((f) =>
+      f.type.startsWith('audio/')
+    );
+
+    if (files.length === 0) return;
 
     // Add each file as a clip to this track
     for (const file of files) {
@@ -157,7 +175,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
 
   return (
     <div
-      className={`bg-black backdrop-blur-sm rounded border p-3 mb-2 relative cursor-pointer transition-all ${
+      className={`bg-black backdrop-blur-sm rounded border p-4 mb-3 relative cursor-pointer transition-all min-h-32 ${
         isSelected
           ? 'border-teal-500 ring-2 ring-teal-500/50'
           : 'border-teal-900/30 hover:border-teal-700/50'
@@ -197,7 +215,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
             step="0.01"
             value={track.volume}
             onChange={(e) => setTrackVolume(trackId, parseFloat(e.target.value))}
-            className="w-16 h-1 accent-purple-500"
+            className="w-16 h-1 accent-cyan-500"
             onClick={(e) => e.stopPropagation()}
           />
           <span className="text-xs text-gray-400 w-8">{Math.round(track.volume * 100)}%</span>

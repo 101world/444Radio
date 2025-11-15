@@ -12,7 +12,7 @@ export default function MasterChannel() {
   const { masterVolume, setMasterVolume } = useStudio();
 
   return (
-    <div className="border-b border-gray-700 bg-gradient-to-b from-pink-900/10 to-purple-900/10">
+    <div className="border-b border-gray-700 bg-gradient-to-b from-pink-900/10 to-cyan-900/10">
       <div className="px-4 py-3 border-b border-gray-700/50">
         <h3 className="text-sm font-bold text-pink-400">Master Channel</h3>
       </div>

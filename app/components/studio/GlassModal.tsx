@@ -62,7 +62,7 @@ export default function GlassModal({
         {/* Title Bar */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">
               {title}
             </h2>
             {toolbar.length > 0 && (
@@ -71,7 +71,7 @@ export default function GlassModal({
                   <button
                     key={idx}
                     onClick={item.onClick}
-                    className="text-sm text-gray-400 hover:text-purple-400 transition-colors"
+                    className="text-sm text-gray-400 hover:text-cyan-400 transition-colors"
                   >
                     {item.label}
                   </button>
@@ -103,7 +103,7 @@ export default function GlassModal({
             </button>
             {buttons.map((btn, idx) => {
               const variantClasses = {
-                primary: 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600',
+                primary: 'bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-600 hover:to-pink-600',
                 secondary: 'bg-white/10 hover:bg-white/20',
                 danger: 'bg-red-500/80 hover:bg-red-600'
               }

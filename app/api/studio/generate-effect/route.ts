@@ -1,13 +1,14 @@
 /**
- * Generate Effect API - Creates audio effects for effects chain
- * Uses Replicate Meta MusicGen model (0.5 credits per generation)
+ * Generate Effect API - Creates audio effects
+ * Uses smaerdlatigid/stable-audio for effect generation
+ * Cost: Variable based on duration (0-25 seconds)
  */
 
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -22,18 +23,30 @@ export async function POST(request: Request) {
       );
     }
 
-    const { prompt, trackId, trackName } = await request.json();
+    const { prompt, secondsTotal = 10 } = await request.json();
 
     if (!prompt) {
       return corsResponse(
-        NextResponse.json({ error: 'Effect prompt required' }, { status: 400 })
+        NextResponse.json({ error: 'Prompt required' }, { status: 400 })
       );
     }
 
-    // Check user credits (0.5 per generation)
+    // Validate duration (0-25 seconds)
+    const duration = Math.max(0, Math.min(25, secondsTotal));
+
+    // Calculate credits (0.5 credits per 5 seconds, rounded up)
+    const creditsNeeded = Math.ceil(duration / 5) * 0.5;
+
+    // Initialize Supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Check user credits
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('credits, total_generated')
+      .select('credits')
       .eq('clerk_user_id', userId)
       .single();
 
@@ -43,9 +56,21 @@ export async function POST(request: Request) {
       );
     }
 
-    if (userData.credits < 0.5) {
+    if ((userData.credits || 0) < creditsNeeded) {
       return corsResponse(
-        NextResponse.json({ error: 'Insufficient credits (0.5 required)' }, { status: 403 })
+        NextResponse.json({ error: `Insufficient credits (need ${creditsNeeded})` }, { status: 402 })
+      );
+    }
+
+    // Deduct credits
+    const { error: deductError } = await supabase
+      .from('users')
+      .update({ credits: (userData.credits || 0) - creditsNeeded, updated_at: new Date().toISOString() })
+      .eq('clerk_user_id', userId);
+
+    if (deductError) {
+      return corsResponse(
+        NextResponse.json({ error: 'Credit deduction failed' }, { status: 500 })
       );
     }
 
@@ -54,13 +79,14 @@ export async function POST(request: Request) {
       auth: process.env.REPLICATE_API_TOKEN!,
     });
 
-    // Create music generation prediction for effect (using Meta MusicGen)
+    console.log('🎨 Generating effect:', { prompt, duration });
+
+    // Create effect generation prediction
     const prediction = await replicate.predictions.create({
-      version: "671ac645ce5e552cc63a54a2bbff63fcf798043055d2dac5fc9e36a837eedcfb",
+      model: "smaerdlatigid/stable-audio",
       input: {
-        prompt: prompt,
-        duration: 30,
-        model_version: "stereo-large",
+        prompt,
+        seconds_total: duration,
       }
     });
 
@@ -69,54 +95,71 @@ export async function POST(request: Request) {
     const startTime = Date.now();
     while (result.status !== 'succeeded' && result.status !== 'failed') {
       if (Date.now() - startTime > 90000) {
-        throw new Error('Effect generation timed out');
+        // Refund credits on timeout
+        await supabase
+          .from('users')
+          .update({ credits: (userData.credits || 0) })
+          .eq('clerk_user_id', userId);
+        
+        return corsResponse(
+          NextResponse.json({ success: false, error: 'Effect generation timeout' }, { status: 408 })
+        );
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       result = await replicate.predictions.get(result.id);
     }
 
     if (result.status === 'failed') {
-      throw new Error('Effect generation failed');
+      // Refund credits on failure
+      await supabase
+        .from('users')
+        .update({ credits: (userData.credits || 0) })
+        .eq('clerk_user_id', userId);
+      
+      return corsResponse(
+        NextResponse.json({ success: false, error: result.error || 'Effect generation failed' }, { status: 500 })
+      );
     }
 
-    const output = result.output as string;
-    if (!output) {
-      throw new Error('No output from stable-audio model');
+    // Extract audio URL
+    const outputUrl = typeof result.output === 'string' 
+      ? result.output 
+      : Array.isArray(result.output) 
+        ? result.output[0] 
+        : result.output?.audio || result.output?.url;
+
+    if (!outputUrl) {
+      // Refund on missing output
+      await supabase
+        .from('users')
+        .update({ credits: (userData.credits || 0) })
+        .eq('clerk_user_id', userId);
+      
+      return corsResponse(
+        NextResponse.json({ success: false, error: 'No output URL', raw: result.output }, { status: 502 })
+      );
     }
 
-    // Deduct credits
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ 
-        credits: userData.credits - 0.5,
-        total_generated: (userData.total_generated || 0) + 1
-      })
-      .eq('clerk_user_id', userId);
-
-    if (updateError) {
-      console.error('Failed to deduct credits:', updateError);
-    }
+    console.log('✅ Effect generated:', outputUrl);
 
     return corsResponse(
       NextResponse.json({
         success: true,
-        audioUrl: output,
-        effectName: prompt.substring(0, 50), // Truncate long prompts
-        message: 'Effect generated successfully',
-        creditsRemaining: userData.credits - 0.5,
+        audioUrl: outputUrl,
+        remainingCredits: (userData.credits || 0) - creditsNeeded,
+        metadata: {
+          prompt,
+          duration,
+          creditsUsed: creditsNeeded,
+          predictionId: result.id,
+        }
       })
     );
 
   } catch (error) {
-    console.error('Effect generation error:', error);
+    console.error('❌ Effect generation error:', error);
     return corsResponse(
-      NextResponse.json(
-        { 
-          error: error instanceof Error ? error.message : 'Effect generation failed',
-          success: false 
-        },
-        { status: 500 }
-      )
+      NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Effect generation failed' }, { status: 500 })
     );
   }
 }

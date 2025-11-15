@@ -96,7 +96,7 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-cyan-500/30">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/50">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/50">
               <Radio className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -193,7 +193,7 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
-              className="px-6 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white font-medium transition-all shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-700 hover:to-cyan-600 text-white font-medium transition-all shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isGenerating ? (
                 <>

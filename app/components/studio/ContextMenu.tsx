@@ -62,7 +62,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
 
   return (
     <div
-      className="fixed z-[9999] bg-gray-900/95 backdrop-blur-xl border border-purple-500/30 rounded-lg shadow-2xl py-2 min-w-[220px]"
+      className="fixed z-[9999] bg-gray-900/95 backdrop-blur-xl border border-cyan-500/30 rounded-lg shadow-2xl py-2 min-w-[220px]"
       style={{ top: y, left: x }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -72,7 +72,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
             <div className="h-px bg-gray-700 my-2 mx-2" />
           ) : (
             <div
-              className="relative px-4 py-2 hover:bg-purple-500/20 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
+              className="relative px-4 py-2 hover:bg-cyan-500/20 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
               onClick={(e) => {
                 if (item.submenu) {
                   e.stopPropagation();
@@ -90,7 +90,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
             >
               <div className="flex items-center gap-3 flex-1">
                 {item.icon && (
-                  <span className="text-purple-400 group-hover:text-purple-300">
+                  <span className="text-cyan-400 group-hover:text-cyan-300">
                     {item.icon}
                   </span>
                 )}
@@ -108,13 +108,13 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               {/* Submenu */}
               {item.submenu && submenuOpen === index && (
                 <div
-                  className="absolute left-full top-0 ml-1 bg-gray-900/95 backdrop-blur-xl border border-purple-500/30 rounded-lg shadow-2xl py-2 min-w-[200px]"
+                  className="absolute left-full top-0 ml-1 bg-gray-900/95 backdrop-blur-xl border border-cyan-500/30 rounded-lg shadow-2xl py-2 min-w-[200px]"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {item.submenu.map((subitem, subindex) => (
                     <div
                       key={subindex}
-                      className="px-4 py-2 hover:bg-purple-500/20 cursor-pointer transition-colors flex items-center gap-3"
+                      className="px-4 py-2 hover:bg-cyan-500/20 cursor-pointer transition-colors flex items-center gap-3"
                       onClick={() => {
                         if (subitem.onClick) {
                           subitem.onClick();
@@ -123,7 +123,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                       }}
                     >
                       {subitem.icon && (
-                        <span className="text-purple-400">{subitem.icon}</span>
+                        <span className="text-cyan-400">{subitem.icon}</span>
                       )}
                       <span className="text-white text-sm">{subitem.label}</span>
                     </div>
