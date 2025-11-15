@@ -56,6 +56,7 @@ function StudioContent() {
   const [showReleaseModal, setShowReleaseModal] = useState(false);
   const [savedProjects, setSavedProjects] = useState<Array<{id: string; name: string; timestamp: number; trackCount: number}>>([]);
   const [showProjectMenu, setShowProjectMenu] = useState(false);
+  const [showHeaderProjectMenu, setShowHeaderProjectMenu] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
 
   // Show notification helper
@@ -632,13 +633,13 @@ function StudioContent() {
             {/* Projects dropdown */}
             <div className="relative">
               <button
-                onClick={() => setShowProjectMenu(!showProjectMenu)}
+                onClick={() => setShowHeaderProjectMenu(!showHeaderProjectMenu)}
                 className="p-1.5 rounded bg-gray-900 hover:bg-gray-800 text-cyan-400 border border-cyan-900/50 transition-all"
                 title="Project menu"
               >
                 <Folder className="w-4 h-4" />
               </button>
-              {showProjectMenu && (
+              {showHeaderProjectMenu && (
                 <div className="absolute top-full left-0 mt-2 w-64 bg-gray-900 border border-cyan-500/30 rounded-lg shadow-2xl z-50 max-h-80 overflow-y-auto">
                   <div className="p-2 border-b border-cyan-900/50">
                     <div className="text-xs text-cyan-400 font-semibold mb-2">Saved Projects</div>
@@ -673,7 +674,7 @@ function StudioContent() {
                     <button
                       onClick={() => {
                         handleSaveProject();
-                        setShowProjectMenu(false);
+                        setShowHeaderProjectMenu(false);
                       }}
                       className="w-full px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium transition-all"
                     >
@@ -1086,9 +1087,8 @@ function StudioContent() {
               <div>
                 <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">Tools</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
-                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Cursor/Select</span><code className="text-cyan-400">C</code></div>
-                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Move</span><code className="text-cyan-400">V</code></div>
-                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Cut/Split</span><code className="text-cyan-400">D</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Cursor/Select</span><code className="text-cyan-400">V</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Cut/Split</span><code className="text-cyan-400">C</code></div>
                   <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Zoom</span><code className="text-cyan-400">Z</code></div>
                 </div>
               </div>
@@ -1113,6 +1113,8 @@ function StudioContent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
                   <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Add Track</span><code className="text-cyan-400">+</code></div>
                   <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Delete Track</span><code className="text-cyan-400">Delete</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Duplicate Track</span><code className="text-cyan-400">D</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Enable/Disable Track</span><code className="text-cyan-400">T</code></div>
                 </div>
               </div>
               {/* File Operations */}
@@ -1120,17 +1122,15 @@ function StudioContent() {
                 <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">File Operations</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
                   <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Save Project</span><code className="text-cyan-400">Ctrl + S</code></div>
-                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Open/Import</span><code className="text-cyan-400">Ctrl + O</code></div>
                   <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Upload Files</span><code className="text-cyan-400">Ctrl + U</code></div>
-                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Restore Autosave</span><code className="text-cyan-400">R</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Export</span><code className="text-cyan-400">E</code></div>
+                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Speed Control</span><code className="text-cyan-400">R</code></div>
                 </div>
               </div>
               {/* Navigation */}
               <div>
                 <h4 className="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide">Navigation</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-cyan-100 text-sm">
-                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Toggle Effects</span><code className="text-cyan-400">E</code></div>
-                  <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Focus Timeline</span><code className="text-cyan-400">T</code></div>
                   <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Toggle Library</span><code className="text-cyan-400">L</code></div>
                   <div className="flex items-center justify-between bg-black/40 border border-cyan-900/50 rounded px-3 py-2"><span>Toggle Shortcuts</span><code className="text-cyan-400">F7</code></div>
                 </div>
