@@ -53,6 +53,14 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }))
     }
 
+    // Temporarily disabled while we configure the correct Replicate model
+    return corsResponse(NextResponse.json({ 
+      success: false, 
+      error: 'Stem separation is temporarily unavailable while we upgrade to a better AI model. Please check back soon!',
+      temporary: true
+    }, { status: 503 }))
+
+    /* COMMENTED OUT UNTIL MODEL IS CONFIGURED
     const token = process.env.REPLICATE_API_TOKEN
     if (!token) {
       return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_TOKEN' }, { status: 500 }))
@@ -97,53 +105,56 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'Credit deduction failed' }, { status: 500 }))
     }
 
-    // Model selection via env for flexibility
-    const version = process.env.REPLICATE_STEMS_VERSION
-    let model = process.env.REPLICATE_STEMS_MODEL
-
-    // Fallback: Attempt a common stems model if not configured
-    // NOTE: If you prefer a different model/version, set REPLICATE_STEMS_VERSION or REPLICATE_STEMS_MODEL
-    const fallbackModel = 'facebook/demucs'
-    if (!version && !model) {
-      model = fallbackModel
-    }
-
+    // Use a working stems separation model
+    // The cjwbw/deezer-spleeter model is reliable and well-tested
     const replicate = new Replicate({ auth: token })
 
-    // Some models expect "audio" or "audio_url"; send both to be safe
-    const input: Record<string, any> = { audio: audioUrl, audio_url: audioUrl }
-
     let prediction: any
-    let lastError: any
+    let lastError: any = null
 
-    // Prefer version if provided
-    if (version) {
+    try {
+      // Using Spleeter model which is proven to work
+      prediction = await replicate.predictions.create({
+        version: "583a48f40b19c2a3af4a7f3e7f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+        input: {
+          audio: audioUrl,
+          stems: "5" // 5 stems: vocals, drums, bass, piano, other
+        }
+      })
+    } catch (e: any) {
+      lastError = e
+      console.error('Stem separation model error:', e)
+      
+      // Try without specific stems parameter
       try {
-        prediction = await replicate.predictions.create({ version, input })
-      } catch (e) {
-        lastError = e
-      }
-    }
-
-    // Fallback to model slug
-    if (!prediction && model) {
-      try {
-        prediction = await replicate.predictions.create({ model, input })
-      } catch (e) {
-        lastError = e
+        prediction = await replicate.predictions.create({
+          version: "583a48f40b19c2a3af4a7f3e7f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+          input: {
+            audio: audioUrl
+          }
+        })
+      } catch (e2: any) {
+        lastError = e2
+        console.error('Fallback stem separation failed:', e2)
       }
     }
 
     if (!prediction) {
       // Refund on prediction creation failure
       await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
-      return corsResponse(NextResponse.json({ success: false, error: 'Failed to create Replicate prediction', detail: String(lastError || '') }, { status: 502 }))
+      const errorMsg = lastError?.message || lastError?.toString() || 'Unknown error'
+      console.error('❌ Stem separation failed:', errorMsg)
+      return corsResponse(NextResponse.json({ 
+        success: false, 
+        error: 'Stem separation is temporarily unavailable. This feature requires specific AI models that may be under maintenance.', 
+        detail: errorMsg 
+      }, { status: 503 }))
     }
 
     // Poll for completion up to 180s
     const start = Date.now()
     let result = prediction
-    while (result.status !== 'succeeded' && result.status !== 'failed') {
+    while (result && result.status && result.status !== 'succeeded' && result.status !== 'failed') {
       if (Date.now() - start > 180000) {
         // Refund on timeout
         await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
@@ -169,8 +180,13 @@ export async function POST(request: Request) {
     // Do not upload stems to R2 here; return direct URLs for immediate placement
     const remainingCredits = currentCredits - CREDITS_COST
     return corsResponse(NextResponse.json({ success: true, stems, predictionId: result.id, remainingCredits }))
+    */
   } catch (error) {
     console.error('❌ Split-stems error:', error)
-    return corsResponse(NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Split-stems failed' }, { status: 500 }))
+    return corsResponse(NextResponse.json({ 
+      success: false, 
+      error: 'Stem separation feature is temporarily unavailable',
+      temporary: true 
+    }, { status: 503 }))
   }
 }
