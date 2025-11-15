@@ -34,13 +34,15 @@ import type { ToolType } from '@/app/components/studio/Toolbar';
 import { useUser } from '@clerk/nextjs';
 
 function StudioContent() {
-  const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, selectedTrackId, removeTrack, toggleMute } = useStudio();
+  const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, selectedTrackId, removeTrack, toggleMute, undo, redo, canUndo, canRedo } = useStudio();
   const { user } = useUser();
   const [showAISidebar, setShowAISidebar] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryTab, setLibraryTab] = useState<'music' | 'effects'>('music');
   const [activeTool, setActiveTool] = useState<ToolType>('select');
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
   const [libraryTracks, setLibraryTracks] = useState<any[]>([]);
+  const [libraryEffects, setLibraryEffects] = useState<any[]>([]);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [projectName, setProjectName] = useState<string>('Untitled Project');
@@ -62,7 +64,7 @@ function StudioContent() {
   // Show notification helper
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+    setTimeout(() => setNotification(null), 2000);
   }, []);
 
   // Add 3 empty tracks on mount with sequential naming
@@ -219,12 +221,38 @@ function StudioContent() {
     }
   }, [showNotification]);
 
+  // Load user's library effects (generated effects)
+  const loadLibraryEffects = useCallback(async () => {
+    setIsLoadingLibrary(true);
+    try {
+      const response = await fetch('/api/library/effects');
+      const data = await response.json();
+      
+      if (data.success && Array.isArray(data.effects)) {
+        setLibraryEffects(data.effects);
+        showNotification(`Loaded ${data.effects.length} effects from library`, 'success');
+      } else {
+        showNotification('No effects found in library', 'info');
+        setLibraryEffects([]);
+      }
+    } catch (error) {
+      console.error('Failed to load library effects:', error);
+      showNotification('Failed to load library effects', 'error');
+      setLibraryEffects([]);
+    } finally {
+      setIsLoadingLibrary(false);
+    }
+  }, [showNotification]);
+
   // Load library when sidebar opens
   useEffect(() => {
-    if (showLibrary && libraryTracks.length === 0) {
+    if (showLibrary && libraryTab === 'music' && libraryTracks.length === 0) {
       loadLibraryTracks();
     }
-  }, [showLibrary, libraryTracks.length, loadLibraryTracks]);
+    if (showLibrary && libraryTab === 'effects' && libraryEffects.length === 0) {
+      loadLibraryEffects();
+    }
+  }, [showLibrary, libraryTab, libraryTracks.length, libraryEffects.length, loadLibraryTracks, loadLibraryEffects]);
 
   // Handle file upload from computer
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -447,6 +475,20 @@ function StudioContent() {
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA'
       if (isInput) return
 
+      // Ctrl+Z: Undo
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        undo()
+        showNotification('Undo', 'info')
+        return
+      }
+      // Ctrl+Y or Ctrl+Shift+Z: Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault()
+        redo()
+        showNotification('Redo', 'info')
+        return
+      }
       // Space: play/pause
       if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault()
@@ -556,7 +598,7 @@ function StudioContent() {
     }
     window.addEventListener('keydown', onKey, { capture: true })
     return () => window.removeEventListener('keydown', onKey, { capture: true } as any)
-  }, [isPlaying, selectedTrackId, removeTrack, setPlaying, handleSaveProject, restoreAutosave, showNotification, setActiveTool, setShowSongModal, setShowBeatModal, tracks, addTrack, handleBrowseFiles, showAISidebar, setShowAISidebar, showLibrary, setShowLibrary, loadLibraryTracks, setShowShortcuts, toggleMute, setShowExportModal])
+  }, [isPlaying, selectedTrackId, removeTrack, setPlaying, handleSaveProject, restoreAutosave, showNotification, setActiveTool, setShowSongModal, setShowBeatModal, tracks, addTrack, handleBrowseFiles, showAISidebar, setShowAISidebar, showLibrary, setShowLibrary, loadLibraryTracks, setShowShortcuts, toggleMute, setShowExportModal, undo, redo])
 
   // Drag & drop from desktop
   const handleDragOverRoot = (e: React.DragEvent) => {
@@ -1003,50 +1045,111 @@ function StudioContent() {
               </button>
             </div>
 
+            {/* Library Tabs */}
+            <div className="flex border-b border-cyan-500/30 shrink-0">
+              <button
+                onClick={() => setLibraryTab('music')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-all ${
+                  libraryTab === 'music'
+                    ? 'text-cyan-400 border-b-2 border-cyan-400 bg-cyan-900/20'
+                    : 'text-gray-400 hover:text-white hover:bg-cyan-900/10'
+                }`}
+              >
+                <Music className="w-4 h-4 inline-block mr-2" />
+                Music
+              </button>
+              <button
+                onClick={() => setLibraryTab('effects')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-all ${
+                  libraryTab === 'effects'
+                    ? 'text-cyan-400 border-b-2 border-cyan-400 bg-cyan-900/20'
+                    : 'text-gray-400 hover:text-white hover:bg-cyan-900/10'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 inline-block mr-2" />
+                Effects
+              </button>
+            </div>
+
             {/* Library Content */}
             <div className="flex-1 overflow-y-auto p-4">
               {isLoadingLibrary ? (
                 <div className="flex items-center justify-center h-32">
                   <div className="animate-spin w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full" />
                 </div>
-              ) : libraryTracks.length === 0 ? (
-                <div className="text-center text-gray-400 py-12">
-                  <FileAudio className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p className="text-sm">No tracks in library</p>
-                  <p className="text-xs mt-2">Generate music in the Create tab first</p>
-                </div>
+              ) : libraryTab === 'music' ? (
+                libraryTracks.length === 0 ? (
+                  <div className="text-center text-gray-400 py-12">
+                    <FileAudio className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No tracks in library</p>
+                    <p className="text-xs mt-2">Generate music in the Create tab first</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {libraryTracks.map((track) => (
+                      <button
+                        key={track.id}
+                        onClick={() => handleAddFromLibrary(track)}
+                        className="w-full p-3 rounded-lg bg-cyan-900/20 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-500/50 text-left transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded bg-cyan-700/50 flex items-center justify-center shrink-0 group-hover:bg-cyan-600/50 transition-colors">
+                            <Music className="w-5 h-5 text-cyan-200" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">
+                              {track.title || 'Untitled Track'}
+                            </p>
+                            <p className="text-xs text-cyan-400/60">
+                              {new Date(track.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Plus className="w-5 h-5 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )
               ) : (
-                <div className="space-y-2">
-                  {libraryTracks.map((track) => (
-                    <button
-                      key={track.id}
-                      onClick={() => handleAddFromLibrary(track)}
-                      className="w-full p-3 rounded-lg bg-cyan-900/20 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-500/50 text-left transition-all group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-cyan-700/50 flex items-center justify-center shrink-0 group-hover:bg-cyan-600/50 transition-colors">
-                          <Music className="w-5 h-5 text-cyan-200" />
+                libraryEffects.length === 0 ? (
+                  <div className="text-center text-gray-400 py-12">
+                    <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No effects in library</p>
+                    <p className="text-xs mt-2">Generate effects in Track Inspector</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {libraryEffects.map((effect) => (
+                      <button
+                        key={effect.id}
+                        onClick={() => handleAddFromLibrary(effect)}
+                        className="w-full p-3 rounded-lg bg-cyan-900/20 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-500/50 text-left transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded bg-purple-700/50 flex items-center justify-center shrink-0 group-hover:bg-purple-600/50 transition-colors">
+                            <Sparkles className="w-5 h-5 text-purple-200" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">
+                              {effect.title || 'Generated Effect'}
+                            </p>
+                            <p className="text-xs text-cyan-400/60">
+                              {new Date(effect.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Plus className="w-5 h-5 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate">
-                            {track.title || 'Untitled Track'}
-                          </p>
-                          <p className="text-xs text-cyan-400/60">
-                            {new Date(track.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Plus className="w-5 h-5 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                      </button>
+                    ))}
+                  </div>
+                )
               )}
             </div>
 
             {/* Library Footer */}
             <div className="border-t border-cyan-500/30 p-4 shrink-0">
               <button
-                onClick={loadLibraryTracks}
+                onClick={libraryTab === 'music' ? loadLibraryTracks : loadLibraryEffects}
                 disabled={isLoadingLibrary}
                 className="w-full px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium transition-all"
               >

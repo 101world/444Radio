@@ -278,6 +278,29 @@ export async function POST(request: Request) {
       const upload = await uploadToR2(file, 'audio-files', key);
       if (upload.success && upload.url) {
         console.log('☁️ Uploaded effect to R2:', upload.url);
+        
+        // Save effect to library (combined_media table with type='effect')
+        try {
+          await supabase
+            .from('combined_media')
+            .insert({
+              user_id: userId,
+              type: 'effect',
+              title: `Effect: ${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}`,
+              audio_url: upload.url,
+              metadata: {
+                prompt,
+                duration,
+                creditsUsed: creditsNeeded,
+                predictionId: result.id,
+                source: 'replicate',
+              }
+            });
+          console.log('💾 Effect saved to library');
+        } catch (saveErr) {
+          console.warn('Failed to save effect to library (non-critical):', saveErr);
+        }
+        
         return corsResponse(
           NextResponse.json({
             success: true,

@@ -311,40 +311,67 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
 }
 
 export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan' }) {
-  const { tracks, currentTime, isPlaying } = useStudio();
+  const { tracks, currentTime, isPlaying, zoom } = useStudio();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate minimum width to show entire timeline up to current playhead + buffer
+  const pixelsPerSecond = 50 * zoom;
+  const timelineWidth = Math.max(1000, (currentTime + 60) * pixelsPerSecond); // +60s buffer
+
+  // Auto-scroll to keep playhead centered during playback
+  useEffect(() => {
+    if (!isPlaying || !containerRef.current) return;
+
+    const container = containerRef.current;
+    const playheadPosition = currentTime * pixelsPerSecond;
+    const containerWidth = container.clientWidth;
+    const centerOffset = containerWidth / 2;
+
+    // Scroll to keep playhead centered
+    const targetScroll = playheadPosition - centerOffset + 16; // +16 for padding
+    
+    // Smooth scroll during playback
+    container.scrollTo({
+      left: Math.max(0, targetScroll),
+      behavior: 'smooth'
+    });
+  }, [currentTime, isPlaying, pixelsPerSecond]);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
-      {/* Playhead */}
-      {currentTime > 0 && (
-        <div
-          className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 z-20 pointer-events-none"
-          style={{
-            left: `${16 + (currentTime * 100)}px`, // 16px padding + time position
-          }}
-        >
-          <div className="absolute -top-1 -left-2 w-4 h-4 bg-cyan-400 rotate-45" />
-          {isPlaying && (
-            <div className="absolute top-0 -left-4 w-8 h-8">
-              <div className="absolute inset-0 bg-cyan-400/20 rounded-full animate-ping" />
-            </div>
-          )}
-        </div>
-      )}
-
-      {tracks.length === 0 ? (
-        <div className="h-full flex items-center justify-center">
-          <div className="text-center">
-            <Music className="w-16 h-16 text-teal-700 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg">No tracks yet</p>
-            <p className="text-teal-600 text-sm">Click "Add Track" to get started</p>
+    <div ref={containerRef} className="flex-1 overflow-y-auto overflow-x-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
+      {/* Inner container with dynamic width */}
+      <div style={{ minWidth: `${timelineWidth}px` }} className="relative">
+        {/* Playhead */}
+        {currentTime > 0 && (
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 z-20 pointer-events-none"
+            style={{
+              left: `${16 + (currentTime * pixelsPerSecond)}px`, // 16px padding + time position with zoom
+            }}
+          >
+            <div className="absolute -top-1 -left-2 w-4 h-4 bg-cyan-400 rotate-45" />
+            {isPlaying && (
+              <div className="absolute top-0 -left-4 w-8 h-8">
+                <div className="absolute inset-0 bg-cyan-400/20 rounded-full animate-ping" />
+              </div>
+            )}
           </div>
-        </div>
-      ) : (
-        tracks.map((track) => (
-          <TrackRow key={track.id} trackId={track.id} snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} />
-        ))
-      )}
+        )}
+
+        {tracks.length === 0 ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <Music className="w-16 h-16 text-teal-700 mx-auto mb-4" />
+              <p className="text-gray-400 text-lg">No tracks yet</p>
+              <p className="text-teal-600 text-sm">Click "Add Track" to get started</p>
+            </div>
+          </div>
+        ) : (
+          tracks.map((track) => (
+            <TrackRow key={track.id} trackId={track.id} snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} />
+          ))
+        )}
+      </div>
     </div>
   );
 }

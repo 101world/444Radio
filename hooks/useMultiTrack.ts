@@ -80,6 +80,10 @@ export interface UseMultiTrackReturn {
   toggleTrackLoop: (trackId: string) => void;
   isTrackLooping: (trackId: string) => boolean;
   reorderTrack: (trackId: string, newIndex: number) => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const TRACK_COLORS = [
@@ -97,6 +101,8 @@ const TRACK_COLORS = [
 
 export function useMultiTrack(): UseMultiTrackReturn {
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [history, setHistory] = useState<Track[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTimeState] = useState(0);
   const [masterVolumeState, setMasterVolumeState] = useState(0.8); // 80% default, per requirement
@@ -113,6 +119,18 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const playStartProjectTimeRef = useRef<number>(0);
   const playStartContextTimeRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
+
+  // Save state to history for undo/redo
+  const saveHistory = useCallback((newTracks: Track[]) => {
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(JSON.parse(JSON.stringify(newTracks)));
+      // Limit history to 50 states
+      if (newHistory.length > 50) newHistory.shift();
+      return newHistory;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  }, [historyIndex]);
 
   // Initialize audio context and master gain
   useEffect(() => {
@@ -204,11 +222,15 @@ export function useMultiTrack(): UseMultiTrackReturn {
       }
     }
 
-    setTracks((prev) => [...prev, newTrack]);
+    setTracks((prev) => {
+      const newTracks = [...prev, newTrack];
+      saveHistory(newTracks);
+      return newTracks;
+    });
     console.log('✅ Track added:', newTrack.id, newTrack.name);
     
     return newTrack.id;
-  }, [tracks.length]);
+  }, [tracks.length, saveHistory]);
 
   // Add empty track (AudioMass style)
   const addEmptyTrack = useCallback((): string => {
@@ -217,8 +239,8 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   // Add clip to existing track
   const addClipToTrack = useCallback((trackId: string, audioUrl: string, name: string, startTime: number = 0) => {
-    setTracks((prev) =>
-      prev.map((t) => {
+    setTracks((prev) => {
+      const newTracks = prev.map((t) => {
         if (t.id === trackId) {
           const newClip: AudioClip = {
             id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -233,22 +255,26 @@ export function useMultiTrack(): UseMultiTrackReturn {
           return { ...t, clips: [...t.clips, newClip] };
         }
         return t;
-      })
-    );
+      });
+      saveHistory(newTracks);
+      return newTracks;
+    });
     console.log(`✅ Clip added to track ${trackId}`);
-  }, []);
+  }, [saveHistory]);
 
   // Move clip on timeline
   const moveClip = useCallback((clipId: string, newStartTime: number) => {
-    setTracks((prev) =>
-      prev.map((t) => ({
+    setTracks((prev) => {
+      const newTracks = prev.map((t) => ({
         ...t,
         clips: t.clips.map((c) =>
           c.id === clipId ? { ...c, startTime: newStartTime } : c
         ),
-      }))
-    );
-  }, []);
+      }));
+      saveHistory(newTracks);
+      return newTracks;
+    });
+  }, [saveHistory]);
 
   // Move clip to different track
   const moveClipToTrack = useCallback((clipId: string, targetTrackId: string, newStartTime?: number) => {
@@ -292,14 +318,16 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   // Remove clip from track
   const removeClip = useCallback((clipId: string) => {
-    setTracks((prev) =>
-      prev.map((t) => ({
+    setTracks((prev) => {
+      const newTracks = prev.map((t) => ({
         ...t,
         clips: t.clips.filter((c) => c.id !== clipId),
-      }))
-    );
+      }));
+      saveHistory(newTracks);
+      return newTracks;
+    });
     console.log(`🗑️ Clip removed: ${clipId}`);
-  }, []);
+  }, [saveHistory]);
 
   // Resize clip (adjust duration/offset and optionally startTime)
   const resizeClip = useCallback((clipId: string, newDuration: number, newOffset: number, newStartTime?: number) => {
@@ -351,9 +379,11 @@ export function useMultiTrack(): UseMultiTrackReturn {
         if (track.panNode) track.panNode.disconnect();
         console.log('🗑️ Track removed:', id);
       }
-      return prev.filter((t) => t.id !== id);
+      const newTracks = prev.filter((t) => t.id !== id);
+      saveHistory(newTracks);
+      return newTracks;
     });
-  }, []);
+  }, [saveHistory]);
 
   // Update track properties
   const updateTrack = useCallback((id: string, updates: Partial<Track>) => {
@@ -760,6 +790,26 @@ export function useMultiTrack(): UseMultiTrackReturn {
     });
   }, []);
 
+  // Undo/Redo implementation
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      setHistoryIndex(prevIndex);
+      setTracks(JSON.parse(JSON.stringify(history[prevIndex])));
+    }
+  }, [history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextIndex = historyIndex + 1;
+      setHistoryIndex(nextIndex);
+      setTracks(JSON.parse(JSON.stringify(history[nextIndex])));
+    }
+  }, [history, historyIndex]);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
   return {
     tracks,
     isPlaying,
@@ -796,5 +846,9 @@ export function useMultiTrack(): UseMultiTrackReturn {
     toggleTrackLoop,
     isTrackLooping,
     reorderTrack,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   };
 }
