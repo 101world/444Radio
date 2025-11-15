@@ -225,6 +225,31 @@ export function getAudioContext(): AudioContext {
   if (!sharedAudioContext) {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) {
+      // In test environments (Vitest/Jest), Web Audio API isn't available in JSDOM.
+      // Provide a lightweight mock to allow components/hooks that call getAudioContext
+      // to initialize without throwing during unit tests. The mock implements
+      // the minimal methods used in our code (createBuffer, createGain, createStereoPanner, destination).
+      if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') {
+        const makeMockBuffer = (channels: number, length: number, sampleRate: number) => {
+          const buffer: any = {
+            numberOfChannels: channels,
+            length,
+            sampleRate,
+            getChannelData: (i: number) => new Float32Array(length),
+          };
+          return buffer as unknown as AudioBuffer;
+        };
+        const mockCtx: any = {
+          createBuffer: (channels: number, length: number, sampleRate: number) => makeMockBuffer(channels, length, sampleRate),
+          createGain: () => ({ gain: { value: 1 }, connect: () => {}, disconnect: () => {} }),
+          createStereoPanner: () => ({ pan: { value: 0 }, connect: () => {}, disconnect: () => {} }),
+          destination: {},
+          createBufferSource: () => ({ start: () => {}, stop: () => {}, connect: () => {}, disconnect: () => {} }),
+          resume: async () => {},
+        };
+        sharedAudioContext = mockCtx as AudioContext;
+        return sharedAudioContext;
+      }
       throw new Error('Web Audio API not supported in this browser');
     }
     sharedAudioContext = new AudioContextClass();

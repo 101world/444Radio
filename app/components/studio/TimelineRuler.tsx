@@ -10,7 +10,7 @@ import { useRef, useCallback, useMemo, useEffect } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
 export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled = true }: { bpm?: number; timeSig?: '4/4' | '3/4' | '6/8'; snapEnabled?: boolean }) {
-  const { zoom, setZoom, currentTime, duration, setCurrentTime, isPlaying, setPlaying } = useStudio();
+  const { zoom, setZoom, currentTime, duration, setCurrentTime, isPlaying, setPlaying, leftGutterWidth, setLeftGutterWidth, setTrackHeight } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{ dragging: boolean; wasPlaying: boolean } | null>(null);
 
@@ -26,8 +26,16 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
     setZoom(1);
   };
 
+  const handleZoomFitWindow = () => {
+    if (!scrollRef.current) return;
+    const containerWidth = scrollRef.current.clientWidth - (leftGutterWidth || 0);
+    if (containerWidth <= 0) return;
+    const desiredZoom = containerWidth / (maxTime * 50);
+    setZoom(Math.max(0.1, Math.min(desiredZoom, 10)));
+  };
+
   const pxPerSecond = 50 * zoom;
-  const LEFT_GUTTER = 224; // Keep in sync with Timeline left column width (Tailwind w-56 = 224px)
+  const LEFT_GUTTER = leftGutterWidth; // Keep in sync with Timeline left column width
 
   const beatsPerBar = useMemo(() => {
     const n = parseInt(String(timeSig).split('/')[0] || '4', 10);
@@ -122,7 +130,7 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
   };
 
   return (
-    <div className="h-16 bg-black backdrop-blur-sm border-b border-teal-900/50 flex items-stretch">
+    <div className="h-20 bg-black backdrop-blur-sm border-b border-teal-900/50 flex items-stretch">
       {/* Zoom controls */}
       <div className="flex items-center gap-1 px-3 border-r border-teal-900/50">
         <button
@@ -149,6 +157,24 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
         >
           <Maximize2 className="w-4 h-4" />
         </button>
+        <button onClick={handleZoomFitWindow} className="p-1.5 rounded hover:bg-teal-700/20 text-teal-400 transition-colors ml-1" title="Zoom to fit visible window">Fit</button>
+        <button
+          onClick={() => {
+            const GUTTER = 240;
+            const PRESET_WIDTH = 1920;
+            const TIMELINE_DURATION = maxTime || 300;
+            const containerWidth = Math.max(1, PRESET_WIDTH - GUTTER);
+            const pxPerSecond = containerWidth / TIMELINE_DURATION;
+            const desiredZoom = pxPerSecond / 50;
+            setLeftGutterWidth(GUTTER);
+            setTrackHeight(180);
+            setZoom(Math.max(0.1, Math.min(desiredZoom, 10)));
+          }}
+          className="p-1.5 rounded hover:bg-teal-700/20 text-teal-300 transition-colors ml-2"
+          title="Apply 1920x1080 layout preset"
+        >
+          1920x1080
+        </button>
       </div>
 
       {/* Timeline ruler */}
@@ -166,7 +192,7 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
       >
         <div 
           className="absolute inset-0 flex items-end"
-          style={{ 
+            style={{ 
             width: `${maxTime * pxPerSecond}px`, // 50px per second at 1x zoom
             paddingLeft: `${LEFT_GUTTER}px`
           }}

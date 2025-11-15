@@ -34,13 +34,12 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
   const track = tracks.find((t) => t.id === trackId);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
+      
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -169,7 +168,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
 
   return (
     <div
-      className={`bg-black backdrop-blur-sm rounded border mb-3 relative cursor-pointer transition-all flex items-center gap-0 ${
+      className={`bg-black backdrop-blur-sm rounded border mb-3 relative cursor-pointer transition-all flex items-center gap-0 min-h-[9rem] ${
         isSelected
           ? 'border-teal-500 ring-2 ring-teal-500/50'
           : 'border-teal-900/30 hover:border-teal-700/50'
@@ -196,13 +195,14 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
 }
 
 export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean }) {
-  const { tracks, currentTime, isPlaying, zoom } = useStudio();
+  const { tracks, currentTime, isPlaying, zoom, leftGutterWidth, setLeftGutterWidth } = useStudio();
   const clipsScrollRef = useRef<HTMLDivElement>(null);
+  const leftColumnRef = useRef<HTMLDivElement>(null);
 
   // Fixed 5-minute timeline view (300 seconds)
   const TIMELINE_DURATION = 300; // 5 minutes
-  // Left gutter for pinned track header (Tailwind w-56 = 14rem = 224px)
-  const LEFT_GUTTER = 224;
+  // Left gutter for pinned track header — measured dynamically
+  const LEFT_GUTTER = leftGutterWidth;
   const pixelsPerSecond = 50 * zoom;
   const timelineWidth = TIMELINE_DURATION * pixelsPerSecond;
 
@@ -219,6 +219,24 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
     }
   }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked, timelineWidth]);
 
+  // Observe left column width and update studio context
+  useEffect(() => {
+    if (!leftColumnRef.current || typeof setLeftGutterWidth !== 'function') return;
+    let ro: ResizeObserver | null = null;
+    try {
+      ro = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const w = Math.round(entry.contentRect.width || 0);
+          if (w > 0) setLeftGutterWidth(w);
+        }
+      });
+      ro.observe(leftColumnRef.current);
+    } catch (e) {
+      // No-op if ResizeObserver isn't available
+    }
+    return () => ro?.disconnect();
+  }, [leftColumnRef, setLeftGutterWidth]);
+
   const handleScroll = () => {
     if (!clipsScrollRef.current) return;
     const left = clipsScrollRef.current.scrollLeft;
@@ -231,7 +249,7 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
     <div className="flex-1 overflow-y-auto bg-black/95 backdrop-blur-xl p-4 border-t border-teal-900/30 relative">
       <div className="flex h-full">
         {/* Left fixed column: track headers */}
-        <div className="w-56 shrink-0 space-y-3 pr-3">
+        <div ref={leftColumnRef} className="w-56 shrink-0 space-y-3 pr-3">
           {tracks.map((t) => (
             <TrackLeft key={`left-${t.id}`} trackId={t.id} />
           ))}
@@ -243,12 +261,12 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
           <div style={{ minWidth: `${timelineWidth}px` }} className="relative">
         {/* Playhead */}
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 z-20 pointer-events-none"
+            className="absolute top-0 bottom-0 w-1 bg-cyan-400 z-20 pointer-events-none"
             style={{
               left: `${currentTime * pixelsPerSecond}px`,
             }}
           >
-            <div className="absolute -top-1 -left-2 w-4 h-4 bg-cyan-400 rotate-45" />
+            <div className="absolute -top-2 -left-3 w-5 h-5 bg-cyan-400 rotate-45 shadow-lg" />
             {isPlaying && (
               <div className="absolute top-0 -left-4 w-8 h-8">
                 <div className="absolute inset-0 bg-cyan-400/20 rounded-full animate-ping" />

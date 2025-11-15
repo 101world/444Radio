@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Volume2, Scissors, Copy, Trash2 } from 'lucide-react';
+import ClipWaveform from './ClipWaveform';
 
 export interface AudioClip {
   id: string;
@@ -48,11 +49,12 @@ export default function AudioClipComponent({
 }: AudioClipComponentProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
-  const [resizing, setResizing] = useState<null | 'left' | 'right'>(null);
+  // Resizing is disabled for a simplified, consistent visual style requested by user
+  // const [resizing, setResizing] = useState<null | 'left' | 'right'>(null);
   const clipRef = useRef<HTMLDivElement>(null);
 
   const pixelsPerSecond = 50 * zoom;
-  const clipWidth = clip.duration * pixelsPerSecond;
+  const clipWidth = Math.max(1, clip.duration * pixelsPerSecond);
   const clipLeft = clip.startTime * pixelsPerSecond;
 
   const beat = 60 / Math.max(1, bpm);
@@ -100,7 +102,7 @@ export default function AudioClipComponent({
   };
 
   useEffect(() => {
-    if (!isDragging && !resizing) return;
+    if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const timelineContainer = clipRef.current?.parentElement?.parentElement;
@@ -108,35 +110,13 @@ export default function AudioClipComponent({
 
       const rect = timelineContainer.getBoundingClientRect();
       const relativeX = e.clientX - rect.left - dragOffset;
-
-      if (isDragging) {
-        const rawStart = Math.max(0, relativeX / pixelsPerSecond);
-        const snapped = quantize(rawStart);
-        onMove(clip.id, snapped);
-      } else if (resizing) {
-        const mouseX = e.clientX - rect.left;
-        if (resizing === 'left') {
-          // New start cannot go past right edge
-          const newStartPx = Math.min(clipLeft + clipWidth - 5, Math.max(0, mouseX));
-          const newStartTime = quantize(newStartPx / pixelsPerSecond);
-          let newDur = (clip.startTime + clip.duration) - newStartTime;
-          if (newDur < 0.05) newDur = 0.05;
-          const newOff = clip.offset + (clip.startTime - newStartTime);
-          onResize(clip.id, newDur, Math.max(0, newOff), newStartTime);
-        } else {
-          // Right resize: adjust duration only
-          const newEndPx = Math.max(clipLeft + 5, mouseX);
-          const newEndTime = quantize(newEndPx / pixelsPerSecond);
-          let newDur = newEndTime - clip.startTime;
-          if (newDur < 0.05) newDur = 0.05;
-          onResize(clip.id, newDur, clip.offset, clip.startTime);
-        }
-      }
+      const rawStart = Math.max(0, relativeX / pixelsPerSecond);
+      const snapped = quantize(rawStart);
+      onMove(clip.id, snapped);
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      setResizing(null);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -146,7 +126,7 @@ export default function AudioClipComponent({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, resizing, dragOffset, pixelsPerSecond, clip.id, onMove, onResize, clipLeft, clipWidth, clip.startTime, clip.duration, clip.offset, quantize]);
+  }, [isDragging, dragOffset, pixelsPerSecond, clip.id, onMove, clipLeft, clipWidth, clip.startTime, clip.duration, clip.offset, quantize]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -160,16 +140,16 @@ export default function AudioClipComponent({
       draggable={activeTool === 'select' || activeTool === 'move'}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className={`absolute top-2 bottom-2 rounded cursor-move transition-shadow ${
+      className={`absolute top-3 bottom-3 rounded-lg cursor-move transition-shadow ${
         isSelected
-          ? 'ring-2 ring-teal-400 shadow-lg shadow-teal-500/50'
-          : 'ring-1 ring-teal-900/40'
+          ? 'ring-2 ring-teal-400 shadow-lg shadow-teal-500/60'
+          : 'ring-1 ring-teal-900/40 hover:shadow-md hover:shadow-teal-500/20'
       } ${isDragging ? 'opacity-70 cursor-grabbing' : 'cursor-grab'}`}
       style={{
         left: `${clipLeft}px`,
         width: `${clipWidth}px`,
         backgroundColor: clip.color,
-        backgroundImage: `linear-gradient(90deg, transparent 0px, rgba(0,0,0,0.1) 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.02) 100%)`,
         backgroundSize: `${pixelsPerSecond}px 100%`,
       }}
       onMouseDown={handleMouseDown}
@@ -179,13 +159,13 @@ export default function AudioClipComponent({
       }}
     >
       {/* Clip content */}
-      <div className="h-full flex flex-col justify-between p-2 overflow-hidden">
-        <div className="flex items-start justify-between gap-2">
+      <div className="h-full flex flex-col justify-center p-4 gap-2 overflow-hidden">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="text-white text-xs font-semibold truncate">
+            <div className="text-white text-sm font-semibold truncate">
               {clip.name}
             </div>
-            <div className="text-white/70 text-[10px]">
+            <div className="text-white/80 text-[11px]">
               {formatTime(clip.duration)}
             </div>
           </div>
@@ -204,30 +184,12 @@ export default function AudioClipComponent({
         </div>
 
         {/* Waveform placeholder */}
-        <div className="h-8 bg-black/20 rounded flex items-center justify-center">
-          <Volume2 className="w-3 h-3 text-white/30" />
+        <div className="h-14 bg-black/10 rounded-lg overflow-hidden">
+          <ClipWaveform audioUrl={clip.audioUrl} width={Math.max(1, Math.round(clipWidth))} height={48} />
         </div>
       </div>
 
-      {/* Resize handles */}
-      {isSelected && (
-        <>
-          <div
-            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize bg-cyan-400/30 hover:bg-cyan-400/50"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              setResizing('left');
-            }}
-          />
-          <div
-            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize bg-cyan-400/30 hover:bg-cyan-400/50"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              setResizing('right');
-            }}
-          />
-        </>
-      )}
+      {/* Resize handles hidden to support fixed, clean UI */}
     </div>
   );
 }

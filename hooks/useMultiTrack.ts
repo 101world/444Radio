@@ -69,6 +69,12 @@ export interface UseMultiTrackReturn {
   setZoom: (zoom: number) => void;
   setSelectedTrack: (id: string | null) => void;
   setSelectedClip: (id: string | null) => void;
+  ensureBuffer: (url: string) => Promise<AudioBuffer>;
+  getPeaksForUrl: (url: string, sampleCount?: number) => Promise<Float32Array>;
+  trackHeight: number;
+  setTrackHeight: (h: number) => void;
+  leftGutterWidth: number;
+  setLeftGutterWidth: (w: number) => void;
   // Playback controls (will be called from Timeline component)
   setPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
@@ -110,9 +116,12 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const [duration, setDuration] = useState(0);
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [leftGutterWidth, setLeftGutterWidth] = useState<number>(224);
+  const [trackHeight, setTrackHeight] = useState<number>(144);
   const audioContextRef = useRef<AudioContext | null>(null);
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const bufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
+  const peaksCacheRef = useRef<Map<string, Float32Array>>(new Map());
   const activeSourcesRef = useRef<Map<string, { source: AudioBufferSourceNode; clipId: string }>>(new Map());
   const loopTracksStateRef = useRef<Set<string>>(new Set());
   const [loopedTracksState, setLoopedTracksState] = useState<Set<string>>(new Set());
@@ -612,6 +621,35 @@ export function useMultiTrack(): UseMultiTrackReturn {
     }
   }, []);
 
+  const ensureBuffer = useCallback(async (url: string): Promise<AudioBuffer> => {
+    return await loadBuffer(url);
+  }, [loadBuffer]);
+
+  // Compute or return cached peaks for a given url and required sample count
+  const getPeaksForUrl = useCallback(async (url: string, sampleCount: number = 300): Promise<Float32Array> => {
+    const cacheKey = `${url}::${sampleCount}`;
+    const cache = peaksCacheRef.current;
+    if (cache.has(cacheKey)) return cache.get(cacheKey)!;
+
+    const buf = await ensureBuffer(url);
+    const channelData = buf.getChannelData(0);
+    const samples = channelData.length;
+    const block = Math.max(1, Math.floor(samples / sampleCount));
+    const peaks = new Float32Array(sampleCount);
+    for (let i = 0; i < sampleCount; i++) {
+      const start = i * block;
+      const end = Math.min(samples - 1, (i + 1) * block - 1);
+      let max = 0;
+      for (let j = start; j <= end; j++) {
+        const v = Math.abs(channelData[j]);
+        if (v > max) max = v;
+      }
+      peaks[i] = max;
+    }
+    cache.set(cacheKey, peaks);
+    return peaks;
+  }, [ensureBuffer]);
+
   const stopAllSources = useCallback(() => {
     activeSourcesRef.current.forEach(({ source }) => {
       try { source.stop(0); } catch {}
@@ -917,6 +955,12 @@ export function useMultiTrack(): UseMultiTrackReturn {
     setZoom,
     setSelectedTrack,
     setSelectedClip,
+    ensureBuffer,
+    getPeaksForUrl,
+    trackHeight,
+    setTrackHeight,
+    leftGutterWidth,
+    setLeftGutterWidth,
     setPlaying,
     setCurrentTime,
     skipBackward,

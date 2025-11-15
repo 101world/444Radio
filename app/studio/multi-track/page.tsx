@@ -34,7 +34,7 @@ import type { ToolType } from '@/app/components/studio/Toolbar';
 import { useUser } from '@clerk/nextjs';
 
 function StudioContent() {
-  const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, selectedTrackId, removeTrack, toggleMute, undo, redo, canUndo, canRedo } = useStudio();
+  const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, selectedTrackId, removeTrack, toggleMute, toggleSolo, undo, redo, canUndo, canRedo, setZoom, setLeftGutterWidth, setTrackHeight, trackHeight, leftGutterWidth } = useStudio();
   const { user } = useUser();
   const [showAISidebar, setShowAISidebar] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -62,17 +62,11 @@ function StudioContent() {
   const [credits, setCredits] = useState<number | null>(null);
   const [playheadLocked, setPlayheadLocked] = useState(true); // Track playhead lock state
   const [seekToEarliestOnPlay, setSeekToEarliestOnPlay] = useState(true);
-  const [leftColumnExpanded, setLeftColumnExpanded] = useState(false);
-  const [leftPulse, setLeftPulse] = useState(false);
-  // Read saved left column width on mount and store in CSS var
-  useEffect(() => {
+  const [rememberPreset, setRememberPreset] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('studio.leftColumnWidth');
-      if (saved) {
-        document.documentElement.style.setProperty('--studio-left-column-width', `${saved}px`);
-      }
-    } catch {}
-  }, []);
+      return localStorage.getItem('studio_layout') === '1080';
+    } catch { return false }
+  });
 
   // Show notification helper
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -94,14 +88,30 @@ function StudioContent() {
       const index = JSON.parse(localStorage.getItem('studio_projects_index') || '[]');
       setSavedProjects(index);
     } catch {}
+
+    // Apply saved layout preset if present
+    try {
+      const stored = localStorage.getItem('studio_layout');
+      if (stored === '1080') apply1080Preset();
+    } catch {}
   }, []); // Run once on mount
 
-  // Trigger a pulse when left column expanded toggles
-  useEffect(() => {
-    setLeftPulse(true);
-    const t = setTimeout(() => setLeftPulse(false), 420);
-    return () => clearTimeout(t);
-  }, [leftColumnExpanded]);
+  // 1920x1080 layout preset
+  const apply1080Preset = useCallback(() => {
+    const GUTTER = 240; // left column
+    const PRESET_WIDTH = 1920;
+    const TIMELINE_DURATION = 300; // seconds
+    const containerWidth = Math.max(1, PRESET_WIDTH - GUTTER);
+    const pxPerSecond = containerWidth / TIMELINE_DURATION; // px per second
+    const desiredZoom = pxPerSecond / 50; // base 50 px/s at 1x
+    setLeftGutterWidth(GUTTER);
+    setTrackHeight(180);
+    setZoom(desiredZoom);
+    showNotification('Applied 1920x1080 preset', 'success');
+    try {
+      if (rememberPreset) localStorage.setItem('studio_layout', '1080');
+    } catch {}
+  }, [setLeftGutterWidth, setTrackHeight, setZoom, showNotification]);
 
   // Fetch credits on mount and listen for updates from children
   useEffect(() => {
@@ -495,6 +505,30 @@ function StudioContent() {
 
   // Keyboard shortcuts
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignore if focused on input fields
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      if (e.key === 'm' || e.key === 'M') {
+        if (selectedTrackId) toggleMute(selectedTrackId);
+      } else if (e.key === 's' || e.key === 'S') {
+        if (selectedTrackId) toggleSolo(selectedTrackId);
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedTrackId) removeTrack(selectedTrackId);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        // Undo
+        e.preventDefault();
+        if (canUndo) undo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+        e.preventDefault();
+        if (canRedo) redo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedTrackId, toggleMute, toggleSolo, removeTrack, undo, redo, canUndo, canRedo]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Ignore if typing in input
       const tag = (e.target as HTMLElement)?.tagName
@@ -655,8 +689,6 @@ function StudioContent() {
   return (
     <div 
       className="min-h-screen max-h-screen flex flex-col bg-black relative overflow-x-hidden overflow-y-hidden"
-      style={{ ['--studio-left-column-width' as any]: leftColumnExpanded ? '18rem' : '14rem' }}
-      data-left-pulse={leftPulse}
       onDragOver={handleDragOverRoot}
       onDragLeave={handleDragLeaveRoot}
       onDrop={handleDropRoot}
@@ -760,26 +792,8 @@ function StudioContent() {
           <div className="flex items-center gap-2">
             {/* Credits Badge */}
             <div className="px-3 py-1 rounded-full bg-black/40 border border-cyan-900/50 text-cyan-300 text-xs font-medium select-none" title="Available credits">
-                {credits === null ? 'Credits: …' : `Credits: ${credits}`}
-              </div>
-              <button
-                onClick={() => {
-                  try {
-                    // Toggle between two reasonable widths in px
-                    const current = document.documentElement.style.getPropertyValue('--studio-left-column-width');
-                    const curPx = current ? parseFloat(current) : 224;
-                    const newVal = curPx > 240 ? 224 : 288; // toggle small/big
-                    document.documentElement.style.setProperty('--studio-left-column-width', `${newVal}px`);
-                    localStorage.setItem('studio.leftColumnWidth', String(newVal));
-                    setLeftPulse(true);
-                    setTimeout(() => setLeftPulse(false), 420);
-                  } catch {}
-                }}
-                className="ml-3 p-1 rounded bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white border border-cyan-900/30 transition-all text-xs"
-                title="Toggle left column width"
-              >
-                Left Col
-              </button>
+              {credits === null ? 'Credits: …' : `Credits: ${credits}`}
+            </div>
           {/* Beat Generation */}
           <button
             onClick={() => setShowBeatModal(true)}
@@ -892,6 +906,22 @@ function StudioContent() {
           title={`Toggle auto-seek to earliest clip on Play`}
         >
           <Radio className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          onClick={() => {
+            const next = !rememberPreset;
+            setRememberPreset(next);
+            try {
+              if (next) localStorage.setItem('studio_layout', '1080');
+              else localStorage.removeItem('studio_layout');
+            } catch {}
+            showNotification(`Remember preset ${next ? 'enabled' : 'disabled'}`, 'info');
+          }}
+          className={`p-1.5 rounded transition-all ${rememberPreset ? 'bg-cyan-700 text-white shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-400 hover:text-white border border-cyan-900/30'}`}
+          title={`Remember layout preset`}
+        >
+          <Save className="w-3.5 h-3.5" />
         </button>
 
         <button
@@ -1061,7 +1091,7 @@ function StudioContent() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden relative min-h-0">
+      <div className="flex-1 flex overflow-hidden relative min-h-0 pb-12">
         {/* Timeline */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Timeline ruler with zoom + BPM grid */}

@@ -21,6 +21,7 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool }: { 
     zoom,
     selectedClipId,
     setSelectedClip,
+    trackHeight,
   } = useStudio();
 
   const track = tracks.find(t => t.id === trackId);
@@ -67,13 +68,14 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool }: { 
 
   return (
     <div
-      className={`relative h-24 bg-black/40 flex-1 overflow-x-auto overflow-y-hidden rounded-r mb-3 ${isDragOver ? 'border-2 border-dashed border-teal-400/20' : ''}`}
+      className={`relative bg-black/40 flex-1 overflow-x-auto overflow-y-hidden rounded-r mb-4 ${isDragOver ? 'border-2 border-dashed border-teal-400/20' : ''}`}
+      style={{ height: `${trackHeight}px` }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {track.clips.length === 0 ? (
-        <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-teal-900/40 rounded">
+        <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-teal-700/40 rounded-2xl">
           <div className="text-center">
             <Music className="w-8 h-8 text-teal-700 mx-auto mb-2" />
             <p className="text-xs text-teal-600">Drop audio files here</p>

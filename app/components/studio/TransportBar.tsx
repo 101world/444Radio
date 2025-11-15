@@ -72,7 +72,7 @@ export default function TransportBar({ autoSeekOnPlay = false }: { autoSeekOnPla
   };
 
   return (
-    <div className="h-12 bg-black border-t border-teal-900/50">
+    <div className="h-12 bg-black border-t border-teal-900/50 sticky bottom-0 left-0 right-0 z-40">
       <div className="h-full flex items-center justify-between px-4">
         {/* Left: Transport controls (AudioMass style) */}
         <div className="flex items-center gap-1.5">
