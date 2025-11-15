@@ -3,29 +3,64 @@
  */
  'use client'
 
-import { MouseEvent } from 'react';
-import { Volume2 } from 'lucide-react';
+import { MouseEvent, useState, useRef, useEffect } from 'react';
+import { Volume2, GripVertical } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
 export default function TrackLeft({ trackId }: { trackId: string }) {
-  const { tracks, setTrackVolume, setTrackPan, toggleMute, toggleSolo, removeTrack, setSelectedTrack, selectedTrackId, trackHeight } = useStudio();
+  const { tracks, setTrackVolume, setTrackPan, toggleMute, toggleSolo, removeTrack, setSelectedTrack, selectedTrackId, trackHeight, setTrackHeight } = useStudio();
   const track = tracks.find(t => t.id === trackId);
+  const [isResizing, setIsResizing] = useState(false);
+  const startYRef = useRef(0);
+  const startHeightRef = useRef(0);
+
   if (!track) return null;
 
   const isSelected = selectedTrackId === trackId;
   const index = tracks.findIndex(t => t?.id === trackId);
   const number = index === -1 ? '-' : index + 1;
 
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    startYRef.current = e.clientY;
+    startHeightRef.current = trackHeight || 144;
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: globalThis.MouseEvent) => {
+      const delta = e.clientY - startYRef.current;
+      const newHeight = Math.max(80, Math.min(400, startHeightRef.current + delta));
+      setTrackHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setTrackHeight]);
+
   return (
-    <div
-      role="button"
-      aria-pressed={isSelected}
-      tabIndex={0}
-      className={`w-56 shrink-0 bg-gradient-to-b from-black/90 to-black/80 border-r border-teal-900/30 backdrop-blur-md rounded-l p-4 flex flex-col gap-3 justify-center ${isSelected ? 'border-teal-500 ring-2 ring-teal-500/50 shadow-lg shadow-cyan-900/20' : 'hover:brightness-110'}`}
-      style={{ height: `${trackHeight}px` }}
-      onClick={() => setSelectedTrack(trackId)}
-      onKeyDown={(e) => { if (e.key === 'Enter') setSelectedTrack(trackId); }}
-    >
+    <div className="relative">
+      <div
+        role="button"
+        aria-pressed={isSelected}
+        tabIndex={0}
+        className={`w-56 shrink-0 bg-gradient-to-b from-gray-950 to-black border-r border-teal-900/30 backdrop-blur-md p-4 flex flex-col gap-3 justify-center transition-all ${isSelected ? 'border-teal-500 ring-1 ring-teal-500/50 shadow-lg shadow-cyan-900/20' : 'hover:brightness-110'}`}
+        style={{ height: `${trackHeight}px` }}
+        onClick={() => setSelectedTrack(trackId)}
+        onKeyDown={(e) => { if (e.key === 'Enter') setSelectedTrack(trackId); }}
+      >
       {/* Name */}
       <div className="flex items-center gap-2">
         <div className="w-6 h-6 rounded-md bg-teal-700/20 flex items-center justify-center text-[11px] text-teal-300 font-semibold">{number}</div>
@@ -72,5 +107,17 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
         <span className="text-[10px] text-gray-400 w-8 text-right">{Math.round(track.volume * 100)}%</span>
       </div>
     </div>
+
+    {/* Resize handle */}
+    <div
+      className={`absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-teal-500/50 transition-colors group ${isResizing ? 'bg-teal-500' : 'bg-transparent'}`}
+      onMouseDown={handleResizeStart}
+      title="Drag to resize track height"
+    >
+      <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <GripVertical className="w-3 h-3 text-teal-400" />
+      </div>
+    </div>
+  </div>
   )
 }

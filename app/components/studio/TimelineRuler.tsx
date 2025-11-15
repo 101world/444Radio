@@ -130,9 +130,9 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
   };
 
   return (
-    <div className="h-20 bg-black backdrop-blur-sm border-b border-teal-900/50 flex items-stretch">
+    <div className="h-16 bg-gradient-to-b from-gray-950 to-black backdrop-blur-sm border-b border-teal-900/30 flex items-stretch shadow-md">
       {/* Zoom controls */}
-      <div className="flex items-center gap-1 px-3 border-r border-teal-900/50">
+      <div className="flex items-center gap-1 px-4 border-r border-teal-900/30 bg-black/40">
         <button
           onClick={handleZoomOut}
           className="p-1.5 rounded hover:bg-teal-700/20 text-teal-400 transition-colors"
@@ -140,7 +140,7 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
         >
           <ZoomOut className="w-4 h-4" />
         </button>
-        <span className="text-xs text-gray-400 min-w-[40px] text-center font-mono">
+        <span className="text-xs text-teal-300 min-w-[50px] text-center font-mono font-semibold">
           {Math.round(zoom * 100)}%
         </span>
         <button
@@ -151,29 +151,11 @@ export default function TimelineRuler({ bpm = 120, timeSig = '4/4', snapEnabled 
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
-          onClick={handleZoomFit}
-          className="p-1.5 rounded hover:bg-teal-700/20 text-teal-400 transition-colors ml-1"
-          title="Fit to window"
+          onClick={handleZoomFitWindow}
+          className="px-3 py-1.5 rounded bg-teal-700/30 hover:bg-teal-700/50 text-teal-300 transition-colors ml-2 text-xs font-medium"
+          title="Fit timeline to window"
         >
-          <Maximize2 className="w-4 h-4" />
-        </button>
-        <button onClick={handleZoomFitWindow} className="p-1.5 rounded hover:bg-teal-700/20 text-teal-400 transition-colors ml-1" title="Zoom to fit visible window">Fit</button>
-        <button
-          onClick={() => {
-            const GUTTER = 240;
-            const PRESET_WIDTH = 1920;
-            const TIMELINE_DURATION = maxTime || 300;
-            const containerWidth = Math.max(1, PRESET_WIDTH - GUTTER);
-            const pxPerSecond = containerWidth / TIMELINE_DURATION;
-            const desiredZoom = pxPerSecond / 50;
-            setLeftGutterWidth(GUTTER);
-            setTrackHeight(180);
-            setZoom(Math.max(0.1, Math.min(desiredZoom, 10)));
-          }}
-          className="p-1.5 rounded hover:bg-teal-700/20 text-teal-300 transition-colors ml-2"
-          title="Apply 1920x1080 layout preset"
-        >
-          1920x1080
+          Fit
         </button>
       </div>
 

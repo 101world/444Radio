@@ -105,33 +105,17 @@ export async function POST(request: Request) {
     let lastError: any = null
 
     try {
-      // Using cjwbw/demucs model - reliable stem separation
+      // Using erickluis00/all-in-one-audio model - comprehensive audio processing
       prediction = await replicate.predictions.create({
-        version: "d60d520194cc7a2eb9bd035a756d7b0d0e828f7e8c7bdb5a46037b3112e44e00",
+        version: "7fb89da0e45e5f25c800b2daf52b6ae49a6cf67c6e5ae62b5ffe9c3040cc2f87",
         input: {
-          audio_path: audioUrl,
-          model: "htdemucs_6s", // 6-stem model: vocals, drums, bass, guitar, piano, other
-          output_format: "mp3"
+          audio: audioUrl,
+          task: "separate_stems"
         }
       })
     } catch (e: any) {
       lastError = e
-      console.error('Demucs stem separation error:', e)
-      
-      // Try alternative Demucs configuration
-      try {
-        prediction = await replicate.predictions.create({
-          version: "d60d520194cc7a2eb9bd035a756d7b0d0e828f7e8c7bdb5a46037b3112e44e00",
-          input: {
-            audio_path: audioUrl,
-            model: "htdemucs", // 4-stem model: vocals, drums, bass, other
-            output_format: "mp3"
-          }
-        })
-      } catch (e2: any) {
-        lastError = e2
-        console.error('Fallback Demucs separation failed:', e2)
-      }
+      console.error('All-in-one-audio stem separation error:', e)
     }
 
     if (!prediction) {

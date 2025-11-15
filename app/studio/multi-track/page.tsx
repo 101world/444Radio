@@ -228,6 +228,53 @@ function StudioContent() {
     }
   }, [selectedTrackId, tracks, addClipToTrack, addTrack, showNotification]);
 
+  // Handle Stem Splitting
+  const handleSplitStems = useCallback(async (clipId: string, audioUrl: string) => {
+    showNotification('Splitting stems... This may take a few moments', 'info');
+    
+    try {
+      const response = await fetch('/api/studio/split-stems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioUrl })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        showNotification(data.error || 'Stem splitting failed', 'error');
+        return;
+      }
+
+      // Create tracks for each stem
+      const { stems } = data;
+      const stemEntries = Object.entries(stems);
+      
+      if (stemEntries.length === 0) {
+        showNotification('No stems were generated', 'error');
+        return;
+      }
+
+      // Add each stem as a new track
+      for (const [stemName, stemUrl] of stemEntries) {
+        const trackName = `${stemName.charAt(0).toUpperCase() + stemName.slice(1)}`;
+        addTrack(trackName, stemUrl as string);
+      }
+
+      showNotification(`✨ Created ${stemEntries.length} stem tracks`, 'success');
+      
+      // Dispatch credits update event
+      if (data.remainingCredits !== undefined) {
+        window.dispatchEvent(new CustomEvent('credits:update', { 
+          detail: { credits: data.remainingCredits } 
+        }));
+      }
+    } catch (error) {
+      console.error('Stem splitting error:', error);
+      showNotification('Failed to split stems', 'error');
+    }
+  }, [addTrack, showNotification]);
+
   // Load user's library tracks
   const loadLibraryTracks = useCallback(async () => {
     setIsLoadingLibrary(true);
@@ -817,88 +864,89 @@ function StudioContent() {
       </header>
 
       {/* Unified Toolbar with ALL controls */}
-      <div className="h-12 bg-black border-b border-cyan-900/50 flex items-center px-4 gap-2 shrink-0">
-        <span className="text-xs text-cyan-500 font-medium">Tools:</span>
-        
-        {/* Selection Tools */}
-        <button
-          onClick={() => setActiveTool('select')}
-          className={`p-1.5 rounded transition-all ${
-            activeTool === 'select'
-              ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
-              : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
-          }`}
-          title="Selection Tool (V)"
-        >
-          <MousePointer2 className="w-3.5 h-3.5" />
-        </button>
-        
-        <button
-          onClick={() => setActiveTool('cut')}
-          className={`p-1.5 rounded transition-all ${
-            activeTool === 'cut'
-              ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
-              : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
-          }`}
-          title="Cut Tool (C)"
-        >
-          <Scissors className="w-3.5 h-3.5" />
-        </button>
-        
-        <button
-          onClick={() => setActiveTool('zoom')}
-          className={`p-1.5 rounded transition-all ${
-            activeTool === 'zoom'
-              ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
-              : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
-          }`}
-          title="Zoom Tool (Z)"
-        >
-          <ZoomIn className="w-3.5 h-3.5" />
-        </button>
-        
-        <button
-          onClick={() => setActiveTool('move')}
-          className={`p-1.5 rounded transition-all ${
-            activeTool === 'move'
-              ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
-              : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
-          }`}
-          title="Move Tool (M)"
-        >
-          <Move className="w-3.5 h-3.5" />
-        </button>
-        
-        <button
-          onClick={() => setActiveTool('pan')}
-          className={`p-1.5 rounded transition-all ${
-            activeTool === 'pan'
-              ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-500/30'
-              : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-cyan-900/30'
-          }`}
-          title="Pan Tool (H)"
-        >
-          <Hand className="w-3.5 h-3.5" />
-        </button>
+      <div className="h-14 bg-gradient-to-r from-gray-950 to-black border-b border-teal-900/30 flex items-center px-6 gap-4 shrink-0 shadow-lg">
+        {/* Selection Tools Group */}
+        <div className="flex items-center gap-1 bg-black/40 rounded-lg p-1 border border-teal-900/20">
+          <button
+            onClick={() => setActiveTool('select')}
+            className={`p-2 rounded-md transition-all ${
+              activeTool === 'select'
+                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
+                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+            }`}
+            title="Selection Tool (V)"
+          >
+            <MousePointer2 className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={() => setActiveTool('cut')}
+            className={`p-2 rounded-md transition-all ${
+              activeTool === 'cut'
+                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
+                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+            }`}
+            title="Cut Tool (C)"
+          >
+            <Scissors className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={() => setActiveTool('zoom')}
+            className={`p-2 rounded-md transition-all ${
+              activeTool === 'zoom'
+                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
+                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+            }`}
+            title="Zoom Tool (Z)"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={() => setActiveTool('move')}
+            className={`p-2 rounded-md transition-all ${
+              activeTool === 'move'
+                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
+                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+            }`}
+            title="Move Tool (M)"
+          >
+            <Move className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={() => setActiveTool('pan')}
+            className={`p-2 rounded-md transition-all ${
+              activeTool === 'pan'
+                ? 'bg-teal-600 text-white shadow-lg shadow-teal-500/30'
+                : 'text-gray-400 hover:bg-gray-800/50 hover:text-teal-300'
+            }`}
+            title="Pan Tool (H)"
+          >
+            <Hand className="w-4 h-4" />
+          </button>
+        </div>
 
-        <div className="w-px h-6 bg-cyan-900/50 mx-0.5" />
+        {/* Project Controls Group */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setSnapEnabled(!snapEnabled); showNotification(`Snap ${!snapEnabled ? 'ON' : 'OFF'}`, 'info') }}
+            className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${snapEnabled ? 'bg-teal-700/40 text-teal-300 border border-teal-500/30' : 'bg-gray-900/40 text-gray-400 hover:text-teal-300 border border-teal-900/20'}`}
+            title="Snap to grid"
+          >
+            <Magnet className="w-4 h-4" />
+            <span className="text-xs font-medium">Snap</span>
+          </button>
 
-        {/* Project Controls */}
-        <button
-          onClick={() => { setSnapEnabled(!snapEnabled); showNotification(`Snap ${!snapEnabled ? 'ON' : 'OFF'}`, 'info') }}
-          className={`p-1.5 rounded transition-all ${snapEnabled ? 'bg-cyan-700 text-white shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-400 hover:text-white border border-cyan-900/30'}`}
-          title="Snap to grid"
-        >
-          <Magnet className="w-3.5 h-3.5" />
-        </button>
-
-        <button
-          onClick={() => { setPlayheadLocked(!playheadLocked); showNotification(`Playhead ${!playheadLocked ? 'Locked' : 'Unlocked'}`, 'info') }}
-          className={`p-1.5 rounded transition-all ${playheadLocked ? 'bg-cyan-700 text-white shadow-cyan-500/30 shadow' : 'bg-gray-900 text-gray-400 hover:text-white border border-cyan-900/30'}`}
-          title={`${playheadLocked ? 'Unlock' : 'Lock'} playhead tracking`}
-        >
-          {playheadLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-        </button>
+          <button
+            onClick={() => { setPlayheadLocked(!playheadLocked); showNotification(`Playhead ${!playheadLocked ? 'Locked' : 'Unlocked'}`, 'info') }}
+            className={`p-2 rounded-lg transition-all ${playheadLocked ? 'bg-teal-700/40 text-teal-300 border border-teal-500/30' : 'bg-gray-900/40 text-gray-400 hover:text-teal-300 border border-teal-900/20'}`}
+            title={`${playheadLocked ? 'Unlock' : 'Lock'} playhead tracking`}
+          >
+            {playheadLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+          </button>
+        </div>
 
         <button
           onClick={() => { setSeekToEarliestOnPlay(!seekToEarliestOnPlay); showNotification(`Auto-seek ${!seekToEarliestOnPlay ? 'ON' : 'OFF'} on Play`, 'info') }}
@@ -1098,7 +1146,7 @@ function StudioContent() {
           <TimelineRuler bpm={bpm} timeSig={timeSig} snapEnabled={snapEnabled} />
 
           {/* Timeline - Always show, with empty tracks */}
-          <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} playheadLocked={playheadLocked} />
+          <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} playheadLocked={playheadLocked} onSplitStems={handleSplitStems} />
           
           {/* Add Track Button - Always visible below tracks */}
           <div className="px-4 py-2 border-t border-cyan-500/20 bg-black/40 shrink-0">

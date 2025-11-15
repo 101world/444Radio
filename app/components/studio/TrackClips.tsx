@@ -9,7 +9,7 @@ import { Music } from 'lucide-react';
 import AudioClip from './AudioClip';
 import { useStudio } from '@/app/contexts/StudioContext';
 
-export default function TrackClips({ trackId, snapEnabled, bpm, activeTool }: { trackId: string; snapEnabled: boolean; bpm: number; activeTool: any }) {
+export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: { trackId: string; snapEnabled: boolean; bpm: number; activeTool: any; onSplitStems?: (clipId: string, audioUrl: string) => void }) {
   const {
     tracks,
     addClipToTrack,
@@ -68,17 +68,17 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool }: { 
 
   return (
     <div
-      className={`relative bg-black/40 flex-1 overflow-x-auto overflow-y-hidden rounded-r mb-4 ${isDragOver ? 'border-2 border-dashed border-teal-400/20' : ''}`}
+      className={`relative bg-gradient-to-r from-gray-950/30 to-black/50 flex-1 overflow-visible border-b border-teal-900/20 ${isDragOver ? 'ring-2 ring-teal-500/40 bg-teal-900/10' : ''}`}
       style={{ height: `${trackHeight}px` }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {track.clips.length === 0 ? (
-        <div className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-teal-700/40 rounded-2xl">
-          <div className="text-center">
-            <Music className="w-8 h-8 text-teal-700 mx-auto mb-2" />
-            <p className="text-xs text-teal-600">Drop audio files here</p>
+        <div className="absolute inset-3 flex items-center justify-center border border-dashed border-teal-700/30 rounded-lg">
+          <div className="text-center opacity-40">
+            <Music className="w-6 h-6 text-teal-600 mx-auto mb-1" />
+            <p className="text-[10px] text-teal-700">Drop audio here</p>
           </div>
         </div>
       ) : (
@@ -96,6 +96,7 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool }: { 
             onResize={(clipId, newDuration, newOffset, newStartTime) => resizeClip(clipId, newDuration, newOffset, newStartTime)}
             onSplit={(clipId, splitTime) => splitClip(clipId, splitTime)}
             onDelete={(clipId) => removeClip(clipId)}
+            onSplitStems={onSplitStems}
           />
         ))
       )}

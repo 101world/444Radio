@@ -17,9 +17,10 @@ interface TrackRowProps {
   snapEnabled: boolean;
   bpm: number;
   activeTool: 'select' | 'cut' | 'zoom' | 'move' | 'pan';
+  onSplitStems?: (clipId: string, audioUrl: string) => void;
 }
 
-function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
+function TrackRow({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: TrackRowProps) {
   const {
     tracks,
     reorderTrack,
@@ -189,12 +190,12 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool }: TrackRowProps) {
       )}
 
       <TrackLeft trackId={trackId} />
-      <TrackClips trackId={trackId} snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} />
+      <TrackClips trackId={trackId} snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} onSplitStems={onSplitStems} />
     </div>
   );
 }
 
-export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean }) {
+export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true, onSplitStems }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean; onSplitStems?: (clipId: string, audioUrl: string) => void }) {
   const { tracks, currentTime, isPlaying, zoom, leftGutterWidth, setLeftGutterWidth } = useStudio();
   const clipsScrollRef = useRef<HTMLDivElement>(null);
   const leftColumnRef = useRef<HTMLDivElement>(null);
@@ -284,7 +285,7 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
           </div>
         ) : (
           tracks.map((track) => (
-            <TrackClips key={`clips-${track.id}`} trackId={track.id} snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} />
+            <TrackClips key={`clips-${track.id}`} trackId={track.id} snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} onSplitStems={onSplitStems} />
           ))
         )}
           </div>
