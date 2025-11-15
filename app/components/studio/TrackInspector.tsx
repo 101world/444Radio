@@ -17,11 +17,7 @@ import {
   Sparkles,
   ChevronDown,
   ChevronRight,
-  Wand2,
-  Music2,
   Loader2,
-  Check,
-  AlertCircle,
 } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
 import { useUser } from '@clerk/nextjs';
@@ -50,15 +46,11 @@ export default function TrackInspector() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     properties: true,
     effects: true,
-    aiTools: true,
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingType, setProcessingType] = useState<string>('');
   const [processingStatus, setProcessingStatus] = useState<string>('');
-  const [autotuneEnabled, setAutotuneEnabled] = useState(false);
-  const [showEffectModal, setShowEffectModal] = useState(false);
-  const [selectedEffectType, setSelectedEffectType] = useState<string>('');
   const [showEffectsChainModal, setShowEffectsChainModal] = useState(false);
 
   const selectedTrack = tracks.find(t => t.id === selectedTrackId);
@@ -113,7 +105,6 @@ export default function TrackInspector() {
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
-        setAutotuneEnabled(false);
       }, 3000);
 
     } catch (error) {
@@ -122,7 +113,6 @@ export default function TrackInspector() {
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
-        setAutotuneEnabled(false);
       }, 3000);
     }
   }, [selectedTrack, addClipToTrack]);
@@ -168,7 +158,6 @@ export default function TrackInspector() {
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
-        setShowEffectModal(false);
       }, 3000);
 
     } catch (error) {
@@ -181,7 +170,7 @@ export default function TrackInspector() {
     }
   }, [selectedTrack, addClipToTrack]);
 
-  // Generate effect for effects chain (uses stable-audio)
+  // Generate effect for effects chain (uses MusicGen)
   const generateEffectToChain = useCallback(async (effectPrompt: string) => {
     if (!selectedTrack || !user) return;
 
@@ -206,12 +195,13 @@ export default function TrackInspector() {
         throw new Error(data.error || 'Effect generation failed');
       }
 
-      setProcessingStatus('Effect generated! (Added to effects chain)');
+      setProcessingStatus(`Effect generated! "${data.effectName}"`);
       setTimeout(() => {
         setIsProcessing(false);
         setProcessingStatus('');
         setShowEffectsChainModal(false);
-        // TODO: Add effect to track.effects array when that's implemented
+        // Effect will appear in the effects chain list
+        // TODO: Store effect metadata in track.effects array
       }, 3000);
 
     } catch (error) {
@@ -355,107 +345,6 @@ export default function TrackInspector() {
           )}
         </div>
 
-        {/* AI Tools Section */}
-        <div className="border-b border-cyan-500/20">
-          <button
-            onClick={() => toggleSection('aiTools')}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-cyan-500/10 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Wand2 className="w-4 h-4 text-cyan-400" />
-              <span className="text-sm font-semibold text-cyan-400">AI Tools</span>
-            </div>
-            {expandedSections.aiTools ? (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
-
-          {expandedSections.aiTools && (
-            <div className="px-4 pb-4 space-y-3">
-              {/* Processing indicator */}
-              {isProcessing && (
-                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-                    <span className="text-sm font-medium text-cyan-400">
-                      {processingType === 'autotune' ? 'Auto-Tuning...' : 'Generating Effect...'}
-                    </span>
-                  </div>
-                  {processingStatus && (
-                    <p className="text-xs text-gray-400">{processingStatus}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Autotune toggle */}
-              <button
-                onClick={applyPitchCorrection}
-                disabled={isProcessing || !selectedTrack.clips.length}
-                className={`w-full px-4 py-2.5 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                  autotuneEnabled
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
-                    : 'bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30'
-                } ${isProcessing || !selectedTrack.clips.length ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Music2 className="w-4 h-4" />
-                {autotuneEnabled ? 'Auto-Tune Active' : 'Apply Auto-Tune'}
-              </button>
-
-              {/* AI Effect buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedEffectType('reverb');
-                    setShowEffectModal(true);
-                  }}
-                  disabled={isProcessing || !selectedTrack.clips.length}
-                  className="px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-cyan-500/10 text-gray-300 hover:text-cyan-400 border border-gray-600 hover:border-cyan-500/30 font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Reverb
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedEffectType('delay');
-                    setShowEffectModal(true);
-                  }}
-                  disabled={isProcessing || !selectedTrack.clips.length}
-                  className="px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-cyan-500/10 text-gray-300 hover:text-cyan-400 border border-gray-600 hover:border-cyan-500/30 font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Delay
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedEffectType('chorus');
-                    setShowEffectModal(true);
-                  }}
-                  disabled={isProcessing || !selectedTrack.clips.length}
-                  className="px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-cyan-500/10 text-gray-300 hover:text-cyan-400 border border-gray-600 hover:border-cyan-500/30 font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Chorus
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedEffectType('distortion');
-                    setShowEffectModal(true);
-                  }}
-                  disabled={isProcessing || !selectedTrack.clips.length}
-                  className="px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-cyan-500/10 text-gray-300 hover:text-cyan-400 border border-gray-600 hover:border-cyan-500/30 font-medium transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Distortion
-                </button>
-              </div>
-
-              {!selectedTrack.clips.length && (
-                <p className="text-xs text-gray-500 italic">
-                  Add clips to this track to use AI tools
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Effects Chain Section */}
         <div className="border-b border-cyan-500/20">
           <button
@@ -472,6 +361,19 @@ export default function TrackInspector() {
 
           {expandedSections.effects && (
             <div className="px-4 pb-4 space-y-2">
+              {/* Processing indicator */}
+              {isProcessing && processingType === 'effect' && (
+                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-3 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                    <span className="text-sm font-medium text-cyan-400">Generating Effect...</span>
+                  </div>
+                  {processingStatus && (
+                    <p className="text-xs text-gray-400">{processingStatus}</p>
+                  )}
+                </div>
+              )}
+
               {/* Effects list will go here */}
               {selectedTrack.effects && selectedTrack.effects.length > 0 ? (
                 selectedTrack.effects.map((effect: Effect) => (
@@ -563,72 +465,6 @@ export default function TrackInspector() {
           )}
         </div>
       </div>
-
-      {/* AI Effect Modal */}
-      {showEffectModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gradient-to-b from-gray-900 to-black border border-cyan-500/30 rounded-xl p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Wand2 className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-lg font-bold text-white">
-                  Apply {selectedEffectType?.charAt(0).toUpperCase() + selectedEffectType?.slice(1)}
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setShowEffectModal(false);
-                  setSelectedEffectType('');
-                }}
-                className="p-1 rounded hover:bg-gray-700 text-gray-400 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-sm text-gray-400 mb-2 block">
-                Describe the effect you want (optional):
-              </label>
-              <textarea
-                id="effect-prompt-input"
-                placeholder={`e.g., "subtle ${selectedEffectType} with long tail" or "heavy ${selectedEffectType} for dramatic effect"`}
-                className="w-full bg-gray-800/50 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50 resize-none h-24"
-                defaultValue={`${selectedEffectType} effect`}
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  const promptInput = document.getElementById('effect-prompt-input') as HTMLTextAreaElement;
-                  const prompt = promptInput?.value || `${selectedEffectType} effect`;
-                  applyAIEffect(prompt);
-                }}
-                disabled={isProcessing}
-                className="flex-1 px-4 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Generate Effect
-              </button>
-              <button
-                onClick={() => {
-                  setShowEffectModal(false);
-                  setSelectedEffectType('');
-                }}
-                className="px-4 py-2.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-
-            <div className="mt-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-              <p className="text-xs text-cyan-400">
-                💡 AI will process your track with {selectedEffectType} and add it as a new clip
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Effects Chain Modal */}
       {showEffectsChainModal && (
