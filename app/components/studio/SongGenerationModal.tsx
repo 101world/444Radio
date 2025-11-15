@@ -109,6 +109,11 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
         type: 'song',
       });
 
+      // Refresh credits (POST /api/credits) so UI can update elsewhere
+      try {
+        fetch('/api/credits', { method: 'POST' });
+      } catch {}
+
       setTimeout(() => {
         onClose();
         setPrompt('');

@@ -87,10 +87,11 @@ export async function POST(request: Request) {
     const finalTitle = typeof title === 'string' && title.trim() ? title.trim() : (prompt.length > 60 ? `${prompt.slice(0, 57)}...` : prompt);
     const finalGenre = typeof genre === 'string' && genre.trim() ? genre.trim() : 'pop';
 
-    // Create song generation prediction (MiniMax requires lyrics)
+    // Create song generation prediction (MiniMax requires lyrics and prompt)
     const prediction = await replicate.predictions.create({
       model: "minimax/music-1.5",
       input: {
+        prompt: `${finalGenre ? finalGenre + ' ' : ''}song: ${prompt}`,
         lyrics: finalLyrics,
         title: finalTitle,
         genre: finalGenre,
@@ -178,7 +179,8 @@ export async function POST(request: Request) {
           lyrics: finalLyrics,
           model: 'minimax-music-1.5',
           predictionId: result.id,
-        }
+        },
+        remainingCredits: (currentCredits - 2)
       })
     );
 
