@@ -212,27 +212,23 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
   const TIMELINE_DURATION = 300; // 5 minutes
   // Left gutter for pinned track header — measured dynamically
   const LEFT_GUTTER = leftGutterWidth;
-  const pixelsPerSecond = 50 * zoom;
-  const timelineWidth = TIMELINE_DURATION * pixelsPerSecond;
+  
+  // Memoize expensive calculations
+  const pixelsPerSecond = useMemo(() => 50 * zoom, [zoom]);
+  const timelineWidth = useMemo(() => TIMELINE_DURATION * pixelsPerSecond, [pixelsPerSecond]);
+  const playheadPosition = useMemo(() => currentTime * pixelsPerSecond, [currentTime, pixelsPerSecond]);
 
   // Auto-scroll to keep playhead centered during playback ONLY if locked
-  // Throttled to reduce performance impact
-  const lastScrollTimeRef = useRef(0);
   useEffect(() => {
-    if (!clipsScrollRef.current || !playheadLocked || !isPlaying) return;
-    
-    const now = performance.now();
-    // Throttle scroll updates to every 100ms
-    if (now - lastScrollTimeRef.current < 100) return;
-    lastScrollTimeRef.current = now;
-    
+    if (!clipsScrollRef.current || !playheadLocked) return;
     const container = clipsScrollRef.current;
-    const playheadPosition = currentTime * pixelsPerSecond;
     const containerWidth = container.clientWidth;
     const maxScroll = Math.max(0, timelineWidth - containerWidth);
-    const target = Math.min(maxScroll, Math.max(0, playheadPosition - containerWidth / 2 + 16));
-    container.scrollLeft = target;
-  }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked, timelineWidth]);
+    if (isPlaying) {
+      const target = Math.min(maxScroll, Math.max(0, playheadPosition - containerWidth / 2 + 16));
+      container.scrollLeft = target;
+    }
+  }, [currentTime, isPlaying, playheadPosition, playheadLocked, timelineWidth]);
 
   // Wheel handler - keyboard modifiers map to actions
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -326,7 +322,7 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
                     <div
                       className="absolute top-0 bottom-0 w-1 bg-cyan-400 z-30 pointer-events-none will-change-transform"
                       style={{
-                        transform: `translateX(${currentTime * pixelsPerSecond}px)`,
+                        transform: `translateX(${playheadPosition}px)`,
                         left: 0,
                       }}
                     >

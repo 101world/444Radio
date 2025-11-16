@@ -886,16 +886,10 @@ export function useMultiTrack(): UseMultiTrackReturn {
     if (!audioContextRef.current) return;
     playStartContextTimeRef.current = audioContextRef.current.currentTime;
     playStartProjectTimeRef.current = currentTime;
-    let lastUpdateTime = 0;
-    const updateInterval = 1000 / 30; // 30fps instead of 60fps for better performance
-    const tick = (timestamp: number) => {
+    const tick = () => {
       const ctx = audioContextRef.current!;
-      // Throttle updates to reduce overhead
-      if (timestamp - lastUpdateTime >= updateInterval) {
-        const t = playStartProjectTimeRef.current + (ctx.currentTime - playStartContextTimeRef.current);
-        setCurrentTimeState(t);
-        lastUpdateTime = timestamp;
-      }
+      const t = playStartProjectTimeRef.current + (ctx.currentTime - playStartContextTimeRef.current);
+      setCurrentTimeState(t);
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
