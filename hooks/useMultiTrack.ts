@@ -139,27 +139,6 @@ export function useMultiTrack(): UseMultiTrackReturn {
     if (!audioContextRef.current || !masterGainNodeRef.current) return track;
     if (track.gainNode && track.panNode) return track;
     try {
-      // If this is a local blob URL and we have a stored audioBlob for it, decode directly
-      if (url.startsWith('blob:')) {
-        for (const t of tracks) {
-          const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
-          if (clip && clip.audioBlob) {
-            try {
-              const arr = await clip.audioBlob.arrayBuffer();
-              const buf = await audioContextRef.current!.decodeAudioData(arr);
-              bufferCacheRef.current.set(url, buf);
-              setTracks(prev => prev.map(tr => ({
-                ...tr,
-                clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf.duration ? { ...c, duration: buf.duration } : c)
-              })));
-              return buf;
-            } catch (errBlobDecode) {
-              console.warn('Failed to decode pre-stored audioBlob, falling back to fetch:', errBlobDecode);
-              // continue to fetch below
-            }
-          }
-        }
-      }
       const gainNode = audioContextRef.current.createGain();
       gainNode.gain.value = track.volume;
       const panNode = audioContextRef.current.createStereoPanner();
@@ -470,6 +449,15 @@ export function useMultiTrack(): UseMultiTrackReturn {
       return newTracks;
     });
     console.log(`🗑️ Clip removed: ${clipId}`);
+    // Find any clip with matching id and revoke its object URL if it's a blob URL
+    try {
+      for (const t of tracks) {
+        const c = t.clips.find(cc => cc.id === clipId);
+        if (c && typeof c.audioUrl === 'string' && c.audioUrl.startsWith('blob:')) {
+          try { URL.revokeObjectURL(c.audioUrl); } catch {}
+        }
+      }
+    } catch (e) {}
   }, [saveHistory]);
 
   // Resize clip (adjust duration/offset and optionally startTime)
@@ -514,6 +502,9 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   // Remove track
   const removeTrack = useCallback((id: string) => {
+    // Find track before removing so we can clean up any blob URLs
+    const toRemove = tracks.find(t => t.id === id);
+
     setTracks((prev) => {
       const track = prev.find((t) => t.id === id);
       if (track) {
@@ -526,7 +517,18 @@ export function useMultiTrack(): UseMultiTrackReturn {
       saveHistory(newTracks);
       return newTracks;
     });
-  }, [saveHistory]);
+
+    // Also revoke any object URLs for clips in removed track
+    try {
+      if (toRemove && Array.isArray(toRemove.clips)) {
+        for (const c of toRemove.clips) {
+          if (c.audioUrl && c.audioUrl.startsWith('blob:')) {
+            try { URL.revokeObjectURL(c.audioUrl); } catch {}
+          }
+        }
+      }
+    } catch (e) {}
+  }, [saveHistory, tracks]);
 
   // Update track properties
   const updateTrack = useCallback((id: string, updates: Partial<Track>) => {
@@ -689,37 +691,33 @@ export function useMultiTrack(): UseMultiTrackReturn {
       // If this is a blob URL (created by URL.createObjectURL) the fetch might fail
       // if the object URL was revoked or unavailable. Try to find a matching clip
       // and decode directly from the stored Blob if available.
-      try {
-        if (url.startsWith('blob:')) {
-          // Search for a clip that references this url
-          for (const t of tracks) {
-            const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
-            if (clip && clip.audioBlob) {
-              try {
-                const arr = await clip.audioBlob.arrayBuffer();
-                const buf2 = await audioContextRef.current!.decodeAudioData(arr);
-                bufferCacheRef.current.set(url, buf2);
-                // Update any clips that reference this url with accurate duration
-                setTracks(prev => prev.map(tr => ({
-                  ...tr,
-                  clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf2.duration ? { ...c, duration: buf2.duration } : c)
-                })));
-                return buf2;
-              } catch (errDecode) {
-                console.error('Failed to decode audioBlob for blob url fallback:', errDecode);
-                // continue to throw original error afterwards
-              }
+      if (url.startsWith('blob:')) {
+        // Search for a clip that references this url
+        for (const t of tracks) {
+          const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
+          if (clip && clip.audioBlob) {
+            try {
+              const arr = await clip.audioBlob.arrayBuffer();
+              const buf2 = await audioContextRef.current!.decodeAudioData(arr);
+              bufferCacheRef.current.set(url, buf2);
+              // Update any clips that reference this url with accurate duration
+              setTracks(prev => prev.map(tr => ({
+                ...tr,
+                clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf2.duration ? { ...c, duration: buf2.duration } : c)
+              })));
+              return buf2;
+            } catch (errDecode) {
+              console.error('Failed to decode audioBlob for blob url fallback:', errDecode);
+              // continue to throw original error afterwards
             }
           }
         }
-      } catch (errFallback) {
-        console.error('Error in blob fallback flow:', errFallback);
       }
       // Notify UI if available
       try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Failed to load audio (CORS or network)', type: 'error' } })); } catch {}
       throw e;
     }
-  }, []);
+  }, [tracks]);
 
   const ensureBuffer = useCallback(async (url: string): Promise<AudioBuffer> => {
     return await loadBuffer(url);
