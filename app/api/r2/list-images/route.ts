@@ -13,6 +13,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if R2 credentials are configured
+    if (!process.env.R2_ENDPOINT || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
+      console.warn('⚠️ R2 credentials not configured, returning empty list')
+      return NextResponse.json({
+        success: true,
+        images: [],
+        total: 0,
+        message: 'R2 storage not configured'
+      })
+    }
+
     // Allow optional query param all=true for admin/full listing (not filtered by user)
     const url = new URL(request.url)
     const listAllParam = url.searchParams.get('all') === 'true'
@@ -85,13 +96,14 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('❌ R2 list-images error:', error)
+    // Return empty array instead of error to prevent UI breakage
     return NextResponse.json(
       { 
-        success: false,
-        error: 'Failed to list R2 images', 
-        details: error instanceof Error ? error.message : String(error) 
-      },
-      { status: 500 }
+        success: true,
+        images: [],
+        total: 0,
+        error: error instanceof Error ? error.message : String(error)
+      }
     )
   }
 }
