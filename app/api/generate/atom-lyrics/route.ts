@@ -75,16 +75,27 @@ export async function POST(req: NextRequest) {
     }))
 
   } catch (error: any) {
-    console.error('🔬 [ATOM] Error:', error)
+    console.error('🔬 [ATOM] Error details:', {
+      message: error?.message,
+      status: error?.response?.status,
+      data: error?.response?.data,
+      stack: error?.stack
+    })
     
     let errorMessage = 'Failed to generate lyrics with Atom'
     if (error instanceof Error) {
       errorMessage = error.message
     }
     
+    // If it's a Replicate API error, include more details
+    if (error?.response?.data) {
+      errorMessage = `Replicate API error: ${JSON.stringify(error.response.data)}`
+    }
+    
     return corsResponse(NextResponse.json({ 
       success: false,
-      error: errorMessage
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error?.message : undefined
     }, { status: 500 }))
   }
 }
