@@ -18,6 +18,7 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
   const [prompt, setPrompt] = useState('');
   const [genre, setGenre] = useState('');
   const [title, setTitle] = useState('');
+  const [titleError, setTitleError] = useState('');
   // Simplified UI: remove explicit vocals toggle, add output format and lyrics
   const [outputFormat, setOutputFormat] = useState<'mp3' | 'wav'>('mp3');
   const [lyrics, setLyrics] = useState('');
@@ -25,6 +26,15 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [isGeneratingLyrics, setIsGeneratingLyrics] = useState(false);
+
+  const focusParams = () => {
+    const el = document.querySelector('#studio-song-params');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('shake');
+      setTimeout(() => el.classList.remove('shake'), 500);
+    }
+  };
 
   const handleGenerateAtomLyrics = async () => {
     setIsGeneratingLyrics(true);
@@ -64,6 +74,13 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
       return;
     }
 
+    if (!title.trim()) {
+      setTitleError('Please add a title before generating');
+      focusParams();
+      return;
+    }
+
+    setTitleError('');
     setIsGenerating(true);
     setProgress('Initializing AI song generation...');
 
@@ -186,18 +203,23 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
           </div>
 
           {/* Parameters (Create page style) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div id="studio-song-params" className="grid grid-cols-2 gap-4">
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-cyan-400 mb-2">Title</label>
+              <label className="block text-sm font-medium text-cyan-400 mb-2">Title *</label>
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); setTitleError(''); }}
                 placeholder="Song title"
-                className="w-full px-4 py-2 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:border-cyan-500/60"
+                className={`w-full px-4 py-2 bg-black/50 border rounded-lg text-white focus:outline-none ${
+                  titleError ? 'border-red-500/60' : 'border-cyan-500/30 focus:border-cyan-500/60'
+                }`}
                 disabled={isGenerating}
               />
+              {titleError && (
+                <p className="text-xs text-red-400 mt-1">{titleError}</p>
+              )}
             </div>
 
             {/* Genre (free text) */}

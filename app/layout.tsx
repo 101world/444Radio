@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
+import { UniversalPlayerProvider } from './contexts/UniversalPlayerContext';
 import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
@@ -29,13 +30,15 @@ export default function RootLayout({
         className={`${poppins.className} antialiased bg-gray-900 text-white`}
       >
         <ClerkProvider>
-          <AudioPlayerProvider>
-            <GenerationQueueProvider>
-              {children}
-              <ConditionalGlobalPlayer />
-              <GenerationMonitor />
-            </GenerationQueueProvider>
-          </AudioPlayerProvider>
+          <UniversalPlayerProvider>
+            <AudioPlayerProvider>
+              <GenerationQueueProvider>
+                {children}
+                <ConditionalGlobalPlayer />
+                <GenerationMonitor />
+              </GenerationQueueProvider>
+            </AudioPlayerProvider>
+          </UniversalPlayerProvider>
         </ClerkProvider>
       </body>
     </html>
