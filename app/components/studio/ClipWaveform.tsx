@@ -21,6 +21,3 @@ export default memo(ClipWaveform, (prevProps, nextProps) => {
     prevProps.height === nextProps.height
   );
 });
-    prevProps.height === nextProps.height
-  );
-});
