@@ -13,9 +13,9 @@ export async function GET() {
   }
 
   try {
-    const token = process.env.REPLICATE_API_TOKEN
+    const token = process.env.REPLICATE_API_KEY_LATEST
     if (!token) {
-      return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_TOKEN' }, { status: 500 }))
+      return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_KEY_LATEST' }, { status: 500 }))
     }
 
     // Ping Replicate model endpoint for MiniMax Music 1.5

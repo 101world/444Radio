@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     // Initialize Replicate
     const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN!,
+      auth: process.env.REPLICATE_API_KEY_LATEST!,
     });
 
     console.log('🎵 Generating beat with Stable Audio 2.5:', { prompt, duration, bpm });

@@ -53,10 +53,10 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const token = process.env.REPLICATE_API_TOKEN
+    const token = process.env.REPLICATE_API_KEY_LATEST
     if (!token) {
-      console.error('❌ REPLICATE_API_TOKEN is not set in environment variables')
-      return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_TOKEN' }, { status: 500 }))
+      console.error('❌ REPLICATE_API_KEY_LATEST is not set in environment variables')
+      return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_KEY_LATEST' }, { status: 500 }))
     }
     
     console.log('✅ Replicate API token found, length:', token.length)
