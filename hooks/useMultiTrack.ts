@@ -1014,19 +1014,26 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const skipBackward = useCallback((seconds: number = 10) => {
     const newTime = Math.max(0, currentTime - seconds);
     setCurrentTimeState(newTime);
+    // Don't restart playback, just update position
     if (isPlaying) {
-      // Restart playback at new position
-      setPlaying(true);
+      // Stop current playback
+      schedulerRef.current?.stop();
+      clearTicker();
+      setIsPlaying(false);
     }
-  }, [currentTime, isPlaying, setPlaying]);
+  }, [currentTime, isPlaying, clearTicker]);
 
   const skipForward = useCallback((seconds: number = 10) => {
     const newTime = currentTime + seconds;
     setCurrentTimeState(newTime);
+    // Don't restart playback, just update position
     if (isPlaying) {
-      setPlaying(true);
+      // Stop current playback
+      schedulerRef.current?.stop();
+      clearTicker();
+      setIsPlaying(false);
     }
-  }, [currentTime, isPlaying, setPlaying]);
+  }, [currentTime, isPlaying, clearTicker]);
 
   const playNextTrack = useCallback(() => {
     if (tracks.length === 0) return;
