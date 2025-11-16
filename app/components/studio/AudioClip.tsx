@@ -54,8 +54,11 @@ export default function AudioClipComponent({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dragMode, setDragMode] = useState<'none' | 'mouse' | 'html5'>('none');
   const [dragPreviewPos, setDragPreviewPos] = useState({ x: 0, y: 0 });
-  // Resizing is disabled for a simplified, consistent visual style requested by user
-  // const [resizing, setResizing] = useState<null | 'left' | 'right'>(null);
+  const [resizing, setResizing] = useState<null | 'left' | 'right'>(null);
+  const [resizeStartX, setResizeStartX] = useState(0);
+  const [resizeStartDuration, setResizeStartDuration] = useState(0);
+  const [resizeStartOffset, setResizeStartOffset] = useState(0);
+  const [resizeStartTime, setResizeStartTime] = useState(0);
   const clipRef = useRef<HTMLDivElement>(null);
 
   const pixelsPerSecond = 50 * zoom;
@@ -157,6 +160,62 @@ export default function AudioClipComponent({
     };
   }, [isDragging, dragMode, dragOffset, pixelsPerSecond, clip.id, onMove, clipLeft, clipWidth, clip.startTime, clip.duration, clip.offset, quantize]);
 
+  // Handle resize
+  useEffect(() => {
+    if (!resizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - resizeStartX;
+      const deltaTime = deltaX / pixelsPerSecond;
+
+      if (resizing === 'left') {
+        // Resize from left edge - adjust startTime and offset
+        const newStartTime = Math.max(0, resizeStartTime + deltaTime);
+        const actualDelta = newStartTime - resizeStartTime;
+        const newOffset = Math.max(0, resizeStartOffset + actualDelta);
+        const newDuration = Math.max(0.1, resizeStartDuration - actualDelta);
+        
+        onResize(clip.id, quantize(newDuration), newOffset, quantize(newStartTime));
+      } else if (resizing === 'right') {
+        // Resize from right edge - adjust duration only
+        const newDuration = Math.max(0.1, resizeStartDuration + deltaTime);
+        onResize(clip.id, quantize(newDuration), resizeStartOffset, resizeStartTime);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setResizing(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizing, resizeStartX, resizeStartDuration, resizeStartOffset, resizeStartTime, pixelsPerSecond, clip.id, onResize, quantize]);
+
+  const handleLeftResizeMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setResizing('left');
+    setResizeStartX(e.clientX);
+    setResizeStartDuration(clip.duration);
+    setResizeStartOffset(clip.offset);
+    setResizeStartTime(clip.startTime);
+  };
+
+  const handleRightResizeMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setResizing('right');
+    setResizeStartX(e.clientX);
+    setResizeStartDuration(clip.duration);
+    setResizeStartOffset(clip.offset);
+    setResizeStartTime(clip.startTime);
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -221,7 +280,28 @@ export default function AudioClipComponent({
         </div>
       </div>
 
-      {/* Resize handles hidden to support fixed, clean UI */}
+      {/* Resize handles - only show when selected and not in cut mode */}
+      {isSelected && activeTool !== 'cut' && (
+        <>
+          {/* Left resize handle */}
+          <div
+            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-teal-400/40 transition-colors group"
+            onMouseDown={handleLeftResizeMouseDown}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute inset-y-0 left-0 w-1 bg-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+          
+          {/* Right resize handle */}
+          <div
+            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-teal-400/40 transition-colors group"
+            onMouseDown={handleRightResizeMouseDown}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute inset-y-0 right-0 w-1 bg-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </>
+      )}
       </div>
 
       {/* Context Menu */}
