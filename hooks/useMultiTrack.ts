@@ -652,6 +652,32 @@ export function useMultiTrack(): UseMultiTrackReturn {
     const cache = bufferCacheRef.current;
     if (cache.has(url)) return cache.get(url)!;
     if (!audioContextRef.current) throw new Error('AudioContext not initialized');
+    
+    // For blob URLs, try to decode from stored blob FIRST before attempting fetch
+    // This prevents issues with revoked blob URLs
+    if (url.startsWith('blob:')) {
+      for (const t of tracks) {
+        const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
+        if (clip && clip.audioBlob) {
+          try {
+            console.log('🔄 Decoding from stored blob for:', url);
+            const arr = await clip.audioBlob.arrayBuffer();
+            const buf = await audioContextRef.current!.decodeAudioData(arr);
+            cache.set(url, buf);
+            // Update any clips that reference this url with accurate duration
+            setTracks(prev => prev.map(tr => ({
+              ...tr,
+              clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf.duration ? { ...c, duration: buf.duration } : c)
+            })));
+            return buf;
+          } catch (errDecode) {
+            console.error('Failed to decode audioBlob:', errDecode);
+            // Fall through to try fetch as backup
+          }
+        }
+      }
+    }
+    
     try {
       // Route R2 URLs through server proxy to avoid CORS issues
       const maybeProxy = (u: string) => {
@@ -688,31 +714,6 @@ export function useMultiTrack(): UseMultiTrackReturn {
       return buf;
     } catch (e) {
       console.error('Failed to load audio buffer:', url, e);
-      // If this is a blob URL (created by URL.createObjectURL) the fetch might fail
-      // if the object URL was revoked or unavailable. Try to find a matching clip
-      // and decode directly from the stored Blob if available.
-      if (url.startsWith('blob:')) {
-        // Search for a clip that references this url
-        for (const t of tracks) {
-          const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
-          if (clip && clip.audioBlob) {
-            try {
-              const arr = await clip.audioBlob.arrayBuffer();
-              const buf2 = await audioContextRef.current!.decodeAudioData(arr);
-              bufferCacheRef.current.set(url, buf2);
-              // Update any clips that reference this url with accurate duration
-              setTracks(prev => prev.map(tr => ({
-                ...tr,
-                clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf2.duration ? { ...c, duration: buf2.duration } : c)
-              })));
-              return buf2;
-            } catch (errDecode) {
-              console.error('Failed to decode audioBlob for blob url fallback:', errDecode);
-              // continue to throw original error afterwards
-            }
-          }
-        }
-      }
       // Notify UI if available
       try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Failed to load audio (CORS or network)', type: 'error' } })); } catch {}
       throw e;
