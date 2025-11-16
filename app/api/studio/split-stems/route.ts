@@ -177,41 +177,116 @@ export async function POST(request: Request) {
       }, { status: 503 }))
     }
 
-    // Poll for completion up to 180s
+    // Poll for completion up to 240s (extended for demucs processing time)
     const start = Date.now()
+    const TIMEOUT_MS = 240000 // 4 minutes
+    const POLL_INTERVAL_MS = 3000 // Poll every 3 seconds
     let result = prediction
-    while (result && result.status && result.status !== 'succeeded' && result.status !== 'failed') {
-      if (Date.now() - start > 180000) {
+    let pollAttempts = 0
+    
+    while (result && result.status && result.status !== 'succeeded' && result.status !== 'failed' && result.status !== 'canceled') {
+      pollAttempts++
+      const elapsed = Date.now() - start
+      
+      if (elapsed > TIMEOUT_MS) {
+        console.error(`❌ Stem separation timeout after ${elapsed}ms, ${pollAttempts} poll attempts`)
         // Refund on timeout
         await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
-        return corsResponse(NextResponse.json({ success: false, error: 'Stems splitting timeout' }, { status: 408 }))
+        return corsResponse(NextResponse.json({ 
+          success: false, 
+          error: 'Stem separation timed out. The AI model may be experiencing high demand. Please try again in a few minutes.',
+          predictionId: result.id
+        }, { status: 408 }))
       }
-      await new Promise(r => setTimeout(r, 2000))
-      result = await replicate.predictions.get(result.id)
+      
+      await new Promise(r => setTimeout(r, POLL_INTERVAL_MS))
+      
+      try {
+        result = await replicate.predictions.get(result.id)
+        console.log(`🔄 Poll attempt ${pollAttempts}: status=${result.status}, elapsed=${Math.round(elapsed/1000)}s`)
+      } catch (pollError: any) {
+        console.error(`⚠️ Error polling prediction (attempt ${pollAttempts}):`, pollError?.message)
+        // On poll error, retry with exponential backoff
+        if (pollAttempts < 5) {
+          await new Promise(r => setTimeout(r, POLL_INTERVAL_MS * 2))
+          continue
+        }
+        // After 5 poll failures, give up and refund
+        await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
+        return corsResponse(NextResponse.json({ 
+          success: false, 
+          error: 'Unable to check stem separation status. Please try again.',
+          detail: pollError?.message
+        }, { status: 503 }))
+      }
     }
 
     if (result.status === 'failed') {
+      console.error('❌ Demucs prediction failed:', result.error)
       // Refund on failure
       await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
-      return corsResponse(NextResponse.json({ success: false, error: result.error || 'Stem splitting failed' }, { status: 500 }))
+      return corsResponse(NextResponse.json({ 
+        success: false, 
+        error: `Stem separation failed: ${result.error || 'Unknown error from AI model'}`,
+        predictionId: result.id
+      }, { status: 500 }))
+    }
+    
+    if (result.status === 'canceled') {
+      console.error('❌ Demucs prediction canceled')
+      await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
+      return corsResponse(NextResponse.json({ 
+        success: false, 
+        error: 'Stem separation was canceled',
+        predictionId: result.id
+      }, { status: 500 }))
     }
 
     const stems = normalizeStems(result.output)
     if (!stems || Object.keys(stems).length === 0) {
+      console.error('❌ No stems in output:', result.output)
       // Refund on no output
       await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
-      return corsResponse(NextResponse.json({ success: false, error: 'No stems returned', raw: result.output }, { status: 502 }))
+      return corsResponse(NextResponse.json({ 
+        success: false, 
+        error: 'AI model returned no stems. This may be due to audio format or quality issues.',
+        raw: result.output,
+        predictionId: result.id
+      }, { status: 502 }))
     }
 
+    console.log(`✅ Stem separation complete: ${Object.keys(stems).length} stems extracted`)
     // Do not upload stems to R2 here; return direct URLs for immediate placement
     const remainingCredits = currentCredits - CREDITS_COST
     return corsResponse(NextResponse.json({ success: true, stems, predictionId: result.id, remainingCredits }))
-  } catch (error) {
-    console.error('❌ Split-stems error:', error)
+  } catch (error: any) {
+    console.error('❌ Split-stems critical error:', {
+      message: error?.message,
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      data: error?.response?.data,
+      stack: error?.stack
+    })
+    
+    // Provide helpful error messages based on status code
+    let userMessage = 'An error occurred during stem separation. Please try again.'
+    const status = error?.response?.status
+    
+    if (status === 402) {
+      userMessage = 'Unable to process: Replicate billing issue. Please contact support.'
+    } else if (status === 503 || status === 504) {
+      userMessage = 'The AI service is temporarily unavailable due to high demand. Please try again in a few minutes.'
+    } else if (status === 429) {
+      userMessage = 'Rate limit exceeded. Please wait a moment and try again.'
+    } else if (status >= 500) {
+      userMessage = 'The AI service encountered an error. Please try again.'
+    }
+    
     return corsResponse(NextResponse.json({ 
       success: false, 
-      error: 'An error occurred during stem separation. Please try again.',
-      detail: error instanceof Error ? error.message : String(error)
-    }, { status: 500 }))
+      error: userMessage,
+      detail: error instanceof Error ? error.message : String(error),
+      statusCode: status
+    }, { status: status || 500 }))
   }
 }
