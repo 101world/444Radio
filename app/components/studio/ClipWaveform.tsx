@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, memo } from 'react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
-export default function ClipWaveform({ audioUrl, width = 300, height = 48 }: { audioUrl: string; width?: number; height?: number }) {
+function ClipWaveform({ audioUrl, width = 300, height = 48 }: { audioUrl: string; width?: number; height?: number }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const { getPeaksForUrl } = useStudio();
 
@@ -62,3 +62,12 @@ export default function ClipWaveform({ audioUrl, width = 300, height = 48 }: { a
     <canvas ref={canvasRef} className="w-full h-full rounded" />
   );
 }
+
+// Memoize waveform to prevent re-renders during playback
+export default memo(ClipWaveform, (prevProps, nextProps) => {
+  return (
+    prevProps.audioUrl === nextProps.audioUrl &&
+    prevProps.width === nextProps.width &&
+    prevProps.height === nextProps.height
+  );
+});

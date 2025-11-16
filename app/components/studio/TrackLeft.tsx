@@ -3,11 +3,11 @@
  */
  'use client'
 
-import { MouseEvent, useState, useRef, useEffect } from 'react';
+import { MouseEvent, useState, useRef, useEffect, memo } from 'react';
 import { Volume2, GripVertical, Edit2, Check, X, Download } from 'lucide-react';
 import { useStudio } from '@/app/contexts/StudioContext';
 
-export default function TrackLeft({ trackId }: { trackId: string }) {
+function TrackLeft({ trackId }: { trackId: string }) {
   const { tracks, setTrackVolume, setTrackPan, toggleMute, toggleSolo, removeTrack, setSelectedTrack, selectedTrackId, trackHeight, setTrackHeight, renameTrack, reorderTrack, addTrack } = useStudio();
   const track = tracks.find(t => t.id === trackId);
   const [isResizing, setIsResizing] = useState(false);
@@ -313,3 +313,8 @@ export default function TrackLeft({ trackId }: { trackId: string }) {
     </div>
   )
 }
+
+// Memoize to prevent re-renders during playback
+export default memo(TrackLeft, (prevProps, nextProps) => {
+  return prevProps.trackId === nextProps.trackId;
+});

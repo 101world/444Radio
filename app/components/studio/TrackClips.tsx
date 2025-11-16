@@ -4,12 +4,12 @@
 
  'use client'
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { Music } from 'lucide-react';
 import AudioClip from './AudioClip';
 import { useStudio } from '@/app/contexts/StudioContext';
 
-export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: { trackId: string; snapEnabled: boolean; bpm: number; activeTool: any; onSplitStems?: (clipId: string, audioUrl: string) => void }) {
+function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: { trackId: string; snapEnabled: boolean; bpm: number; activeTool: any; onSplitStems?: (clipId: string, audioUrl: string) => void }) {
   const {
     tracks,
     addClipToTrack,
@@ -170,3 +170,14 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
     </div>
   )
 }
+
+// Memoize to prevent unnecessary re-renders during playback
+export default memo(TrackClips, (prevProps, nextProps) => {
+  // Only re-render if these specific props change
+  return (
+    prevProps.trackId === nextProps.trackId &&
+    prevProps.snapEnabled === nextProps.snapEnabled &&
+    prevProps.bpm === nextProps.bpm &&
+    prevProps.activeTool === nextProps.activeTool
+  );
+});

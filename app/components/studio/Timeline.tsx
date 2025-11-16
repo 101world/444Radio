@@ -216,16 +216,22 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
   const timelineWidth = TIMELINE_DURATION * pixelsPerSecond;
 
   // Auto-scroll to keep playhead centered during playback ONLY if locked
+  // Throttled to reduce performance impact
+  const lastScrollTimeRef = useRef(0);
   useEffect(() => {
-    if (!clipsScrollRef.current || !playheadLocked) return;
+    if (!clipsScrollRef.current || !playheadLocked || !isPlaying) return;
+    
+    const now = performance.now();
+    // Throttle scroll updates to every 100ms
+    if (now - lastScrollTimeRef.current < 100) return;
+    lastScrollTimeRef.current = now;
+    
     const container = clipsScrollRef.current;
     const playheadPosition = currentTime * pixelsPerSecond;
     const containerWidth = container.clientWidth;
     const maxScroll = Math.max(0, timelineWidth - containerWidth);
-    if (isPlaying) {
-      const target = Math.min(maxScroll, Math.max(0, playheadPosition - containerWidth / 2 + 16));
-      container.scrollLeft = target;
-    }
+    const target = Math.min(maxScroll, Math.max(0, playheadPosition - containerWidth / 2 + 16));
+    container.scrollLeft = target;
   }, [currentTime, isPlaying, pixelsPerSecond, playheadLocked, timelineWidth]);
 
   // Wheel handler - keyboard modifiers map to actions
@@ -318,9 +324,10 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
                   {/* Playhead - only show on first track, but extends through all */}
                   {index === 0 && (
                     <div
-                      className="fixed top-0 bottom-0 w-1 bg-cyan-400 z-30 pointer-events-none"
+                      className="absolute top-0 bottom-0 w-1 bg-cyan-400 z-30 pointer-events-none will-change-transform"
                       style={{
-                        left: `calc(224px + ${currentTime * pixelsPerSecond}px)`,
+                        transform: `translateX(${currentTime * pixelsPerSecond}px)`,
+                        left: 0,
                       }}
                     >
                       <div className="absolute -top-2 -left-3 w-5 h-5 bg-cyan-400 rotate-45 shadow-lg" />
