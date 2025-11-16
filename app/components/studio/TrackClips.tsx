@@ -97,11 +97,11 @@ export default function TrackClips({ trackId, snapEnabled, bpm, activeTool, onSp
       if (!files.length) return;
       
       for (const file of files) {
-        const objectUrl = URL.createObjectURL(file);
+            const objectUrl = URL.createObjectURL(file);
         const audio = new Audio(objectUrl);
         await new Promise<void>((resolve) => {
           audio.onloadedmetadata = () => {
-            addClipToTrack(trackId, objectUrl, file.name, startTime, audio.duration || undefined);
+            addClipToTrack(trackId, objectUrl, file.name, startTime, audio.duration || undefined, file);
             resolve();
           };
           audio.onerror = () => resolve();

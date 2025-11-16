@@ -387,7 +387,7 @@ function StudioContent() {
           // Fallback after 2s if metadata doesn't load
           setTimeout(() => resolve(0), 2000);
         });
-        addTrack(trackName, audioUrl, undefined, duration || undefined);
+        addTrack(trackName, audioUrl, undefined, duration || undefined, file);
         successCount++;
         console.log(`✅ Added track: ${trackName}`);
       } catch (error) {
@@ -758,7 +758,7 @@ function StudioContent() {
       if (file.type.startsWith('audio/')) {
         const url = URL.createObjectURL(file)
         const name = file.name.replace(/\.[^/.]+$/, '')
-        addTrack(name, url)
+        addTrack(name, url, undefined, undefined, file)
         added++
       }
     }

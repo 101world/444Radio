@@ -18,6 +18,8 @@ export interface AudioClip {
   duration: number; // Clip duration in seconds
   offset: number; // Start offset within the audio file
   color: string;
+  // Optional in-memory blob reference for file uploads (prevents relying on object URLs alone)
+  audioBlob?: Blob | null;
 }
 
 export interface Track {
@@ -52,9 +54,9 @@ export interface UseMultiTrackReturn {
   duration: number;
   selectedTrackId: string | null;
   selectedClipId: string | null;
-  addTrack: (name: string, audioUrl?: string, color?: string, initialClipDuration?: number) => string;
+  addTrack: (name: string, audioUrl?: string, color?: string, initialClipDuration?: number, audioBlob?: Blob | null) => string;
   addEmptyTrack: () => string;
-  addClipToTrack: (trackId: string, audioUrl: string, name: string, startTime?: number, durationOverride?: number) => void;
+  addClipToTrack: (trackId: string, audioUrl: string, name: string, startTime?: number, durationOverride?: number, audioBlob?: Blob | null) => void;
   moveClip: (clipId: string, newStartTime: number) => void;
   moveClipToTrack: (clipId: string, targetTrackId: string, newStartTime?: number) => void;
   resizeClip: (clipId: string, newDuration: number, newOffset: number, newStartTime?: number) => void;
@@ -137,6 +139,27 @@ export function useMultiTrack(): UseMultiTrackReturn {
     if (!audioContextRef.current || !masterGainNodeRef.current) return track;
     if (track.gainNode && track.panNode) return track;
     try {
+      // If this is a local blob URL and we have a stored audioBlob for it, decode directly
+      if (url.startsWith('blob:')) {
+        for (const t of tracks) {
+          const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
+          if (clip && clip.audioBlob) {
+            try {
+              const arr = await clip.audioBlob.arrayBuffer();
+              const buf = await audioContextRef.current!.decodeAudioData(arr);
+              bufferCacheRef.current.set(url, buf);
+              setTracks(prev => prev.map(tr => ({
+                ...tr,
+                clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf.duration ? { ...c, duration: buf.duration } : c)
+              })));
+              return buf;
+            } catch (errBlobDecode) {
+              console.warn('Failed to decode pre-stored audioBlob, falling back to fetch:', errBlobDecode);
+              // continue to fetch below
+            }
+          }
+        }
+      }
       const gainNode = audioContextRef.current.createGain();
       gainNode.gain.value = track.volume;
       const panNode = audioContextRef.current.createStereoPanner();
@@ -251,7 +274,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
   }, [tracks]);
 
   // Add a new track (legacy - with audio URL)
-  const addTrack = useCallback((name: string, audioUrl?: string, color?: string, initialClipDuration?: number): string => {
+  const addTrack = useCallback((name: string, audioUrl?: string, color?: string, initialClipDuration?: number, audioBlob: Blob | null = null): string => {
     const trackId = `track-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newTrack: Track = {
       id: trackId,
@@ -263,9 +286,10 @@ export function useMultiTrack(): UseMultiTrackReturn {
         audioUrl,
         name,
         startTime: 0,
-            duration: typeof initialClipDuration === 'number' ? initialClipDuration : 60, // Will be updated when audio loads
+                duration: typeof initialClipDuration === 'number' ? initialClipDuration : 60, // Will be updated when audio loads
         offset: 0,
         color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
+            audioBlob: audioBlob || null,
       }] : [],
       color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
       volume: 1.0,
@@ -337,7 +361,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
   }, [addTrack, tracks.length]);
 
   // Add clip to existing track
-  const addClipToTrack = useCallback((trackId: string, audioUrl: string, name: string, startTime: number = 0, durationOverride?: number) => {
+  const addClipToTrack = useCallback((trackId: string, audioUrl: string, name: string, startTime: number = 0, durationOverride?: number, audioBlob: Blob | null = null) => {
     setTracks((prev) => {
       const newTracks = prev.map((t) => {
         if (t.id === trackId) {
@@ -350,6 +374,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
             duration: typeof durationOverride === 'number' ? durationOverride : 60, // Will be updated when audio loads
             offset: 0,
             color: t.color,
+            audioBlob: audioBlob || null,
           };
           return { ...t, clips: [...t.clips, newClip] };
         }
@@ -661,6 +686,35 @@ export function useMultiTrack(): UseMultiTrackReturn {
       return buf;
     } catch (e) {
       console.error('Failed to load audio buffer:', url, e);
+      // If this is a blob URL (created by URL.createObjectURL) the fetch might fail
+      // if the object URL was revoked or unavailable. Try to find a matching clip
+      // and decode directly from the stored Blob if available.
+      try {
+        if (url.startsWith('blob:')) {
+          // Search for a clip that references this url
+          for (const t of tracks) {
+            const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
+            if (clip && clip.audioBlob) {
+              try {
+                const arr = await clip.audioBlob.arrayBuffer();
+                const buf2 = await audioContextRef.current!.decodeAudioData(arr);
+                bufferCacheRef.current.set(url, buf2);
+                // Update any clips that reference this url with accurate duration
+                setTracks(prev => prev.map(tr => ({
+                  ...tr,
+                  clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf2.duration ? { ...c, duration: buf2.duration } : c)
+                })));
+                return buf2;
+              } catch (errDecode) {
+                console.error('Failed to decode audioBlob for blob url fallback:', errDecode);
+                // continue to throw original error afterwards
+              }
+            }
+          }
+        }
+      } catch (errFallback) {
+        console.error('Error in blob fallback flow:', errFallback);
+      }
       // Notify UI if available
       try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Failed to load audio (CORS or network)', type: 'error' } })); } catch {}
       throw e;

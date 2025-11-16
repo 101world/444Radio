@@ -97,14 +97,14 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: Track
 
     // Add each file as a clip to this track
     for (const file of files) {
-      const objectUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
       const audio = new Audio(objectUrl);
       
       await new Promise<void>((resolve) => {
         audio.onloadedmetadata = () => {
           // Use duration from metadata for better clip length
           const duration = audio.duration || undefined;
-          addClipToTrack(trackId, objectUrl, file.name, startTime, duration);
+          addClipToTrack(trackId, objectUrl, file.name, startTime, duration, file);
           resolve();
         };
       });
