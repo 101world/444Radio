@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   const eventType = evt.type
 
   if (eventType === 'user.created') {
-    const { id, email_addresses, username } = evt.data
+    const { id, email_addresses, username, image_url } = evt.data
 
     try {
       // Check if user already exists (prevent duplicates)
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
         clerk_user_id: id,
         email: email_addresses[0]?.email_address || '',
         username: username || null,
+        profile_image_url: image_url || null,
         credits: 0, // Users must decrypt the codekey to get 20 credits
       })
 
@@ -84,7 +85,7 @@ export async function POST(req: Request) {
   }
 
   if (eventType === 'user.updated') {
-    const { id, email_addresses, username } = evt.data
+    const { id, email_addresses, username, image_url } = evt.data
 
     // Update user in Supabase
     const { error } = await supabase
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
       .update({
         email: email_addresses[0]?.email_address || '',
         username: username || null,
+        profile_image_url: image_url || null,
       })
       .eq('clerk_user_id', id)
 

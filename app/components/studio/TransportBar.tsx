@@ -16,6 +16,7 @@ export default function TransportBar({ autoSeekOnPlay = false }: { autoSeekOnPla
     currentTime,
     masterVolume,
     setPlaying,
+    togglePlayback,
     setCurrentTime,
     setMasterVolume,
     skipBackward,
@@ -45,7 +46,7 @@ export default function TransportBar({ autoSeekOnPlay = false }: { autoSeekOnPla
         }
       } catch {}
     }
-    await setPlaying(!isPlaying);
+    togglePlayback();
   };
 
   const handleStop = () => {

@@ -97,11 +97,35 @@ export async function POST(request: Request) {
       console.error('Failed to deduct credits:', updateError);
     }
 
+    // Save effect to combined_media table for library access
+    const { data: savedEffect, error: saveError } = await supabase
+      .from('combined_media')
+      .insert({
+        user_id: userId,
+        type: 'effect',
+        title: `AI Effect: ${prompt.substring(0, 50)}`,
+        audio_url: output,
+        metadata: {
+          prompt,
+          trackId,
+          trackName,
+          generatedAt: new Date().toISOString(),
+        },
+        plays: 0,
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Failed to save effect to library:', saveError);
+    }
+
     return corsResponse(
       NextResponse.json({
         success: true,
         audioUrl: output,
-        message: 'AI effect generated successfully',
+        effectId: savedEffect?.id,
+        message: 'AI effect generated and saved to library',
         creditsRemaining: userData.credits - 0.5,
       })
     );

@@ -81,6 +81,7 @@ export interface UseMultiTrackReturn {
   setLeftGutterWidth: (w: number) => void;
   // Playback controls (will be called from Timeline component)
   setPlaying: (playing: boolean) => void;
+  togglePlayback: () => void;
   setCurrentTime: (time: number) => void;
   // Transport helpers
   skipBackward: (seconds?: number) => void;
@@ -912,6 +913,12 @@ export function useMultiTrack(): UseMultiTrackReturn {
       return;
     }
 
+    // Prevent double-triggering
+    if (playing === isPlaying) {
+      console.log(`⚠️ Already ${playing ? 'playing' : 'paused'}, ignoring`);
+      return;
+    }
+
     if (playing) {
       try {
         // Resume AudioContext if suspended
@@ -987,7 +994,12 @@ export function useMultiTrack(): UseMultiTrackReturn {
       setIsPlaying(false);
       console.log('⏸️ Playback stopped at', currentTime);
     }
-  }, [tracks, currentTime, startTicker, clearTicker]);
+  }, [tracks, currentTime, startTicker, clearTicker, isPlaying, loadBuffer]);
+
+  // Toggle playback (safer for UI buttons)
+  const togglePlayback = useCallback(() => {
+    setPlaying(!isPlaying);
+  }, [isPlaying, setPlaying]);
 
   // Set selected track
   const setSelectedTrack = useCallback((id: string | null) => {
@@ -1118,6 +1130,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
     leftGutterWidth,
     setLeftGutterWidth,
     setPlaying,
+    togglePlayback,
     setCurrentTime,
     skipBackward,
     skipForward,

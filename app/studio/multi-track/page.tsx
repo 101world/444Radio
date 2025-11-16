@@ -35,7 +35,7 @@ import type { ToolType } from '@/app/components/studio/Toolbar';
 import { useUser } from '@clerk/nextjs';
 
 function StudioContent() {
-  const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, selectedTrackId, removeTrack, toggleMute, toggleSolo, undo, redo, canUndo, canRedo, setZoom, setLeftGutterWidth, setTrackHeight, trackHeight, leftGutterWidth } = useStudio();
+  const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, togglePlayback, selectedTrackId, removeTrack, toggleMute, toggleSolo, undo, redo, canUndo, canRedo, setZoom, setLeftGutterWidth, setTrackHeight, trackHeight, leftGutterWidth } = useStudio();
   const { user } = useUser();
   const [showAISidebar, setShowAISidebar] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -631,7 +631,7 @@ function StudioContent() {
       // Space: play/pause
       if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault()
-        setPlaying(!isPlaying)
+        togglePlayback()
         return
       }
       // Ctrl+S: save project
