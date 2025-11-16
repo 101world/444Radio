@@ -4,8 +4,31 @@
  * Handles clip scheduling, stopping, and sync with minimal jitter
  */
 
+export interface SchedulerOptions {
+  lookaheadMs?: number;
+  scheduleAheadMs?: number;
+}
+
+export interface ScheduleItem {
+  buffer: AudioBuffer;
+  startTime: number;
+  offset?: number;
+  duration?: number;
+  destination?: AudioNode;
+  id?: string;
+  onEnded?: () => void;
+}
+
 export class AudioScheduler {
-  constructor(audioContext, options = {}) {
+  private audioContext: AudioContext;
+  private lookaheadMs: number;
+  private scheduleAheadMs: number;
+  private queue: ScheduleItem[];
+  private scheduledSources: Map<string, AudioBufferSourceNode>;
+  private timer: NodeJS.Timeout | null;
+  private isRunning: boolean;
+
+  constructor(audioContext: AudioContext, options: SchedulerOptions = {}) {
     this.audioContext = audioContext;
     this.lookaheadMs = options.lookaheadMs || 100; // How often to check schedule (ms)
     this.scheduleAheadMs = options.scheduleAheadMs || 200; // How far ahead to schedule (ms)
@@ -27,7 +50,7 @@ export class AudioScheduler {
    * @param {string} item.id - Unique identifier for tracking
    * @param {Function} item.onEnded - Callback when playback ends
    */
-  addToQueue(item) {
+  addToQueue(item: ScheduleItem): void {
     if (!item.buffer || !item.startTime) {
       console.error('Invalid schedule item:', item);
       return;
@@ -83,7 +106,7 @@ export class AudioScheduler {
   /**
    * Stop a specific scheduled source by ID
    */
-  stopSource(id) {
+  stopSource(id: string): void {
     const source = this.scheduledSources.get(id);
     if (source) {
       try {
@@ -99,7 +122,7 @@ export class AudioScheduler {
   /**
    * Clear all pending items from queue
    */
-  clearQueue() {
+  clearQueue(): void {
     this.queue = [];
   }
 
@@ -107,7 +130,7 @@ export class AudioScheduler {
    * Internal tick function - schedules items in lookahead window
    * @private
    */
-  _tick() {
+  private _tick(): void {
     if (!this.isRunning) return;
 
     const now = this.audioContext.currentTime;
@@ -116,7 +139,9 @@ export class AudioScheduler {
     // Schedule all items that fall within the lookahead window
     while (this.queue.length > 0 && this.queue[0].startTime <= scheduleWindowEnd) {
       const item = this.queue.shift();
-      this._scheduleItem(item);
+      if (item) {
+        this._scheduleItem(item);
+      }
     }
 
     // Schedule next tick
@@ -127,7 +152,7 @@ export class AudioScheduler {
    * Schedule a single item for playback
    * @private
    */
-  _scheduleItem(item) {
+  private _scheduleItem(item: ScheduleItem): void {
     try {
       const source = this.audioContext.createBufferSource();
       source.buffer = item.buffer;
@@ -150,7 +175,9 @@ export class AudioScheduler {
         
         // Clean up when ended
         source.onended = () => {
-          this.scheduledSources.delete(item.id);
+          if (item.id) {
+            this.scheduledSources.delete(item.id);
+          }
           if (item.onEnded) {
             item.onEnded();
           }
@@ -166,21 +193,21 @@ export class AudioScheduler {
   /**
    * Get current playback time
    */
-  getCurrentTime() {
+  getCurrentTime(): number {
     return this.audioContext.currentTime;
   }
 
   /**
    * Get queue size
    */
-  getQueueSize() {
+  getQueueSize(): number {
     return this.queue.length;
   }
 
   /**
    * Get active source count
    */
-  getActiveSourceCount() {
+  getActiveSourceCount(): number {
     return this.scheduledSources.size;
   }
 }
@@ -188,13 +215,13 @@ export class AudioScheduler {
 /**
  * Helper: Convert project time to AudioContext time
  */
-export function projectTimeToAudioTime(projectTime, playbackStartTime, audioContextStartTime) {
+export function projectTimeToAudioTime(projectTime: number, playbackStartTime: number, audioContextStartTime: number): number {
   return audioContextStartTime + (projectTime - playbackStartTime);
 }
 
 /**
  * Helper: Convert AudioContext time to project time
  */
-export function audioTimeToProjectTime(audioTime, playbackStartTime, audioContextStartTime) {
+export function audioTimeToProjectTime(audioTime: number, playbackStartTime: number, audioContextStartTime: number): number {
   return playbackStartTime + (audioTime - audioContextStartTime);
 }
