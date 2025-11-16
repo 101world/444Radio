@@ -127,6 +127,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const bufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
   const peaksCacheRef = useRef<Map<string, Float32Array>>(new Map());
   const activeSourcesRef = useRef<Map<string, { source: AudioBufferSourceNode; clipId: string }>>(new Map());
+  const blobCacheRef = useRef<Map<string, Blob>>(new Map()); // Cache blobs by URL for instant lookup
   const loopTracksStateRef = useRef<Set<string>>(new Set());
   const [loopedTracksState, setLoopedTracksState] = useState<Set<string>>(new Set());
   const playStartProjectTimeRef = useRef<number>(0);
@@ -255,6 +256,13 @@ export function useMultiTrack(): UseMultiTrackReturn {
   // Add a new track (legacy - with audio URL)
   const addTrack = useCallback((name: string, audioUrl?: string, color?: string, initialClipDuration?: number, audioBlob: Blob | null = null): string => {
     const trackId = `track-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Cache blob immediately if provided
+    if (audioUrl && audioBlob) {
+      blobCacheRef.current.set(audioUrl, audioBlob);
+      console.log('✅ Blob cached for URL:', audioUrl);
+    }
+    
     const newTrack: Track = {
       id: trackId,
       name,
@@ -341,6 +349,12 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   // Add clip to existing track
   const addClipToTrack = useCallback((trackId: string, audioUrl: string, name: string, startTime: number = 0, durationOverride?: number, audioBlob: Blob | null = null) => {
+    // Cache blob immediately if provided
+    if (audioBlob) {
+      blobCacheRef.current.set(audioUrl, audioBlob);
+      console.log('✅ Blob cached for URL:', audioUrl);
+    }
+    
     setTracks((prev) => {
       const newTracks = prev.map((t) => {
         if (t.id === trackId) {
@@ -440,6 +454,16 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   // Remove clip from track
   const removeClip = useCallback((clipId: string) => {
+    // Find clip and clean up blob cache before removing
+    for (const t of tracks) {
+      const c = t.clips.find(cc => cc.id === clipId);
+      if (c && typeof c.audioUrl === 'string' && c.audioUrl.startsWith('blob:')) {
+        blobCacheRef.current.delete(c.audioUrl);
+        try { URL.revokeObjectURL(c.audioUrl); } catch {}
+        console.log('🗑️ Blob cache cleaned for:', c.audioUrl);
+      }
+    }
+    
     setTracks((prev) => {
       const newTracks = prev.map((t) => ({
         ...t,
@@ -449,16 +473,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
       return newTracks;
     });
     console.log(`🗑️ Clip removed: ${clipId}`);
-    // Find any clip with matching id and revoke its object URL if it's a blob URL
-    try {
-      for (const t of tracks) {
-        const c = t.clips.find(cc => cc.id === clipId);
-        if (c && typeof c.audioUrl === 'string' && c.audioUrl.startsWith('blob:')) {
-          try { URL.revokeObjectURL(c.audioUrl); } catch {}
-        }
-      }
-    } catch (e) {}
-  }, [saveHistory]);
+  }, [saveHistory, tracks]);
 
   // Resize clip (adjust duration/offset and optionally startTime)
   const resizeClip = useCallback((clipId: string, newDuration: number, newOffset: number, newStartTime?: number) => {
@@ -504,6 +519,17 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const removeTrack = useCallback((id: string) => {
     // Find track before removing so we can clean up any blob URLs
     const toRemove = tracks.find(t => t.id === id);
+    
+    // Clean up blob cache for all clips in this track
+    if (toRemove && Array.isArray(toRemove.clips)) {
+      for (const c of toRemove.clips) {
+        if (c.audioUrl && c.audioUrl.startsWith('blob:')) {
+          blobCacheRef.current.delete(c.audioUrl);
+          try { URL.revokeObjectURL(c.audioUrl); } catch {}
+          console.log('🗑️ Blob cache cleaned for:', c.audioUrl);
+        }
+      }
+    }
 
     setTracks((prev) => {
       const track = prev.find((t) => t.id === id);
@@ -517,17 +543,6 @@ export function useMultiTrack(): UseMultiTrackReturn {
       saveHistory(newTracks);
       return newTracks;
     });
-
-    // Also revoke any object URLs for clips in removed track
-    try {
-      if (toRemove && Array.isArray(toRemove.clips)) {
-        for (const c of toRemove.clips) {
-          if (c.audioUrl && c.audioUrl.startsWith('blob:')) {
-            try { URL.revokeObjectURL(c.audioUrl); } catch {}
-          }
-        }
-      }
-    } catch (e) {}
   }, [saveHistory, tracks]);
 
   // Update track properties
@@ -653,26 +668,43 @@ export function useMultiTrack(): UseMultiTrackReturn {
     if (cache.has(url)) return cache.get(url)!;
     if (!audioContextRef.current) throw new Error('AudioContext not initialized');
     
-    // For blob URLs, try to decode from stored blob FIRST before attempting fetch
-    // This prevents issues with revoked blob URLs
+    // For blob URLs, try to decode from cached blob FIRST (synchronous ref lookup)
     if (url.startsWith('blob:')) {
-      for (const t of tracks) {
-        const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
-        if (clip && clip.audioBlob) {
-          try {
-            console.log('🔄 Decoding from stored blob for:', url);
-            const arr = await clip.audioBlob.arrayBuffer();
-            const buf = await audioContextRef.current!.decodeAudioData(arr);
-            cache.set(url, buf);
-            // Update any clips that reference this url with accurate duration
-            setTracks(prev => prev.map(tr => ({
-              ...tr,
-              clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf.duration ? { ...c, duration: buf.duration } : c)
-            })));
-            return buf;
-          } catch (errDecode) {
-            console.error('Failed to decode audioBlob:', errDecode);
-            // Fall through to try fetch as backup
+      const cachedBlob = blobCacheRef.current.get(url);
+      if (cachedBlob) {
+        try {
+          console.log('🔄 Decoding from blob cache ref for:', url);
+          const arr = await cachedBlob.arrayBuffer();
+          const buf = await audioContextRef.current!.decodeAudioData(arr);
+          cache.set(url, buf);
+          // Update any clips that reference this url with accurate duration
+          setTracks(prev => prev.map(tr => ({
+            ...tr,
+            clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf.duration ? { ...c, duration: buf.duration } : c)
+          })));
+          return buf;
+        } catch (errDecode) {
+          console.error('Failed to decode from blob cache:', errDecode);
+          // Fall through to try fetch as backup
+        }
+      } else {
+        // Fallback: search tracks state for stored blob
+        for (const t of tracks) {
+          const clip = t.clips.find(c => c.audioUrl === url && c.audioBlob);
+          if (clip && clip.audioBlob) {
+            try {
+              console.log('🔄 Decoding from tracks state blob for:', url);
+              const arr = await clip.audioBlob.arrayBuffer();
+              const buf = await audioContextRef.current!.decodeAudioData(arr);
+              cache.set(url, buf);
+              setTracks(prev => prev.map(tr => ({
+                ...tr,
+                clips: tr.clips.map(c => c.audioUrl === url && c.duration !== buf.duration ? { ...c, duration: buf.duration } : c)
+              })));
+              return buf;
+            } catch (errDecode) {
+              console.error('Failed to decode from tracks state blob:', errDecode);
+            }
           }
         }
       }
