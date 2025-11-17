@@ -205,11 +205,14 @@ export default function ExplorePage() {
         try {
           const genreRes = await fetch('/api/explore/genre-summary')
           const genreData = await genreRes.json()
-          if (genreData.success) {
+          console.log('🎸 Genre API response:', genreData)
+          if (genreData.success && Array.isArray(genreData.genres) && genreData.genres.length > 0) {
             setGenres(genreData.genres)
           } else {
-            // Fallback to defaults if API fails
-            setGenres(['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno'])
+            // Fallback to defaults if API fails or returns empty list
+            const defaults = ['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno']
+            console.warn('⚠️ Using default genres because the API returned no genres', genreData)
+            setGenres(defaults)
           }
         } catch (error) {
           console.error('Failed to fetch genres:', error)
@@ -342,7 +345,7 @@ export default function ExplorePage() {
                     )}
                   </button>
                   <button
-                    onClick={() => setActiveTab('genres')}
+                    onClick={() => { setActiveTab('genres'); setSelectedGenre(null) }}
                     className={`relative text-lg font-bold transition-all pb-2 ${
                       activeTab === 'genres'
                         ? 'text-cyan-400'
@@ -752,6 +755,8 @@ export default function ExplorePage() {
                   </div>
                 ) : (
                   <>
+                    {/* Small helper showing how many genres are available */}
+                    <div className="mb-4 text-sm text-gray-400">Showing {genres.length} genre{genres.length !== 1 ? 's' : ''}</div>
                     <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide">
                       {genres.map((g) => (
                         <button key={g} onClick={() => setSelectedGenre(g)} className={`px-4 py-2 rounded-full ${selectedGenre === g ? 'bg-cyan-500 text-white' : 'bg-white/5 text-gray-300'}`}>
