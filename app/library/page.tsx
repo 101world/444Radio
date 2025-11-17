@@ -126,6 +126,21 @@ export default function LibraryPage() {
           new Map(allMusic.map(item => [item.audio_url, item])).values()
         )
         
+        // Check for potentially expired Replicate URLs (older than 48 hours)
+        const now = Date.now()
+        const expiredWarningCount = uniqueMusic.filter(track => {
+          if (track.audio_url?.includes('replicate.delivery')) {
+            const createdAt = new Date(track.created_at).getTime()
+            const ageHours = (now - createdAt) / (1000 * 60 * 60)
+            return ageHours > 48
+          }
+          return false
+        }).length
+        
+        if (expiredWarningCount > 0) {
+          console.warn(`⚠️ ${expiredWarningCount} tracks may have expired URLs (Replicate > 48h old)`)
+        }
+        
         setMusicItems(uniqueMusic)
         console.log('✅ Loaded', uniqueMusic.length, 'music tracks (DB:', dbMusic.length, '+ R2:', r2Music.length, ')')
       }

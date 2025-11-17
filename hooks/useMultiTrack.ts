@@ -751,9 +751,31 @@ export function useMultiTrack(): UseMultiTrackReturn {
       })));
       return buf;
     } catch (e) {
+      const error = e as Error;
       console.error('Failed to load audio buffer:', url, e);
-      // Notify UI if available
-      try { window.dispatchEvent(new CustomEvent('studio:notify', { detail: { message: 'Failed to load audio (CORS or network)', type: 'error' } })); } catch {}
+      
+      // Check if it's a 404 (expired Replicate URL)
+      if (error.message?.includes('404')) {
+        console.warn('⚠️ URL expired (404):', url);
+        try { 
+          window.dispatchEvent(new CustomEvent('studio:notify', { 
+            detail: { 
+              message: 'Audio file expired - please re-generate or use a different track', 
+              type: 'warning' 
+            } 
+          })); 
+        } catch {}
+      } else {
+        // Notify UI if available
+        try { 
+          window.dispatchEvent(new CustomEvent('studio:notify', { 
+            detail: { 
+              message: 'Failed to load audio (CORS or network)', 
+              type: 'error' 
+            } 
+          })); 
+        } catch {}
+      }
       throw e;
     }
   }, [tracks]);

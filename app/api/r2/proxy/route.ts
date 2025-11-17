@@ -49,11 +49,15 @@ export async function GET(request: NextRequest) {
     console.log('🔄 Proxying URL:', url);
 
     // Fetch the resource server-side and stream it back
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    
     const resp = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    })
+      },
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeoutId))
     
     console.log('📡 Upstream response:', resp.status, resp.statusText);
     
@@ -61,8 +65,10 @@ export async function GET(request: NextRequest) {
       console.error('❌ Upstream fetch failed:', resp.status, resp.statusText);
       const errorText = await resp.text().catch(() => 'Unknown error');
       console.error('Error body:', errorText);
+      
+      // Return the actual status code from upstream (e.g., 404 for expired URLs)
       return NextResponse.json({ 
-        error: 'Failed to fetch file', 
+        error: resp.status === 404 ? 'File not found or expired' : 'Failed to fetch file', 
         status: resp.status, 
         statusText: resp.statusText,
         url: url 
