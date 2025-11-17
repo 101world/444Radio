@@ -230,6 +230,32 @@ function StudioContent() {
     addClipToTrack(newTrackId, audioUrl, trackName, 0);
     showNotification('Beat generated and added to new track', 'success');
     
+    // Save to library automatically
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      
+      await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          clerk_user_id: user?.id,
+          title: trackName,
+          audio_url: audioUrl,
+          music_prompt: metadata.prompt,
+          created_at: new Date().toISOString(),
+        }),
+      });
+      console.log('✅ Beat saved to library');
+    } catch (error) {
+      console.error('Failed to save beat to library:', error);
+    }
+    
     // Remove from queue after 3 seconds
     setTimeout(() => {
       setGenerationQueue(prev => prev.filter(item => item.id !== queueId));
@@ -264,7 +290,7 @@ function StudioContent() {
     // Save to library automatically
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
       
       await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {
         method: 'POST',
@@ -390,7 +416,7 @@ function StudioContent() {
       // Save stems to library
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
         
         for (const [stemName, stemUrl] of stemEntries) {
           await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {

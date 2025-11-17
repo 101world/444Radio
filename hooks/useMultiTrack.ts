@@ -915,13 +915,14 @@ export function useMultiTrack(): UseMultiTrackReturn {
     playStartContextTimeRef.current = audioContextRef.current.currentTime;
     playStartProjectTimeRef.current = currentTime;
     const tick = () => {
+      if (!rafRef.current) return; // Check if ticker was cleared
       const ctx = audioContextRef.current!;
       const t = playStartProjectTimeRef.current + (ctx.currentTime - playStartContextTimeRef.current);
       setCurrentTimeState(t);
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
-  }, [currentTime]);
+  }, []); // Remove currentTime dependency
 
   const clearTicker = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);

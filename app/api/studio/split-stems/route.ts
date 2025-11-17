@@ -53,10 +53,10 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const token = process.env.REPLICATE_API_KEY_LATEST
+    const token = process.env.REPLICATE_API_TOKEN
     if (!token) {
-      console.error('❌ REPLICATE_API_KEY_LATEST is not set in environment variables')
-      return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_KEY_LATEST' }, { status: 500 }))
+      console.error('❌ REPLICATE_API_TOKEN is not set in environment variables')
+      return corsResponse(NextResponse.json({ success: false, error: 'Missing REPLICATE_API_TOKEN' }, { status: 500 }))
     }
     
     console.log('✅ Replicate API token found, length:', token.length)
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
       try {
         console.log('🎵 Starting stem separation (attempt', attempt, ')', { audioUrl, outputFormat })
         const resp = await replicate.predictions.create({
-          version: '07afda7a710da69773c01f50d61e0f7f0c75e4c2f0c7b5fce4ae29e31c59b88c',
+          version: 'cjwbw/demucs',
           input: {
             audio: audioUrl,
             output_format: outputFormat,
