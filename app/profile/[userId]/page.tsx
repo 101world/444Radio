@@ -951,7 +951,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     </div>
                   </div>
                 </div>
-              ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
+              ) : profile ? (
                 <div className="space-y-0">
                   {/* Mobile Layout - Original Design */}
                   <div className="md:hidden space-y-0">
@@ -1134,7 +1134,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     </div>
                   </div>
 
-                  {/* SECTION 3: LIST VIEW - All Content with Tabs */}
+                  {/* Show content sections only if user has media */}
+                  {profile.combinedMedia && profile.combinedMedia.length > 0 ? (
                   <div className="px-6 py-4 relative z-10 bg-black">
                     {/* Tab Buttons */}
                     <div className="flex items-center gap-4 mb-4 relative z-10 pointer-events-auto">
@@ -1577,6 +1578,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </div>
                     )}
                   </div>
+                  ) : null}
 
                   {/* SECTION 4: UPLOADS - Images & Videos by Month */}
                   {profile.uploads && profile.uploads.length > 0 && (
