@@ -143,7 +143,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
     setCurrentTrack(track)
     
-    // Always use proxy for R2 URLs to avoid CORS issues
+    // Always use proxy for R2 and Replicate URLs to avoid CORS issues
     const computeUrl = (u: string) => {
       try {
         const target = new URL(u)
@@ -152,7 +152,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
         if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
         const isR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com') || r2Hosts.includes(target.hostname)
-        return isR2 ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
+        const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')
+        const needsProxy = isR2 || isReplicate
+        return needsProxy ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
       } catch (err) { 
         console.error('❌ URL computation failed:', err, 'Original URL:', u);
         return u 

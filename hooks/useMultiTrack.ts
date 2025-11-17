@@ -1022,10 +1022,11 @@ export function useMultiTrack(): UseMultiTrackReturn {
       }
     } else {
       // Stop scheduler
+      console.log('⏸️ Stopping playback at', currentTime);
       schedulerRef.current.stop();
       clearTicker();
       setIsPlaying(false);
-      console.log('⏸️ Playback stopped at', currentTime);
+      console.log('✅ Playback fully stopped');
     }
   }, [tracks, currentTime, startTicker, clearTicker, isPlaying, loadBuffer]);
 

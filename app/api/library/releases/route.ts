@@ -114,3 +114,75 @@ export async function GET() {
     ))
   }
 }
+
+/**
+ * DELETE /api/library/releases?id=xxx
+ * Delete a release from the library
+ */
+export async function DELETE(request: Request) {
+  try {
+    const { userId } = await auth()
+    
+    if (!userId) {
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return corsResponse(NextResponse.json({ error: 'Release ID required' }, { status: 400 }))
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+    // Delete from both tables
+    const [combinedMediaResponse, libraryResponse] = await Promise.all([
+      // combined_media
+      fetch(
+        `${supabaseUrl}/rest/v1/combined_media?id=eq.${id}&user_id=eq.${userId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      ),
+      // combined_media_library
+      fetch(
+        `${supabaseUrl}/rest/v1/combined_media_library?id=eq.${id}&clerk_user_id=eq.${userId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+    ])
+
+    if (!combinedMediaResponse.ok && !libraryResponse.ok) {
+      console.error('Failed to delete release from both tables')
+      return corsResponse(NextResponse.json(
+        { error: 'Failed to delete release' },
+        { status: 500 }
+      ))
+    }
+
+    console.log(`🗑️ Deleted release ${id} for user ${userId}`)
+
+    return corsResponse(NextResponse.json({
+      success: true,
+      message: 'Release deleted successfully'
+    }))
+
+  } catch (error) {
+    console.error('Error deleting release:', error)
+    return corsResponse(NextResponse.json(
+      { error: 'Failed to delete release' },
+      { status: 500 }
+    ))
+  }
+}
