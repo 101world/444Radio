@@ -11,9 +11,10 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
+  let url: string | null = null;
   try {
     const { searchParams } = new URL(request.url)
-    const url = searchParams.get('url')
+    url = searchParams.get('url')
     if (!url) return NextResponse.json({ error: 'Missing url' }, { status: 400 })
 
     // Basic validation - allow R2 domains and env configured hosts
@@ -45,10 +46,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
     }
 
+    console.log('🔄 Proxying URL:', url);
+
     // Fetch the resource server-side and stream it back
-    const resp = await fetch(url)
+    const resp = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    })
+    
+    console.log('📡 Upstream response:', resp.status, resp.statusText);
+    
     if (!resp.ok) {
-      return NextResponse.json({ error: 'Failed to fetch file', status: resp.status }, { status: 500 })
+      console.error('❌ Upstream fetch failed:', resp.status, resp.statusText);
+      const errorText = await resp.text().catch(() => 'Unknown error');
+      console.error('Error body:', errorText);
+      return NextResponse.json({ 
+        error: 'Failed to fetch file', 
+        status: resp.status, 
+        statusText: resp.statusText,
+        url: url 
+      }, { status: resp.status })
     }
 
     // Clone headers required for correct content-type behavior
@@ -71,9 +89,16 @@ export async function GET(request: NextRequest) {
     // Return streamed response so audio/video can play
     const body = resp.body
 
+    console.log('✅ Proxy successful for:', url);
+    
     return new NextResponse(body, { headers })
   } catch (error) {
-    console.error('R2 proxy error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('❌ R2 proxy error:', error)
+    console.error('Failed URL:', url)
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      message: error instanceof Error ? error.message : 'Unknown error',
+      url: url 
+    }, { status: 500 })
   }
 }
