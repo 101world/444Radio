@@ -727,7 +727,9 @@ export function useMultiTrack(): UseMultiTrackReturn {
           if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname);
           if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname);
           const isR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com') || r2Hosts.includes(target.hostname);
-          return isR2 ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u;
+          const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com');
+          const needsProxy = isR2 || isReplicate;
+          return needsProxy ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u;
         } catch {
           return u;
         }

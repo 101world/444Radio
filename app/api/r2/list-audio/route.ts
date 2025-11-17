@@ -72,6 +72,10 @@ export async function GET(request: Request) {
       try {
         console.log('🪣 Listing bucket:', b, 'user:', userId, 'scope:', listAllParam ? 'ALL' : 'user files')
         const listed = await listAll(b, undefined) // List all files, we'll filter later
+        console.log(`📊 Found ${listed.length} total objects in bucket ${b}`);
+        if (listed.length > 0) {
+          console.log('📁 Sample keys:', listed.slice(0, 5).map(f => f.Key).join(', '));
+        }
         if (listed.length > 0) {
           files = listed
           usedBucket = b
@@ -91,8 +95,18 @@ export async function GET(request: Request) {
 
     const tracks = (files || [])
       .filter(f => !!f.Key && /\.(mp3|wav|ogg)$/i.test(f.Key))
-      // Filter files that belong to this user (by checking if Key contains userId or belongs to user's folder)
-      .filter(f => !listAllParam && (f.Key.includes(userId) || f.Key.startsWith(`users/${userId}/`) || f.Key.startsWith(`${userId}/`)))
+      // Filter by userId - files are stored with userId/ prefix or userId in path
+      // Also allow files without userId for backward compatibility
+      .filter(f => {
+        if (listAllParam) return true; // Admin mode - show all
+        const key = f.Key as string;
+        // Match if key starts with userId/ or contains /userId/
+        const matches = key.startsWith(`${userId}/`) || key.includes(`/${userId}/`) || key.startsWith(`users/${userId}/`);
+        if (!matches && files.length < 20) {
+          console.log(`🚫 Filtered out (userId mismatch): ${key}`);
+        }
+        return matches;
+      })
       .map((file, index) => {
       const key: string = file.Key
       // Extract original filename for title

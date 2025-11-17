@@ -22,6 +22,9 @@ export async function GET(request: NextRequest) {
     // Allow any R2.dev domain or configured R2 URLs
     const isR2Domain = parsed.hostname.endsWith('.r2.dev') || parsed.hostname.endsWith('.r2.cloudflarestorage.com')
     
+    // Allow Replicate delivery URLs (for AI-generated content)
+    const isReplicate = parsed.hostname.includes('replicate.delivery') || parsed.hostname.includes('replicate.com')
+    
     const allowedHosts = [
       process.env.NEXT_PUBLIC_R2_AUDIO_URL,
       process.env.NEXT_PUBLIC_R2_IMAGES_URL,
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    if (!isR2Domain && !isConfiguredHost) {
+    if (!isR2Domain && !isConfiguredHost && !isReplicate) {
       console.error('Proxy blocked - not allowed:', parsed.hostname)
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
     }

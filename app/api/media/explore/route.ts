@@ -17,6 +17,9 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase
       .from('combined_media')
       .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, mood')
+      // Filter out tracks with NULL or empty audio_url
+      .not('audio_url', 'is', null)
+      .neq('audio_url', '')
       // NO .eq('is_public', true) - shows everything
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)

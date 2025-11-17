@@ -67,8 +67,12 @@ export async function GET(request: Request) {
     // Filter for image file extensions and map to library format
     const images = (listed || [])
       .filter(f => !!f.Key && /\.(jpg|jpeg|png|webp|gif)$/i.test(f.Key))
-      // Filter files that belong to this user
-      .filter(f => listAllParam || f.Key.includes(userId) || f.Key.startsWith(`users/${userId}/`) || f.Key.startsWith(`${userId}/`))
+      // Filter by userId - files are stored with userId/ prefix or userId in path
+      .filter(f => {
+        if (listAllParam) return true; // Admin mode
+        const key = f.Key as string;
+        return key.startsWith(`${userId}/`) || key.includes(`/${userId}/`) || key.startsWith(`users/${userId}/`);
+      })
       .map((file, index) => {
         const key: string = file.Key
         // Extract original filename for title

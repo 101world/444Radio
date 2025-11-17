@@ -110,17 +110,32 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const playTrack = useCallback(async (track: Track) => {
-    if (!track || !track.audioUrl) {
-      console.error('Invalid track - missing audioUrl:', track);
+    if (!track) {
+      console.error('❌ Cannot play: track is null/undefined');
+      return;
+    }
+
+    if (!track.audioUrl) {
+      console.error('❌ Cannot play: audioUrl is missing for track:', track.title || track.id);
+      console.error('Track data:', JSON.stringify(track, null, 2));
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(track.audioUrl);
+    } catch (urlError) {
+      console.error('❌ Cannot play: invalid audioUrl format:', track.audioUrl);
+      console.error('Track:', track.title || track.id);
       return;
     }
 
     if (!audioRef.current) {
-      console.error('Audio ref not initialized');
+      console.error('❌ Audio ref not initialized');
       return;
     }
 
-    console.log('Playing track:', track.title, track.audioUrl);
+    console.log('🎵 Playing track:', track.title, 'URL:', track.audioUrl);
 
     // Reset play tracking
     playTimeRef.current = 0
@@ -138,9 +153,23 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
         const isR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com') || r2Hosts.includes(target.hostname)
         return isR2 ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
-      } catch { return u }
+      } catch (err) { 
+        console.error('❌ URL computation failed:', err, 'Original URL:', u);
+        return u 
+      }
     }
-    const finalUrl = computeUrl(track.audioUrl)
+    
+    let finalUrl: string;
+    try {
+      finalUrl = computeUrl(track.audioUrl);
+      if (!finalUrl) {
+        console.error('❌ computeUrl returned empty string for:', track.audioUrl);
+        return;
+      }
+    } catch (computeError) {
+      console.error('❌ Failed to compute final URL:', computeError);
+      return;
+    }
     
     const isProxied = finalUrl.startsWith('/api/r2/proxy')
     console.log('Using URL:', isProxied ? 'proxy' : 'direct', finalUrl)
@@ -166,9 +195,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     try {
       await audio.play()
       setIsPlaying(true)
-      console.log('Playback started successfully for', track.title)
+      console.log('✅ Playback started successfully for', track.title)
     } catch (error) {
-      console.error('Error playing audio:', error)
+      console.error('❌ Error playing audio:', error)
+      console.error('Track:', track.title)
+      console.error('Audio URL:', track.audioUrl)
+      console.error('Final URL:', finalUrl)
+      console.error('Audio element src:', audio.src)
+      console.error('Audio element error:', audio.error)
       setIsPlaying(false)
     }
 
