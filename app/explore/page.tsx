@@ -760,24 +760,30 @@ export default function ExplorePage() {
                       ))}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {(selectedGenre ? combinedMedia.filter(m => {
-                        // If media has the selected genre, show it
-                        if (m.genre === selectedGenre) return true
-                        // If no media has this genre (it's a default genre), show all media
-                        const hasGenreInData = combinedMedia.some(media => media.genre === selectedGenre)
-                        return !hasGenreInData
-                      }) : combinedMedia).map((media) => (
-                        <div key={media.id} className="bg-black/40 p-4 rounded-lg">
-                          {media.image_url ? (
-                            <img src={media.image_url} alt={media.title} className="w-full h-40 object-cover rounded" />
-                          ) : (
-                            <div className="w-full h-40 bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center rounded">
-                              <Music size={48} className="text-cyan-400/40" />
+                      {(() => {
+                        const filteredMedia = selectedGenre ? combinedMedia.filter(m => m.genre === selectedGenre) : combinedMedia
+                        if (filteredMedia.length === 0 && selectedGenre) {
+                          return (
+                            <div className="col-span-full text-center py-12">
+                              <Music size={64} className="mx-auto text-gray-600 mb-4" />
+                              <h3 className="text-xl font-semibold text-gray-400 mb-2">No tracks in "{selectedGenre}" genre yet</h3>
+                              <p className="text-gray-500">Be the first to create music in this genre!</p>
                             </div>
-                          )}
-                          <h3 className="mt-2 text-white font-semibold">{media.title}</h3>
-                        </div>
-                      ))}
+                          )
+                        }
+                        return filteredMedia.map((media) => (
+                          <div key={media.id} className="bg-black/40 p-4 rounded-lg">
+                            {media.image_url ? (
+                              <img src={media.image_url} alt={media.title} className="w-full h-40 object-cover rounded" />
+                            ) : (
+                              <div className="w-full h-40 bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center rounded">
+                                <Music size={48} className="text-cyan-400/40" />
+                              </div>
+                            )}
+                            <h3 className="mt-2 text-white font-semibold">{media.title}</h3>
+                          </div>
+                        ))
+                      })()}
                     </div>
                   </>
                 )}
