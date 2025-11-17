@@ -200,18 +200,21 @@ export default function ExplorePage() {
           }
         })
         setArtists(Array.from(artistMap.values()).slice(0, 10)) // Only show top 10 artists
-        // Extract and set genres for Genres tab
-        const genreSet = new Set<string>()
-        data.combinedMedia.forEach((m: CombinedMedia) => {
-          if (m.genre) genreSet.add(m.genre)
-        })
         
-        // If no genres found in media, add some popular defaults
-        if (genreSet.size === 0) {
-          ['lofi', 'hiphop', 'jazz', 'techno', 'electronic', 'ambient'].forEach(genre => genreSet.add(genre))
+        // Fetch genres from dedicated API
+        try {
+          const genreRes = await fetch('/api/explore/genre-summary')
+          const genreData = await genreRes.json()
+          if (genreData.success) {
+            setGenres(genreData.genres)
+          } else {
+            // Fallback to defaults if API fails
+            setGenres(['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno'])
+          }
+        } catch (error) {
+          console.error('Failed to fetch genres:', error)
+          setGenres(['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno'])
         }
-        
-        setGenres(Array.from(genreSet))
       }
     } catch (error) {
       console.error('Failed to fetch media:', error)
