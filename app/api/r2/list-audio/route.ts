@@ -27,10 +27,9 @@ export async function GET(request: Request) {
     // Allow optional query param all=true for admin/full listing (not filtered by user)
     const url = new URL(request.url)
     const listAllParam = url.searchParams.get('all') === 'true'
-    // Optional folder override (?folder=music|images)
-    const folder = url.searchParams.get('folder') || 'music'
-    // Prefix to restrict objects to current user
-    const userPrefix = `users/${userId}/${folder}/`
+    // Don't use folder prefix - R2 files may be stored flat or in various structures
+    // We'll filter by userId in the filename/metadata instead
+    const userPrefix = undefined // Disabled prefix filtering to catch all user files
 
     const s3Client = new S3Client({
       region: 'auto',
@@ -71,8 +70,8 @@ export async function GET(request: Request) {
 
     for (const b of bucketsToTry) {
       try {
-        console.log('🪣 Listing bucket:', b, 'prefix:', listAllParam ? '(all objects)' : userPrefix)
-        const listed = await listAll(b, listAllParam ? undefined : userPrefix)
+        console.log('🪣 Listing bucket:', b, 'user:', userId, 'scope:', listAllParam ? 'ALL' : 'user files')
+        const listed = await listAll(b, undefined) // List all files, we'll filter later
         if (listed.length > 0) {
           files = listed
           usedBucket = b
@@ -90,7 +89,11 @@ export async function GET(request: Request) {
       }
     }
 
-    const tracks = (files || []).filter(f => !!f.Key && /\.(mp3|wav|ogg)$/i.test(f.Key)).map((file, index) => {
+    const tracks = (files || [])
+      .filter(f => !!f.Key && /\.(mp3|wav|ogg)$/i.test(f.Key))
+      // Filter files that belong to this user (by checking if Key contains userId or belongs to user's folder)
+      .filter(f => !listAllParam && (f.Key.includes(userId) || f.Key.startsWith(`users/${userId}/`) || f.Key.startsWith(`${userId}/`)))
+      .map((file, index) => {
       const key: string = file.Key
       // Extract original filename for title
       const baseName = key.split('/').pop() || key

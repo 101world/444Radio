@@ -8,7 +8,7 @@ import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
-import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
@@ -451,17 +451,24 @@ export default function ExplorePage() {
                       onClick={() => handlePlay(media)}
                     >
                       <div className="relative w-32 h-32">
-                        <Image 
-                          src={media.image_url} 
-                          alt={media.title}
-                          width={128}
-                          height={128}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          quality={75}
-                          placeholder="blur"
-                          blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iIzAwMDUxMSIvPjwvc3ZnPg=="
-                        />
+                        {media.image_url ? (
+                          <Image 
+                            src={media.image_url} 
+                            alt={media.title}
+                            width={128}
+                            height={128}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            quality={75}
+                            placeholder="blur"
+                            blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgZmlsbD0iIzAwMDUxMSIvPjwvc3ZnPg=="
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center">
+                            <Music size={48} className="text-cyan-400/40" />
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
                             {isCurrentlyPlaying && isPlaying ? (
@@ -494,15 +501,22 @@ export default function ExplorePage() {
                     <div className="flex flex-col items-center gap-2">
                       {/* Circular Avatar */}
                       <div className="relative w-20 h-20 rounded-full overflow-hidden ring-2 ring-white/10 group-hover:ring-cyan-400 transition-all">
-                        <Image 
-                          src={artist.avatar} 
-                          alt={artist.username}
-                          width={80}
-                          height={80}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          quality={70}
-                        />
+                        {artist.avatar ? (
+                          <Image 
+                            src={artist.avatar} 
+                            alt={artist.username}
+                            width={80}
+                            height={80}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            quality={70}
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center">
+                            <Users size={32} className="text-white" />
+                          </div>
+                        )}
                       </div>
                       {/* Artist Name */}
                       <div className="text-center relative z-10">
@@ -540,15 +554,22 @@ export default function ExplorePage() {
                     >
                       {/* Thumbnail */}
                       <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden">
-                        <Image 
-                          src={media.image_url} 
-                          alt={media.title}
-                          width={48}
-                          height={48}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          quality={70}
-                        />
+                        {media.image_url || media.imageUrl ? (
+                          <Image 
+                            src={media.image_url || media.imageUrl || ''} 
+                            alt={media.title}
+                            width={48}
+                            height={48}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            quality={70}
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center">
+                            <Music size={20} className="text-cyan-400/40" />
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
                             {isCurrentlyPlaying && isPlaying ? (
@@ -630,15 +651,22 @@ export default function ExplorePage() {
                     >
                       {/* Thumbnail */}
                       <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
-                        <Image 
-                          src={media.image_url} 
-                          alt={media.title}
-                          width={56}
-                          height={56}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          quality={70}
-                        />
+                        {media.image_url || media.imageUrl ? (
+                          <Image 
+                            src={media.image_url || media.imageUrl || ''} 
+                            alt={media.title}
+                            width={56}
+                            height={56}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            quality={70}
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center">
+                            <Music size={24} className="text-cyan-400/40" />
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                             {isCurrentlyPlaying && isPlaying ? (
@@ -725,7 +753,13 @@ export default function ExplorePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {(selectedGenre ? combinedMedia.filter(m => m.genre === selectedGenre) : combinedMedia).map((media) => (
                         <div key={media.id} className="bg-black/40 p-4 rounded-lg">
-                          <img src={media.image_url} alt={media.title} className="w-full h-40 object-cover rounded" />
+                          {media.image_url ? (
+                            <img src={media.image_url} alt={media.title} className="w-full h-40 object-cover rounded" />
+                          ) : (
+                            <div className="w-full h-40 bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center rounded">
+                              <Music size={48} className="text-cyan-400/40" />
+                            </div>
+                          )}
                           <h3 className="mt-2 text-white font-semibold">{media.title}</h3>
                         </div>
                       ))}

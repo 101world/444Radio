@@ -667,7 +667,10 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const loadBuffer = useCallback(async (url: string): Promise<AudioBuffer> => {
     const cache = bufferCacheRef.current;
     if (cache.has(url)) return cache.get(url)!;
-    if (!audioContextRef.current) throw new Error('AudioContext not initialized');
+    if (!audioContextRef.current) {
+      console.error('❌ AudioContext not available for buffer loading');
+      throw new Error('AudioContext not initialized');
+    }
     
     // For blob URLs, try to decode from cached blob FIRST (synchronous ref lookup)
     if (url.startsWith('blob:')) {
@@ -948,9 +951,15 @@ export function useMultiTrack(): UseMultiTrackReturn {
             if (!buffer) {
               try {
                 buffer = await loadBuffer(clip.audioUrl);
-                bufferCacheRef.current.set(clip.audioUrl, buffer);
+                if (buffer) {
+                  bufferCacheRef.current.set(clip.audioUrl, buffer);
+                } else {
+                  console.warn(`⚠️ Buffer is null for ${clip.audioUrl}, skipping`);
+                  continue;
+                }
               } catch (error) {
-                console.error(`Failed to load ${clip.audioUrl}:`, error);
+                console.error(`❌ Failed to load ${clip.audioUrl}:`, error);
+                // Continue playing other clips even if one fails
                 continue;
               }
             }

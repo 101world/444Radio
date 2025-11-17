@@ -27,8 +27,8 @@ export async function GET(request: Request) {
     // Allow optional query param all=true for admin/full listing (not filtered by user)
     const url = new URL(request.url)
     const listAllParam = url.searchParams.get('all') === 'true'
-    // User-specific prefix for images
-    const userPrefix = `users/${userId}/images/`
+    // Don't use folder prefix - R2 files may be stored flat or in various structures
+    const userPrefix = undefined // Disabled prefix filtering to catch all user files
 
     const s3Client = new S3Client({
       region: 'auto',
@@ -61,12 +61,14 @@ export async function GET(request: Request) {
       return objects
     }
 
-    console.log('🖼️ Listing images bucket:', bucketName, 'prefix:', listAllParam ? '(all objects)' : userPrefix)
-    const listed = await listAll(bucketName, listAllParam ? undefined : userPrefix)
+    console.log('🖼️ Listing images bucket:', bucketName, 'user:', userId, 'scope:', listAllParam ? 'ALL' : 'user files')
+    const listed = await listAll(bucketName, undefined) // List all, filter later
     
     // Filter for image file extensions and map to library format
     const images = (listed || [])
       .filter(f => !!f.Key && /\.(jpg|jpeg|png|webp|gif)$/i.test(f.Key))
+      // Filter files that belong to this user
+      .filter(f => listAllParam || f.Key.includes(userId) || f.Key.startsWith(`users/${userId}/`) || f.Key.startsWith(`${userId}/`))
       .map((file, index) => {
         const key: string = file.Key
         // Extract original filename for title

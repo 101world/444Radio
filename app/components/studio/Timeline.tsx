@@ -202,7 +202,7 @@ function TrackRow({ trackId, snapEnabled, bpm, activeTool, onSplitStems }: Track
 }
 
 export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 'select' as const, playheadLocked = true, onSplitStems, clipsContainerRef }: { snapEnabled?: boolean; bpm?: number; activeTool?: 'select' | 'cut' | 'zoom' | 'move' | 'pan'; playheadLocked?: boolean; onSplitStems?: (clipId: string, audioUrl: string) => void; clipsContainerRef?: React.RefObject<HTMLDivElement | null> }) {
-  const { tracks, currentTime, isPlaying, zoom, leftGutterWidth, setLeftGutterWidth, setZoom, trackHeight, setTrackHeight } = useStudio();
+  const { tracks, currentTime, isPlaying, zoom, leftGutterWidth, setLeftGutterWidth, setZoom, trackHeight, setTrackHeight, setCurrentTime } = useStudio();
   const internalClipsRef = useRef<HTMLDivElement | null>(null);
   const clipsScrollRef = clipsContainerRef ?? internalClipsRef;
   const rootScrollRef = useRef<HTMLDivElement>(null);
@@ -289,6 +289,15 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
     } catch {}
   };
 
+  // Click-to-seek: Click anywhere on timeline to jump to that time
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!clipsScrollRef.current || !setCurrentTime) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left + clipsScrollRef.current.scrollLeft;
+    const clickedTime = clickX / pixelsPerSecond;
+    setCurrentTime(Math.max(0, clickedTime));
+  };
+
   return (
     <div ref={rootScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden bg-black/95 backdrop-blur-xl border-t border-teal-900/30 relative timeline-scrollbar-hidden">
       {/* Single scrollable container for both headers and clips */}
@@ -314,26 +323,29 @@ export default function Timeline({ snapEnabled = false, bpm = 120, activeTool = 
                 ref={index === 0 ? clipsScrollRef : undefined}
                 onScroll={index === 0 ? handleScroll : undefined}
                 onWheel={index === 0 ? handleWheel : undefined}
-                className={index === 0 ? "flex-1 overflow-x-auto relative timeline-scrollbar-hidden" : "flex-1 overflow-hidden relative"}
+                onClick={handleTimelineClick}
+                className={index === 0 ? "flex-1 overflow-x-auto relative timeline-scrollbar-hidden cursor-pointer" : "flex-1 overflow-hidden relative cursor-pointer"}
               >
                 <div style={{ minWidth: `${timelineWidth}px` }} className="relative h-full">
-                  {/* Playhead - only show on first track, but extends through all */}
-                  {index === 0 && (
-                    <div
-                      className="absolute top-0 bottom-0 w-1 bg-cyan-400 z-30 pointer-events-none will-change-transform"
-                      style={{
-                        transform: `translateX(${playheadPosition}px)`,
-                        left: 0,
-                      }}
-                    >
-                      <div className="absolute -top-2 -left-3 w-5 h-5 bg-cyan-400 rotate-45 shadow-lg" />
-                      {isPlaying && (
-                        <div className="absolute top-0 -left-4 w-8 h-8">
-                          <div className="absolute inset-0 bg-cyan-400/20 rounded-full animate-ping" />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Playhead - render on ALL tracks for visibility */}
+                  <div
+                    className="absolute top-0 bottom-0 w-1 bg-cyan-400 z-30 pointer-events-none will-change-transform"
+                    style={{
+                      transform: `translateX(${playheadPosition}px)`,
+                      left: 0,
+                    }}
+                  >
+                    {index === 0 && (
+                      <>
+                        <div className="absolute -top-2 -left-3 w-5 h-5 bg-cyan-400 rotate-45 shadow-lg" />
+                        {isPlaying && (
+                          <div className="absolute top-0 -left-4 w-8 h-8">
+                            <div className="absolute inset-0 bg-cyan-400/20 rounded-full animate-ping" />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                   
                   <TrackClips 
                     trackId={track.id} 

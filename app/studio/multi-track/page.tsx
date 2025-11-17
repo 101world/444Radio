@@ -565,7 +565,7 @@ function StudioContent() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ error: 'Upload failed' }));
         throw new Error(error.error || 'Upload failed');
       }
 
@@ -578,7 +578,8 @@ function StudioContent() {
       console.log('✅ Track released:', result.data);
     } catch (error) {
       console.error('Release failed:', error);
-      throw error;
+      showNotification('Failed to release track: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+      // Don't re-throw - allow UI to continue working
     }
   }, [showNotification]);
 
