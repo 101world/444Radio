@@ -205,6 +205,12 @@ export default function ExplorePage() {
         data.combinedMedia.forEach((m: CombinedMedia) => {
           if (m.genre) genreSet.add(m.genre)
         })
+        
+        // If no genres found in media, add some popular defaults
+        if (genreSet.size === 0) {
+          ['lofi', 'hiphop', 'jazz', 'techno', 'electronic', 'ambient'].forEach(genre => genreSet.add(genre))
+        }
+        
         setGenres(Array.from(genreSet))
       }
     } catch (error) {
@@ -751,7 +757,13 @@ export default function ExplorePage() {
                       ))}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {(selectedGenre ? combinedMedia.filter(m => m.genre === selectedGenre) : combinedMedia).map((media) => (
+                      {(selectedGenre ? combinedMedia.filter(m => {
+                        // If media has the selected genre, show it
+                        if (m.genre === selectedGenre) return true
+                        // If no media has this genre (it's a default genre), show all media
+                        const hasGenreInData = combinedMedia.some(media => media.genre === selectedGenre)
+                        return !hasGenreInData
+                      }) : combinedMedia).map((media) => (
                         <div key={media.id} className="bg-black/40 p-4 rounded-lg">
                           {media.image_url ? (
                             <img src={media.image_url} alt={media.title} className="w-full h-40 object-cover rounded" />

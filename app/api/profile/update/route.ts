@@ -22,11 +22,12 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type')
     let username: string
     let avatar: string | undefined
+    let avatarFile: File | null = null
 
     if (contentType?.includes('multipart/form-data')) {
       const formData = await req.formData()
       username = formData.get('username') as string
-      const avatarFile = formData.get('avatar') as File | null
+      avatarFile = formData.get('avatar') as File | null
 
       // Upload avatar to R2 if provided
       if (avatarFile) {
@@ -75,6 +76,20 @@ export async function POST(req: NextRequest) {
     const client = await clerkClient()
     const clerkUpdateData: any = {
       username: username
+    }
+    
+    // Update Clerk's profile image if avatar was uploaded
+    if (avatarFile) {
+      try {
+        // Upload the image to Clerk's servers
+        await client.users.updateUserProfileImage(userId, {
+          file: avatarFile
+        })
+        console.log('Successfully updated Clerk profile image')
+      } catch (clerkError) {
+        console.error('Failed to update Clerk profile image:', clerkError)
+        // Don't fail the entire request if Clerk update fails
+      }
     }
     
     // Store avatar URL in Clerk's publicMetadata for reference
