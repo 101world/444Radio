@@ -629,37 +629,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [isLive, stream])
 
-  const fetchProfileData = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/media/profile/${resolvedParams.userId}`)
-      const data = await res.json()
-      if (data.success) {
-        setProfile({
-          username: data.username,
-          email: '',
-          bio: data.bio || undefined,
-          tagline: data.tagline || "Creating the future of music",
-          avatar: data.avatar || undefined,
-          banner_url: data.banner_url || null,
-          banner_type: data.banner_type || null,
-          totalPlays: data.totalPlays,
-          songCount: data.trackCount,
-          totalLikes: data.totalLikes || 0,
-          followerCount: data.followerCount || 0,
-          followingCount: data.followingCount || 0,
-          songs: [],
-          combinedMedia: data.combinedMedia,
-          uploads: data.uploads || []
-        })
-      }
-    } catch (error) {
-      console.error('Failed to fetch profile:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const fetchPosts = async () => {
     try {
       const res = await fetch(`/api/posts?userId=${resolvedParams.userId}&limit=50`)

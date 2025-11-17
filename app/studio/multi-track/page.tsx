@@ -234,8 +234,8 @@ function StudioContent() {
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-      
-      await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {
         method: 'POST',
         headers: {
           'apikey': supabaseKey,
@@ -251,7 +251,14 @@ function StudioContent() {
           created_at: new Date().toISOString(),
         }),
       });
-      console.log('✅ Beat saved to library');
+
+      if (!response.ok) {
+        console.error('Beat library save failed:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error details:', errorText);
+      } else {
+        console.log('✅ Beat saved to library');
+      }
     } catch (error) {
       console.error('Failed to save beat to library:', error);
     }
@@ -291,8 +298,8 @@ function StudioContent() {
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
       const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-      
-      await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {
         method: 'POST',
         headers: {
           'apikey': supabaseKey,
@@ -309,7 +316,14 @@ function StudioContent() {
           created_at: new Date().toISOString(),
         }),
       });
-      console.log('✅ Song saved to library');
+
+      if (!response.ok) {
+        console.error('Library save failed:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error details:', errorText);
+      } else {
+        console.log('✅ Song saved to library');
+      }
     } catch (error) {
       console.error('Failed to save to library:', error);
     }
@@ -417,9 +431,9 @@ function StudioContent() {
       try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-        
+
         for (const [stemName, stemUrl] of stemEntries) {
-          await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {
+          const response = await fetch(`${supabaseUrl}/rest/v1/combined_media_library`, {
             method: 'POST',
             headers: {
               'apikey': supabaseKey,
@@ -434,6 +448,12 @@ function StudioContent() {
               created_at: new Date().toISOString(),
             }),
           });
+
+          if (!response.ok) {
+            console.error(`Stem ${stemName} library save failed:`, response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('Error details:', errorText);
+          }
         }
         console.log('✅ Stems saved to library');
       } catch (error) {
