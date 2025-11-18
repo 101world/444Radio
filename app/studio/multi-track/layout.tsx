@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: '444Radio Multi-Track Studio',
   description: 'Create and mix multi-track music with AI-powered tools. Professional audio editing interface with drag & drop, effects, and real-time collaboration.',
-  manifest: '/studio/manifest.json',
+  manifest: '/manifest.json',
   themeColor: '#7c3aed',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   appleWebApp: {

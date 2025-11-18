@@ -16,8 +16,8 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch from ALL 4 tables using both user_id and clerk_user_id to catch all user's music
-    const [combinedMediaResponse, combinedLibraryResponse, musicLibraryResponse, songsResponse] = await Promise.all([
+    // Fetch from ALL 3 tables using both user_id and clerk_user_id to catch all user's music
+    const [combinedMediaResponse, combinedLibraryResponse, musicLibraryResponse] = await Promise.all([
       // combined_media - has audio_url directly, uses user_id column
       fetch(
         `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&order=created_at.desc`,
@@ -47,23 +47,12 @@ export async function GET() {
             'Authorization': `Bearer ${supabaseKey}`,
           }
         }
-      ),
-      // songs - legacy table, uses user_id column
-      fetch(
-        `${supabaseUrl}/rest/v1/songs?user_id=eq.${userId}&audio_url=not.is.null&order=created_at.desc`,
-        {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          }
-        }
       )
     ])
 
     const combinedMediaData = await combinedMediaResponse.json()
     const combinedLibraryData = await combinedLibraryResponse.json()
     const musicLibraryData = await musicLibraryResponse.json()
-    const songsData = await songsResponse.json()
 
     // Transform combined_media format
     const combinedMediaMusic = Array.isArray(combinedMediaData) ? combinedMediaData.map(item => ({
@@ -120,30 +109,11 @@ export async function GET() {
       updated_at: item.updated_at
     })) : []
 
-    // Transform songs format (legacy table)
-    const songsMusic = Array.isArray(songsData) ? songsData.map(item => ({
-      id: item.id,
-      clerk_user_id: item.user_id,
-      user_id: item.user_id,
-      title: item.title || 'Untitled',
-      prompt: item.prompt || 'Generated music',
-      lyrics: item.lyrics,
-      audio_url: item.audio_url,
-      image_url: item.cover_url,
-      duration: item.duration,
-      audio_format: 'mp3',
-      status: item.status || 'ready',
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    })) : []
-
-    // Combine all four sources and deduplicate by audio_url
-    const allMusic = [...combinedMediaMusic, ...combinedLibraryMusic, ...musicLibraryMusic, ...songsMusic]
+    // Combine all three sources and deduplicate by audio_url
+    const allMusic = [...combinedMediaMusic, ...combinedLibraryMusic, ...musicLibraryMusic]
     const uniqueMusic = Array.from(
       new Map(allMusic.map(item => [item.audio_url, item])).values()
     )
-
-    console.log(`📊 Library fetch: combined_media=${combinedMediaMusic.length}, combined_library=${combinedLibraryMusic.length}, music_library=${musicLibraryMusic.length}, songs=${songsMusic.length}, total_unique=${uniqueMusic.length}`)
 
     return NextResponse.json({
       success: true,

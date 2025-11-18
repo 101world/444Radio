@@ -3,7 +3,7 @@
   "short_name": "444Radio Studio",
   "description": "Create and mix multi-track music with AI-powered tools",
   "start_url": "/studio/multi-track",
-  "scope": "/studio",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#7c3aed",
