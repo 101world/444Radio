@@ -190,25 +190,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [queueToast])
 
-  // Fetch profile data
-  const fetchProfileData = useCallback(async () => {
-    try {
-      setLoading(true)
-      const res = await fetch(`/api/profile/data?userId=${resolvedParams.userId}`)
-      const data = await res.json()
-
-      if (data.success) {
-        setProfile(data.profile)
-      } else {
-        console.error('Failed to fetch profile:', data.error)
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [resolvedParams.userId])
-
   useEffect(() => {
     if (currentUser) {
       setIsOwnProfile(currentUser.id === resolvedParams.userId)
@@ -629,6 +610,37 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [isLive, stream])
 
+  const fetchProfileData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/media/profile/${resolvedParams.userId}`)
+      const data = await res.json()
+      if (data.success) {
+        setProfile({
+          username: data.username,
+          email: '',
+          bio: data.bio || undefined,
+          tagline: data.tagline || "Creating the future of music",
+          avatar: data.avatar || undefined,
+          banner_url: data.banner_url || null,
+          banner_type: data.banner_type || null,
+          totalPlays: data.totalPlays,
+          songCount: data.trackCount,
+          totalLikes: data.totalLikes || 0,
+          followerCount: data.followerCount || 0,
+          followingCount: data.followingCount || 0,
+          songs: [],
+          combinedMedia: data.combinedMedia,
+          uploads: data.uploads || []
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const fetchPosts = async () => {
     try {
       const res = await fetch(`/api/posts?userId=${resolvedParams.userId}&limit=50`)
@@ -951,7 +963,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     </div>
                   </div>
                 </div>
-              ) : profile ? (
+              ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
                 <div className="space-y-0">
                   {/* Mobile Layout - Original Design */}
                   <div className="md:hidden space-y-0">
@@ -1033,109 +1045,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     )}
                   </div>
 
-                  {/* SECTION 2: PROFILE HEADER - Avatar, Username, Bio, Stats */}
-                  <div className="relative z-20 px-6 py-6 bg-black/80 backdrop-blur-xl border-t border-cyan-500/20">
-                    <div className="flex items-start gap-6">
-                      {/* Profile Avatar */}
-                      <div className="relative">
-                        <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-cyan-400/50 shadow-lg shadow-cyan-400/20">
-                          {profile?.avatar ? (
-                            <Image
-                              src={profile.avatar}
-                              alt={`${profile.username}'s avatar`}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
-                              <User size={32} className="text-white" />
-                            </div>
-                          )}
-                        </div>
-                        {isOwnProfile && (
-                          <button
-                            onClick={() => setShowUploadModal(true)}
-                            className="absolute -bottom-2 -right-2 w-8 h-8 bg-cyan-500 hover:bg-cyan-400 rounded-full flex items-center justify-center border-2 border-black shadow-lg transition-colors"
-                          >
-                            <Edit2 size={14} className="text-black" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Profile Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h1 className="text-2xl font-bold text-white truncate">{profile?.username || 'Loading...'}</h1>
-                          {isLive && (
-                            <div className="flex items-center gap-2 px-3 py-1 bg-red-500/20 border border-red-500/50 rounded-full">
-                              <Circle size={8} className="text-red-500 fill-red-500 animate-pulse" />
-                              <span className="text-red-400 text-sm font-medium">LIVE</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {profile?.tagline && (
-                          <p className="text-cyan-300 text-lg mb-2">{profile.tagline}</p>
-                        )}
-
-                        {profile?.bio && (
-                          <p className="text-gray-300 mb-4 leading-relaxed">{profile.bio}</p>
-                        )}
-
-                        {/* Stats */}
-                        <div className="flex items-center gap-6 text-sm">
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-cyan-400">{profile?.songCount || 0}</div>
-                            <div className="text-gray-400">Tracks</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-cyan-400">{profile?.followerCount || 0}</div>
-                            <div className="text-gray-400">Followers</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-cyan-400">{profile?.followingCount || 0}</div>
-                            <div className="text-gray-400">Following</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-cyan-400">{profile?.totalPlays || 0}</div>
-                            <div className="text-gray-400">Plays</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-cyan-400">{profile?.totalLikes || 0}</div>
-                            <div className="text-gray-400">Likes</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-3">
-                        {!isOwnProfile && (
-                          <button
-                            onClick={() => setIsFollowing(!isFollowing)}
-                            className={`px-6 py-2 rounded-full font-semibold transition-all ${
-                              isFollowing
-                                ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                                : 'bg-cyan-500 hover:bg-cyan-400 text-black'
-                            }`}
-                          >
-                            {isFollowing ? 'Following' : 'Follow'}
-                          </button>
-                        )}
-                        {isOwnProfile && (
-                          <button
-                            onClick={() => setShowPublishModal(true)}
-                            className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-full font-semibold text-white transition-all"
-                          >
-                            Publish
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Show content sections only if user has media */}
-                  {profile.combinedMedia && profile.combinedMedia.length > 0 ? (
+                  {/* SECTION 3: LIST VIEW - All Content with Tabs */}
                   <div className="px-6 py-4 relative z-10 bg-black">
                     {/* Tab Buttons */}
                     <div className="flex items-center gap-4 mb-4 relative z-10 pointer-events-auto">
@@ -1578,7 +1488,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </div>
                     )}
                   </div>
-                  ) : null}
 
                   {/* SECTION 4: UPLOADS - Images & Videos by Month */}
                   {profile.uploads && profile.uploads.length > 0 && (
