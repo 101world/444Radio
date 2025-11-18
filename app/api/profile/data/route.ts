@@ -69,11 +69,17 @@ export async function GET(req: NextRequest) {
         title,
         audio_url,
         image_url,
+        video_url,
+        audio_prompt,
+        image_prompt,
         user_id,
         likes,
         plays,
+        views,
         is_public,
-        created_at
+        created_at,
+        media_type,
+        content_type
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
