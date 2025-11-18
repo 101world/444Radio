@@ -131,6 +131,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
   const blobCacheRef = useRef<Map<string, Blob>>(new Map()); // Cache blobs by URL for instant lookup
   const loopTracksStateRef = useRef<Set<string>>(new Set());
   const [loopedTracksState, setLoopedTracksState] = useState<Set<string>>(new Set());
+  const isPlayingRef = useRef<boolean>(false); // Track isPlaying state for closures
   const playStartProjectTimeRef = useRef<number>(0);
   const playStartContextTimeRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
@@ -229,7 +230,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
     } catch (error) {
       console.error('❌ Failed to initialize audio context:', error);
     }
-  }, []);
+  }, [isPlaying]);
 
   // Update scheduler when tracks change
   useEffect(() => {
@@ -397,7 +398,17 @@ export function useMultiTrack(): UseMultiTrackReturn {
       }
       })();
     }
-  }, [saveHistory]);
+    // If playing, we need to re-schedule playback so new clip is included correctly
+    if (isPlaying) {
+      try {
+        // Request a pause via events (reschedule effect will restart)
+        try { window.dispatchEvent(new CustomEvent('studio:pause-request')); } catch(e) {}
+        try { window.dispatchEvent(new CustomEvent('studio:reschedule-playback')); } catch(e) {}
+      } catch (e) {
+        console.error('Failed to request reschedule after adding clip:', e);
+      }
+    }
+  }, [saveHistory, isPlaying]);
 
   // Move clip on timeline
   const moveClip = useCallback((clipId: string, newStartTime: number) => {
@@ -411,7 +422,12 @@ export function useMultiTrack(): UseMultiTrackReturn {
       saveHistory(newTracks);
       return newTracks;
     });
-  }, [saveHistory]);
+    // If playing, ask to pause and reschedule after change
+    if (isPlaying) {
+      try { window.dispatchEvent(new CustomEvent('studio:pause-request')); } catch {}
+      try { window.dispatchEvent(new CustomEvent('studio:reschedule-playback')); } catch {}
+    }
+  }, [saveHistory, isPlaying]);
 
   // Move clip to different track
   const moveClipToTrack = useCallback((clipId: string, targetTrackId: string, newStartTime?: number) => {
@@ -434,7 +450,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
       }
 
       // Remove from source track and add to target track
-      return prev.map((t) => {
+      const newArr = prev.map((t) => {
         if (t.id === sourceTrackId) {
           // Remove clip from source
           return { ...t, clips: t.clips.filter((c) => c.id !== clipId) };
@@ -449,8 +465,10 @@ export function useMultiTrack(): UseMultiTrackReturn {
         }
         return t;
       });
+      return newArr;
     });
     console.log(`🔄 Clip moved to different track: ${clipId} → ${targetTrackId}`);
+    if (isPlaying) { try { window.dispatchEvent(new CustomEvent('studio:pause-request')); } catch {} try { window.dispatchEvent(new CustomEvent('studio:reschedule-playback')); } catch {} }
   }, []);
 
   // Remove clip from track
@@ -946,13 +964,16 @@ export function useMultiTrack(): UseMultiTrackReturn {
       return;
     }
 
-    // Prevent double-triggering
-    if (playing === isPlaying) {
+    // Prevent double-triggering - check using ref to get current value
+    const currentIsPlaying = isPlayingRef.current;
+    if (playing === currentIsPlaying) {
       console.log(`⚠️ Already ${playing ? 'playing' : 'paused'}, ignoring`);
       return;
     }
 
     if (playing) {
+      // Ask global audio player to pause
+      try { window.dispatchEvent(new CustomEvent('studio:pause-global-audio')); } catch {}
       try {
         // Resume AudioContext if suspended
         if (audioContextRef.current.state === 'suspended') {
@@ -1018,6 +1039,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
         // Start RAF ticker for UI updates
         startTicker();
         setIsPlaying(true);
+        isPlayingRef.current = true;
         console.log('▶️ Playback started at', currentTime);
       } catch (e) {
         console.error('❌ Playback start failed:', e);
@@ -1025,16 +1047,65 @@ export function useMultiTrack(): UseMultiTrackReturn {
         clearTicker();
         schedulerRef.current?.stop();
         setIsPlaying(false);
+        isPlayingRef.current = false;
       }
     } else {
       // Stop scheduler
       console.log('⏸️ Stopping playback at', currentTime);
       schedulerRef.current.stop();
+      // Also stop any individual sources to prevent overlapping audio
+      stopAllSources();
       clearTicker();
       setIsPlaying(false);
+      isPlayingRef.current = false;
       console.log('✅ Playback fully stopped');
     }
   }, [tracks, currentTime, startTicker, clearTicker, isPlaying, loadBuffer]);
+
+  // Listen for reschedule-playback event (triggered after operations like addClip while playing)
+  useEffect(() => {
+    const onReschedule = () => {
+      // Small timeout to allow UI and tracks state to update
+      setTimeout(() => {
+        if (!isPlaying) {
+          setPlaying(true);
+        }
+      }, 50);
+    };
+    window.addEventListener('studio:reschedule-playback', onReschedule as EventListener);
+    return () => window.removeEventListener('studio:reschedule-playback', onReschedule as EventListener);
+  }, [isPlaying, setPlaying]);
+
+  // Listen for global audio play pause event (pause studio when global player starts)
+  useEffect(() => {
+    const onGlobalPause = () => {
+      if (isPlaying) {
+        // Stop scheduler and clear tick
+        schedulerRef.current?.stop();
+        clearTicker();
+        setIsPlaying(false);
+        isPlayingRef.current = false;
+      }
+    }
+    window.addEventListener('audio:pause-studio', onGlobalPause as EventListener);
+    return () => window.removeEventListener('audio:pause-studio', onGlobalPause as EventListener);
+  }, [isPlaying, clearTicker]);
+
+  // Listen for explicit pause requests to safely stop playback (internal use)
+  useEffect(() => {
+    const onPauseRequest = () => {
+      if (!isPlaying) return;
+      // Stop scheduler and clear all sources
+      schedulerRef.current?.stop();
+      stopAllSources();
+      clearTicker();
+      setIsPlaying(false);
+      isPlayingRef.current = false;
+      console.log('⏸️ Playback paused via studio:pause-request');
+    }
+    window.addEventListener('studio:pause-request', onPauseRequest as EventListener);
+    return () => window.removeEventListener('studio:pause-request', onPauseRequest as EventListener);
+  }, [isPlaying, clearTicker]);
 
   // Toggle playback (safer for UI buttons)
   const togglePlayback = useCallback(() => {
@@ -1059,6 +1130,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
       // Stop current playback
       schedulerRef.current?.stop();
       clearTicker();
+      stopAllSources();
       setIsPlaying(false);
     }
   }, [currentTime, isPlaying, clearTicker]);
@@ -1071,6 +1143,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
       // Stop current playback
       schedulerRef.current?.stop();
       clearTicker();
+      stopAllSources();
       setIsPlaying(false);
     }
   }, [currentTime, isPlaying, clearTicker]);
