@@ -107,6 +107,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           setIsPlaying(false)
         })
     }
+      // When the global player resumes or plays, notify studio to pause
+      try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}
   }, [])
 
   const playTrack = useCallback(async (track: Track) => {
@@ -194,10 +196,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     await new Promise(resolve => setTimeout(resolve, 100))
     
     // Now play
-    try {
+      try {
       await audio.play()
       setIsPlaying(true)
       console.log('✅ Playback started successfully for', track.title)
+      // Notify Studio to stop playback to prevent overlapping audio
+      try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}
     } catch (error) {
       console.error('❌ Error playing audio:', error)
       console.error('Track:', track.title)
@@ -280,6 +284,15 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       }
     }
   }, []) // Empty dependency array - only run once on mount
+
+  // Listen for studio playback events to pause the global audio when Studio starts playing
+  useEffect(() => {
+    const onStudioPauseGlobal = () => {
+      pause();
+    }
+    window.addEventListener('studio:pause-global-audio', onStudioPauseGlobal as EventListener);
+    return () => window.removeEventListener('studio:pause-global-audio', onStudioPauseGlobal as EventListener);
+  }, [pause]);
 
   // Set up media session handlers separately
   useEffect(() => {

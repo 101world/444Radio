@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { music_id, image_id, audio_url, image_url, music_prompt, image_prompt, title } = await req.json()
+    const { music_id, image_id, audio_url, image_url, music_prompt, image_prompt, title, metadata, effects, beat_metadata, stems, is_multi_track } = await req.json()
 
     if (!audio_url || !image_url) {
       return NextResponse.json(
@@ -115,7 +115,13 @@ export async function POST(req: NextRequest) {
           image_prompt,
           title,
           lyrics, // Include lyrics from music_library
-          is_published: false // Not published to profile yet
+          is_published: false, // Not published to profile yet
+          /* Pass-through studio fields (metadata) */
+          metadata: metadata || null,
+          effects: effects || null,
+          beat_metadata: beat_metadata || null,
+          stems: stems || null,
+          is_multi_track: is_multi_track || false
         })
       }
     )
@@ -339,6 +345,11 @@ export async function PATCH(req: NextRequest) {
             image_prompt: combined.image_prompt || '',
             title: combined.title || 'Untitled',
             lyrics: combined.lyrics || null, // Include lyrics
+            metadata: combined.metadata || null,
+            effects: combined.effects || null,
+            beat_metadata: combined.beat_metadata || null,
+            stems: combined.stems || null,
+            is_multi_track: combined.is_multi_track || false,
             genre: combined.genre,
             mood: combined.mood,
             bpm: combined.bpm,

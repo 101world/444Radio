@@ -249,6 +249,12 @@ function StudioContent() {
           audio_url: audioUrl,
           music_prompt: metadata.prompt,
           created_at: new Date().toISOString(),
+          /* Studio metadata (safe inclusion) */
+          metadata: metadata?.metadata || null,
+          effects: metadata?.effects || null,
+          beat_metadata: metadata?.beat_metadata || null,
+          stems: metadata?.stems || null,
+          is_multi_track: metadata?.is_multi_track || true,
         }),
       });
 
@@ -307,14 +313,20 @@ function StudioContent() {
           'Content-Type': 'application/json',
           'Prefer': 'return=minimal',
         },
-        body: JSON.stringify({
-          clerk_user_id: user?.id,
-          title: trackName,
-          audio_url: audioUrl,
-          music_prompt: metadata.prompt,
-          lyrics: metadata.lyrics,
-          created_at: new Date().toISOString(),
-        }),
+          body: JSON.stringify({
+            clerk_user_id: user?.id,
+            title: trackName,
+            audio_url: audioUrl,
+            music_prompt: metadata.prompt,
+            lyrics: metadata.lyrics,
+            created_at: new Date().toISOString(),
+            /* Studio metadata */
+            metadata: metadata?.metadata || null,
+            effects: metadata?.effects || null,
+            beat_metadata: metadata?.beat_metadata || null,
+            stems: metadata?.stems || null,
+            is_multi_track: metadata?.is_multi_track || true,
+          }),
       });
 
       if (!response.ok) {
