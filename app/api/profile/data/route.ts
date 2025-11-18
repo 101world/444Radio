@@ -27,11 +27,41 @@ export async function GET(req: NextRequest) {
       .eq('clerk_user_id', userId)
       .single()
 
+    // If user not found, create minimal user record
     if (userError || !userData) {
-      return corsResponse(NextResponse.json({ success: false, error: 'User not found' }, { status: 404 }))
+      await supabase
+        .from('users')
+        .insert({
+          clerk_user_id: userId,
+          email: '',
+          username: null,
+          credits: 0
+        })
+        .select()
+        .single()
+      
+      // Return early with empty profile
+      return corsResponse(NextResponse.json({ 
+        success: true, 
+        profile: {
+          username: 'User',
+          email: '',
+          bio: null,
+          tagline: null,
+          avatar: null,
+          banner_url: null,
+          banner_type: null,
+          totalLikes: 0,
+          totalPlays: 0,
+          songCount: 0,
+          followerCount: 0,
+          followingCount: 0,
+          combinedMedia: []
+        }
+      }))
     }
 
-    // Fetch user's combined media
+    // Fetch user's combined media - SHOW ALL TRACKS (no is_public filter)
     const { data: combinedMedia, error: mediaError } = await supabase
       .from('combined_media')
       .select(`
@@ -46,7 +76,6 @@ export async function GET(req: NextRequest) {
         created_at
       `)
       .eq('user_id', userId)
-      .eq('is_public', true)
       .order('created_at', { ascending: false })
 
     if (mediaError) {
