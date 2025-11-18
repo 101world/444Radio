@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
+import { uploadToR2 } from '@/lib/r2-upload'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
@@ -96,6 +97,26 @@ export async function POST(req: NextRequest) {
       throw new Error('No image generated')
     }
 
+    // Download the image from Replicate and upload to R2 for permanent storage
+    console.log('⬇️ Downloading image from Replicate...')
+    const imageResponse = await fetch(imageUrl)
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to download image: ${imageResponse.status}`)
+    }
+    
+    const imageBlob = await imageResponse.blob()
+    const imageFile = new File([imageBlob], `cover-${Date.now()}.png`, { type: 'image/png' })
+    
+    console.log('⬆️ Uploading to R2...')
+    const uploadResult = await uploadToR2(imageFile, 'images', `cover-${Date.now()}.png`)
+    
+    if (!uploadResult.success) {
+      throw new Error('Failed to store image permanently')
+    }
+    
+    const permanentImageUrl = uploadResult.url
+    console.log('✅ Cover art generated and stored:', permanentImageUrl)
+
     // Update song in database with cover URL
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -109,7 +130,7 @@ export async function POST(req: NextRequest) {
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify({
-        cover_url: imageUrl,
+        cover_url: permanentImageUrl,
         cover_prompt: coverPrompt,
         status: 'processing_final'
       })
@@ -123,8 +144,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      coverUrl: imageUrl,
-      output: [imageUrl], // Return as array for consistency with Replicate format
+      coverUrl: permanentImageUrl,
+      output: [permanentImageUrl], // Return as array for consistency with Replicate format
       message: 'Cover art generated successfully' 
     })
 

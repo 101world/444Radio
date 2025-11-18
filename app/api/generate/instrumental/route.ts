@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { createClient } from '@supabase/supabase-js'
+import { uploadToR2 } from '@/lib/r2-upload'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
@@ -160,9 +161,9 @@ export async function POST(req: NextRequest) {
 
     // Get the audio URL from output
     const output = finalPrediction.output
-    const audioUrl = Array.isArray(output) ? output[0] : output
+    const replicateAudioUrl = Array.isArray(output) ? output[0] : output
 
-    if (!audioUrl) {
+    if (!replicateAudioUrl) {
       // Refund credits if no audio generated
       await supabase
         .from('users')
@@ -172,12 +173,36 @@ export async function POST(req: NextRequest) {
       throw new Error('No audio generated')
     }
 
-    console.log('✅ Instrumental generated:', audioUrl)
+    // Download the audio from Replicate and upload to R2 for permanent storage
+    console.log('⬇️ Downloading audio from Replicate...')
+    const audioResponse = await fetch(replicateAudioUrl)
+    if (!audioResponse.ok) {
+      throw new Error(`Failed to download audio: ${audioResponse.status}`)
+    }
+    
+    const audioBlob = await audioResponse.blob()
+    const audioFile = new File([audioBlob], `instrumental-${Date.now()}.mp3`, { type: 'audio/mpeg' })
+    
+    console.log('⬆️ Uploading to R2...')
+    const uploadResult = await uploadToR2(audioFile, 'audio-files', `instrumental-${Date.now()}.mp3`)
+    
+    if (!uploadResult.success) {
+      // Refund credits if upload failed
+      await supabase
+        .from('users')
+        .update({ credits: userData.credits })
+        .eq('clerk_user_id', userId)
+      
+      throw new Error('Failed to store audio permanently')
+    }
+    
+    const permanentAudioUrl = uploadResult.url
+    console.log('✅ Instrumental generated and stored:', permanentAudioUrl)
     console.log('💰 Credits charged: 5, User credits now:', userData.credits - 5)
 
     return corsResponse(NextResponse.json({ 
       success: true, 
-      audioUrl,
+      audioUrl: permanentAudioUrl,
       creditsUsed: 5,
       creditsRemaining: userData.credits - 5,
       duration,

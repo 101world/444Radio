@@ -120,13 +120,36 @@ export async function POST(req: NextRequest) {
 
     // The output is the audio URL
     const output = finalPrediction.output
-    const audioUrl = Array.isArray(output) ? output[0] : output
+    const replicateAudioUrl = Array.isArray(output) ? output[0] : output
 
-    if (!audioUrl) {
+    if (!replicateAudioUrl) {
       throw new Error('No audio generated')
     }
 
-    // Update song in database with audio URL and status
+    console.log('🎵 Replicate audio URL:', replicateAudioUrl)
+
+    // Download the audio file from Replicate and upload to R2 for permanent storage
+    const audioResponse = await fetch(replicateAudioUrl)
+    if (!audioResponse.ok) {
+      throw new Error('Failed to download audio from Replicate')
+    }
+
+    const audioBlob = await audioResponse.blob()
+    const audioFile = new File([audioBlob], `${songId}.mp3`, { type: 'audio/mpeg' })
+
+    // Upload to R2
+    const { uploadToR2 } = await import('@/lib/r2-upload')
+    const r2Result = await uploadToR2(audioFile, 'audio-files', `${songId}.mp3`)
+
+    if (!r2Result.success || !r2Result.url) {
+      console.error('Failed to upload to R2:', r2Result.error)
+      throw new Error('Failed to store audio file')
+    }
+
+    const permanentAudioUrl = r2Result.url
+    console.log('✅ Audio uploaded to R2:', permanentAudioUrl)
+
+    // Update song in database with permanent R2 URL and status
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
@@ -139,7 +162,7 @@ export async function POST(req: NextRequest) {
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify({
-        audio_url: audioUrl,
+        audio_url: permanentAudioUrl,
         status: 'processing_cover'
       })
     })
@@ -148,11 +171,11 @@ export async function POST(req: NextRequest) {
       throw new Error('Failed to update song with audio URL')
     }
 
-    console.log('✅ Music generated:', audioUrl)
+    console.log('✅ Music generated:', permanentAudioUrl)
 
     return NextResponse.json({ 
       success: true, 
-      audioUrl,
+      audioUrl: permanentAudioUrl,
       message: 'Music generated successfully' 
     })
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
+import { uploadToR2 } from '@/lib/r2-upload'
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
@@ -61,6 +62,26 @@ export async function POST(req: NextRequest) {
       throw new Error('No video generated')
     }
 
+    // Download the video from Replicate and upload to R2 for permanent storage
+    console.log('⬇️ Downloading video from Replicate...')
+    const videoResponse = await fetch(videoUrl)
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to download video: ${videoResponse.status}`)
+    }
+    
+    const videoBlob = await videoResponse.blob()
+    const videoFile = new File([videoBlob], `video-${Date.now()}.mp4`, { type: 'video/mp4' })
+    
+    console.log('⬆️ Uploading to R2...')
+    const uploadResult = await uploadToR2(videoFile, 'videos', `video-${Date.now()}.mp4`)
+    
+    if (!uploadResult.success) {
+      throw new Error('Failed to store video permanently')
+    }
+    
+    const permanentVideoUrl = uploadResult.url
+    console.log('✅ Video generated and stored:', permanentVideoUrl)
+
     // Update song in database with cover video URL
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -74,7 +95,7 @@ export async function POST(req: NextRequest) {
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify({
-        cover_url: videoUrl,
+        cover_url: permanentVideoUrl,
         cover_prompt: videoPrompt,
         status: 'processing_final'
       })
@@ -88,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      coverUrl: videoUrl,
+      coverUrl: permanentVideoUrl,
       message: 'Cover video generated successfully' 
     })
 
