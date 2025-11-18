@@ -1,14 +1,36 @@
 {
-  "name": "Audiomass - Audio Editor",
-  "short_name": "Audiomass - Audio Editor",
-  "start_url": ".",
-  "scope": ".",
+  "name": "444Radio Multi-Track Studio",
+  "short_name": "444Radio Studio",
+  "description": "Create and mix multi-track music with AI-powered tools",
+  "start_url": "/studio/multi-track",
+  "scope": "/studio",
   "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#7c3aed",
+  "orientation": "landscape-primary",
+  "categories": ["music", "productivity", "entertainment"],
   "icons": [
     {
-      "src": "icon.png",
+      "src": "/studio/icon.png",
+      "sizes": "144x144",
       "type": "image/png",
-      "sizes": "144x144"
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Multi-Track",
+      "short_name": "New Track",
+      "description": "Start creating a new multi-track composition",
+      "url": "/studio/multi-track",
+      "icons": [{ "src": "/studio/icon.png", "sizes": "144x144" }]
+    },
+    {
+      "name": "My Library",
+      "short_name": "Library",
+      "description": "Browse your saved tracks and compositions",
+      "url": "/library",
+      "icons": [{ "src": "/studio/icon.png", "sizes": "144x144" }]
     }
   ]
 }

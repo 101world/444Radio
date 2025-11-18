@@ -212,31 +212,71 @@ function CreatePageContent() {
     scrollToBottom()
   }, [messages])
 
-  // Load chat from localStorage on mount
+  // Load chat from database on mount
   useEffect(() => {
-    try {
-      const savedChat = localStorage.getItem('444radio-chat-messages')
-      if (savedChat) {
-        const parsedMessages = JSON.parse(savedChat)
-        // Convert timestamp strings back to Date objects
-        const messagesWithDates = parsedMessages.map((msg: Message) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }))
-        setMessages(messagesWithDates)
+    const loadChatMessages = async () => {
+      try {
+        const response = await fetch('/api/chat/messages')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && Array.isArray(data.messages)) {
+            // Convert timestamp strings back to Date objects
+            const messagesWithDates = data.messages.map((msg: Message) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
+            }))
+            setMessages(messagesWithDates)
+            console.log('✅ Loaded', messagesWithDates.length, 'chat messages from database')
+          }
+        } else {
+          console.warn('Failed to load chat messages from database, using default welcome message')
+        }
+      } catch (error) {
+        console.error('Failed to load chat from database:', error)
+        // Keep the default welcome message if database load fails
       }
-    } catch (error) {
-      console.error('Failed to load chat from localStorage:', error)
     }
+
+    loadChatMessages()
   }, [])
 
-  // Save chat to localStorage whenever messages change
+  // Save chat to database whenever messages change (debounced)
   useEffect(() => {
-    try {
-      localStorage.setItem('444radio-chat-messages', JSON.stringify(messages))
-    } catch (error) {
-      console.error('Failed to save chat to localStorage:', error)
+    // Skip saving if messages only contain the default welcome message
+    if (messages.length === 1 && messages[0].type === 'assistant' && messages[0].content.includes('Hey! I\'m your AI music studio assistant')) {
+      return
     }
+
+    const saveChatMessages = async () => {
+      try {
+        // Clear existing messages first
+        await fetch('/api/chat/messages', { method: 'DELETE' })
+
+        // Save all current messages
+        const savePromises = messages.map(message =>
+          fetch('/api/chat/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: message.type,
+              content: message.content,
+              generationType: message.generationType,
+              generationId: message.generationId,
+              result: message.result
+            })
+          })
+        )
+
+        await Promise.all(savePromises)
+        console.log('💾 Saved', messages.length, 'chat messages to database')
+      } catch (error) {
+        console.error('Failed to save chat to database:', error)
+      }
+    }
+
+    // Debounce the save operation
+    const timeoutId = setTimeout(saveChatMessages, 1000)
+    return () => clearTimeout(timeoutId)
   }, [messages])
 
   // Sync generation queue results with messages on mount and when generations change
