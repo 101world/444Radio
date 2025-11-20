@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, Suspense } from 'react'
+import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices } from 'lucide-react'
@@ -9,12 +9,13 @@ import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
-import HolographicBackground from '../components/HolographicBackgroundClient'
 import FloatingNavButton from '../components/FloatingNavButton'
 import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
+
+const HolographicBackground = lazy(() => import('../components/HolographicBackgroundClient'))
 
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'

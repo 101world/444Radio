@@ -719,7 +719,7 @@ function DAWUltimate() {
       setGenerationQueue(prev =>
         prev.map(item =>
           item.id === queueId
-            ? { ...item, status: 'completed', progress: 'Complete', result: { audioUrl, metadata: { imageUrl } } }
+            ? { ...item, status: 'completed', progress: 'Complete', result: { audioUrl, imageUrl } }
             : item
         )
       );
