@@ -1041,38 +1041,47 @@ function CreatePageContent() {
   }
 
   const handleDownload = async (url: string, filename: string, format: 'mp3' | 'wav' = 'mp3') => {
-    if (format === 'mp3') {
-      // Direct download for MP3
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } else {
-      // Convert to WAV using Web Audio API
-      try {
-        const response = await fetch(url)
-        const arrayBuffer = await response.arrayBuffer()
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-        
-        // Create WAV file
-        const wavBlob = audioBufferToWav(audioBuffer)
-        const wavUrl = URL.createObjectURL(wavBlob)
-        
+    try {
+      if (format === 'mp3') {
+        // Use download proxy to avoid CORS issues
+        const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
         const link = document.createElement('a')
-        link.href = wavUrl
-        link.download = filename.replace('.mp3', '.wav')
+        link.href = downloadUrl
+        link.download = filename
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-        
-        URL.revokeObjectURL(wavUrl)
-      } catch (error) {
-        console.error('WAV conversion error:', error)
-        alert('Failed to convert to WAV. Please try MP3 download.')
+      } else {
+        // Convert to WAV using Web Audio API
+        try {
+          const response = await fetch(url)
+          if (!response.ok) {
+            throw new Error(`Failed to fetch audio: ${response.status}`)
+          }
+          const arrayBuffer = await response.arrayBuffer()
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+          
+          // Create WAV file
+          const wavBlob = audioBufferToWav(audioBuffer)
+          const wavUrl = URL.createObjectURL(wavBlob)
+          
+          const link = document.createElement('a')
+          link.href = wavUrl
+          link.download = filename.replace('.mp3', '.wav')
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          
+          URL.revokeObjectURL(wavUrl)
+        } catch (error) {
+          console.error('WAV conversion error:', error)
+          alert('Failed to convert to WAV. Please try MP3 download.')
+        }
       }
+    } catch (error) {
+      console.error('Download error:', error)
+      alert('Download failed. Please try again.')
     }
   }
 
