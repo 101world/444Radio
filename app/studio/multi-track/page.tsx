@@ -18,7 +18,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Upload, Sparkles, Library, Music, Plus, Save, Download, FileAudio, Folder, HelpCircle, Settings, Volume2, Timer, Hash, Clock, Magnet, Radio, Music2, MousePointer2, Scissors, ZoomIn, Move, Hand, X, Lock, Unlock } from 'lucide-react';
 import { StudioProvider, useStudio } from '@/app/contexts/StudioContext';
 import Timeline from '@/app/components/studio/Timeline';
@@ -26,16 +26,14 @@ import TransportBar from '@/app/components/studio/TransportBar';
 import EffectsRack from '@/app/components/studio/EffectsRack';
 import TimelineRuler from '@/app/components/studio/TimelineRuler';
 import TrackInspector from '@/app/components/studio/TrackInspector';
+import BeatGenerationModal from '@/app/components/studio/BeatGenerationModal';
+import SongGenerationModal from '@/app/components/studio/SongGenerationModal';
+import StemSplitModal from '@/app/components/studio/StemSplitModal';
+import ExportModal from '@/app/components/studio/ExportModal';
+import ReleaseModal from '@/app/components/studio/ReleaseModal';
 import GenerationQueue, { QueueItem } from '@/app/components/studio/GenerationQueue';
 import type { ToolType } from '@/app/components/studio/Toolbar';
 import { useUser } from '@clerk/nextjs';
-
-// Lazy load heavy modals
-const BeatGenerationModal = lazy(() => import('@/app/components/studio/BeatGenerationModal'));
-const SongGenerationModal = lazy(() => import('@/app/components/studio/SongGenerationModal'));
-const StemSplitModal = lazy(() => import('@/app/components/studio/StemSplitModal'));
-const ExportModal = lazy(() => import('@/app/components/studio/ExportModal'));
-const ReleaseModal = lazy(() => import('@/app/components/studio/ReleaseModal'));
 
 function StudioContent() {
   const { addTrack, addEmptyTrack, tracks, addClipToTrack, isPlaying, setPlaying, togglePlayback, selectedTrackId, removeTrack, toggleMute, toggleSolo, undo, redo, canUndo, canRedo, setZoom, setLeftGutterWidth, setTrackHeight, trackHeight, leftGutterWidth } = useStudio();
@@ -1651,73 +1649,63 @@ function StudioContent() {
       )}
 
       {/* Beat Generation Modal */}
-      <Suspense fallback={<div />}>
-        <BeatGenerationModal
-          isOpen={showBeatModal}
-          onClose={() => setShowBeatModal(false)}
-          onGenerate={handleBeatGenerated}
-        />
-      </Suspense>
+      <BeatGenerationModal
+        isOpen={showBeatModal}
+        onClose={() => setShowBeatModal(false)}
+        onGenerate={handleBeatGenerated}
+      />
 
       {/* Song Generation Modal */}
-      <Suspense fallback={<div />}>
-        <SongGenerationModal
-          isOpen={showSongModal}
-          onClose={() => setShowSongModal(false)}
-          onGenerate={handleSongGenerated}
-        />
-      </Suspense>
+      <SongGenerationModal
+        isOpen={showSongModal}
+        onClose={() => setShowSongModal(false)}
+        onGenerate={handleSongGenerated}
+      />
 
       {/* Stem Split Modal */}
-      <Suspense fallback={<div />}>
-        <StemSplitModal
-          isOpen={showStemModal}
-          onClose={() => {
-            setShowStemModal(false);
-            setStemSplitClip(null);
-            setIsSplittingStem(false);
-          }}
-          onSplit={executeStemSplit}
-          clipName={stemSplitClip?.name || 'Audio Clip'}
-          isProcessing={isSplittingStem}
-        />
-      </Suspense>
+      <StemSplitModal
+        isOpen={showStemModal}
+        onClose={() => {
+          setShowStemModal(false);
+          setStemSplitClip(null);
+          setIsSplittingStem(false);
+        }}
+        onSplit={executeStemSplit}
+        clipName={stemSplitClip?.name || 'Audio Clip'}
+        isProcessing={isSplittingStem}
+      />
 
       {/* Export Modal (stub) */}
-      <Suspense fallback={<div />}>
-        <ExportModal
-          isOpen={showExportModal}
-          onClose={() => setShowExportModal(false)}
-          onStartExport={(fmt) => {
-            showNotification(`Export started (${fmt.toUpperCase()}) — stub`, 'info')
-          }}
-          projectName={projectName}
-          bpm={bpm}
-          timeSig={timeSig}
-          session={{
-            tracks: tracks.map(t => ({
-              id: t.id,
-              name: t.name,
-              color: t.color,
-              volume: t.volume,
-              pan: t.pan,
-              mute: t.mute,
-              solo: t.solo,
-              clips: t.clips,
-            }))
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onStartExport={(fmt) => {
+          showNotification(`Export started (${fmt.toUpperCase()}) — stub`, 'info')
+        }}
+        projectName={projectName}
+        bpm={bpm}
+        timeSig={timeSig}
+        session={{
+          tracks: tracks.map(t => ({
+            id: t.id,
+            name: t.name,
+            color: t.color,
+            volume: t.volume,
+            pan: t.pan,
+            mute: t.mute,
+            solo: t.solo,
+            clips: t.clips,
+          }))
         }}
       />
-      </Suspense>
 
       {/* Release Modal */}
-      <Suspense fallback={<div />}>
-        <ReleaseModal
-          isOpen={showReleaseModal}
-          onClose={() => setShowReleaseModal(false)}
-          onRelease={handleRelease}
-          projectName={projectName}
-        />
-      </Suspense>
+      <ReleaseModal
+        isOpen={showReleaseModal}
+        onClose={() => setShowReleaseModal(false)}
+        onRelease={handleRelease}
+        projectName={projectName}
+      />
 
       {/* Generation Queue */}
       <GenerationQueue items={generationQueue} />

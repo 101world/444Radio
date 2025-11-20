@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ 
       success: true,
-      finalUrl: coverUrl,
+      finalUrl: coverUrl, // For now, just return the cover URL
       message: 'Song finalized successfully'
     })
 

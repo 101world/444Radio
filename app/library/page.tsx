@@ -98,20 +98,37 @@ export default function LibraryPage() {
       setIsLoading(true)
     }
     try {
-      // Load music first (most important), then others sequentially
-      const musicRes = await fetch('/api/library/music')
-      const musicData = await musicRes.json()
+      // Fetch all user's content from DB, R2, and releases
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, releasesRes, likedRes] = await Promise.all([
+        fetch('/api/library/music'),
+        fetch('/api/r2/list-audio'),
+        fetch('/api/library/images'),
+        fetch('/api/r2/list-images'),
+        fetch('/api/library/releases')
+        ,fetch('/api/library/liked')
+      ])
 
-      // Process music immediately
+      const musicData = await musicRes.json()
+      const r2AudioData = await r2AudioRes.json()
+      const imagesData = await imagesRes.json()
+      const r2ImagesData = await r2ImagesRes.json()
+      const releasesData = await releasesRes.json()
+      const likedData = await likedRes.json()
+
+      // Merge database music with R2 files, deduplicate by audio_url
       if (musicData.success && Array.isArray(musicData.music)) {
         const dbMusic = musicData.music
+        const r2Music = r2AudioData.success && Array.isArray(r2AudioData.music) ? r2AudioData.music : []
+        
+        // Combine and deduplicate
+        const allMusic = [...dbMusic, ...r2Music]
         const uniqueMusic = Array.from(
-          new Map(dbMusic.map((item: any) => [item.audio_url, item])).values()
+          new Map(allMusic.map(item => [item.audio_url, item])).values()
         )
         
         // Check for potentially expired Replicate URLs (older than 48 hours)
         const now = Date.now()
-        const expiredWarningCount = uniqueMusic.filter((track: any) => {
+        const expiredWarningCount = uniqueMusic.filter(track => {
           if (track.audio_url?.includes('replicate.delivery')) {
             const createdAt = new Date(track.created_at).getTime()
             const ageHours = (now - createdAt) / (1000 * 60 * 60)
@@ -124,31 +141,24 @@ export default function LibraryPage() {
           console.warn(`⚠️ ${expiredWarningCount} tracks may have expired URLs (Replicate > 48h old)`)
         }
         
-        setMusicItems(uniqueMusic as LibraryMusic[])
-        console.log('✅ Loaded', uniqueMusic.length, 'music tracks')
+        setMusicItems(uniqueMusic)
+        console.log('✅ Loaded', uniqueMusic.length, 'music tracks (DB:', dbMusic.length, '+ R2:', r2Music.length, ')')
       }
 
-      // Load other data sequentially to reduce server load
-      const imagesRes = await fetch('/api/library/images')
-      const imagesData = await imagesRes.json()
-      
+      // Merge database images with R2 images, deduplicate by image_url
       if (imagesData.success && Array.isArray(imagesData.images)) {
         const dbImages = imagesData.images
+        const r2Images = r2ImagesData.success && Array.isArray(r2ImagesData.images) ? r2ImagesData.images : []
+        
+        // Combine and deduplicate
+        const allImages = [...dbImages, ...r2Images]
         const uniqueImages = Array.from(
-          new Map(dbImages.map((item: any) => [item.image_url, item])).values()
+          new Map(allImages.map(item => [item.image_url, item])).values()
         )
-        setImageItems(uniqueImages as LibraryImage[])
-        console.log('✅ Loaded', uniqueImages.length, 'images')
+        
+        setImageItems(uniqueImages)
+        console.log('✅ Loaded', uniqueImages.length, 'images (DB:', dbImages.length, '+ R2:', r2Images.length, ')')
       }
-
-      // Load releases and liked in parallel (less critical)
-      const [releasesRes, likedRes] = await Promise.all([
-        fetch('/api/library/releases'),
-        fetch('/api/library/liked')
-      ])
-
-      const releasesData = await releasesRes.json()
-      const likedData = await likedRes.json()
 
       if (releasesData.success && Array.isArray(releasesData.releases)) {
         setReleaseItems(releasesData.releases)

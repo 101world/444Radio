@@ -50,11 +50,10 @@ export default function ReleaseModal({ isOpen, onClose, musicItem, imageItems, o
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           audioUrl: musicItem.audio_url,
-          imageUrl: selectedImage.image_url || '/placeholder-cover.png', // Fallback for missing images
+          imageUrl: selectedImage.image_url,
           title: musicItem.title || 'Untitled Track',
           audioPrompt: musicItem.prompt,
           imagePrompt: selectedImage.prompt,
-          lyrics: musicItem.lyrics,
           isPublic: true,
           metadata: {
             genre: 'unknown',

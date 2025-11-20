@@ -16,20 +16,9 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch from ALL 4 tables using both user_id and clerk_user_id to catch all user's music
-    const [songsResponse, combinedMediaResponse, combinedLibraryResponse, musicLibraryResponse] = await Promise.all([
-      // songs - PRIMARY source where generations are saved!
-      // Include ALL completed tracks with valid audio URLs
-      fetch(
-        `${supabaseUrl}/rest/v1/songs?user_id=eq.${userId}&status=eq.complete&audio_url=not.is.null&audio_url=neq.&order=created_at.desc`,
-        {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          }
-        }
-      ),
-      // combined_media - has audio_url directly, uses user_id column (for released tracks that haven't been deleted from library)
+    // Fetch from ALL 3 tables using both user_id and clerk_user_id to catch all user's music
+    const [combinedMediaResponse, combinedLibraryResponse, musicLibraryResponse] = await Promise.all([
+      // combined_media - has audio_url directly, uses user_id column
       fetch(
         `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&order=created_at.desc`,
         {
@@ -61,49 +50,9 @@ export async function GET() {
       )
     ])
 
-    const songsData = await songsResponse.json()
     const combinedMediaData = await combinedMediaResponse.json()
     const combinedLibraryData = await combinedLibraryResponse.json()
     const musicLibraryData = await musicLibraryResponse.json()
-
-    // Log what we're finding in each table
-    console.log(`📚 Library fetch for user ${userId}:`)
-    console.log(`  - songs: ${Array.isArray(songsData) ? songsData.length : 0} tracks`)
-    console.log(`  - combined_media: ${Array.isArray(combinedMediaData) ? combinedMediaData.length : 0} tracks`)
-    console.log(`  - combined_media_library: ${Array.isArray(combinedLibraryData) ? combinedLibraryData.length : 0} tracks`)
-    console.log(`  - music_library: ${Array.isArray(musicLibraryData) ? musicLibraryData.length : 0} tracks`)
-    
-    // Log sample data if we have songs
-    if (Array.isArray(songsData) && songsData.length > 0) {
-      const sample = songsData[0]
-      console.log(`  📝 Sample song:`, { 
-        id: sample.id, 
-        title: sample.title, 
-        has_audio: !!sample.audio_url,
-        has_cover: !!sample.cover_url,
-        status: sample.status 
-      })
-    }
-
-    // Transform songs format (PRIMARY source)
-    const songsMusic = Array.isArray(songsData) ? songsData.map(item => ({
-      id: item.id,
-      clerk_user_id: item.user_id,
-      user_id: item.user_id,
-      title: item.title || 'Untitled',
-      prompt: item.prompt || 'Generated music',
-      lyrics: item.lyrics,
-      audioUrl: item.audio_url,
-      audio_url: item.audio_url,
-      imageUrl: item.cover_url || '/placeholder-cover.png',
-      image_url: item.cover_url || '/placeholder-cover.png',
-      duration: item.duration,
-      audio_format: 'mp3',
-      status: 'ready',
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      source: 'songs' // Tag the source for debugging
-    })) : []
 
     // Transform combined_media format
     const combinedMediaMusic = Array.isArray(combinedMediaData) ? combinedMediaData.map(item => ({
@@ -160,20 +109,11 @@ export async function GET() {
       updated_at: item.updated_at
     })) : []
 
-    // Combine all FOUR sources and deduplicate by audio_url (prioritize songs table)
-    const allMusic = [...songsMusic, ...combinedMediaMusic, ...combinedLibraryMusic, ...musicLibraryMusic]
+    // Combine all three sources and deduplicate by audio_url
+    const allMusic = [...combinedMediaMusic, ...combinedLibraryMusic, ...musicLibraryMusic]
     const uniqueMusic = Array.from(
       new Map(allMusic.map(item => [item.audio_url, item])).values()
     )
-    
-    console.log(`✅ Library returning: ${uniqueMusic.length} unique tracks`)
-    console.log(`   Sources: ${songsMusic.length} songs + ${combinedMediaMusic.length} combined_media + ${combinedLibraryMusic.length} library + ${musicLibraryMusic.length} music_lib`)
-    
-    // Log if we're losing tracks in deduplication
-    const totalBeforeDedup = allMusic.length
-    if (totalBeforeDedup > uniqueMusic.length) {
-      console.log(`   ℹ️ Deduplicated ${totalBeforeDedup - uniqueMusic.length} duplicate tracks`)
-    }
 
     return NextResponse.json({
       success: true,
