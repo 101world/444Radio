@@ -45,6 +45,10 @@
 
 'use client';
 
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Play, Pause, Square, Circle, Mic, Volume2, VolumeX,

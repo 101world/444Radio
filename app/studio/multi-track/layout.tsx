@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   },
 };
 
+// Disable caching for this route - always serve fresh content
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function MultiTrackStudioLayout({
   children,
 }: {
