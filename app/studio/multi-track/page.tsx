@@ -1,5 +1,5 @@
 /**
- * 444 RADIO DAW - ULTIMATE EDITION
+ * 444 RADIO STUDIO - ULTIMATE EDITION
  * 
  * The most advanced browser-based DAW combining:
  * • Logic Pro's professional workflow
@@ -881,7 +881,7 @@ function DAWUltimate() {
               <Radio className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-lg bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-              444 DAW
+              444 Radio Studio
             </span>
           </div>
 
