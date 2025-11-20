@@ -169,6 +169,7 @@ function DAWUltimate() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const clipsScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ═══════════════════════════════════════════════════════════
   // INITIALIZATION
@@ -737,6 +738,12 @@ function DAWUltimate() {
     }
   };
 
+  const handleSplitStems = useCallback(async (clipId: string, audioUrl: string, clipName?: string) => {
+    // Open modal for format selection
+    setStemSplitClip({ id: clipId, url: audioUrl, name: clipName || 'Audio Clip' });
+    setShowStemModal(true);
+  }, []);
+
   const executeStemSplit = async (format: 'mp3' | 'wav') => {
     if (!stemSplitClip) return;
 
@@ -1229,8 +1236,12 @@ function DAWUltimate() {
           </div>
 
           {/* Timeline Area */}
-          <div className="flex-1 bg-[#0a0a0a] overflow-hidden relative">
-            <Timeline />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Timeline ruler with zoom + BPM grid */}
+            <TimelineRuler bpm={bpm} timeSig={timeSig} snapEnabled={snapEnabled} scrollContainerRef={clipsScrollRef} />
+
+            {/* Timeline - Always show, with empty tracks */}
+            <Timeline snapEnabled={snapEnabled} bpm={bpm} activeTool={activeTool} playheadLocked={playheadLocked} onSplitStems={handleSplitStems} clipsContainerRef={clipsScrollRef} />
           </div>
         </div>
 

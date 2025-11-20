@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '444Radio Multi-Track Studio',
+  title: '444 Radio Studio',
   description: 'Create and mix multi-track music with AI-powered tools. Professional audio editing interface with drag & drop, effects, and real-time collaboration.',
   manifest: '/manifest.json',
   themeColor: '#7c3aed',
