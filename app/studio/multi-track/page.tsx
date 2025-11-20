@@ -711,7 +711,8 @@ function DAWUltimate() {
     }
   };
 
-  const handleSongGenerated = async (audioUrl: string, title: string, imageUrl?: string, lyrics?: string) => {
+  const handleSongGenerated = async (audioUrl: string, metadata: { title: string; imageUrl?: string; lyrics?: string }) => {
+    const { title, imageUrl, lyrics } = metadata;
     const queueId = `song_${Date.now()}`;
     setGenerationQueue(prev => [
       ...prev,
