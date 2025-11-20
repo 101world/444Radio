@@ -108,14 +108,8 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
           window.dispatchEvent(new CustomEvent('credits:update', { detail: { credits: c.credits } }));
         }
       } catch {}
-      onGenerate(data.audioUrl, {
-        prompt,
-        title,
-        genre,
-        outputFormat,
-        lyrics: lyrics?.trim() || undefined,
-        type: 'song',
-      });
+      // Pass individual parameters, not an object
+      onGenerate(data.audioUrl, title || prompt, data.imageUrl, lyrics?.trim());
 
       // Refresh credits (POST /api/credits) so UI can update elsewhere
       try {

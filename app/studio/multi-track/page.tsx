@@ -668,28 +668,23 @@ function DAWUltimate() {
 
       // Save to library
       if (user) {
-        await supabase.from('combined_media_library').insert({
+        const { error: insertError } = await supabase.from('combined_media_library').insert({
           user_id: user.id,
           audio_url: audioUrl,
           title: `AI Beat - ${prompt.substring(0, 20)}`,
-          beat_metadata: { prompt, bpm },
+          type: 'audio',
           is_studio_generated: true,
         });
+        if (insertError) console.error('Failed to save beat to library:', insertError);
 
         // Create chat message for create page
-        await supabase.from('chat_messages').insert({
+        const { error: chatError } = await supabase.from('chat_messages').insert({
           clerk_user_id: user.id,
           message: `🎵 Generated beat: "${prompt.substring(0, 30)}..."`,
-          message_type: 'track',
+          message_type: 'generation',
           timestamp: new Date().toISOString(),
-          metadata: {
-            type: 'beat',
-            audio_url: audioUrl,
-            title: `AI Beat - ${prompt.substring(0, 20)}`,
-            prompt,
-            bpm
-          }
         });
+        if (chatError) console.error('Failed to create chat message:', chatError);
       }
 
       // Complete
@@ -753,30 +748,24 @@ function DAWUltimate() {
 
       // Save to library
       if (user) {
-        await supabase.from('combined_media_library').insert({
+        const { error: insertError } = await supabase.from('combined_media_library').insert({
           user_id: user.id,
           audio_url: audioUrl,
           image_url: imageUrl,
           title,
-          lyrics,
+          type: 'audio',
           is_studio_generated: true,
         });
+        if (insertError) console.error('Failed to save song to library:', insertError);
 
         // Create chat message for create page
-        await supabase.from('chat_messages').insert({
+        const { error: chatError } = await supabase.from('chat_messages').insert({
           clerk_user_id: user.id,
           message: `🎵 Generated song: "${title}"`,
-          message_type: 'track',
+          message_type: 'generation',
           timestamp: new Date().toISOString(),
-          metadata: {
-            type: 'song',
-            audio_url: audioUrl,
-            image_url: imageUrl,
-            title,
-            lyrics,
-            prompt: title
-          }
         });
+        if (chatError) console.error('Failed to create chat message:', chatError);
       }
 
       setGenerationQueue(prev =>
@@ -865,27 +854,24 @@ function DAWUltimate() {
 
           // Save to library
           if (user) {
-            await supabase.from('combined_media_library').insert({
+            const { error: insertError } = await supabase.from('combined_media_library').insert({
               user_id: user.id,
               audio_url: stemUrl,
               title: `${stemSplitClip.name} - ${stemType}`,
-              stem_type: stemType,
+              type: 'audio',
               is_studio_generated: true,
             });
+            if (insertError) console.error('Failed to save stem to library:', insertError);
 
             // Create chat message for first stem only (avoid spam)
             if (i === 0) {
-              await supabase.from('chat_messages').insert({
+              const { error: chatError } = await supabase.from('chat_messages').insert({
                 clerk_user_id: user.id,
                 message: `🎛️ Split stems from: "${stemSplitClip.name}"`,
-                message_type: 'track',
+                message_type: 'generation',
                 timestamp: new Date().toISOString(),
-                metadata: {
-                  type: 'stems',
-                  original_name: stemSplitClip.name,
-                  stem_types: stemTypes
-                }
               });
+              if (chatError) console.error('Failed to create chat message:', chatError);
             }
           }
         }
