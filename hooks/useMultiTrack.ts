@@ -1113,7 +1113,18 @@ export function useMultiTrack(): UseMultiTrackReturn {
 
   // Toggle playback (safer for UI buttons)
   const togglePlayback = useCallback(() => {
-    setPlaying(!isPlaying);
+    const willPlay = !isPlaying;
+    setPlaying(willPlay);
+    
+    // Notify global audio player to pause when studio starts playing
+    if (willPlay) {
+      try {
+        window.dispatchEvent(new CustomEvent('audio:pause-global'));
+        console.log('🎛️ Studio playback started, notified global player');
+      } catch (e) {
+        console.error('Failed to notify global player:', e);
+      }
+    }
   }, [isPlaying, setPlaying]);
 
   // Set selected track

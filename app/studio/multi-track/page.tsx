@@ -662,9 +662,24 @@ function DAWUltimate() {
         volume: 1,
       };
 
-      const trackId = `track_${Date.now()}`;
-      addTrack('AI Beat', trackId);
-      setTimeout(() => addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration), 100);
+      const trackId = addTrack('AI Beat');
+      console.log('✅ Beat track created:', trackId, 'Now adding clip...');
+      
+      // Add clip immediately with proper duration
+      setTimeout(() => {
+        console.log('🎵 Adding beat clip:', { trackId, url: clip.url, name: clip.name, duration: clip.duration });
+        addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration);
+        
+        // Verify clip was added
+        setTimeout(() => {
+          const track = tracks.find(t => t.id === trackId);
+          if (track) {
+            console.log('✅ Beat track verified:', track.name, 'Clips:', track.clips.length, track.clips);
+          } else {
+            console.error('❌ Beat track not found after creation!');
+          }
+        }, 200);
+      }, 150);
 
       // Save to library
       if (user) {
@@ -743,9 +758,24 @@ function DAWUltimate() {
         volume: 1,
       };
 
-      const trackId = `track_${Date.now()}`;
-      addTrack(title, trackId);
-      setTimeout(() => addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration), 100);
+      const trackId = addTrack(title);
+      console.log('✅ Song track created:', trackId, 'Now adding clip...');
+      
+      // Add clip immediately with proper duration
+      setTimeout(() => {
+        console.log('🎵 Adding song clip:', { trackId, url: clip.url, name: clip.name, duration: clip.duration });
+        addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration);
+        
+        // Verify clip was added
+        setTimeout(() => {
+          const track = tracks.find(t => t.id === trackId);
+          if (track) {
+            console.log('✅ Song track verified:', track.name, 'Clips:', track.clips.length, track.clips);
+          } else {
+            console.error('❌ Song track not found after creation!');
+          }
+        }, 200);
+      }, 150);
 
       // Save to library
       if (user) {
@@ -924,7 +954,14 @@ function DAWUltimate() {
   };
 
   useEffect(() => {
-    if (showLibrary && libraryTracks.length === 0) {
+    if (user) {
+      loadLibrary();
+    }
+  }, [user]);
+
+  // Reload library when it's opened and empty
+  useEffect(() => {
+    if (showLibrary && libraryTracks.length === 0 && user) {
       loadLibrary();
     }
   }, [showLibrary]);
@@ -1314,13 +1351,24 @@ function DAWUltimate() {
         {showLibrary && (
           <div className="w-80 bg-gradient-to-b from-gray-900/50 to-black/80 backdrop-blur-xl border-l border-cyan-500/10 flex flex-col">
             <div className="h-12 bg-black/30 border-b border-cyan-500/10 flex items-center justify-between px-4">
-              <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Library</h3>
-              <button
-                onClick={() => setShowLibrary(false)}
-                className="p-1 hover:bg-white/10 rounded"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">
+                Library ({libraryTracks.length})
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => loadLibrary()}
+                  className="p-1 hover:bg-cyan-500/20 rounded transition-colors"
+                  title="Refresh Library"
+                >
+                  <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
+                </button>
+                <button
+                  onClick={() => setShowLibrary(false)}
+                  className="p-1 hover:bg-white/10 rounded"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">

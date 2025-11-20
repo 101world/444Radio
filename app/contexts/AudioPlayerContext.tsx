@@ -64,6 +64,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const playTimeRef = useRef<number>(0)
   const hasTrackedPlayRef = useRef<boolean>(false)
 
+  // Define pause first so it can be used in useEffect
+  const pause = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      setIsPlaying(false)
+    }
+  }, [])
+
   // Load queue from localStorage on mount
   useEffect(() => {
     const savedQueue = localStorage.getItem('444radio-queue')
@@ -76,7 +84,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         console.error('[Queue] Failed to load from localStorage:', error)
       }
     }
-  }, [])
+    
+    // Listen for studio playback events
+    const handleStudioPlay = () => {
+      console.log('🎛️ Studio started playing, pausing global player');
+      pause();
+    };
+    
+    window.addEventListener('audio:pause-global', handleStudioPlay);
+    return () => window.removeEventListener('audio:pause-global', handleStudioPlay);
+  }, [pause])
 
   // Save queue to localStorage whenever it changes
   useEffect(() => {
@@ -88,13 +105,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       console.log('[Queue] Cleared from localStorage')
     }
   }, [queue])
-
-  const pause = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      setIsPlaying(false)
-    }
-  }, [])
 
   const resume = useCallback(() => {
     if (audioRef.current) {
@@ -123,10 +133,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Validate URL format
-    try {
-      new URL(track.audioUrl);
-    } catch (urlError) {
+    // Validate URL format - allow blob: URLs and relative paths
+    const isValidUrl = track.audioUrl.startsWith('blob:') || 
+                      track.audioUrl.startsWith('http://') || 
+                      track.audioUrl.startsWith('https://') ||
+                      track.audioUrl.startsWith('/');
+    
+    if (!isValidUrl) {
       console.error('❌ Cannot play: invalid audioUrl format:', track.audioUrl);
       console.error('Track:', track.title || track.id);
       return;
@@ -148,6 +161,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     // Always use proxy for R2 and Replicate URLs to avoid CORS issues
     const computeUrl = (u: string) => {
       try {
+        // Don't proxy blob URLs or relative paths
+        if (u.startsWith('blob:') || u.startsWith('/')) {
+          return u;
+        }
+        
         const target = new URL(u)
         const r2Hosts: string[] = []
         if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
