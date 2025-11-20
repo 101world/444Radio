@@ -377,7 +377,6 @@ function DAWUltimate() {
       // L: Toggle library
       if (!e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'l') {
         setShowLibrary(prev => !prev);
-        if (!showLibrary) loadLibraryTracks();
         return;
       }
       // H: Hand/Pan tool
