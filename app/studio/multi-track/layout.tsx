@@ -33,19 +33,17 @@ export default function MultiTrackStudioLayout({
   return (
     <>
       {children}
-      {/* Service Worker Registration */}
+      {/* Service Worker Unregistration - Remove old caching SW */}
       <script
         dangerouslySetInnerHTML={{
           __html: `
             if ('serviceWorker' in navigator) {
-              window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/studio/sw.js')
-                  .then(function(registration) {
-                    console.log('SW registered: ', registration);
-                  })
-                  .catch(function(registrationError) {
-                    console.log('SW registration failed: ', registrationError);
+              navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                  registration.unregister().then(function(success) {
+                    console.log('Service Worker unregistered:', success);
                   });
+                }
               });
             }
           `,
