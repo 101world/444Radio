@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-// Disable caching for this route - always serve fresh content
+// Force dynamic rendering - no caching
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

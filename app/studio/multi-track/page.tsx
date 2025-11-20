@@ -45,10 +45,6 @@
 
 'use client';
 
-// Force dynamic rendering - no caching
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Play, Pause, Square, Circle, Mic, Volume2, VolumeX,
@@ -885,7 +881,7 @@ function DAWUltimate() {
               <Radio className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-lg bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-              444 Radio Studio
+              444 Radio Studio v3.0
             </span>
           </div>
 
