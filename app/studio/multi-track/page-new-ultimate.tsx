@@ -606,7 +606,7 @@ function DAWUltimate() {
         type: 'beat',
         prompt,
         status: 'queued',
-        progress: 'Queued',
+        progress: 'Queued - Using Stable Audio 2.5',
         timestamp: Date.now(),
       },
     ]);
@@ -678,7 +678,7 @@ function DAWUltimate() {
         type: 'song',
         prompt: title,
         status: 'queued',
-        progress: 'Queued',
+        progress: 'Queued - Using MiniMax Music 1.5',
         timestamp: Date.now(),
       },
     ]);
@@ -1236,7 +1236,7 @@ function DAWUltimate() {
           </div>
 
           {/* Timeline Area */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden pl-4">
             {/* Timeline ruler with zoom + BPM grid */}
             <TimelineRuler bpm={bpm} timeSig={timeSig} snapEnabled={snapEnabled} scrollContainerRef={clipsScrollRef} />
 
