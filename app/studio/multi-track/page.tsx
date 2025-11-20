@@ -549,15 +549,24 @@ function DAWUltimate() {
           // Verify track was created with clip
           setTimeout(() => {
             const createdTrack = tracks.find(t => t.id === newTrackId);
-            if (createdTrack) {
+            if (!createdTrack) {
+              console.error('❌ Track not found after creation! Retrying...');
+              // Retry after a longer delay
+              setTimeout(() => {
+                const retryTrack = tracks.find(t => t.id === newTrackId);
+                if (retryTrack) {
+                  console.log('✅ Track found on retry:', retryTrack.name, 'Clips:', retryTrack.clips.length);
+                } else {
+                  console.error('❌ Track still not found after retry!');
+                }
+              }, 500);
+            } else {
               console.log('✅ Track verified:', createdTrack.name, 'Clips:', createdTrack.clips.length);
               if (createdTrack.clips.length === 0) {
                 console.error('❌ Track has NO clips! This is the bug.');
               }
-            } else {
-              console.error('❌ Track not found after creation!');
             }
-          }, 100);
+          }, 200);
         }
 
         successCount++;
@@ -666,6 +675,21 @@ function DAWUltimate() {
           beat_metadata: { prompt, bpm },
           is_studio_generated: true,
         });
+
+        // Create chat message for create page
+        await supabase.from('chat_messages').insert({
+          clerk_user_id: user.id,
+          message: `🎵 Generated beat: "${prompt.substring(0, 30)}..."`,
+          message_type: 'track',
+          timestamp: new Date().toISOString(),
+          metadata: {
+            type: 'beat',
+            audio_url: audioUrl,
+            title: `AI Beat - ${prompt.substring(0, 20)}`,
+            prompt,
+            bpm
+          }
+        });
       }
 
       // Complete
@@ -736,6 +760,22 @@ function DAWUltimate() {
           title,
           lyrics,
           is_studio_generated: true,
+        });
+
+        // Create chat message for create page
+        await supabase.from('chat_messages').insert({
+          clerk_user_id: user.id,
+          message: `🎵 Generated song: "${title}"`,
+          message_type: 'track',
+          timestamp: new Date().toISOString(),
+          metadata: {
+            type: 'song',
+            audio_url: audioUrl,
+            image_url: imageUrl,
+            title,
+            lyrics,
+            prompt: title
+          }
         });
       }
 
@@ -832,6 +872,21 @@ function DAWUltimate() {
               stem_type: stemType,
               is_studio_generated: true,
             });
+
+            // Create chat message for first stem only (avoid spam)
+            if (i === 0) {
+              await supabase.from('chat_messages').insert({
+                clerk_user_id: user.id,
+                message: `🎛️ Split stems from: "${stemSplitClip.name}"`,
+                message_type: 'track',
+                timestamp: new Date().toISOString(),
+                metadata: {
+                  type: 'stems',
+                  original_name: stemSplitClip.name,
+                  stem_types: stemTypes
+                }
+              });
+            }
           }
         }
       }
