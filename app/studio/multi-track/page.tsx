@@ -138,7 +138,7 @@ function DAWUltimate() {
   const [isSplittingStem, setIsSplittingStem] = useState(false);
 
   // Library State
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [libraryTracks, setLibraryTracks] = useState<any[]>([]);
   const [libraryEffects, setLibraryEffects] = useState<any[]>([]);
 
@@ -531,10 +531,24 @@ function DAWUltimate() {
 
         if (selectedTrackId) {
           addClipToTrack(selectedTrackId, clip.url, clip.name, clip.startTime, clip.duration);
+          console.log('✅ Added clip to track:', selectedTrackId, 'Duration:', clip.duration);
         } else {
           const trackName = file.name.replace(/\.[^/.]+$/, '');
           const newTrackId = addTrack(trackName, clip.url, undefined, clip.duration);
-          console.log('✅ Created track for file:', trackName, 'ID:', newTrackId);
+          console.log('✅ Created track for file:', trackName, 'ID:', newTrackId, 'URL:', clip.url, 'Duration:', clip.duration);
+          
+          // Verify track was created with clip
+          setTimeout(() => {
+            const createdTrack = tracks.find(t => t.id === newTrackId);
+            if (createdTrack) {
+              console.log('✅ Track verified:', createdTrack.name, 'Clips:', createdTrack.clips.length);
+              if (createdTrack.clips.length === 0) {
+                console.error('❌ Track has NO clips! This is the bug.');
+              }
+            } else {
+              console.error('❌ Track not found after creation!');
+            }
+          }, 100);
         }
 
         successCount++;

@@ -265,21 +265,25 @@ export function useMultiTrack(): UseMultiTrackReturn {
       console.log('✅ Blob cached for URL:', audioUrl);
     }
     
+    const clip = audioUrl ? {
+      id: `clip-${Date.now()}`,
+      trackId, // Add trackId
+      audioUrl,
+      name,
+      startTime: 0,
+      duration: typeof initialClipDuration === 'number' ? initialClipDuration : 60, // Will be updated when audio loads
+      offset: 0,
+      color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
+      audioBlob: audioBlob || null,
+    } : null;
+    
+    console.log('🎵 addTrack called:', { name, audioUrl: !!audioUrl, duration: initialClipDuration, hasClip: !!clip });
+    
     const newTrack: Track = {
       id: trackId,
       name,
       audioUrl: audioUrl || null,
-          clips: audioUrl ? [{
-        id: `clip-${Date.now()}`,
-        trackId, // Add trackId
-        audioUrl,
-        name,
-        startTime: 0,
-                duration: typeof initialClipDuration === 'number' ? initialClipDuration : 60, // Will be updated when audio loads
-        offset: 0,
-        color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
-            audioBlob: audioBlob || null,
-      }] : [],
+      clips: clip ? [clip] : [],
       color: color || TRACK_COLORS[tracks.length % TRACK_COLORS.length],
       volume: 1.0,
       pan: 0,
@@ -317,7 +321,7 @@ export function useMultiTrack(): UseMultiTrackReturn {
       saveHistory(newTracks);
       return newTracks;
     });
-    console.log('✅ Track added:', newTrack.id, newTrack.name);
+    console.log('✅ Track added:', newTrack.id, newTrack.name, 'Clips:', newTrack.clips.length, newTrack.clips);
     
     // If we received an audioUrl, attempt to probe its duration asynchronously
     if (audioUrl) {
