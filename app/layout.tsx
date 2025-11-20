@@ -16,6 +16,18 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "444RADIO.CO.IN",
   description: "AI-powered music generation platform",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/studio/icon.png",
+    apple: "/studio/icon.png",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#06b6d4",
 };
 
 export default function RootLayout({

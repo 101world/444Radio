@@ -1,36 +1,19 @@
 {
-  "name": "444Radio Multi-Track Studio",
-  "short_name": "444Radio Studio",
-  "description": "Create and mix multi-track music with AI-powered tools",
-  "start_url": "/studio/multi-track",
+  "name": "444 Radio Studio",
+  "short_name": "444Radio",
+  "description": "AI-powered music creation and social platform",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#000000",
-  "theme_color": "#7c3aed",
-  "orientation": "landscape-primary",
-  "categories": ["music", "productivity", "entertainment"],
+  "theme_color": "#06b6d4",
+  "orientation": "any",
+  "categories": ["music", "entertainment", "social"],
   "icons": [
     {
       "src": "/studio/icon.png",
       "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "New Multi-Track",
-      "short_name": "New Track",
-      "description": "Start creating a new multi-track composition",
-      "url": "/studio/multi-track",
-      "icons": [{ "src": "/studio/icon.png", "sizes": "144x144" }]
-    },
-    {
-      "name": "My Library",
-      "short_name": "Library",
-      "description": "Browse your saved tracks and compositions",
-      "url": "/library",
-      "icons": [{ "src": "/studio/icon.png", "sizes": "144x144" }]
+      "type": "image/png"
     }
   ]
 }
