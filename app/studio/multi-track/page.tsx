@@ -172,8 +172,17 @@ function DAWUltimate() {
   const clipsScrollRef = useRef<HTMLDivElement | null>(null);
 
   // ═══════════════════════════════════════════════════════════
-  // INITIALIZATION
+  // DEBUG: Show track/clip info
   // ═══════════════════════════════════════════════════════════
+
+  useEffect(() => {
+    console.log('🔍 TRACKS DEBUG:', tracks.map(t => ({
+      id: t.id,
+      name: t.name,
+      clips: t.clips.length,
+      clipDetails: t.clips.map(c => ({ id: c.id, name: c.name, duration: c.duration }))
+    })));
+  }, [tracks]);
 
   // Initialize tracks
   useEffect(() => {
@@ -1259,21 +1268,59 @@ function DAWUltimate() {
           </div>
         </div>
 
-        {/* Right: Inspector */}
-        {showInspector && (
+        {/* Right: Library */}
+        {showLibrary && (
           <div className="w-80 bg-gradient-to-b from-gray-900/50 to-black/80 backdrop-blur-xl border-l border-cyan-500/10 flex flex-col">
             <div className="h-12 bg-black/30 border-b border-cyan-500/10 flex items-center justify-between px-4">
-              <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Inspector</h3>
+              <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wide">Library</h3>
               <button
-                onClick={() => setShowInspector(false)}
+                onClick={() => setShowLibrary(false)}
                 className="p-1 hover:bg-white/10 rounded"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
-              <TrackInspector />
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Library tracks */}
+              {isLoadingLibrary ? (
+                <div className="text-center text-gray-500 py-8">
+                  <div className="animate-spin w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                  Loading library...
+                </div>
+              ) : libraryTracks.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <Music className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No tracks in library</p>
+                  <p className="text-xs mt-1">Generate music to see it here</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {libraryTracks.map((track) => (
+                    <div
+                      key={track.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('application/json', JSON.stringify({
+                          type: 'library-track',
+                          track
+                        }));
+                      }}
+                      className="bg-black/20 border border-cyan-500/20 rounded-lg p-3 hover:bg-cyan-500/5 hover:border-cyan-500/40 transition-all cursor-grab active:cursor-grabbing"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-white truncate">{track.title || track.name}</h4>
+                        <span className="text-xs text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded">
+                          {track.type || 'audio'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {track.created_at ? new Date(track.created_at).toLocaleDateString() : 'Unknown date'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1286,6 +1333,9 @@ function DAWUltimate() {
         <div className="flex items-center gap-4 text-gray-500">
           <span className="text-cyan-400">{tracks.length}</span>
           <span>tracks</span>
+          <span>•</span>
+          <span className="text-cyan-400">{tracks.reduce((sum, t) => sum + t.clips.length, 0)}</span>
+          <span>clips</span>
           <span>•</span>
           <span>44.1 kHz / 24-bit</span>
           <span>•</span>
