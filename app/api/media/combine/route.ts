@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { audioUrl, imageUrl, title } = await req.json()
+    const { audioUrl, imageUrl, title, audioPrompt, imagePrompt, lyrics, isPublic, metadata } = await req.json()
 
     if (!audioUrl || !imageUrl) {
       return NextResponse.json(
@@ -26,15 +26,32 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Insert combined media into database
-    // Using only columns that exist in the combined_media table
+    // Get username from Clerk for display on explore page
+    const { clerkClient } = await import('@clerk/nextjs/server')
+    const client = await clerkClient()
+    const clerkUser = await client.users.getUser(userId)
+    const username = clerkUser?.username || clerkUser?.firstName || clerkUser?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || `user_${userId.slice(-8)}`
+
+    // Insert combined media into database with ALL metadata
     const { data, error } = await supabase
       .from('combined_media')
       .insert({
         user_id: userId,
+        username: username,
         audio_url: audioUrl,
-        image_url: imageUrl,
+        image_url: imageUrl || '/placeholder-cover.png', // Always have an image
         title: title || 'Untitled Track',
+        audio_prompt: audioPrompt || '',
+        image_prompt: imagePrompt || '',
+        lyrics: lyrics || null,
+        is_public: isPublic !== false, // Default true
+        is_published: true,
+        genre: metadata?.genre || null,
+        mood: metadata?.mood || null,
+        tags: metadata?.tags || null,
+        description: metadata?.description || null,
+        vocals: metadata?.vocals || null,
+        language: metadata?.language || null,
         created_at: new Date().toISOString(),
         likes: 0,
         plays: 0

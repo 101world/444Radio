@@ -12,15 +12,15 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get('limit')) || 500 // Increased to show all tracks
     const offset = Number(searchParams.get('offset')) || 0
 
-    // Fetch ALL combined media (no is_public filter)
-    // Shows all tracks regardless of is_public status
+    // Fetch PUBLIC combined media only for explore page
     const { data, error } = await supabase
       .from('combined_media')
-      .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, mood')
+      .select('id, title, audio_url, image_url, user_id, username, likes, plays, created_at, genre, mood, bpm, lyrics')
       // Filter out tracks with NULL or empty audio_url
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
-      // NO .eq('is_public', true) - shows everything
+      // ONLY show public tracks on explore
+      .eq('is_public', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -34,21 +34,23 @@ export async function GET(req: NextRequest) {
 
     console.log(`✅ Explore API: Fetched ${data?.length || 0} public tracks (is_public=true)`)
     if (data && data.length > 0) {
-      console.log(`📊 First track: "${data[0].title}" by ${data[0].user_id}`)
-      console.log(`📊 Last track: "${data[data.length - 1].title}" by ${data[data.length - 1].user_id}`)
+      console.log(`📊 First track: "${data[0].title}" by ${data[0].username || data[0].user_id}`)
+      console.log(`   - Audio: ${data[0].audio_url?.substring(0, 50)}...`)
+      console.log(`   - Image: ${data[0].image_url?.substring(0, 50) || 'MISSING'}...`)
+      console.log(`📊 Last track: "${data[data.length - 1].title}" by ${data[data.length - 1].username || data[data.length - 1].user_id}`)
+      
+      // Check for missing images
+      const missingImages = data.filter(d => !d.image_url || d.image_url === '').length
+      if (missingImages > 0) {
+        console.warn(`⚠️ ${missingImages}/${data.length} tracks have missing image_url - will use fallback`)
+      }
       
       // Log unique user count
       const uniqueUsers = new Set(data.map(d => d.user_id))
       console.log(`📊 Total unique users: ${uniqueUsers.size}`)
-      
-      // Log count per user
-      const userCounts = new Map()
-      data.forEach(d => {
-        userCounts.set(d.user_id, (userCounts.get(d.user_id) || 0) + 1)
-      })
-      console.log(`📊 Tracks per user:`, Object.fromEntries(userCounts))
     } else {
       console.warn('⚠️ No tracks returned! Check if is_public is set to true in database.')
+      console.log('   Possible causes: No released tracks, or is_public column not set correctly')
     }
 
     // Fetch usernames for all user_ids
@@ -63,14 +65,17 @@ export async function GET(req: NextRequest) {
       (usersData || []).map(u => [u.clerk_user_id, u.username])
     )
 
-    // Add username to each media item and normalize field names
+    // Add username to each media item, normalize field names, and provide fallback images
     const mediaWithUsers = (data || []).map((media) => {
-      const username = usernameMap.get(media.user_id) || 'Unknown User'
+      const username = media.username || usernameMap.get(media.user_id) || 'Unknown User'
+      const imageUrl = media.image_url || '/placeholder-cover.png' // Fallback for missing images
       
       return {
         ...media,
-        audioUrl: media.audio_url, // Normalize for AudioPlayerContext
-        imageUrl: media.image_url, // Normalize for AudioPlayerContext
+        audioUrl: media.audio_url,
+        imageUrl: imageUrl,
+        image_url: imageUrl, // Keep both for compatibility
+        username: username,
         users: { username }
       }
     })

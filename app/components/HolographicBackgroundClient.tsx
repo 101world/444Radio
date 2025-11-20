@@ -709,8 +709,8 @@ export default function HolographicBackground() {
         shape.position.x += Math.cos(time * 0.0002 + i) * 0.02;
 
         // Cursor interaction - attract shapes slightly toward cursor
-        const distX = mouseX * 25 - shape.position.x;
-        const distY = mouseY * 25 - shape.position.y;
+        const distX = mouseRef.current.x * 25 - shape.position.x;
+        const distY = mouseRef.current.y * 25 - shape.position.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
         
         if (distance < 35) {

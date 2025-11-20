@@ -177,8 +177,8 @@ export default function ExplorePage() {
   const fetchCombinedMedia = async () => {
     setLoading(true)
     try {
-      // Fetch ALL tracks (increased limit to show all releases)
-      const res = await fetch('/api/media/explore?limit=500')
+      // Reduce initial load to 50 items instead of 500 for faster loading
+      const res = await fetch('/api/media/explore?limit=50')
       const data = await res.json()
       if (data.success) {
         setCombinedMedia(data.combinedMedia)
@@ -201,22 +201,24 @@ export default function ExplorePage() {
         })
         setArtists(Array.from(artistMap.values()).slice(0, 10)) // Only show top 10 artists
         
-        // Fetch genres from dedicated API
-        try {
-          const genreRes = await fetch('/api/explore/genre-summary')
-          const genreData = await genreRes.json()
-          console.log('🎸 Genre API response:', genreData)
-          if (genreData.success && Array.isArray(genreData.genres) && genreData.genres.length > 0) {
-            setGenres(genreData.genres)
-          } else {
-            // Fallback to defaults if API fails or returns empty list
-            const defaults = ['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno']
-            console.warn('⚠️ Using default genres because the API returned no genres', genreData)
-            setGenres(defaults)
+        // Fetch genres from dedicated API (only once)
+        if (genres.length === 0) {
+          try {
+            const genreRes = await fetch('/api/explore/genre-summary')
+            const genreData = await genreRes.json()
+            console.log('🎸 Genre API response:', genreData)
+            if (genreData.success && Array.isArray(genreData.genres) && genreData.genres.length > 0) {
+              setGenres(genreData.genres)
+            } else {
+              // Fallback to defaults if API fails or returns empty list
+              const defaults = ['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno']
+              console.warn('⚠️ Using default genres because the API returned no genres', genreData)
+              setGenres(defaults)
+            }
+          } catch (error) {
+            console.error('Failed to fetch genres:', error)
+            setGenres(['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno'])
           }
-        } catch (error) {
-          console.error('Failed to fetch genres:', error)
-          setGenres(['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno'])
         }
       }
     } catch (error) {

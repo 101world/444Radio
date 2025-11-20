@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useRef, useEffect, Suspense } from 'react'
+import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices } from 'lucide-react'
-import MusicGenerationModal from '../components/MusicGenerationModal'
-import CombineMediaModal from '../components/CombineMediaModal'
-import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
-import FloatingMenu from '../components/FloatingMenu'
-import CreditIndicator from '../components/CreditIndicator'
-import HolographicBackground from '../components/HolographicBackgroundClient'
-import FloatingNavButton from '../components/FloatingNavButton'
+
+// Lazy load heavy components
+const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
+const CombineMediaModal = lazy(() => import('../components/CombineMediaModal'))
+const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
+const FloatingMenu = lazy(() => import('../components/FloatingMenu'))
+const CreditIndicator = lazy(() => import('../components/CreditIndicator'))
+const HolographicBackground = lazy(() => import('../components/HolographicBackgroundClient'))
+const FloatingNavButton = lazy(() => import('../components/FloatingNavButton'))
 import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
@@ -1130,15 +1132,23 @@ function CreatePageContent() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Holographic 3D Background */}
-      {!isMobile && <HolographicBackground />}
+      {!isMobile && (
+        <Suspense fallback={<div className="absolute inset-0 bg-black" />}>
+          <HolographicBackground />
+        </Suspense>
+      )}
       
       {/* Credit Indicator - Mobile Only */}
       <div className="md:hidden">
-        <CreditIndicator />
+        <Suspense fallback={<div className="h-12" />}>
+          <CreditIndicator />
+        </Suspense>
       </div>
       
       {/* Floating Menu - Desktop Only */}
-      <FloatingMenu />
+      <Suspense fallback={<div className="fixed top-4 right-4 w-12 h-12 bg-black/50 rounded-full" />}>
+        <FloatingMenu />
+      </Suspense>
 
       {/* Back to Home Button - Mobile optimized */}
       <div className="fixed top-6 left-4 md:left-6 z-50" style={{ pointerEvents: 'auto' }}>
@@ -2075,43 +2085,51 @@ function CreatePageContent() {
       )}
 
       {/* Music Generation Modal */}
-      <MusicGenerationModal
-        isOpen={showMusicModal}
-        onClose={() => setShowMusicModal(false)}
-        initialPrompt={input}
-        onGenerationStart={(prompt: string) => {
-          handleMusicGenerationStart(prompt)
-        }}
-        onSuccess={(audioUrl: string, prompt: string) => {
-          // Extract title and lyrics from the generated music
-          // This will be called after successful generation
-          handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
-        }}
-      />
+      <Suspense fallback={<div />}>
+        <MusicGenerationModal
+          isOpen={showMusicModal}
+          onClose={() => setShowMusicModal(false)}
+          initialPrompt={input}
+          onGenerationStart={(prompt: string) => {
+            handleMusicGenerationStart(prompt)
+          }}
+          onSuccess={(audioUrl: string, prompt: string) => {
+            // Extract title and lyrics from the generated music
+            // This will be called after successful generation
+            handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
+          }}
+        />
+      </Suspense>
 
       {/* Combine Media Modal */}
-      <CombineMediaModal
-        isOpen={showCombineModal}
-        onClose={() => setShowCombineModal(false)}
-      />
+      <Suspense fallback={<div />}>
+        <CombineMediaModal
+          isOpen={showCombineModal}
+          onClose={() => setShowCombineModal(false)}
+        />
+      </Suspense>
 
       {/* Two-Step Release Modal */}
-      <TwoStepReleaseModal
-        isOpen={showReleaseModal}
-        onClose={() => {
-          setShowReleaseModal(false)
-          setPreselectedMusicId(undefined)
-          setPreselectedImageId(undefined)
-        }}
-        preselectedMusic={preselectedMusicId}
-        preselectedImage={preselectedImageId}
-      />
+      <Suspense fallback={<div />}>
+        <TwoStepReleaseModal
+          isOpen={showReleaseModal}
+          onClose={() => {
+            setShowReleaseModal(false)
+            setPreselectedMusicId(undefined)
+            setPreselectedImageId(undefined)
+          }}
+          preselectedMusic={preselectedMusicId}
+          preselectedImage={preselectedImageId}
+        />
+      </Suspense>
 
       {/* Floating Navigation Button */}
-      <FloatingNavButton 
-        showPromptToggle={true}
-        onTogglePrompt={() => setShowBottomDock(!showBottomDock)}
-      />
+      <Suspense fallback={<div className="fixed bottom-6 right-6 w-14 h-14 bg-black/50 rounded-full" />}>
+        <FloatingNavButton 
+          showPromptToggle={true}
+          onTogglePrompt={() => setShowBottomDock(!showBottomDock)}
+        />
+      </Suspense>
     </div>
   )
 }
