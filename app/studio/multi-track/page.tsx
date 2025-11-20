@@ -532,9 +532,9 @@ function DAWUltimate() {
         if (selectedTrackId) {
           addClipToTrack(selectedTrackId, clip.url, clip.name, clip.startTime, clip.duration);
         } else {
-          const newTrackId = `track_${Date.now()}_${i}`;
-          addTrack(file.name.replace(/\.[^/.]+$/, ''), newTrackId);
-          setTimeout(() => addClipToTrack(newTrackId, clip.url, clip.name, clip.startTime, clip.duration), 100);
+          const trackName = file.name.replace(/\.[^/.]+$/, '');
+          const newTrackId = addTrack(trackName, clip.url, undefined, clip.duration);
+          console.log('✅ Created track for file:', trackName, 'ID:', newTrackId);
         }
 
         successCount++;
