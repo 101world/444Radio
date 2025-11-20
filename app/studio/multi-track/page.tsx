@@ -665,30 +665,19 @@ function DAWUltimate() {
       const trackId = addTrack('AI Beat');
       console.log('✅ Beat track created:', trackId, 'Now adding clip...');
       
-      // Add clip immediately with proper duration
+      // Add clip with proper duration - state updates are async, trust the hook
       setTimeout(() => {
         console.log('🎵 Adding beat clip:', { trackId, url: clip.url, name: clip.name, duration: clip.duration });
         addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration);
-        
-        // Verify clip was added
-        setTimeout(() => {
-          const track = tracks.find(t => t.id === trackId);
-          if (track) {
-            console.log('✅ Beat track verified:', track.name, 'Clips:', track.clips.length, track.clips);
-          } else {
-            console.error('❌ Beat track not found after creation!');
-          }
-        }, 200);
-      }, 150);
+      }, 100);
 
       // Save to library
       if (user) {
         const { error: insertError } = await supabase.from('combined_media_library').insert({
-          user_id: user.id,
+          clerk_user_id: user.id,
           audio_url: audioUrl,
+          image_url: '', // Required field
           title: `AI Beat - ${prompt.substring(0, 20)}`,
-          type: 'audio',
-          is_studio_generated: true,
         });
         if (insertError) console.error('Failed to save beat to library:', insertError);
 
@@ -761,31 +750,19 @@ function DAWUltimate() {
       const trackId = addTrack(title);
       console.log('✅ Song track created:', trackId, 'Now adding clip...');
       
-      // Add clip immediately with proper duration
+      // Add clip with proper duration - state updates are async, trust the hook
       setTimeout(() => {
         console.log('🎵 Adding song clip:', { trackId, url: clip.url, name: clip.name, duration: clip.duration });
         addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration);
-        
-        // Verify clip was added
-        setTimeout(() => {
-          const track = tracks.find(t => t.id === trackId);
-          if (track) {
-            console.log('✅ Song track verified:', track.name, 'Clips:', track.clips.length, track.clips);
-          } else {
-            console.error('❌ Song track not found after creation!');
-          }
-        }, 200);
-      }, 150);
+      }, 100);
 
       // Save to library
       if (user) {
         const { error: insertError } = await supabase.from('combined_media_library').insert({
-          user_id: user.id,
+          clerk_user_id: user.id,
           audio_url: audioUrl,
-          image_url: imageUrl,
+          image_url: imageUrl || '', // Required field
           title,
-          type: 'audio',
-          is_studio_generated: true,
         });
         if (insertError) console.error('Failed to save song to library:', insertError);
 
@@ -886,11 +863,10 @@ function DAWUltimate() {
           // Save to library
           if (user) {
             const { error: insertError } = await supabase.from('combined_media_library').insert({
-              user_id: user.id,
+              clerk_user_id: user.id,
               audio_url: stemUrl,
+              image_url: '', // Required field
               title: `${stemSplitClip.name} - ${stemType}`,
-              type: 'audio',
-              is_studio_generated: true,
             });
             if (insertError) console.error('Failed to save stem to library:', insertError);
 
@@ -939,12 +915,15 @@ function DAWUltimate() {
 
     setIsLoadingLibrary(true);
     try {
-      const { data: music } = await supabase
+      const { data: music, error } = await supabase
         .from('combined_media_library')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('clerk_user_id', user.id)
         .order('created_at', { ascending: false });
 
+      if (error) {
+        console.error('Library query error:', error);
+      }
       setLibraryTracks(music || []);
     } catch (error) {
       console.error('Library load error:', error);
