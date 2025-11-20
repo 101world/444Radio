@@ -8,6 +8,7 @@ import { auth } from '@clerk/nextjs/server';
 import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
 import { createClient } from '@supabase/supabase-js';
+import { uploadToR2 } from '@/lib/r2-upload';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -158,9 +159,41 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('✅ Song generated successfully:', audioUrl);
+    console.log('✅ Song generated successfully (temp URL):', audioUrl);
 
-    // Save to database (combined_media table)
+    // Download from Replicate and upload to permanent R2 storage
+    let permanentAudioUrl = audioUrl;
+    try {
+      console.log('📥 Downloading audio from Replicate...');
+      const audioResponse = await fetch(audioUrl);
+      if (!audioResponse.ok) {
+        throw new Error(`Failed to download audio: ${audioResponse.status}`);
+      }
+      
+      const audioBlob = await audioResponse.blob();
+      const audioBuffer = Buffer.from(await audioBlob.arrayBuffer());
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const sanitizedTitle = (finalTitle || 'song').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `song_${sanitizedTitle}_${timestamp}.mp3`;
+      
+      console.log('☁️ Uploading to R2:', filename);
+      const uploadResult = await uploadToR2(audioBuffer, 'audio-files', filename);
+      
+      if (uploadResult.success && uploadResult.url) {
+        permanentAudioUrl = uploadResult.url;
+        console.log('✅ Audio uploaded to R2:', permanentAudioUrl);
+      } else {
+        console.error('⚠️ R2 upload failed, using temp URL:', uploadResult.error);
+        // Continue with temp URL rather than failing
+      }
+    } catch (uploadError) {
+      console.error('⚠️ Failed to upload to R2:', uploadError);
+      // Continue with temp URL rather than failing
+    }
+
+    // Save to database (combined_media table) with permanent URL
     try {
       const { error: dbError } = await supabase
         .from('combined_media')
@@ -168,7 +201,7 @@ export async function POST(request: Request) {
           user_id: userId,
           title: finalTitle || `Song - ${prompt.substring(0, 50)}`,
           content_type: 'audio',
-          audio_url: audioUrl,
+          audio_url: permanentAudioUrl, // Use permanent R2 URL
           is_public: true,
           created_at: new Date().toISOString(),
         }]);
@@ -177,7 +210,7 @@ export async function POST(request: Request) {
         console.error('⚠️ Failed to save song to database:', dbError);
         // Don't fail the request, just log the error
       } else {
-        console.log('💾 Song saved to library');
+        console.log('💾 Song saved to library with permanent URL');
       }
     } catch (dbErr) {
       console.error('⚠️ Database save error:', dbErr);
@@ -193,7 +226,7 @@ export async function POST(request: Request) {
     return corsResponse(
       NextResponse.json({
         success: true,
-        audioUrl,
+        audioUrl: permanentAudioUrl, // Return permanent R2 URL
         metadata: {
           prompt,
           title: finalTitle,

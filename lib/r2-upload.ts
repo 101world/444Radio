@@ -17,12 +17,23 @@ export interface R2UploadResult {
 }
 
 export async function uploadToR2(
-  file: File,
+  file: File | Buffer,
   bucketName: string,
-  key: string
+  key: string,
+  contentType?: string
 ): Promise<R2UploadResult> {
   try {
-    const buffer = await file.arrayBuffer()
+    let buffer: Buffer;
+    let fileContentType: string;
+
+    if (Buffer.isBuffer(file)) {
+      buffer = file;
+      fileContentType = contentType || 'audio/mpeg'; // Default to mp3
+    } else {
+      const arrayBuffer = await (file as File).arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+      fileContentType = (file as File).type;
+    }
 
     // Use actual bucket name from env or fallback to specific bucket names
     const actualBucket = process.env.R2_BUCKET_NAME || bucketName
@@ -30,8 +41,8 @@ export async function uploadToR2(
     const command = new PutObjectCommand({
       Bucket: actualBucket,
       Key: key,
-      Body: Buffer.from(buffer),
-      ContentType: file.type,
+      Body: buffer,
+      ContentType: fileContentType,
     })
 
     await r2Client.send(command)
