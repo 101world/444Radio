@@ -69,6 +69,9 @@ function CreatePageContent() {
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
   const [showBottomDock, setShowBottomDock] = useState(true)
+  const [showTopNav, setShowTopNav] = useState(true)
+  const [hasInteracted, setHasInteracted] = useState(false)
+  const [lastScrollY, setLastScrollY] = useState(0)
   
   // Generation queue system
   const [generationQueue, setGenerationQueue] = useState<string[]>([])
@@ -354,6 +357,65 @@ function CreatePageContent() {
   useEffect(() => {
     fetchCredits()
   }, [])
+
+  // Auto-hide top nav after 2 seconds or on interaction
+  useEffect(() => {
+    const hideTimer = setTimeout(() => {
+      if (!hasInteracted) {
+        setShowTopNav(false)
+      }
+    }, 2000)
+
+    return () => clearTimeout(hideTimer)
+  }, [])
+
+  // Handle scroll to show/hide top nav
+  useEffect(() => {
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement
+      if (!target) return
+
+      const currentScrollY = target.scrollTop || 0
+      
+      // Scrolling up - show nav
+      if (currentScrollY < lastScrollY && currentScrollY > 0) {
+        setShowTopNav(true)
+      }
+      // Scrolling down - hide nav
+      else if (currentScrollY > lastScrollY) {
+        setShowTopNav(false)
+        setHasInteracted(true)
+      }
+      
+      setLastScrollY(currentScrollY)
+    }
+
+    const chatArea = document.querySelector('.chat-scroll-container')
+    if (chatArea) {
+      chatArea.addEventListener('scroll', handleScroll)
+      return () => chatArea.removeEventListener('scroll', handleScroll)
+    }
+  }, [lastScrollY])
+
+  // Handle ESC key to show nav and return to home
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowTopNav(true)
+        // Optional: navigate to home after showing nav
+        router.push('/')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [router])
+
+  // Hide top nav when user interacts with input
+  const handleInputFocus = () => {
+    setShowTopNav(false)
+    setHasInteracted(true)
+  }
 
   // Handle mobile keyboard - adjust viewport height
   useEffect(() => {
@@ -1142,16 +1204,25 @@ function CreatePageContent() {
       {/* Holographic 3D Background */}
       {!isMobile && <HolographicBackground />}
       
-      {/* Credit Indicator - Mobile Only */}
-      <div className="md:hidden">
+      {/* Credit Indicator - Mobile Only with fade transition */}
+      <div 
+        className={`md:hidden transition-opacity duration-500 ${
+          showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
         <CreditIndicator />
       </div>
       
       {/* Floating Menu - Desktop Only */}
       <FloatingMenu />
 
-      {/* Back to Home Button - Mobile optimized */}
-      <div className="fixed top-6 left-4 md:left-6 z-50" style={{ pointerEvents: 'auto' }}>
+      {/* Back to Home Button - Mobile optimized with fade transition */}
+      <div 
+        className={`fixed top-6 left-4 md:left-6 z-50 transition-opacity duration-500 ${
+          showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`} 
+        style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
+      >
         <Link href="/" className="block">
           <button className="group flex items-center gap-2 px-3 md:px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 hover:border-white/30 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl pointer-events-auto">
             <svg 
@@ -1169,7 +1240,7 @@ function CreatePageContent() {
       </div>
 
       {/* Chat Area - Glassmorphism Effect */}
-      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-6 pb-40 max-w-4xl mx-auto w-full scrollbar-thin scroll-smooth">
+      <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 py-6 pb-40 max-w-4xl mx-auto w-full scrollbar-thin scroll-smooth">
         {/* Single Glassmorphism Container */}
         <div className="relative p-4 sm:p-6 rounded-3xl backdrop-blur-sm bg-white/[0.01] border border-white/10 shadow-2xl">
           {/* Dew-like gradient overlay */}
@@ -1610,6 +1681,7 @@ function CreatePageContent() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onFocus={handleInputFocus}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
