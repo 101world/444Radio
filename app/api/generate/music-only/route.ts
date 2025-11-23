@@ -342,8 +342,18 @@ export async function POST(req: NextRequest) {
     const fileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${audio_format}`
     
     let finalAudioUrl = audioUrl // Default to Replicate URL
+    let r2UploadSuccess = false
     
     try {
+      // Log R2 credentials status (without exposing actual values)
+      console.log('🔑 R2 Config check:', {
+        hasEndpoint: !!process.env.R2_ENDPOINT,
+        hasAccessKey: !!process.env.R2_ACCESS_KEY_ID,
+        hasSecretKey: !!process.env.R2_SECRET_ACCESS_KEY,
+        bucketName: process.env.R2_BUCKET_NAME,
+        publicUrl: process.env.R2_PUBLIC_URL
+      })
+
       const r2Result = await downloadAndUploadToR2(
         audioUrl,
         userId,
@@ -352,19 +362,39 @@ export async function POST(req: NextRequest) {
       )
 
       if (!r2Result.success) {
-        console.error('⚠️ R2 upload failed, using Replicate URL:', r2Result.error)
+        console.error('❌ R2 UPLOAD FAILED:', {
+          error: r2Result.error,
+          replicateUrl: audioUrl,
+          fileName: fileName,
+          userId: userId
+        })
         // Continue with Replicate URL if R2 fails - DON'T fail the whole request
+        console.warn('⚠️ USING TEMPORARY REPLICATE URL - WILL EXPIRE IN 24-48 HOURS!')
       } else {
-        console.log('✅ R2 upload successful:', r2Result.url)
+        console.log('✅ R2 upload successful!', {
+          r2Url: r2Result.url,
+          key: r2Result.key,
+          size: `${(r2Result.size / 1024 / 1024).toFixed(2)} MB`
+        })
         // Use permanent R2 URL instead of temporary Replicate URL
         finalAudioUrl = r2Result.url
+        r2UploadSuccess = true
       }
     } catch (r2Error) {
-      console.error('⚠️ R2 upload exception, using Replicate URL:', r2Error)
+      console.error('❌ R2 UPLOAD EXCEPTION:', r2Error)
+      console.error('Exception details:', {
+        message: r2Error instanceof Error ? r2Error.message : 'Unknown error',
+        stack: r2Error instanceof Error ? r2Error.stack : undefined,
+        replicateUrl: audioUrl
+      })
+      console.warn('⚠️ USING TEMPORARY REPLICATE URL - WILL EXPIRE IN 24-48 HOURS!')
       // Continue with Replicate URL if R2 throws
     }
     
     audioUrl = finalAudioUrl
+
+    // Log which URL type we're saving
+    console.log(`💾 Saving to database with ${r2UploadSuccess ? 'PERMANENT R2' : 'TEMPORARY REPLICATE'} URL:`, audioUrl)
 
     // Save to music_library table first
     console.log('💾 Saving to music library...')
