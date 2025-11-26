@@ -39,7 +39,7 @@ export default function MultiTrackStudio() {
   }, []);
 
   useEffect(() => {
-    function loop(ts) {
+    function loop(ts: number) {
       if (ts - lastUpdateRef.current > 33) {
         const ph = scheduler.getPlayhead();
         setPlayhead(ph);
@@ -48,7 +48,11 @@ export default function MultiTrackStudio() {
       rafRef.current = requestAnimationFrame(loop);
     }
     rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => {
+      if (rafRef.current !== undefined) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
