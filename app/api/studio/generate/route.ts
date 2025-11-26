@@ -115,10 +115,18 @@ export async function POST(req: NextRequest) {
       console.error('Failed to create job:', jobError)
       // Refund credits on error
       if (cost > 0) {
-        await supabase
+        const { data: userData } = await supabase
           .from('users')
-          .update({ credits: supabase.raw('credits + ?', [cost]) })
+          .select('credits')
           .eq('clerk_user_id', userId)
+          .single()
+        
+        if (userData) {
+          await supabase
+            .from('users')
+            .update({ credits: userData.credits + cost })
+            .eq('clerk_user_id', userId)
+        }
       }
       return corsResponse(NextResponse.json({ error: 'Failed to create job' }, { status: 500 }))
     }
@@ -185,17 +193,18 @@ export async function POST(req: NextRequest) {
     console.log(`📡 Webhook URL: ${webhookUrl}`)
     console.log(`🔧 Input:`, input)
 
+    const modelString = REPLICATE_MODELS[type]
+    const isVersion = modelString.includes(':')
+    
     const prediction = await replicate.predictions.create({
-      version: REPLICATE_MODELS[type].includes(':') 
-        ? REPLICATE_MODELS[type].split(':')[1] 
-        : undefined,
-      model: REPLICATE_MODELS[type].includes(':') 
-        ? undefined 
-        : REPLICATE_MODELS[type],
+      ...(isVersion 
+        ? { version: modelString.split(':')[1] }
+        : { model: modelString }
+      ),
       input,
       webhook: webhookUrl,
       webhook_events_filter: ['completed']
-    })
+    } as any)
 
     // 5. Save prediction ID to job
     await supabase

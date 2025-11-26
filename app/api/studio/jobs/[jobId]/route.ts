@@ -15,7 +15,7 @@ export async function OPTIONS() {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { jobId: string } }
+  context: { params: Promise<{ jobId: string }> }
 ) {
   try {
     const { userId } = await auth()
@@ -23,6 +23,7 @@ export async function GET(
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const params = await context.params
     const { jobId } = params
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!

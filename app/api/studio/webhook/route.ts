@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { uploadToR2 } from '@/lib/r2-upload'
+import { broadcastJobCompleted, broadcastJobFailed, broadcastJobProgress } from '@/lib/pusher-server'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -97,8 +98,8 @@ export async function POST(req: NextRequest) {
         // Upload to R2
         const uploadResult = await uploadToR2(file, 'audio-files', fileName)
         
-        if (!uploadResult.success) {
-          throw new Error(uploadResult.error)
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error(uploadResult.error || 'Upload failed')
         }
         
         uploadedUrls[key] = uploadResult.url
@@ -112,14 +113,22 @@ export async function POST(req: NextRequest) {
 
     if (Object.keys(uploadedUrls).length === 0) {
       console.error('❌ No files were uploaded successfully')
+      const errorMsg = 'Failed to upload audio files'
+      
       await supabase
         .from('studio_jobs')
         .update({ 
           status: 'failed',
-          error: 'Failed to upload audio files',
+          error: errorMsg,
           updated_at: new Date().toISOString()
         })
         .eq('id', job.id)
+      
+      // Broadcast failure to client
+      await broadcastJobFailed(job.user_id, {
+        jobId: job.id,
+        error: errorMsg
+      })
       
       return corsResponse(NextResponse.json({ error: 'Upload failed' }, { status: 500 }))
     }
@@ -137,9 +146,12 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Job completed: ${job.id}`)
 
-    // TODO: Broadcast via WebSocket to client
-    // For now, client will poll /api/studio/jobs/:jobId
-    // In production, implement Pusher/Ably/custom WS for real-time updates
+    // Broadcast to client via Pusher (real-time WebSocket alternative)
+    await broadcastJobCompleted(job.user_id, {
+      jobId: job.id,
+      type: job.type,
+      output: uploadedUrls
+    })
 
     return corsResponse(NextResponse.json({
       success: true,

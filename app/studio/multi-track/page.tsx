@@ -59,6 +59,7 @@ import {
 import { useUser } from '@clerk/nextjs';
 import { StudioProvider, useStudio } from '@/app/contexts/StudioContext';
 import { useStudioGeneration } from '@/hooks/useStudioGeneration';
+import { usePusher } from '@/lib/pusher-client';
 import Timeline from '@/app/components/studio/Timeline';
 import TransportBar from '@/app/components/studio/TransportBar';
 import TimelineRuler from '@/app/components/studio/TimelineRuler';
@@ -145,6 +146,12 @@ function DAWUltimate() {
 
   // Generation Queue
   const [generationQueue, setGenerationQueue] = useState<QueueItem[]>([]);
+
+  // New Generation System with Webhooks
+  const { generate, activeJobs, cancelJob, clearCompletedJobs } = useStudioGeneration();
+  
+  // Real-time updates via Pusher (WebSocket alternative for serverless)
+  const pusherEvents = usePusher(user?.id);
 
   // Projects State
   const [savedProjects, setSavedProjects] = useState<Array<{
@@ -240,6 +247,58 @@ function DAWUltimate() {
     window.addEventListener('credits:updated', handleCreditsUpdate);
     return () => window.removeEventListener('credits:updated', handleCreditsUpdate);
   }, []);
+
+  // Listen for real-time job completion via Pusher
+  useEffect(() => {
+    if (!pusherEvents) return;
+
+    const handleJobCompleted = (event: any) => {
+      console.log('🎉 Job completed via Pusher:', event);
+      
+      const { jobId, type, output } = event;
+      
+      // Auto-add generated tracks to timeline
+      if (type === 'create-song' && output.audio) {
+        const trackName = `AI Song`;
+        addTrack(trackName, output.audio, undefined, 120);
+        showNotification('✨ Song added to timeline!', 'success');
+      } else if (type === 'create-beat' && output.audio) {
+        const trackName = `AI Beat`;
+        addTrack(trackName, output.audio, undefined, 30);
+        showNotification('✨ Beat added to timeline!', 'success');
+      } else if (type === 'stem-split' && output.vocals) {
+        // Add all stems as separate tracks
+        Object.entries(output).forEach(([stem, url]) => {
+          if (url) {
+            addTrack(`${stem.charAt(0).toUpperCase() + stem.slice(1)}`, url as string, undefined, 60);
+          }
+        });
+        showNotification('✨ Stems added to timeline!', 'success');
+      } else if (type === 'auto-tune' && output.audio) {
+        addTrack('Auto-Tuned', output.audio, undefined, 60);
+        showNotification('✨ Auto-tuned track added!', 'success');
+      }
+    };
+
+    const handleJobFailed = (event: any) => {
+      console.error('❌ Job failed via Pusher:', event);
+      showNotification(`Generation failed: ${event.error}`, 'error');
+    };
+
+    const handleJobProgress = (event: any) => {
+      console.log('📊 Job progress via Pusher:', event);
+    };
+
+    pusherEvents.on('job:completed', handleJobCompleted);
+    pusherEvents.on('job:failed', handleJobFailed);
+    pusherEvents.on('job:progress', handleJobProgress);
+
+    return () => {
+      pusherEvents.off('job:completed', handleJobCompleted);
+      pusherEvents.off('job:failed', handleJobFailed);
+      pusherEvents.off('job:progress', handleJobProgress);
+    };
+  }, [pusherEvents, addTrack]);
 
   // Apply layout preset if enabled
   useEffect(() => {
