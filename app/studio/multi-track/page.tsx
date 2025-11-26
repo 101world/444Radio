@@ -67,6 +67,7 @@ export default function MultiTrackStudioV4() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showMiniMap, setShowMiniMap] = useState(true);
   const [selectedColorTrackId, setSelectedColorTrackId] = useState<string | null>(null);
   const [userProjects, setUserProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +80,16 @@ export default function MultiTrackStudioV4() {
   const [exportQuality, setExportQuality] = useState('44100');
   const [trackHeights, setTrackHeights] = useState<Record<string, number>>({});
   const [resizingTrack, setResizingTrack] = useState<{id: string, startY: number, startHeight: number} | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [vuLevels, setVuLevels] = useState<Record<string, number>>({});
+  const [fadingClip, setFadingClip] = useState<{clipId: string, side: 'in' | 'out', startX: number, startValue: number} | null>(null);
+  const [marqueeStart, setMarqueeStart] = useState<{x: number, y: number} | null>(null);
+  const [marqueeEnd, setMarqueeEnd] = useState<{x: number, y: number} | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const analyserNodesRef = useRef<Record<string, AnalyserNode>>({});
+  const lastRafTime = useRef<number>(0);
   const timelineRef = useRef<HTMLDivElement>(null);
   const historyManagerRef = useRef<HistoryManager | null>(null);
   const recordingManagerRef = useRef<RecordingManager | null>(null);
@@ -210,7 +220,15 @@ export default function MultiTrackStudioV4() {
       setPlayhead(time);
     };
 
-    const loop = () => {
+    const loop = (timestamp: number) => {
+      // Throttle to 60fps (16.67ms per frame)
+      const elapsed = timestamp - lastRafTime.current;
+      if (elapsed < 16.67) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
+      lastRafTime.current = timestamp;
+
       const currentPlayhead = daw.getPlayhead();
       setPlayhead(currentPlayhead);
       setIsPlaying(daw.isPlaying());
@@ -219,6 +237,28 @@ export default function MultiTrackStudioV4() {
       if (loopEnabled && daw.isPlaying() && currentPlayhead >= loopEnd) {
         daw.seekTo(loopStart);
         setPlayhead(loopStart);
+      }
+
+      // Update VU meters (throttled to every 2 frames for performance)
+      if (daw.isPlaying()) {
+        const newVuLevels: Record<string, number> = {};
+        tracks.forEach(track => {
+          const analyser = analyserNodesRef.current[track.id];
+          if (analyser) {
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+            newVuLevels[track.id] = average / 255; // Normalize to 0-1
+          } else {
+            newVuLevels[track.id] = 0;
+          }
+        });
+        setVuLevels(newVuLevels);
+      } else {
+        // Reset VU levels when not playing
+        const resetLevels: Record<string, number> = {};
+        tracks.forEach(track => { resetLevels[track.id] = 0; });
+        setVuLevels(resetLevels);
       }
       
       rafRef.current = requestAnimationFrame(loop);
@@ -239,6 +279,43 @@ export default function MultiTrackStudioV4() {
       daw.off('playheadUpdate', updatePlayhead);
     };
   }, [daw, loopEnabled, loopStart, loopEnd]);
+
+  // Auto-save every 2 minutes
+  useEffect(() => {
+    if (!daw || !user?.id || tracks.length === 0) return;
+
+    const autoSave = async () => {
+      if (isSaving) return;
+      
+      setIsSaving(true);
+      try {
+        const projectName = `Auto-save ${new Date().toLocaleString()}`;
+        await projectManagerRef.current?.saveProject({
+          userId: user.id,
+          name: projectName,
+          bpm,
+          timeSignature: { numerator: 4, denominator: 4 },
+          tracks,
+          markers: [],
+          version: 1
+        });
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    // Auto-save every 2 minutes
+    autoSaveTimerRef.current = setInterval(autoSave, 2 * 60 * 1000);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearInterval(autoSaveTimerRef.current);
+      }
+    };
+  }, [daw, user?.id, tracks, bpm, isSaving]);
 
   const togglePlay = () => {
     if (!daw) return;
@@ -446,6 +523,59 @@ export default function MultiTrackStudioV4() {
 
   const handleTrackResizeEnd = () => {
     setResizingTrack(null);
+  };
+
+  const handleFadeStart = (e: React.MouseEvent, clipId: string, side: 'in' | 'out', currentValue: number) => {
+    e.stopPropagation();
+    setFadingClip({ clipId, side, startX: e.clientX, startValue: currentValue });
+  };
+
+  const handleFadeMove = (e: React.MouseEvent) => {
+    if (!fadingClip) return;
+    const deltaX = e.clientX - fadingClip.startX;
+    const deltaTime = deltaX / zoom;
+    const newValue = Math.max(0, Math.min(2, fadingClip.startValue + deltaTime));
+    
+    setTracks(prevTracks => prevTracks.map(track => ({
+      ...track,
+      clips: track.clips.map(clip => 
+        clip.id === fadingClip.clipId
+          ? { ...clip, [fadingClip.side === 'in' ? 'fadeIn' : 'fadeOut']: newValue }
+          : clip
+      )
+    })));
+  };
+
+  const handleFadeEnd = () => {
+    setFadingClip(null);
+  };
+
+  const handleMarqueeStart = (e: React.MouseEvent) => {
+    if (e.button !== 0 || draggedClip || isDraggingPlayhead) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMarqueeStart({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    setMarqueeEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  const handleMarqueeMove = (e: React.MouseEvent) => {
+    if (!marqueeStart) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMarqueeEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  const handleMarqueeEnd = () => {
+    if (marqueeStart && marqueeEnd) {
+      // Select clips within marquee bounds
+      const minX = Math.min(marqueeStart.x, marqueeEnd.x);
+      const maxX = Math.max(marqueeStart.x, marqueeEnd.x);
+      const minY = Math.min(marqueeStart.y, marqueeEnd.y);
+      const maxY = Math.max(marqueeStart.y, marqueeEnd.y);
+      
+      // TODO: Implement multi-select based on bounds
+      console.log('Marquee selection:', { minX, maxX, minY, maxY });
+    }
+    setMarqueeStart(null);
+    setMarqueeEnd(null);
   };
 
   const handleDeleteClip = () => {
@@ -1134,6 +1264,7 @@ export default function MultiTrackStudioV4() {
             ) : (
               tracks.map((track, trackIndex) => {
                 const trackHeight = trackHeights[track.id] || 96;
+                const isSelected = selectedTrackId === track.id;
                 return (
                 <div
                   key={track.id}
@@ -1152,10 +1283,30 @@ export default function MultiTrackStudioV4() {
                     <div 
                       className="w-5 h-5 rounded-md flex-shrink-0 shadow-lg ring-1 ring-white/20" 
                       style={{ backgroundColor: track.color }}
+                      title={`Track color: ${track.color}`}
                     />
-                    <span className="text-sm font-bold text-white truncate flex-1 tracking-tight">{track.name}</span>
-                    <div className="text-base flex-shrink-0 opacity-70">
-                      {track.type === 'midi' ? '🎹' : '🎤'}
+                    <span 
+                      className="text-sm font-bold text-white truncate flex-1 tracking-tight" 
+                      title={track.name}
+                    >
+                      {track.name}
+                    </span>
+
+                    {/* VU Meter */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="w-16 h-1.5 bg-gray-800/80 rounded-full overflow-hidden shadow-inner">
+                        <div 
+                          className="h-full transition-all duration-75"
+                          style={{ 
+                            width: `${(vuLevels[track.id] || 0) * 100}%`,
+                            backgroundColor: vuLevels[track.id] > 0.85 ? '#ef4444' : vuLevels[track.id] > 0.6 ? '#eab308' : '#22c55e'
+                          }}
+                          title={`Level: ${Math.round((vuLevels[track.id] || 0) * 100)}%`}
+                        />
+                      </div>
+                      <div className="text-base opacity-70">
+                        {track.type === 'midi' ? '🎹' : '🎤'}
+                      </div>
                     </div>
                   </div>
                   
@@ -1397,6 +1548,31 @@ export default function MultiTrackStudioV4() {
           <span>BPM</span>
         </div>
         <div className="flex-1" />
+        <div className="flex items-center gap-4 text-xs">
+          <button 
+            onClick={() => setShowShortcuts(true)}
+            className="hover:text-cyan-400 transition-colors"
+            title="Keyboard Shortcuts (Cmd+/)">
+            ⌨️ Shortcuts
+          </button>
+          <button 
+            onClick={() => setShowMiniMap(!showMiniMap)}
+            className="hover:text-cyan-400 transition-colors"
+            title="Toggle Mini-map">
+            🗺️ {showMiniMap ? 'Hide' : 'Show'} Map
+          </button>
+          {isSaving ? (
+            <>
+              <span className="animate-spin text-cyan-400">⏳</span>
+              <span className="text-cyan-400">Saving...</span>
+            </>
+          ) : lastSaved ? (
+            <>
+              <span className="text-green-400">✔</span>
+              <span className="text-gray-500">Saved {Math.floor((Date.now() - lastSaved.getTime()) / 1000)}s ago</span>
+            </>
+          ) : null}
+        </div>
         <button
           onClick={() => setShowShortcuts(true)}
           className="text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -1598,6 +1774,76 @@ export default function MultiTrackStudioV4() {
         </div>
       )}
       
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-[#0f0f0f] border-2 border-cyan-500/30 rounded-2xl p-8 max-w-2xl w-full m-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">⌨️ Keyboard Shortcuts</h2>
+              <button onClick={() => setShowShortcuts(false)} className="text-gray-400 hover:text-white text-2xl">✕</button>
+            </div>
+            <div className="grid grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-2">Playback</h3>
+                <div className="flex justify-between"><span className="text-gray-400">Space</span><span className="font-mono text-sm text-white">Play/Pause</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">S</span><span className="font-mono text-sm text-white">Stop</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">R</span><span className="font-mono text-sm text-white">Record</span></div>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-2">Editing</h3>
+                <div className="flex justify-between"><span className="text-gray-400">Cmd/Ctrl + C</span><span className="font-mono text-sm text-white">Copy Clip</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Cmd/Ctrl + V</span><span className="font-mono text-sm text-white">Paste Clip</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Cmd/Ctrl + X</span><span className="font-mono text-sm text-white">Cut Clip</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Delete</span><span className="font-mono text-sm text-white">Delete Clip</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Cmd/Ctrl + E</span><span className="font-mono text-sm text-white">Split Clip</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Cmd/Ctrl + Z</span><span className="font-mono text-sm text-white">Undo</span></div>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-2">Project</h3>
+                <div className="flex justify-between"><span className="text-gray-400">Cmd/Ctrl + S</span><span className="font-mono text-sm text-white">Save Project</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Cmd/Ctrl + O</span><span className="font-mono text-sm text-white">Open Project</span></div>
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-cyan-400 uppercase tracking-wider mb-2">Help</h3>
+                <div className="flex justify-between"><span className="text-gray-400">?</span><span className="font-mono text-sm text-white">Show Shortcuts</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mini-Map Overview */}
+      {showMiniMap && tracks.length > 0 && (
+        <div className="fixed bottom-4 right-4 w-64 bg-[#0a0a0a]/95 border border-cyan-500/30 rounded-lg p-3 shadow-2xl backdrop-blur-sm z-50">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Overview</h3>
+            <button onClick={() => setShowMiniMap(false)} className="text-gray-500 hover:text-white text-sm">✕</button>
+          </div>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {tracks.map((track, idx) => {
+              const totalDuration = Math.max(...track.clips.map(c => c.startTime + c.duration), 30);
+              return (
+                <div key={track.id} className="flex items-center gap-2 text-xs">
+                  <div className="w-3 h-3 rounded" style={{ backgroundColor: track.color }} />
+                  <span className="text-gray-400 flex-1 truncate">{track.name}</span>
+                  <span className="text-gray-600 font-mono">{track.clips.length}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-3 pt-3 border-t border-gray-800 text-xs text-gray-500">
+            <div className="flex justify-between">
+              <span>Tracks</span>
+              <span className="text-white font-mono">{tracks.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Total Clips</span>
+              <span className="text-white font-mono">{tracks.reduce((sum, t) => sum + t.clips.length, 0)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loading Overlay */}
       {isLoading && <LoadingSpinner message={loadingMessage} />}
     </div>
