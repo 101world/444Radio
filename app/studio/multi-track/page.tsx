@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import createAudioScheduler from '@/lib/audio/AudioScheduler';
 import { usePusher } from '@/lib/pusher-client';
+import { renderWaveform } from '@/lib/audio/WaveformRenderer';
 
 let scheduler: ReturnType<typeof createAudioScheduler> | null = null;
 
@@ -25,6 +26,7 @@ interface Clip {
   url: string;
   start: number;
   duration: number;
+  waveformRendered?: boolean;
 }
 
 interface Track {
@@ -193,6 +195,30 @@ export default function MultiTrackStudio() {
     setPlayhead(seconds);
   }
 
+  // Render waveforms for new clips
+  useEffect(() => {
+    tracks.forEach(track => {
+      track.clips.forEach(clip => {
+        if (!clip.waveformRendered) {
+          const canvasId = `waveform-${clip.id}`;
+          const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+          if (canvas && clip.url) {
+            renderWaveform(clip.url, canvas, {
+              waveColor: 'rgba(0, 255, 150, 0.6)',
+              backgroundColor: 'transparent',
+              samples: 500
+            }).then(() => {
+              // Mark as rendered to avoid re-rendering
+              clip.waveformRendered = true;
+            }).catch(err => {
+              console.warn('Waveform render failed for', clip.url, err);
+            });
+          }
+        }
+      });
+    });
+  }, [tracks]);
+
   function pxForSeconds(sec: number) {
     return sec * zoom;
   }
@@ -256,15 +282,39 @@ export default function MultiTrackStudio() {
                       <div key={c.id} style={{
                         position: 'absolute', left, top: 6, height: 44,
                         width: Math.max(40, width),
-                        background: 'linear-gradient(90deg,#00b894,#00d1a6)',
+                        background: 'rgba(0, 184, 148, 0.2)',
+                        border: '1px solid rgba(0, 184, 148, 0.5)',
                         borderRadius: 6,
-                        display: 'flex',
-                        alignItems: 'center',
-                        paddingLeft: 8,
+                        overflow: 'hidden',
                         boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
                       }}>
-                        <div style={{ fontSize: 12, color: '#001' }}>{c.url.split('/').pop()?.slice(0, 12) || 'Clip'}</div>
+                        <canvas 
+                          id={`waveform-${c.id}`}
+                          style={{ 
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            pointerEvents: 'none'
+                          }}
+                        />
+                        <div style={{ 
+                          fontSize: 11, 
+                          color: '#0ff', 
+                          paddingLeft: 8,
+                          zIndex: 1,
+                          textShadow: '0 0 4px rgba(0,0,0,0.8)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {c.url.split('/').pop()?.slice(0, 20) || 'Clip'}
+                        </div>
                       </div>
                     );
                   })}
