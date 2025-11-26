@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW';
 import { ProfessionalWaveformRenderer } from '@/lib/audio/ProfessionalWaveformRenderer';
+import { HistoryManager } from '@/lib/audio/HistoryManager';
+import { RecordingManager } from '@/lib/audio/RecordingManager';
+import { ProjectManager } from '@/lib/audio/ProjectManager';
+import { AudioExporter } from '@/lib/audio/AudioExporter';
 import type { Track } from '@/lib/audio/TrackManager';
 
 // Helper function to render waveform on canvas
@@ -49,10 +53,16 @@ export default function MultiTrackStudioV4() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [selectedColorTrackId, setSelectedColorTrackId] = useState<string | null>(null);
+  const [userProjects, setUserProjects] = useState<any[]>([]);
   const rafRef = useRef<number | undefined>(undefined);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const historyManagerRef = useRef<HistoryManager | null>(null);
+  const recordingManagerRef = useRef<RecordingManager | null>(null);
+  const projectManagerRef = useRef<ProjectManager | null>(null);
+  const audioExporterRef = useRef<AudioExporter | null>(null);
 
-  // Initialize DAW
+  // Initialize DAW and Managers
   useEffect(() => {
     const dawInstance = new MultiTrackDAW({
       sampleRate: 48000,
@@ -63,6 +73,19 @@ export default function MultiTrackStudioV4() {
 
     setDaw(dawInstance);
     setTracks(dawInstance.getTracks());
+
+    // Initialize managers
+    historyManagerRef.current = new HistoryManager();
+    recordingManagerRef.current = new RecordingManager(dawInstance.getAudioContext());
+    projectManagerRef.current = new ProjectManager();
+    audioExporterRef.current = new AudioExporter();
+
+    // Initialize recording manager
+    recordingManagerRef.current.initialize().then(() => {
+      console.log('[MultiTrack] Recording manager initialized');
+    }).catch(err => {
+      console.error('[MultiTrack] Recording init failed:', err);
+    });
 
     // Listen for track changes
     dawInstance.on('trackCreated', (track: Track) => {
@@ -75,6 +98,7 @@ export default function MultiTrackStudioV4() {
 
     return () => {
       dawInstance.dispose();
+      recordingManagerRef.current?.dispose();
     };
   }, [user?.id]);
 
@@ -299,42 +323,148 @@ export default function MultiTrackStudioV4() {
   };
 
   const handleUndo = () => {
-    if (!daw) return;
-    // Wire to HistoryManager
-    console.log('Undo');
+    if (!historyManagerRef.current) return;
+    const success = historyManagerRef.current.undo();
+    if (success) {
+      setTracks(daw?.getTracks() || []);
+    }
   };
 
   const handleRedo = () => {
-    if (!daw) return;
-    console.log('Redo');
+    if (!historyManagerRef.current) return;
+    const success = historyManagerRef.current.redo();
+    if (success) {
+      setTracks(daw?.getTracks() || []);
+    }
   };
 
-  const toggleRecording = () => {
-    if (!daw) return;
-    setIsRecording(!isRecording);
-    // Wire to RecordingManager
-    console.log('Toggle recording', !isRecording);
+  const toggleRecording = async () => {
+    if (!recordingManagerRef.current || !daw) return;
+    
+    if (isRecording) {
+      // Stop recording
+        try {
+          const blob = await recordingManagerRef.current.stopRecording();
+          if (blob) {
+            // Convert blob to AudioBuffer
+            const arrayBuffer = await blob.arrayBuffer();
+            const audioBuffer = await daw.getAudioContext().decodeAudioData(arrayBuffer);          // Create new track with recorded audio
+          const track = daw.createTrack(`Recording ${new Date().toLocaleTimeString()}`);
+          daw.addClipToTrack(track.id, {
+            buffer: audioBuffer,
+            name: `Recorded ${new Date().toLocaleTimeString()}`,
+            startTime: 0,
+            duration: audioBuffer.duration
+          });
+          setTracks(daw.getTracks());
+          alert('Recording saved to new track!');
+        }
+      } catch (err) {
+        console.error('Recording failed:', err);
+        alert('Failed to process recording');
+      }
+      setIsRecording(false);
+    } else {
+      // Start recording
+      try {
+        await recordingManagerRef.current.startRecording();
+        setIsRecording(true);
+      } catch (err) {
+        console.error('Recording start failed:', err);
+        alert('Failed to start recording. Please check microphone permissions.');
+      }
+    }
   };
 
   const handleSaveProject = async (projectName: string) => {
-    if (!daw) return;
-    // Wire to ProjectManager
-    console.log('Save project:', projectName);
-    setShowSaveModal(false);
+    if (!projectManagerRef.current || !daw || !user?.id) return;
+    
+    try {
+      const projectId = await projectManagerRef.current.saveProject({
+        userId: user.id,
+        name: projectName,
+        bpm,
+        timeSignature: { numerator: 4, denominator: 4 },
+        tracks,
+        markers: [],
+        version: 1
+      });
+      
+      alert(`Project "${projectName}" saved successfully!`);
+      setShowSaveModal(false);
+    } catch (error: any) {
+      console.error('Save failed:', error);
+      alert(`Failed to save project: ${error.message}`);
+    }
   };
 
   const handleLoadProject = async (projectId: string) => {
-    if (!daw) return;
-    // Wire to ProjectManager
-    console.log('Load project:', projectId);
-    setShowLoadModal(false);
+    if (!projectManagerRef.current || !daw || !user?.id) return;
+    
+    try {
+      const project = await projectManagerRef.current.loadProject(projectId);
+      
+      // Clear current DAW state
+      daw.dispose();
+      
+      // Reinitialize with loaded project
+      const newDaw = new MultiTrackDAW({
+        sampleRate: 48000,
+        bpm: project.bpm,
+        userId: user.id,
+        timeSignature: project.timeSignature
+      });
+      
+      setDaw(newDaw);
+      setBpm(project.bpm);
+      setTracks(project.tracks);
+      alert(`Project "${project.name}" loaded successfully!`);
+      setShowLoadModal(false);
+    } catch (error: any) {
+      console.error('Load failed:', error);
+      alert(`Failed to load project: ${error.message}`);
+    }
   };
 
   const handleExport = async (format: 'wav' | 'mp3', quality: string) => {
-    if (!daw) return;
-    // Wire to ProjectManager export
-    console.log('Export:', format, quality);
-    setShowExportModal(false);
+    if (!audioExporterRef.current || !daw) return;
+    
+    try {
+      // Render all tracks to single buffer (would need renderToBuffer method in DAW)
+      // For now, just get the first track's first clip as demo
+      const firstTrack = tracks[0];
+      const firstClip = firstTrack?.clips[0];
+      
+      if (!firstClip?.buffer) {
+        alert('No audio to export. Please add tracks first.');
+        return;
+      }
+      
+      // Parse quality to sample rate
+      const sampleRate = quality === '96000' ? 96000 : quality === '48000' ? 48000 : 44100;
+      const bitDepth = format === 'wav' && quality.includes('24') ? 24 : 16;
+      
+      const result = await audioExporterRef.current.exportAudio(
+        firstClip.buffer,
+        { format, sampleRate, bitDepth },
+        `export-${Date.now()}.${format}`
+      );
+      
+      if (result.success && result.blob) {
+        audioExporterRef.current.downloadBlob(
+          result.blob,
+          `444Radio-Export-${Date.now()}.${format}`
+        );
+        alert('Export complete! Download started.');
+      } else {
+        alert(`Export failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Export failed. See console for details.');
+    } finally {
+      setShowExportModal(false);
+    }
   };
 
   const handleTrackColorChange = (trackId: string, color: string) => {
@@ -343,6 +473,8 @@ export default function MultiTrackStudioV4() {
     if (track) {
       track.color = color;
       setTracks(daw.getTracks());
+      setShowColorPicker(false);
+      setSelectedColorTrackId(null);
     }
   };
 
@@ -569,8 +701,8 @@ export default function MultiTrackStudioV4() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          setSelectedColorTrackId(track.id);
                           setShowColorPicker(true);
-                          setSelectedTrackId(track.id);
                         }}
                         className="w-3 h-3 rounded-full border border-white/30 hover:ring-2 hover:ring-white/50"
                         style={{ backgroundColor: track.color }}
@@ -947,18 +1079,34 @@ export default function MultiTrackStudioV4() {
       )}
 
       {/* Save Project Modal */}
-      {showSaveModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-white mb-4">💾 Save Project</h2>
-            <input type="text" placeholder="Project name..." className="w-full px-3 py-2 bg-[#1f1f1f] text-white rounded mb-4" />
-            <div className="flex gap-2">
-              <button onClick={() => handleSaveProject('New Project')} className="flex-1 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400">Save</button>
-              <button onClick={() => setShowSaveModal(false)} className="flex-1 py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+      {showSaveModal && (() => {
+        const [projectName, setProjectName] = useState('');
+        return (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
+            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-lg font-bold text-white mb-4">💾 Save Project</h2>
+              <input 
+                type="text" 
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="Project name..." 
+                className="w-full px-3 py-2 bg-[#1f1f1f] text-white rounded mb-4"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => projectName.trim() && handleSaveProject(projectName.trim())} 
+                  disabled={!projectName.trim()}
+                  className="flex-1 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+                <button onClick={() => setShowSaveModal(false)} className="flex-1 py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Load Project Modal */}
       {showLoadModal && (
@@ -966,9 +1114,25 @@ export default function MultiTrackStudioV4() {
           <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-white mb-4">📂 Load Project</h2>
             <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
-              <div className="p-3 bg-[#1f1f1f] rounded hover:bg-[#252525] cursor-pointer">Demo Project 1</div>
-              <div className="p-3 bg-[#1f1f1f] rounded hover:bg-[#252525] cursor-pointer">Demo Project 2</div>
-              <div className="text-sm text-gray-500 text-center py-4">Connect to Supabase to see your projects</div>
+              {userProjects.length === 0 ? (
+                <div className="text-sm text-gray-500 text-center py-8">
+                  No saved projects yet.<br/>
+                  <span className="text-cyan-400">Save your first project to see it here!</span>
+                </div>
+              ) : (
+                userProjects.map(project => (
+                  <div 
+                    key={project.id}
+                    onClick={() => handleLoadProject(project.id)}
+                    className="p-3 bg-[#1f1f1f] rounded hover:bg-[#252525] cursor-pointer"
+                  >
+                    <div className="font-semibold text-white">{project.name}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {project.bpm} BPM • Last modified {new Date(project.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
             <button onClick={() => setShowLoadModal(false)} className="w-full py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
           </div>
@@ -976,55 +1140,73 @@ export default function MultiTrackStudioV4() {
       )}
 
       {/* Export Modal */}
-      {showExportModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-white mb-4">📤 Export Project</h2>
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="text-sm text-gray-400">Format</label>
-                <select className="w-full mt-1 px-3 py-2 bg-[#1f1f1f] text-white rounded">
-                  <option>WAV (16-bit)</option>
-                  <option>WAV (24-bit)</option>
-                  <option>MP3 (320kbps)</option>
-                </select>
+      {showExportModal && (() => {
+        const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav');
+        const [exportQuality, setExportQuality] = useState('44100');
+        return (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
+            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-lg font-bold text-white mb-4">📤 Export Project</h2>
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="text-sm text-gray-400">Format</label>
+                  <select 
+                    value={`${exportFormat}-${exportQuality}`}
+                    onChange={(e) => {
+                      const [fmt, quality] = e.target.value.split('-');
+                      setExportFormat(fmt as 'wav' | 'mp3');
+                      if (quality) setExportQuality(quality);
+                    }}
+                    className="w-full mt-1 px-3 py-2 bg-[#1f1f1f] text-white rounded"
+                  >
+                    <option value="wav-16">WAV (16-bit)</option>
+                    <option value="wav-24">WAV (24-bit)</option>
+                    <option value="mp3-320">MP3 (320kbps)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400">Sample Rate</label>
+                  <select 
+                    value={exportQuality}
+                    onChange={(e) => setExportQuality(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 bg-[#1f1f1f] text-white rounded"
+                  >
+                    <option value="44100">44.1 kHz</option>
+                    <option value="48000">48 kHz</option>
+                    <option value="96000">96 kHz</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="text-sm text-gray-400">Sample Rate</label>
-                <select className="w-full mt-1 px-3 py-2 bg-[#1f1f1f] text-white rounded">
-                  <option>44.1 kHz</option>
-                  <option>48 kHz</option>
-                  <option>96 kHz</option>
-                </select>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => handleExport(exportFormat, exportQuality)} 
+                  className="flex-1 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400"
+                >
+                  Export
+                </button>
+                <button onClick={() => setShowExportModal(false)} className="flex-1 py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => handleExport('wav', '16-bit')} className="flex-1 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400">Export</button>
-              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Track Color Picker Modal */}
-      {showColorPicker && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowColorPicker(false)}>
+      {showColorPicker && selectedColorTrackId && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => { setShowColorPicker(false); setSelectedColorTrackId(null); }}>
           <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-white mb-4">🎨 Track Color</h2>
             <div className="grid grid-cols-4 gap-2 mb-4">
               {['#00bcd4', '#ff5722', '#4caf50', '#ffc107', '#9c27b0', '#ff9800', '#e91e63', '#3f51b5'].map(color => (
                 <button
                   key={color}
-                  onClick={() => {
-                    if (selectedTrackId) handleTrackColorChange(selectedTrackId, color);
-                    setShowColorPicker(false);
-                  }}
+                  onClick={() => handleTrackColorChange(selectedColorTrackId, color)}
                   className="w-12 h-12 rounded hover:ring-2 ring-white transition-all"
                   style={{ backgroundColor: color }}
                 />
               ))}
             </div>
-            <button onClick={() => setShowColorPicker(false)} className="w-full py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+            <button onClick={() => { setShowColorPicker(false); setSelectedColorTrackId(null); }} className="w-full py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
           </div>
         </div>
       )}
