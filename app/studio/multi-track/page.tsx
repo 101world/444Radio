@@ -10,6 +10,21 @@ import { ProjectManager } from '@/lib/audio/ProjectManager';
 import { AudioExporter } from '@/lib/audio/AudioExporter';
 import type { Track } from '@/lib/audio/TrackManager';
 
+// Loading Spinner Component
+function LoadingSpinner({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
+      <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 shadow-2xl shadow-cyan-500/20">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+          <div className="text-white font-semibold">{message}</div>
+          <div className="text-xs text-gray-400">Please wait...</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Helper function to render waveform on canvas
 function renderWaveform(canvas: HTMLCanvasElement, audioBuffer: AudioBuffer, color: string) {
   const renderer = new ProfessionalWaveformRenderer(canvas, {
@@ -55,6 +70,8 @@ export default function MultiTrackStudioV4() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [selectedColorTrackId, setSelectedColorTrackId] = useState<string | null>(null);
   const [userProjects, setUserProjects] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const rafRef = useRef<number | undefined>(undefined);
   const timelineRef = useRef<HTMLDivElement>(null);
   const historyManagerRef = useRef<HistoryManager | null>(null);
@@ -218,8 +235,12 @@ export default function MultiTrackStudioV4() {
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || !daw) return;
 
+    setIsLoading(true);
+    setLoadingMessage(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`);
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      setLoadingMessage(`Processing ${i + 1}/${files.length}: ${file.name}`);
       const arrayBuffer = await file.arrayBuffer();
       
       try {
@@ -247,6 +268,9 @@ export default function MultiTrackStudioV4() {
         alert(`Failed to load ${file.name}. Make sure it's a valid audio file.`);
       }
     }
+    
+    setIsLoading(false);
+    setLoadingMessage('');
   };
 
   const updateTrackVolume = (trackId: string, volume: number) => {
@@ -379,6 +403,9 @@ export default function MultiTrackStudioV4() {
   const handleSaveProject = async (projectName: string) => {
     if (!projectManagerRef.current || !daw || !user?.id) return;
     
+    setIsLoading(true);
+    setLoadingMessage('Saving project...');
+    
     try {
       const projectId = await projectManagerRef.current.saveProject({
         userId: user.id,
@@ -395,11 +422,17 @@ export default function MultiTrackStudioV4() {
     } catch (error: any) {
       console.error('Save failed:', error);
       alert(`Failed to save project: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
     }
   };
 
   const handleLoadProject = async (projectId: string) => {
     if (!projectManagerRef.current || !daw || !user?.id) return;
+    
+    setIsLoading(true);
+    setLoadingMessage('Loading project...');
     
     try {
       const project = await projectManagerRef.current.loadProject(projectId);
@@ -423,11 +456,17 @@ export default function MultiTrackStudioV4() {
     } catch (error: any) {
       console.error('Load failed:', error);
       alert(`Failed to load project: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
     }
   };
 
   const handleExport = async (format: 'wav' | 'mp3', quality: string) => {
     if (!audioExporterRef.current || !daw) return;
+    
+    setIsLoading(true);
+    setLoadingMessage('Exporting audio...');
     
     try {
       // Render all tracks to single buffer (would need renderToBuffer method in DAW)
@@ -464,6 +503,8 @@ export default function MultiTrackStudioV4() {
       alert('Export failed. See console for details.');
     } finally {
       setShowExportModal(false);
+      setIsLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -1076,10 +1117,29 @@ export default function MultiTrackStudioV4() {
       </div>
 
       {/* Bottom Status Bar */}
-      <footer className="h-8 bg-[#0f0f0f] border-t border-[#1f1f1f] flex items-center px-4 text-xs text-gray-600">
-        <div>CPU: 12%</div>
-        <div className="mx-4">|</div>
-        <div>Latency: 5ms</div>
+      <footer className="h-8 bg-[#0f0f0f] border-t border-[#1f1f1f] flex items-center px-4 text-xs text-gray-500">
+        <div className="flex items-center gap-2">
+          <span className="text-cyan-400">🎵</span>
+          <span className="font-semibold text-white">{tracks.length}</span>
+          <span>track{tracks.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="mx-3 text-gray-700">|</div>
+        <div className="flex items-center gap-2">
+          <span className="text-cyan-400">🎶</span>
+          <span className="font-semibold text-white">{tracks.reduce((sum, t) => sum + t.clips.length, 0)}</span>
+          <span>clip{tracks.reduce((sum, t) => sum + t.clips.length, 0) !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="mx-3 text-gray-700">|</div>
+        <div className="flex items-center gap-2">
+          <span className="text-cyan-400">⏱️</span>
+          <span className="font-semibold text-white">{formatTime(playhead)}</span>
+        </div>
+        <div className="mx-3 text-gray-700">|</div>
+        <div className="flex items-center gap-2">
+          <span className="text-cyan-400">🎹</span>
+          <span className="font-semibold text-white">{bpm}</span>
+          <span>BPM</span>
+        </div>
         <div className="flex-1" />
         <button
           onClick={() => setShowShortcuts(true)}
@@ -1280,6 +1340,9 @@ export default function MultiTrackStudioV4() {
           </div>
         </div>
       )}
+      
+      {/* Loading Overlay */}
+      {isLoading && <LoadingSpinner message={loadingMessage} />}
     </div>
   );
 }
