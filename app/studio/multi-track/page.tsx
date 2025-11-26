@@ -26,7 +26,69 @@ function LoadingSpinner({ message }: { message: string }) {
 }
 
 // Helper function to render waveform on canvas
-function renderWaveform(canvas: HTMLCanvasElement, audioBuffer: AudioBuffer, color: string) {
+// Waveform cache using IndexedDB
+const waveformCache = new Map<string, string>();
+
+async function getCachedWaveform(clipId: string): Promise<string | null> {
+  // Check memory cache first
+  if (waveformCache.has(clipId)) {
+    return waveformCache.get(clipId)!;
+  }
+  
+  // Check IndexedDB
+  try {
+    const request = indexedDB.open('WaveformCache', 1);
+    return new Promise((resolve) => {
+      request.onerror = () => resolve(null);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction('waveforms', 'readonly');
+        const store = tx.objectStore('waveforms');
+        const getRequest = store.get(clipId);
+        getRequest.onsuccess = () => {
+          const dataUrl = getRequest.result?.dataUrl || null;
+          if (dataUrl) waveformCache.set(clipId, dataUrl);
+          resolve(dataUrl);
+        };
+        getRequest.onerror = () => resolve(null);
+      };
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function setCachedWaveform(clipId: string, dataUrl: string) {
+  waveformCache.set(clipId, dataUrl);
+  try {
+    const request = indexedDB.open('WaveformCache', 1);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction('waveforms', 'readwrite');
+      const store = tx.objectStore('waveforms');
+      store.put({ id: clipId, dataUrl, timestamp: Date.now() });
+    };
+  } catch (error) {
+    console.error('Cache write failed:', error);
+  }
+}
+
+async function renderWaveform(canvas: HTMLCanvasElement, audioBuffer: AudioBuffer, color: string, clipId?: string) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Try cache first
+  if (clipId) {
+    const cachedDataUrl = await getCachedWaveform(clipId);
+    if (cachedDataUrl) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0);
+      img.src = cachedDataUrl;
+      return;
+    }
+  }
+
+  // Render using professional renderer
   const renderer = new ProfessionalWaveformRenderer(canvas, {
     width: canvas.width,
     height: canvas.height,
@@ -37,12 +99,15 @@ function renderWaveform(canvas: HTMLCanvasElement, audioBuffer: AudioBuffer, col
     showPeaks: true
   });
 
-  // Generate waveform data
   const samplesPerPixel = Math.ceil(audioBuffer.length / canvas.width);
   renderer.generateWaveformData(audioBuffer, samplesPerPixel);
-  
-  // Render the waveform
   renderer.render();
+
+  // Cache the result
+  if (clipId) {
+    const dataUrl = canvas.toDataURL('image/png');
+    setCachedWaveform(clipId, dataUrl);
+  }
 }
 
 export default function MultiTrackStudioV4() {
@@ -86,6 +151,7 @@ export default function MultiTrackStudioV4() {
   const [fadingClip, setFadingClip] = useState<{clipId: string, side: 'in' | 'out', startX: number, startValue: number} | null>(null);
   const [marqueeStart, setMarqueeStart] = useState<{x: number, y: number} | null>(null);
   const [marqueeEnd, setMarqueeEnd] = useState<{x: number, y: number} | null>(null);
+  const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [waveformCache, setWaveformCache] = useState<Map<string, ImageData>>(new Map());
   const rafRef = useRef<number | undefined>(undefined);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -114,6 +180,16 @@ export default function MultiTrackStudioV4() {
     recordingManagerRef.current = new RecordingManager(dawInstance.getAudioContext());
     projectManagerRef.current = new ProjectManager();
     audioExporterRef.current = new AudioExporter();
+
+    // Initialize IndexedDB for waveform cache
+    const initDB = indexedDB.open('WaveformCache', 1);
+    initDB.onupgradeneeded = (e) => {
+      const db = (e.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains('waveforms')) {
+        const store = db.createObjectStore('waveforms', { keyPath: 'id' });
+        store.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+    };
 
     // Initialize recording manager
     recordingManagerRef.current.initialize().then(() => {
@@ -317,6 +393,26 @@ export default function MultiTrackStudioV4() {
       }
     };
   }, [daw, user?.id, tracks, bpm, isSaving]);
+
+  // Initialize waveform cache database
+  useEffect(() => {
+    const initDB = async () => {
+      try {
+        const request = indexedDB.open('WaveformCache', 1);
+        request.onerror = () => console.error('Failed to open IndexedDB');
+        request.onupgradeneeded = (e) => {
+          const db = (e.target as IDBOpenDBRequest).result;
+          if (!db.objectStoreNames.contains('waveforms')) {
+            const store = db.createObjectStore('waveforms', { keyPath: 'id' });
+            store.createIndex('timestamp', 'timestamp', { unique: false });
+          }
+        };
+      } catch (error) {
+        console.error('IndexedDB initialization failed:', error);
+      }
+    };
+    initDB();
+  }, []);
 
   const togglePlay = () => {
     if (!daw) return;
@@ -572,8 +668,15 @@ export default function MultiTrackStudioV4() {
       const minY = Math.min(marqueeStart.y, marqueeEnd.y);
       const maxY = Math.max(marqueeStart.y, marqueeEnd.y);
       
-      // TODO: Implement multi-select based on bounds
-      console.log('Marquee selection:', { minX, maxX, minY, maxY });
+      // Implement multi-select based on bounds
+      const selectedTrackIds = new Set<string>();
+      tracks.forEach((track, idx) => {
+        const trackY = idx * 96; // Track height
+        if (trackY >= minY && trackY <= maxY) {
+          selectedTrackIds.add(track.id);
+        }
+      });
+      setSelectedTracks(selectedTrackIds);
     }
     setMarqueeStart(null);
     setMarqueeEnd(null);
@@ -1350,7 +1453,7 @@ export default function MultiTrackStudioV4() {
                           <canvas
                             ref={(canvas) => {
                               if (canvas && clip.buffer) {
-                                renderWaveform(canvas, clip.buffer, selectedClipId === clip.id ? '#00bcd4' : track.color);
+                                renderWaveform(canvas, clip.buffer, selectedClipId === clip.id ? '#00bcd4' : track.color, clip.id);
                               }
                             }}
                             width={clip.duration * zoom}
