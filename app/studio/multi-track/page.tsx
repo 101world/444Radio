@@ -58,11 +58,10 @@ export default function MultiTrackStudioV4() {
   const [showMixer, setShowMixer] = useState(true);
   const [showEffects, setShowEffects] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [snapEnabled, setSnapEnabled] = useState(true);
   const [loopEnabled, setLoopEnabled] = useState(false);
   const [loopStart, setLoopStart] = useState(0);
   const [loopEnd, setLoopEnd] = useState(10);
-  const [draggedClip, setDraggedClip] = useState<{clipId: string, trackId: string} | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -72,6 +71,9 @@ export default function MultiTrackStudioV4() {
   const [userProjects, setUserProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
+  const [draggedClip, setDraggedClip] = useState<{trackId: string, clipId: string, startX: number, initialStartTime: number} | null>(null);
+  const [clipboardClip, setClipboardClip] = useState<{trackId: string, clip: any} | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
   const timelineRef = useRef<HTMLDivElement>(null);
   const historyManagerRef = useRef<HistoryManager | null>(null);
@@ -159,6 +161,35 @@ export default function MultiTrackStudioV4() {
           e.preventDefault();
           setShowShortcuts(true);
           break;
+        case 'c':
+          if ((e.metaKey || e.ctrlKey) && selectedClipId && selectedTrackId) {
+            e.preventDefault();
+            const track = tracks.find(t => t.id === selectedTrackId);
+            const clip = track?.clips.find(c => c.id === selectedClipId);
+            if (clip) {
+              setClipboardClip({ trackId: selectedTrackId, clip: { ...clip } });
+            }
+          }
+          break;
+        case 'x':
+          if ((e.metaKey || e.ctrlKey) && selectedClipId && selectedTrackId) {
+            e.preventDefault();
+            const track = tracks.find(t => t.id === selectedTrackId);
+            const clip = track?.clips.find(c => c.id === selectedClipId);
+            if (clip) {
+              setClipboardClip({ trackId: selectedTrackId, clip: { ...clip } });
+              handleDeleteClip();
+            }
+          }
+          break;
+        case 'v':
+          if ((e.metaKey || e.ctrlKey) && clipboardClip && selectedTrackId && daw) {
+            e.preventDefault();
+            const newClip = { ...clipboardClip.clip, id: `clip-${Date.now()}`, startTime: playhead };
+            daw.addClipToTrack(selectedTrackId, newClip);
+            setTracks(daw.getTracks());
+          }
+          break;
       }
     };
 
@@ -175,8 +206,16 @@ export default function MultiTrackStudioV4() {
     };
 
     const loop = () => {
-      setPlayhead(daw.getPlayhead());
+      const currentPlayhead = daw.getPlayhead();
+      setPlayhead(currentPlayhead);
       setIsPlaying(daw.isPlaying());
+      
+      // Check loop boundaries
+      if (loopEnabled && daw.isPlaying() && currentPlayhead >= loopEnd) {
+        daw.seekTo(loopStart);
+        setPlayhead(loopStart);
+      }
+      
       rafRef.current = requestAnimationFrame(loop);
     };
 
@@ -200,14 +239,54 @@ export default function MultiTrackStudioV4() {
     if (!daw) return;
     if (isPlaying) {
       daw.pause();
+      setIsPlaying(false);
     } else {
       daw.play();
+      setIsPlaying(true);
     }
   };
 
   const stop = () => {
     if (!daw) return;
     daw.stop();
+    setIsPlaying(false);
+    setPlayhead(0);
+  };
+
+  const handlePlayheadMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDraggingPlayhead(true);
+  };
+
+  const handleTimelineMouseMove = (e: React.MouseEvent) => {
+    // Handle playhead dragging
+    if (isDraggingPlayhead && daw) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const timeInSeconds = Math.max(0, x / zoom);
+      daw.seekTo(timeInSeconds);
+      setPlayhead(timeInSeconds);
+    }
+    
+    // Handle clip dragging
+    if (draggedClip && daw) {
+      const deltaX = e.clientX - draggedClip.startX;
+      const deltaTime = deltaX / zoom;
+      const newStartTime = Math.max(0, snapTime(draggedClip.initialStartTime + deltaTime));
+      
+      // Update clip position in DAW
+      const track = tracks.find(t => t.id === draggedClip.trackId);
+      const clip = track?.clips.find(c => c.id === draggedClip.clipId);
+      if (clip) {
+        clip.startTime = newStartTime;
+        setTracks([...daw.getTracks()]);
+      }
+    }
+  };
+
+  const handleTimelineMouseUp = () => {
+    setIsDraggingPlayhead(false);
+    setDraggedClip(null);
   };
 
   const addTrack = () => {
@@ -227,9 +306,27 @@ export default function MultiTrackStudioV4() {
   };
 
   const updateBpm = (newBpm: number) => {
-    if (!daw) return;
+    if (!daw || newBpm < 40 || newBpm > 240) return;
     daw.setBPM(newBpm);
     setBpm(newBpm);
+    // Force track refresh to update grid spacing
+    setTracks([...daw.getTracks()]);
+  };
+
+  const handleRulerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!daw) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const timeInSeconds = snapTime(clickX / zoom);
+    daw.seekTo(timeInSeconds);
+    setPlayhead(timeInSeconds);
+  };
+
+  const handleClipMouseDown = (e: React.MouseEvent, trackId: string, clipId: string, clipStartTime: number) => {
+    e.stopPropagation();
+    setDraggedClip({ trackId, clipId, startX: e.clientX, initialStartTime: clipStartTime });
+    setSelectedTrackId(trackId);
+    setSelectedClipId(clipId);
   };
 
   const handleFileUpload = async (files: FileList | null) => {
@@ -307,20 +404,6 @@ export default function MultiTrackStudioV4() {
     e.stopPropagation();
     setSelectedClipId(clipId);
     setSelectedTrackId(trackId);
-  };
-
-  const handleRulerClick = (e: React.MouseEvent) => {
-    if (!daw || !timelineRef.current) return;
-    const rect = timelineRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const timeInSeconds = clickX / zoom;
-    
-    // Update playhead position
-    if (daw.isPlaying()) {
-      daw.pause();
-    }
-    // Seek to clicked position (would need seek method in DAW)
-    console.log(`Seek to: ${timeInSeconds.toFixed(2)}s`);
   };
 
   const handleZoomChange = (newZoom: number) => {
@@ -465,28 +548,57 @@ export default function MultiTrackStudioV4() {
   const handleExport = async (format: 'wav' | 'mp3', quality: string) => {
     if (!audioExporterRef.current || !daw) return;
     
+    if (tracks.length === 0 || !tracks.some(t => t.clips.length > 0)) {
+      alert('No audio to export. Please add tracks with audio clips first.');
+      return;
+    }
+    
     setIsLoading(true);
-    setLoadingMessage('Exporting audio...');
+    setLoadingMessage('Mixing tracks...');
     
     try {
-      // Render all tracks to single buffer (would need renderToBuffer method in DAW)
-      // For now, just get the first track's first clip as demo
-      const firstTrack = tracks[0];
-      const firstClip = firstTrack?.clips[0];
+      // Find the longest duration across all clips
+      let maxDuration = 0;
+      tracks.forEach(track => {
+        track.clips.forEach(clip => {
+          const clipEnd = clip.startTime + clip.duration;
+          if (clipEnd > maxDuration) maxDuration = clipEnd;
+        });
+      });
       
-      if (!firstClip?.buffer) {
-        alert('No audio to export. Please add tracks first.');
-        return;
-      }
-      
-      // Parse quality to sample rate
       const sampleRate = quality === '96000' ? 96000 : quality === '48000' ? 48000 : 44100;
+      const audioContext = daw.getAudioContext();
+      
+      // Create offline context for rendering
+      const offlineContext = new OfflineAudioContext(2, Math.ceil(maxDuration * sampleRate), sampleRate);
+      
+      setLoadingMessage('Rendering audio...');
+      
+      // Mix all tracks
+      tracks.forEach(track => {
+        if (track.muted) return;
+        track.clips.forEach(clip => {
+          if (clip.buffer) {
+            const source = offlineContext.createBufferSource();
+            source.buffer = clip.buffer;
+            const gainNode = offlineContext.createGain();
+            gainNode.gain.value = track.volume;
+            source.connect(gainNode);
+            gainNode.connect(offlineContext.destination);
+            source.start(clip.startTime);
+          }
+        });
+      });
+      
+      const renderedBuffer = await offlineContext.startRendering();
+      
+      setLoadingMessage('Encoding file...');
       const bitDepth = format === 'wav' && quality.includes('24') ? 24 : 16;
       
       const result = await audioExporterRef.current.exportAudio(
-        firstClip.buffer,
+        renderedBuffer,
         { format, sampleRate, bitDepth },
-        `export-${Date.now()}.${format}`
+        `444Radio-Export-${Date.now()}.${format}`
       );
       
       if (result.success && result.blob) {
@@ -496,7 +608,7 @@ export default function MultiTrackStudioV4() {
         );
         alert('Export complete! Download started.');
       } else {
-        alert(`Export failed: ${result.error}`);
+        alert(`Export failed: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Export error:', error);
@@ -520,7 +632,7 @@ export default function MultiTrackStudioV4() {
   };
 
   const snapTime = (time: number) => {
-    if (!snapToGrid) return time;
+    if (!snapEnabled) return time;
     const beatDuration = 60 / bpm;
     return Math.round(time / beatDuration) * beatDuration;
   };
@@ -633,9 +745,9 @@ export default function MultiTrackStudioV4() {
             🔁
           </button>
           <button
-            onClick={() => setSnapToGrid(!snapToGrid)}
+            onClick={() => setSnapEnabled(!snapEnabled)}
             className={`px-2 py-1 text-xs rounded transition-all ${
-              snapToGrid ? 'bg-cyan-500 text-black' : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
+              snapEnabled ? 'bg-cyan-500 text-black' : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
             }`}
             title="Snap to grid"
           >
@@ -835,32 +947,44 @@ export default function MultiTrackStudioV4() {
         <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-auto" ref={timelineRef}>
           {/* Timeline Ruler */}
           <div 
-            className="h-8 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center px-2 text-xs text-gray-500 cursor-pointer hover:bg-[#141414]"
+            className="h-8 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center px-2 text-xs text-gray-500 cursor-pointer hover:bg-[#141414] relative overflow-hidden"
             onClick={handleRulerClick}
             title="Click to seek"
           >
-            {Array.from({ length: Math.ceil(600 / zoom) + 1 }, (_, i) => i).map(sec => (
-              <div key={sec} className="flex-shrink-0 border-l border-[#1f1f1f] pl-1" style={{ width: `${zoom}px` }}>
-                {sec}s
-              </div>
-            ))}
+            {(() => {
+              const totalSeconds = 600;
+              const interval = zoom < 20 ? 10 : zoom < 50 ? 5 : zoom < 100 ? 2 : 1;
+              const markers: React.ReactElement[] = [];
+              for (let sec = 0; sec <= totalSeconds; sec += interval) {
+                markers.push(
+                  <div key={sec} className="absolute border-l border-[#1f1f1f] h-full flex items-center pl-1" style={{ left: `${sec * zoom}px` }}>
+                    {sec}s
+                  </div>
+                );
+              }
+              return markers;
+            })()}
           </div>
 
           {/* Track Lanes */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative" 
+               onMouseMove={handleTimelineMouseMove}
+               onMouseUp={handleTimelineMouseUp}
+               onMouseLeave={handleTimelineMouseUp}>
             {/* Playhead Indicator */}
             <div 
-              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none shadow-lg shadow-red-500/50"
+              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 shadow-lg shadow-red-500/50 cursor-ew-resize"
               style={{ left: `${playhead * zoom}px` }}
+              onMouseDown={handlePlayheadMouseDown}
             >
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded whitespace-nowrap">
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded whitespace-nowrap pointer-events-none">
                 {formatTime(playhead)}
               </div>
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500" />
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500 pointer-events-none" />
             </div>
             
             {/* Grid Lines (when snap enabled) */}
-            {snapToGrid && (
+            {snapEnabled && (
               <div className="absolute inset-0 pointer-events-none">
                 {Array.from({ length: Math.ceil(600 / zoom) * 4 }, (_, i) => {
                   const beatWidth = (60 / bpm) * zoom;
@@ -923,7 +1047,7 @@ export default function MultiTrackStudioV4() {
                       track.clips.map(clip => (
                         <div
                           key={clip.id}
-                          className={`absolute h-16 rounded-lg overflow-hidden cursor-pointer transition-all shadow-xl ${
+                          className={`absolute h-16 rounded-lg overflow-hidden cursor-move transition-all shadow-xl ${
                             selectedClipId === clip.id ? 'ring-4 ring-cyan-400 ring-offset-2 ring-offset-[#0a0a0a] scale-105' : 'hover:scale-102'
                           }`}
                           style={{
@@ -934,7 +1058,8 @@ export default function MultiTrackStudioV4() {
                             boxShadow: selectedClipId === clip.id ? `0 4px 20px ${track.color}80` : `0 2px 8px rgba(0,0,0,0.3)`
                           }}
                           onClick={(e) => handleClipClick(e, clip.id, track.id)}
-                          title="Click to select, drag to move (coming soon)"
+                          onMouseDown={(e) => handleClipMouseDown(e, track.id, clip.id, clip.startTime)}
+                          title="Drag to move, click to select"
                         >
                           {/* Clip Canvas for Waveform */}
                           <canvas
