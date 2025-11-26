@@ -153,6 +153,8 @@ export default function MultiTrackStudioV4() {
   const [marqueeEnd, setMarqueeEnd] = useState<{x: number, y: number} | null>(null);
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [waveformCache, setWaveformCache] = useState<Map<string, ImageData>>(new Map());
+  const [bufferPool, setBufferPool] = useState<Map<string, {buffer: AudioBuffer, lastUsed: number}>>(new Map());
+  const [memoryPressure, setMemoryPressure] = useState(false);
   const rafRef = useRef<number | undefined>(undefined);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const analyserNodesRef = useRef<Record<string, AnalyserNode>>({});
@@ -660,6 +662,53 @@ export default function MultiTrackStudioV4() {
     setMarqueeEnd({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
+  const cleanupUnusedBuffers = useCallback(() => {
+    const now = Date.now();
+    const BUFFER_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+    
+    setBufferPool(prev => {
+      const newPool = new Map(prev);
+      const activeClipIds = new Set<string>();
+      
+      // Collect active clip IDs
+      tracks.forEach(track => {
+        track.clips.forEach(clip => activeClipIds.add(clip.id));
+      });
+      
+      // Remove buffers not used in last 5 minutes and not in active clips
+      for (const [id, data] of newPool.entries()) {
+        if (!activeClipIds.has(id) && now - data.lastUsed > BUFFER_TIMEOUT) {
+          newPool.delete(id);
+        }
+      }
+      
+      return newPool;
+    });
+  }, [tracks]);
+
+  const checkMemoryPressure = useCallback(() => {
+    // Simple heuristic: check buffer pool size
+    const bufferCount = bufferPool.size;
+    const threshold = 100; // Maximum 100 buffers in memory
+    
+    if (bufferCount > threshold) {
+      setMemoryPressure(true);
+      cleanupUnusedBuffers();
+    } else {
+      setMemoryPressure(false);
+    }
+  }, [bufferPool.size, cleanupUnusedBuffers]);
+
+  // Periodic buffer cleanup
+  useEffect(() => {
+    const interval = setInterval(() => {
+      cleanupUnusedBuffers();
+      checkMemoryPressure();
+    }, 60000); // Every minute
+    
+    return () => clearInterval(interval);
+  }, [cleanupUnusedBuffers, checkMemoryPressure]);
+
   const handleMarqueeEnd = () => {
     if (marqueeStart && marqueeEnd) {
       // Select clips within marquee bounds
@@ -1130,6 +1179,14 @@ export default function MultiTrackStudioV4() {
             >
               📁 Upload Audio
             </button>
+            
+            {/* Memory Pressure Indicator */}
+            {memoryPressure && (
+              <div className="px-2 py-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400 flex items-center gap-2">
+                <span className="animate-pulse">⚠️</span>
+                <span>High memory usage - cleaning buffers...</span>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -1690,6 +1747,10 @@ export default function MultiTrackStudioV4() {
               <span className="text-gray-500">Saved {Math.floor((Date.now() - lastSaved.getTime()) / 1000)}s ago</span>
             </>
           ) : null}
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <span>Buffers: {bufferPool.size}</span>
+            {memoryPressure && <span className="text-yellow-400">⚠️ High</span>}
+          </div>
         </div>
         <button
           onClick={() => setShowShortcuts(true)}
