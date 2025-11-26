@@ -490,8 +490,10 @@ export default function MultiTrackStudioV4() {
     if (!daw || newBpm < 40 || newBpm > 240) return;
     daw.setBPM(newBpm);
     setBpm(newBpm);
-    // Force track refresh to update grid spacing
-    setTracks([...daw.getTracks()]);
+    // Force complete re-render to update grid spacing
+    const currentTracks = daw.getTracks();
+    setTracks([...currentTracks]);
+    console.log('[BPM] Updated to:', newBpm, 'tracks refreshed');
   };
 
   const handleRulerClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -955,7 +957,8 @@ export default function MultiTrackStudioV4() {
   const snapTime = (time: number) => {
     if (!snapEnabled) return time;
     const beatDuration = 60 / bpm;
-    return Math.round(time / beatDuration) * beatDuration;
+    const snappedTime = Math.round(time / beatDuration) * beatDuration;
+    return Math.max(0, snappedTime); // Ensure non-negative
   };
 
   return (
@@ -1157,12 +1160,13 @@ export default function MultiTrackStudioV4() {
       <div className="flex-1 flex overflow-hidden">
         {/* Track List */}
         <div className="w-60 bg-[#0f0f0f] border-r border-[#1f1f1f] flex flex-col flex-shrink-0">
-          <div className="p-3 border-b border-[#1f1f1f] space-y-2">
+          <div className="p-3 border-b border-[#1f1f1f] flex gap-2">
             <button
               onClick={addTrack}
-              className="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg font-bold text-sm hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+              className="flex-1 p-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30"
+              title="Add Track"
             >
-              ➕ Add Track
+              ➕
             </button>
             
             <input
@@ -1175,9 +1179,10 @@ export default function MultiTrackStudioV4() {
             />
             <button
               onClick={() => document.getElementById('audio-upload')?.click()}
-              className="w-full py-2.5 bg-[#1f1f1f] text-cyan-400 border-2 border-cyan-500/30 rounded-lg font-bold text-sm hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-all"
+              className="flex-1 p-2 bg-[#1f1f1f] text-cyan-400 border-2 border-cyan-500/30 rounded-lg hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-all"
+              title="Upload Audio"
             >
-              📁 Upload Audio
+              📁
             </button>
             
             {/* Memory Pressure Indicator */}
@@ -1448,42 +1453,14 @@ export default function MultiTrackStudioV4() {
                 return (
                 <div
                   key={track.id}
-                  className="border-b border-[#1f1f1f] relative group hover:bg-[#0f0f0f] flex"
+                  className="border-b border-[#1f1f1f] relative group hover:bg-[#0f0f0f]"
                   style={{ height: `${trackHeight}px` }}
                   onClick={() => setSelectedTrackId(track.id)}
                   onMouseMove={handleTrackResizeMove}
                   onMouseUp={handleTrackResizeEnd}
                   onMouseLeave={handleTrackResizeEnd}
                 >
-                  {/* Track Header - Minimal Inline */}
-                  <div className="w-60 flex-shrink-0 border-r border-[#1f1f1f] bg-[#0a0a0a] flex items-center px-2 gap-2">
-                    <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-cyan-400 bg-gray-900">
-                      {trackIndex + 1}
-                    </div>
-                    <div 
-                      className="w-3 h-3 rounded" 
-                      style={{ backgroundColor: track.color }}
-                    />
-                    <span 
-                      className="text-xs font-medium text-white/90 truncate flex-1" 
-                      title={track.name}
-                    >
-                      {track.name}
-                    </span>
-
-                    {/* VU Meter - Compact */}
-                    <div className="w-12 h-1 bg-gray-900 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full transition-all duration-75"
-                        style={{ 
-                          width: `${(vuLevels[track.id] || 0) * 100}%`,
-                          backgroundColor: vuLevels[track.id] > 0.85 ? '#ef4444' : vuLevels[track.id] > 0.6 ? '#eab308' : '#22c55e'
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Track Lane - Scrollable Timeline Area */}
+                  {/* Track Lane - Full Width Timeline Area */}
                   <div className="flex-1 relative">
                     <div className="absolute inset-0 flex items-center px-2">
                     {track.clips.length === 0 ? (

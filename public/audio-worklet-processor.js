@@ -3,6 +3,11 @@
  * Place in public/ directory
  */
 
+// Guard: only execute in AudioWorklet context
+if (typeof AudioWorkletProcessor === 'undefined') {
+  console.warn('[AudioWorklet] Skipping - not in worklet context');
+} else {
+
 class AudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
@@ -42,3 +47,5 @@ class AudioProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('audio-processor', AudioProcessor);
+
+} // End AudioWorkletProcessor guard
