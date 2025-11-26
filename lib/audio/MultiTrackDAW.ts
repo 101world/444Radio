@@ -8,7 +8,7 @@ import { TrackManager, Track } from './TrackManager'
 import { TimelineManager } from './TimelineManager'
 import { MixingConsole } from './MixingConsole'
 import { MIDIManager } from './MIDIManager'
-import { EffectsSuite } from './EffectsSuite'
+import { EffectsChain } from './EffectsSuite'
 import { RecordingManager } from './RecordingManager'
 import { ProjectManager } from './ProjectManager'
 import { HistoryManager } from './HistoryManager'
@@ -42,7 +42,7 @@ export class MultiTrackDAW {
   private timelineManager: TimelineManager
   private mixingConsole: MixingConsole
   private midiManager: MIDIManager
-  private effectsSuite: EffectsSuite
+  private effectsChain: EffectsChain
   private recordingManager: RecordingManager
   private projectManager: ProjectManager
   private historyManager: HistoryManager
@@ -77,7 +77,7 @@ export class MultiTrackDAW {
     this.timelineManager = new TimelineManager(config.bpm || 120)
     this.mixingConsole = new MixingConsole(this.audioContext)
     this.midiManager = new MIDIManager(this.audioContext)
-    this.effectsSuite = new EffectsSuite(this.audioContext)
+    this.effectsChain = new EffectsChain(this.audioContext)
     this.recordingManager = new RecordingManager(this.audioContext)
     this.projectManager = new ProjectManager(config.userId)
     this.historyManager = new HistoryManager()
@@ -323,9 +323,9 @@ export class MultiTrackDAW {
 
   // Effects & Mixing
   addEffectToTrack(trackId: string, effectType: string): void {
-    const effect = this.effectsSuite.createEffect(effectType as any)
+    // Effects are managed through the EffectsChain
     // Connect effect to track's routing
-    this.emit('effectAdded', { trackId, effect })
+    this.emit('effectAdded', { trackId, effectType })
   }
 
   setTrackVolume(trackId: string, volume: number): void {
@@ -476,7 +476,7 @@ export class MultiTrackDAW {
     this.timelineManager.dispose()
     this.mixingConsole.dispose()
     this.midiManager.dispose()
-    this.effectsSuite.dispose()
+    this.effectsChain.dispose()
     this.recordingManager.dispose()
     this.historyManager.dispose()
     this.audioAnalyzer.dispose()
