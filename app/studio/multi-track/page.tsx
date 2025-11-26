@@ -121,10 +121,19 @@ export default function MultiTrackStudioV4() {
         const audioContext = daw.getAudioContext();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         const trackName = file.name.replace(/\.(mp3|wav|m4a|ogg)$/i, '');
+        
+        // Create track
         const track = daw.createTrack(trackName);
         
-        // For now, just show the track was created - full clip support coming soon
-        console.log(`✅ Loaded ${trackName} - duration: ${audioBuffer.duration.toFixed(2)}s`);
+        // Add clip with audio buffer
+        daw.addClipToTrack(track.id, {
+          buffer: audioBuffer,
+          name: trackName,
+          startTime: 0,
+          duration: audioBuffer.duration
+        });
+        
+        console.log(`✅ Loaded ${trackName} - duration: ${audioBuffer.duration.toFixed(2)}s, ${track.clips?.length || 0} clip(s)`);
         
         setTracks(daw.getTracks());
         setSelectedTrackId(track.id);

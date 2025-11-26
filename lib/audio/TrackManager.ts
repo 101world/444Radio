@@ -230,6 +230,59 @@ export class TrackManager {
     this.emit('panChanged', { trackId, pan: track.pan })
   }
 
+  // Clip Management
+  addClip(trackId: string, clipConfig: Partial<TrackClip>): TrackClip {
+    const track = this.tracks.get(trackId)
+    if (!track) throw new Error(`Track ${trackId} not found`)
+
+    const clip: TrackClip = {
+      id: clipConfig.id || this.generateId(),
+      trackId,
+      startTime: clipConfig.startTime ?? 0,
+      duration: clipConfig.duration ?? (clipConfig.buffer?.duration || 1),
+      offset: clipConfig.offset ?? 0,
+      gain: clipConfig.gain ?? 1.0,
+      fadeIn: clipConfig.fadeIn || { duration: 0, curve: 'linear' },
+      fadeOut: clipConfig.fadeOut || { duration: 0, curve: 'linear' },
+      buffer: clipConfig.buffer,
+      color: clipConfig.color || track.color,
+      name: clipConfig.name || `Clip ${track.clips.length + 1}`,
+      locked: clipConfig.locked ?? false
+    }
+
+    track.clips.push(clip)
+    this.emit('clipAdded', { trackId, clip })
+    return clip
+  }
+
+  removeClip(trackId: string, clipId: string): void {
+    const track = this.tracks.get(trackId)
+    if (!track) return
+
+    const index = track.clips.findIndex(c => c.id === clipId)
+    if (index !== -1) {
+      const clip = track.clips[index]
+      track.clips.splice(index, 1)
+      this.emit('clipRemoved', { trackId, clipId })
+    }
+  }
+
+  updateClip(trackId: string, clipId: string, updates: Partial<TrackClip>): void {
+    const track = this.tracks.get(trackId)
+    if (!track) return
+
+    const clip = track.clips.find(c => c.id === clipId)
+    if (clip) {
+      Object.assign(clip, updates)
+      this.emit('clipUpdated', { trackId, clip })
+    }
+  }
+
+  getClips(trackId: string): TrackClip[] {
+    const track = this.tracks.get(trackId)
+    return track ? [...track.clips] : []
+  }
+
   // Group Management
   createGroup(name: string, trackIds: string[] = []): TrackGroup {
     const group: TrackGroup = {

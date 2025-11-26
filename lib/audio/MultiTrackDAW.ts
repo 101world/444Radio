@@ -65,6 +65,7 @@ export class MultiTrackDAW {
   private playbackStartTime: number = 0
   private playbackOffset: number = 0
   private rafId?: number
+  private activeSourceNodes?: Map<string, AudioBufferSourceNode>
   private listeners: Map<string, Set<Function>> = new Map()
 
   constructor(config: DAWConfig = {}) {
@@ -125,19 +126,55 @@ export class MultiTrackDAW {
     this.playbackStartTime = this.audioContext.currentTime
     this.playbackOffset = this.transportState.currentTime
 
-    // Start all tracks
+    // Store active source nodes for cleanup
+    if (!this.activeSourceNodes) {
+      this.activeSourceNodes = new Map()
+    }
+
+    // Schedule all clips
     const tracks = this.trackManager.getTracks()
     tracks.forEach(track => {
       const routingNode = this.trackManager.getRoutingNode(track.id)
-      if (routingNode && !track.muted) {
-        // Trigger clip playback (simplified - actual implementation would schedule clips)
-        track.clips.forEach(clip => {
-          const relativeTime = clip.startTime - this.transportState.currentTime
-          if (relativeTime >= 0) {
-            // Schedule clip playback
+      if (!routingNode || track.muted || !track.clips.length) return
+
+      track.clips.forEach(clip => {
+        if (!clip.buffer) return // Skip clips without audio buffer
+
+        // Calculate when this clip should start relative to current playhead
+        const clipStartTime = clip.startTime - this.transportState.currentTime
+        if (clipStartTime < -clip.duration) return // Clip is in the past
+
+        // Create source node for this clip
+        const source = this.audioContext.createBufferSource()
+        source.buffer = clip.buffer
+
+        // Apply clip gain
+        const clipGain = this.audioContext.createGain()
+        clipGain.gain.value = clip.gain
+
+        // Connect: source → clipGain → track routing → master
+        source.connect(clipGain)
+        clipGain.connect(routingNode.gainNode)
+
+        // Calculate start time in AudioContext time
+        const startTime = this.audioContext.currentTime + Math.max(0, clipStartTime)
+        const offset = Math.max(0, -clipStartTime) + clip.offset
+        const duration = clip.duration - offset
+
+        // Start playback
+        source.start(startTime, offset, duration)
+
+        // Store for cleanup
+        const clipKey = `${track.id}:${clip.id}`
+        if (this.activeSourceNodes) {
+          this.activeSourceNodes.set(clipKey, source)
+
+          // Auto-cleanup when done
+          source.onended = () => {
+            this.activeSourceNodes?.delete(clipKey)
           }
-        })
-      }
+        }
+      })
     })
 
     this.emit('play', { time: this.transportState.currentTime })
@@ -148,6 +185,18 @@ export class MultiTrackDAW {
 
     this.transportState.isPlaying = false
     this.transportState.currentTime = this.audioContext.currentTime - this.playbackStartTime + this.playbackOffset
+
+    // Stop all active audio source nodes
+    if (this.activeSourceNodes) {
+      this.activeSourceNodes.forEach(source => {
+        try {
+          source.stop()
+        } catch (e) {
+          // Ignore if already stopped
+        }
+      })
+      this.activeSourceNodes.clear()
+    }
 
     this.emit('pause', { time: this.transportState.currentTime })
   }
@@ -271,6 +320,38 @@ export class MultiTrackDAW {
 
   getTracks(): Track[] {
     return this.trackManager.getTracks()
+  }
+
+  // Clip Management
+  addClipToTrack(trackId: string, clipConfig: Partial<import('./TrackManager').TrackClip>): void {
+    const clip = this.trackManager.addClip(trackId, clipConfig)
+    
+    this.historyManager.addAction({
+      type: 'add-clip',
+      description: `Added clip: ${clip.name}`,
+      data: { trackId, clipId: clip.id },
+      inverse: { action: 'remove-clip', trackId, clipId: clip.id }
+    })
+
+    this.emit('clipAdded', { trackId, clip })
+  }
+
+  removeClipFromTrack(trackId: string, clipId: string): void {
+    this.trackManager.removeClip(trackId, clipId)
+    
+    this.historyManager.addAction({
+      type: 'remove-clip',
+      description: `Removed clip`,
+      data: { trackId, clipId },
+      inverse: { action: 'add-clip', trackId, clipId }
+    })
+
+    this.emit('clipRemoved', { trackId, clipId })
+  }
+
+  updateClip(trackId: string, clipId: string, updates: Partial<import('./TrackManager').TrackClip>): void {
+    this.trackManager.updateClip(trackId, clipId, updates)
+    this.emit('clipUpdated', { trackId, clipId, updates })
   }
 
   // Getters for Transport State
