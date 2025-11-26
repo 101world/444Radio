@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW';
 import { ProfessionalWaveformRenderer } from '@/lib/audio/ProfessionalWaveformRenderer';
@@ -86,6 +86,7 @@ export default function MultiTrackStudioV4() {
   const [fadingClip, setFadingClip] = useState<{clipId: string, side: 'in' | 'out', startX: number, startValue: number} | null>(null);
   const [marqueeStart, setMarqueeStart] = useState<{x: number, y: number} | null>(null);
   const [marqueeEnd, setMarqueeEnd] = useState<{x: number, y: number} | null>(null);
+  const [waveformCache, setWaveformCache] = useState<Map<string, ImageData>>(new Map());
   const rafRef = useRef<number | undefined>(undefined);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const analyserNodesRef = useRef<Record<string, AnalyserNode>>({});
@@ -1144,23 +1145,31 @@ export default function MultiTrackStudioV4() {
         <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-auto" ref={timelineRef}>
           {/* Timeline Ruler */}
           <div 
-            className="h-8 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center px-2 text-xs text-gray-500 cursor-pointer hover:bg-[#141414] relative overflow-hidden"
+            className="h-8 bg-[#0f0f0f] border-b border-[#1f1f1f] cursor-pointer hover:bg-[#141414] relative flex-shrink-0"
             onClick={handleRulerClick}
             title="Click to seek"
           >
-            {(() => {
-              const totalSeconds = 600;
-              const interval = zoom < 20 ? 10 : zoom < 50 ? 5 : zoom < 100 ? 2 : 1;
-              const markers: React.ReactElement[] = [];
-              for (let sec = 0; sec <= totalSeconds; sec += interval) {
-                markers.push(
-                  <div key={sec} className="absolute border-l border-[#1f1f1f] h-full flex items-center pl-1" style={{ left: `${sec * zoom}px` }}>
-                    {sec}s
-                  </div>
-                );
-              }
-              return markers;
-            })()}
+            <div className="absolute inset-0 overflow-x-auto overflow-y-hidden" style={{ width: '100%' }}>
+              <div className="relative h-full" style={{ width: `${600 * zoom}px` }}>
+                {(() => {
+                  const totalSeconds = 600;
+                  const interval = zoom < 20 ? 10 : zoom < 50 ? 5 : zoom < 100 ? 2 : 1;
+                  const markers: React.ReactElement[] = [];
+                  for (let sec = 0; sec <= totalSeconds; sec += interval) {
+                    markers.push(
+                      <div 
+                        key={sec} 
+                        className="absolute top-0 h-full flex items-center pl-1 text-xs text-gray-500 border-l border-[#1f1f1f]/30" 
+                        style={{ left: `${sec * zoom}px` }}
+                      >
+                        {sec}s
+                      </div>
+                    );
+                  }
+                  return markers;
+                })()}
+              </div>
+            </div>
           </div>
 
           {/* Track Lanes */}
@@ -1180,8 +1189,8 @@ export default function MultiTrackStudioV4() {
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500 pointer-events-none" />
             </div>
             
-            {/* Professional Beat Grid Lines */}
-            {(() => {
+            {/* Professional Beat Grid Lines - Memoized for Performance */}
+            {useMemo(() => {
               const beatDuration = 60 / bpm;
               const barDuration = beatDuration * 4;
               const totalDuration = 600;
@@ -1210,7 +1219,7 @@ export default function MultiTrackStudioV4() {
                 }
               }
               return gridLines;
-            })()}
+            }, [bpm, zoom, snapEnabled])}
             
             {/* Legacy Grid Lines (when snap enabled) */}
             {false && snapEnabled && (
@@ -1262,7 +1271,18 @@ export default function MultiTrackStudioV4() {
                 </div>
               </div>
             ) : (
-              tracks.map((track, trackIndex) => {
+              (() => {
+                // Virtual scrolling: only render visible tracks
+                const TRACK_HEIGHT = 96;
+                const containerHeight = timelineRef.current?.clientHeight || 800;
+                const visibleCount = Math.ceil(containerHeight / TRACK_HEIGHT) + 2; // +2 for buffer
+                const scrollTop = timelineRef.current?.scrollTop || 0;
+                const startIndex = Math.max(0, Math.floor(scrollTop / TRACK_HEIGHT) - 1);
+                const endIndex = Math.min(tracks.length, startIndex + visibleCount);
+                const visibleTracks = tracks.slice(startIndex, endIndex);
+                
+                return visibleTracks.map((track, idx) => {
+                  const trackIndex = startIndex + idx;
                 const trackHeight = trackHeights[track.id] || 96;
                 const isSelected = selectedTrackId === track.id;
                 return (
@@ -1416,7 +1436,9 @@ export default function MultiTrackStudioV4() {
                     <div className="absolute inset-x-0 bottom-0 h-px bg-cyan-500/0 group-hover/resize:bg-cyan-500/50 transition-colors" />
                   </div>
                 </div>
-              )})
+              );
+            });
+          })()
             )}
           </div>
         </div>
