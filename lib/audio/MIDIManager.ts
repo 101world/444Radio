@@ -366,7 +366,7 @@ export class MIDIManager {
   stopRecording(): void {
     this.isRecording = false
     this.recordingTrackId = undefined
-    this.emit('recordingStopped')
+    this.emit('recordingStopped', {})
   }
 
   private startRecordingNote(trackId: string, pitch: number, velocity: number, time: number): void {
