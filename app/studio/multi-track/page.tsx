@@ -250,7 +250,10 @@ function DAWUltimate() {
 
   // Listen for real-time job completion via Pusher
   useEffect(() => {
-    if (!pusherEvents) return;
+    if (!pusherEvents) {
+      console.log('⚠️ Pusher not available - will use polling fallback');
+      return;
+    }
 
     const handleJobCompleted = (event: any) => {
       console.log('🎉 Job completed via Pusher:', event);
@@ -289,15 +292,19 @@ function DAWUltimate() {
       console.log('📊 Job progress via Pusher:', event);
     };
 
-    pusherEvents.on('job:completed', handleJobCompleted);
-    pusherEvents.on('job:failed', handleJobFailed);
-    pusherEvents.on('job:progress', handleJobProgress);
+    try {
+      pusherEvents.on('job:completed', handleJobCompleted);
+      pusherEvents.on('job:failed', handleJobFailed);
+      pusherEvents.on('job:progress', handleJobProgress);
 
-    return () => {
-      pusherEvents.off('job:completed', handleJobCompleted);
-      pusherEvents.off('job:failed', handleJobFailed);
-      pusherEvents.off('job:progress', handleJobProgress);
-    };
+      return () => {
+        pusherEvents.off('job:completed', handleJobCompleted);
+        pusherEvents.off('job:failed', handleJobFailed);
+        pusherEvents.off('job:progress', handleJobProgress);
+      };
+    } catch (error) {
+      console.error('❌ Pusher event listener error:', error);
+    }
   }, [pusherEvents, addTrack]);
 
   // Apply layout preset if enabled
