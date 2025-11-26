@@ -502,54 +502,179 @@ export default function MultiTrackStudio() {
   }
 
   return (
-    <div style={{ fontFamily: 'Inter, Arial, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0a', color: '#e0e0e0' }}>
+    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0a', color: '#e0e0e0' }}>
       {/* Top Toolbar */}
       <header style={{ 
-        height: 48, 
-        background: '#1a1a1a', 
-        borderBottom: '1px solid #2a2a2a',
+        height: 56, 
+        background: '#141414', 
+        borderBottom: '1px solid #1f1f1f',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 16px',
-        gap: 16
+        padding: '0 20px',
+        gap: 20
       }}>
-        <div style={{ display: 'flex', gap: 8 }}>
+        {/* Logo/Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ 
+            width: 32, 
+            height: 32, 
+            borderRadius: 6,
+            background: 'linear-gradient(135deg, #00bcd4, #0097a7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 16
+          }}>🎵</div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>444 Radio Studio v3.0</div>
+            <div style={{ fontSize: 11, color: '#666' }}>Untitled Project</div>
+          </div>
+        </div>
+
+        <div style={{ width: 1, height: 32, background: '#2a2a2a', margin: '0 8px' }} />
+
+        {/* Transport Controls */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button onClick={stop} style={{ 
+            width: 32,
+            height: 32,
+            background: '#1f1f1f', 
+            border: '1px solid #2a2a2a', 
+            color: '#888', 
+            borderRadius: 4,
+            cursor: 'pointer',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }} title="Stop">⏹</button>
+          
           <button onClick={togglePlay} style={{ 
-            padding: '6px 16px', 
-            background: isPlaying ? '#ff6b6b' : '#00bcd4', 
+            width: 40,
+            height: 32,
+            background: '#00bcd4',
             border: 0, 
             color: '#000', 
             borderRadius: 4,
             cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: 13
-          }}>{isPlaying ? '⏸ Pause' : '▶ Play'}</button>
-          <button onClick={stop} style={{ 
-            padding: '6px 16px', 
-            background: '#333', 
-            border: 0, 
-            color: '#fff', 
+            fontWeight: 700,
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(0,188,212,0.3)'
+          }} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '⏸' : '▶'}</button>
+
+          <button style={{ 
+            width: 32,
+            height: 32,
+            background: '#1f1f1f', 
+            border: '1px solid #2a2a2a', 
+            color: '#888', 
             borderRadius: 4,
             cursor: 'pointer',
-            fontSize: 13
-          }}>⏹ Stop</button>
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }} title="Loop">🔁</button>
         </div>
-        <div style={{ color: '#00bcd4', fontWeight: 600, fontSize: 14 }}>{formatTime(playhead)}</div>
-        <div style={{ flex: 1 }} />
-        <button onClick={exportMix} style={{
-          padding: '6px 16px',
-          background: '#00bcd4',
-          border: 0,
-          color: '#000',
+
+        {/* Time Display */}
+        <div style={{ 
+          background: '#1f1f1f',
+          border: '1px solid #2a2a2a',
           borderRadius: 4,
-          cursor: 'pointer',
-          fontWeight: 600,
-          fontSize: 13,
-          marginRight: 16
+          padding: '6px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
         }}>
-          💾 Export Mix
-        </button>
-        <div style={{ fontSize: 12, color: '#666' }}>Space = Play • S = Stop • T = Track • M = Marker</div>
+          <div style={{ fontSize: 11, color: '#666' }}>⏱</div>
+          <div style={{ color: '#00bcd4', fontWeight: 600, fontSize: 13, fontFamily: 'monospace' }}>{formatTime(playhead)}</div>
+          <div style={{ fontSize: 11, color: '#444' }}>/</div>
+          <div style={{ fontSize: 11, color: '#666' }}>120 BPM</div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, marginLeft: 12 }}>
+          <button style={{
+            padding: '6px 16px',
+            background: '#00bcd4',
+            border: 0,
+            borderRadius: 4,
+            color: '#000',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}>Arrange</button>
+          <button style={{
+            padding: '6px 16px',
+            background: 'transparent',
+            border: 0,
+            borderRadius: 4,
+            color: '#666',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}>Mix</button>
+          <button style={{
+            padding: '6px 16px',
+            background: 'transparent',
+            border: 0,
+            borderRadius: 4,
+            color: '#666',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}>Edit</button>
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Right Controls */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ 
+            background: '#1f1f1f',
+            border: '1px solid #2a2a2a',
+            borderRadius: 4,
+            padding: '4px 10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
+            <div style={{ fontSize: 11, color: '#00bcd4', fontWeight: 600 }}>💎 {user?.id ? '20' : '0'}</div>
+            <div style={{ fontSize: 10, color: '#666' }}>Credits</div>
+          </div>
+
+          <button onClick={exportMix} style={{
+            padding: '6px 14px',
+            background: '#00bcd4',
+            border: 0,
+            color: '#000',
+            borderRadius: 4,
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
+            <span>💾</span>
+            <span>Export</span>
+          </button>
+
+          <button style={{
+            width: 32,
+            height: 32,
+            background: '#1f1f1f',
+            border: '1px solid #2a2a2a',
+            borderRadius: 4,
+            color: '#888',
+            cursor: 'pointer',
+            fontSize: 14
+          }} title="Settings">⚙️</button>
+        </div>
       </header>
 
       <main style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -561,20 +686,7 @@ export default function MultiTrackStudio() {
           display: 'flex',
           flexDirection: 'column'
         }}>
-          <div style={{ 
-            padding: '8px 12px', 
-            borderBottom: '1px solid #2a2a2a',
-            background: '#151515',
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#888',
-            display: 'flex',
-            justifyContent: 'space-between'
-          }}>
-            <span>TRACK</span>
-            <span>M S R</span>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ flex: 1, overflowY: 'auto', background: '#0f0f0f' }}>
             {tracks.map((t, idx) => {
               const isMuted = mutedTracks.has(t.id);
               const isSoloed = soloedTracks.has(t.id);
@@ -582,116 +694,191 @@ export default function MultiTrackStudio() {
               
               return (
                 <div key={t.id} style={{ 
-                  padding: '8px 12px',
-                  borderBottom: '1px solid #252525',
-                  background: isSoloed ? 'rgba(0, 188, 212, 0.1)' : 'transparent'
+                  borderBottom: '1px solid #1a1a1a',
+                  background: isSoloed ? 'rgba(0, 188, 212, 0.08)' : '#141414',
+                  position: 'relative'
                 }}>
-                  {/* Top Row: Track info + M/S/R Buttons */}
+                  {/* Track Header */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8
+                    padding: '10px 12px',
+                    gap: 10
                   }}>
-                    {/* Track Color Indicator */}
-                    <div style={{ 
-                      width: 4, 
-                      height: 28, 
+                    {/* Track Number & Color */}
+                    <div style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 4,
                       background: trackColor,
-                      borderRadius: 2
-                    }} />
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: '#000',
+                      flexShrink: 0
+                    }}>{idx + 1}</div>
                     
                     {/* Track Name */}
-                    <div style={{ flex: 1, fontSize: 13, color: isMuted ? '#555' : '#ddd' }}>
+                    <div style={{ 
+                      flex: 1, 
+                      fontSize: 13, 
+                      fontWeight: 600,
+                      color: isMuted ? '#555' : '#e0e0e0',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
                       {t.name}
                     </div>
                     
-                    {/* M/S/R Buttons */}
-                    <button 
-                      onClick={() => toggleMute(t.id)}
-                      style={{ 
-                        width: 24, 
-                        height: 24, 
-                        background: isMuted ? '#ff6b6b' : '#333',
-                        border: 0,
-                        borderRadius: 3,
-                        cursor: 'pointer',
-                        color: isMuted ? '#000' : '#888',
-                        fontSize: 11,
-                        fontWeight: 600
-                      }}
-                      title="Mute"
-                    >M</button>
-                    
-                    <button 
-                      onClick={() => toggleSolo(t.id)}
-                      style={{ 
-                        width: 24, 
-                        height: 24, 
-                        background: isSoloed ? '#00bcd4' : '#333',
-                        border: 0,
-                        borderRadius: 3,
-                        cursor: 'pointer',
-                        color: isSoloed ? '#000' : '#888',
-                        fontSize: 11,
-                        fontWeight: 600
-                      }}
-                      title="Solo"
-                    >S</button>
-                    
-                    <button 
-                      onClick={() => addClipToTrack(t.id)}
-                      style={{ 
-                        width: 24, 
-                        height: 24, 
-                        background: '#333',
-                        border: 0,
-                        borderRadius: 3,
-                        cursor: 'pointer',
-                        color: '#888',
-                        fontSize: 11,
-                        fontWeight: 600
-                      }}
-                      title="Add Clip"
-                    >+</button>
+                    {/* Control Buttons */}
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button 
+                        onClick={() => toggleMute(t.id)}
+                        style={{ 
+                          width: 26, 
+                          height: 26, 
+                          background: isMuted ? '#ff4757' : 'rgba(255,255,255,0.05)',
+                          border: isMuted ? 0 : '1px solid #2a2a2a',
+                          borderRadius: 3,
+                          cursor: 'pointer',
+                          color: isMuted ? '#fff' : '#666',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          transition: 'all 0.15s'
+                        }}
+                        title="Mute"
+                      >M</button>
+                      
+                      <button 
+                        onClick={() => toggleSolo(t.id)}
+                        style={{ 
+                          width: 26, 
+                          height: 26, 
+                          background: isSoloed ? '#00bcd4' : 'rgba(255,255,255,0.05)',
+                          border: isSoloed ? 0 : '1px solid #2a2a2a',
+                          borderRadius: 3,
+                          cursor: 'pointer',
+                          color: isSoloed ? '#000' : '#666',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          transition: 'all 0.15s'
+                        }}
+                        title="Solo"
+                      >S</button>
+                      
+                      <button 
+                        onClick={() => addClipToTrack(t.id)}
+                        style={{ 
+                          width: 26, 
+                          height: 26, 
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid #2a2a2a',
+                          borderRadius: 3,
+                          cursor: 'pointer',
+                          color: '#00bcd4',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          transition: 'all 0.15s'
+                        }}
+                        title="Record/Add"
+                      >⏺</button>
+                    </div>
                   </div>
                   
-                  {/* Bottom Row: Volume and Pan Controls */}
-                  <div style={{ marginTop: 8, paddingLeft: 16 }}>
-                    <div style={{ marginBottom: 6 }}>
-                      <div style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>
-                        VOL: {Math.round(t.volume * 100)}%
+                  {/* Volume and Pan Faders */}
+                  <div style={{ padding: '0 12px 12px 12px', display: 'flex', gap: 12 }}>
+                    {/* Volume */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: 4
+                      }}>
+                        <span style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', fontWeight: 600 }}>Vol</span>
+                        <span style={{ fontSize: 10, color: '#00bcd4', fontWeight: 600 }}>{Math.round(t.volume * 100)}</span>
                       </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={t.volume * 100}
-                        onChange={(e) => setTrackVolume(t.id, Number(e.target.value) / 100)}
-                        style={{
-                          width: '100%',
-                          height: 3,
-                          accentColor: trackColor,
-                          cursor: 'pointer'
-                        }}
-                      />
+                      <div style={{ 
+                        height: 4, 
+                        background: 'rgba(255,255,255,0.05)', 
+                        borderRadius: 2,
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 0,
+                          height: '100%',
+                          width: `${t.volume * 100}%`,
+                          background: `linear-gradient(90deg, ${trackColor}, ${trackColor}dd)`,
+                          borderRadius: 2
+                        }} />
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={t.volume * 100}
+                          onChange={(e) => setTrackVolume(t.id, Number(e.target.value) / 100)}
+                          style={{
+                            position: 'absolute',
+                            width: '100%',
+                            height: '100%',
+                            opacity: 0,
+                            cursor: 'pointer',
+                            margin: 0
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>
-                        PAN: {t.pan === 0 ? 'C' : t.pan < 0 ? `L${Math.abs(Math.round(t.pan * 100))}` : `R${Math.round(t.pan * 100)}`}
+                    
+                    {/* Pan */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: 4
+                      }}>
+                        <span style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', fontWeight: 600 }}>Pan</span>
+                        <span style={{ fontSize: 10, color: '#00bcd4', fontWeight: 600 }}>
+                          {t.pan === 0 ? 'C' : t.pan < 0 ? `L${Math.abs(Math.round(t.pan * 100))}` : `R${Math.round(t.pan * 100)}`}
+                        </span>
                       </div>
-                      <input
-                        type="range"
-                        min="-100"
-                        max="100"
-                        value={t.pan * 100}
-                        onChange={(e) => setTrackPan(t.id, Number(e.target.value) / 100)}
-                        style={{
-                          width: '100%',
-                          height: 3,
-                          accentColor: '#00bcd4',
-                          cursor: 'pointer'
-                        }}
-                      />
+                      <div style={{ 
+                        height: 4, 
+                        background: 'rgba(255,255,255,0.05)', 
+                        borderRadius: 2,
+                        position: 'relative'
+                      }}>
+                        <div style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: 0,
+                          width: 2,
+                          height: '100%',
+                          background: '#444',
+                          transform: 'translateX(-50%)'
+                        }} />
+                        <input
+                          type="range"
+                          min="-100"
+                          max="100"
+                          value={t.pan * 100}
+                          onChange={(e) => setTrackPan(t.id, Number(e.target.value) / 100)}
+                          style={{
+                            position: 'absolute',
+                            width: '100%',
+                            height: '100%',
+                            opacity: 0,
+                            cursor: 'pointer',
+                            margin: 0
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -700,85 +887,103 @@ export default function MultiTrackStudio() {
           </div>
           
           {/* Add Track Button */}
-          <div style={{ padding: 12, borderTop: '1px solid #2a2a2a' }}>
+          <div style={{ 
+            padding: 12, 
+            borderTop: '1px solid #1f1f1f',
+            background: '#141414',
+            display: 'flex',
+            gap: 8
+          }}>
             <button 
               onClick={() => addTrack()}
               style={{ 
-                width: '100%', 
-                padding: '8px', 
-                background: '#00bcd4',
+                flex: 1,
+                padding: '10px', 
+                background: 'linear-gradient(135deg, #00bcd4, #0097a7)',
                 color: '#000',
                 border: 0,
                 borderRadius: 4,
                 cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: 13
+                fontWeight: 700,
+                fontSize: 12,
+                boxShadow: '0 2px 8px rgba(0,188,212,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6
               }}
-            >+ New Track</button>
+            >
+              <span style={{ fontSize: 16 }}>+</span>
+              <span>Add Track</span>
+            </button>
           </div>
         </aside>
 
         <section style={{ flex: 1, position: 'relative', overflow: 'auto', background: '#0a0a0a' }}>
-          {/* Arrangement Markers Row */}
-          <div style={{ 
-            height: 32, 
-            borderBottom: '1px solid #2a2a2a', 
-            background: '#151515',
-            position: 'sticky',
-            top: 0,
-            zIndex: 12,
-            display: 'flex'
-          }}>
-            {markers.map((marker, idx) => {
-              const nextMarkerPos = markers[idx + 1]?.position || 120;
-              const width = pxForSeconds(nextMarkerPos - marker.position);
-              const markerColors = ['#6a5acd', '#4a4a8a', '#5a6a9a', '#4a5a7a'];
-              const bgColor = markerColors[idx % markerColors.length];
-              
-              return (
-                <div key={marker.id} style={{ 
-                  width: width + 'px',
-                  borderRight: '1px solid #000',
-                  background: bgColor,
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingLeft: 8,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: '#fff',
-                  cursor: 'pointer'
-                }}>
-                  {marker.name}
-                </div>
-              );
-            })}
-          </div>
-
           {/* Timeline Ruler */}
           <div style={{ 
-            height: 28, 
-            borderBottom: '1px solid #2a2a2a', 
-            background: '#1a1a1a',
+            height: 40, 
+            borderBottom: '1px solid #1f1f1f', 
+            background: '#141414',
             display: 'flex',
             alignItems: 'flex-end',
             position: 'sticky',
-            top: 32,
-            zIndex: 11
+            top: 0,
+            zIndex: 11,
+            paddingBottom: 6
           }}>
-            <div style={{ display: 'flex', height: '100%' }}>
-              {Array.from({ length: 121 }).map((_, i) => (
-                <div key={i} style={{ 
-                  width: pxForSeconds(1), 
-                  textAlign: 'center', 
-                  fontSize: 10, 
-                  color: i % 4 === 0 ? '#00bcd4' : '#555',
-                  paddingBottom: 4,
-                  borderLeft: i % 4 === 0 ? '1px solid #333' : 'none',
-                  fontWeight: i % 16 === 0 ? 600 : 400
-                }}>
-                  {i % 4 === 0 ? i : ''}
-                </div>
-              ))}
+            <div style={{ display: 'flex', height: '100%', position: 'relative' }}>
+              {/* Arrangement markers as subtle background */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, display: 'flex' }}>
+                {markers.map((marker, idx) => {
+                  const nextMarkerPos = markers[idx + 1]?.position || 120;
+                  const width = pxForSeconds(nextMarkerPos - marker.position);
+                  
+                  return (
+                    <div key={marker.id} style={{ 
+                      width: width + 'px',
+                      borderRight: '1px solid rgba(255,255,255,0.05)',
+                      background: idx % 2 === 0 ? 'rgba(0,188,212,0.03)' : 'rgba(100,150,255,0.03)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      paddingLeft: 6,
+                      fontSize: 9,
+                      fontWeight: 600,
+                      color: '#555',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      {marker.name}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Time markers */}
+              <div style={{ display: 'flex', height: '100%', alignItems: 'flex-end', paddingTop: 16 }}>
+                {Array.from({ length: 121 }).map((_, i) => {
+                  const isMajor = i % 16 === 0;
+                  const isMinor = i % 4 === 0 && !isMajor;
+                  
+                  return (
+                    <div key={i} style={{ 
+                      width: pxForSeconds(1), 
+                      textAlign: 'center', 
+                      fontSize: isMajor ? 11 : 9,
+                      color: isMajor ? '#00bcd4' : isMinor ? '#666' : 'transparent',
+                      fontWeight: isMajor ? 700 : 500,
+                      fontFamily: 'monospace',
+                      borderLeft: isMajor ? '2px solid #00bcd4' : isMinor ? '1px solid #333' : 'none',
+                      height: isMajor ? 24 : isMinor ? 16 : 8,
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      justifyContent: 'center'
+                    }}>
+                      {isMajor ? i : isMinor ? i : ''}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -793,22 +998,35 @@ export default function MultiTrackStudio() {
               
               return (
                 <div key={t.id} style={{ 
-                  height: 64, 
-                  borderBottom: '1px solid #1a1a1a',
+                  height: 80, 
+                  borderBottom: '1px solid #151515',
                   position: 'relative',
-                  background: idx % 2 === 0 ? '#0f0f0f' : '#0a0a0a'
+                  background: '#0d0d0d'
                 }}>
-                  {/* Grid Lines */}
+                  {/* Subtle Grid Lines */}
                   <div style={{ 
                     position: 'absolute', 
                     inset: 0, 
-                    background: 'linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)',
+                    background: 'linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
                     backgroundSize: `${pxForSeconds(4)}px 100%`,
                     pointerEvents: 'none'
                   }} />
+                  
+                  {/* Major beat lines */}
+                  {Array.from({ length: 31 }).map((_, i) => (
+                    <div key={i} style={{
+                      position: 'absolute',
+                      left: pxForSeconds(i * 4),
+                      top: 0,
+                      bottom: 0,
+                      width: 1,
+                      background: i % 4 === 0 ? 'rgba(0,188,212,0.08)' : 'rgba(255,255,255,0.02)',
+                      pointerEvents: 'none'
+                    }} />
+                  ))}
 
                   {/* Clips */}
-                  <div style={{ position: 'relative', height: '100%', padding: '8px 0' }}>
+                  <div style={{ position: 'relative', height: '100%', padding: '12px 0' }}>
                     {t.clips.map(c => {
                       const left = pxForSeconds(c.start || 0);
                       const width = pxForSeconds(c.duration && c.duration > 0 ? c.duration : 8);
@@ -817,17 +1035,17 @@ export default function MultiTrackStudio() {
                         <div key={c.id} style={{
                           position: 'absolute',
                           left,
-                          top: 8,
-                          height: 48,
-                          width: Math.max(60, width),
-                          background: `linear-gradient(135deg, ${trackColor}dd 0%, ${trackColor}aa 100%)`,
-                          border: `1px solid ${trackColor}`,
-                          borderRadius: 3,
+                          top: 12,
+                          height: 56,
+                          width: Math.max(80, width),
+                          background: `linear-gradient(180deg, ${trackColor}ee 0%, ${trackColor}cc 100%)`,
+                          border: `2px solid ${trackColor}`,
+                          borderRadius: 4,
                           overflow: 'hidden',
-                          boxShadow: isMuted ? 'none' : `0 2px 8px ${trackColor}44`,
+                          boxShadow: shouldPlay ? `0 4px 16px ${trackColor}55, inset 0 1px 0 rgba(255,255,255,0.2)` : 'none',
                           cursor: 'pointer',
-                          opacity: shouldPlay ? 1 : 0.3,
-                          transition: 'opacity 0.2s'
+                          opacity: shouldPlay ? 1 : 0.25,
+                          transition: 'all 0.2s'
                         }}>
                           {/* Waveform Canvas */}
                           <canvas 
@@ -839,25 +1057,40 @@ export default function MultiTrackStudio() {
                               width: '100%',
                               height: '100%',
                               pointerEvents: 'none',
-                              opacity: 0.6
+                              opacity: 0.5,
+                              mixBlendMode: 'overlay'
                             }}
                           />
                           
                           {/* Clip Name */}
                           <div style={{ 
                             position: 'absolute',
-                            top: 4,
-                            left: 6,
-                            fontSize: 10, 
+                            top: 6,
+                            left: 8,
+                            fontSize: 11, 
                             color: '#000', 
-                            fontWeight: 600,
-                            textShadow: '0 1px 2px rgba(255,255,255,0.3)',
+                            fontWeight: 700,
+                            textShadow: '0 1px 2px rgba(255,255,255,0.4)',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            maxWidth: 'calc(100% - 12px)'
+                            maxWidth: 'calc(100% - 16px)',
+                            letterSpacing: '0.3px'
                           }}>
-                            {c.url.split('/').pop()?.slice(0, 25) || 'Clip'}
+                            {c.url.split('/').pop()?.replace(/\.(mp3|wav)$/i, '').slice(0, 30) || 'Audio Clip'}
+                          </div>
+                          
+                          {/* Duration indicator */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 4,
+                            right: 6,
+                            fontSize: 9,
+                            color: 'rgba(0,0,0,0.5)',
+                            fontWeight: 600,
+                            fontFamily: 'monospace'
+                          }}>
+                            {c.duration > 0 ? formatTime(c.duration) : '...'}
                           </div>
                         </div>
                       );
@@ -872,24 +1105,27 @@ export default function MultiTrackStudio() {
           <div style={{
             position: 'absolute',
             left: pxForSeconds(playhead),
-            top: 60,
+            top: 40,
             bottom: 0,
-            width: 2,
-            background: '#00bcd4',
-            boxShadow: '0 0 8px #00bcd4',
-            transform: 'translateX(-1px)',
+            width: 3,
+            background: 'linear-gradient(180deg, #00bcd4 0%, #00bcd4dd 50%, transparent 100%)',
+            boxShadow: '0 0 12px rgba(0,188,212,0.8), 0 0 4px rgba(0,188,212,0.6)',
+            transform: 'translateX(-1.5px)',
             pointerEvents: 'none',
             zIndex: 10
           }}>
+            {/* Playhead Handle */}
             <div style={{
               position: 'absolute',
-              top: -8,
-              left: -6,
-              width: 0,
-              height: 0,
-              borderLeft: '6px solid transparent',
-              borderRight: '6px solid transparent',
-              borderTop: '8px solid #00bcd4'
+              top: -2,
+              left: -8,
+              width: 18,
+              height: 18,
+              background: '#00bcd4',
+              borderRadius: '50% 50% 50% 0',
+              transform: 'rotate(-45deg)',
+              boxShadow: '0 2px 8px rgba(0,188,212,0.6)',
+              border: '2px solid #0a0a0a'
             }} />
           </div>
 
