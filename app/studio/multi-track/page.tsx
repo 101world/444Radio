@@ -38,6 +38,17 @@ export default function MultiTrackStudioV4() {
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showMixer, setShowMixer] = useState(true);
   const [showEffects, setShowEffects] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [loopEnabled, setLoopEnabled] = useState(false);
+  const [loopStart, setLoopStart] = useState(0);
+  const [loopEnd, setLoopEnd] = useState(10);
+  const [draggedClip, setDraggedClip] = useState<{clipId: string, trackId: string} | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const rafRef = useRef<number | undefined>(undefined);
   const timelineRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +77,53 @@ export default function MultiTrackStudioV4() {
       dawInstance.dispose();
     };
   }, [user?.id]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      switch(e.key.toLowerCase()) {
+        case ' ':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 's':
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault();
+            setShowSaveModal(true);
+          } else {
+            stop();
+          }
+          break;
+        case 'delete':
+        case 'backspace':
+          if (selectedClipId && selectedTrackId) {
+            handleDeleteClip();
+          }
+          break;
+        case 'z':
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault();
+            handleUndo();
+          }
+          break;
+        case 'e':
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault();
+            handleSplitClip();
+          }
+          break;
+        case '?':
+          e.preventDefault();
+          setShowShortcuts(true);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedClipId, selectedTrackId, daw]);
 
   // Playhead animation
   useEffect(() => {
@@ -219,7 +277,79 @@ export default function MultiTrackStudioV4() {
 
   const handleZoomChange = (newZoom: number) => {
     setZoom(newZoom);
-    // Re-render waveforms with new zoom level
+  };
+
+  const handleDeleteClip = () => {
+    if (!daw || !selectedClipId || !selectedTrackId) return;
+    daw.removeClipFromTrack(selectedTrackId, selectedClipId);
+    setSelectedClipId(null);
+    setTracks(daw.getTracks());
+  };
+
+  const handleSplitClip = () => {
+    if (!daw || !selectedClipId || !selectedTrackId) return;
+    const track = tracks.find(t => t.id === selectedTrackId);
+    const clip = track?.clips.find(c => c.id === selectedClipId);
+    if (!clip || playhead < clip.startTime || playhead > clip.startTime + clip.duration) {
+      alert('Playhead must be within the selected clip to split');
+      return;
+    }
+    // Split logic would use NonDestructiveEditor
+    console.log('Split clip at', playhead);
+  };
+
+  const handleUndo = () => {
+    if (!daw) return;
+    // Wire to HistoryManager
+    console.log('Undo');
+  };
+
+  const handleRedo = () => {
+    if (!daw) return;
+    console.log('Redo');
+  };
+
+  const toggleRecording = () => {
+    if (!daw) return;
+    setIsRecording(!isRecording);
+    // Wire to RecordingManager
+    console.log('Toggle recording', !isRecording);
+  };
+
+  const handleSaveProject = async (projectName: string) => {
+    if (!daw) return;
+    // Wire to ProjectManager
+    console.log('Save project:', projectName);
+    setShowSaveModal(false);
+  };
+
+  const handleLoadProject = async (projectId: string) => {
+    if (!daw) return;
+    // Wire to ProjectManager
+    console.log('Load project:', projectId);
+    setShowLoadModal(false);
+  };
+
+  const handleExport = async (format: 'wav' | 'mp3', quality: string) => {
+    if (!daw) return;
+    // Wire to ProjectManager export
+    console.log('Export:', format, quality);
+    setShowExportModal(false);
+  };
+
+  const handleTrackColorChange = (trackId: string, color: string) => {
+    if (!daw) return;
+    const track = daw.getTracks().find(t => t.id === trackId);
+    if (track) {
+      track.color = color;
+      setTracks(daw.getTracks());
+    }
+  };
+
+  const snapTime = (time: number) => {
+    if (!snapToGrid) return time;
+    const beatDuration = 60 / bpm;
+    return Math.round(time / beatDuration) * beatDuration;
   };
 
   return (
@@ -241,6 +371,23 @@ export default function MultiTrackStudioV4() {
         {/* Transport Controls */}
         <div className="flex gap-2 items-center">
           <button
+            onClick={handleUndo}
+            className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-500 rounded hover:bg-[#252525] transition-all"
+            title="Undo (Cmd+Z)"
+          >
+            ↶
+          </button>
+          <button
+            onClick={handleRedo}
+            className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-500 rounded hover:bg-[#252525] transition-all"
+            title="Redo (Cmd+Shift+Z)"
+          >
+            ↷
+          </button>
+          
+          <div className="w-px h-8 bg-[#2a2a2a] mx-1" />
+          
+          <button
             onClick={stop}
             className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-500 rounded hover:bg-[#252525] transition-all"
             title="Stop (S)"
@@ -258,6 +405,18 @@ export default function MultiTrackStudioV4() {
             title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
           >
             {isPlaying ? '⏸' : '▶'}
+          </button>
+          
+          <button
+            onClick={toggleRecording}
+            className={`w-8 h-8 rounded-full font-bold transition-all ${
+              isRecording
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'bg-[#1f1f1f] border border-[#2a2a2a] text-red-400 hover:bg-[#252525]'
+            }`}
+            title="Record (R)"
+          >
+            ●
           </button>
         </div>
 
@@ -287,7 +446,54 @@ export default function MultiTrackStudioV4() {
           <span className="text-cyan-400 font-mono w-12">{zoom}px</span>
         </div>
 
+        <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
+
+        {/* Loop & Snap Controls */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setLoopEnabled(!loopEnabled)}
+            className={`px-2 py-1 text-xs rounded transition-all ${
+              loopEnabled ? 'bg-cyan-500 text-black' : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
+            }`}
+            title="Loop region"
+          >
+            🔁
+          </button>
+          <button
+            onClick={() => setSnapToGrid(!snapToGrid)}
+            className={`px-2 py-1 text-xs rounded transition-all ${
+              snapToGrid ? 'bg-cyan-500 text-black' : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
+            }`}
+            title="Snap to grid"
+          >
+            🧲
+          </button>
+        </div>
+
         <div className="flex-1" />
+
+        {/* Project Controls */}
+        <div className="flex gap-2 mr-2">
+          <button
+            onClick={() => setShowSaveModal(true)}
+            className="px-3 py-1.5 text-xs rounded bg-[#1f1f1f] text-gray-400 hover:bg-[#252525] transition-all"
+            title="Save project (Cmd+S)"
+          >
+            💾 Save
+          </button>
+          <button
+            onClick={() => setShowLoadModal(true)}
+            className="px-3 py-1.5 text-xs rounded bg-[#1f1f1f] text-gray-400 hover:bg-[#252525] transition-all"
+          >
+            📂 Load
+          </button>
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black hover:bg-cyan-400 transition-all"
+          >
+            📤 Export
+          </button>
+        </div>
 
         {/* View Toggles */}
         <div className="flex gap-2">
@@ -359,9 +565,21 @@ export default function MultiTrackStudioV4() {
                   onClick={() => setSelectedTrackId(track.id)}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">
-                      {track.name}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowColorPicker(true);
+                          setSelectedTrackId(track.id);
+                        }}
+                        className="w-3 h-3 rounded-full border border-white/30 hover:ring-2 hover:ring-white/50"
+                        style={{ backgroundColor: track.color }}
+                        title="Change color"
+                      />
+                      <span className="text-sm font-medium text-white">
+                        {track.name}
+                      </span>
+                    </div>
                     <div className="flex gap-1">
                       <button
                         onClick={(e) => {
@@ -449,7 +667,34 @@ export default function MultiTrackStudioV4() {
           </div>
 
           {/* Track Lanes */}
-          <div className="flex-1">
+          <div className="flex-1 relative">
+            {/* Grid Lines (when snap enabled) */}
+            {snapToGrid && (
+              <div className="absolute inset-0 pointer-events-none">
+                {Array.from({ length: Math.ceil(600 / zoom) * 4 }, (_, i) => {
+                  const beatWidth = (60 / bpm) * zoom;
+                  return (
+                    <div
+                      key={i}
+                      className="absolute top-0 bottom-0 border-l border-cyan-500/10"
+                      style={{ left: `${i * beatWidth}px` }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Loop Region Indicator */}
+            {loopEnabled && (
+              <div
+                className="absolute top-0 bottom-0 bg-cyan-500/5 border-x-2 border-cyan-500/30 pointer-events-none"
+                style={{
+                  left: `${loopStart * zoom}px`,
+                  width: `${(loopEnd - loopStart) * zoom}px`
+                }}
+              />
+            )}
+            
             {tracks.length === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-600">
                 <div className="text-center">
@@ -497,10 +742,46 @@ export default function MultiTrackStudioV4() {
                             className="w-full h-full"
                           />
                           
+                          {/* Fade In Handle */}
+                          <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-black/50 to-transparent cursor-ew-resize hover:from-cyan-400/50"
+                            title="Drag to adjust fade in"
+                          />
+                          
+                          {/* Fade Out Handle */}
+                          <div className="absolute right-0 top-0 bottom-0 w-2 bg-gradient-to-l from-black/50 to-transparent cursor-ew-resize hover:from-cyan-400/50"
+                            title="Drag to adjust fade out"
+                          />
+                          
                           {/* Clip Name Overlay */}
                           <div className="absolute top-1 left-2 text-xs font-semibold text-white drop-shadow-lg">
                             {clip.name || track.name}
                           </div>
+                          
+                          {/* Clip Actions (show on selected) */}
+                          {selectedClipId === clip.id && (
+                            <div className="absolute top-1 right-2 flex gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSplitClip();
+                                }}
+                                className="px-1 py-0.5 text-[10px] bg-black/70 rounded hover:bg-cyan-500 transition-colors"
+                                title="Split (Cmd+E)"
+                              >
+                                ✂️
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClip();
+                                }}
+                                className="px-1 py-0.5 text-[10px] bg-black/70 rounded hover:bg-red-500 transition-colors"
+                                title="Delete (Del)"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -638,8 +919,115 @@ export default function MultiTrackStudioV4() {
         <div className="mx-4">|</div>
         <div>Latency: 5ms</div>
         <div className="flex-1" />
-        <div className="text-cyan-400">All 17 audio features loaded ✓</div>
+        <button
+          onClick={() => setShowShortcuts(true)}
+          className="text-cyan-400 hover:text-cyan-300 transition-colors"
+        >
+          Press ? for shortcuts
+        </button>
       </footer>
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-white mb-4">⌨️ Keyboard Shortcuts</h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-gray-400">Play/Pause</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Space</kbd></div>
+              <div className="flex justify-between"><span className="text-gray-400">Stop</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">S</kbd></div>
+              <div className="flex justify-between"><span className="text-gray-400">Save</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Cmd+S</kbd></div>
+              <div className="flex justify-between"><span className="text-gray-400">Undo</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Cmd+Z</kbd></div>
+              <div className="flex justify-between"><span className="text-gray-400">Split Clip</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Cmd+E</kbd></div>
+              <div className="flex justify-between"><span className="text-gray-400">Delete</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Del</kbd></div>
+              <div className="flex justify-between"><span className="text-gray-400">Show Shortcuts</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">?</kbd></div>
+            </div>
+            <button onClick={() => setShowShortcuts(false)} className="mt-4 w-full py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Save Project Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
+          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-white mb-4">💾 Save Project</h2>
+            <input type="text" placeholder="Project name..." className="w-full px-3 py-2 bg-[#1f1f1f] text-white rounded mb-4" />
+            <div className="flex gap-2">
+              <button onClick={() => handleSaveProject('New Project')} className="flex-1 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400">Save</button>
+              <button onClick={() => setShowSaveModal(false)} className="flex-1 py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Load Project Modal */}
+      {showLoadModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowLoadModal(false)}>
+          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-white mb-4">📂 Load Project</h2>
+            <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+              <div className="p-3 bg-[#1f1f1f] rounded hover:bg-[#252525] cursor-pointer">Demo Project 1</div>
+              <div className="p-3 bg-[#1f1f1f] rounded hover:bg-[#252525] cursor-pointer">Demo Project 2</div>
+              <div className="text-sm text-gray-500 text-center py-4">Connect to Supabase to see your projects</div>
+            </div>
+            <button onClick={() => setShowLoadModal(false)} className="w-full py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
+          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-white mb-4">📤 Export Project</h2>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-sm text-gray-400">Format</label>
+                <select className="w-full mt-1 px-3 py-2 bg-[#1f1f1f] text-white rounded">
+                  <option>WAV (16-bit)</option>
+                  <option>WAV (24-bit)</option>
+                  <option>MP3 (320kbps)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-gray-400">Sample Rate</label>
+                <select className="w-full mt-1 px-3 py-2 bg-[#1f1f1f] text-white rounded">
+                  <option>44.1 kHz</option>
+                  <option>48 kHz</option>
+                  <option>96 kHz</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => handleExport('wav', '16-bit')} className="flex-1 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400">Export</button>
+              <button onClick={() => setShowExportModal(false)} className="flex-1 py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Track Color Picker Modal */}
+      {showColorPicker && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowColorPicker(false)}>
+          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-white mb-4">🎨 Track Color</h2>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {['#00bcd4', '#ff5722', '#4caf50', '#ffc107', '#9c27b0', '#ff9800', '#e91e63', '#3f51b5'].map(color => (
+                <button
+                  key={color}
+                  onClick={() => {
+                    if (selectedTrackId) handleTrackColorChange(selectedTrackId, color);
+                    setShowColorPicker(false);
+                  }}
+                  className="w-12 h-12 rounded hover:ring-2 ring-white transition-all"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+            <button onClick={() => setShowColorPicker(false)} className="w-full py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
