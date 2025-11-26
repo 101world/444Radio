@@ -16,7 +16,7 @@ export default function MultiTrackStudioV4() {
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [showMixer, setShowMixer] = useState(true);
   const [showEffects, setShowEffects] = useState(false);
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | undefined>(undefined);
 
   // Initialize DAW
   useEffect(() => {
