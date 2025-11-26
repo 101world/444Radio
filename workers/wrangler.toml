@@ -1,0 +1,20 @@
+name = "audio-worker"
+main = "audio-worker.js"
+compatibility_date = "2024-11-26"
+
+# R2 bucket binding
+[[r2_buckets]]
+binding = "AUDIO_BUCKET"
+bucket_name = "audio-files"  # Your existing R2 bucket
+
+# Environment variables
+[vars]
+DEBUG_TOKEN = "your-debug-token-here"  # Change this!
+SIGNING_SECRET = "your-signing-secret-here"  # Change this! Must match AUDIO_SIGNING_SECRET in Next.js
+
+# Routes
+route = { pattern = "audio-worker.your-subdomain.workers.dev/*", zone_id = "" }
+
+# Workers Sites for static assets (optional)
+# [site]
+# bucket = "./public"
