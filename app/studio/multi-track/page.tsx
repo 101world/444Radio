@@ -110,6 +110,55 @@ export default function MultiTrackStudioV4() {
     setBpm(newBpm);
   };
 
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || !daw) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const arrayBuffer = await file.arrayBuffer();
+      
+      try {
+        const audioContext = daw.getAudioContext();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        const trackName = file.name.replace(/\.(mp3|wav|m4a|ogg)$/i, '');
+        const track = daw.createTrack(trackName);
+        
+        // For now, just show the track was created - full clip support coming soon
+        console.log(`✅ Loaded ${trackName} - duration: ${audioBuffer.duration.toFixed(2)}s`);
+        
+        setTracks(daw.getTracks());
+        setSelectedTrackId(track.id);
+      } catch (error) {
+        console.error('Failed to decode audio file:', error);
+        alert(`Failed to load ${file.name}. Make sure it's a valid audio file.`);
+      }
+    }
+  };
+
+  const updateTrackVolume = (trackId: string, volume: number) => {
+    if (!daw) return;
+    daw.setTrackVolume(trackId, volume / 100);
+    setTracks(daw.getTracks());
+  };
+
+  const updateTrackPan = (trackId: string, pan: number) => {
+    if (!daw) return;
+    daw.setTrackPan(trackId, pan / 100);
+    setTracks(daw.getTracks());
+  };
+
+  const toggleMute = (trackId: string) => {
+    if (!daw) return;
+    daw.toggleTrackMute(trackId);
+    setTracks(daw.getTracks());
+  };
+
+  const toggleSolo = (trackId: string) => {
+    if (!daw) return;
+    daw.toggleTrackSolo(trackId);
+    setTracks(daw.getTracks());
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -195,12 +244,27 @@ export default function MultiTrackStudioV4() {
       <div className="flex-1 flex overflow-hidden">
         {/* Track List */}
         <div className="w-64 bg-[#0f0f0f] border-r border-[#1f1f1f] flex flex-col">
-          <div className="p-4 border-b border-[#1f1f1f]">
+          <div className="p-4 border-b border-[#1f1f1f] space-y-2">
             <button
               onClick={addTrack}
               className="w-full py-2 bg-cyan-500 text-black rounded font-semibold text-sm hover:bg-cyan-400 transition-colors"
             >
               ➕ Add Track
+            </button>
+            
+            <input
+              type="file"
+              id="audio-upload"
+              accept="audio/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFileUpload(e.target.files)}
+            />
+            <button
+              onClick={() => document.getElementById('audio-upload')?.click()}
+              className="w-full py-2 bg-[#1f1f1f] text-cyan-400 border border-cyan-500/30 rounded font-semibold text-sm hover:bg-cyan-500/10 transition-colors"
+            >
+              📁 Upload Audio
             </button>
           </div>
 
@@ -224,22 +288,70 @@ export default function MultiTrackStudioV4() {
                     <span className="text-sm font-medium text-white">
                       {track.name}
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteTrack(track.id);
-                      }}
-                      className="text-red-400 hover:text-red-300 text-xs"
-                    >
-                      🗑️
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleMute(track.id);
+                        }}
+                        className={`px-1.5 py-0.5 text-[10px] rounded ${
+                          track.muted
+                            ? 'bg-red-500 text-white'
+                            : 'bg-[#1f1f1f] text-gray-500 hover:bg-[#252525]'
+                        }`}
+                        title="Mute"
+                      >
+                        M
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSolo(track.id);
+                        }}
+                        className={`px-1.5 py-0.5 text-[10px] rounded ${
+                          track.solo
+                            ? 'bg-yellow-500 text-black'
+                            : 'bg-[#1f1f1f] text-gray-500 hover:bg-[#252525]'
+                        }`}
+                        title="Solo"
+                      >
+                        S
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteTrack(track.id);
+                        }}
+                        className="text-red-400 hover:text-red-300 text-xs"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                     <span className="px-1.5 py-0.5 bg-[#1f1f1f] rounded">
                       {track.type.toUpperCase()}
                     </span>
                     <span>{track.clips.length} clips</span>
+                  </div>
+
+                  {/* Mini volume fader */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-600">Vol</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={track.volume * 100}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        updateTrackVolume(track.id, parseInt(e.target.value));
+                      }}
+                      className="flex-1 h-1"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-[10px] text-gray-600 w-8">{Math.round(track.volume * 100)}%</span>
                   </div>
                 </div>
               ))
@@ -280,59 +392,103 @@ export default function MultiTrackStudioV4() {
         </div>
 
         {/* Mixer Panel */}
-        {showMixer && (
-          <div className="w-80 bg-[#0f0f0f] border-l border-[#1f1f1f] p-4 overflow-y-auto">
-            <div className="text-sm font-bold mb-4 text-white">🎛️ Mixing Console</div>
-            
-            {selectedTrackId ? (
+        {showMixer && selectedTrackId && (() => {
+          const selectedTrack = tracks.find(t => t.id === selectedTrackId);
+          if (!selectedTrack) return null;
+
+          return (
+            <div className="w-80 bg-[#0f0f0f] border-l border-[#1f1f1f] p-4 overflow-y-auto">
+              <div className="text-sm font-bold mb-4 text-white">🎛️ {selectedTrack.name}</div>
+              
               <div className="space-y-4">
+                {/* Volume Control */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-2">Volume</label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-gray-500">Volume</label>
+                    <span className="text-xs text-cyan-400">{Math.round(selectedTrack.volume * 100)}%</span>
+                  </div>
                   <input
                     type="range"
                     min="0"
                     max="100"
-                    defaultValue="80"
+                    value={selectedTrack.volume * 100}
+                    onChange={(e) => updateTrackVolume(selectedTrack.id, parseInt(e.target.value))}
                     className="w-full"
                   />
                 </div>
                 
+                {/* Pan Control */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-2">Pan</label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-gray-500">Pan</label>
+                    <span className="text-xs text-cyan-400">
+                      {selectedTrack.pan === 0 ? 'C' : selectedTrack.pan < 0 ? `L${Math.abs(Math.round(selectedTrack.pan * 100))}` : `R${Math.round(selectedTrack.pan * 100)}`}
+                    </span>
+                  </div>
                   <input
                     type="range"
                     min="-100"
                     max="100"
-                    defaultValue="0"
+                    value={selectedTrack.pan * 100}
+                    onChange={(e) => updateTrackPan(selectedTrack.id, parseInt(e.target.value))}
                     className="w-full"
                   />
                 </div>
 
+                {/* Track Controls */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => toggleMute(selectedTrack.id)}
+                    className={`flex-1 py-2 rounded text-xs font-semibold ${
+                      selectedTrack.muted
+                        ? 'bg-red-500 text-white'
+                        : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
+                    }`}
+                  >
+                    {selectedTrack.muted ? '🔇 Muted' : '🔊 Mute'}
+                  </button>
+                  <button
+                    onClick={() => toggleSolo(selectedTrack.id)}
+                    className={`flex-1 py-2 rounded text-xs font-semibold ${
+                      selectedTrack.solo
+                        ? 'bg-yellow-500 text-black'
+                        : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
+                    }`}
+                  >
+                    {selectedTrack.solo ? '⭐ Solo' : 'Solo'}
+                  </button>
+                </div>
+
+                {/* Track Info */}
                 <div className="pt-4 border-t border-[#1f1f1f]">
-                  <div className="text-xs font-bold text-white mb-2">Effects</div>
+                  <div className="text-xs text-gray-600 space-y-1">
+                    <div>Type: <span className="text-cyan-400">{selectedTrack.type}</span></div>
+                    <div>Clips: <span className="text-cyan-400">{selectedTrack.clips.length}</span></div>
+                    <div>Color: <span className="text-cyan-400">{selectedTrack.color}</span></div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-[#1f1f1f]">
+                  <div className="text-xs font-bold text-white mb-2">Effects (Coming Soon)</div>
                   <div className="space-y-2 text-xs">
-                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left">
+                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left opacity-50 cursor-not-allowed">
                       🎚️ EQ
                     </button>
-                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left">
+                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left opacity-50 cursor-not-allowed">
                       🔊 Compressor
                     </button>
-                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left">
+                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left opacity-50 cursor-not-allowed">
                       🌊 Reverb
                     </button>
-                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left">
+                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left opacity-50 cursor-not-allowed">
                       ⏱️ Delay
                     </button>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="text-sm text-gray-600 text-center py-8">
-                Select a track to edit
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Bottom Status Bar */}
