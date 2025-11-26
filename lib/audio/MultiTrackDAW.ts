@@ -72,14 +72,16 @@ export class MultiTrackDAW {
     this.audioContext = new AudioContext({ sampleRate: config.sampleRate || 48000 })
 
     // Initialize core systems
-    this.audioEngine = new AudioEngine(this.audioContext)
+    // AudioEngine creates its own context, don't pass ours
+    this.audioEngine = new AudioEngine({ sampleRate: config.sampleRate || 48000 })
     this.trackManager = new TrackManager(this.audioContext)
     this.timelineManager = new TimelineManager(config.bpm || 120)
     this.mixingConsole = new MixingConsole(this.audioContext)
     this.midiManager = new MIDIManager(this.audioContext)
     this.effectsChain = new EffectsChain(this.audioContext)
     this.recordingManager = new RecordingManager(this.audioContext)
-    this.projectManager = new ProjectManager(config.userId)
+    // ProjectManager has no constructor, don't pass userId
+    this.projectManager = new ProjectManager()
     this.historyManager = new HistoryManager()
     this.audioAnalyzer = new AudioAnalyzer(this.audioContext)
     this.keyboardManager = new KeyboardShortcutManager()
@@ -241,9 +243,9 @@ export class MultiTrackDAW {
 
     this.historyManager.addAction({
       type: 'create-track',
-      data: { trackId: track.id },
-      undo: () => this.trackManager.deleteTrack(track.id),
-      redo: () => this.createTrack(name, type)
+      description: `Created track: ${name}`,
+      data: { trackId: track.id, name, type },
+      inverse: { action: 'delete-track', trackId: track.id }
     })
 
     this.emit('trackCreated', track)
@@ -259,9 +261,9 @@ export class MultiTrackDAW {
 
     this.historyManager.addAction({
       type: 'delete-track',
+      description: `Deleted track: ${track.name}`,
       data: { track },
-      undo: () => this.createTrack(track.name, track.type),
-      redo: () => this.deleteTrack(trackId)
+      inverse: { action: 'create-track', name: track.name, type: track.type }
     })
 
     this.emit('trackDeleted', trackId)
@@ -272,22 +274,20 @@ export class MultiTrackDAW {
   }
 
   // Project Management
-  async saveProject(name?: string): Promise<void> {
+  async saveProject(name?: string, userId?: string): Promise<void> {
     const projectData = {
+      userId: userId || 'default-user',
+      name: name || 'Untitled Project',
+      bpm: this.transportState.bpm,
+      timeSignature: { numerator: 4, denominator: 4 },
       tracks: this.trackManager.getTracks(),
-      timeline: this.timelineManager.export(),
-      mixerSettings: this.mixingConsole.getChannelStrips(),
-      midiTracks: this.midiManager.getMIDITracks(),
-      transportState: this.transportState
+      markers: this.timelineManager.export().markers || [],
+      version: 1
     }
 
-    if (name) {
-      await this.projectManager.saveProject(name, projectData)
-    } else {
-      await this.projectManager.updateProject(projectData)
-    }
+    const projectId = await this.projectManager.saveProject(projectData)
 
-    this.emit('projectSaved', { name })
+    this.emit('projectSaved', { name, projectId })
   }
 
   async loadProject(projectId: string): Promise<void> {
@@ -298,12 +298,14 @@ export class MultiTrackDAW {
     this.trackManager.getTracks().forEach(t => this.trackManager.deleteTrack(t.id))
 
     // Load project data
-    if (project.data.timeline) {
-      this.timelineManager.import(project.data.timeline)
+    if (project.tracks) {
+      project.tracks.forEach((trackData: any) => {
+        this.trackManager.createTrack(trackData)
+      })
     }
 
-    if (project.data.transportState) {
-      this.transportState = { ...project.data.transportState }
+    if (project.bpm) {
+      this.transportState.bpm = project.bpm
     }
 
     this.emit('projectLoaded', project)
@@ -476,10 +478,10 @@ export class MultiTrackDAW {
     this.timelineManager.dispose()
     this.mixingConsole.dispose()
     this.midiManager.dispose()
-    this.effectsChain.dispose()
+    // EffectsChain has no dispose method
     this.recordingManager.dispose()
-    this.historyManager.dispose()
-    this.audioAnalyzer.dispose()
+    // HistoryManager has no dispose method
+    // AudioAnalyzer has no dispose method
     this.keyboardManager.dispose()
     this.sampleLibrary.dispose()
     this.selectionManager.dispose()

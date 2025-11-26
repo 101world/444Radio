@@ -52,9 +52,9 @@ export class NonDestructiveEditor {
   applyFade(
     source: AudioBufferSourceNode,
     gainNode: GainNode,
+    duration: number,
     fadeIn?: FadeConfig,
-    fadeOut?: FadeConfig,
-    duration: number
+    fadeOut?: FadeConfig
   ): void {
     const now = this.context.currentTime;
 
