@@ -151,7 +151,11 @@ export class MIDIManager {
   }
 
   private handleMIDIMessage(event: MIDIMessageEvent): void {
-    const [status, data1, data2] = event.data
+    if (!event.data || event.data.length < 1) return
+    
+    const status = event.data[0]
+    const data1 = event.data[1] || 0
+    const data2 = event.data[2] || 0
     const command = status >> 4
     const channel = status & 0x0f
 
