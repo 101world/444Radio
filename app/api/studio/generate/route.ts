@@ -50,13 +50,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { type, params = {} } = body as { type: GenerationType; params: Record<string, any> }
+    // Support both old format (type, params) and new format (type, prompt, model)
+    let type = body.type
+    let params = body.params || {}
+    
+    // Handle new format from multi-track UI
+    if (body.prompt) {
+      params.prompt = body.prompt
+    }
+    if (body.model) {
+      // Map UI model selection to type
+      if (body.model.includes('music')) type = 'create-song'
+      else if (body.model.includes('beat') || body.model.includes('ace')) type = 'create-beat'
+    }
+    if (!type) type = 'create-song' // Default to song generation
+    
+    const generationType = type as GenerationType
 
-    if (!CREDITS_COST[type]) {
+    if (!CREDITS_COST[generationType]) {
       return corsResponse(NextResponse.json({ error: 'Invalid generation type' }, { status: 400 }))
     }
 
-    const cost = CREDITS_COST[type]
+    const cost = CREDITS_COST[generationType]
 
     // Initialize Supabase
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -94,7 +109,7 @@ export async function POST(req: NextRequest) {
         return corsResponse(NextResponse.json({ error: 'Failed to charge credits' }, { status: 500 }))
       }
 
-      console.log(`💰 Charged ${cost} credits for ${type} (user: ${userId})`)
+      console.log(`💰 Charged ${cost} credits for ${generationType} (user: ${userId})`)
     }
 
     // 2. Create job record
@@ -105,7 +120,7 @@ export async function POST(req: NextRequest) {
       .insert({
         id: jobId,
         user_id: userId,
-        type,
+        type: generationType,
         status: 'queued',
         params,
         created_at: new Date().toISOString()
@@ -134,7 +149,7 @@ export async function POST(req: NextRequest) {
     // 3. Build Replicate input based on type
     let input: Record<string, any> = {}
     
-    switch (type) {
+    switch (generationType) {
       case 'create-song':
         input = {
           prompt: params.prompt || 'upbeat electronic music 120 bpm',
@@ -189,11 +204,11 @@ export async function POST(req: NextRequest) {
 
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.444radio.co.in'}/api/studio/webhook`
     
-    console.log(`🎵 Creating Replicate prediction for ${type}`)
+    console.log(`🎵 Creating Replicate prediction for ${generationType}`)
     console.log(`📡 Webhook URL: ${webhookUrl}`)
     console.log(`🔧 Input:`, input)
 
-    const modelString = REPLICATE_MODELS[type]
+    const modelString = REPLICATE_MODELS[generationType]
     const isVersion = modelString.includes(':')
     
     const prediction = await replicate.predictions.create({

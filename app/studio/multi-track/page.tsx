@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
 import createAudioScheduler from '@/lib/audio/AudioScheduler';
+import { usePusher } from '@/lib/pusher-client';
 
 let scheduler: ReturnType<typeof createAudioScheduler> | null = null;
 
@@ -32,10 +34,13 @@ interface Track {
 }
 
 export default function MultiTrackStudio() {
+  const { user } = useUser();
+  const pusherChannel = usePusher(user?.id);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(0);
   const [zoom, setZoom] = useState(50);
+  const [generatingJobs, setGeneratingJobs] = useState<string[]>([]);
   const rafRef = useRef<number | undefined>(undefined);
   const lastUpdateRef = useRef<number>(0);
 
@@ -45,6 +50,7 @@ export default function MultiTrackStudio() {
     }
   }, []);
 
+  // Animation loop for playhead updates
   useEffect(() => {
     const sched = getScheduler();
     if (!sched) return;
@@ -64,6 +70,54 @@ export default function MultiTrackStudio() {
       }
     };
   }, []);
+
+  // Listen for Replicate webhook completion events
+  useEffect(() => {
+    if (!pusherChannel) return;
+
+    const handleJobCompleted = async (data: any) => {
+      console.log('🎉 Job completed via webhook:', data);
+      
+      // Remove from generating list
+      setGeneratingJobs(prev => prev.filter(id => id !== data.jobId));
+      
+      // Extract audio URL from output
+      const audioUrl = data.output?.audio || data.output?.stem1 || Object.values(data.output || {})[0];
+      
+      if (typeof audioUrl === 'string' && audioUrl) {
+        // Create new track with the generated audio
+        const newTrack: Track = {
+          id: 't-' + Date.now(),
+          name: `${data.type || 'Generated'} (${new Date().toLocaleTimeString()})`,
+          clips: [{
+            id: 'c-' + Date.now(),
+            url: audioUrl,
+            start: Math.floor(playhead),
+            duration: 0
+          }]
+        };
+        
+        setTracks(prev => [...prev, newTrack]);
+        
+        // Pre-load the audio buffer
+        const sched = getScheduler();
+        if (sched) {
+          try {
+            await sched.loadBuffer(audioUrl);
+            console.log('✅ Auto-loaded generated audio');
+          } catch (err) {
+            console.warn('Failed to load:', err);
+          }
+        }
+      }
+    };
+
+    pusherChannel.bind('job:completed', handleJobCompleted);
+    
+    return () => {
+      pusherChannel?.unbind('job:completed', handleJobCompleted);
+    };
+  }, [pusherChannel, playhead]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -249,18 +303,52 @@ export default function MultiTrackStudio() {
           </div>
 
           <div>
-            <div style={{ fontSize: 13, color: '#bbb', marginBottom: 6 }}>Quick Actions</div>
+            <div style={{ fontSize: 13, color: '#bbb', marginBottom: 6 }}>AI Generation</div>
+            <button 
+              style={{ width: '100%', marginBottom: 8, padding: '8px', cursor: 'pointer', backgroundColor: '#4a90e2', color: 'white', border: 'none', borderRadius: 4 }} 
+              onClick={async () => {
+                const prompt = window.prompt('Enter music prompt (e.g., "lofi beats with piano")');
+                if (!prompt) return;
+                
+                try {
+                  const res = await fetch('/api/studio/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      type: 'music',
+                      prompt,
+                      model: 'minimax/music-01'
+                    })
+                  });
+                  
+                  if (!res.ok) throw new Error('Generation failed');
+                  
+                  const data = await res.json();
+                  setGeneratingJobs(prev => [...prev, data.jobId]);
+                  console.log('🎵 Generation started:', data.jobId);
+                } catch (err: any) {
+                  alert('Generation failed: ' + err.message);
+                }
+              }}
+            >
+              🎵 Generate Music with AI
+            </button>
+            {generatingJobs.length > 0 && (
+              <div style={{ fontSize: 11, color: '#ffa500', marginBottom: 8 }}>
+                ⏳ Generating {generatingJobs.length} track(s)...
+              </div>
+            )}
             <button style={{ width: '100%', marginBottom: 8, padding: '8px', cursor: 'pointer' }} onClick={async () => {
               const sched = getScheduler();
               if (!sched) return;
               
-              const url = prompt('Paste generated asset URL (for test)');
+              const url = prompt('Paste audio URL (for manual test)');
               if (!url) return;
-              const newTrack = { id: 't-' + Date.now(), name: 'Gen ' + (tracks.length + 1), clips: [{ id: 'c-' + Date.now(), url, start: Math.floor(playhead), duration: 0 }] };
+              const newTrack = { id: 't-' + Date.now(), name: 'Manual ' + (tracks.length + 1), clips: [{ id: 'c-' + Date.now(), url, start: Math.floor(playhead), duration: 0 }] };
               setTracks(prev => [...prev, newTrack]);
               try { await sched.loadBuffer(url); } catch (e) { console.warn(e); }
-            }}>Attach Generated Asset</button>
-            <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>Use this to simulate webhook → attaches new track with clip at current playhead.</div>
+            }}>+ Add Audio by URL</button>
+            <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>Test with CORS-enabled audio URLs or use AI generation above.</div>
           </div>
         </aside>
       </main>
