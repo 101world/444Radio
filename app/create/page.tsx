@@ -87,7 +87,7 @@ function CreatePageContent() {
   const [genre, setGenre] = useState('')
   const [bpm, setBpm] = useState('')
   const [songDuration, setSongDuration] = useState<'short' | 'medium' | 'long'>('medium')
-  const [generateCoverArt, setGenerateCoverArt] = useState(true)
+  const [generateCoverArt, setGenerateCoverArt] = useState(false)
   
   // Instrumental mode
   const [isInstrumental, setIsInstrumental] = useState(false)
@@ -1033,7 +1033,8 @@ function CreatePageContent() {
       duration,
       language: selectedLanguage,
       genre: genreParam,
-      bpm: bpmParam ? parseInt(bpmParam) : undefined
+      bpm: bpmParam ? parseInt(bpmParam) : undefined,
+      generateCoverArt
     }
 
     // Add ACE-Step parameters for non-English languages
@@ -1055,6 +1056,7 @@ function CreatePageContent() {
     if (data.success) {
       return {
         audioUrl: data.audioUrl,
+        imageUrl: data.imageUrl,
         title: data.title || title || prompt.substring(0, 50),
         prompt: prompt,
         lyrics: data.lyrics || lyrics,
@@ -1561,6 +1563,28 @@ function CreatePageContent() {
               <Rocket 
                 size={18} 
                 className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
+              />
+            </button>
+
+            {/* Clear Chat Button */}
+            <button
+              onClick={() => {
+                if (confirm('Clear all chat messages? This cannot be undone.')) {
+                  setMessages([{
+                    id: '1',
+                    type: 'assistant',
+                    content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?',
+                    timestamp: new Date()
+                  }])
+                  localStorage.removeItem('444radio-chat-messages')
+                }
+              }}
+              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-red-500/30 hover:border-red-400/60 hover:scale-105"
+              title="Clear Chat"
+            >
+              <X 
+                size={18} 
+                className="text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.9)] md:w-[20px] md:h-[20px]"
               />
             </button>
 

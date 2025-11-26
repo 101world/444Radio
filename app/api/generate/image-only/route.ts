@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
 
     if (!r2Result.success) {
       console.error('⚠️ R2 upload failed, using Replicate URL:', r2Result.error)
-      // Continue with Replicate URL if R2 fails
+      throw new Error(`Failed to upload image to permanent storage: ${r2Result.error}`)
     } else {
       console.log('✅ R2 upload successful:', r2Result.url)
       // Use permanent R2 URL instead of temporary Replicate URL

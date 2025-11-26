@@ -528,45 +528,17 @@ function DAWUltimate() {
           audio.load();
         });
 
-        const clip = {
-          id: `clip_${Date.now()}_${i}`,
-          name: file.name,
-          url,
-          startTime: 0,
-          duration: audio.duration,
-          offset: 0,
-          volume: 1,
-        };
+        const trackName = file.name.replace(/\.[^/.]+$/, '');
+        const duration = audio.duration;
 
         if (selectedTrackId) {
-          addClipToTrack(selectedTrackId, clip.url, clip.name, clip.startTime, clip.duration);
-          console.log('✅ Added clip to track:', selectedTrackId, 'Duration:', clip.duration);
+          // Add clip to existing selected track
+          addClipToTrack(selectedTrackId, url, file.name, 0, duration, file);
+          console.log('✅ Added clip to track:', selectedTrackId, 'Duration:', duration);
         } else {
-          const trackName = file.name.replace(/\.[^/.]+$/, '');
-          const newTrackId = addTrack(trackName, clip.url, undefined, clip.duration);
-          console.log('✅ Created track for file:', trackName, 'ID:', newTrackId, 'URL:', clip.url, 'Duration:', clip.duration);
-          
-          // Verify track was created with clip
-          setTimeout(() => {
-            const createdTrack = tracks.find(t => t.id === newTrackId);
-            if (!createdTrack) {
-              console.error('❌ Track not found after creation! Retrying...');
-              // Retry after a longer delay
-              setTimeout(() => {
-                const retryTrack = tracks.find(t => t.id === newTrackId);
-                if (retryTrack) {
-                  console.log('✅ Track found on retry:', retryTrack.name, 'Clips:', retryTrack.clips.length);
-                } else {
-                  console.error('❌ Track still not found after retry!');
-                }
-              }, 500);
-            } else {
-              console.log('✅ Track verified:', createdTrack.name, 'Clips:', createdTrack.clips.length);
-              if (createdTrack.clips.length === 0) {
-                console.error('❌ Track has NO clips! This is the bug.');
-              }
-            }
-          }, 200);
+          // Create new track with audio file (addTrack automatically creates a clip)
+          const newTrackId = addTrack(trackName, url, undefined, duration, file);
+          console.log('✅ Created track with audio:', trackName, 'ID:', newTrackId, 'Duration:', duration);
         }
 
         successCount++;
@@ -652,24 +624,10 @@ function DAWUltimate() {
       );
 
       // Create track
-      const clip = {
-        id: `clip_${Date.now()}`,
-        name: `AI Beat - ${prompt.substring(0, 20)}`,
-        url: audioUrl,
-        startTime: 0,
-        duration: 30,
-        offset: 0,
-        volume: 1,
-      };
-
-      const trackId = addTrack('AI Beat');
-      console.log('✅ Beat track created:', trackId, 'Now adding clip...');
-      
-      // Add clip with proper duration - state updates are async, trust the hook
-      setTimeout(() => {
-        console.log('🎵 Adding beat clip:', { trackId, url: clip.url, name: clip.name, duration: clip.duration });
-        addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration);
-      }, 100);
+      // Create track with audio directly (addTrack automatically creates clip)
+      const trackName = `AI Beat - ${prompt.substring(0, 20)}`;
+      const trackId = addTrack(trackName, audioUrl, undefined, 30);
+      console.log('✅ Beat track created with audio:', trackId, 'URL:', audioUrl);
 
       // Save to library
       if (user) {
@@ -737,24 +695,9 @@ function DAWUltimate() {
         )
       );
 
-      const clip = {
-        id: `clip_${Date.now()}`,
-        name: title,
-        url: audioUrl,
-        startTime: 0,
-        duration: 120,
-        offset: 0,
-        volume: 1,
-      };
-
-      const trackId = addTrack(title);
-      console.log('✅ Song track created:', trackId, 'Now adding clip...');
-      
-      // Add clip with proper duration - state updates are async, trust the hook
-      setTimeout(() => {
-        console.log('🎵 Adding song clip:', { trackId, url: clip.url, name: clip.name, duration: clip.duration });
-        addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration);
-      }, 100);
+      // Create track with audio directly (addTrack automatically creates clip)
+      const trackId = addTrack(title, audioUrl, undefined, 120);
+      console.log('✅ Song track created with audio:', trackId, 'Title:', title, 'URL:', audioUrl);
 
       // Save to library
       if (user) {
@@ -846,19 +789,12 @@ function DAWUltimate() {
         const stemUrl = stems[stemType];
 
         if (stemUrl) {
-          const clip = {
-            id: `clip_${Date.now()}_${stemType}`,
-            name: `${stemSplitClip.name} - ${stemType}`,
-            url: stemUrl,
-            startTime: 0,
-            duration: 30,
-            offset: 0,
-            volume: 1,
-          };
-
-          const trackId = `track_${Date.now()}_${stemType}`;
-          addTrack(stemType.charAt(0).toUpperCase() + stemType.slice(1), trackId);
-          setTimeout(() => addClipToTrack(trackId, clip.url, clip.name, clip.startTime, clip.duration), 100 * (i + 1));
+          const stemName = stemType.charAt(0).toUpperCase() + stemType.slice(1);
+          const trackName = `${stemSplitClip.name} - ${stemName}`;
+          
+          // Create track with audio directly (addTrack automatically creates clip)
+          addTrack(trackName, stemUrl, undefined, 30);
+          console.log('✅ Stem track created:', trackName, 'URL:', stemUrl);
 
           // Save to library
           if (user) {

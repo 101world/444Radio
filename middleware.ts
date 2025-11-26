@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/media/track-play',
   '/api/songs/track-play',
   '/api/explore/genre-summary(.*)',
+  '/manifest.json',
 ])
 
 export default clerkMiddleware(async (auth, request) => {

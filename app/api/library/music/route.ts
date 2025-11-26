@@ -115,6 +115,13 @@ export async function GET() {
       new Map(allMusic.map(item => [item.audio_url, item])).values()
     )
 
+    // Sort by created_at descending (newest first) after deduplication
+    uniqueMusic.sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime()
+      const dateB = new Date(b.created_at || 0).getTime()
+      return dateB - dateA // Descending: newest first
+    })
+
     return NextResponse.json({
       success: true,
       music: uniqueMusic

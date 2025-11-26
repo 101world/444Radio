@@ -94,7 +94,7 @@ export async function DELETE(req: NextRequest) {
     const { userId } = await auth()
     
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const { searchParams } = new URL(req.url)

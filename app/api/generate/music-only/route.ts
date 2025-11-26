@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { title, prompt, lyrics, duration = 'medium', genre, bpm, bitrate = 256000, sample_rate = 44100, audio_format = 'mp3', language = 'English', audio_length_in_s, num_inference_steps, guidance_scale, denoising_strength } = await req.json()
+    const { title, prompt, lyrics, duration = 'medium', genre, bpm, bitrate = 256000, sample_rate = 44100, audio_format = 'mp3', language = 'English', audio_length_in_s, num_inference_steps, guidance_scale, denoising_strength, generateCoverArt = false } = await req.json()
 
     // Title is REQUIRED (3-100 characters)
     if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 100) {
@@ -301,7 +301,7 @@ export async function POST(req: NextRequest) {
 
         let finalPrediction = prediction
         let attempts = 0
-        const maxAttempts = 60 // ~2 minutes
+        const maxAttempts = 40 // ~80 seconds max (reduced from 2 minutes)
 
         while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 2000))
@@ -337,12 +337,11 @@ export async function POST(req: NextRequest) {
 
     console.log('🎵 Audio URL extracted:', audioUrl)
 
-    // Upload to R2 for permanent storage
+    // Upload to R2 for permanent storage (MANDATORY)
     console.log('📦 Uploading to R2 for permanent storage...')
     const fileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${audio_format}`
     
-    let finalAudioUrl = audioUrl // Default to Replicate URL
-    let r2UploadSuccess = false
+    let finalAudioUrl: string
     
     try {
       // Log R2 credentials status (without exposing actual values)
@@ -368,17 +367,15 @@ export async function POST(req: NextRequest) {
           fileName: fileName,
           userId: userId
         })
-        // Continue with Replicate URL if R2 fails - DON'T fail the whole request
-        console.warn('⚠️ USING TEMPORARY REPLICATE URL - WILL EXPIRE IN 24-48 HOURS!')
+        throw new Error(`Failed to upload to permanent storage: ${r2Result.error}`)
       } else {
         console.log('✅ R2 upload successful!', {
           r2Url: r2Result.url,
           key: r2Result.key,
           size: `${(r2Result.size / 1024 / 1024).toFixed(2)} MB`
         })
-        // Use permanent R2 URL instead of temporary Replicate URL
+        // Use permanent R2 URL
         finalAudioUrl = r2Result.url
-        r2UploadSuccess = true
       }
     } catch (r2Error) {
       console.error('❌ R2 UPLOAD EXCEPTION:', r2Error)
@@ -387,14 +384,13 @@ export async function POST(req: NextRequest) {
         stack: r2Error instanceof Error ? r2Error.stack : undefined,
         replicateUrl: audioUrl
       })
-      console.warn('⚠️ USING TEMPORARY REPLICATE URL - WILL EXPIRE IN 24-48 HOURS!')
-      // Continue with Replicate URL if R2 throws
+      throw new Error(`Failed to upload to permanent storage: ${r2Error instanceof Error ? r2Error.message : 'Unknown error'}`)
     }
     
     audioUrl = finalAudioUrl
 
-    // Log which URL type we're saving
-    console.log(`💾 Saving to database with ${r2UploadSuccess ? 'PERMANENT R2' : 'TEMPORARY REPLICATE'} URL:`, audioUrl)
+    // Log that we're saving permanent R2 URL
+    console.log(`💾 Saving to database with PERMANENT R2 URL:`, audioUrl)
 
     // Save to music_library table first
     console.log('💾 Saving to music library...')
@@ -482,7 +478,7 @@ export async function POST(req: NextRequest) {
     console.log('✅ Music generated successfully:', audioUrl)
     
     // Return proper response with all required fields
-    return NextResponse.json({
+    const response: any = {
       success: true,
       audioUrl,
       title: title, // Use the actual title from request
@@ -490,7 +486,114 @@ export async function POST(req: NextRequest) {
       libraryId: savedMusic?.id || null,
       creditsRemaining: userCredits - 2,
       creditsDeducted: 2
-    })
+    }
+
+    // Generate cover art if requested
+    if (generateCoverArt) {
+      console.log('🎨 Generating cover art for the track...')
+      
+      try {
+        // Check if user has enough credits for image (1 credit)
+        if (userCredits - 2 < 1) {
+          console.warn('⚠️ Not enough credits for cover art, skipping')
+        } else {
+          // Generate image using Replicate
+          const imagePrompt = `${prompt} music album cover art, ${genre || 'electronic'} style, professional music artwork`
+          
+          const imagePrediction = await replicate.predictions.create({
+            version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b", // FLUX.1-dev model
+            input: {
+              prompt: imagePrompt,
+              num_outputs: 1,
+              aspect_ratio: "1:1",
+              output_format: "webp",
+              output_quality: 80,
+              num_inference_steps: 20
+            }
+          })
+
+          // Poll for completion
+          let imageResult = await replicate.predictions.get(imagePrediction.id)
+          let attempts = 0
+          while (imageResult.status !== 'succeeded' && imageResult.status !== 'failed' && attempts < 40) { // ~40 seconds max (reduced from 60s)
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            imageResult = await replicate.predictions.get(imagePrediction.id)
+            attempts++
+          }
+
+          if (imageResult.status === 'succeeded' && imageResult.output) {
+            const imageUrls = Array.isArray(imageResult.output) ? imageResult.output : [imageResult.output]
+            const imageUrl = imageUrls[0]
+
+            // Upload image to R2
+            const imageFileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-cover-${Date.now()}.webp`
+            
+            const imageR2Result = await downloadAndUploadToR2(
+              imageUrl,
+              userId,
+              'images',
+              imageFileName
+            )
+
+            if (imageR2Result.success) {
+              console.log('✅ Cover art uploaded to R2:', imageR2Result.url)
+              response.imageUrl = imageR2Result.url
+              response.creditsRemaining -= 1
+              response.creditsDeducted += 1
+            } else {
+              console.error('❌ Cover art R2 upload failed:', imageR2Result.error)
+              // Continue without image
+            }
+          } else {
+            console.error('❌ Cover art generation failed:', imageResult.error)
+            // Continue without image
+          }
+        }
+      } catch (imageError) {
+        console.error('❌ Cover art generation error:', imageError)
+        // Continue without image
+      }
+    }
+
+    // Save generated image to images_library if cover art was generated
+    if (response.imageUrl) {
+      console.log('💾 Saving cover art to images_library...')
+      try {
+        const imageEntry = {
+          user_id: userId,
+          image_url: response.imageUrl,
+          prompt: `${prompt} music album cover art`,
+          created_at: new Date().toISOString()
+        }
+
+        const imageRes = await fetch(
+          `${supabaseUrl}/rest/v1/images_library`,
+          {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(imageEntry)
+          }
+        )
+
+        if (imageRes.ok) {
+          const savedImage = await imageRes.json()
+          console.log('✅ Cover art saved to images_library:', savedImage)
+          response.imageLibraryId = Array.isArray(savedImage) ? savedImage[0].id : savedImage.id
+        } else {
+          console.error('❌ Failed to save to images_library:', imageRes.status)
+        }
+      } catch (imageError) {
+        console.error('❌ Error saving to images_library:', imageError)
+      }
+    }
+
+    // Note: User must manually combine audio + image using /api/media/combine to release
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('❌ Music generation error:', error)

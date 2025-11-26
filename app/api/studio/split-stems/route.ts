@@ -7,7 +7,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
-import { createClient } from '@supabase/supabase-js'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
 export async function OPTIONS() {
@@ -73,38 +72,8 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'outputFormat must be mp3 or wav' }, { status: 400 }))
     }
 
-    // Credits: stems generation costs 15 credits
-    const CREDITS_COST = 15
-
-    // Supabase client for credits check/deduct
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return corsResponse(NextResponse.json({ success: false, error: 'Missing Supabase configuration' }, { status: 500 }))
-    }
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    // Fetch user credits
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('credits')
-      .eq('clerk_user_id', userId)
-      .single()
-    if (userError || !userData) {
-      return corsResponse(NextResponse.json({ success: false, error: 'User not found' }, { status: 404 }))
-    }
-    const currentCredits = Number(userData.credits || 0)
-    if (currentCredits < CREDITS_COST) {
-      return corsResponse(NextResponse.json({ success: false, error: `Insufficient credits (need ${CREDITS_COST})` }, { status: 402 }))
-    }
-    // Deduct credits upfront
-    const { error: deductError } = await supabase
-      .from('users')
-      .update({ credits: currentCredits - CREDITS_COST, updated_at: new Date().toISOString() })
-      .eq('clerk_user_id', userId)
-    if (deductError) {
-      return corsResponse(NextResponse.json({ success: false, error: 'Credit deduction failed' }, { status: 500 }))
-    }
+    // Stem splitting is free - no credits required
+    console.log('🎵 Stem splitting requested by user:', userId)
 
     // Use cjwbw/demucs model - industry-standard stem separation
     const replicate = new Replicate({ auth: token })
@@ -166,8 +135,6 @@ export async function POST(request: Request) {
     }
 
     if (!prediction) {
-      // Refund on prediction creation failure
-      await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
       const errorMsg = lastError?.message || lastError?.toString() || 'Unknown error'
       console.error('❌ Stem separation failed:', errorMsg)
       return corsResponse(NextResponse.json({ 
@@ -190,8 +157,6 @@ export async function POST(request: Request) {
       
       if (elapsed > TIMEOUT_MS) {
         console.error(`❌ Stem separation timeout after ${elapsed}ms, ${pollAttempts} poll attempts`)
-        // Refund on timeout
-        await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
         return corsResponse(NextResponse.json({ 
           success: false, 
           error: 'Stem separation timed out. The AI model may be experiencing high demand. Please try again in a few minutes.',
@@ -211,8 +176,7 @@ export async function POST(request: Request) {
           await new Promise(r => setTimeout(r, POLL_INTERVAL_MS * 2))
           continue
         }
-        // After 5 poll failures, give up and refund
-        await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
+        // After 5 poll failures, give up
         return corsResponse(NextResponse.json({ 
           success: false, 
           error: 'Unable to check stem separation status. Please try again.',
@@ -223,8 +187,6 @@ export async function POST(request: Request) {
 
     if (result.status === 'failed') {
       console.error('❌ Demucs prediction failed:', result.error)
-      // Refund on failure
-      await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
       return corsResponse(NextResponse.json({ 
         success: false, 
         error: `Stem separation failed: ${result.error || 'Unknown error from AI model'}`,
@@ -234,7 +196,6 @@ export async function POST(request: Request) {
     
     if (result.status === 'canceled') {
       console.error('❌ Demucs prediction canceled')
-      await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
       return corsResponse(NextResponse.json({ 
         success: false, 
         error: 'Stem separation was canceled',
@@ -245,8 +206,6 @@ export async function POST(request: Request) {
     const stems = normalizeStems(result.output)
     if (!stems || Object.keys(stems).length === 0) {
       console.error('❌ No stems in output:', result.output)
-      // Refund on no output
-      await supabase.from('users').update({ credits: currentCredits }).eq('clerk_user_id', userId)
       return corsResponse(NextResponse.json({ 
         success: false, 
         error: 'AI model returned no stems. This may be due to audio format or quality issues.',
@@ -257,8 +216,7 @@ export async function POST(request: Request) {
 
     console.log(`✅ Stem separation complete: ${Object.keys(stems).length} stems extracted`)
     // Do not upload stems to R2 here; return direct URLs for immediate placement
-    const remainingCredits = currentCredits - CREDITS_COST
-    return corsResponse(NextResponse.json({ success: true, stems, predictionId: result.id, remainingCredits }))
+    return corsResponse(NextResponse.json({ success: true, stems, predictionId: result.id }))
   } catch (error: any) {
     console.error('❌ Split-stems critical error:', {
       message: error?.message,

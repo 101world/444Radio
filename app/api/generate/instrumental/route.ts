@@ -198,6 +198,38 @@ export async function POST(req: NextRequest) {
     
     const permanentAudioUrl = uploadResult.url
     console.log('✅ Instrumental generated and stored:', permanentAudioUrl)
+
+    // Save to music_library for permanent access
+    console.log('💾 Saving instrumental to music library...')
+    const libraryEntry = {
+      clerk_user_id: userId,
+      title: `Instrumental: ${prompt.substring(0, 50)}`,
+      prompt: prompt,
+      audio_url: permanentAudioUrl,
+      audio_format: 'mp3',
+      bitrate: 256000,
+      sample_rate: 44100,
+      generation_params: {
+        duration,
+        steps,
+        type: 'instrumental'
+      },
+      status: 'ready'
+    }
+
+    const saveResponse = await supabase
+      .from('music_library')
+      .insert(libraryEntry)
+      .select()
+      .single()
+
+    if (saveResponse.error) {
+      console.error('❌ Failed to save instrumental to library:', saveResponse.error)
+      // Continue anyway - the audio was generated successfully
+    } else {
+      console.log('✅ Instrumental saved to library:', saveResponse.data)
+    }
+
     console.log('💰 Credits charged: 5, User credits now:', userData.credits - 5)
 
     return corsResponse(NextResponse.json({ 
