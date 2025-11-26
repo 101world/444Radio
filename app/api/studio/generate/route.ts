@@ -24,11 +24,11 @@ export async function OPTIONS() {
 
 // Credit costs for studio operations
 const CREDITS_COST = {
-  'create-song': 5,        // Full song generation (2-3 min)
-  'create-beat': 5,        // Beat/instrumental (30-60s)
-  'stem-split': 0,         // Free (as per your requirement)
+  'create-song': 2,        // Music generation with minimax/music-1.5
+  'create-beat': 16,       // Instrumental with stable-audio-2.5
+  'stem-split': 20,        // Stem splitter with demucs
   'auto-tune': 1,          // Auto-tune effect
-  'effects': 1,            // Audio effects chain
+  'effects': 0.1,          // Audio effects chain (stable-audio)
 } as const
 
 type GenerationType = keyof typeof CREDITS_COST
@@ -36,10 +36,10 @@ type GenerationType = keyof typeof CREDITS_COST
 // Replicate model mappings
 const REPLICATE_MODELS = {
   'create-song': 'minimax/music-1.5',
-  'create-beat': 'lucataco/ace-step:280fc4f9ee507577f880a167f639c02622421d8fecf492454320311217b688f1',
+  'create-beat': 'stability-ai/stable-audio-2.5',
   'stem-split': 'cjwbw/demucs',
-  'auto-tune': 'nateraw/autotune:c45e8f9ae6beb00ba9d498f94e52228b8fcf727a153757dc5c8bc1b7a8788e12',
-  'effects': 'smaerdlatigid/stable-audio:6c5f3e69c2e116f7e50f1b58ec9e964e6c5e2bda7ffa0bb21e41f8b4f31d1fc2',
+  'auto-tune': 'nateraw/autotune',
+  'effects': 'smaerdlatigid/stable-audio',
 } as const
 
 export async function POST(req: NextRequest) {
@@ -162,14 +162,11 @@ export async function POST(req: NextRequest) {
       
       case 'create-beat':
         input = {
-          tags: params.prompt || 'trap beat 140bpm',
-          lyrics: '[inst]', // Instrumental only
+          prompt: params.prompt || 'instrumental trap beat 140bpm',
           duration: params.duration || 60,
-          number_of_steps: params.steps || 60,
-          guidance_scale: 15,
-          scheduler: 'euler',
-          guidance_type: 'apg',
-          seed: -1
+          audio_start: params.audioStart || 0,
+          audio_end: params.audioEnd || 60,
+          seed: params.seed || -1
         }
         break
       

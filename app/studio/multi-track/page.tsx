@@ -83,32 +83,86 @@ export default function MultiTrackStudio() {
       // Remove from generating list
       setGeneratingJobs(prev => prev.filter(id => id !== data.jobId));
       
-      // Extract audio URL from output
-      const audioUrl = data.output?.audio || data.output?.stem1 || Object.values(data.output || {})[0];
+      const sched = getScheduler();
+      const output = data.output || {};
+      const outputKeys = Object.keys(output);
       
-      if (typeof audioUrl === 'string' && audioUrl) {
-        // Create new track with the generated audio
-        const newTrack: Track = {
-          id: 't-' + Date.now(),
-          name: `${data.type || 'Generated'} (${new Date().toLocaleTimeString()})`,
-          clips: [{
-            id: 'c-' + Date.now(),
-            url: audioUrl,
-            start: Math.floor(playhead),
-            duration: 0
-          }]
+      // Check if this is a stem split (multiple audio files)
+      if (data.type === 'stem-split' && outputKeys.length > 1) {
+        // Create a separate track for each stem
+        const stemNames: Record<string, string> = {
+          vocals: '🎤 Vocals',
+          drums: '🥁 Drums',
+          bass: '🎸 Bass',
+          other: '🎹 Other',
+          stem1: 'Stem 1',
+          stem2: 'Stem 2',
+          stem3: 'Stem 3',
+          stem4: 'Stem 4'
         };
         
-        setTracks(prev => [...prev, newTrack]);
+        const newTracks: Track[] = [];
+        let delay = 0;
         
-        // Pre-load the audio buffer
-        const sched = getScheduler();
-        if (sched) {
-          try {
-            await sched.loadBuffer(audioUrl);
-            console.log('✅ Auto-loaded generated audio');
-          } catch (err) {
-            console.warn('Failed to load:', err);
+        for (const [key, url] of Object.entries(output)) {
+          if (typeof url === 'string' && url) {
+            setTimeout(() => {
+              const newTrack: Track = {
+                id: 't-' + Date.now() + '-' + key,
+                name: stemNames[key] || key,
+                clips: [{
+                  id: 'c-' + Date.now() + '-' + key,
+                  url,
+                  start: Math.floor(playhead),
+                  duration: 0
+                }]
+              };
+              
+              setTracks(prev => [...prev, newTrack]);
+              
+              // Pre-load the audio buffer
+              if (sched) {
+                sched.loadBuffer(url).catch(err => console.warn('Failed to load stem:', err));
+              }
+            }, delay);
+            delay += 100; // Stagger track creation
+          }
+        }
+        
+        console.log(`✅ Created ${outputKeys.length} stem tracks`);
+      } else {
+        // Single audio file (music, instrumental, effects, auto-tune)
+        const audioUrl = output.audio || output.stem1 || Object.values(output)[0];
+        
+        if (typeof audioUrl === 'string' && audioUrl) {
+          const typeNames: Record<string, string> = {
+            'create-song': '🎵 Music',
+            'create-beat': '🎹 Instrumental',
+            'effects': '🎚️ Effects',
+            'auto-tune': '🎤 Auto-tuned'
+          };
+          
+          const newTrack: Track = {
+            id: 't-' + Date.now(),
+            name: `${typeNames[data.type] || data.type} (${new Date().toLocaleTimeString()})`,
+            clips: [{
+              id: 'c-' + Date.now(),
+              url: audioUrl,
+              start: Math.floor(playhead),
+              duration: 0
+            }]
+          };
+          
+          setTracks(prev => [...prev, newTrack]);
+          
+          // Pre-load the audio buffer
+          if (sched) {
+            try {
+              await sched.loadBuffer(audioUrl);
+              console.log('✅ Auto-loaded generated audio');
+            } catch (err) {
+              console.warn('Failed to load:', err);
+            }
           }
         }
       }
@@ -353,9 +407,11 @@ export default function MultiTrackStudio() {
           </div>
 
           <div>
-            <div style={{ fontSize: 13, color: '#bbb', marginBottom: 6 }}>AI Generation</div>
+            <div style={{ fontSize: 13, color: '#bbb', marginBottom: 8 }}>🎵 AI Generation</div>
+            
+            {/* Music Generation - 2 credits */}
             <button 
-              style={{ width: '100%', marginBottom: 8, padding: '8px', cursor: 'pointer', backgroundColor: '#4a90e2', color: 'white', border: 'none', borderRadius: 4 }} 
+              style={{ width: '100%', marginBottom: 6, padding: '8px', cursor: 'pointer', backgroundColor: '#4a90e2', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
               onClick={async () => {
                 const prompt = window.prompt('Enter music prompt (e.g., "lofi beats with piano")');
                 if (!prompt) return;
@@ -365,40 +421,167 @@ export default function MultiTrackStudio() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                      type: 'music',
-                      prompt,
-                      model: 'minimax/music-01'
+                      type: 'create-song',
+                      params: { prompt }
                     })
                   });
                   
-                  if (!res.ok) throw new Error('Generation failed');
-                  
                   const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || 'Generation failed');
+                  
                   setGeneratingJobs(prev => [...prev, data.jobId]);
-                  console.log('🎵 Generation started:', data.jobId);
+                  console.log('🎵 Music generation started:', data.jobId);
                 } catch (err: any) {
-                  alert('Generation failed: ' + err.message);
+                  alert(err.message);
                 }
               }}
             >
-              🎵 Generate Music with AI
+              🎵 Music (2 credits)
             </button>
+
+            {/* Instrumental Generation - 16 credits */}
+            <button 
+              style={{ width: '100%', marginBottom: 6, padding: '8px', cursor: 'pointer', backgroundColor: '#8e44ad', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+              onClick={async () => {
+                const prompt = window.prompt('Describe instrumental (e.g., "upbeat electronic synth melody")');
+                if (!prompt) return;
+                
+                try {
+                  const res = await fetch('/api/studio/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      type: 'create-beat',
+                      params: { prompt }
+                    })
+                  });
+                  
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || 'Generation failed');
+                  
+                  setGeneratingJobs(prev => [...prev, data.jobId]);
+                  console.log('🎹 Instrumental generation started:', data.jobId);
+                } catch (err: any) {
+                  alert(err.message);
+                }
+              }}
+            >
+              🎹 Instrumental (16 credits)
+            </button>
+
+            {/* Effects Chain - 0.1 credits */}
+            <button 
+              style={{ width: '100%', marginBottom: 6, padding: '8px', cursor: 'pointer', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+              onClick={async () => {
+                const url = window.prompt('Audio URL to apply effects:');
+                if (!url) return;
+                const effectsDesc = window.prompt('Describe effects (e.g., "add reverb and echo")');
+                if (!effectsDesc) return;
+                
+                try {
+                  const res = await fetch('/api/studio/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      type: 'effects',
+                      params: { audioUrl: url, effects: effectsDesc }
+                    })
+                  });
+                  
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || 'Generation failed');
+                  
+                  setGeneratingJobs(prev => [...prev, data.jobId]);
+                  console.log('🎚️ Effects processing started:', data.jobId);
+                } catch (err: any) {
+                  alert(err.message);
+                }
+              }}
+            >
+              🎚️ Effects Chain (0.1 credits)
+            </button>
+
+            {/* Auto-tune - 1 credit */}
+            <button 
+              style={{ width: '100%', marginBottom: 6, padding: '8px', cursor: 'pointer', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+              onClick={async () => {
+                const url = window.prompt('Audio URL to auto-tune:');
+                if (!url) return;
+                const scale = window.prompt('Scale (major/minor/chromatic):', 'closest') || 'closest';
+                
+                try {
+                  const res = await fetch('/api/studio/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      type: 'auto-tune',
+                      params: { audioUrl: url, scale }
+                    })
+                  });
+                  
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || 'Generation failed');
+                  
+                  setGeneratingJobs(prev => [...prev, data.jobId]);
+                  console.log('🎤 Auto-tune started:', data.jobId);
+                } catch (err: any) {
+                  alert(err.message);
+                }
+              }}
+            >
+              🎤 Auto-tune (1 credit)
+            </button>
+
+            {/* Stem Splitter - 20 credits */}
+            <button 
+              style={{ width: '100%', marginBottom: 8, padding: '8px', cursor: 'pointer', backgroundColor: '#f39c12', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+              onClick={async () => {
+                const url = window.prompt('Audio URL to split into stems:');
+                if (!url) return;
+                
+                try {
+                  const res = await fetch('/api/studio/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      type: 'stem-split',
+                      params: { audioUrl: url }
+                    })
+                  });
+                  
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || 'Generation failed');
+                  
+                  setGeneratingJobs(prev => [...prev, data.jobId]);
+                  console.log('🎛️ Stem splitting started:', data.jobId);
+                  alert('Stem split started! Each stem will appear as a separate track.');
+                } catch (err: any) {
+                  alert(err.message);
+                }
+              }}
+            >
+              🎛️ Stem Splitter (20 credits)
+            </button>
+
             {generatingJobs.length > 0 && (
-              <div style={{ fontSize: 11, color: '#ffa500', marginBottom: 8 }}>
-                ⏳ Generating {generatingJobs.length} track(s)...
+              <div style={{ fontSize: 11, color: '#ffa500', marginBottom: 8, padding: 8, background: 'rgba(255, 165, 0, 0.1)', borderRadius: 4 }}>
+                ⏳ Generating {generatingJobs.length} job(s)...
               </div>
             )}
-            <button style={{ width: '100%', marginBottom: 8, padding: '8px', cursor: 'pointer' }} onClick={async () => {
-              const sched = getScheduler();
-              if (!sched) return;
-              
-              const url = prompt('Paste audio URL (for manual test)');
-              if (!url) return;
-              const newTrack = { id: 't-' + Date.now(), name: 'Manual ' + (tracks.length + 1), clips: [{ id: 'c-' + Date.now(), url, start: Math.floor(playhead), duration: 0 }] };
-              setTracks(prev => [...prev, newTrack]);
-              try { await sched.loadBuffer(url); } catch (e) { console.warn(e); }
-            }}>+ Add Audio by URL</button>
-            <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>Test with CORS-enabled audio URLs or use AI generation above.</div>
+
+            <div style={{ borderTop: '1px solid #222', marginTop: 8, paddingTop: 8 }}>
+              <button style={{ width: '100%', marginBottom: 8, padding: '8px', cursor: 'pointer', background: '#333', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13 }} onClick={async () => {
+                const sched = getScheduler();
+                if (!sched) return;
+                
+                const url = prompt('Paste audio URL (for manual test)');
+                if (!url) return;
+                const newTrack = { id: 't-' + Date.now(), name: 'Manual ' + (tracks.length + 1), clips: [{ id: 'c-' + Date.now(), url, start: Math.floor(playhead), duration: 0 }] };
+                setTracks(prev => [...prev, newTrack]);
+                try { await sched.loadBuffer(url); } catch (e) { console.warn(e); }
+              }}>+ Add Audio by URL</button>
+              <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>For testing with CORS-enabled URLs</div>
+            </div>
           </div>
         </aside>
       </main>
