@@ -11,8 +11,21 @@ function formatTime(sec = 0) {
   return `${m}:${s}`;
 }
 
+interface Clip {
+  id: string;
+  url: string;
+  start: number;
+  duration: number;
+}
+
+interface Track {
+  id: string;
+  name: string;
+  clips: Clip[];
+}
+
 export default function MultiTrackStudio() {
-  const [tracks, setTracks] = useState([]);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(0);
   const [zoom, setZoom] = useState(50);
