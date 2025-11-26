@@ -16,7 +16,7 @@ export default function MultiTrackStudio() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(0);
   const [zoom, setZoom] = useState(50);
-  const rafRef = useRef<number>();
+  const rafRef = useRef<number | undefined>(undefined);
   const lastUpdateRef = useRef<number>(0);
 
   useEffect(() => {
