@@ -3,7 +3,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW';
+import { ProfessionalWaveformRenderer } from '@/lib/audio/ProfessionalWaveformRenderer';
 import type { Track } from '@/lib/audio/TrackManager';
+
+// Helper function to render waveform on canvas
+function renderWaveform(canvas: HTMLCanvasElement, audioBuffer: AudioBuffer, color: string) {
+  const renderer = new ProfessionalWaveformRenderer(canvas, {
+    width: canvas.width,
+    height: canvas.height,
+    backgroundColor: 'transparent',
+    waveColor: color,
+    progressColor: color + '80',
+    showRMS: true,
+    showPeaks: true
+  });
+
+  // Generate waveform data
+  const samplesPerPixel = Math.ceil(audioBuffer.length / canvas.width);
+  renderer.generateWaveformData(audioBuffer, samplesPerPixel);
+  
+  // Render the waveform
+  renderer.render();
+}
 
 export default function MultiTrackStudioV4() {
   const { user } = useUser();
@@ -369,34 +390,80 @@ export default function MultiTrackStudioV4() {
         </div>
 
         {/* Timeline Area */}
-        <div className="flex-1 flex flex-col bg-[#0a0a0a]">
-          <div className="p-4 text-center text-gray-600">
-            <div className="text-lg mb-2">🎼 Professional Multi-Track DAW</div>
-            <div className="text-sm mb-4">
-              {tracks.length} tracks • {formatTime(playhead)} playhead • {bpm} BPM
-            </div>
-            <div className="text-xs text-cyan-400">
-              ✅ 17 Professional Audio Features Active:
-            </div>
-            <div className="mt-2 text-xs text-gray-500 space-y-1">
-              <div>• Audio Engine with worklets</div>
-              <div>• Professional waveform renderer</div>
-              <div>• Effects suite (EQ, Compressor, Reverb, Delay, Distortion, Chorus)</div>
-              <div>• Recording manager</div>
-              <div>• Non-destructive editor</div>
-              <div>• Mixing console</div>
-              <div>• MIDI manager</div>
-              <div>• Keyboard shortcuts</div>
-              <div>• Sample library</div>
-              <div>• Performance manager</div>
-              <div>• Collaboration tools</div>
-              <div>• Comping & takes system</div>
-              <div>• Project save/load</div>
-              <div>• Undo/redo history</div>
-              <div>• Audio analyzer</div>
-              <div>• Timeline & markers</div>
-              <div>• Selection tools</div>
-            </div>
+        <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-auto">
+          {/* Timeline Ruler */}
+          <div className="h-8 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center px-2 text-xs text-gray-500">
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(sec => (
+              <div key={sec} className="flex-shrink-0 w-24 border-l border-[#1f1f1f] pl-1">
+                {sec}s
+              </div>
+            ))}
+          </div>
+
+          {/* Track Lanes */}
+          <div className="flex-1">
+            {tracks.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-600">
+                <div className="text-center">
+                  <div className="text-4xl mb-4">🎵</div>
+                  <div className="text-lg mb-2">No tracks yet</div>
+                  <div className="text-sm">Click "Upload Audio" to add your first track</div>
+                </div>
+              </div>
+            ) : (
+              tracks.map(track => (
+                <div
+                  key={track.id}
+                  className="h-24 border-b border-[#1f1f1f] relative group hover:bg-[#0f0f0f]"
+                  onClick={() => setSelectedTrackId(track.id)}
+                >
+                  {/* Track Lane Background */}
+                  <div className="absolute inset-0 flex items-center px-2">
+                    {track.clips.length === 0 ? (
+                      <div className="text-xs text-gray-700">Empty track - add clips to see waveforms</div>
+                    ) : (
+                      track.clips.map(clip => (
+                        <div
+                          key={clip.id}
+                          className="absolute h-16 rounded-lg overflow-hidden"
+                          style={{
+                            left: `${clip.startTime * 24}px`, // 24px per second (matches ruler)
+                            width: `${clip.duration * 24}px`,
+                            backgroundColor: track.color + '20',
+                            border: `2px solid ${track.color}`
+                          }}
+                        >
+                          {/* Clip Canvas for Waveform */}
+                          <canvas
+                            ref={(canvas) => {
+                              if (canvas && clip.buffer) {
+                                renderWaveform(canvas, clip.buffer, track.color);
+                              }
+                            }}
+                            width={clip.duration * 24}
+                            height={64}
+                            className="w-full h-full"
+                          />
+                          
+                          {/* Clip Name Overlay */}
+                          <div className="absolute top-1 left-2 text-xs font-semibold text-white drop-shadow-lg">
+                            {clip.name || track.name}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Playhead Indicator (moves during playback) */}
+                  {isPlaying && (
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-lg shadow-cyan-400/50 pointer-events-none"
+                      style={{ left: `${playhead * 24}px` }}
+                    />
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
