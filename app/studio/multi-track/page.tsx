@@ -809,11 +809,11 @@ export default function MultiTrackStudioV4() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Track List */}
-        <div className="w-64 bg-[#0f0f0f] border-r border-[#1f1f1f] flex flex-col">
-          <div className="p-4 border-b border-[#1f1f1f] space-y-2">
+        <div className="w-60 bg-[#0f0f0f] border-r border-[#1f1f1f] flex flex-col flex-shrink-0">
+          <div className="p-3 border-b border-[#1f1f1f] space-y-2">
             <button
               onClick={addTrack}
-              className="w-full py-2 bg-cyan-500 text-black rounded font-semibold text-sm hover:bg-cyan-400 transition-colors"
+              className="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg font-bold text-sm hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
             >
               ➕ Add Track
             </button>
@@ -828,7 +828,7 @@ export default function MultiTrackStudioV4() {
             />
             <button
               onClick={() => document.getElementById('audio-upload')?.click()}
-              className="w-full py-2 bg-[#1f1f1f] text-cyan-400 border border-cyan-500/30 rounded font-semibold text-sm hover:bg-cyan-500/10 transition-colors"
+              className="w-full py-2.5 bg-[#1f1f1f] text-cyan-400 border-2 border-cyan-500/30 rounded-lg font-bold text-sm hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-all"
             >
               📁 Upload Audio
             </button>
@@ -843,20 +843,20 @@ export default function MultiTrackStudioV4() {
                 <div className="text-xs text-cyan-400">💡 Tip: Upload audio or add a new track</div>
               </div>
             ) : (
-              tracks.map((track) => (
+              tracks.map((track, index) => (
                 <div
                   key={track.id}
-                  className={`p-3 border-b border-[#1a1a1a] cursor-pointer transition-colors ${
+                  className={`p-3 border-b border-[#1a1a1a] cursor-pointer transition-all duration-150 ${
                     selectedTrackId === track.id
                       ? 'bg-cyan-500/10 border-l-4 border-l-cyan-500'
-                      : 'hover:bg-[#141414]'
+                      : 'hover:bg-[#141414] border-l-4 border-l-transparent'
                   }`}
                   onClick={() => setSelectedTrackId(track.id)}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded bg-gray-800 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                        {tracks.indexOf(track) + 1}
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-xs font-bold text-cyan-400 border border-gray-700 shadow-inner">
+                        {index + 1}
                       </div>
                       <button
                         onClick={(e) => {
@@ -864,7 +864,7 @@ export default function MultiTrackStudioV4() {
                           setSelectedColorTrackId(track.id);
                           setShowColorPicker(true);
                         }}
-                        className="w-6 h-6 rounded-full border-2 border-white/30 hover:ring-2 hover:ring-cyan-500 transition-all shadow-lg"
+                        className="w-7 h-7 rounded-lg border-2 border-white/40 hover:ring-2 hover:ring-cyan-400 transition-all shadow-lg hover:scale-110 active:scale-95"
                         style={{ backgroundColor: track.color }}
                         title="Change color"
                       />
@@ -1036,18 +1036,34 @@ export default function MultiTrackStudioV4() {
                 </div>
               </div>
             ) : (
-              tracks.map(track => (
+              tracks.map((track, trackIndex) => (
                 <div
                   key={track.id}
-                  className="h-24 border-b border-[#1f1f1f] relative group hover:bg-[#0f0f0f]"
+                  className="h-24 border-b border-[#1f1f1f] relative group hover:bg-[#0f0f0f] flex"
                   onClick={() => setSelectedTrackId(track.id)}
                 >
-                  {/* Track Lane Background */}
-                  <div className="absolute inset-0 flex items-center px-2">
+                  {/* Track Header - Fixed Width to Match Sidebar */}
+                  <div className="w-60 flex-shrink-0 border-r border-[#1f1f1f]/50 bg-[#0a0a0a]/80 flex items-center px-3 gap-2.5 backdrop-blur-sm">
+                    <div className="w-6 h-6 rounded-md bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-[11px] font-bold text-cyan-400 border border-gray-700/50 shadow-inner flex-shrink-0">
+                      {trackIndex + 1}
+                    </div>
+                    <div 
+                      className="w-5 h-5 rounded-md flex-shrink-0 shadow-lg ring-1 ring-white/20" 
+                      style={{ backgroundColor: track.color }}
+                    />
+                    <span className="text-sm font-bold text-white truncate flex-1 tracking-tight">{track.name}</span>
+                    <div className="text-base flex-shrink-0 opacity-70">
+                      {track.type === 'midi' ? '🎹' : '🎤'}
+                    </div>
+                  </div>
+                  
+                  {/* Track Lane - Scrollable Timeline Area */}
+                  <div className="flex-1 relative">
+                    <div className="absolute inset-0 flex items-center px-2">
                     {track.clips.length === 0 ? (
                       <div className="text-xs text-gray-700">Empty track - add clips to see waveforms</div>
                     ) : (
-                      track.clips.map(clip => (
+                      track.clips.map((clip, clipIndex) => (
                         <div
                           key={clip.id}
                           className={`absolute h-16 rounded-lg overflow-hidden cursor-move transition-all shadow-xl ${
@@ -1127,15 +1143,16 @@ export default function MultiTrackStudioV4() {
                         </div>
                       ))
                     )}
+                    </div>
+                    
+                    {/* Playhead Indicator (moves during playback) */}
+                    {isPlaying && (
+                      <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-lg shadow-cyan-400/50 pointer-events-none z-10"
+                        style={{ left: `${playhead * zoom}px` }}
+                      />
+                    )}
                   </div>
-
-                  {/* Playhead Indicator (moves during playback) */}
-                  {isPlaying && (
-                    <div
-                      className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-lg shadow-cyan-400/50 pointer-events-none z-10"
-                      style={{ left: `${playhead * zoom}px` }}
-                    />
-                  )}
                 </div>
               ))
             )}
