@@ -48,9 +48,15 @@ export default function MultiTrackStudio() {
   const pusherChannel = usePusher(user?.id);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [loopEnabled, setLoopEnabled] = useState(false);
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
+  const [bpm, setBpm] = useState(120);
   const [playhead, setPlayhead] = useState(0);
   const [zoom, setZoom] = useState(50);
   const [generatingJobs, setGeneratingJobs] = useState<string[]>([]);
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [markers, setMarkers] = useState<Marker[]>([
     { id: 'm1', name: 'Verse', position: 0 },
     { id: 'm2', name: 'Pre', position: 16 },
@@ -60,6 +66,7 @@ export default function MultiTrackStudio() {
   ]);
   const [mutedTracks, setMutedTracks] = useState<Set<string>>(new Set());
   const [soloedTracks, setSoloedTracks] = useState<Set<string>>(new Set());
+  const [showInspector, setShowInspector] = useState(true);
   const rafRef = useRef<number | undefined>(undefined);
   const lastUpdateRef = useRef<number>(0);
 
@@ -200,20 +207,56 @@ export default function MultiTrackStudio() {
     function onKey(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      
+      const ctrl = e.ctrlKey || e.metaKey;
+      const shift = e.shiftKey;
+      
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
-      } else if (e.code === 'KeyS') {
+      } else if (e.code === 'KeyS' && !ctrl) {
+        e.preventDefault();
         stop();
-      } else if (e.code === 'KeyT') {
+      } else if (e.code === 'KeyR' && !ctrl) {
+        e.preventDefault();
+        setIsRecording(prev => !prev);
+      } else if (e.code === 'KeyL' && !ctrl) {
+        e.preventDefault();
+        setLoopEnabled(prev => !prev);
+      } else if (e.code === 'KeyT' && !ctrl) {
+        e.preventDefault();
         addTrack();
-      } else if (e.code === 'KeyM') {
+      } else if (e.code === 'KeyM' && !ctrl) {
+        e.preventDefault();
         addMarker();
+      } else if (e.code === 'KeyB' && !ctrl) {
+        e.preventDefault();
+        splitClipAtPlayhead();
+      } else if (e.code === 'KeyI' && !ctrl) {
+        e.preventDefault();
+        setShowInspector(prev => !prev);
+      } else if (e.code === 'Delete' || e.code === 'Backspace') {
+        if (selectedClipId && selectedTrackId) {
+          e.preventDefault();
+          deleteClip(selectedTrackId, selectedClipId);
+        }
+      } else if (ctrl && e.code === 'KeyZ' && !shift) {
+        e.preventDefault();
+        console.log('Undo (not yet implemented)');
+      } else if (ctrl && (e.code === 'KeyY' || (shift && e.code === 'KeyZ'))) {
+        e.preventDefault();
+        console.log('Redo (not yet implemented)');
+      } else if (ctrl && (e.code === 'Equal' || e.code === 'NumpadAdd')) {
+        e.preventDefault();
+        setZoom(prev => Math.min(prev + 10, 200));
+      } else if (ctrl && (e.code === 'Minus' || e.code === 'NumpadSubtract')) {
+        e.preventDefault();
+        setZoom(prev => Math.max(prev - 10, 10));
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [tracks, isPlaying, playhead]);
+  }, [tracks, isPlaying, playhead, selectedClipId, selectedTrackId]);
 
   function addTrack() {
     const t = { id: 't-' + Date.now(), name: `Track ${tracks.length + 1}`, clips: [], volume: 0.8, pan: 0 };
@@ -226,6 +269,61 @@ export default function MultiTrackStudio() {
 
   function setTrackPan(trackId: string, pan: number) {
     setTracks(prev => prev.map(t => t.id === trackId ? { ...t, pan } : t));
+  }
+
+  function splitClipAtPlayhead() {
+    if (!selectedClipId || !selectedTrackId) {
+      console.log('No clip selected to split');
+      return;
+    }
+    
+    setTracks(prev => prev.map(track => {
+      if (track.id !== selectedTrackId) return track;
+      
+      const clipIndex = track.clips.findIndex(c => c.id === selectedClipId);
+      if (clipIndex === -1) return track;
+      
+      const clip = track.clips[clipIndex];
+      const clipEnd = clip.start + clip.duration;
+      
+      // Check if playhead is within clip bounds
+      if (playhead <= clip.start || playhead >= clipEnd) {
+        console.log('Playhead not within clip bounds');
+        return track;
+      }
+      
+      // Create two new clips
+      const leftClip: Clip = {
+        ...clip,
+        id: 'c-' + Date.now() + '-left',
+        duration: playhead - clip.start,
+        waveformRendered: false
+      };
+      
+      const rightClip: Clip = {
+        ...clip,
+        id: 'c-' + Date.now() + '-right',
+        start: playhead,
+        duration: clipEnd - playhead,
+        waveformRendered: false
+      };
+      
+      const newClips = [...track.clips];
+      newClips.splice(clipIndex, 1, leftClip, rightClip);
+      
+      return { ...track, clips: newClips };
+    }));
+    
+    console.log('✂️ Clip split at playhead');
+  }
+
+  function deleteClip(trackId: string, clipId: string) {
+    setTracks(prev => prev.map(track => {
+      if (track.id !== trackId) return track;
+      return { ...track, clips: track.clips.filter(c => c.id !== clipId) };
+    }));
+    setSelectedClipId(null);
+    console.log('🗑️ Clip deleted');
   }
 
   async function exportMix() {
@@ -546,15 +644,16 @@ export default function MultiTrackStudio() {
             fontSize: 12,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
-          }} title="Stop">⏹</button>
+            justifyContent: 'center',
+            transition: 'all 0.15s'
+          }} title="Stop (S)">⏹</button>
           
           <button onClick={togglePlay} style={{ 
             width: 40,
             height: 32,
-            background: '#00bcd4',
-            border: 0, 
-            color: '#000', 
+            background: isPlaying ? '#00bcd4' : '#1f1f1f',
+            border: isPlaying ? 0 : '1px solid #2a2a2a', 
+            color: isPlaying ? '#000' : '#888', 
             borderRadius: 4,
             cursor: 'pointer',
             fontWeight: 700,
@@ -562,22 +661,67 @@ export default function MultiTrackStudio() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,188,212,0.3)'
-          }} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '⏸' : '▶'}</button>
+            boxShadow: isPlaying ? '0 2px 8px rgba(0,188,212,0.3)' : 'none',
+            transition: 'all 0.15s'
+          }} title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}>{isPlaying ? '⏸' : '▶'}</button>
 
-          <button style={{ 
-            width: 32,
-            height: 32,
-            background: '#1f1f1f', 
-            border: '1px solid #2a2a2a', 
-            color: '#888', 
-            borderRadius: 4,
-            cursor: 'pointer',
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }} title="Loop">🔁</button>
+          <button 
+            onClick={() => setIsRecording(prev => !prev)}
+            style={{ 
+              width: 32,
+              height: 32,
+              background: isRecording ? '#ff4757' : '#1f1f1f', 
+              border: isRecording ? 0 : '1px solid #2a2a2a', 
+              color: isRecording ? '#fff' : '#888', 
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: isRecording ? '0 2px 8px rgba(255,71,87,0.4)' : 'none',
+              transition: 'all 0.15s'
+            }} 
+            title="Record (R)"
+          >⏺</button>
+
+          <button 
+            onClick={() => setLoopEnabled(prev => !prev)}
+            style={{ 
+              width: 32,
+              height: 32,
+              background: loopEnabled ? '#00bcd4' : '#1f1f1f', 
+              border: loopEnabled ? 0 : '1px solid #2a2a2a', 
+              color: loopEnabled ? '#000' : '#888', 
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s'
+            }} 
+            title="Loop (L)"
+          >🔁</button>
+
+          <button 
+            onClick={() => setMetronomeEnabled(prev => !prev)}
+            style={{ 
+              width: 32,
+              height: 32,
+              background: metronomeEnabled ? '#00bcd4' : '#1f1f1f', 
+              border: metronomeEnabled ? 0 : '1px solid #2a2a2a', 
+              color: metronomeEnabled ? '#000' : '#888', 
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s'
+            }} 
+            title="Metronome"
+          >🎼</button>
         </div>
 
         {/* Time Display */}
@@ -588,12 +732,51 @@ export default function MultiTrackStudio() {
           padding: '6px 12px',
           display: 'flex',
           alignItems: 'center',
-          gap: 8
+          gap: 10
         }}>
-          <div style={{ fontSize: 11, color: '#666' }}>⏱</div>
-          <div style={{ color: '#00bcd4', fontWeight: 600, fontSize: 13, fontFamily: 'monospace' }}>{formatTime(playhead)}</div>
-          <div style={{ fontSize: 11, color: '#444' }}>/</div>
-          <div style={{ fontSize: 11, color: '#666' }}>120 BPM</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 11, color: '#666' }}>⏱</div>
+            <div style={{ color: '#00bcd4', fontWeight: 600, fontSize: 13, fontFamily: 'monospace' }}>{formatTime(playhead)}</div>
+          </div>
+          <div style={{ width: 1, height: 20, background: '#2a2a2a' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button 
+              onClick={() => setBpm(prev => Math.max(prev - 1, 20))}
+              style={{ 
+                width: 18, 
+                height: 18, 
+                background: '#2a2a2a', 
+                border: 0, 
+                color: '#666', 
+                borderRadius: 2,
+                cursor: 'pointer',
+                fontSize: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >-</button>
+            <div style={{ fontSize: 12, color: '#00bcd4', fontWeight: 600, fontFamily: 'monospace', minWidth: 40, textAlign: 'center' }}>
+              {bpm}
+            </div>
+            <button 
+              onClick={() => setBpm(prev => Math.min(prev + 1, 300))}
+              style={{ 
+                width: 18, 
+                height: 18, 
+                background: '#2a2a2a', 
+                border: 0, 
+                color: '#666', 
+                borderRadius: 2,
+                cursor: 'pointer',
+                fontSize: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >+</button>
+            <div style={{ fontSize: 10, color: '#666' }}>BPM</div>
+          </div>
         </div>
 
         {/* Tabs */}
