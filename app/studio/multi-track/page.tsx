@@ -83,31 +83,40 @@ async function renderWaveform(canvas: HTMLCanvasElement, audioBuffer: AudioBuffe
     if (cachedDataUrl) {
       const img = new Image();
       img.onload = () => ctx.drawImage(img, 0, 0);
+      img.onerror = () => console.warn('[Waveform] Cache image load failed for', clipId);
       img.src = cachedDataUrl;
       return;
     }
   }
 
-  // Render using professional renderer
-  const renderer = new ProfessionalWaveformRenderer(canvas, {
-    width: canvas.width,
-    height: canvas.height,
-    backgroundColor: 'transparent',
-    waveColor: color,
-    progressColor: color + '80',
-    showRMS: true,
-    showPeaks: true
+  // Render using professional renderer (optimized with RAF)
+  requestAnimationFrame(() => {
+    const renderer = new ProfessionalWaveformRenderer(canvas, {
+      width: canvas.width,
+      height: canvas.height,
+      backgroundColor: 'transparent',
+      waveColor: color,
+      progressColor: color + '80',
+      showRMS: true,
+      showPeaks: true
+    });
+
+    const samplesPerPixel = Math.ceil(audioBuffer.length / canvas.width);
+    renderer.generateWaveformData(audioBuffer, samplesPerPixel);
+    renderer.render();
+
+    // Cache the result in idle time to avoid blocking main thread
+    if (clipId && 'requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        try {
+          const dataUrl = canvas.toDataURL('image/png');
+          setCachedWaveform(clipId, dataUrl);
+        } catch (e) {
+          console.warn('[Waveform] Cache failed:', e);
+        }
+      }, { timeout: 2000 });
+    }
   });
-
-  const samplesPerPixel = Math.ceil(audioBuffer.length / canvas.width);
-  renderer.generateWaveformData(audioBuffer, samplesPerPixel);
-  renderer.render();
-
-  // Cache the result
-  if (clipId) {
-    const dataUrl = canvas.toDataURL('image/png');
-    setCachedWaveform(clipId, dataUrl);
-  }
 }
 
 export default function MultiTrackStudioV4() {
@@ -160,6 +169,7 @@ export default function MultiTrackStudioV4() {
   const analyserNodesRef = useRef<Record<string, AnalyserNode>>({});
   const lastRafTime = useRef<number>(0);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const playheadRef = useRef<HTMLDivElement>(null);
   const historyManagerRef = useRef<HistoryManager | null>(null);
   const recordingManagerRef = useRef<RecordingManager | null>(null);
   const projectManagerRef = useRef<ProjectManager | null>(null);
@@ -212,8 +222,20 @@ export default function MultiTrackStudioV4() {
     return () => {
       dawInstance.dispose();
       recordingManagerRef.current?.dispose();
+      
+      // Cleanup waveform cache and buffer pool
+      waveformCache.clear();
+      bufferPool.clear();
+      
+      // Cancel any pending animations
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      if (autoSaveTimerRef.current) {
+        clearInterval(autoSaveTimerRef.current);
+      }
     };
-  }, [user?.id]);
+  }, [user?.id, waveformCache, bufferPool]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -291,12 +313,16 @@ export default function MultiTrackStudioV4() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedClipId, selectedTrackId, daw, tracks, clipboardClip, playhead, isPlaying]);
 
-  // Playhead animation
+  // Playhead animation - optimized with transform
   useEffect(() => {
     if (!daw) return;
 
     const updatePlayhead = (time: number) => {
       setPlayhead(time);
+      // Update visual position via transform (no re-render)
+      if (playheadRef.current) {
+        playheadRef.current.style.transform = `translateX(${time * zoom}px)`;
+      }
     };
 
     const loop = (timestamp: number) => {
@@ -312,10 +338,18 @@ export default function MultiTrackStudioV4() {
       setPlayhead(currentPlayhead);
       setIsPlaying(daw.isPlaying());
       
+      // Update visual position via transform
+      if (playheadRef.current) {
+        playheadRef.current.style.transform = `translateX(${currentPlayhead * zoom}px)`;
+      }
+      
       // Check loop boundaries
       if (loopEnabled && daw.isPlaying() && currentPlayhead >= loopEnd) {
         daw.seekTo(loopStart);
         setPlayhead(loopStart);
+        if (playheadRef.current) {
+          playheadRef.current.style.transform = `translateX(${loopStart * zoom}px)`;
+        }
       }
 
       // Update VU meters (throttled to every 2 frames for performance)
@@ -350,6 +384,9 @@ export default function MultiTrackStudioV4() {
     daw.on('stop', () => {
       setIsPlaying(false);
       setPlayhead(0);
+      if (playheadRef.current) {
+        playheadRef.current.style.transform = 'translateX(0px)';
+      }
     });
 
     rafRef.current = requestAnimationFrame(loop);
@@ -357,7 +394,7 @@ export default function MultiTrackStudioV4() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       daw.off('playheadUpdate', updatePlayhead);
     };
-  }, [daw, loopEnabled, loopStart, loopEnd]);
+  }, [daw, loopEnabled, loopStart, loopEnd, zoom]);
 
   // Auto-save every 2 minutes
   useEffect(() => {
@@ -440,27 +477,37 @@ export default function MultiTrackStudioV4() {
   };
 
   const handleTimelineMouseMove = (e: React.MouseEvent) => {
-    // Handle playhead dragging
+    // Handle playhead dragging - optimized with transform
     if (isDraggingPlayhead && daw) {
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
       const x = e.clientX - rect.left;
       const timeInSeconds = Math.max(0, x / zoom);
       daw.seekTo(timeInSeconds);
       setPlayhead(timeInSeconds);
+      // Update visual position immediately
+      if (playheadRef.current) {
+        playheadRef.current.style.transform = `translateX(${timeInSeconds * zoom}px)`;
+      }
     }
     
-    // Handle clip dragging
+    // Handle clip dragging - throttled updates for smoothness
     if (draggedClip && daw) {
       const deltaX = e.clientX - draggedClip.startX;
       const deltaTime = deltaX / zoom;
-      const newStartTime = Math.max(0, snapTime(draggedClip.initialStartTime + deltaTime));
+      const rawStartTime = Math.max(0, draggedClip.initialStartTime + deltaTime);
+      const newStartTime = snapEnabled ? snapTime(rawStartTime) : rawStartTime;
       
-      // Update clip position in DAW
-      const track = tracks.find(t => t.id === draggedClip.trackId);
-      const clip = track?.clips.find(c => c.id === draggedClip.clipId);
-      if (clip) {
-        clip.startTime = newStartTime;
-        setTracks([...daw.getTracks()]);
+      // Throttle state updates with RAF
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(() => {
+          const track = tracks.find(t => t.id === draggedClip.trackId);
+          const clip = track?.clips.find(c => c.id === draggedClip.clipId);
+          if (clip) {
+            clip.startTime = newStartTime;
+            setTracks([...daw.getTracks()]);
+          }
+          rafRef.current = undefined;
+        });
       }
     }
   };
@@ -1316,11 +1363,15 @@ export default function MultiTrackStudioV4() {
           >
             <div className="absolute inset-0 overflow-x-auto overflow-y-hidden" style={{ width: '100%' }}>
               <div className="relative h-full" style={{ width: `${600 * zoom}px` }}>
-                {(() => {
+                {useMemo(() => {
                   const totalSeconds = 600;
-                  const interval = zoom < 20 ? 10 : zoom < 50 ? 5 : zoom < 100 ? 2 : 1;
+                  // Adaptive interval based on zoom - fewer markers at low zoom
+                  const interval = zoom < 10 ? 20 : zoom < 20 ? 10 : zoom < 50 ? 5 : zoom < 100 ? 2 : 1;
                   const markers: React.ReactElement[] = [];
+                  const maxMarkers = 100; // Cap at 100 markers
+                  
                   for (let sec = 0; sec <= totalSeconds; sec += interval) {
+                    if (markers.length >= maxMarkers) break;
                     markers.push(
                       <div 
                         key={sec} 
@@ -1332,7 +1383,7 @@ export default function MultiTrackStudioV4() {
                     );
                   }
                   return markers;
-                })()}
+                }, [zoom])}
               </div>
             </div>
           </div>
@@ -1342,10 +1393,11 @@ export default function MultiTrackStudioV4() {
                onMouseMove={handleTimelineMouseMove}
                onMouseUp={handleTimelineMouseUp}
                onMouseLeave={handleTimelineMouseUp}>
-            {/* Playhead Indicator */}
+            {/* Playhead Indicator - Optimized with transform */}
             <div 
-              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 shadow-lg shadow-red-500/50 cursor-ew-resize"
-              style={{ left: `${playhead * zoom}px` }}
+              ref={playheadRef}
+              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 shadow-lg shadow-red-500/50 cursor-ew-resize will-change-transform"
+              style={{ left: 0, transform: `translateX(${playhead * zoom}px)` }}
               onMouseDown={handlePlayheadMouseDown}
             >
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded whitespace-nowrap pointer-events-none">
@@ -1354,23 +1406,28 @@ export default function MultiTrackStudioV4() {
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500 pointer-events-none" />
             </div>
             
-            {/* Professional Beat Grid Lines - Memoized for Performance */}
+            {/* Professional Beat Grid Lines - Optimized */}
             {useMemo(() => {
               const beatDuration = 60 / bpm;
               const barDuration = beatDuration * 4;
               const totalDuration = 600;
               const gridLines: React.ReactElement[] = [];
               
-              // Show different grid density based on zoom
+              // Adaptive grid density based on zoom
               const showBeats = zoom >= 40;
-              const showBars = true;
+              const skipFactor = zoom < 20 ? 4 : zoom < 40 ? 2 : 1; // Skip lines at low zoom
+              
+              let lineCount = 0;
+              const maxLines = 200; // Cap at 200 lines for performance
               
               for (let time = 0; time <= totalDuration; time += beatDuration) {
                 const isBar = Math.abs(time % barDuration) < 0.01;
-                if (isBar || (showBeats && snapEnabled)) {
+                const shouldShow = isBar || (showBeats && snapEnabled && (lineCount % skipFactor === 0));
+                
+                if (shouldShow && lineCount < maxLines) {
                   gridLines.push(
                     <div
-                      key={`grid-${time}`}
+                      key={`grid-${time.toFixed(2)}`}
                       className="absolute top-0 bottom-0 pointer-events-none"
                       style={{
                         left: `${time * zoom}px`,
@@ -1382,6 +1439,7 @@ export default function MultiTrackStudioV4() {
                     />
                   );
                 }
+                lineCount++;
               }
               return gridLines;
             }, [bpm, zoom, snapEnabled])}
@@ -1469,8 +1527,8 @@ export default function MultiTrackStudioV4() {
                       track.clips.map((clip, clipIndex) => (
                         <div
                           key={clip.id}
-                          className={`absolute h-16 rounded-lg overflow-hidden cursor-move transition-all shadow-xl ${
-                            selectedClipId === clip.id ? 'ring-4 ring-cyan-400 ring-offset-2 ring-offset-[#0a0a0a] scale-105' : 'hover:scale-102'
+                          className={`absolute h-16 rounded-lg overflow-hidden cursor-move transition-all duration-150 shadow-xl will-change-transform ${
+                            selectedClipId === clip.id ? 'ring-4 ring-cyan-400 ring-offset-2 ring-offset-[#0a0a0a] scale-105' : 'hover:scale-[1.02]'
                           }`}
                           style={{
                             left: `${clip.startTime * zoom}px`,
