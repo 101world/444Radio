@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import createAudioScheduler from '@/lib/audio/AudioScheduler';
 
-const scheduler = createAudioScheduler();
+let scheduler: ReturnType<typeof createAudioScheduler> | null = null;
+
+function getScheduler() {
+  if (typeof window !== 'undefined' && !scheduler) {
+    scheduler = createAudioScheduler();
+  }
+  return scheduler;
+}
 
 function formatTime(sec = 0) {
   const s = Math.floor(sec % 60).toString().padStart(2, '0');
@@ -39,9 +46,12 @@ export default function MultiTrackStudio() {
   }, []);
 
   useEffect(() => {
+    const sched = getScheduler();
+    if (!sched) return;
+    
     function loop(ts: number) {
-      if (ts - lastUpdateRef.current > 33) {
-        const ph = scheduler.getPlayhead();
+      if (ts - lastUpdateRef.current > 33 && sched) {
+        const ph = sched.getPlayhead();
         setPlayhead(ph);
         lastUpdateRef.current = ts;
       }
@@ -56,8 +66,9 @@ export default function MultiTrackStudio() {
   }, []);
 
   useEffect(() => {
-    function onKey(e) {
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
@@ -76,14 +87,18 @@ export default function MultiTrackStudio() {
     setTracks(prev => [...prev, t]);
   }
 
-  async function addClipToTrack(trackId) {
+  async function addClipToTrack(trackId: string) {
+    const sched = getScheduler();
+    if (!sched) return;
+    
     const url = prompt('Paste audio URL (http(s)://...) to attach as clip');
     if (!url) return;
-    const start = parseFloat(prompt('Start position in project (seconds)', String(Math.floor(playhead)))) || 0;
+    const startStr = prompt('Start position in project (seconds)', String(Math.floor(playhead)));
+    const start = parseFloat(startStr || '0') || 0;
     const newClip = { id: 'c-' + Date.now(), url, start, duration: 0 };
     setTracks(prev => prev.map(t => t.id === trackId ? { ...t, clips: [...t.clips, newClip] } : t));
     try {
-      await scheduler.loadBuffer(url);
+      await sched.loadBuffer(url);
       console.log('buffer loaded');
     } catch (err) {
       console.warn('buffer load error', err);
@@ -92,30 +107,39 @@ export default function MultiTrackStudio() {
   }
 
   async function togglePlay() {
+    const sched = getScheduler();
+    if (!sched) return;
+    
     if (!isPlaying) {
-      scheduler.setPlayheadPositionManual(playhead);
+      sched.setPlayheadPositionManual(playhead);
       const flatClips = tracks.flatMap(t => t.clips);
-      await scheduler.play(flatClips);
+      await sched.play(flatClips);
       setIsPlaying(true);
     } else {
-      scheduler.pause();
+      sched.pause();
       setIsPlaying(false);
     }
   }
 
   function stop() {
-    scheduler.stop();
+    const sched = getScheduler();
+    if (!sched) return;
+    
+    sched.stop();
     setIsPlaying(false);
     setPlayhead(0);
-    scheduler.setPlayheadPositionManual(0);
+    sched.setPlayheadPositionManual(0);
   }
 
-  function seekTo(seconds) {
-    scheduler.seek(seconds, tracks.flatMap(t => t.clips));
+  function seekTo(seconds: number) {
+    const sched = getScheduler();
+    if (!sched) return;
+    
+    sched.seek(seconds, tracks.flatMap(t => t.clips));
     setPlayhead(seconds);
   }
 
-  function pxForSeconds(sec) {
+  function pxForSeconds(sec: number) {
     return sec * zoom;
   }
 
@@ -186,7 +210,7 @@ export default function MultiTrackStudio() {
                         boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
                         cursor: 'pointer'
                       }}>
-                        <div style={{ fontSize: 12, color: '#001' }}>{c.url.split('/').pop().slice(0, 12)}</div>
+                        <div style={{ fontSize: 12, color: '#001' }}>{c.url.split('/').pop()?.slice(0, 12) || 'Clip'}</div>
                       </div>
                     );
                   })}
@@ -227,11 +251,14 @@ export default function MultiTrackStudio() {
           <div>
             <div style={{ fontSize: 13, color: '#bbb', marginBottom: 6 }}>Quick Actions</div>
             <button style={{ width: '100%', marginBottom: 8, padding: '8px', cursor: 'pointer' }} onClick={async () => {
+              const sched = getScheduler();
+              if (!sched) return;
+              
               const url = prompt('Paste generated asset URL (for test)');
               if (!url) return;
               const newTrack = { id: 't-' + Date.now(), name: 'Gen ' + (tracks.length + 1), clips: [{ id: 'c-' + Date.now(), url, start: Math.floor(playhead), duration: 0 }] };
               setTracks(prev => [...prev, newTrack]);
-              try { await scheduler.loadBuffer(url); } catch (e) { console.warn(e); }
+              try { await sched.loadBuffer(url); } catch (e) { console.warn(e); }
             }}>Attach Generated Asset</button>
             <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>Use this to simulate webhook → attaches new track with clip at current playhead.</div>
           </div>
