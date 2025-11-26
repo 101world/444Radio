@@ -1295,38 +1295,31 @@ export default function MultiTrackStudioV4() {
                   onMouseUp={handleTrackResizeEnd}
                   onMouseLeave={handleTrackResizeEnd}
                 >
-                  {/* Track Header - Fixed Width to Match Sidebar */}
-                  <div className="w-60 flex-shrink-0 border-r border-[#1f1f1f]/50 bg-[#0a0a0a]/80 flex items-center px-3 gap-2.5 backdrop-blur-sm">
-                    <div className="w-6 h-6 rounded-md bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-[11px] font-bold text-cyan-400 border border-gray-700/50 shadow-inner flex-shrink-0">
+                  {/* Track Header - Minimal Inline */}
+                  <div className="w-60 flex-shrink-0 border-r border-[#1f1f1f] bg-[#0a0a0a] flex items-center px-2 gap-2">
+                    <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-cyan-400 bg-gray-900">
                       {trackIndex + 1}
                     </div>
                     <div 
-                      className="w-5 h-5 rounded-md flex-shrink-0 shadow-lg ring-1 ring-white/20" 
+                      className="w-3 h-3 rounded" 
                       style={{ backgroundColor: track.color }}
-                      title={`Track color: ${track.color}`}
                     />
                     <span 
-                      className="text-sm font-bold text-white truncate flex-1 tracking-tight" 
+                      className="text-xs font-medium text-white/90 truncate flex-1" 
                       title={track.name}
                     >
                       {track.name}
                     </span>
 
-                    {/* VU Meter */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <div className="w-16 h-1.5 bg-gray-800/80 rounded-full overflow-hidden shadow-inner">
-                        <div 
-                          className="h-full transition-all duration-75"
-                          style={{ 
-                            width: `${(vuLevels[track.id] || 0) * 100}%`,
-                            backgroundColor: vuLevels[track.id] > 0.85 ? '#ef4444' : vuLevels[track.id] > 0.6 ? '#eab308' : '#22c55e'
-                          }}
-                          title={`Level: ${Math.round((vuLevels[track.id] || 0) * 100)}%`}
-                        />
-                      </div>
-                      <div className="text-base opacity-70">
-                        {track.type === 'midi' ? '🎹' : '🎤'}
-                      </div>
+                    {/* VU Meter - Compact */}
+                    <div className="w-12 h-1 bg-gray-900 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full transition-all duration-75"
+                        style={{ 
+                          width: `${(vuLevels[track.id] || 0) * 100}%`,
+                          backgroundColor: vuLevels[track.id] > 0.85 ? '#ef4444' : vuLevels[track.id] > 0.6 ? '#eab308' : '#22c55e'
+                        }}
+                      />
                     </div>
                   </div>
                   
