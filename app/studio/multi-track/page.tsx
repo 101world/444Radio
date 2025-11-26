@@ -33,6 +33,8 @@ interface Track {
   id: string;
   name: string;
   clips: Clip[];
+  volume: number; // 0-1 (0-100%)
+  pan: number; // -1 to 1 (left to right)
 }
 
 interface Marker {
@@ -63,7 +65,7 @@ export default function MultiTrackStudio() {
 
   useEffect(() => {
     if (tracks.length === 0) {
-      setTracks([{ id: 't-1', name: 'Track 1', clips: [] }]);
+      setTracks([{ id: 't-1', name: 'Track 1', clips: [], volume: 0.8, pan: 0 }]);
     }
   }, []);
 
@@ -130,7 +132,9 @@ export default function MultiTrackStudio() {
                   url,
                   start: Math.floor(playhead),
                   duration: 0
-                }]
+                }],
+                volume: 0.8,
+                pan: 0
               };
               
               setTracks(prev => [...prev, newTrack]);
@@ -165,7 +169,9 @@ export default function MultiTrackStudio() {
               url: audioUrl,
               start: Math.floor(playhead),
               duration: 0
-            }]
+            }],
+            volume: 0.8,
+            pan: 0
           };
           
           setTracks(prev => [...prev, newTrack]);
@@ -210,8 +216,161 @@ export default function MultiTrackStudio() {
   }, [tracks, isPlaying, playhead]);
 
   function addTrack() {
-    const t = { id: 't-' + Date.now(), name: `Track ${tracks.length + 1}`, clips: [] };
+    const t = { id: 't-' + Date.now(), name: `Track ${tracks.length + 1}`, clips: [], volume: 0.8, pan: 0 };
     setTracks(prev => [...prev, t]);
+  }
+
+  function setTrackVolume(trackId: string, volume: number) {
+    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, volume } : t));
+  }
+
+  function setTrackPan(trackId: string, pan: number) {
+    setTracks(prev => prev.map(t => t.id === trackId ? { ...t, pan } : t));
+  }
+
+  async function exportMix() {
+    const sched = getScheduler();
+    if (!sched) {
+      alert('Audio system not initialized')
+      return
+    }
+
+    // Calculate total duration
+    let maxDuration = 0
+    tracks.forEach(track => {
+      track.clips.forEach(clip => {
+        const endTime = clip.start + clip.duration
+        if (endTime > maxDuration) maxDuration = endTime
+      })
+    })
+
+    if (maxDuration === 0) {
+      alert('No clips to export')
+      return
+    }
+
+    try {
+      // Create offline context for rendering
+      const sampleRate = 44100
+      const channels = 2
+      const duration = Math.ceil(maxDuration)
+      const offlineCtx = new OfflineAudioContext(channels, duration * sampleRate, sampleRate)
+
+      // Process each track
+      for (const track of tracks) {
+        // Skip muted tracks, or if solo is active, skip non-soloed tracks
+        const isSolo = soloedTracks.size > 0
+        if (mutedTracks.has(track.id) || (isSolo && !soloedTracks.has(track.id))) {
+          continue
+        }
+
+        // Create gain nodes for volume and pan
+        const trackGain = offlineCtx.createGain()
+        trackGain.gain.value = track.volume
+
+        const panNode = offlineCtx.createStereoPanner()
+        panNode.pan.value = track.pan
+
+        trackGain.connect(panNode)
+        panNode.connect(offlineCtx.destination)
+
+        // Schedule each clip
+        for (const clip of track.clips) {
+          const buffer = await sched.loadBuffer(clip.url)
+          if (buffer) {
+            const source = offlineCtx.createBufferSource()
+            source.buffer = buffer
+            source.connect(trackGain)
+            source.start(clip.start)
+          }
+        }
+      }
+
+      // Render the mix
+      const renderedBuffer = await offlineCtx.startRendering()
+
+      // Convert to WAV
+      const wav = audioBufferToWav(renderedBuffer)
+      const blob = new Blob([wav], { type: 'audio/wav' })
+      const url = URL.createObjectURL(blob)
+
+      // Download
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `444radio-mix-${Date.now()}.wav`
+      a.click()
+      URL.revokeObjectURL(url)
+
+      alert('Mix exported successfully!')
+    } catch (error) {
+      console.error('Export error:', error)
+      alert('Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+  }
+
+  // Helper: Convert AudioBuffer to WAV
+  function audioBufferToWav(buffer: AudioBuffer): ArrayBuffer {
+    const numChannels = buffer.numberOfChannels
+    const sampleRate = buffer.sampleRate
+    const format = 1 // PCM
+    const bitDepth = 16
+
+    const bytesPerSample = bitDepth / 8
+    const blockAlign = numChannels * bytesPerSample
+
+    const data = []
+    for (let i = 0; i < buffer.numberOfChannels; i++) {
+      data.push(buffer.getChannelData(i))
+    }
+
+    const interleaved = new Float32Array(buffer.length * numChannels)
+    for (let i = 0; i < buffer.length; i++) {
+      for (let ch = 0; ch < numChannels; ch++) {
+        interleaved[i * numChannels + ch] = data[ch][i]
+      }
+    }
+
+    const dataLength = interleaved.length * bytesPerSample
+    const headerLength = 44
+    const totalLength = headerLength + dataLength
+
+    const arrayBuffer = new ArrayBuffer(totalLength)
+    const view = new DataView(arrayBuffer)
+
+    // RIFF chunk descriptor
+    writeString(view, 0, 'RIFF')
+    view.setUint32(4, totalLength - 8, true)
+    writeString(view, 8, 'WAVE')
+
+    // FMT sub-chunk
+    writeString(view, 12, 'fmt ')
+    view.setUint32(16, 16, true) // Subchunk1Size
+    view.setUint16(20, format, true)
+    view.setUint16(22, numChannels, true)
+    view.setUint32(24, sampleRate, true)
+    view.setUint32(28, sampleRate * blockAlign, true) // ByteRate
+    view.setUint16(32, blockAlign, true)
+    view.setUint16(34, bitDepth, true)
+
+    // Data sub-chunk
+    writeString(view, 36, 'data')
+    view.setUint32(40, dataLength, true)
+
+    // Write PCM samples
+    let offset = 44
+    for (let i = 0; i < interleaved.length; i++) {
+      const sample = Math.max(-1, Math.min(1, interleaved[i]))
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
+      offset += 2
+    }
+
+    return arrayBuffer
+  }
+
+  function writeString(view: DataView, offset: number, str: string) {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i))
+    }
   }
 
   async function addClipToTrack(trackId: string) {
@@ -377,6 +536,19 @@ export default function MultiTrackStudio() {
         </div>
         <div style={{ color: '#00bcd4', fontWeight: 600, fontSize: 14 }}>{formatTime(playhead)}</div>
         <div style={{ flex: 1 }} />
+        <button onClick={exportMix} style={{
+          padding: '6px 16px',
+          background: '#00bcd4',
+          border: 0,
+          color: '#000',
+          borderRadius: 4,
+          cursor: 'pointer',
+          fontWeight: 600,
+          fontSize: 13,
+          marginRight: 16
+        }}>
+          💾 Export Mix
+        </button>
         <div style={{ fontSize: 12, color: '#666' }}>Space = Play • S = Stop • T = Track • M = Marker</div>
       </header>
 
@@ -412,74 +584,118 @@ export default function MultiTrackStudio() {
                 <div key={t.id} style={{ 
                   padding: '8px 12px',
                   borderBottom: '1px solid #252525',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
                   background: isSoloed ? 'rgba(0, 188, 212, 0.1)' : 'transparent'
                 }}>
-                  {/* Track Color Indicator */}
-                  <div style={{ 
-                    width: 4, 
-                    height: 28, 
-                    background: trackColor,
-                    borderRadius: 2
-                  }} />
-                  
-                  {/* Track Name */}
-                  <div style={{ flex: 1, fontSize: 13, color: isMuted ? '#555' : '#ddd' }}>
-                    {t.name}
+                  {/* Top Row: Track info + M/S/R Buttons */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    {/* Track Color Indicator */}
+                    <div style={{ 
+                      width: 4, 
+                      height: 28, 
+                      background: trackColor,
+                      borderRadius: 2
+                    }} />
+                    
+                    {/* Track Name */}
+                    <div style={{ flex: 1, fontSize: 13, color: isMuted ? '#555' : '#ddd' }}>
+                      {t.name}
+                    </div>
+                    
+                    {/* M/S/R Buttons */}
+                    <button 
+                      onClick={() => toggleMute(t.id)}
+                      style={{ 
+                        width: 24, 
+                        height: 24, 
+                        background: isMuted ? '#ff6b6b' : '#333',
+                        border: 0,
+                        borderRadius: 3,
+                        cursor: 'pointer',
+                        color: isMuted ? '#000' : '#888',
+                        fontSize: 11,
+                        fontWeight: 600
+                      }}
+                      title="Mute"
+                    >M</button>
+                    
+                    <button 
+                      onClick={() => toggleSolo(t.id)}
+                      style={{ 
+                        width: 24, 
+                        height: 24, 
+                        background: isSoloed ? '#00bcd4' : '#333',
+                        border: 0,
+                        borderRadius: 3,
+                        cursor: 'pointer',
+                        color: isSoloed ? '#000' : '#888',
+                        fontSize: 11,
+                        fontWeight: 600
+                      }}
+                      title="Solo"
+                    >S</button>
+                    
+                    <button 
+                      onClick={() => addClipToTrack(t.id)}
+                      style={{ 
+                        width: 24, 
+                        height: 24, 
+                        background: '#333',
+                        border: 0,
+                        borderRadius: 3,
+                        cursor: 'pointer',
+                        color: '#888',
+                        fontSize: 11,
+                        fontWeight: 600
+                      }}
+                      title="Add Clip"
+                    >+</button>
                   </div>
                   
-                  {/* M/S/R Buttons */}
-                  <button 
-                    onClick={() => toggleMute(t.id)}
-                    style={{ 
-                      width: 24, 
-                      height: 24, 
-                      background: isMuted ? '#ff6b6b' : '#333',
-                      border: 0,
-                      borderRadius: 3,
-                      cursor: 'pointer',
-                      color: isMuted ? '#000' : '#888',
-                      fontSize: 11,
-                      fontWeight: 600
-                    }}
-                    title="Mute"
-                  >M</button>
-                  
-                  <button 
-                    onClick={() => toggleSolo(t.id)}
-                    style={{ 
-                      width: 24, 
-                      height: 24, 
-                      background: isSoloed ? '#00bcd4' : '#333',
-                      border: 0,
-                      borderRadius: 3,
-                      cursor: 'pointer',
-                      color: isSoloed ? '#000' : '#888',
-                      fontSize: 11,
-                      fontWeight: 600
-                    }}
-                    title="Solo"
-                  >S</button>
-                  
-                  <button 
-                    onClick={() => addClipToTrack(t.id)}
-                    style={{ 
-                      width: 24, 
-                      height: 24, 
-                      background: '#333',
-                      border: 0,
-                      borderRadius: 3,
-                      cursor: 'pointer',
-                      color: '#888',
-                      fontSize: 11,
-                      fontWeight: 600
-                    }}
-                    title="Add Clip"
-                  >+</button>
+                  {/* Bottom Row: Volume and Pan Controls */}
+                  <div style={{ marginTop: 8, paddingLeft: 16 }}>
+                    <div style={{ marginBottom: 6 }}>
+                      <div style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>
+                        VOL: {Math.round(t.volume * 100)}%
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={t.volume * 100}
+                        onChange={(e) => setTrackVolume(t.id, Number(e.target.value) / 100)}
+                        style={{
+                          width: '100%',
+                          height: 3,
+                          accentColor: trackColor,
+                          cursor: 'pointer'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9, color: '#666', marginBottom: 2 }}>
+                        PAN: {t.pan === 0 ? 'C' : t.pan < 0 ? `L${Math.abs(Math.round(t.pan * 100))}` : `R${Math.round(t.pan * 100)}`}
+                      </div>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={t.pan * 100}
+                        onChange={(e) => setTrackPan(t.id, Number(e.target.value) / 100)}
+                        style={{
+                          width: '100%',
+                          height: 3,
+                          accentColor: '#00bcd4',
+                          cursor: 'pointer'
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              );
+              )
             })}
           </div>
           
@@ -925,6 +1141,67 @@ export default function MultiTrackStudio() {
             )}
 
             <div style={{ borderTop: '1px solid #2a2a2a', marginTop: 12, paddingTop: 12 }}>
+              <input 
+                type="file" 
+                id="audioFileInput" 
+                accept="audio/mp3,audio/wav,audio/mpeg,audio/x-wav"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  const sched = getScheduler();
+                  if (!sched) return;
+                  
+                  // Create object URL from file
+                  const objectUrl = URL.createObjectURL(file);
+                  
+                  // Create track with file name
+                  const fileName = file.name.replace(/\.(mp3|wav)$/i, '');
+                  const newTrack: Track = { 
+                    id: 't-' + Date.now(), 
+                    name: fileName, 
+                    clips: [{ 
+                      id: 'c-' + Date.now(), 
+                      url: objectUrl, 
+                      start: Math.floor(playhead), 
+                      duration: 0 
+                    }], 
+                    volume: 0.8, 
+                    pan: 0 
+                  };
+                  
+                  setTracks(prev => [...prev, newTrack]);
+                  
+                  try { 
+                    await sched.loadBuffer(objectUrl); 
+                  } catch (e) { 
+                    console.warn('Failed to load audio:', e);
+                    alert('Failed to load audio file. Make sure it\'s a valid MP3 or WAV.');
+                  }
+                  
+                  // Reset input
+                  e.target.value = '';
+                }}
+              />
+              
+              <button style={{ 
+                width: '100%', 
+                padding: '10px', 
+                cursor: 'pointer', 
+                background: '#00bcd4', 
+                color: '#000', 
+                border: 0, 
+                borderRadius: 4, 
+                fontSize: 12,
+                fontWeight: 600,
+                marginBottom: 8
+              }} onClick={() => {
+                document.getElementById('audioFileInput')?.click();
+              }}>
+                📁 Import Local Audio File
+              </button>
+              
               <button style={{ 
                 width: '100%', 
                 padding: '10px', 
@@ -941,13 +1218,13 @@ export default function MultiTrackStudio() {
                 
                 const url = prompt('Paste audio URL:');
                 if (!url) return;
-                const newTrack = { id: 't-' + Date.now(), name: 'Manual ' + (tracks.length + 1), clips: [{ id: 'c-' + Date.now(), url, start: Math.floor(playhead), duration: 0 }] };
+                const newTrack: Track = { id: 't-' + Date.now(), name: 'Imported Track ' + (tracks.length + 1), clips: [{ id: 'c-' + Date.now(), url, start: Math.floor(playhead), duration: 0 }], volume: 0.8, pan: 0 };
                 setTracks(prev => [...prev, newTrack]);
                 try { await sched.loadBuffer(url); } catch (e) { console.warn(e); }
               }}>
-                📎 Add Audio by URL
+                🎵 Import Audio Track
               </button>
-              <div style={{ fontSize: 10, color: '#666', marginTop: 6, textAlign: 'center' }}>For testing with CORS-enabled URLs</div>
+              <div style={{ fontSize: 10, color: '#666', marginTop: 6, textAlign: 'center' }}>Import local files or paste audio URLs</div>
             </div>
             </div>
           </div>
