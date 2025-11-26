@@ -44,18 +44,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-// Utility function to generate signed URL (can be imported elsewhere)
-export function generateSignedUrl(key: string, ttl: number = 3600): string {
-  const exp = Math.floor(Date.now() / 1000) + ttl;
-  const message = `${key}:${exp}`;
-  const secret = process.env.AUDIO_SIGNING_SECRET || 'default-secret-change-me';
-  
-  const signature = crypto
-    .createHmac('sha256', secret)
-    .update(message)
-    .digest('hex');
-
-  const workerUrl = process.env.AUDIO_WORKER_URL || 'https://audio-worker.your-subdomain.workers.dev';
-  return `${workerUrl}/audio/${key}?exp=${exp}&sig=${signature}`;
-}
