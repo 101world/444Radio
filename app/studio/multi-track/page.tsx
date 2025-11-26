@@ -33,11 +33,13 @@ export default function MultiTrackStudioV4() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playhead, setPlayhead] = useState(0);
   const [bpm, setBpm] = useState(120);
-  const [zoom, setZoom] = useState(50);
+  const [zoom, setZoom] = useState(50); // Pixels per second (default 50)
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showMixer, setShowMixer] = useState(true);
   const [showEffects, setShowEffects] = useState(false);
   const rafRef = useRef<number | undefined>(undefined);
+  const timelineRef = useRef<HTMLDivElement>(null);
 
   // Initialize DAW
   useEffect(() => {
@@ -195,6 +197,31 @@ export default function MultiTrackStudioV4() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleClipClick = (e: React.MouseEvent, clipId: string, trackId: string) => {
+    e.stopPropagation();
+    setSelectedClipId(clipId);
+    setSelectedTrackId(trackId);
+  };
+
+  const handleRulerClick = (e: React.MouseEvent) => {
+    if (!daw || !timelineRef.current) return;
+    const rect = timelineRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const timeInSeconds = clickX / zoom;
+    
+    // Update playhead position
+    if (daw.isPlaying()) {
+      daw.pause();
+    }
+    // Seek to clicked position (would need seek method in DAW)
+    console.log(`Seek to: ${timeInSeconds.toFixed(2)}s`);
+  };
+
+  const handleZoomChange = (newZoom: number) => {
+    setZoom(newZoom);
+    // Re-render waveforms with new zoom level
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-200">
       {/* Top Toolbar */}
@@ -241,6 +268,23 @@ export default function MultiTrackStudioV4() {
           <div className="text-sm font-mono text-cyan-400">{formatTime(playhead)}</div>
           <div className="text-xs text-gray-600">|</div>
           <div className="text-xs text-gray-500">{bpm} BPM</div>
+        </div>
+
+        <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
+
+        {/* Zoom Control */}
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-gray-600">🔍</span>
+          <input
+            type="range"
+            min="10"
+            max="200"
+            value={zoom}
+            onChange={(e) => handleZoomChange(parseInt(e.target.value))}
+            className="w-24 h-1"
+            title="Timeline zoom (pixels per second)"
+          />
+          <span className="text-cyan-400 font-mono w-12">{zoom}px</span>
         </div>
 
         <div className="flex-1" />
@@ -390,11 +434,15 @@ export default function MultiTrackStudioV4() {
         </div>
 
         {/* Timeline Area */}
-        <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-auto">
+        <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-auto" ref={timelineRef}>
           {/* Timeline Ruler */}
-          <div className="h-8 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center px-2 text-xs text-gray-500">
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(sec => (
-              <div key={sec} className="flex-shrink-0 w-24 border-l border-[#1f1f1f] pl-1">
+          <div 
+            className="h-8 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center px-2 text-xs text-gray-500 cursor-pointer hover:bg-[#141414]"
+            onClick={handleRulerClick}
+            title="Click to seek"
+          >
+            {Array.from({ length: Math.ceil(600 / zoom) + 1 }, (_, i) => i).map(sec => (
+              <div key={sec} className="flex-shrink-0 border-l border-[#1f1f1f] pl-1" style={{ width: `${zoom}px` }}>
                 {sec}s
               </div>
             ))}
@@ -425,22 +473,26 @@ export default function MultiTrackStudioV4() {
                       track.clips.map(clip => (
                         <div
                           key={clip.id}
-                          className="absolute h-16 rounded-lg overflow-hidden"
+                          className={`absolute h-16 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                            selectedClipId === clip.id ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-[#0a0a0a]' : ''
+                          }`}
                           style={{
-                            left: `${clip.startTime * 24}px`, // 24px per second (matches ruler)
-                            width: `${clip.duration * 24}px`,
+                            left: `${clip.startTime * zoom}px`, // Zoom-based positioning
+                            width: `${clip.duration * zoom}px`,
                             backgroundColor: track.color + '20',
-                            border: `2px solid ${track.color}`
+                            border: `2px solid ${selectedClipId === clip.id ? '#00bcd4' : track.color}`
                           }}
+                          onClick={(e) => handleClipClick(e, clip.id, track.id)}
+                          title="Click to select, drag to move (coming soon)"
                         >
                           {/* Clip Canvas for Waveform */}
                           <canvas
                             ref={(canvas) => {
                               if (canvas && clip.buffer) {
-                                renderWaveform(canvas, clip.buffer, track.color);
+                                renderWaveform(canvas, clip.buffer, selectedClipId === clip.id ? '#00bcd4' : track.color);
                               }
                             }}
-                            width={clip.duration * 24}
+                            width={clip.duration * zoom}
                             height={64}
                             className="w-full h-full"
                           />
@@ -457,8 +509,8 @@ export default function MultiTrackStudioV4() {
                   {/* Playhead Indicator (moves during playback) */}
                   {isPlaying && (
                     <div
-                      className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-lg shadow-cyan-400/50 pointer-events-none"
-                      style={{ left: `${playhead * 24}px` }}
+                      className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-lg shadow-cyan-400/50 pointer-events-none z-10"
+                      style={{ left: `${playhead * zoom}px` }}
                     />
                   )}
                 </div>
@@ -541,6 +593,19 @@ export default function MultiTrackStudioV4() {
                     <div>Type: <span className="text-cyan-400">{selectedTrack.type}</span></div>
                     <div>Clips: <span className="text-cyan-400">{selectedTrack.clips.length}</span></div>
                     <div>Color: <span className="text-cyan-400">{selectedTrack.color}</span></div>
+                    {selectedClipId && (() => {
+                      const clip = selectedTrack.clips.find(c => c.id === selectedClipId);
+                      return clip ? (
+                        <>
+                          <div className="pt-2 border-t border-[#1f1f1f] mt-2">
+                            <div className="text-cyan-400 font-semibold mb-1">Selected Clip:</div>
+                            <div>Name: <span className="text-cyan-400">{clip.name}</span></div>
+                            <div>Start: <span className="text-cyan-400">{clip.startTime.toFixed(2)}s</span></div>
+                            <div>Duration: <span className="text-cyan-400">{clip.duration.toFixed(2)}s</span></div>
+                          </div>
+                        </>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
 
