@@ -77,6 +77,8 @@ export default function MultiTrackStudioV4() {
   const [projectName, setProjectName] = useState('');
   const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav');
   const [exportQuality, setExportQuality] = useState('44100');
+  const [trackHeights, setTrackHeights] = useState<Record<string, number>>({});
+  const [resizingTrack, setResizingTrack] = useState<{id: string, startY: number, startHeight: number} | null>(null);
   const rafRef = useRef<number | undefined>(undefined);
   const timelineRef = useRef<HTMLDivElement>(null);
   const historyManagerRef = useRef<HistoryManager | null>(null);
@@ -413,6 +415,39 @@ export default function MultiTrackStudioV4() {
     setZoom(newZoom);
   };
 
+  const zoomToFit = () => {
+    if (tracks.length === 0) return;
+    let maxDuration = 0;
+    tracks.forEach(track => {
+      track.clips.forEach(clip => {
+        const clipEnd = clip.startTime + clip.duration;
+        if (clipEnd > maxDuration) maxDuration = clipEnd;
+      });
+    });
+    if (maxDuration > 0 && timelineRef.current) {
+      const timelineWidth = timelineRef.current.offsetWidth - 240; // Account for track header
+      const idealZoom = Math.floor(timelineWidth / maxDuration);
+      setZoom(Math.max(10, Math.min(200, idealZoom)));
+    }
+  };
+
+  const handleTrackResizeStart = (e: React.MouseEvent, trackId: string) => {
+    e.stopPropagation();
+    const currentHeight = trackHeights[trackId] || 96;
+    setResizingTrack({ id: trackId, startY: e.clientY, startHeight: currentHeight });
+  };
+
+  const handleTrackResizeMove = (e: React.MouseEvent) => {
+    if (!resizingTrack) return;
+    const deltaY = e.clientY - resizingTrack.startY;
+    const newHeight = Math.max(60, Math.min(300, resizingTrack.startHeight + deltaY));
+    setTrackHeights(prev => ({ ...prev, [resizingTrack.id]: newHeight }));
+  };
+
+  const handleTrackResizeEnd = () => {
+    setResizingTrack(null);
+  };
+
   const handleDeleteClip = () => {
     if (!daw || !selectedClipId || !selectedTrackId) return;
     daw.removeClipFromTrack(selectedTrackId, selectedClipId);
@@ -677,7 +712,7 @@ export default function MultiTrackStudioV4() {
           
           <button
             onClick={stop}
-            className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-500 rounded hover:bg-[#252525] transition-all"
+            className="w-10 h-10 bg-gradient-to-br from-[#1f1f1f] to-[#151515] border-2 border-gray-700 text-gray-400 rounded-lg hover:bg-[#252525] hover:border-gray-600 hover:text-gray-300 transition-all shadow-lg flex items-center justify-center text-lg"
             title="Stop (S)"
           >
             ⏹
@@ -685,22 +720,22 @@ export default function MultiTrackStudioV4() {
           
           <button
             onClick={togglePlay}
-            className={`w-10 h-8 rounded font-bold transition-all ${
+            className={`w-12 h-10 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center text-xl ${
               isPlaying
-                ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30'
-                : 'bg-[#1f1f1f] border border-[#2a2a2a] text-gray-500 hover:bg-[#252525]'
+                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black shadow-cyan-500/40 hover:from-cyan-400 hover:to-cyan-500'
+                : 'bg-gradient-to-r from-green-500 to-green-600 text-black shadow-green-500/40 hover:from-green-400 hover:to-green-500'
             }`}
-            title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+            title={isPlaying ? 'Pause (Spacebar)' : 'Play (Spacebar)'}
           >
             {isPlaying ? '⏸' : '▶'}
           </button>
           
           <button
             onClick={toggleRecording}
-            className={`w-8 h-8 rounded-full font-bold transition-all ${
+            className={`w-10 h-10 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center text-lg border-2 ${
               isRecording
-                ? 'bg-red-500 text-white animate-pulse'
-                : 'bg-[#1f1f1f] border border-[#2a2a2a] text-red-400 hover:bg-[#252525]'
+                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white animate-pulse border-red-400 shadow-red-500/50'
+                : 'bg-gradient-to-br from-[#1f1f1f] to-[#151515] border-gray-700 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-300'
             }`}
             title="Record (R)"
           >
@@ -720,18 +755,47 @@ export default function MultiTrackStudioV4() {
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
         {/* Zoom Control */}
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-gray-600">🔍</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setZoom(10)}
+            className="px-2 py-1 text-[10px] bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-800"
+            title="Zoom out (10px/s)"
+          >
+            10x
+          </button>
+          <button
+            onClick={() => setZoom(50)}
+            className="px-2 py-1 text-[10px] bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-800"
+            title="1:1 (50px/s)"
+          >
+            1:1
+          </button>
+          <button
+            onClick={() => setZoom(100)}
+            className="px-2 py-1 text-[10px] bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-800"
+            title="Zoom in (100px/s)"
+          >
+            2x
+          </button>
+          <button
+            onClick={zoomToFit}
+            className="px-2 py-1 text-[10px] bg-[#1f1f1f] text-cyan-400 rounded hover:bg-cyan-500/10 hover:text-cyan-300 transition-all border border-cyan-500/30"
+            title="Fit all clips to window"
+          >
+            🖌️ Fit
+          </button>
+          <div className="w-px h-6 bg-[#2a2a2a]" />
+          <span className="text-[10px] text-gray-600">🔍</span>
           <input
             type="range"
             min="10"
             max="200"
             value={zoom}
             onChange={(e) => handleZoomChange(parseInt(e.target.value))}
-            className="w-24 h-1"
-            title="Timeline zoom (pixels per second)"
+            className="w-20 h-1"
+            title="Timeline zoom"
           />
-          <span className="text-cyan-400 font-mono w-12">{zoom}px</span>
+          <span className="text-cyan-400 font-mono text-xs w-10 text-right">{zoom}</span>
         </div>
 
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
@@ -986,8 +1050,40 @@ export default function MultiTrackStudioV4() {
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500 pointer-events-none" />
             </div>
             
-            {/* Grid Lines (when snap enabled) */}
-            {snapEnabled && (
+            {/* Professional Beat Grid Lines */}
+            {(() => {
+              const beatDuration = 60 / bpm;
+              const barDuration = beatDuration * 4;
+              const totalDuration = 600;
+              const gridLines: React.ReactElement[] = [];
+              
+              // Show different grid density based on zoom
+              const showBeats = zoom >= 40;
+              const showBars = true;
+              
+              for (let time = 0; time <= totalDuration; time += beatDuration) {
+                const isBar = Math.abs(time % barDuration) < 0.01;
+                if (isBar || (showBeats && snapEnabled)) {
+                  gridLines.push(
+                    <div
+                      key={`grid-${time}`}
+                      className="absolute top-0 bottom-0 pointer-events-none"
+                      style={{
+                        left: `${time * zoom}px`,
+                        width: '1px',
+                        background: isBar 
+                          ? 'rgba(100, 200, 255, 0.15)' 
+                          : 'rgba(100, 200, 255, 0.05)'
+                      }}
+                    />
+                  );
+                }
+              }
+              return gridLines;
+            })()}
+            
+            {/* Legacy Grid Lines (when snap enabled) */}
+            {false && snapEnabled && (
               <div className="absolute inset-0 pointer-events-none">
                 {Array.from({ length: Math.ceil(600 / zoom) * 4 }, (_, i) => {
                   const beatWidth = (60 / bpm) * zoom;
@@ -1036,11 +1132,17 @@ export default function MultiTrackStudioV4() {
                 </div>
               </div>
             ) : (
-              tracks.map((track, trackIndex) => (
+              tracks.map((track, trackIndex) => {
+                const trackHeight = trackHeights[track.id] || 96;
+                return (
                 <div
                   key={track.id}
-                  className="h-24 border-b border-[#1f1f1f] relative group hover:bg-[#0f0f0f] flex"
+                  className="border-b border-[#1f1f1f] relative group hover:bg-[#0f0f0f] flex"
+                  style={{ height: `${trackHeight}px` }}
                   onClick={() => setSelectedTrackId(track.id)}
+                  onMouseMove={handleTrackResizeMove}
+                  onMouseUp={handleTrackResizeEnd}
+                  onMouseLeave={handleTrackResizeEnd}
                 >
                   {/* Track Header - Fixed Width to Match Sidebar */}
                   <div className="w-60 flex-shrink-0 border-r border-[#1f1f1f]/50 bg-[#0a0a0a]/80 flex items-center px-3 gap-2.5 backdrop-blur-sm">
@@ -1153,8 +1255,17 @@ export default function MultiTrackStudioV4() {
                       />
                     )}
                   </div>
+                  
+                  {/* Track Resize Handle */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-cyan-500/30 active:bg-cyan-500/50 transition-colors z-20 group/resize"
+                    onMouseDown={(e) => handleTrackResizeStart(e, track.id)}
+                    title="Drag to resize track height"
+                  >
+                    <div className="absolute inset-x-0 bottom-0 h-px bg-cyan-500/0 group-hover/resize:bg-cyan-500/50 transition-colors" />
+                  </div>
                 </div>
-              ))
+              )})
             )}
           </div>
         </div>
