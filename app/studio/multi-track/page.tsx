@@ -231,15 +231,13 @@ export default function MultiTrackStudio() {
         addMarker();
       } else if (e.code === 'KeyB' && !ctrl) {
         e.preventDefault();
-        splitClipAtPlayhead();
+        splitAtPlayhead();
       } else if (e.code === 'KeyI' && !ctrl) {
         e.preventDefault();
         setShowInspector(prev => !prev);
       } else if (e.code === 'Delete' || e.code === 'Backspace') {
-        if (selectedClipId && selectedTrackId) {
-          e.preventDefault();
-          deleteClip(selectedTrackId, selectedClipId);
-        }
+        e.preventDefault();
+        deleteSelectedClip();
       } else if (ctrl && e.code === 'KeyZ' && !shift) {
         e.preventDefault();
         console.log('Undo (not yet implemented)');
@@ -547,14 +545,52 @@ export default function MultiTrackStudio() {
     });
   }
 
+  function splitAtPlayhead() {
+    if (!selectedClipId) return;
+    
+    setTracks(prev => prev.map(track => ({
+      ...track,
+      clips: track.clips.flatMap(clip => {
+        if (clip.id !== selectedClipId) return [clip];
+        
+        const splitTime = playhead;
+        if (splitTime <= clip.start || splitTime >= (clip.start + (clip.duration || 8))) return [clip];
+        
+        const firstClip = {
+          ...clip,
+          id: clip.id + '-1',
+          duration: splitTime - clip.start
+        };
+        
+        const secondClip = {
+          ...clip,
+          id: clip.id + '-2',
+          start: splitTime,
+          duration: (clip.start + (clip.duration || 8)) - splitTime
+        };
+        
+        return [firstClip, secondClip];
+      })
+    })));
+    
+    setSelectedClipId(null);
+  }
+
   function addMarker() {
-    const name = prompt('Marker name (e.g., Verse, Chorus):');
-    if (!name) return;
-    setMarkers(prev => [...prev, {
-      id: 'm-' + Date.now(),
-      name,
-      position: Math.floor(playhead)
-    }]);
+    // Add a marker at current playhead position
+    console.log('Adding marker at', playhead);
+    // TODO: Implement marker functionality
+  }
+
+  function deleteSelectedClip() {
+    if (!selectedClipId) return;
+    
+    setTracks(prev => prev.map(track => ({
+      ...track,
+      clips: track.clips.filter(clip => clip.id !== selectedClipId)
+    })));
+    
+    setSelectedClipId(null);
   }
 
   function getTrackColor(index: number): string {
@@ -882,12 +918,19 @@ export default function MultiTrackStudio() {
                   position: 'relative'
                 }}>
                   {/* Track Header */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 12px',
-                    gap: 10
-                  }}>
+                  <div 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      gap: 10,
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => {
+                      setSelectedTrackId(t.id);
+                      setSelectedClipId(null);
+                    }}
+                  >
                     {/* Track Number & Color */}
                     <div style={{
                       width: 28,
@@ -1100,244 +1143,9 @@ export default function MultiTrackStudio() {
               <span>Add Track</span>
             </button>
           </div>
-        </aside>
 
-        <section style={{ flex: 1, position: 'relative', overflow: 'auto', background: '#0a0a0a' }}>
-          {/* Timeline Ruler */}
-          <div style={{ 
-            height: 40, 
-            borderBottom: '1px solid #1f1f1f', 
-            background: '#141414',
-            display: 'flex',
-            alignItems: 'flex-end',
-            position: 'sticky',
-            top: 0,
-            zIndex: 11,
-            paddingBottom: 6
-          }}>
-            <div style={{ display: 'flex', height: '100%', position: 'relative' }}>
-              {/* Arrangement markers as subtle background */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 16, display: 'flex' }}>
-                {markers.map((marker, idx) => {
-                  const nextMarkerPos = markers[idx + 1]?.position || 120;
-                  const width = pxForSeconds(nextMarkerPos - marker.position);
-                  
-                  return (
-                    <div key={marker.id} style={{ 
-                      width: width + 'px',
-                      borderRight: '1px solid rgba(255,255,255,0.05)',
-                      background: idx % 2 === 0 ? 'rgba(0,188,212,0.03)' : 'rgba(100,150,255,0.03)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      paddingLeft: 6,
-                      fontSize: 9,
-                      fontWeight: 600,
-                      color: '#555',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      {marker.name}
-                    </div>
-                  );
-                })}
-              </div>
-              
-              {/* Time markers */}
-              <div style={{ display: 'flex', height: '100%', alignItems: 'flex-end', paddingTop: 16 }}>
-                {Array.from({ length: 121 }).map((_, i) => {
-                  const isMajor = i % 16 === 0;
-                  const isMinor = i % 4 === 0 && !isMajor;
-                  
-                  return (
-                    <div key={i} style={{ 
-                      width: pxForSeconds(1), 
-                      textAlign: 'center', 
-                      fontSize: isMajor ? 11 : 9,
-                      color: isMajor ? '#00bcd4' : isMinor ? '#666' : 'transparent',
-                      fontWeight: isMajor ? 700 : 500,
-                      fontFamily: 'monospace',
-                      borderLeft: isMajor ? '2px solid #00bcd4' : isMinor ? '1px solid #333' : 'none',
-                      height: isMajor ? 24 : isMinor ? 16 : 8,
-                      display: 'flex',
-                      alignItems: 'flex-end',
-                      justifyContent: 'center'
-                    }}>
-                      {isMajor ? i : isMinor ? i : ''}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Tracks Area */}
-          <div style={{ position: 'relative', minHeight: 'calc(100vh - 108px)' }}>
-            {tracks.map((t, idx) => {
-              const trackColor = getTrackColor(idx);
-              const isMuted = mutedTracks.has(t.id);
-              const anySoloed = soloedTracks.size > 0;
-              const isSoloed = soloedTracks.has(t.id);
-              const shouldPlay = !isMuted && (!anySoloed || isSoloed);
-              
-              return (
-                <div key={t.id} style={{ 
-                  height: 80, 
-                  borderBottom: '1px solid #151515',
-                  position: 'relative',
-                  background: '#0d0d0d'
-                }}>
-                  {/* Subtle Grid Lines */}
-                  <div style={{ 
-                    position: 'absolute', 
-                    inset: 0, 
-                    background: 'linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
-                    backgroundSize: `${pxForSeconds(4)}px 100%`,
-                    pointerEvents: 'none'
-                  }} />
-                  
-                  {/* Major beat lines */}
-                  {Array.from({ length: 31 }).map((_, i) => (
-                    <div key={i} style={{
-                      position: 'absolute',
-                      left: pxForSeconds(i * 4),
-                      top: 0,
-                      bottom: 0,
-                      width: 1,
-                      background: i % 4 === 0 ? 'rgba(0,188,212,0.08)' : 'rgba(255,255,255,0.02)',
-                      pointerEvents: 'none'
-                    }} />
-                  ))}
-
-                  {/* Clips */}
-                  <div style={{ position: 'relative', height: '100%', padding: '12px 0' }}>
-                    {t.clips.map(c => {
-                      const left = pxForSeconds(c.start || 0);
-                      const width = pxForSeconds(c.duration && c.duration > 0 ? c.duration : 8);
-                      
-                      return (
-                        <div key={c.id} style={{
-                          position: 'absolute',
-                          left,
-                          top: 12,
-                          height: 56,
-                          width: Math.max(80, width),
-                          background: `linear-gradient(180deg, ${trackColor}ee 0%, ${trackColor}cc 100%)`,
-                          border: `2px solid ${trackColor}`,
-                          borderRadius: 4,
-                          overflow: 'hidden',
-                          boxShadow: shouldPlay ? `0 4px 16px ${trackColor}55, inset 0 1px 0 rgba(255,255,255,0.2)` : 'none',
-                          cursor: 'pointer',
-                          opacity: shouldPlay ? 1 : 0.25,
-                          transition: 'all 0.2s'
-                        }}>
-                          {/* Waveform Canvas */}
-                          <canvas 
-                            id={`waveform-${c.id}`}
-                            style={{ 
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              pointerEvents: 'none',
-                              opacity: 0.5,
-                              mixBlendMode: 'overlay'
-                            }}
-                          />
-                          
-                          {/* Clip Name */}
-                          <div style={{ 
-                            position: 'absolute',
-                            top: 6,
-                            left: 8,
-                            fontSize: 11, 
-                            color: '#000', 
-                            fontWeight: 700,
-                            textShadow: '0 1px 2px rgba(255,255,255,0.4)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: 'calc(100% - 16px)',
-                            letterSpacing: '0.3px'
-                          }}>
-                            {c.url.split('/').pop()?.replace(/\.(mp3|wav)$/i, '').slice(0, 30) || 'Audio Clip'}
-                          </div>
-                          
-                          {/* Duration indicator */}
-                          <div style={{
-                            position: 'absolute',
-                            bottom: 4,
-                            right: 6,
-                            fontSize: 9,
-                            color: 'rgba(0,0,0,0.5)',
-                            fontWeight: 600,
-                            fontFamily: 'monospace'
-                          }}>
-                            {c.duration > 0 ? formatTime(c.duration) : '...'}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Playhead */}
-          <div style={{
-            position: 'absolute',
-            left: pxForSeconds(playhead),
-            top: 40,
-            bottom: 0,
-            width: 3,
-            background: 'linear-gradient(180deg, #00bcd4 0%, #00bcd4dd 50%, transparent 100%)',
-            boxShadow: '0 0 12px rgba(0,188,212,0.8), 0 0 4px rgba(0,188,212,0.6)',
-            transform: 'translateX(-1.5px)',
-            pointerEvents: 'none',
-            zIndex: 10
-          }}>
-            {/* Playhead Handle */}
-            <div style={{
-              position: 'absolute',
-              top: -2,
-              left: -8,
-              width: 18,
-              height: 18,
-              background: '#00bcd4',
-              borderRadius: '50% 50% 50% 0',
-              transform: 'rotate(-45deg)',
-              boxShadow: '0 2px 8px rgba(0,188,212,0.6)',
-              border: '2px solid #0a0a0a'
-            }} />
-          </div>
-
-          {/* Click to Seek */}
-          <div style={{ 
-            position: 'absolute', 
-            left: 0, 
-            right: 0, 
-            top: 60, 
-            bottom: 0,
-            cursor: 'crosshair'
-          }} onClick={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const seconds = clickX / zoom;
-            seekTo(seconds);
-          }} />
-        </section>
-
-        <aside style={{ 
-          width: 320, 
-          borderLeft: '1px solid #2a2a2a', 
-          background: '#1a1a1a',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
           {/* Transport Controls */}
-          <div style={{ padding: 16, borderBottom: '1px solid #2a2a2a' }}>
+          <div style={{ padding: 16, borderTop: '1px solid #1f1f1f' }}>
             <div style={{ fontSize: 11, color: '#888', marginBottom: 8, fontWeight: 600 }}>TRANSPORT</div>
             <div style={{ 
               display: 'grid', 
@@ -1383,9 +1191,333 @@ export default function MultiTrackStudio() {
               />
             </div>
           </div>
+        </aside>
 
-          {/* AI Generation Tools */}
-          <div style={{ flex: 1 }}>
+        {/* AI Generation Tools */}
+        <aside style={{ 
+            width: 280, 
+            borderRight: '1px solid #2a2a2a', 
+            background: '#1a1a1a',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div style={{ 
+              padding: 16, 
+              borderTop: '1px solid #1f1f1f',
+              position: 'sticky',
+              top: 0,
+              background: '#1a1a1a',
+              zIndex: 5
+            }}>
+              <div style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>🎵 AI GENERATION</div>
+            </div>
+            
+            <div style={{ padding: 16 }}>
+              {/* Music Generation - 2 credits */}
+              <button 
+                style={{ width: '100%', marginBottom: 6, padding: '8px', cursor: 'pointer', backgroundColor: '#4a90e2', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+                onClick={async () => {
+                  const prompt = window.prompt('Enter music prompt (e.g., "lofi beats with piano")');
+                  if (!prompt) return;
+                  
+                  try {
+                    const res = await fetch('/api/studio/generate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        type: 'create-song',
+                        params: { prompt }
+                      })
+                    });
+                    
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Generation failed');
+                    
+                    setGeneratingJobs(prev => [...prev, data.jobId]);
+                    console.log('🎵 Music generation started:', data.jobId);
+                  } catch (err: any) {
+                    alert(err.message);
+                  }
+                }}
+              >
+                🎵 Music (2 credits)
+              </button>
+
+              {/* Instrumental Generation - 16 credits */}
+              <button 
+                style={{ width: '100%', marginBottom: 6, padding: '8px', cursor: 'pointer', backgroundColor: '#8e44ad', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+                onClick={async () => {
+                  const prompt = window.prompt('Describe instrumental (e.g., "upbeat electronic synth melody")');
+                  if (!prompt) return;
+                  
+                  try {
+                    const res = await fetch('/api/studio/generate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        type: 'create-beat',
+                        params: { prompt }
+                      })
+                    });
+                    
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Generation failed');
+                    
+                    setGeneratingJobs(prev => [...prev, data.jobId]);
+                    console.log('🎹 Instrumental generation started:', data.jobId);
+                  } catch (err: any) {
+                    alert(err.message);
+                  }
+                }}
+              >
+                🎹 Instrumental (16 credits)
+              </button>
+
+              {/* Effects Chain - 0.1 credits */}
+              <button 
+                style={{ width: '100%', marginBottom: 6, padding: '8px', cursor: 'pointer', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+                onClick={async () => {
+                  const url = window.prompt('Audio URL to apply effects:');
+                  if (!url) return;
+                  const effectsDesc = window.prompt('Describe effects (e.g., "add reverb and echo")');
+                  if (!effectsDesc) return;
+                  
+                  try {
+                    const res = await fetch('/api/studio/generate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        type: 'effects',
+                        params: { audioUrl: url, effects: effectsDesc }
+                      })
+                    });
+                    
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Generation failed');
+                    
+                    setGeneratingJobs(prev => [...prev, data.jobId]);
+                    console.log('🎚️ Effects processing started:', data.jobId);
+                  } catch (err: any) {
+                    alert(err.message);
+                  }
+                }}
+              >
+                🎚️ Effects Chain (0.1 credits)
+              </button>
+
+              {/* Auto-tune - 1 credit */}
+              <button 
+                style={{ width: '100%', marginBottom: 6, padding: '8px', cursor: 'pointer', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+                onClick={async () => {
+                  const url = window.prompt('Audio URL to auto-tune:');
+                  if (!url) return;
+                  const scale = window.prompt('Scale (major/minor/chromatic):', 'closest') || 'closest';
+                  
+                  try {
+                    const res = await fetch('/api/studio/generate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        type: 'auto-tune',
+                        params: { audioUrl: url, scale }
+                      })
+                    });
+                    
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Generation failed');
+                    
+                    setGeneratingJobs(prev => [...prev, data.jobId]);
+                    console.log('🎤 Auto-tune started:', data.jobId);
+                  } catch (err: any) {
+                    alert(err.message);
+                  }
+                }}
+              >
+                🎤 Auto-tune (1 credit)
+              </button>
+
+              {/* Stem Splitter - 20 credits */}
+              <button 
+                style={{ width: '100%', marginBottom: 8, padding: '8px', cursor: 'pointer', backgroundColor: '#f39c12', color: 'white', border: 'none', borderRadius: 4, fontSize: 13 }} 
+                onClick={async () => {
+                  const url = window.prompt('Audio URL to split into stems:');
+                  if (!url) return;
+                  
+                  try {
+                    const res = await fetch('/api/studio/generate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        type: 'stem-split',
+                        params: { audioUrl: url }
+                      })
+                    });
+                    
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Generation failed');
+                    
+                    setGeneratingJobs(prev => [...prev, data.jobId]);
+                    console.log('🎛️ Stem splitting started:', data.jobId);
+                    alert('Stem split started! Each stem will appear as a separate track.');
+                  } catch (err: any) {
+                    alert(err.message);
+                  }
+                }}
+              >
+                🎛️ Stem Splitter (20 credits)
+              </button>
+
+              {generatingJobs.length > 0 && (
+                <div style={{ fontSize: 11, color: '#ffa500', marginBottom: 8, padding: 8, background: 'rgba(255, 165, 0, 0.1)', borderRadius: 4 }}>
+                  ⏳ Generating {generatingJobs.length} job(s)...
+                </div>
+              )}
+
+              <div style={{ borderTop: '1px solid #2a2a2a', marginTop: 12, paddingTop: 12 }}>
+                <input 
+                  type="file" 
+                  id="audioFileInput" 
+                  accept="audio/mp3,audio/wav,audio/mpeg,audio/x-wav"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    
+                    const sched = getScheduler();
+                    if (!sched) return;
+                    
+                    // Create object URL from file
+                    const objectUrl = URL.createObjectURL(file);
+                    
+                    // Create track with file name
+                    const fileName = file.name.replace(/\.(mp3|wav)$/i, '');
+                    const newTrack: Track = { 
+                      id: 't-' + Date.now(), 
+                      name: fileName, 
+                      clips: [{ 
+                        id: 'c-' + Date.now(), 
+                        url: objectUrl, 
+                        start: Math.floor(playhead), 
+                        duration: 0 
+                      }], 
+                      volume: 0.8, 
+                      pan: 0 
+                    };
+                    
+                    setTracks(prev => [...prev, newTrack]);
+                    
+                    try { 
+                      await sched.loadBuffer(objectUrl); 
+                    } catch (e) { 
+                      console.warn('Failed to load audio:', e);
+                      alert('Failed to load audio file. Make sure it\'s a valid MP3 or WAV.');
+                    }
+                    
+                    // Reset input
+                    e.target.value = '';
+                  }}
+                />
+                
+                <button style={{ 
+                  width: '100%', 
+                  padding: '10px', 
+                  cursor: 'pointer', 
+                  background: '#00bcd4', 
+                  color: '#000', 
+                  border: 0, 
+                  borderRadius: 4, 
+                  fontSize: 12,
+                  fontWeight: 600,
+                  marginBottom: 8
+                }} onClick={() => {
+                  document.getElementById('audioFileInput')?.click();
+                }}>
+                  📁 Import Local Audio File
+                </button>
+                
+                <button style={{ 
+                  width: '100%', 
+                  padding: '10px', 
+                  cursor: 'pointer', 
+                  background: '#252525', 
+                  color: '#00bcd4', 
+                  border: '1px solid #333', 
+                  borderRadius: 4, 
+                  fontSize: 12,
+                  fontWeight: 600
+                }} onClick={async () => {
+                  const sched = getScheduler();
+                  if (!sched) return;
+                  
+                  const url = prompt('Paste audio URL:');
+                  if (!url) return;
+                  const newTrack: Track = { id: 't-' + Date.now(), name: 'Imported Track ' + (tracks.length + 1), clips: [{ id: 'c-' + Date.now(), url, start: Math.floor(playhead), duration: 0 }], volume: 0.8, pan: 0 };
+                  setTracks(prev => [...prev, newTrack]);
+                  try { await sched.loadBuffer(url); } catch (e) { console.warn(e); }
+                }}>
+                  🎵 Import Audio Track
+                </button>
+                <div style={{ fontSize: 10, color: '#666', marginTop: 6, textAlign: 'center' }}>Import local files or paste audio URLs</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Inspector Panel */}
+        <aside style={{ 
+          width: 320, 
+          background: '#1a1a1a', 
+          borderLeft: '1px solid #2a2a2a',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Inspector Header */}
+          <div style={{ 
+            height: 40, 
+            borderBottom: '1px solid #2a2a2a',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 16px',
+            background: '#141414'
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#00bcd4' }}>INSPECTOR</div>
+          </div>
+
+          {/* Inspector Tabs */}
+          <div style={{ 
+            display: 'flex',
+            borderBottom: '1px solid #2a2a2a',
+            background: '#141414'
+          }}>
+            <button style={{
+              flex: 1,
+              padding: '8px 12px',
+              background: 'transparent',
+              border: 0,
+              color: '#00bcd4',
+              fontSize: 11,
+              fontWeight: 600,
+              borderBottom: '2px solid #00bcd4',
+              cursor: 'pointer'
+            }}>
+              Inspector
+            </button>
+            <button style={{
+              flex: 1,
+              padding: '8px 12px',
+              background: 'transparent',
+              border: 0,
+              color: '#666',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}>
+              AI Tools
+            </button>
+          </div>
+
+          {/* Transport Controls */}
             <div style={{ 
               padding: 16, 
               borderBottom: '1px solid #2a2a2a',
@@ -1645,10 +1777,589 @@ export default function MultiTrackStudio() {
               </button>
               <div style={{ fontSize: 10, color: '#666', marginTop: 6, textAlign: 'center' }}>Import local files or paste audio URLs</div>
             </div>
+          </div>
+        </aside>
+
+        <section style={{ flex: 1, position: 'relative', overflow: 'auto', background: '#0a0a0a' }}>
+          {/* Timeline Ruler */}
+          <div style={{ 
+            height: 40, 
+            borderBottom: '1px solid #1f1f1f', 
+            background: '#141414',
+            display: 'flex',
+            alignItems: 'flex-end',
+            position: 'sticky',
+            top: 0,
+            zIndex: 11,
+            paddingBottom: 6
+          }}>
+            <div style={{ display: 'flex', height: '100%', position: 'relative' }}>
+              {/* Time markers */}
+              <div style={{ display: 'flex', height: '100%', alignItems: 'flex-end', paddingTop: 16 }}>
+                {Array.from({ length: 121 }).map((_, i) => {
+                  const isMajor = i % 16 === 0;
+                  const isMinor = i % 4 === 0 && !isMajor;
+                  
+                  return (
+                    <div key={i} style={{ 
+                      width: pxForSeconds(1), 
+                      textAlign: 'center', 
+                      fontSize: isMajor ? 11 : 9,
+                      color: isMajor ? '#00bcd4' : isMinor ? '#666' : 'transparent',
+                      fontWeight: isMajor ? 700 : 500,
+                      fontFamily: 'monospace',
+                      borderLeft: isMajor ? '2px solid #00bcd4' : isMinor ? '1px solid #333' : 'none',
+                      height: isMajor ? 24 : isMinor ? 16 : 8,
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      justifyContent: 'center'
+                    }}>
+                      {isMajor ? i : isMinor ? i : ''}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+          </div>
+
+          {/* Tracks Area */}
+          <div style={{ position: 'relative', minHeight: 'calc(100vh - 108px)' }}>
+            {tracks.map((t, idx) => {
+              const trackColor = getTrackColor(idx);
+              const isMuted = mutedTracks.has(t.id);
+              const anySoloed = soloedTracks.size > 0;
+              const isSoloed = soloedTracks.has(t.id);
+              const shouldPlay = !isMuted && (!anySoloed || isSoloed);
+              
+              return (
+                <div key={t.id} style={{ 
+                  height: 80, 
+                  borderBottom: '1px solid #151515',
+                  position: 'relative',
+                  background: '#0d0d0d'
+                }}>
+                  {/* Grid Lines */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    inset: 0, 
+                    background: 'linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+                    backgroundSize: `${pxForSeconds(4)}px 100%`,
+                    pointerEvents: 'none'
+                  }} />
+                  
+                  {/* Clips */}
+                  <div style={{ position: 'relative', height: '100%', padding: '12px 0' }}>
+                    {t.clips.map(c => {
+                      const left = pxForSeconds(c.start || 0);
+                      const width = pxForSeconds(c.duration && c.duration > 0 ? c.duration : 8);
+                      
+                      return (
+                        <div key={c.id} 
+                          onClick={() => {
+                            setSelectedClipId(c.id);
+                            setSelectedTrackId(null);
+                          }}
+                          style={{
+                            position: 'absolute',
+                            left,
+                            top: 12,
+                            height: 56,
+                            width: Math.max(80, width),
+                            background: `linear-gradient(180deg, ${trackColor}ee 0%, ${trackColor}cc 100%)`,
+                            border: `2px solid ${selectedClipId === c.id ? '#00bcd4' : trackColor}`,
+                            borderRadius: 4,
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            opacity: shouldPlay ? 1 : 0.25,
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {/* Waveform Canvas */}
+                          <canvas 
+                            id={`waveform-${c.id}`}
+                            style={{ 
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              pointerEvents: 'none',
+                              opacity: 0.5,
+                              mixBlendMode: 'overlay'
+                            }}
+                          />
+                          
+                          {/* Clip Name */}
+                          <div style={{ 
+                            position: 'absolute',
+                            top: 6,
+                            left: 8,
+                            fontSize: 11, 
+                            color: '#000', 
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: 'calc(100% - 16px)'
+                          }}>
+                            {c.url.split('/').pop()?.replace(/\.(mp3|wav)$/i, '').slice(0, 30) || 'Audio Clip'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Playhead */}
+          <div style={{
+            position: 'absolute',
+            left: pxForSeconds(playhead),
+            top: 40,
+            bottom: 0,
+            width: 3,
+            background: 'linear-gradient(180deg, #00bcd4 0%, #00bcd4dd 50%, transparent 100%)',
+            boxShadow: '0 0 12px rgba(0,188,212,0.8)',
+            transform: 'translateX(-1.5px)',
+            pointerEvents: 'none',
+            zIndex: 10
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: -2,
+              left: -8,
+              width: 18,
+              height: 18,
+              background: '#00bcd4',
+              borderRadius: '50% 50% 50% 0',
+              transform: 'rotate(-45deg)',
+              boxShadow: '0 2px 8px rgba(0,188,212,0.6)',
+              border: '2px solid #0a0a0a'
+            }} />
+          </div>
+
+          {/* Click to Seek */}
+          <div style={{ 
+            position: 'absolute', 
+            left: 0, 
+            right: 0, 
+            top: 60, 
+            bottom: 0,
+            cursor: 'crosshair'
+          }} onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const seconds = clickX / zoom;
+            seekTo(seconds);
+          }} />
+        </section>
+
+        {/* Right Inspector Panel */}
+        <aside style={{ 
+          width: 320, 
+          background: '#1a1a1a', 
+          borderLeft: '1px solid #2a2a2a',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Inspector Header */}
+          <div style={{ 
+            height: 40, 
+            borderBottom: '1px solid #2a2a2a',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 16px',
+            background: '#141414'
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#00bcd4' }}>INSPECTOR</div>
+          </div>
+
+          {/* Inspector Tabs */}
+          <div style={{ 
+            display: 'flex',
+            borderBottom: '1px solid #2a2a2a',
+            background: '#141414'
+          }}>
+            <button style={{
+              flex: 1,
+              padding: '8px 12px',
+              background: 'transparent',
+              border: 0,
+              color: '#00bcd4',
+              fontSize: 11,
+              fontWeight: 600,
+              borderBottom: '2px solid #00bcd4',
+              cursor: 'pointer'
+            }}>
+              Inspector
+            </button>
+            <button style={{
+              flex: 1,
+              padding: '8px 12px',
+              background: 'transparent',
+              border: 0,
+              color: '#666',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}>
+              AI Tools
+            </button>
+          </div>
+
+          {/* Inspector Content */}
+          <div style={{ flex: 1, padding: 16, overflowY: 'auto' }}>
+            {selectedClipId ? (
+              <div>
+                <div style={{ 
+                  fontSize: 14, 
+                  fontWeight: 700, 
+                  color: '#e0e0e0',
+                  marginBottom: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <div style={{ width: 12, height: 12, background: '#00bcd4', borderRadius: 2 }} />
+                  Clip Properties
+                </div>
+
+                {/* Clip Info */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Name</div>
+                  <div style={{ fontSize: 13, color: '#e0e0e0', fontWeight: 500 }}>
+                    {tracks.find(t => t.clips.some(c => c.id === selectedClipId))?.clips.find(c => c.id === selectedClipId)?.id || 'Unknown Clip'}
+                  </div>
+                </div>
+
+                {/* Position */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Position</div>
+                  <div style={{ fontSize: 13, color: '#00bcd4', fontWeight: 500, fontFamily: 'monospace' }}>
+                    {formatTime(tracks.find(t => t.clips.some(c => c.id === selectedClipId))?.clips.find(c => c.id === selectedClipId)?.start || 0)}
+                  </div>
+                </div>
+
+                {/* Duration */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Duration</div>
+                  <div style={{ fontSize: 13, color: '#e0e0e0', fontWeight: 500, fontFamily: 'monospace' }}>
+                    {formatTime(tracks.find(t => t.clips.some(c => c.id === selectedClipId))?.clips.find(c => c.id === selectedClipId)?.duration || 0)}
+                  </div>
+                </div>
+
+                {/* Fade In/Out */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 8, textTransform: 'uppercase', fontWeight: 600 }}>Fade In</div>
+                  <div style={{ 
+                    height: 6, 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: 3,
+                    position: 'relative',
+                    marginBottom: 12
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      height: '100%',
+                      width: '20%',
+                      background: 'linear-gradient(90deg, transparent, #00bcd4)',
+                      borderRadius: '3px 0 0 3px'
+                    }} />
+                  </div>
+
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 8, textTransform: 'uppercase', fontWeight: 600 }}>Fade Out</div>
+                  <div style={{ 
+                    height: 6, 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: 3,
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      height: '100%',
+                      width: '20%',
+                      background: 'linear-gradient(270deg, transparent, #00bcd4)',
+                      borderRadius: '0 3px 3px 0'
+                    }} />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ marginTop: 24 }}>
+                  <button style={{
+                    width: '100%',
+                    padding: '8px',
+                    background: '#00bcd4',
+                    border: 0,
+                    borderRadius: 4,
+                    color: '#000',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: 8
+                  }} onClick={splitAtPlayhead}>
+                    Split at Playhead (B)
+                  </button>
+                  <button style={{
+                    width: '100%',
+                    padding: '8px',
+                    background: 'transparent',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: 4,
+                    color: '#ff4757',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }} onClick={deleteSelectedClip}>
+                    Delete Clip (Del)
+                  </button>
+                </div>
+              </div>
+            ) : selectedTrackId ? (
+              <div>
+                <div style={{ 
+                  fontSize: 14, 
+                  fontWeight: 700, 
+                  color: '#e0e0e0',
+                  marginBottom: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <div style={{ width: 12, height: 12, background: getTrackColor(tracks.findIndex(t => t.id === selectedTrackId)), borderRadius: 2 }} />
+                  Track Properties
+                </div>
+
+                {/* Track Info */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 4, textTransform: 'uppercase', fontWeight: 600 }}>Name</div>
+                  <div style={{ fontSize: 13, color: '#e0e0e0', fontWeight: 500 }}>
+                    {tracks.find(t => t.id === selectedTrackId)?.name || 'Unknown Track'}
+                  </div>
+                </div>
+
+                {/* Volume */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: 8
+                  }}>
+                    <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', fontWeight: 600 }}>Volume</div>
+                    <div style={{ fontSize: 12, color: '#00bcd4', fontWeight: 600 }}>
+                      {Math.round((tracks.find(t => t.id === selectedTrackId)?.volume || 0) * 100)}%
+                    </div>
+                  </div>
+                  <div style={{ 
+                    height: 6, 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: 3,
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      height: '100%',
+                      width: `${(tracks.find(t => t.id === selectedTrackId)?.volume || 0) * 100}%`,
+                      background: '#00bcd4',
+                      borderRadius: 3
+                    }} />
+                  </div>
+                </div>
+
+                {/* Pan */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: 8
+                  }}>
+                    <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', fontWeight: 600 }}>Pan</div>
+                    <div style={{ fontSize: 12, color: '#00bcd4', fontWeight: 600 }}>
+                      {tracks.find(t => t.id === selectedTrackId)?.pan === 0 ? 'C' : 
+                       (tracks.find(t => t.id === selectedTrackId)?.pan || 0) > 0 ? 'R' : 'L'}
+                    </div>
+                  </div>
+                  <div style={{ 
+                    height: 6, 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: 3,
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: 2,
+                      height: 8,
+                      background: '#666'
+                    }} />
+                    <div style={{
+                      position: 'absolute',
+                      left: `${50 + ((tracks.find(t => t.id === selectedTrackId)?.pan || 0) * 50)}%`,
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: 8,
+                      height: 8,
+                      background: '#00bcd4',
+                      borderRadius: '50%'
+                    }} />
+                  </div>
+                </div>
+
+                {/* Track Actions */}
+                <div style={{ marginTop: 24 }}>
+                  <button style={{
+                    width: '100%',
+                    padding: '8px',
+                    background: '#00bcd4',
+                    border: 0,
+                    borderRadius: 4,
+                    color: '#000',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginBottom: 8
+                  }}>
+                    Add Effect
+                  </button>
+                  <button style={{
+                    width: '100%',
+                    padding: '8px',
+                    background: 'transparent',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: 4,
+                    color: '#ff4757',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}>
+                    Delete Track
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', paddingTop: 40 }}>
+                <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Select a clip or track to edit properties</div>
+                <div style={{ fontSize: 10, color: '#444' }}>
+                  Click on a clip in the timeline or track header to inspect and modify its properties
+                </div>
+              </div>
+            )}
           </div>
         </aside>
       </main>
+
+      {/* Master Section */}
+      <footer style={{
+        height: 80,
+        background: '#1a1a1a',
+        borderTop: '1px solid #2a2a2a',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 20px',
+        gap: 20
+      }}>
+        {/* Master Label */}
+        <div style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: '#00bcd4',
+          minWidth: 60
+        }}>
+          MASTER
+        </div>
+
+        {/* Master Volume */}
+        <div style={{ flex: 1, maxWidth: 200 }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 4
+          }}>
+            <span style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', fontWeight: 600 }}>Volume</span>
+            <span style={{ fontSize: 11, color: '#00bcd4', fontWeight: 600 }}>80%</span>
+          </div>
+          <div style={{
+            height: 6,
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 3,
+            position: 'relative',
+            cursor: 'pointer'
+          }}>
+            <div style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              height: '100%',
+              width: '80%',
+              background: 'linear-gradient(90deg, #00bcd4, #00bcd4dd)',
+              borderRadius: 3
+            }} />
+          </div>
+        </div>
+
+        {/* Export Button */}
+        <button style={{
+          padding: '8px 16px',
+          background: '#00bcd4',
+          border: 0,
+          borderRadius: 4,
+          color: '#000',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6
+        }} onClick={async () => {
+          const sched = getScheduler();
+          if (!sched) return;
+
+          try {
+            const audioBuffer = await sched.renderToWav(tracks.flatMap(t => t.clips));
+            const blob = new Blob([audioBuffer], { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mix.wav';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            console.log('✅ Mix exported successfully');
+          } catch (err) {
+            console.error('Export failed:', err);
+            alert('Export failed. Check console for details.');
+          }
+        }}>
+          <span>💾</span>
+          Export WAV
+        </button>
+
+        {/* Project Info */}
+        <div style={{
+          fontSize: 11,
+          color: '#666',
+          textAlign: 'right'
+        }}>
+          <div>{tracks.length} tracks</div>
+          <div>{tracks.reduce((sum, t) => sum + t.clips.length, 0)} clips</div>
+        </div>
+      </footer>
     </div>
   );
 }
