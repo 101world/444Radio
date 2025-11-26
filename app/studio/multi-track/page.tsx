@@ -58,6 +58,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { StudioProvider, useStudio } from '@/app/contexts/StudioContext';
+import { useStudioGeneration } from '@/hooks/useStudioGeneration';
 import Timeline from '@/app/components/studio/Timeline';
 import TransportBar from '@/app/components/studio/TransportBar';
 import TimelineRuler from '@/app/components/studio/TimelineRuler';
