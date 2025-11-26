@@ -48,16 +48,29 @@ export default function MultiTrackStudioV4() {
   useEffect(() => {
     if (!daw) return;
 
+    const updatePlayhead = (time: number) => {
+      setPlayhead(time);
+    };
+
     const loop = () => {
-      const currentPlayhead = daw.getPlayhead();
-      setPlayhead(currentPlayhead);
+      setPlayhead(daw.getPlayhead());
       setIsPlaying(daw.isPlaying());
       rafRef.current = requestAnimationFrame(loop);
     };
 
+    // Listen to playhead updates from DAW
+    daw.on('playheadUpdate', updatePlayhead);
+    daw.on('play', () => setIsPlaying(true));
+    daw.on('pause', () => setIsPlaying(false));
+    daw.on('stop', () => {
+      setIsPlaying(false);
+      setPlayhead(0);
+    });
+
     rafRef.current = requestAnimationFrame(loop);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      daw.off('playheadUpdate', updatePlayhead);
     };
   }, [daw]);
 

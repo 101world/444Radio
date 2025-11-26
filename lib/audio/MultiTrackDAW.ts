@@ -273,6 +273,31 @@ export class MultiTrackDAW {
     return this.trackManager.getTracks()
   }
 
+  // Getters for Transport State
+  getPlayhead(): number {
+    return this.transportState.currentTime
+  }
+
+  isPlaying(): boolean {
+    return this.transportState.isPlaying
+  }
+
+  isRecording(): boolean {
+    return this.transportState.isRecording
+  }
+
+  getBPM(): number {
+    return this.transportState.bpm
+  }
+
+  isLooping(): boolean {
+    return this.transportState.loopEnabled
+  }
+
+  isMetronomeEnabled(): boolean {
+    return this.transportState.metronomeEnabled
+  }
+
   // Project Management
   async saveProject(name?: string, userId?: string): Promise<void> {
     const projectData = {
