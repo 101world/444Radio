@@ -74,6 +74,9 @@ export default function MultiTrackStudioV4() {
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
   const [draggedClip, setDraggedClip] = useState<{trackId: string, clipId: string, startX: number, initialStartTime: number} | null>(null);
   const [clipboardClip, setClipboardClip] = useState<{trackId: string, clip: any} | null>(null);
+  const [projectName, setProjectName] = useState('');
+  const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav');
+  const [exportQuality, setExportQuality] = useState('44100');
   const rafRef = useRef<number | undefined>(undefined);
   const timelineRef = useRef<HTMLDivElement>(null);
   const historyManagerRef = useRef<HistoryManager | null>(null);
@@ -195,7 +198,7 @@ export default function MultiTrackStudioV4() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedClipId, selectedTrackId, daw]);
+  }, [selectedClipId, selectedTrackId, daw, tracks, clipboardClip, playhead, isPlaying]);
 
   // Playhead animation
   useEffect(() => {
@@ -233,7 +236,7 @@ export default function MultiTrackStudioV4() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       daw.off('playheadUpdate', updatePlayhead);
     };
-  }, [daw]);
+  }, [daw, loopEnabled, loopStart, loopEnd]);
 
   const togglePlay = () => {
     if (!daw) return;
@@ -1318,37 +1321,45 @@ export default function MultiTrackStudioV4() {
       )}
 
       {/* Save Project Modal */}
-      {showSaveModal && (() => {
-        const [projectName, setProjectName] = useState('');
-        return (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowSaveModal(false)}>
-            <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                <span className="text-2xl">💾</span>
-                <span>Save Project</span>
-              </h2>
-              <input 
-                type="text" 
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Enter project name..." 
-                className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg mb-6 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                autoFocus
-              />
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => projectName.trim() && handleSaveProject(projectName.trim())} 
-                  disabled={!projectName.trim()}
-                  className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                >
-                  Save Project
-                </button>
-                <button onClick={() => setShowSaveModal(false)} className="flex-1 py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
-              </div>
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => { setShowSaveModal(false); setProjectName(''); }}>
+          <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+              <span className="text-2xl">💾</span>
+              <span>Save Project</span>
+            </h2>
+            <input 
+              type="text" 
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && projectName.trim()) {
+                  handleSaveProject(projectName.trim());
+                  setProjectName('');
+                }
+              }}
+              placeholder="Enter project name..." 
+              className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg mb-6 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  if (projectName.trim()) {
+                    handleSaveProject(projectName.trim());
+                    setProjectName('');
+                  }
+                }} 
+                disabled={!projectName.trim()}
+                className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                💾 Save Project
+              </button>
+              <button onClick={() => { setShowSaveModal(false); setProjectName(''); }} className="flex-1 py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* Load Project Modal */}
       {showLoadModal && (
@@ -1388,59 +1399,52 @@ export default function MultiTrackStudioV4() {
       )}
 
       {/* Export Modal */}
-      {showExportModal && (() => {
-        const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav');
-        const [exportQuality, setExportQuality] = useState('44100');
-        return (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowExportModal(false)}>
-            <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                <span className="text-2xl">📤</span>
-                <span>Export Project</span>
-              </h2>
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="text-sm font-semibold text-gray-300 mb-2 block">Audio Format</label>
-                  <select 
-                    value={`${exportFormat}-${exportQuality}`}
-                    onChange={(e) => {
-                      const [fmt, quality] = e.target.value.split('-');
-                      setExportFormat(fmt as 'wav' | 'mp3');
-                      if (quality) setExportQuality(quality);
-                    }}
-                    className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                  >
-                    <option value="wav-16">WAV (16-bit) - Lossless</option>
-                    <option value="wav-24">WAV (24-bit) - Studio Quality</option>
-                    <option value="mp3-320">MP3 (320kbps) - High Quality</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-300 mb-2 block">Sample Rate</label>
-                  <select 
-                    value={exportQuality}
-                    onChange={(e) => setExportQuality(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                  >
-                    <option value="44100">44.1 kHz (CD Quality)</option>
-                    <option value="48000">48 kHz (Professional)</option>
-                    <option value="96000">96 kHz (Hi-Res)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => handleExport(exportFormat, exportQuality)} 
-                  className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowExportModal(false)}>
+          <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+              <span className="text-2xl">📤</span>
+              <span>Export Project</span>
+            </h2>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">Audio Format</label>
+                <select 
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value as 'wav' | 'mp3')}
+                  className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                 >
-                  📥 Export
-                </button>
-                <button onClick={() => setShowExportModal(false)} className="flex-1 py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
+                  <option value="wav">WAV - Lossless</option>
+                  <option value="mp3">MP3 - Compressed</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">Sample Rate</label>
+                <select 
+                  value={exportQuality}
+                  onChange={(e) => setExportQuality(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                >
+                  <option value="44100">44.1 kHz (CD Quality)</option>
+                  <option value="48000">48 kHz (Professional)</option>
+                  <option value="96000">96 kHz (Hi-Res)</option>
+                </select>
               </div>
             </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  handleExport(exportFormat, exportQuality);
+                }} 
+                className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+              >
+                📥 Export
+              </button>
+              <button onClick={() => setShowExportModal(false)} className="flex-1 py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
+            </div>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* Track Color Picker Modal */}
       {showColorPicker && selectedColorTrackId && (
