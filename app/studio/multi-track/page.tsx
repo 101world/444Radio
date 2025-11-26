@@ -608,20 +608,20 @@ export default function MultiTrackStudioV4() {
         <div className="flex gap-2 mr-2">
           <button
             onClick={() => setShowSaveModal(true)}
-            className="px-3 py-1.5 text-xs rounded bg-[#1f1f1f] text-gray-400 hover:bg-[#252525] transition-all"
+            className="px-4 h-10 rounded-lg bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border-2 border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-sm"
             title="Save project (Cmd+S)"
           >
             💾 Save
           </button>
           <button
             onClick={() => setShowLoadModal(true)}
-            className="px-3 py-1.5 text-xs rounded bg-[#1f1f1f] text-gray-400 hover:bg-[#252525] transition-all"
+            className="px-4 h-10 rounded-lg bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border-2 border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-sm"
           >
             📂 Load
           </button>
           <button
             onClick={() => setShowExportModal(true)}
-            className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black hover:bg-cyan-400 transition-all"
+            className="px-4 h-10 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-black hover:from-cyan-400 hover:to-cyan-500 transition-all font-bold text-sm shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
           >
             📤 Export
           </button>
@@ -631,21 +631,19 @@ export default function MultiTrackStudioV4() {
         <div className="flex gap-2">
           <button
             onClick={() => setShowMixer(!showMixer)}
-            className={`px-3 py-1.5 text-xs rounded transition-all ${
+            className={`px-4 h-10 rounded-lg transition-all font-semibold text-sm border-2 ${
               showMixer
-                ? 'bg-cyan-500 text-black'
-                : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
+                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black shadow-lg shadow-cyan-500/30 border-cyan-400'
+                : 'bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border-gray-700 hover:border-cyan-500/50'
             }`}
           >
             🎛️ Mixer
           </button>
           <button
             onClick={() => setShowEffects(!showEffects)}
-            className={`px-3 py-1.5 text-xs rounded transition-all ${
-              showEffects
-                ? 'bg-cyan-500 text-black'
-                : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
-            }`}
+            className={`px-4 h-10 rounded-lg transition-all font-semibold text-sm border-2 opacity-50 cursor-not-allowed bg-[#1f1f1f] text-gray-600 border-gray-800`}
+            disabled
+            title="Coming soon"
           >
             🎚️ Effects
           </button>
@@ -682,8 +680,11 @@ export default function MultiTrackStudioV4() {
 
           <div className="flex-1 overflow-y-auto">
             {tracks.length === 0 ? (
-              <div className="p-4 text-center text-gray-600 text-sm">
-                No tracks yet<br />Click "Add Track" to start
+              <div className="p-8 text-center">
+                <div className="text-5xl mb-4 animate-bounce">🎵</div>
+                <div className="text-xl font-bold text-white mb-2">No tracks yet</div>
+                <div className="text-sm text-gray-500 mb-4">Start creating your masterpiece</div>
+                <div className="text-xs text-cyan-400">💡 Tip: Upload audio or add a new track</div>
               </div>
             ) : (
               tracks.map((track) => (
@@ -698,17 +699,23 @@ export default function MultiTrackStudioV4() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded bg-gray-800 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                        {tracks.indexOf(track) + 1}
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedColorTrackId(track.id);
                           setShowColorPicker(true);
                         }}
-                        className="w-3 h-3 rounded-full border border-white/30 hover:ring-2 hover:ring-white/50"
+                        className="w-6 h-6 rounded-full border-2 border-white/30 hover:ring-2 hover:ring-cyan-500 transition-all shadow-lg"
                         style={{ backgroundColor: track.color }}
                         title="Change color"
                       />
-                      <span className="text-sm font-medium text-white">
+                      <div className="text-xl mr-1">
+                        {track.type === 'midi' ? '🎹' : '🎤'}
+                      </div>
+                      <span className="text-sm font-semibold text-white">
                         {track.name}
                       </span>
                     </div>
@@ -800,6 +807,17 @@ export default function MultiTrackStudioV4() {
 
           {/* Track Lanes */}
           <div className="flex-1 relative">
+            {/* Playhead Indicator */}
+            <div 
+              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none shadow-lg shadow-red-500/50"
+              style={{ left: `${playhead * zoom}px` }}
+            >
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded whitespace-nowrap">
+                {formatTime(playhead)}
+              </div>
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500" />
+            </div>
+            
             {/* Grid Lines (when snap enabled) */}
             {snapToGrid && (
               <div className="absolute inset-0 pointer-events-none">
@@ -828,11 +846,25 @@ export default function MultiTrackStudioV4() {
             )}
             
             {tracks.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-600">
-                <div className="text-center">
-                  <div className="text-4xl mb-4">🎵</div>
-                  <div className="text-lg mb-2">No tracks yet</div>
-                  <div className="text-sm">Click "Upload Audio" to add your first track</div>
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center p-12 bg-[#0f0f0f] rounded-2xl border-2 border-dashed border-cyan-500/30">
+                  <div className="text-6xl mb-6 animate-pulse">🎵</div>
+                  <div className="text-2xl font-bold text-white mb-3">Let's Make Music!</div>
+                  <div className="text-base text-gray-400 mb-6">Upload audio files or create new tracks to begin</div>
+                  <div className="flex gap-3 justify-center">
+                    <button
+                      onClick={addTrack}
+                      className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30"
+                    >
+                      ➕ Add Track
+                    </button>
+                    <button
+                      onClick={() => document.getElementById('audio-upload')?.click()}
+                      className="px-6 py-3 bg-[#1f1f1f] text-cyan-400 font-bold rounded-lg hover:bg-[#252525] border-2 border-cyan-500/30 hover:border-cyan-500/50 transition-all"
+                    >
+                      📁 Upload Audio
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -850,14 +882,15 @@ export default function MultiTrackStudioV4() {
                       track.clips.map(clip => (
                         <div
                           key={clip.id}
-                          className={`absolute h-16 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                            selectedClipId === clip.id ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-[#0a0a0a]' : ''
+                          className={`absolute h-16 rounded-lg overflow-hidden cursor-pointer transition-all shadow-xl ${
+                            selectedClipId === clip.id ? 'ring-4 ring-cyan-400 ring-offset-2 ring-offset-[#0a0a0a] scale-105' : 'hover:scale-102'
                           }`}
                           style={{
-                            left: `${clip.startTime * zoom}px`, // Zoom-based positioning
+                            left: `${clip.startTime * zoom}px`,
                             width: `${clip.duration * zoom}px`,
-                            backgroundColor: track.color + '20',
-                            border: `2px solid ${selectedClipId === clip.id ? '#00bcd4' : track.color}`
+                            backgroundColor: track.color + '30',
+                            border: `3px solid ${selectedClipId === clip.id ? '#00bcd4' : track.color}`,
+                            boxShadow: selectedClipId === clip.id ? `0 4px 20px ${track.color}80` : `0 2px 8px rgba(0,0,0,0.3)`
                           }}
                           onClick={(e) => handleClipClick(e, clip.id, track.id)}
                           title="Click to select, drag to move (coming soon)"
@@ -884,9 +917,17 @@ export default function MultiTrackStudioV4() {
                             title="Drag to adjust fade out"
                           />
                           
+                          {/* Gradient Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent pointer-events-none" />
+                          
                           {/* Clip Name Overlay */}
-                          <div className="absolute top-1 left-2 text-xs font-semibold text-white drop-shadow-lg">
+                          <div className="absolute top-1 left-2 text-xs font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] bg-black/40 px-2 py-0.5 rounded">
                             {clip.name || track.name}
+                          </div>
+                          
+                          {/* Duration Label */}
+                          <div className="absolute bottom-1 right-2 text-[10px] font-bold text-white/80 drop-shadow-lg bg-black/40 px-1.5 py-0.5 rounded">
+                            {clip.duration.toFixed(2)}s
                           </div>
                           
                           {/* Clip Actions (show on selected) */}
@@ -933,116 +974,105 @@ export default function MultiTrackStudioV4() {
         </div>
 
         {/* Mixer Panel */}
-        {showMixer && selectedTrackId && (() => {
-          const selectedTrack = tracks.find(t => t.id === selectedTrackId);
-          if (!selectedTrack) return null;
-
-          return (
-            <div className="w-80 bg-[#0f0f0f] border-l border-[#1f1f1f] p-4 overflow-y-auto">
-              <div className="text-sm font-bold mb-4 text-white">🎛️ {selectedTrack.name}</div>
-              
-              <div className="space-y-4">
-                {/* Volume Control */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-xs text-gray-500">Volume</label>
-                    <span className="text-xs text-cyan-400">{Math.round(selectedTrack.volume * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={selectedTrack.volume * 100}
-                    onChange={(e) => updateTrackVolume(selectedTrack.id, parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                
-                {/* Pan Control */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-xs text-gray-500">Pan</label>
-                    <span className="text-xs text-cyan-400">
-                      {selectedTrack.pan === 0 ? 'C' : selectedTrack.pan < 0 ? `L${Math.abs(Math.round(selectedTrack.pan * 100))}` : `R${Math.round(selectedTrack.pan * 100)}`}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-100"
-                    max="100"
-                    value={selectedTrack.pan * 100}
-                    onChange={(e) => updateTrackPan(selectedTrack.id, parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Track Controls */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => toggleMute(selectedTrack.id)}
-                    className={`flex-1 py-2 rounded text-xs font-semibold ${
-                      selectedTrack.muted
-                        ? 'bg-red-500 text-white'
-                        : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
-                    }`}
-                  >
-                    {selectedTrack.muted ? '🔇 Muted' : '🔊 Mute'}
-                  </button>
-                  <button
-                    onClick={() => toggleSolo(selectedTrack.id)}
-                    className={`flex-1 py-2 rounded text-xs font-semibold ${
-                      selectedTrack.solo
-                        ? 'bg-yellow-500 text-black'
-                        : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
-                    }`}
-                  >
-                    {selectedTrack.solo ? '⭐ Solo' : 'Solo'}
-                  </button>
-                </div>
-
-                {/* Track Info */}
-                <div className="pt-4 border-t border-[#1f1f1f]">
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div>Type: <span className="text-cyan-400">{selectedTrack.type}</span></div>
-                    <div>Clips: <span className="text-cyan-400">{selectedTrack.clips.length}</span></div>
-                    <div>Color: <span className="text-cyan-400">{selectedTrack.color}</span></div>
-                    {selectedClipId && (() => {
-                      const clip = selectedTrack.clips.find(c => c.id === selectedClipId);
-                      return clip ? (
-                        <>
-                          <div className="pt-2 border-t border-[#1f1f1f] mt-2">
-                            <div className="text-cyan-400 font-semibold mb-1">Selected Clip:</div>
-                            <div>Name: <span className="text-cyan-400">{clip.name}</span></div>
-                            <div>Start: <span className="text-cyan-400">{clip.startTime.toFixed(2)}s</span></div>
-                            <div>Duration: <span className="text-cyan-400">{clip.duration.toFixed(2)}s</span></div>
-                          </div>
-                        </>
-                      ) : null;
-                    })()}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-[#1f1f1f]">
-                  <div className="text-xs font-bold text-white mb-2">Effects (Coming Soon)</div>
-                  <div className="space-y-2 text-xs">
-                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left opacity-50 cursor-not-allowed">
-                      🎚️ EQ
-                    </button>
-                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left opacity-50 cursor-not-allowed">
-                      🔊 Compressor
-                    </button>
-                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left opacity-50 cursor-not-allowed">
-                      🌊 Reverb
-                    </button>
-                    <button className="w-full p-2 bg-[#1f1f1f] rounded hover:bg-[#252525] text-left opacity-50 cursor-not-allowed">
-                      ⏱️ Delay
-                    </button>
-                  </div>
-                </div>
+        {showMixer && (
+          <div className="w-80 bg-[#0f0f0f] border-l border-[#1f1f1f] overflow-y-auto">
+            <div className="sticky top-0 bg-[#0f0f0f] border-b border-[#1f1f1f] p-4 z-10">
+              <div className="text-sm font-bold text-white flex items-center gap-2">
+                <span className="text-xl">🎛️</span>
+                <span>Mixer ({tracks.length} tracks)</span>
               </div>
             </div>
-          );
-        })()}
+            
+            {tracks.length === 0 ? (
+              <div className="p-8 text-center text-gray-600 text-sm">
+                <div className="text-3xl mb-2">🎚️</div>
+                <div>No tracks to mix</div>
+                <div className="text-xs mt-1">Add tracks to see mixer controls</div>
+              </div>
+            ) : (
+              <div className="p-4 space-y-6">
+                {tracks.map((track) => (
+                  <div 
+                    key={track.id}
+                    className={`p-3 rounded-lg border transition-all ${
+                      selectedTrackId === track.id 
+                        ? 'bg-cyan-500/10 border-cyan-500/50' 
+                        : 'bg-[#141414] border-[#1f1f1f] hover:border-[#2f2f2f]'
+                    }`}
+                  >
+                    {/* Track Header */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <div 
+                        className="w-4 h-4 rounded-full border-2 border-white/30" 
+                        style={{ backgroundColor: track.color }}
+                      />
+                      <div className="text-xs font-semibold text-white flex-1">{track.name}</div>
+                      <div className="text-[10px] text-gray-600">{track.clips.length} clips</div>
+                    </div>
+                    
+                    {/* Volume Control */}
+                    <div className="mb-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-[10px] text-gray-500 uppercase tracking-wider">Volume</label>
+                        <span className="text-xs font-bold text-cyan-400">{Math.round(track.volume * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={track.volume * 100}
+                        onChange={(e) => updateTrackVolume(track.id, parseInt(e.target.value))}
+                        className="w-full h-2 bg-[#1f1f1f] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-cyan-400"
+                      />
+                    </div>
+                    
+                    {/* Pan Control */}
+                    <div className="mb-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-[10px] text-gray-500 uppercase tracking-wider">Pan</label>
+                        <span className="text-xs font-bold text-cyan-400">
+                          {track.pan === 0 ? 'CENTER' : track.pan < 0 ? `L${Math.abs(Math.round(track.pan * 100))}` : `R${Math.round(track.pan * 100)}`}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={track.pan * 100}
+                        onChange={(e) => updateTrackPan(track.id, parseInt(e.target.value))}
+                        className="w-full h-2 bg-[#1f1f1f] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-cyan-400"
+                      />
+                    </div>
+
+                    {/* Track Controls */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => toggleMute(track.id)}
+                        className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase tracking-wide transition-all ${
+                          track.muted
+                            ? 'bg-red-500 text-white shadow-lg shadow-red-500/50'
+                            : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525] hover:text-white'
+                        }`}
+                      >
+                        {track.muted ? '🔇 M' : 'M'}
+                      </button>
+                      <button
+                        onClick={() => toggleSolo(track.id)}
+                        className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase tracking-wide transition-all ${
+                          track.solo
+                            ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/50'
+                            : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525] hover:text-white'
+                        }`}
+                      >
+                        {track.solo ? '⭐ S' : 'S'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bottom Status Bar */}
@@ -1061,19 +1091,43 @@ export default function MultiTrackStudioV4() {
 
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowShortcuts(false)}>
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-white mb-4">⌨️ Keyboard Shortcuts</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-400">Play/Pause</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Space</kbd></div>
-              <div className="flex justify-between"><span className="text-gray-400">Stop</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">S</kbd></div>
-              <div className="flex justify-between"><span className="text-gray-400">Save</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Cmd+S</kbd></div>
-              <div className="flex justify-between"><span className="text-gray-400">Undo</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Cmd+Z</kbd></div>
-              <div className="flex justify-between"><span className="text-gray-400">Split Clip</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Cmd+E</kbd></div>
-              <div className="flex justify-between"><span className="text-gray-400">Delete</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">Del</kbd></div>
-              <div className="flex justify-between"><span className="text-gray-400">Show Shortcuts</span><kbd className="px-2 py-1 bg-[#1f1f1f] rounded">?</kbd></div>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+              <span className="text-2xl">⌨️</span>
+              <span>Keyboard Shortcuts</span>
+            </h2>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Play/Pause</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">Space</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Stop</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">S</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Save</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">Cmd+S</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Undo</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">Cmd+Z</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Split Clip</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">Cmd+E</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Delete</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">Del</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Show Shortcuts</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">?</kbd>
+              </div>
             </div>
-            <button onClick={() => setShowShortcuts(false)} className="mt-4 w-full py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400">Close</button>
+            <button onClick={() => setShowShortcuts(false)} className="mt-6 w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50">Close</button>
           </div>
         </div>
       )}
@@ -1082,26 +1136,29 @@ export default function MultiTrackStudioV4() {
       {showSaveModal && (() => {
         const [projectName, setProjectName] = useState('');
         return (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
-            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-lg font-bold text-white mb-4">💾 Save Project</h2>
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowSaveModal(false)}>
+            <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <span className="text-2xl">💾</span>
+                <span>Save Project</span>
+              </h2>
               <input 
                 type="text" 
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Project name..." 
-                className="w-full px-3 py-2 bg-[#1f1f1f] text-white rounded mb-4"
+                placeholder="Enter project name..." 
+                className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg mb-6 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                 autoFocus
               />
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button 
                   onClick={() => projectName.trim() && handleSaveProject(projectName.trim())} 
                   disabled={!projectName.trim()}
-                  className="flex-1 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  Save
+                  Save Project
                 </button>
-                <button onClick={() => setShowSaveModal(false)} className="flex-1 py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+                <button onClick={() => setShowSaveModal(false)} className="flex-1 py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
               </div>
             </div>
           </div>
@@ -1110,31 +1167,37 @@ export default function MultiTrackStudioV4() {
 
       {/* Load Project Modal */}
       {showLoadModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowLoadModal(false)}>
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-white mb-4">📂 Load Project</h2>
-            <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowLoadModal(false)}>
+          <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+              <span className="text-2xl">📂</span>
+              <span>Load Project</span>
+            </h2>
+            <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
               {userProjects.length === 0 ? (
-                <div className="text-sm text-gray-500 text-center py-8">
-                  No saved projects yet.<br/>
-                  <span className="text-cyan-400">Save your first project to see it here!</span>
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-3">🎵</div>
+                  <div className="text-sm text-gray-400">No saved projects yet</div>
+                  <div className="text-xs text-cyan-400 mt-2">Save your first project to see it here!</div>
                 </div>
               ) : (
                 userProjects.map(project => (
                   <div 
                     key={project.id}
                     onClick={() => handleLoadProject(project.id)}
-                    className="p-3 bg-[#1f1f1f] rounded hover:bg-[#252525] cursor-pointer"
+                    className="p-4 bg-[#1f1f1f] border border-cyan-500/20 rounded-lg hover:bg-[#252525] hover:border-cyan-500/50 cursor-pointer transition-all group"
                   >
-                    <div className="font-semibold text-white">{project.name}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {project.bpm} BPM • Last modified {new Date(project.updatedAt).toLocaleDateString()}
+                    <div className="font-semibold text-white group-hover:text-cyan-400 transition-colors">{project.name}</div>
+                    <div className="text-xs text-gray-500 mt-1.5 flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded">{project.bpm} BPM</span>
+                      <span>•</span>
+                      <span>{new Date(project.updatedAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                 ))
               )}
             </div>
-            <button onClick={() => setShowLoadModal(false)} className="w-full py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+            <button onClick={() => setShowLoadModal(false)} className="w-full py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
           </div>
         </div>
       )}
@@ -1144,12 +1207,15 @@ export default function MultiTrackStudioV4() {
         const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav');
         const [exportQuality, setExportQuality] = useState('44100');
         return (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
-            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-lg font-bold text-white mb-4">📤 Export Project</h2>
-              <div className="space-y-3 mb-4">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowExportModal(false)}>
+            <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                <span className="text-2xl">📤</span>
+                <span>Export Project</span>
+              </h2>
+              <div className="space-y-4 mb-6">
                 <div>
-                  <label className="text-sm text-gray-400">Format</label>
+                  <label className="text-sm font-semibold text-gray-300 mb-2 block">Audio Format</label>
                   <select 
                     value={`${exportFormat}-${exportQuality}`}
                     onChange={(e) => {
@@ -1157,34 +1223,34 @@ export default function MultiTrackStudioV4() {
                       setExportFormat(fmt as 'wav' | 'mp3');
                       if (quality) setExportQuality(quality);
                     }}
-                    className="w-full mt-1 px-3 py-2 bg-[#1f1f1f] text-white rounded"
+                    className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   >
-                    <option value="wav-16">WAV (16-bit)</option>
-                    <option value="wav-24">WAV (24-bit)</option>
-                    <option value="mp3-320">MP3 (320kbps)</option>
+                    <option value="wav-16">WAV (16-bit) - Lossless</option>
+                    <option value="wav-24">WAV (24-bit) - Studio Quality</option>
+                    <option value="mp3-320">MP3 (320kbps) - High Quality</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm text-gray-400">Sample Rate</label>
+                  <label className="text-sm font-semibold text-gray-300 mb-2 block">Sample Rate</label>
                   <select 
                     value={exportQuality}
                     onChange={(e) => setExportQuality(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 bg-[#1f1f1f] text-white rounded"
+                    className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                   >
-                    <option value="44100">44.1 kHz</option>
-                    <option value="48000">48 kHz</option>
-                    <option value="96000">96 kHz</option>
+                    <option value="44100">44.1 kHz (CD Quality)</option>
+                    <option value="48000">48 kHz (Professional)</option>
+                    <option value="96000">96 kHz (Hi-Res)</option>
                   </select>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button 
                   onClick={() => handleExport(exportFormat, exportQuality)} 
-                  className="flex-1 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-400"
+                  className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
                 >
-                  Export
+                  📥 Export
                 </button>
-                <button onClick={() => setShowExportModal(false)} className="flex-1 py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+                <button onClick={() => setShowExportModal(false)} className="flex-1 py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
               </div>
             </div>
           </div>
@@ -1193,20 +1259,24 @@ export default function MultiTrackStudioV4() {
 
       {/* Track Color Picker Modal */}
       {showColorPicker && selectedColorTrackId && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => { setShowColorPicker(false); setSelectedColorTrackId(null); }}>
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-white mb-4">🎨 Track Color</h2>
-            <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => { setShowColorPicker(false); setSelectedColorTrackId(null); }}>
+          <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
+              <span className="text-2xl">🎨</span>
+              <span>Choose Track Color</span>
+            </h2>
+            <div className="grid grid-cols-4 gap-3 mb-6">
               {['#00bcd4', '#ff5722', '#4caf50', '#ffc107', '#9c27b0', '#ff9800', '#e91e63', '#3f51b5'].map(color => (
                 <button
                   key={color}
                   onClick={() => handleTrackColorChange(selectedColorTrackId, color)}
-                  className="w-12 h-12 rounded hover:ring-2 ring-white transition-all"
+                  className="w-14 h-14 rounded-lg hover:ring-4 ring-white/50 transition-all transform hover:scale-110 shadow-lg"
                   style={{ backgroundColor: color }}
+                  title={color}
                 />
               ))}
             </div>
-            <button onClick={() => { setShowColorPicker(false); setSelectedColorTrackId(null); }} className="w-full py-2 bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525]">Cancel</button>
+            <button onClick={() => { setShowColorPicker(false); setSelectedColorTrackId(null); }} className="w-full py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
           </div>
         </div>
       )}
