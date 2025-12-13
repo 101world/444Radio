@@ -156,6 +156,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [stream, setStream] = useState<MediaStream | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const broadcasterVideoRef = useRef<HTMLVideoElement>(null)
+  const chatContainerRef = useRef<HTMLDivElement>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [showCreatePostModal, setShowCreatePostModal] = useState(false)
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
@@ -172,6 +173,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [queueRepeat, setQueueRepeat] = useState(false)
   // Task 19: Broadcasting Features
   const [streamQuality, setStreamQuality] = useState<'low' | 'medium' | 'high'>('high')
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
+
+  // Memoized chat messages sorted by timestamp
+  const displayedMessages = useMemo(() => {
+    return chatMessages
+      .filter(msg => msg.message && msg.message.trim())
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+  }, [chatMessages])
 
   // Detect mobile device
   useEffect(() => {
@@ -197,6 +206,24 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       return () => clearTimeout(timer)
     }
   }, [queueToast])
+
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current && displayedMessages.length > 0) {
+      const container = chatContainerRef.current
+      const isScrolledToBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
+      
+      // Only auto-scroll if user is already near bottom or new message is from current user
+      if (isScrolledToBottom || displayedMessages[displayedMessages.length - 1]?.username === profile?.username) {
+        setTimeout(() => {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          })
+        }, 50)
+      }
+    }
+  }, [displayedMessages, profile?.username])
 
   useEffect(() => {
     if (currentUser) {
@@ -583,9 +610,25 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [stationTitle, profile, isLive])
 
-  // Send chat message
+  // Send chat message with optimistic update
   const sendMessage = useCallback(async () => {
-    if (!chatInput.trim() || !stationId || !profile) return
+    if (!chatInput.trim() || !stationId || !profile || isSendingMessage) return
+    
+    const messageText = chatInput.trim()
+    const tempId = `temp-${Date.now()}`
+    
+    // Optimistic UI update
+    const optimisticMessage = {
+      id: tempId,
+      username: profile.username,
+      message: messageText,
+      timestamp: new Date(),
+      type: 'chat' as const
+    }
+    
+    setChatMessages(prev => [...prev, optimisticMessage])
+    setChatInput('')
+    setIsSendingMessage(true)
     
     try {
       const res = await fetch('/api/station/messages', {
@@ -593,19 +636,39 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stationId,
-          message: chatInput,
+          message: messageText,
           messageType: 'chat',
           username: profile.username
         })
       })
       
-      if (res.ok) {
-        setChatInput('')
+      if (!res.ok) {
+        throw new Error('Failed to send message')
+      }
+      
+      const data = await res.json()
+      
+      // Replace optimistic message with real one
+      if (data.message) {
+        setChatMessages(prev => 
+          prev.map(msg => 
+            msg.id === tempId 
+              ? { ...msg, id: data.message.id }
+              : msg
+          )
+        )
       }
     } catch (error) {
       console.error('Failed to send chat:', error)
+      // Remove optimistic message on error
+      setChatMessages(prev => prev.filter(msg => msg.id !== tempId))
+      setChatInput(messageText) // Restore message
+      // Show error toast (add toast system later)
+      setQueueToast('Failed to send message. Please try again.')
+    } finally {
+      setIsSendingMessage(false)
     }
-  }, [chatInput, stationId, profile])
+  }, [chatInput, stationId, profile, isSendingMessage])
 
   const fetchProfileData = async () => {
     setLoading(true)
@@ -842,25 +905,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   // Debounced chat typing indicator (optional)
   const [isTyping, setIsTyping] = useState(false)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Optimize chat messages with pagination (show last 50)
-  const displayedMessages = useMemo(() => {
-    return chatMessages.slice(-50)
-  }, [chatMessages])
-
-  // Debounced scroll to bottom for chat
-  const chatContainerRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (chatContainerRef.current && displayedMessages.length > 0) {
-      const scrollTimeout = setTimeout(() => {
-        chatContainerRef.current?.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          behavior: 'smooth'
-        })
-      }, 100)
-      return () => clearTimeout(scrollTimeout)
-    }
-  }, [displayedMessages.length])
 
   return (
     <div className="min-h-screen bg-black text-white pb-32">
@@ -2559,17 +2603,26 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             type="text"
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && chatInput.trim() && sendMessage()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !isSendingMessage) {
+                                e.preventDefault()
+                                sendMessage()
+                              }
+                            }}
                             placeholder={isOwnProfile ? "Message your listeners..." : "Join the conversation..."}
-                            className="flex-1 bg-white/5 border-2 border-white/10 rounded-xl px-5 py-3.5 text-white text-sm font-medium focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all placeholder:text-gray-500"
-                            disabled={!isLive}
+                            className="flex-1 bg-white/5 border-2 border-white/10 rounded-xl px-5 py-3.5 text-white text-sm font-medium focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!isLive || isSendingMessage}
                           />
                           <button
-                            onClick={() => chatInput.trim() && sendMessage()}
-                            disabled={!chatInput.trim() || !isLive}
-                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed disabled:opacity-50 rounded-xl px-6 py-3.5 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+                            onClick={() => chatInput.trim() && !isSendingMessage && sendMessage()}
+                            disabled={!chatInput.trim() || !isLive || isSendingMessage}
+                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed disabled:opacity-50 rounded-xl px-6 py-3.5 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 relative"
                           >
-                            <Send size={18} className="text-white" />
+                            {isSendingMessage ? (
+                              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <Send size={18} className="text-white" />
+                            )}
                           </button>
                         </div>
                       </div>
