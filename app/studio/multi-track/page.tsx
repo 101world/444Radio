@@ -1657,9 +1657,6 @@ export default function MultiTrackStudioV4() {
                               </button>
                             </div>
                           )}
-                              </button>
-                            </div>
-                          )}
                         </div>
                       ))
                     )}
