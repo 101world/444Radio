@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Youtube, Mail, Instagram, X, ArrowLeft } from 'lucide-react'
+import { Youtube, Mail, Instagram, X, ArrowLeft, Shield } from 'lucide-react'
 import Link from 'next/link'
 import FloatingMenu from '../components/FloatingMenu'
 
@@ -17,6 +17,7 @@ export default function Pricing() {
   const router = useRouter()
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [creditAmount, setCreditAmount] = useState(5) // Default $5
+  const [showPolicyModal, setShowPolicyModal] = useState(false)
   
   // Rates
   const buyRate = 0.04 // $0.04 per credit (on-demand)
@@ -510,6 +511,16 @@ export default function Pricing() {
           <p className="text-cyan-400/60 text-xs mb-2">
             <strong>credits:</strong> 1 song = 2 credits • 1 cover = 1 credit
           </p>
+
+          {/* Privacy Policy Button */}
+          <button
+            onClick={() => setShowPolicyModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 mt-4 mb-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-full text-cyan-400 text-xs transition-all duration-300 hover:scale-105"
+          >
+            <Shield className="w-4 h-4" />
+            Privacy & Policies
+          </button>
+
           <p className="text-cyan-400/40 text-[10px] mt-2">
             questions? hit us up → 444radioog@gmail.com • © 2025 444RADIO
           </p>
@@ -553,6 +564,122 @@ export default function Pricing() {
           </div>
         </div>
       </div>
+
+      {/* Privacy Policy Modal */}
+      {showPolicyModal && (
+        <div 
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPolicyModal(false)}
+        >
+          <div 
+            className="bg-gradient-to-br from-gray-900 to-black border border-cyan-500/30 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl shadow-cyan-500/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-gradient-to-br from-gray-900 to-black border-b border-cyan-500/30 p-6 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <Shield className="w-6 h-6 text-cyan-400" />
+                <h2 className="text-2xl font-bold text-white">Privacy & Policies</h2>
+              </div>
+              <button
+                onClick={() => setShowPolicyModal(false)}
+                className="text-cyan-400/60 hover:text-cyan-400 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Terms and Conditions */}
+              <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-5 hover:border-cyan-500/40 transition-all duration-300">
+                <h3 className="text-lg font-semibold text-cyan-400 mb-2 flex items-center gap-2">
+                  📜 Terms and Conditions
+                </h3>
+                <p className="text-cyan-400/60 text-sm mb-3">Created by Razorpay</p>
+                <a
+                  href="https://merchant.razorpay.com/policy/Rr3bqOPXbMyRLk/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                >
+                  View Terms →
+                </a>
+              </div>
+
+              {/* Privacy Policy */}
+              <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-5 hover:border-cyan-500/40 transition-all duration-300">
+                <h3 className="text-lg font-semibold text-cyan-400 mb-2 flex items-center gap-2">
+                  🔒 Privacy Policy
+                </h3>
+                <p className="text-cyan-400/60 text-sm mb-3">Created by Razorpay</p>
+                <a
+                  href="https://merchant.razorpay.com/policy/Rr3bqOPXbMyRLk/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                >
+                  View Privacy Policy →
+                </a>
+              </div>
+
+              {/* Cancellations and Refunds */}
+              <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-5 hover:border-cyan-500/40 transition-all duration-300">
+                <h3 className="text-lg font-semibold text-cyan-400 mb-2 flex items-center gap-2">
+                  💳 Cancellations and Refunds
+                </h3>
+                <p className="text-cyan-400/60 text-sm mb-3">Created by Razorpay</p>
+                <a
+                  href="https://merchant.razorpay.com/policy/Rr3bqOPXbMyRLk/refund"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                >
+                  View Refund Policy →
+                </a>
+              </div>
+
+              {/* Shipping Policy */}
+              <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-5 hover:border-cyan-500/40 transition-all duration-300">
+                <h3 className="text-lg font-semibold text-cyan-400 mb-2 flex items-center gap-2">
+                  📦 Shipping Policy
+                </h3>
+                <p className="text-cyan-400/60 text-sm mb-3">Created by Razorpay</p>
+                <a
+                  href="https://merchant.razorpay.com/policy/Rr3bqOPXbMyRLk/shipping"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                >
+                  View Shipping Policy →
+                </a>
+              </div>
+
+              {/* Contact Us */}
+              <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-5 hover:border-cyan-500/40 transition-all duration-300">
+                <h3 className="text-lg font-semibold text-cyan-400 mb-2 flex items-center gap-2">
+                  📧 Contact Us
+                </h3>
+                <p className="text-cyan-400/60 text-sm mb-3">Created by Razorpay</p>
+                <a
+                  href="https://merchant.razorpay.com/policy/Rr3bqOPXbMyRLk/contact_us"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                >
+                  Contact Us →
+                </a>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowPolicyModal(false)}
+                className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-cyan-500/40 transition-all duration-300 hover:scale-105"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
