@@ -319,7 +319,7 @@ export default function MultiTrackStudioV4() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedClipId, selectedTrackId, daw, tracks, clipboardClip, playhead, isPlaying]);
 
-  // Playhead animation - optimized with transform
+  // Playhead animation - optimized with transform + auto-scroll
   useEffect(() => {
     if (!daw) return;
 
@@ -328,6 +328,23 @@ export default function MultiTrackStudioV4() {
       // Update visual position via transform (no re-render)
       if (playheadRef.current) {
         playheadRef.current.style.transform = `translateX(${time * zoom}px)`;
+      }
+      
+      // Auto-scroll timeline to follow playhead
+      if (timelineRef.current && isPlaying) {
+        const container = timelineRef.current;
+        const playheadPixel = time * zoom;
+        const scrollLeft = container.scrollLeft;
+        const containerWidth = container.clientWidth;
+        
+        // Scroll when playhead gets close to right edge (80% of visible area)
+        if (playheadPixel > scrollLeft + containerWidth * 0.8) {
+          container.scrollLeft = playheadPixel - containerWidth * 0.2; // Keep playhead at 20% from left
+        }
+        // Scroll back when playhead goes before visible area
+        else if (playheadPixel < scrollLeft) {
+          container.scrollLeft = playheadPixel - containerWidth * 0.2;
+        }
       }
     };
 
@@ -347,6 +364,23 @@ export default function MultiTrackStudioV4() {
       // Update visual position via transform
       if (playheadRef.current) {
         playheadRef.current.style.transform = `translateX(${currentPlayhead * zoom}px)`;
+      }
+      
+      // Auto-scroll timeline to follow playhead during playback
+      if (timelineRef.current && daw.isPlaying()) {
+        const container = timelineRef.current.querySelector('.overflow-auto') as HTMLElement;
+        if (container) {
+          const playheadPixel = currentPlayhead * zoom;
+          const scrollLeft = container.scrollLeft;
+          const containerWidth = container.clientWidth;
+          
+          // Smooth scroll when playhead approaches edge
+          if (playheadPixel > scrollLeft + containerWidth * 0.75) {
+            container.scrollLeft = playheadPixel - containerWidth * 0.25;
+          } else if (playheadPixel < scrollLeft + containerWidth * 0.1) {
+            container.scrollLeft = Math.max(0, playheadPixel - containerWidth * 0.25);
+          }
+        }
       }
       
       // Check loop boundaries
@@ -400,7 +434,7 @@ export default function MultiTrackStudioV4() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       daw.off('playheadUpdate', updatePlayhead);
     };
-  }, [daw, loopEnabled, loopStart, loopEnd, zoom]);
+  }, [daw, loopEnabled, loopStart, loopEnd, zoom, isPlaying]);
 
   // Auto-save every 2 minutes
   useEffect(() => {
