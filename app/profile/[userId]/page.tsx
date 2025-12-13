@@ -57,7 +57,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const { userId } = use(params)
   const { user } = useUser()
   const router = useRouter()
-  const { playTrack, setPlaylist, currentMedia, isPlaying, togglePlay } = useAudioPlayer()
+  const { playTrack, setPlaylist, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
 
   // Profile State
   const [profile, setProfile] = useState<ProfileData | null>(null)
@@ -193,8 +193,27 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   // Handle Track Play
   const handlePlayTrack = (track: Track) => {
-    setPlaylist(tracks)
-    playTrack(track)
+    // Map track properties to AudioPlayerContext format
+    const audioPlayerTrack = {
+      id: track.id,
+      title: track.title,
+      audioUrl: track.audio_url,
+      imageUrl: track.image_url,
+      artist: profile?.username,
+      userId: track.user_id
+    }
+    
+    const audioPlayerTracks = tracks.map(t => ({
+      id: t.id,
+      title: t.title,
+      audioUrl: t.audio_url,
+      imageUrl: t.image_url,
+      artist: profile?.username,
+      userId: t.user_id
+    }))
+    
+    setPlaylist(audioPlayerTracks)
+    playTrack(audioPlayerTrack)
   }
 
   // Send Chat Message
@@ -420,7 +439,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       className="object-cover"
                     />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      {currentMedia?.id === track.id && isPlaying ? (
+                      {currentTrack?.id === track.id && isPlaying ? (
                         <Pause size={48} className="text-white" />
                       ) : (
                         <Play size={48} className="text-white" />
@@ -467,7 +486,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     }}
                     className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    {currentMedia?.id === track.id && isPlaying ? (
+                    {currentTrack?.id === track.id && isPlaying ? (
                       <Pause size={16} className="text-black" />
                     ) : (
                       <Play size={16} className="text-black ml-0.5" />
@@ -509,11 +528,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               </div>
 
               {/* Now Playing */}
-              {currentMedia && (
+              {currentTrack && (
                 <div className="mt-6 p-4 bg-white/5 rounded-lg flex items-center gap-4">
                   <div className="relative w-16 h-16 flex-shrink-0">
                     <Image
-                      src={currentMedia.image_url || '/default-cover.jpg'}
+                      src={currentTrack.imageUrl || '/default-cover.jpg'}
                       alt="Now Playing"
                       fill
                       className="object-cover rounded"
@@ -521,7 +540,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   </div>
                   <div className="flex-1">
                     <h3 className="font-bold">Now Playing</h3>
-                    <p className="text-sm text-gray-400">{currentMedia.title}</p>
+                    <p className="text-sm text-gray-400">{currentTrack.title}</p>
                   </div>
                 </div>
               )}
