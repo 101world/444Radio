@@ -1020,10 +1020,10 @@ export default function MultiTrackStudioV4() {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-200">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-[#0a0a0a] via-[#050505] to-[#000000] text-gray-200">
       {/* Mobile Warning Modal */}
       {isMobile && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[100] p-6">
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
           <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-cyan-500/30 rounded-2xl p-8 max-w-lg shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-300">
             <div className="text-6xl mb-6 text-center">🖥️</div>
             <h2 className="text-3xl font-bold text-white mb-4 text-center bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
@@ -1163,19 +1163,19 @@ export default function MultiTrackStudioV4() {
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
         {/* Enhanced Playhead Display with BPM */}
-        <div className="flex items-center gap-3 px-3 py-1.5 bg-[#0f0f0f]/50 rounded-lg border border-cyan-500/20">
-          <div className="text-sm font-mono text-cyan-400 font-bold tracking-wider">{formatTime(playhead)}</div>
-          <div className="w-px h-4 bg-cyan-500/30" />
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-gray-500">BPM</span>
-            <span className="text-xs text-cyan-400 font-bold">{bpm}</span>
+        <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-xl border border-cyan-500/30 shadow-lg shadow-cyan-500/10">
+          <div className="text-base font-mono text-cyan-400 font-bold tracking-wider">{formatTime(playhead)}</div>
+          <div className="w-px h-5 bg-gradient-to-b from-cyan-500/50 via-cyan-500 to-cyan-500/50" />
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-400 font-semibold">BPM</span>
+            <span className="text-sm text-cyan-300 font-black">{bpm}</span>
           </div>
         </div>
 
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
         {/* Professional Zoom Controls */}
-        <div className="flex items-center gap-2 px-2 py-1 bg-[#0f0f0f]/50 rounded-lg border border-gray-800">
+        <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-xl border border-cyan-500/20 shadow-lg">
           <span className="text-[10px] text-gray-500 font-semibold">ZOOM</span>
           <button
             onClick={() => setZoom(Math.max(5, zoom - 10))}
@@ -1272,7 +1272,7 @@ export default function MultiTrackStudioV4() {
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
         {/* Snap Grid Control */}
-        <div className="flex gap-2 px-2 py-1 bg-[#0f0f0f]/50 rounded-lg border border-gray-800">
+        <div className="flex gap-2 px-3 py-2 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-xl border border-cyan-500/20 shadow-lg">
           <span className="text-[10px] text-gray-500 font-semibold self-center">GRID</span>
           <button
             onClick={() => setSnapEnabled(!snapEnabled)}
