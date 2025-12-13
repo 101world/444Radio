@@ -1,2997 +1,575 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { UserButton, useUser } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 import { use } from 'react'
-import FloatingMenu from '../../components/FloatingMenu'
-import FloatingNavButton from '../../components/FloatingNavButton'
-import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
-import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus, User, Smile, ThumbsUp, Shuffle, Repeat } from 'lucide-react'
+import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import LikeButton from '../../components/LikeButton'
-import AnimatedBackground from '../../components/AnimatedBackground'
-import DraggableQueue from '../../components/DraggableQueue'
-import { toast } from '@/lib/toast'
-
-// Lazy load heavy components
-const HolographicBackground = lazy(() => import('../../components/HolographicBackgroundClient'))
-const StarryBackground = lazy(() => import('../../components/StarryBackground'))
-const CombineMediaModal = lazy(() => import('../../components/CombineMediaModal'))
-const ProfileUploadModal = lazy(() => import('../../components/ProfileUploadModal'))
-const PrivateListModal = lazy(() => import('../../components/PrivateListModal'))
-const CreatePostModal = lazy(() => import('../../components/CreatePostModal'))
-const BannerUploadModal = lazy(() => import('../../components/BannerUploadModal'))
-
-const THUMBNAIL_SHAPES = [
-  'rounded-2xl', // square
-  'rounded-full', // circle
-  'rounded-tl-[3rem] rounded-br-[3rem]', // diagonal corners
-  'rounded-tr-[3rem] rounded-bl-[3rem]', // opposite diagonal
-  'rounded-t-[3rem]', // rounded top
-  'rounded-b-[3rem]', // rounded bottom
-]
-
-const getRandomShape = (index: number) => {
-  return THUMBNAIL_SHAPES[index % THUMBNAIL_SHAPES.length]
-}
-
-interface Song {
-  id: string
-  title: string
-  coverUrl: string
-  audioUrl: string
-  likes: number
-  plays: number
-  genre: string
-  createdAt: string
-}
-
-interface CombinedMedia {
-  id: string
-  title: string
-  audio_url?: string
-  image_url?: string
-  video_url?: string
-  audio_prompt?: string
-  image_prompt?: string
-  user_id: string
-  likes: number
-  plays?: number
-  views?: number
-  is_public: boolean
-  created_at: string
-  media_type: 'music-image' | 'image' | 'video'
-  content_type?: string
-  duration?: number
-}
-
-interface Upload {
-  id: string
-  type: 'image' | 'video'
-  url: string
-  thumbnail_url?: string
-  title?: string
-  created_at: string
-  file_size?: number
-}
-
-interface Post {
-  id: string
-  user_id: string
-  content: string
-  media_type: 'photo' | 'video' | 'ai-art' | null
-  media_url: string | null
-  thumbnail_url: string | null
-  attached_song_id: string | null
-  likes_count: number
-  comments_count: number
-  shares_count: number
-  created_at: string
-  users?: { username: string; avatar_url: string }
-  media?: { id: string; title: string; audio_url: string; image_url: string }
-  isLiked?: boolean
-}
-
-interface Comment {
-  id: string
-  post_id: string
-  user_id: string
-  comment: string
-  created_at: string
-  users?: { username: string; avatar_url: string }
-}
+import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
+import FloatingMenu from '../../components/FloatingMenu'
 
 interface ProfileData {
+  userId: string
   username: string
-  email: string
-  bio?: string
-  tagline?: string
-  avatar?: string
-  banner_url?: string | null
-  banner_type?: 'image' | 'video' | null
-  totalLikes: number
-  totalPlays: number
-  songCount: number
-  followerCount: number
-  followingCount: number
-  songs: Song[]
-  combinedMedia: CombinedMedia[]
-  uploads?: Upload[]
+  fullName: string
+  bio: string
+  avatar_url: string
+  banner_url: string
+  follower_count: number
+  following_count: number
+  location: string
+  joined_date: string
+  website: string
+  social_links: {
+    twitter?: string
+    instagram?: string
+    youtube?: string
+  }
+  is_live: boolean
+}
+
+interface Track {
+  id: string
+  title: string
+  audio_url: string
+  image_url: string
+  duration: number
+  plays: number
+  likes: number
+  created_at: string
+  user_id: string
+  genre: string
+}
+
+interface ChatMessage {
+  id: string
+  user_id: string
+  username: string
+  avatar: string
+  message: string
+  timestamp: Date
 }
 
 export default function ProfilePage({ params }: { params: Promise<{ userId: string }> }) {
+  const { userId } = use(params)
+  const { user } = useUser()
   const router = useRouter()
-  const resolvedParams = use(params)
-  const { user: currentUser } = useUser()
+  const { playTrack, setPlaylist, currentMedia, isPlaying, togglePlay } = useAudioPlayer()
+
+  // Profile State
   const [profile, setProfile] = useState<ProfileData | null>(null)
+  const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
-  const [showPublishModal, setShowPublishModal] = useState(false)
-  const [showUploadModal, setShowUploadModal] = useState(false)
-  const [showBannerModal, setShowBannerModal] = useState(false)
-  const [showStationsModal, setShowStationsModal] = useState(false)
-  const [showViewSwitcher, setShowViewSwitcher] = useState(false)
-  const [activeTab, setActiveTab] = useState<'feed' | 'stations'>('feed')
   const [isFollowing, setIsFollowing] = useState(false)
-  
-  // Use global audio player context
-  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist, pause, addToQueue } = useAudioPlayer()
-  const playingId = currentTrack?.id || null
-  const [carouselIndex, setCarouselIndex] = useState(0)
-  const [activeSection, setActiveSection] = useState<'tracks' | 'uploads'>('tracks')
-  const [activeSubTab, setActiveSubTab] = useState<'tracks' | 'station'>('tracks')
-  const [contentTab, setContentTab] = useState<'tracks' | 'posts'>('tracks')
+
+  // View State
+  const [activeView, setActiveView] = useState<'profile' | 'station'>('profile')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+
+  // Station State
   const [isLive, setIsLive] = useState(false)
-  const [chatMessages, setChatMessages] = useState<Array<{id: string, username: string, message: string, timestamp: Date, type: 'chat' | 'track'}>>([])
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
-  const [liveListeners, setLiveListeners] = useState(0)
-  const [stationId, setStationId] = useState<string | null>(null)
-  const [stationTitle, setStationTitle] = useState<string>('')
-  const [userHasManuallySelectedTrack, setUserHasManuallySelectedTrack] = useState(false)
-  const [editingStationTitle, setEditingStationTitle] = useState(false)
-  const [editingTrackId, setEditingTrackId] = useState<string | null>(null)
-  const [editingTrackTitle, setEditingTrackTitle] = useState<string>('')
-  const [showVideo, setShowVideo] = useState(false)
-  const [broadcasterVideoUrl, setBroadcasterVideoUrl] = useState<string | null>(null)
-  const [stream, setStream] = useState<MediaStream | null>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const broadcasterVideoRef = useRef<HTMLVideoElement>(null)
-  const chatContainerRef = useRef<HTMLDivElement>(null)
-  const [posts, setPosts] = useState<Post[]>([])
-  const [showCreatePostModal, setShowCreatePostModal] = useState(false)
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
-  const [showComments, setShowComments] = useState<{[key: string]: boolean}>({})
-  const [comments, setComments] = useState<{[key: string]: Comment[]}>({})
-  const [commentInput, setCommentInput] = useState<{[key: string]: string}>({})
-  const [isMobile, setIsMobile] = useState(false)
-  const [queueToast, setQueueToast] = useState<string | null>(null)
-  // Task 17: Chat Features
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [messageReactions, setMessageReactions] = useState<{[key: string]: string[]}>({})
-  // Task 18: Queue Management
-  const [queueShuffle, setQueueShuffle] = useState(false)
-  const [queueRepeat, setQueueRepeat] = useState(false)
-  // Task 19: Broadcasting Features
-  const [streamQuality, setStreamQuality] = useState<'low' | 'medium' | 'high'>('high')
-  const [isSendingMessage, setIsSendingMessage] = useState(false)
+  const [viewerCount, setViewerCount] = useState(0)
 
-  // Memoized chat messages sorted by timestamp
-  const displayedMessages = useMemo(() => {
-    return chatMessages
-      .filter(msg => msg.message && msg.message.trim())
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-  }, [chatMessages])
+  // Modals
+  const [showBannerUpload, setShowBannerUpload] = useState(false)
+  const [showAvatarUpload, setShowAvatarUpload] = useState(false)
+  const [showEditProfile, setShowEditProfile] = useState(false)
 
-  // Detect mobile device
+  // Load Profile Data
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
-  }, [])
-
-  // ESC key handler for desktop navigation to explore
-  useEffect(() => {
-    const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        router.push('/explore')
-      }
-    }
-    
-    window.addEventListener('keydown', handleEscKey)
-    return () => window.removeEventListener('keydown', handleEscKey)
-  }, [router])
-
-  // Auto-hide queue toast
-  useEffect(() => {
-    if (queueToast) {
-      const timer = setTimeout(() => setQueueToast(null), 2000)
-      return () => clearTimeout(timer)
-    }
-  }, [queueToast])
-
-  // Auto-scroll chat to bottom when new messages arrive
-  useEffect(() => {
-    if (chatContainerRef.current && displayedMessages.length > 0) {
-      const container = chatContainerRef.current
-      const isScrolledToBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
-      
-      // Only auto-scroll if user is already near bottom or new message is from current user
-      if (isScrolledToBottom || displayedMessages[displayedMessages.length - 1]?.username === profile?.username) {
-        setTimeout(() => {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'smooth'
-          })
-        }, 50)
-      }
-    }
-  }, [displayedMessages, profile?.username])
-
-  useEffect(() => {
-    if (currentUser) {
-      setIsOwnProfile(currentUser.id === resolvedParams.userId)
-    }
-    fetchProfileData()
-    fetchStationStatus()
-  }, [currentUser, resolvedParams.userId])
-  
-  // Refresh profile data when page regains focus (catches username changes)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchProfileData()
-      }
-    }
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', fetchProfileData)
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', fetchProfileData)
-    }
-  }, [resolvedParams.userId])
-
-  // Fetch station status
-  const fetchStationStatus = async () => {
-    try {
-      const res = await fetch(`/api/station?userId=${resolvedParams.userId}`)
-      const data = await res.json()
-      if (data.success && data.station) {
-        setStationId(data.station.id)
-        setIsLive(data.station.is_live)
-        setLiveListeners(data.station.listener_count || 0)
-        if (data.station.is_live) {
-          loadMessages(data.station.id)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch station status:', error)
-    }
-  }
-
-  // Load chat messages
-  const loadMessages = async (stId: string) => {
-    try {
-      const res = await fetch(`/api/station/messages?stationId=${stId}`)
-      const data = await res.json()
-      if (data.success && data.messages) {
-        setChatMessages(data.messages.map((msg: {
-          id: string
-          username: string
-          message: string
-          created_at: string
-          message_type: 'chat' | 'track'
-        }) => ({
-          id: msg.id,
-          username: msg.username,
-          message: msg.message,
-          timestamp: new Date(msg.created_at),
-          type: msg.message_type
-        })))
-      }
-    } catch (error) {
-      console.error('Failed to load messages:', error)
-    }
-  }
-
-  // Setup realtime subscriptions
-  useEffect(() => {
-    if (!stationId) return
-
-    console.log('Setting up realtime subscriptions for station:', stationId)
-
-    // Subscribe to messages with better error handling
-    const messagesChannel = supabase
-      .channel(`station_messages:${stationId}`, {
-        config: {
-          broadcast: { self: true }
-        }
-      })
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'station_messages',
-        filter: `station_id=eq.${stationId}`
-      }, (payload) => {
-        console.log('New message received:', payload)
-        const msg = payload.new as {
-          id: string
-          username: string
-          message: string
-          created_at: string
-          message_type: 'chat' | 'track'
-        }
-        setChatMessages(prev => {
-          // Prevent duplicates
-          if (prev.some(m => m.id === msg.id)) return prev
-          return [...prev, {
-            id: msg.id,
-            username: msg.username,
-            message: msg.message,
-            timestamp: new Date(msg.created_at),
-            type: msg.message_type
-          }]
-        })
-      })
-      .subscribe((status) => {
-        console.log('Messages channel status:', status)
-      })
-
-    // Subscribe to station updates (including video state and titles)
-    const stationChannel = supabase
-      .channel(`live_stations:${stationId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'live_stations',
-        filter: `id=eq.${stationId}`
-      }, (payload) => {
-        console.log('Station update received:', payload)
-        const station = payload.new as {
-          is_live: boolean
-          listener_count: number
-          title?: string
-          video_enabled?: boolean
-          current_track_title?: string
-        }
-        setIsLive(station.is_live)
-        setLiveListeners(station.listener_count || 0)
-        if (station.title) {
-          setStationTitle(station.title)
-        }
-        if (station.video_enabled !== undefined && !isOwnProfile) {
-          setShowVideo(station.video_enabled)
-        }
-      })
-      .subscribe((status) => {
-        console.log('Station channel status:', status)
-      })
-
-    // Subscribe to listener changes
-    const listenersChannel = supabase
-      .channel(`station_listeners:${stationId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'station_listeners',
-        filter: `station_id=eq.${stationId}`
-      }, async (payload) => {
-        // Refresh listener count
-        const res = await fetch(`/api/station?userId=${resolvedParams.userId}`)
-        const data = await res.json()
-        if (data.success && data.station) {
-          setLiveListeners(data.station.listener_count || 0)
-        }
-        
-        // Send join/leave notification
-        if (payload.eventType === 'INSERT') {
-          const listener = payload.new as { username: string }
-          setChatMessages(prev => [...prev, {
-            id: `join-${Date.now()}`,
-            username: 'System',
-            message: `${listener.username} joined the station 🎧`,
-            timestamp: new Date(),
-            type: 'chat' as const
-          }])
-        } else if (payload.eventType === 'DELETE') {
-          const listener = payload.old as { username: string }
-          setChatMessages(prev => [...prev, {
-            id: `leave-${Date.now()}`,
-            username: 'System',
-            message: `${listener.username} left the station 👋`,
-            timestamp: new Date(),
-            type: 'chat' as const
-          }])
-        }
-      })
-      .subscribe((status) => {
-        console.log('Listeners channel status:', status)
-      })
-
-    // Subscribe to combined_media updates for realtime title changes
-    const mediaChannel = supabase
-      .channel(`combined_media_updates:${resolvedParams.userId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'combined_media',
-        filter: `user_id=eq.${resolvedParams.userId}`
-      }, (payload) => {
-        console.log('Media update received:', payload)
-        const updatedMedia = payload.new as any
-        setProfile(prev => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            combinedMedia: prev.combinedMedia.map(m => 
-              m.id === updatedMedia.id ? { ...m, title: updatedMedia.title } : m
-            )
-          }
-        })
-      })
-      .subscribe((status) => {
-        console.log('Media channel status:', status)
-      })
-
-    return () => {
-      messagesChannel.unsubscribe()
-      stationChannel.unsubscribe()
-      listenersChannel.unsubscribe()
-      mediaChannel.unsubscribe()
-    }
-  }, [stationId, resolvedParams.userId, isOwnProfile])
-
-  // Join station as listener when viewing
-  useEffect(() => {
-    if (!stationId || !isLive || !currentUser || isOwnProfile) return
-
-    const joinStation = async () => {
+    async function loadProfile() {
+      setLoading(true)
       try {
-        // Join as listener
-        await fetch('/api/station/listeners', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stationId,
-            username: currentUser.username || 'Anonymous'
-          })
-        })
+        // Fetch user profile
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('clerk_user_id', userId)
+          .single()
 
-        // DISABLED: Station auto-play completely removed
-        // Causes issues with manual track selection
-      } catch (error) {
-        console.error('Failed to join station:', error)
-      }
-    }
+        if (userError) throw userError
 
-    joinStation()
+        // Check if own profile
+        const isOwn = user?.id === userId
+        setIsOwnProfile(isOwn)
 
-    return () => {
-      // Leave station on unmount
-      fetch(`/api/station/listeners?stationId=${stationId}`, {
-        method: 'DELETE'
-      }).catch(console.error)
-    }
-  }, [stationId, isLive, currentUser, isOwnProfile, resolvedParams.userId, profile, currentTrack, playTrack])
-
-  // Save track title
-  const saveTrackTitle = useCallback(async (trackId: string, newTitle: string) => {
-    if (!newTitle.trim()) return
-    
-    try {
-      const res = await fetch('/api/media/update-title', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mediaId: trackId,
-          title: newTitle
-        })
-      })
-      const data = await res.json()
-      if (data.success) {
-        // Update local state
-        setProfile(prev => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            combinedMedia: prev.combinedMedia.map(m => 
-              m.id === trackId ? { ...m, title: newTitle } : m
-            )
-          }
-        })
-        setEditingTrackId(null)
-        setEditingTrackTitle('')
-      }
-    } catch (error) {
-      console.error('Failed to save track title:', error)
-    }
-  }, [])
-
-  // Start/Stop video stream
-  const toggleVideo = useCallback(async () => {
-    if (stream) {
-      // Stop existing stream
-      stream.getTracks().forEach(track => track.stop())
-      setStream(null)
-      setShowVideo(false)
-      if (videoRef.current) {
-        videoRef.current.srcObject = null
-      }
-    } else {
-      // Start new stream
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720, facingMode: 'user' },
-          audio: false // Audio is handled separately by the station
-        })
-        setStream(mediaStream)
-        setShowVideo(true)
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream
-        }
-      } catch (error) {
-        console.error('Failed to start video:', error)
-        alert('Camera access denied or not available')
-      }
-    }
-  }, [stream])
-
-  // Cleanup video on unmount or when going offline
-  useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop())
-      }
-    }
-  }, [stream])
-
-  useEffect(() => {
-    if (!isLive && stream) {
-      stream.getTracks().forEach(track => track.stop())
-      setStream(null)
-      setShowVideo(false)
-    }
-  }, [isLive, stream])
-
-  // Toggle live broadcast
-  const toggleLive = useCallback(async () => {
-    if (!profile) return
-    
-    const newLiveState = !isLive
-    setIsLive(newLiveState)
-    
-    try {
-      const res = await fetch('/api/station', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          isLive: newLiveState,
-          username: profile.username,
-          currentTrack: currentTrack ? {
-            id: currentTrack.id,
-            title: currentTrack.title,
-            image_url: currentTrack.imageUrl
-          } : null
-        })
-      })
-      
-      const data = await res.json()
-      if (data.success && data.station) {
-        setStationId(data.station.id)
-        if (newLiveState) {
-          loadMessages(data.station.id)
-        } else {
-          setChatMessages([])
-          setLiveListeners(0)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to toggle live:', error)
-      setIsLive(!newLiveState) // Revert on error
-    }
-  }, [isLive, profile, currentTrack])
-
-  // Save station title
-  const saveStationTitle = useCallback(async () => {
-    if (!stationTitle.trim() || !profile) return
-    
-    try {
-      await fetch('/api/station', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          isLive: isLive,
-          username: profile.username,
-          title: stationTitle
-        })
-      })
-      setEditingStationTitle(false)
-    } catch (error) {
-      console.error('Failed to save station title:', error)
-    }
-  }, [stationTitle, profile, isLive])
-
-  // Send chat message with optimistic update
-  const sendMessage = useCallback(async () => {
-    if (!chatInput.trim() || !stationId || !profile || isSendingMessage) return
-    
-    const messageText = chatInput.trim()
-    const tempId = `temp-${Date.now()}`
-    
-    // Optimistic UI update
-    const optimisticMessage = {
-      id: tempId,
-      username: profile.username,
-      message: messageText,
-      timestamp: new Date(),
-      type: 'chat' as const
-    }
-    
-    setChatMessages(prev => [...prev, optimisticMessage])
-    setChatInput('')
-    setIsSendingMessage(true)
-    
-    try {
-      const res = await fetch('/api/station/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stationId,
-          message: messageText,
-          messageType: 'chat',
-          username: profile.username
-        })
-      })
-      
-      if (!res.ok) {
-        throw new Error('Failed to send message')
-      }
-      
-      const data = await res.json()
-      
-      // Replace optimistic message with real one
-      if (data.message) {
-        setChatMessages(prev => 
-          prev.map(msg => 
-            msg.id === tempId 
-              ? { ...msg, id: data.message.id }
-              : msg
-          )
-        )
-      }
-    } catch (error) {
-      console.error('Failed to send chat:', error)
-      // Remove optimistic message on error
-      setChatMessages(prev => prev.filter(msg => msg.id !== tempId))
-      setChatInput(messageText) // Restore message
-      // Show error toast (add toast system later)
-      setQueueToast('Failed to send message. Please try again.')
-    } finally {
-      setIsSendingMessage(false)
-    }
-  }, [chatInput, stationId, profile, isSendingMessage])
-
-  const fetchProfileData = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/media/profile/${resolvedParams.userId}`)
-      const data = await res.json()
-      if (data.success) {
-        setProfile({
-          username: data.username,
-          email: '',
-          bio: data.bio || undefined,
-          tagline: data.tagline || "Creating the future of music",
-          avatar: data.avatar || undefined,
-          banner_url: data.banner_url || null,
-          banner_type: data.banner_type || null,
-          totalPlays: data.totalPlays,
-          songCount: data.trackCount,
-          totalLikes: data.totalLikes || 0,
-          followerCount: data.followerCount || 0,
-          followingCount: data.followingCount || 0,
-          songs: [],
-          combinedMedia: data.combinedMedia,
-          uploads: data.uploads || []
-        })
-      }
-    } catch (error) {
-      console.error('Failed to fetch profile:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchPosts = async () => {
-    try {
-      const res = await fetch(`/api/posts?userId=${resolvedParams.userId}&limit=50`)
-      const data = await res.json()
-      if (data.posts) {
-        setPosts(data.posts)
-      }
-    } catch (error) {
-      console.error('Failed to fetch posts:', error)
-    }
-  }
-
-  const toggleLike = async (postId: string) => {
-    if (!currentUser) return
-    
-    try {
-      const res = await fetch('/api/posts/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId, userId: currentUser.id })
-      })
-      const data = await res.json()
-      
-      setPosts(prev => prev.map(post => 
-        post.id === postId 
-          ? {
-              ...post,
-              likes_count: data.liked ? post.likes_count + 1 : post.likes_count - 1,
-              isLiked: data.liked
-            }
-          : post
-      ))
-    } catch (error) {
-      console.error('Failed to toggle like:', error)
-    }
-  }
-
-  const fetchComments = async (postId: string) => {
-    try {
-      const res = await fetch(`/api/posts/comments?postId=${postId}`)
-      const data = await res.json()
-      if (data.comments) {
-        setComments(prev => ({ ...prev, [postId]: data.comments }))
-      }
-    } catch (error) {
-      console.error('Failed to fetch comments:', error)
-    }
-  }
-
-  const addComment = async (postId: string) => {
-    if (!currentUser || !commentInput[postId]?.trim()) return
-    
-    try {
-      const res = await fetch('/api/posts/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          postId,
-          userId: currentUser.id,
-          comment: commentInput[postId]
-        })
-      })
-      const data = await res.json()
-      
-      if (data.comment) {
-        setComments(prev => ({
-          ...prev,
-          [postId]: [...(prev[postId] || []), data.comment]
-        }))
-        setCommentInput(prev => ({ ...prev, [postId]: '' }))
-        setPosts(prev => prev.map(post => 
-          post.id === postId 
-            ? { ...post, comments_count: post.comments_count + 1 }
-            : post
-        ))
-      }
-    } catch (error) {
-      console.error('Failed to add comment:', error)
-    }
-  }
-
-  const deletePost = async (postId: string) => {
-    if (!currentUser || !confirm('Delete this post?')) return
-    
-    try {
-      const res = await fetch(`/api/posts?postId=${postId}&userId=${currentUser.id}`, {
-        method: 'DELETE'
-      })
-      
-      if (res.ok) {
-        setPosts(prev => prev.filter(post => post.id !== postId))
-      }
-    } catch (error) {
-      console.error('Failed to delete post:', error)
-    }
-  }
-
-  const toggleComments = (postId: string) => {
-    setShowComments(prev => ({
-      ...prev,
-      [postId]: !prev[postId]
-    }))
-    
-    if (!showComments[postId] && !comments[postId]) {
-      fetchComments(postId)
-    }
-  }
-
-  useEffect(() => {
-    if (contentTab === 'posts') {
-      fetchPosts()
-    }
-  }, [contentTab, resolvedParams.userId])
-
-  const handlePlay = async (media: CombinedMedia) => {
-    console.log('[handlePlay] Called with media:', {
-      id: media.id,
-      title: media.title,
-      audioUrl: media.audio_url,
-      imageUrl: media.image_url,
-      currentlyPlaying: playingId === media.id
-    })
-    
-    if (!media.audio_url) {
-      console.log('[handlePlay] No audio URL, skipping')
-      return
-    }
-    
-    // If clicking the same track that's already playing, toggle play/pause
-    if (playingId === media.id && isPlaying) {
-      console.log('[handlePlay] Pausing current track')
-      togglePlayPause()
-      return
-    }
-    
-    // If clicking the same track that's paused, resume it
-    if (playingId === media.id && !isPlaying) {
-      console.log('[handlePlay] Resuming current track')
-      togglePlayPause()
-      return
-    }
-    
-    // Mark that user has manually selected a track (prevents station auto-play override)
-    setUserHasManuallySelectedTrack(true)
-    
-    // Play new track - set playlist with all profile tracks
-    console.log('[handlePlay] Playing new track with playlist')
-    const allTracks = profile?.combinedMedia.filter(m => m.audio_url).map(m => ({
-      id: m.id,
-      audioUrl: m.audio_url!,
-      title: m.title,
-      artist: profile?.username,
-      imageUrl: m.image_url
-    })) || []
-    
-    setPlaylist(allTracks)
-    playTrack({
-      id: media.id,
-      audioUrl: media.audio_url,
-      title: media.title,
-      artist: profile?.username,
-      imageUrl: media.image_url
-    })
-    
-    // If station is live, send track notification to database
-      if (isLive && profile && stationId) {
-        try {
-          await fetch('/api/station/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              stationId,
-              message: media.title,
-              messageType: 'track',
-              username: profile.username
-            })
-          })
+        // Check following status
+        if (!isOwn && user?.id) {
+          const { data: followData } = await supabase
+            .from('followers')
+            .select('id')
+            .eq('follower_id', user.id)
+            .eq('following_id', userId)
+            .single()
           
-          // Update station with current track
-          await fetch('/api/station', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              isLive: true,
-              currentTrack: media,
-              username: profile.username
-            })
-          })
-        } catch (error) {
-          console.error('Failed to send track notification:', error)
+          setIsFollowing(!!followData)
         }
+
+        // Fetch tracks
+        const { data: tracksData, error: tracksError } = await supabase
+          .from('combined_media')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_public', true)
+          .not('audio_url', 'is', null)
+          .order('created_at', { ascending: false })
+
+        if (tracksError) throw tracksError
+
+        // Set profile data
+        setProfile({
+          userId: userData.clerk_user_id,
+          username: userData.username || 'Anonymous',
+          fullName: userData.full_name || userData.username || 'User',
+          bio: userData.bio || 'No bio yet',
+          avatar_url: userData.avatar_url || '/default-avatar.png',
+          banner_url: userData.banner_url || '/default-banner.jpg',
+          follower_count: userData.follower_count || 0,
+          following_count: userData.following_count || 0,
+          location: userData.location || '',
+          joined_date: userData.created_at,
+          website: userData.website || '',
+          social_links: userData.social_links || {},
+          is_live: false
+        })
+
+        setTracks(tracksData.map((t: any) => ({
+          id: t.id,
+          title: t.title || 'Untitled',
+          audio_url: t.audio_url,
+          image_url: t.image_url || '/default-cover.jpg',
+          duration: t.duration || 0,
+          plays: t.plays || 0,
+          likes: t.likes || 0,
+          created_at: t.created_at,
+          user_id: t.user_id,
+          genre: t.genre || 'Unknown'
+        })))
+
+      } catch (error) {
+        console.error('Error loading profile:', error)
+      } finally {
+        setLoading(false)
       }
+    }
+
+    if (userId) {
+      loadProfile()
+    }
+  }, [userId, user?.id])
+
+  // Handle Follow/Unfollow
+  const handleFollowToggle = async () => {
+    if (!user?.id) return
+
+    try {
+      if (isFollowing) {
+        await supabase
+          .from('followers')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', userId)
+        
+        setIsFollowing(false)
+        setProfile(prev => prev ? { ...prev, follower_count: prev.follower_count - 1 } : null)
+      } else {
+        await supabase
+          .from('followers')
+          .insert({ follower_id: user.id, following_id: userId })
+        
+        setIsFollowing(true)
+        setProfile(prev => prev ? { ...prev, follower_count: prev.follower_count + 1 } : null)
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error)
+    }
   }
 
-  // Memoized computed values for performance
-  const audioTracks = useMemo(() => {
-    return profile?.combinedMedia.filter(m => m.audio_url) || []
-  }, [profile?.combinedMedia])
+  // Handle Track Play
+  const handlePlayTrack = (track: Track) => {
+    setPlaylist(tracks)
+    playTrack(track)
+  }
 
-  const trackCount = useMemo(() => audioTracks.length, [audioTracks])
+  // Send Chat Message
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || !user) return
 
-  // Debounced chat typing indicator (optional)
-  const [isTyping, setIsTyping] = useState(false)
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      user_id: user.id,
+      username: user.username || 'Anonymous',
+      avatar: user.imageUrl || '/default-avatar.png',
+      message: chatInput,
+      timestamp: new Date()
+    }
+
+    setChatMessages(prev => [...prev, newMessage])
+    setChatInput('')
+
+    // TODO: Send to real-time chat service
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-cyan-400 text-xl">Loading profile...</div>
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-red-400 text-xl">Profile not found</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-32">
-      {/* Animated Gradient Background */}
-      <AnimatedBackground />
-      
-      {/* Holographic 3D Background - Lazy Loaded */}
-      <Suspense fallback={null}>
-        {!isMobile && <HolographicBackground />}
-      </Suspense>
-      
-      {/* Floating Menu */}
+    <div className="min-h-screen bg-black text-white">
       <FloatingMenu />
 
-      {/* Back Button - Mobile (Top Left) */}
-      <button
-        onClick={() => router.push('/explore')}
-        className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 flex items-center justify-center text-cyan-400 hover:bg-black/80 hover:border-cyan-400 transition-all shadow-lg"
-        title="Back to Explore"
-      >
-        <ArrowLeft size={20} />
-      </button>
-
-      {/* ESC Button - Desktop (Top Left) */}
-      <button
-        onClick={() => router.push('/explore')}
-        className="hidden md:flex fixed top-4 left-4 z-50 px-4 py-2 rounded-full bg-black/60 backdrop-blur-md border border-cyan-500/30 items-center gap-2 text-cyan-400 hover:bg-black/80 hover:border-cyan-400 transition-all shadow-lg text-sm font-medium"
-        title="Press ESC to go back"
-      >
-        <ArrowLeft size={16} />
-        <span>ESC</span>
-      </button>
-
-      {/* View Switcher Icon Buttons - Top Right */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        {/* Feed Icon Button */}
-        <button
-          onClick={() => {
-            setActiveTab('feed')
-            setShowViewSwitcher(false)
-          }}
-          className={`w-10 h-10 md:w-12 md:h-12 rounded-full backdrop-blur-md border transition-all shadow-lg flex items-center justify-center ${
-            activeTab === 'feed'
-              ? 'bg-gradient-to-r from-cyan-600 to-blue-600 border-cyan-400 scale-110'
-              : 'bg-black/60 border-white/20 hover:bg-black/80 hover:border-cyan-400'
-          }`}
-          title="Feed View"
-        >
-          <Music size={18} className={activeTab === 'feed' ? 'text-white' : 'text-gray-400'} />
-        </button>
-
-        {/* Station Icon Button */}
-        <button
-          onClick={() => {
-            setActiveTab('stations')
-            if (!stationId) {
-              fetchStationStatus()
-            }
-            setShowViewSwitcher(false)
-          }}
-          className={`relative w-10 h-10 md:w-12 md:h-12 rounded-full backdrop-blur-md border transition-all shadow-lg flex items-center justify-center ${
-            activeTab === 'stations'
-              ? 'bg-gradient-to-r from-red-600 to-pink-600 border-red-400 scale-110'
-              : 'bg-black/60 border-white/20 hover:bg-black/80 hover:border-red-400'
-          }`}
-          title="Station View"
-        >
-          <RadioIcon size={18} className={activeTab === 'stations' ? 'text-white' : 'text-gray-400'} />
-          {isLive && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border-2 border-black"></div>
-          )}
-        </button>
+      {/* Banner Section */}
+      <div className="relative h-80 bg-gradient-to-br from-cyan-900/20 to-black overflow-hidden group">
+        <Image
+          src={profile.banner_url}
+          alt="Profile Banner"
+          fill
+          className="object-cover opacity-60"
+          priority
+        />
+        {isOwnProfile && (
+          <button
+            onClick={() => setShowBannerUpload(true)}
+            className="absolute top-4 right-4 px-4 py-2 bg-black/60 backdrop-blur-md border border-cyan-500/30 rounded-lg text-cyan-400 hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100"
+          >
+            <Upload size={16} className="inline mr-2" />
+            Change Banner
+          </button>
+        )}
       </div>
 
-      {/* Feed/Stations Content - Full bleed with new layout */}
-      <main className="relative z-10 overflow-y-auto pb-32 pt-0">
-          
-          {activeTab === 'feed' ? (
-            <>
-              {loading ? (
-                <div className="space-y-0">
-                  {/* Enhanced Skeleton Loaders (Task 15: Performance & Loading) */}
-                  {/* Desktop Hero Skeleton */}
-                  <div className="hidden md:block">
-                    {/* Banner skeleton */}
-                    <div className="h-80 bg-gradient-to-br from-white/5 to-white/[0.02] animate-pulse"></div>
-                    {/* Profile Info Skeleton */}
-                    <div className="relative -mt-24 px-8 pb-8">
-                      <div className="flex items-end gap-8">
-                        {/* Avatar skeleton */}
-                        <div className="w-48 h-48 rounded-3xl bg-gradient-to-br from-white/10 to-white/5 animate-pulse"></div>
-                        <div className="flex-1 pb-4 space-y-4">
-                          {/* Username skeleton */}
-                          <div className="h-12 w-64 bg-white/10 rounded-lg animate-pulse"></div>
-                          {/* Bio skeleton */}
-                          <div className="h-6 w-96 bg-white/5 rounded animate-pulse"></div>
-                          {/* Stats skeleton */}
-                          <div className="flex items-center gap-6 mt-4">
-                            {[...Array(4)].map((_, i) => (
-                              <div key={i} className="flex items-center gap-2">
-                                <div className="w-10 h-10 rounded-xl bg-white/10 animate-pulse"></div>
-                                <div>
-                                  <div className="h-6 w-12 bg-white/10 rounded mb-1 animate-pulse"></div>
-                                  <div className="h-3 w-16 bg-white/5 rounded animate-pulse"></div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Mobile banner skeleton */}
-                  <div className="md:hidden h-64 bg-gradient-to-br from-white/5 to-white/[0.02] animate-pulse"></div>
-                  
-                  {/* Grid skeleton with staggered animation */}
-                  <div className="px-6 py-6">
-                    <div className="h-8 w-40 bg-white/10 rounded-lg mb-6 animate-pulse"></div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                      {[...Array(8)].map((_, i) => (
-                        <div 
-                          key={i} 
-                          className="bg-gradient-to-br from-white/5 to-transparent rounded-2xl overflow-hidden border border-white/10"
-                          style={{
-                            animationDelay: `${i * 100}ms`,
-                            animation: 'fadeIn 0.6s ease-out forwards'
-                          }}
-                        >
-                          <div className="aspect-square bg-white/5 animate-pulse"></div>
-                          <div className="p-4 space-y-2">
-                            <div className="h-4 bg-white/10 rounded animate-pulse"></div>
-                            <div className="h-3 bg-white/5 rounded w-2/3 animate-pulse"></div>
-                            <div className="flex gap-3 mt-3">
-                              <div className="h-3 w-12 bg-white/5 rounded animate-pulse"></div>
-                              <div className="h-3 w-12 bg-white/5 rounded animate-pulse"></div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+      {/* Profile Status Bar */}
+      <div className="relative -mt-24 px-8 pb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-end gap-6">
+          {/* Avatar */}
+          <div className="relative group">
+            <div className="w-40 h-40 rounded-full border-4 border-black overflow-hidden bg-gradient-to-br from-cyan-500 to-cyan-600">
+              <Image
+                src={profile.avatar_url}
+                alt={profile.username}
+                width={160}
+                height={160}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            {isOwnProfile && (
+              <button
+                onClick={() => setShowAvatarUpload(true)}
+                className="absolute bottom-0 right-0 w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-black hover:bg-cyan-400 transition-all opacity-0 group-hover:opacity-100"
+              >
+                <Edit2 size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Profile Info */}
+          <div className="flex-1">
+            <div className="bg-black/60 backdrop-blur-md border border-cyan-500/20 rounded-xl p-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Name & Username */}
+                <div>
+                  <h1 className="text-3xl font-bold text-white mb-1">{profile.fullName}</h1>
+                  <p className="text-cyan-400">@{profile.username}</p>
                 </div>
-              ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
-                <div className="space-y-0">
-                  {/* ========== NEW HERO SECTION (Tasks 11-15) ========== */}
-                  {/* Desktop Hero Section with Enhanced Profile */}
-                  <div className="hidden md:block relative">
-                    {/* Animated Gradient Background */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/30 to-black overflow-hidden">
-                      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5"></div>
-                      <div className="absolute top-0 left-0 right-0 h-full bg-gradient-to-b from-cyan-500/10 via-transparent to-transparent animate-pulse"></div>
-                    </div>
 
-                    {/* Banner Section */}
-                    <div className="relative h-80 overflow-hidden">
-                      {profile.banner_url ? (
-                        <div className="absolute inset-0">
-                          {profile.banner_type === 'video' ? (
-                            <video src={profile.banner_url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
-                          ) : (
-                            <Image src={profile.banner_url} alt="Profile banner" fill className="object-cover" unoptimized />
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black"></div>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0">
-                          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 via-blue-900/50 to-black"></div>
-                          {/* Animated mesh gradient */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-pink-500/20 animate-gradient bg-[length:200%_200%]"></div>
-                        </div>
-                      )}
-                      {isOwnProfile && (
-                        <button
-                          onClick={() => setShowBannerModal(true)}
-                          className="absolute right-6 bottom-6 px-4 py-2 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 text-sm font-medium text-white hover:bg-black/80 hover:border-cyan-400/50 transition-all shadow-lg hover:shadow-cyan-500/20"
-                        >
-                          <Upload size={14} className="inline mr-2" />
-                          Edit Banner
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Profile Info Section - Overlapping Banner */}
-                    <div className="relative -mt-24 px-8 pb-8">
-                      <div className="flex items-end gap-8">
-                        {/* Large Profile Picture with Border Effects */}
-                        <div className="relative group/avatar">
-                          <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-75 group-hover/avatar:opacity-100 transition-opacity animate-gradient bg-[length:200%_200%]"></div>
-                          <div className="relative w-48 h-48 rounded-3xl overflow-hidden border-4 border-black shadow-2xl">
-                            {profile.avatar ? (
-                              <Image src={profile.avatar} alt={profile.username} fill className="object-cover" unoptimized />
-                            ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
-                                <User size={80} className="text-white" />
-                              </div>
-                            )}
-                          </div>
-                          {isOwnProfile && (
-                            <button
-                              onClick={() => setShowUploadModal(true)}
-                              className="absolute bottom-2 right-2 p-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white shadow-lg hover:shadow-cyan-500/50 transition-all"
-                              title="Change Profile Picture"
-                            >
-                              <Upload size={16} />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Profile Info and Stats */}
-                        <div className="flex-1 pb-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              {/* Username with Typography Enhancement */}
-                              <h1 className="text-5xl font-black text-white mb-3 tracking-tight">
-                                {profile.username}
-                              </h1>
-                              
-                              {/* Tagline/Bio */}
-                              {profile.tagline && (
-                                <p className="text-lg text-gray-300 mb-4 max-w-2xl">
-                                  {profile.tagline}
-                                </p>
-                              )}
-                              {profile.bio && !profile.tagline && (
-                                <p className="text-lg text-gray-300 mb-4 max-w-2xl line-clamp-2">
-                                  {profile.bio}
-                                </p>
-                              )}
-
-                              {/* Social Stats with Icons */}
-                              <div className="flex items-center gap-6 mt-4">
-                                <div className="flex items-center gap-2 group/stat cursor-default">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center border border-cyan-500/30 group-hover/stat:border-cyan-400 transition-colors">
-                                    <Heart size={18} className="text-cyan-400" />
-                                  </div>
-                                  <div>
-                                    <div className="text-2xl font-black text-white">{profile.totalLikes?.toLocaleString() || 0}</div>
-                                    <div className="text-xs text-gray-400 uppercase tracking-wider">Likes</div>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 group/stat cursor-default">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center border border-purple-500/30 group-hover/stat:border-purple-400 transition-colors">
-                                    <Play size={18} className="text-purple-400" />
-                                  </div>
-                                  <div>
-                                    <div className="text-2xl font-black text-white">{profile.totalPlays?.toLocaleString() || 0}</div>
-                                    <div className="text-xs text-gray-400 uppercase tracking-wider">Plays</div>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 group/stat cursor-default">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500/20 to-red-500/20 flex items-center justify-center border border-pink-500/30 group-hover/stat:border-pink-400 transition-colors">
-                                    <Music size={18} className="text-pink-400" />
-                                  </div>
-                                  <div>
-                                    <div className="text-2xl font-black text-white">{profile.combinedMedia?.length || 0}</div>
-                                    <div className="text-xs text-gray-400 uppercase tracking-wider">Tracks</div>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 group/stat cursor-default">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center border border-green-500/30 group-hover/stat:border-green-400 transition-colors">
-                                    <Users size={18} className="text-green-400" />
-                                  </div>
-                                  <div>
-                                    <div className="text-2xl font-black text-white">{profile.followerCount?.toLocaleString() || 0}</div>
-                                    <div className="text-xs text-gray-400 uppercase tracking-wider">Followers</div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Action Buttons (Interactive Elements - Task 14) */}
-                            {!isOwnProfile && (
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() => setIsFollowing(!isFollowing)}
-                                  className={`px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
-                                    isFollowing
-                                      ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-                                      : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/30'
-                                  }`}
-                                >
-                                  <UserPlus size={18} className="inline mr-2" />
-                                  {isFollowing ? 'Following' : 'Follow'}
-                                </button>
-                                <button
-                                  className="p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all"
-                                  title="Share Profile"
-                                >
-                                  <Share2 size={18} />
-                                </button>
-                                <button
-                                  className="p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all"
-                                  title="More Options"
-                                >
-                                  <MoreVertical size={18} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mobile Layout - Original Design */}
-                  <div className="md:hidden space-y-0">
-                  {/* SECTION 1: TOP BANNER - Banner or Cover Art Carousel */}
-                  <div className="relative h-64 overflow-hidden group">
-                    {profile.banner_url ? (
-                      <div className="absolute inset-0">
-                        {profile.banner_type === 'video' ? (
-                          <video src={profile.banner_url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
-                        ) : (
-                          <Image src={profile.banner_url} alt="Profile banner" fill className="object-cover" unoptimized />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                      </div>
-                    ) : profile && profile.combinedMedia && profile.combinedMedia.length > 0 ? (
-                      <>
-                        {/* Carousel Images */}
-                        <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
-                          <div className="flex h-full">
-                            {profile.combinedMedia.slice(0, 10).map((media) => (
-                              <div key={media.id} className="relative w-full h-full flex-shrink-0">
-                                <div className="absolute inset-0">
-                                  <Image
-                                    src={media.image_url || '/radio-logo.svg'}
-                                    alt={media.title || 'Cover art'}
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
-                                  />
-                                </div>
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        {/* Carousel Navigation - Left */}
-                        {carouselIndex > 0 && (
-                          <button
-                            onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                          >
-                            <ChevronLeft size={20} className="text-white" />
-                          </button>
-                        )}
-                        {/* Carousel Navigation - Right */}
-                        {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
-                          <button
-                            onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                          >
-                            <ChevronRight size={20} className="text-white" />
-                          </button>
-                        )}
-                        {/* Carousel Indicators */}
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                          {profile.combinedMedia.slice(0, 10).map((_, index) => (
-                            <button
-                              key={index}
-                              onClick={() => setCarouselIndex(index)}
-                              className={`w-2 h-2 rounded-full transition-all ${
-                                index === carouselIndex 
-                                  ? 'bg-cyan-400 w-8' 
-                                  : 'bg-white/30 hover:bg-white/50'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 via-blue-900/50 to-black"></div>
-                    )}
-                    {isOwnProfile && (
-                      <button
-                        onClick={() => setShowBannerModal(true)}
-                        className="absolute right-4 bottom-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-xl border border-white/10 text-sm text-white hover:bg-black/60"
-                      >
-                        Edit banner
-                      </button>
-                    )}
-                  </div>
-
-                  {/* SECTION 3: LIST VIEW - All Content with Tabs */}
-                  <div className="px-6 py-4 relative z-10 bg-black">
-                    {/* Tab Buttons */}
-                    <div className="flex items-center gap-4 mb-4 relative z-10 pointer-events-auto">
-                      <button
-                        onClick={() => setContentTab('tracks')}
-                        className={`text-xl font-bold transition-all relative pb-2 ${
-                          contentTab === 'tracks'
-                            ? 'text-cyan-400'
-                            : 'text-gray-400 hover:text-gray-300'
-                        }`}
-                      >
-                        📀 All Tracks
-                        {contentTab === 'tracks' && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setContentTab('posts')}
-                        className={`text-xl font-bold transition-all relative pb-2 ${
-                          contentTab === 'posts'
-                            ? 'text-cyan-400'
-                            : 'text-gray-400 hover:text-gray-300'
-                        }`}
-                      >
-                        📝 All Posts
-                        {contentTab === 'posts' && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
-                        )}
-                      </button>
-                    </div>
-                    
-                    {/* All Tracks Tab Content */}
-                    {contentTab === 'tracks' && profile && profile.combinedMedia && (
-                      <>
-                        {console.log('[Profile Tracks]', {
-                          totalTracks: profile.combinedMedia.length,
-                          firstTrack: profile.combinedMedia[0]?.title,
-                          viewingUserId: resolvedParams.userId
-                        })}
-                        {/* Desktop: Enhanced Grid Layout (Task 12) */}
-                        <div className="hidden md:block">
-                          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {profile.combinedMedia.map((media, index) => {
-                              const isCurrentlyPlaying = playingId === media.id
-                              const hasAudio = !!media.audio_url
-                              
-                              return (
-                                <div 
-                                  key={`desktop-${media.id}`} 
-                                  className="group relative"
-                                  style={{
-                                    animationDelay: `${index * 50}ms`,
-                                    animation: 'fadeIn 0.5s ease-out forwards'
-                                  }}
-                                >
-                                  {/* Card Container */}
-                                  <div 
-                                    className={`relative bg-gradient-to-br from-white/5 to-transparent backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10 transition-all duration-300 ${
-                                      hasAudio ? 'cursor-pointer hover:border-cyan-400/50 hover:shadow-xl hover:shadow-cyan-500/20 hover:-translate-y-1' : 'cursor-not-allowed opacity-50'
-                                    } ${
-                                      isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-xl shadow-cyan-500/30' : ''
-                                    }`}
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      hasAudio && handlePlay(media)
-                                    }}
-                                  >
-                                    {/* Cover Image */}
-                                    <div className="relative aspect-square overflow-hidden">
-                                      <img 
-                                        src={media.image_url} 
-                                        alt={media.title}
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                        loading="lazy"
-                                      />
-                                      
-                                      {/* Gradient Overlay on Hover */}
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                      
-                                      {/* Play Button Overlay (Task 12: hover effects with play preview) */}
-                                      {hasAudio && (
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                                          <div className="w-16 h-16 rounded-full bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center shadow-2xl shadow-cyan-500/50 transition-all hover:scale-110">
-                                            {isCurrentlyPlaying && isPlaying ? (
-                                              <Pause className="text-white" size={28} />
-                                            ) : (
-                                              <Play className="text-white ml-1" size={28} />
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Playing Indicator */}
-                                      {isCurrentlyPlaying && isPlaying && (
-                                        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500 rounded-full shadow-lg">
-                                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                          <span className="text-white text-xs font-bold">Playing</span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Quick Actions (bottom overlay) */}
-                                      <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        {hasAudio && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              const added = addToQueue({
-                                                id: media.id,
-                                                audioUrl: media.audio_url!,
-                                                title: media.title,
-                                                artist: profile.username,
-                                                imageUrl: media.image_url,
-                                                userId: media.user_id
-                                              })
-                                              if (added) {
-                                                setQueueToast(`Added "${media.title}" to queue`)
-                                              } else {
-                                                setQueueToast(`"${media.title}" already in queue`)
-                                              }
-                                            }}
-                                            className="flex-1 px-3 py-2 rounded-lg bg-black/80 backdrop-blur-sm hover:bg-black border border-white/20 hover:border-cyan-400 text-white text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-                                            title="Add to Queue"
-                                          >
-                                            <Plus size={14} />
-                                            Queue
-                                          </button>
-                                        )}
-                                        <LikeButton
-                                          releaseId={media.id}
-                                          initialLikesCount={media.likes || 0}
-                                          size="sm"
-                                          className="p-2 rounded-lg bg-black/80 backdrop-blur-sm hover:bg-black border border-white/20 hover:border-pink-400"
-                                        />
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Track Info (Task 12: metadata display) */}
-                                    <div className="p-4">
-                                      <h3 className="font-bold text-white truncate text-base mb-2 group-hover:text-cyan-400 transition-colors">
-                                        {media.title}
-                                      </h3>
-                                      <p className="text-sm text-gray-400 truncate mb-3">
-                                        {profile.username}
-                                      </p>
-                                      
-                                      {/* Metadata: Plays, Likes, Duration */}
-                                      <div className="flex items-center justify-between text-xs text-gray-500">
-                                        <div className="flex items-center gap-3">
-                                          <div className="flex items-center gap-1" title="Plays">
-                                            <Play size={12} className="text-purple-400" />
-                                            <span>{media.plays?.toLocaleString() || 0}</span>
-                                          </div>
-                                          <div className="flex items-center gap-1" title="Likes">
-                                            <Heart size={12} className="text-pink-400" />
-                                            <span>{media.likes?.toLocaleString() || 0}</span>
-                                          </div>
-                                        </div>
-                                        {media.duration && (
-                                          <span className="text-gray-600" title="Duration">
-                                            {Math.floor(media.duration / 60)}:{String(Math.floor(media.duration % 60)).padStart(2, '0')}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-
-                    {/* Mobile: Single Column List View - All Tracks */}
-                    <div className="md:hidden space-y-1">
-                      {profile.combinedMedia.map((media) => {
-                        const isCurrentlyPlaying = playingId === media.id
-                        const hasAudio = !!media.audio_url
-                        
-                        return (
-                          <div 
-                            key={`mobile-${media.id}`} 
-                            className={`group flex items-center gap-3 p-3 rounded-lg transition-all ${
-                              hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                            } ${
-                              isCurrentlyPlaying 
-                                ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
-                                : hasAudio ? 'hover:bg-white/5' : ''
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              console.log('[Mobile Click]', media.title, 'ID:', media.id)
-                              hasAudio && handlePlay(media)
-                            }}
-                          >
-                            {/* Thumbnail */}
-                            <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
-                              <img 
-                                src={media.image_url} 
-                                alt={media.title}
-                                className="w-full h-full object-cover"
-                              />
-                              {hasAudio && (
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                    {isCurrentlyPlaying && isPlaying ? (
-                                      <Pause className="text-black" size={14} />
-                                    ) : (
-                                      <Play className="text-black ml-0.5" size={14} />
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              {isCurrentlyPlaying && isPlaying && (
-                                <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse"></div>
-                              )}
-                            </div>
-                            
-                            {/* Track Info */}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-white truncate leading-tight">
-                                {media.title}
-                              </h3>
-                              <div className="flex items-center gap-3 mt-1">
-                                <p className="text-sm text-gray-400 truncate leading-tight">
-                                  {profile.username}
-                                </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                  <div className="flex items-center gap-1">
-                                    <Play size={12} />
-                                    <span>{media.plays || 0}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Like Button */}
-                            <div onClick={(e) => e.stopPropagation()}>
-                              <LikeButton
-                                releaseId={media.id}
-                                initialLikesCount={media.likes || 0}
-                                size="sm"
-                                showCount={true}
-                              />
-                            </div>
-
-                            {/* Add to Queue Button */}
-                            {hasAudio && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  addToQueue({
-                                    id: media.id,
-                                    audioUrl: media.audio_url!,
-                                    title: media.title,
-                                    artist: profile.username,
-                                    imageUrl: media.image_url,
-                                    userId: media.user_id
-                                  })
-                                  setQueueToast(`Added "${media.title}" to queue`)
-                                }}
-                                className="p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all"
-                                title="Add to Queue"
-                              >
-                                <Plus size={16} />
-                              </button>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                      </>
-                    )}
-
-                    {/* All Posts Tab Content */}
-                    {contentTab === 'posts' && (
-                      <div className="space-y-6">
-                        {/* Create Post Button (Own Profile Only) */}
-                        {isOwnProfile && (
-                          <button
-                            onClick={() => setShowCreatePostModal(true)}
-                            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-xl p-4 font-bold text-white transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/30"
-                          >
-                            <ImageIcon size={20} />
-                            <span>Create Post</span>
-                          </button>
-                        )}
-
-                        {/* Posts Feed */}
-                        {posts.length === 0 ? (
-                          <div className="text-center py-12">
-                            <p className="text-gray-400 text-lg">No posts yet</p>
-                            <p className="text-gray-500 text-sm mt-2">
-                              {isOwnProfile ? 'Share photos, videos, and music with the world' : 'Check back later'}
-                            </p>
-                          </div>
-                        ) : (
-                          posts.map((post) => (
-                            <div key={post.id} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-cyan-400/30 transition-all">
-                              {/* Post Header */}
-                              <div className="p-4 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full overflow-hidden border border-cyan-400/30">
-                                    <Image
-                                      src={profile?.avatar || '/radio-logo.svg'}
-                                      alt={profile?.username || 'avatar'}
-                                      width={40}
-                                      height={40}
-                                      className="object-cover"
-                                      unoptimized
-                                    />
-                                  </div>
-                                  <div>
-                                    <p className="text-white font-bold text-sm">@{profile?.username}</p>
-                                    <p className="text-gray-400 text-xs">
-                                      {new Date(post.created_at).toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: 'numeric',
-                                        minute: '2-digit'
-                                      })}
-                                    </p>
-                                  </div>
-                                </div>
-                                
-                                {isOwnProfile && (
-                                  <button
-                                    onClick={() => deletePost(post.id)}
-                                    className="p-2 hover:bg-white/10 rounded-full transition-all"
-                                  >
-                                    <Trash2 size={16} className="text-gray-400 hover:text-red-400" />
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* Post Content Text */}
-                              {post.content && (
-                                <div className="px-4 pb-3">
-                                  <p className="text-white">{post.content}</p>
-                                </div>
-                              )}
-
-                              {/* Post Media */}
-                              {post.media_url && (
-                                <div className="relative bg-black">
-                                  {post.media_type === 'video' ? (
-                                    <video
-                                      src={post.media_url}
-                                      controls
-                                      className="w-full max-h-[500px] object-contain"
-                                    />
-                                  ) : (
-                                    <img
-                                      src={post.media_url}
-                                      alt="Post media"
-                                      className="w-full max-h-[500px] object-contain"
-                                    />
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Attached Song */}
-                              {post.media && (
-                                <div className="mx-4 my-3 bg-black/40 border border-cyan-400/30 rounded-xl p-3 flex items-center gap-3 hover:bg-black/60 transition-all cursor-pointer"
-                                  onClick={() => {
-                                    if (post.media) {
-                                      handlePlay({
-                                        id: post.media.id,
-                                        title: post.media.title,
-                                        audio_url: post.media.audio_url,
-                                        image_url: post.media.image_url,
-                                        user_id: post.user_id,
-                                        likes: 0,
-                                        is_public: true,
-                                        created_at: post.created_at,
-                                        media_type: 'music-image'
-                                      })
-                                    }
-                                  }}
-                                >
-                                  <img
-                                    src={post.media.image_url}
-                                    alt={post.media.title}
-                                    className="w-12 h-12 rounded-lg object-cover"
-                                  />
-                                  <div className="flex-1">
-                                    <p className="text-white font-semibold text-sm">{post.media.title}</p>
-                                    <p className="text-cyan-400 text-xs">🎵 Play track</p>
-                                  </div>
-                                  <Play size={20} className="text-cyan-400" />
-                                </div>
-                              )}
-
-                              {/* Engagement Bar */}
-                              <div className="px-4 py-3 border-t border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                  <button
-                                    onClick={() => toggleLike(post.id)}
-                                    className="flex items-center gap-1.5 hover:scale-110 transition-all"
-                                  >
-                                    <Heart
-                                      size={20}
-                                      className={post.isLiked ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-400'}
-                                    />
-                                    <span className={`text-sm font-medium ${post.isLiked ? 'text-red-400' : 'text-gray-400'}`}>
-                                      {post.likes_count}
-                                    </span>
-                                  </button>
-
-                                  <button
-                                    onClick={() => toggleComments(post.id)}
-                                    className="flex items-center gap-1.5 hover:scale-110 transition-all"
-                                  >
-                                    <MessageCircle size={20} className="text-gray-400 hover:text-cyan-400" />
-                                    <span className="text-sm font-medium text-gray-400">{post.comments_count}</span>
-                                  </button>
-
-                                  <button className="flex items-center gap-1.5 hover:scale-110 transition-all">
-                                    <Share2 size={20} className="text-gray-400 hover:text-green-400" />
-                                    <span className="text-sm font-medium text-gray-400">{post.shares_count}</span>
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Comments Section */}
-                              {showComments[post.id] && (
-                                <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
-                                  {/* Comment Input */}
-                                  {currentUser && (
-                                    <div className="flex gap-2">
-                                      <input
-                                        type="text"
-                                        value={commentInput[post.id] || ''}
-                                        onChange={(e) => setCommentInput(prev => ({ ...prev, [post.id]: e.target.value }))}
-                                        onKeyPress={(e) => e.key === 'Enter' && addComment(post.id)}
-                                        placeholder="Write a comment..."
-                                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-cyan-400/50 focus:outline-none"
-                                      />
-                                      <button
-                                        onClick={() => addComment(post.id)}
-                                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-white text-sm font-bold transition-all"
-                                      >
-                                        Post
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  {/* Comments List */}
-                                  {comments[post.id]?.map((comment) => (
-                                    <div key={comment.id} className="flex gap-2">
-                                      <img
-                                        src={comment.users?.avatar_url || '/radio-logo.svg'}
-                                        alt={comment.users?.username}
-                                        className="w-8 h-8 rounded-full object-cover"
-                                      />
-                                      <div className="flex-1 bg-white/5 rounded-lg p-2">
-                                        <p className="text-cyan-400 font-semibold text-xs">@{comment.users?.username}</p>
-                                        <p className="text-white text-sm mt-1">{comment.comment}</p>
-                                        <p className="text-gray-500 text-xs mt-1">
-                                          {new Date(comment.created_at).toLocaleDateString('en-US', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            hour: 'numeric',
-                                            minute: '2-digit'
-                                          })}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* SECTION 4: UPLOADS - Images & Videos by Month */}
-                  {profile.uploads && profile.uploads.length > 0 && (
-                    <div className="px-6 py-4 border-t border-white/5">
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-2xl font-bold relative z-10">📸 Uploads</h2>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setActiveSection('tracks')}
-                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-                              activeSection === 'tracks'
-                                ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                                : 'bg-white/5 text-cyan-400 hover:bg-white/10'
-                            }`}
-                          >
-                            All Tracks
-                          </button>
-                          <button
-                            onClick={() => setActiveSection('uploads')}
-                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-                              activeSection === 'uploads'
-                                ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/30'
-                                : 'bg-white/5 text-cyan-400 hover:bg-white/10'
-                            }`}
-                          >
-                            Uploads
-                          </button>
-                        </div>
-                      </div>
-
-                      {activeSection === 'uploads' && (
-                        <div className="space-y-6">
-                          {/* Group uploads by month */}
-                          {Object.entries(
-                            profile.uploads.reduce((acc, upload) => {
-                              const date = new Date(upload.created_at)
-                              const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-                              const monthLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
-                              if (!acc[monthKey]) {
-                                acc[monthKey] = { label: monthLabel, items: [] }
-                              }
-                              acc[monthKey].items.push(upload)
-                              return acc
-                            }, {} as Record<string, { label: string; items: Upload[] }>)
-                          ).sort(([a], [b]) => b.localeCompare(a)).map(([monthKey, { label, items }]) => (
-                            <div key={monthKey} className="space-y-3">
-                              <h3 className="text-sm font-bold text-cyan-400/80 uppercase tracking-wider">{label}</h3>
-                              <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
-                                {items.map((upload) => (
-                                  <div
-                                    key={upload.id}
-                                    className="flex-shrink-0 group cursor-pointer"
-                                  >
-                                    <div className="relative w-40 h-40 rounded-xl overflow-hidden bg-black/40 border border-cyan-500/20 hover:border-cyan-400/60 transition-all hover:scale-105">
-                                      {upload.type === 'image' ? (
-                                        <img
-                                          src={upload.url}
-                                          alt={upload.title || 'Upload'}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <>
-                                          <video
-                                            src={upload.url}
-                                            className="w-full h-full object-cover"
-                                            muted
-                                            loop
-                                            onMouseEnter={(e) => e.currentTarget.play()}
-                                            onMouseLeave={(e) => e.currentTarget.pause()}
-                                          />
-                                          <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 backdrop-blur-sm rounded-full text-[10px] font-bold text-white">
-                                            VIDEO
-                                          </div>
-                                        </>
-                                      )}
-                                      
-                                      {/* Hover Overlay */}
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                                        {upload.title && (
-                                          <p className="text-xs text-white font-semibold truncate">{upload.title}</p>
-                                        )}
-                                        <p className="text-[10px] text-cyan-400/60 mt-0.5">
-                                          {new Date(upload.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3">
+                  {isOwnProfile ? (
+                    <button
+                      onClick={() => setShowEditProfile(true)}
+                      className="px-6 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all"
+                    >
+                      <Edit2 size={16} className="inline mr-2" />
+                      Edit Profile
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleFollowToggle}
+                      className={`px-6 py-2 rounded-lg font-bold transition-all ${
+                        isFollowing
+                          ? 'bg-white/10 border border-white/20 hover:bg-white/20'
+                          : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500'
+                      }`}
+                    >
+                      {isFollowing ? 'Following' : '+ Follow'}
+                    </button>
                   )}
-                  </div>
-                  {/* End Mobile Layout */}
-
-                  {/* Desktop Layout - Full Width Banner + Horizontal Tracks + Vertical List */}
-                  <div className="hidden md:block">
-                    <div className="space-y-6">
-                      {/* FULL-WIDTH BANNER */}
-                      <div className="relative h-80 rounded-2xl overflow-hidden group border border-cyan-500/20 shadow-2xl">
-                        {profile.banner_url ? (
-                          <div className="absolute inset-0">
-                            {profile.banner_type === 'video' ? (
-                              <video src={profile.banner_url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
-                            ) : (
-                              <Image src={profile.banner_url} alt="Profile banner" fill className="object-cover" unoptimized />
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                          </div>
-                        ) : (
-                          <>
-                            {/* Carousel Images */}
-                            <div className="absolute inset-0 transition-transform duration-500 ease-out" style={{ transform: `translateX(-${carouselIndex * 100}%)` }}>
-                              <div className="flex h-full">
-                                {profile.combinedMedia.slice(0, 10).map((media) => (
-                                  <div key={media.id} className="relative w-full h-full flex-shrink-0">
-                                    <div className="absolute inset-0">
-                                      <Image
-                                        src={media.image_url || '/radio-logo.svg'}
-                                        alt={media.title || 'Cover art'}
-                                        fill
-                                        className="object-cover"
-                                        unoptimized
-                                      />
-                                    </div>
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            {/* Carousel Navigation - Left */}
-                            {carouselIndex > 0 && (
-                              <button
-                                onClick={() => setCarouselIndex(prev => Math.max(0, prev - 1))}
-                                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                              >
-                                <ChevronLeft size={20} className="text-white" />
-                              </button>
-                            )}
-                            {/* Carousel Navigation - Right */}
-                            {carouselIndex < Math.min(profile.combinedMedia.length, 10) - 1 && (
-                              <button
-                                onClick={() => setCarouselIndex(prev => Math.min(Math.min(profile.combinedMedia.length, 10) - 1, prev + 1))}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 border border-white/10 z-10"
-                              >
-                                <ChevronRight size={20} className="text-white" />
-                              </button>
-                            )}
-                            {/* Carousel Indicators */}
-                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                              {profile.combinedMedia.slice(0, 10).map((_, index) => (
-                                <button
-                                  key={index}
-                                  onClick={() => setCarouselIndex(index)}
-                                  className={`w-2 h-2 rounded-full transition-all ${
-                                    index === carouselIndex 
-                                      ? 'bg-cyan-400 w-8' 
-                                      : 'bg-white/30 hover:bg-white/50'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </>
-                        )}
-                        {/* Edit Banner Button */}
-                        {isOwnProfile && (
-                          <button
-                            onClick={() => setShowBannerModal(true)}
-                            className="absolute right-4 bottom-4 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-xl border border-white/10 text-sm text-white hover:bg-black/60 transition-colors"
-                          >
-                            Edit banner
-                          </button>
-                        )}
-                      </div>
-
-                      {/* HORIZONTAL SCROLLING RECENT TRACKS */}
-                      <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-cyan-500/20 p-6 shadow-2xl">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-bold text-white">Recent Tracks</h3>
-                          <div className="text-xs text-gray-400">{profile.combinedMedia.length} total</div>
-                        </div>
-                        <div className="relative">
-                          <div className="overflow-x-auto custom-scrollbar pb-2">
-                            <div className="flex gap-4 w-max">
-                              {profile.combinedMedia.slice(0, 20).map((media) => (
-                                <div 
-                                  key={media.id}
-                                  className="group relative w-40 flex-shrink-0"
-                                >
-                                  <div 
-                                    className="relative aspect-square rounded-xl overflow-hidden cursor-pointer border border-cyan-500/20 hover:border-cyan-400/60 transition-all hover:scale-105 shadow-lg"
-                                    onClick={() => handlePlay(media)}
-                                  >
-                                    <img 
-                                      src={media.image_url || '/radio-logo.svg'}
-                                      alt={media.title || 'Cover'}
-                                      className="w-full h-full object-cover"
-                                    />
-                                    {/* Play overlay */}
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                      <div className="w-12 h-12 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg">
-                                        <Play className="text-black ml-0.5" size={20} fill="currentColor" />
-                                      </div>
-                                    </div>
-                                    {/* Playing indicator */}
-                                    {playingId === media.id && isPlaying && (
-                                      <div className="absolute top-2 right-2">
-                                        <div className="flex gap-0.5">
-                                          <div className="w-1 h-3 bg-cyan-400 animate-pulse"></div>
-                                          <div className="w-1 h-4 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                                          <div className="w-1 h-3 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="mt-2">
-                                    <p className="text-sm text-white font-semibold truncate">{media.title}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <LikeButton
-                                        releaseId={media.id}
-                                        initialLikesCount={media.likes || 0}
-                                        size="sm"
-                                        showCount={true}
-                                      />
-                                      <span className="text-xs text-gray-400">• {media.plays || 0} plays</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* VERTICAL TRACK LIST */}
-                      <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-cyan-500/20 shadow-2xl overflow-hidden">
-                        {/* Header */}
-                        <div className="border-b border-cyan-500/20 p-4">
-                          <h3 className="text-lg font-bold text-white">All Tracks</h3>
-                        </div>
-
-                        {/* Content Area */}
-                        <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-                          {/* Track List View */}
-                          <div className="space-y-2 p-3">
-                            {profile.combinedMedia.map((media, index) => {
-                                const isCurrentlyPlaying = playingId === media.id
-                                const hasAudio = !!media.audio_url
-                                
-                                return (
-                                  <div 
-                                    key={media.id} 
-                                    className={`group flex items-center gap-4 p-3 rounded-xl transition-all ${
-                                      hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                                    } ${
-                                      isCurrentlyPlaying 
-                                        ? 'bg-cyan-500/10 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-500/20' 
-                                        : hasAudio ? 'hover:bg-white/5 bg-black/20 border border-white/5' : 'bg-black/10 border border-white/5'
-                                    }`}
-                                    onClick={() => hasAudio && handlePlay(media)}
-                                  >
-                                    {/* Track Number */}
-                                    <div className="w-8 text-center flex-shrink-0">
-                                      {isCurrentlyPlaying && isPlaying ? (
-                                        <div className="flex justify-center">
-                                          <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5"></div>
-                                          <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.2s' }}></div>
-                                          <div className="w-1 h-4 bg-cyan-400 animate-pulse mx-0.5" style={{ animationDelay: '0.4s' }}></div>
-                                        </div>
-                                      ) : (
-                                        <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{index + 1}</span>
-                                      )}
-                                    </div>
-
-                              {/* Thumbnail */}
-                              <div className="relative w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden">
-                                <img 
-                                  src={media.image_url || '/radio-logo.svg'} 
-                                  alt={media.title}
-                                  className="w-full h-full object-cover"
-                                />
-                                {hasAudio && (
-                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                                      {isCurrentlyPlaying && isPlaying ? (
-                                        <Pause className="text-black" size={14} />
-                                      ) : (
-                                        <Play className="text-black ml-0.5" size={14} />
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              
-                              {/* Track Info */}
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-white truncate leading-tight">
-                                  {media.title}
-                                </h3>
-                                <p className="text-sm text-gray-400 truncate leading-tight mt-1">
-                                  {profile.username}
-                                </p>
-                              </div>
-
-                              {/* Like Button */}
-                              <div onClick={(e) => e.stopPropagation()}>
-                                <LikeButton
-                                  releaseId={media.id}
-                                  initialLikesCount={media.likes || 0}
-                                  size="sm"
-                                  showCount={true}
-                                />
-                              </div>
-
-                              {/* Add to Queue Button */}
-                              {hasAudio && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    addToQueue({
-                                      id: media.id,
-                                      audioUrl: media.audio_url!,
-                                      title: media.title,
-                                      artist: profile.username,
-                                      imageUrl: media.image_url,
-                                      userId: media.user_id
-                                    })
-                                    setQueueToast(`Added "${media.title}" to queue`)
-                                  }}
-                                  className="p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all"
-                                  title="Add to Queue"
-                                >
-                                  <Plus size={16} />
-                                </button>
-                              )}
-                            </div>
-                          )
-                        })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {/* End Desktop Layout */}
-
+                  <button
+                    onClick={() => setActiveView('station')}
+                    className={`px-6 py-2 rounded-lg font-bold transition-all ${
+                      profile.is_live
+                        ? 'bg-gradient-to-r from-red-500 to-pink-500 animate-pulse'
+                        : 'bg-white/10 border border-white/20 hover:bg-white/20'
+                    }`}
+                  >
+                    <Radio size={16} className="inline mr-2" />
+                    {profile.is_live ? 'LIVE NOW' : 'Station'}
+                  </button>
                 </div>
-              ) : (
-                <div className="flex items-center justify-center min-h-[60vh]">
-                  <div className="text-center px-6">
-                    <div className="text-6xl mb-4">🎵</div>
-                    <h3 className="text-2xl font-black text-white mb-2">
-                      {isOwnProfile ? 'No content yet' : 'No content'}
-                    </h3>
-                    <p className="text-gray-500 mb-6 text-sm">
-                      {isOwnProfile ? 'Upload your first creation!' : 'Check back later'}
-                    </p>
-                    {isOwnProfile && (
-                      <button
-                        onClick={() => setShowUploadModal(true)}
-                        className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg transition-all hover:scale-105 font-bold text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Upload size={16} />
-                          <span>Upload</span>
-                        </div>
-                      </button>
-                    )}
-                  </div>
+              </div>
+
+              {/* Stats */}
+              <div className="flex items-center gap-6 mt-4 pt-4 border-t border-white/10">
+                <div>
+                  <div className="text-2xl font-bold text-cyan-400">{tracks.length}</div>
+                  <div className="text-sm text-gray-400">Tracks</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-cyan-400">{profile.follower_count}</div>
+                  <div className="text-sm text-gray-400">Followers</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-cyan-400">{profile.following_count}</div>
+                  <div className="text-sm text-gray-400">Following</div>
+                </div>
+              </div>
+
+              {/* Bio */}
+              {profile.bio && (
+                <p className="mt-4 text-gray-300">{profile.bio}</p>
+              )}
+
+              {/* Location & Joined */}
+              <div className="flex items-center gap-4 mt-3 text-sm text-gray-400">
+                {profile.location && (
+                  <span>
+                    <MapPin size={14} className="inline mr-1" />
+                    {profile.location}
+                  </span>
+                )}
+                <span>
+                  <Calendar size={14} className="inline mr-1" />
+                  Joined {new Date(profile.joined_date).toLocaleDateString()}
+                </span>
+              </div>
+
+              {/* Social Links */}
+              {Object.keys(profile.social_links).length > 0 && (
+                <div className="flex items-center gap-3 mt-3">
+                  {profile.social_links.twitter && (
+                    <a href={profile.social_links.twitter} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-cyan-400">
+                      <ExternalLink size={16} />
+                    </a>
+                  )}
                 </div>
               )}
-            </>
-          ) : (
-            /* ========== STATION TAB - LIVE STREAMING INTERFACE (REDESIGNED) ========== */
-            <div className="min-h-screen bg-gradient-to-br from-black via-red-950/10 to-black relative overflow-hidden">
-              {/* Animated Background Effects */}
-              <div className="absolute inset-0 opacity-30 pointer-events-none">
-                <div className="absolute top-20 left-20 w-96 h-96 bg-red-500/20 rounded-full blur-[120px] animate-pulse"></div>
-                <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-500/20 rounded-full blur-[120px] animate-pulse" style={{animationDelay: '2s'}}></div>
-              </div>
-
-              {/* Main Container */}
-              <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 relative z-10">
-                
-                {/* ============ STATION HEADER - Premium Glassmorphism Design ============ */}
-                <div className="relative bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 mb-6 shadow-2xl overflow-hidden group">
-                  {/* Gradient Accent Bar */}
-                  <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${
-                    isLive ? 'from-red-500 via-pink-500 to-red-500 animate-pulse' : 'from-gray-600 to-gray-700'
-                  }`}></div>
-
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    {/* Left: Station Identity */}
-                    <div className="flex items-start gap-5">
-                      {/* Radio Icon with Glow */}
-                      <div className="relative flex-shrink-0">
-                        <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br ${
-                          isLive ? 'from-red-500/80 to-pink-600/80' : 'from-gray-700/50 to-gray-800/50'
-                        } p-[2px] shadow-2xl transition-all duration-500 ${
-                          isLive ? 'shadow-red-500/50 scale-105' : 'shadow-black/50'
-                        }`}>
-                          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-black to-gray-900 flex items-center justify-center">
-                            <RadioIcon size={40} className={`transition-colors duration-500 ${isLive ? 'text-red-400' : 'text-gray-600'}`} />
-                          </div>
-                        </div>
-                        {/* Live Pulse Indicator */}
-                        {isLive && (
-                          <div className="absolute -top-2 -right-2">
-                            <div className="relative w-7 h-7">
-                              <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
-                              <div className="relative w-full h-full bg-red-500 rounded-full flex items-center justify-center border-2 border-black shadow-lg">
-                                <Circle size={10} className="fill-white text-white" />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Station Title & Status */}
-                      <div className="flex-1 min-w-0">
-                        {/* Title Editor */}
-                        {editingStationTitle && isOwnProfile ? (
-                          <div className="flex items-center gap-2 mb-3">
-                            <input
-                              type="text"
-                              value={stationTitle}
-                              onChange={(e) => setStationTitle(e.target.value)}
-                              onKeyPress={(e) => e.key === 'Enter' && saveStationTitle()}
-                              placeholder="Enter station title..."
-                              className="flex-1 bg-white/10 border-2 border-red-500/50 rounded-xl px-4 py-2.5 text-lg md:text-xl font-black text-white placeholder-gray-500 focus:outline-none focus:border-red-400 transition-all"
-                              autoFocus
-                            />
-                            <button
-                              onClick={saveStationTitle}
-                              className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 rounded-xl text-sm font-bold transition-all shadow-lg"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingStationTitle(false)
-                                setStationTitle('')
-                              }}
-                              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-bold transition-all"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-3 mb-3 group/title">
-                            <h2 className="text-2xl md:text-3xl font-black text-white leading-tight truncate">
-                              {stationTitle || (isOwnProfile ? '🎙️ My Radio Station' : `🎙️ ${profile?.username}'s Radio`)}
-                            </h2>
-                            {isOwnProfile && (
-                              <button
-                                onClick={() => {
-                                  setStationTitle(stationTitle || `${profile?.username}'s Live Radio`)
-                                  setEditingStationTitle(true)
-                                }}
-                                className="p-2 hover:bg-white/10 rounded-lg transition-all opacity-0 group-hover/title:opacity-100"
-                                title="Edit station title"
-                              >
-                                <Edit2 size={16} className="text-gray-400 hover:text-red-400" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Status Badges */}
-                        <div className="flex items-center gap-3 flex-wrap">
-                          {/* Live/Offline Badge */}
-                          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black uppercase tracking-wider transition-all ${
-                            isLive 
-                              ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-400 border-2 border-red-500/40 shadow-lg shadow-red-500/30' 
-                              : 'bg-white/5 text-gray-500 border-2 border-gray-700/50'
-                          }`}>
-                            <Circle size={8} className={`${isLive ? 'fill-red-400 text-red-400 animate-pulse' : 'fill-gray-600 text-gray-600'}`} />
-                            {isLive ? 'On Air' : 'Offline'}
-                          </div>
-
-                          {/* Listener Count */}
-                          {isLive && (
-                            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-400 border-2 border-cyan-500/30 text-sm font-bold shadow-lg shadow-cyan-500/20">
-                              <Users size={14} />
-                              <span className="text-white">{liveListeners}</span>
-                              <span className="text-xs opacity-80">{liveListeners === 1 ? 'Listener' : 'Listeners'}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Broadcast Controls (Own Profile Only) with Quality Selector (Task 19) */}
-                    {isOwnProfile && (
-                      <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap">
-                        {/* Stream Quality Selector */}
-                        {isLive && (
-                          <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-xl border border-white/10">
-                            {(['low', 'medium', 'high'] as const).map((quality) => (
-                              <button
-                                key={quality}
-                                onClick={() => setStreamQuality(quality)}
-                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                                  streamQuality === quality
-                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                                }`}
-                                title={`${quality === 'low' ? '360p' : quality === 'medium' ? '720p' : '1080p'}`}
-                              >
-                                {quality.toUpperCase()}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {/* Viewer Count Display */}
-                        {isLive && (
-                          <div className="flex items-center gap-2 px-4 py-3 bg-white/5 rounded-xl border border-white/10">
-                            <Users size={16} className="text-cyan-400" />
-                            <span className="text-white font-bold text-sm">{liveListeners}</span>
-                            <span className="text-gray-400 text-xs">watching</span>
-                          </div>
-                        )}
-                        
-                        {/* Video Toggle */}
-                        {isLive && (
-                          <button
-                            onClick={toggleVideo}
-                            className={`group/btn px-5 py-3.5 rounded-xl font-bold text-sm transition-all transform hover:scale-105 active:scale-95 shadow-xl flex items-center gap-2.5 ${
-                              showVideo
-                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-purple-500/50'
-                                : 'bg-white/10 hover:bg-white/20 border-2 border-white/20 text-white'
-                            }`}
-                            title={showVideo ? 'Stop Video' : 'Start Video'}
-                          >
-                            <Video size={18} className={showVideo ? '' : 'text-purple-400'} />
-                            <span className="hidden md:inline whitespace-nowrap">{showVideo ? 'Stop Video' : 'Start Video'}</span>
-                          </button>
-                        )}
-
-                        {/* Go Live / Stop Broadcast */}
-                        <button
-                          onClick={toggleLive}
-                          className={`px-8 py-3.5 rounded-xl font-black text-base transition-all transform hover:scale-105 active:scale-95 shadow-2xl flex items-center gap-3 whitespace-nowrap ${
-                            isLive
-                              ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white border-2 border-white/20'
-                              : 'bg-gradient-to-r from-red-600 via-red-500 to-pink-600 hover:from-red-500 hover:via-red-400 hover:to-pink-500 text-white shadow-red-500/50 animate-pulse'
-                          }`}
-                        >
-                          {isLive ? (
-                            <>
-                              <Circle size={18} className="fill-white text-white" />
-                              <span>End Broadcast</span>
-                            </>
-                          ) : (
-                            <>
-                              <RadioIcon size={18} />
-                              <span>Go Live</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ============ LIVE VIDEO PLAYER with Enhanced Controls (Task 16, 20) ============ */}
-                  {isLive && showVideo && (
-                    <div className="mt-6 pt-6 border-t border-white/10">
-                      <div className="relative aspect-video bg-gradient-to-br from-black to-gray-900 rounded-2xl overflow-hidden shadow-2xl border-2 border-red-500/30 group/video">
-                        <video
-                          ref={isOwnProfile ? videoRef : broadcasterVideoRef}
-                          autoPlay
-                          playsInline
-                          muted={isOwnProfile}
-                          className="w-full h-full object-cover"
-                        />
-                        {/* Video Overlay Badges */}
-                        <div className="absolute top-4 left-4 flex items-center gap-3 flex-wrap">
-                          <div className="bg-gradient-to-r from-red-600 to-pink-600 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2 shadow-xl border border-white/20 animate-pulse">
-                            <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></div>
-                            <span className="text-white font-black text-xs uppercase tracking-wide">Live Video</span>
-                          </div>
-                          {/* Stream Quality Badge */}
-                          <div className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                            <span className="text-green-400 font-bold text-xs">
-                              {streamQuality === 'low' ? '360p' : streamQuality === 'medium' ? '720p' : '1080p HD'}
-                            </span>
-                          </div>
-                        </div>
-                        {!isOwnProfile && (
-                          <div className="absolute bottom-4 right-4 bg-black/80 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
-                            <span className="text-white font-bold text-xs flex items-center gap-2">
-                              <Video size={14} className="text-purple-400" />
-                              Broadcaster's Stream
-                            </span>
-                          </div>
-                        )}
-                        {/* Responsive Controls - Mobile Friendly (Task 20) */}
-                        <div className="absolute bottom-4 left-4 flex items-center gap-2 opacity-0 group-hover/video:opacity-100 transition-opacity md:opacity-100">
-                          <button
-                            className="p-2 md:p-3 bg-black/80 hover:bg-black rounded-lg border border-white/20 hover:border-cyan-500/50 transition-all touch-manipulation"
-                            onClick={() => {
-                              const video = isOwnProfile ? videoRef.current : broadcasterVideoRef.current
-                              if (video) video.paused ? video.play() : video.pause()
-                            }}
-                          >
-                            {isPlaying ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ============ NOW PLAYING CARD ============ */}
-                  {isLive && currentTrack && (
-                    <div className="mt-6 pt-6 border-t border-white/10">
-                      <div className="relative bg-gradient-to-br from-white/5 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-white/10 overflow-hidden group/nowplaying">
-                        {/* Animated gradient background */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover/nowplaying:opacity-100 transition-opacity duration-500"></div>
-                        
-                        <div className="relative flex items-center gap-4">
-                          {/* Album Art with Glow */}
-                          <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-xl">
-                            <Image
-                              src={currentTrack.imageUrl || '/radio-logo.svg'}
-                              alt={currentTrack.title}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
-                            {/* Equalizer Animation */}
-                            {isPlaying && (
-                              <div className="absolute bottom-2 right-2 flex gap-0.5">
-                                {[0, 0.1, 0.2, 0.3].map((delay, i) => (
-                                  <div
-                                    key={i}
-                                    className="w-1 bg-cyan-400 rounded-full animate-pulse"
-                                    style={{
-                                      height: `${Math.random() * 12 + 8}px`,
-                                      animationDelay: `${delay}s`
-                                    }}
-                                  ></div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Track Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-bold text-red-400 uppercase tracking-wider mb-1.5 flex items-center gap-2">
-                              <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
-                              Now Playing
-                            </div>
-                            <div className="text-lg md:text-xl font-black text-white truncate mb-1">
-                              {currentTrack.title}
-                            </div>
-                            {currentTrack.artist && (
-                              <div className="text-sm text-gray-400 truncate flex items-center gap-2">
-                                <User size={12} />
-                                {currentTrack.artist}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Audio Visualizer */}
-                          {isPlaying && (
-                            <div className="hidden md:flex gap-1 items-end flex-shrink-0">
-                              {[...Array(5)].map((_, i) => (
-                                <div
-                                  key={i}
-                                  className="w-1.5 bg-gradient-to-t from-cyan-400 to-pink-400 rounded-full animate-pulse"
-                                  style={{
-                                    height: `${(i + 1) * 8}px`,
-                                    animationDelay: `${i * 0.1}s`
-                                  }}
-                                ></div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ============ MAIN CONTENT - CHAT & TRACK QUEUE (2-Column Grid, Mobile-Responsive Task 20) ============ */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                  
-                  {/* ============ LEFT: LIVE CHAT ============ */}
-                  <div className="relative bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                    {/* Chat Header */}
-                    <div className="relative bg-gradient-to-r from-cyan-900/20 via-blue-900/20 to-cyan-900/20 px-5 md:px-6 py-4 border-b border-white/10">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-                            <MessageCircle size={20} className="text-white" />
-                          </div>
-                          <span>Live Chat</span>
-                        </h3>
-                        {isLive && (
-                          <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-full">
-                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                            <span className="text-cyan-400 text-xs font-bold uppercase">Active</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Chat Messages Area with modern scrollbar (Task 16) */}
-                    <div 
-                      ref={chatContainerRef}
-                      className="h-[450px] md:h-[550px] overflow-y-auto p-4 md:p-5 space-y-3 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-white/5 hover:scrollbar-thumb-cyan-400 transition-colors"
-                      style={{
-                        scrollbarWidth: 'thin',
-                        scrollbarColor: 'rgba(6, 182, 212, 0.5) rgba(255, 255, 255, 0.05)'
-                      }}
-                    >
-                      {!isLive ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
-                              <MessageCircle size={40} className="text-gray-700" />
-                            </div>
-                            <p className="text-gray-500 text-sm font-medium">Chat is offline</p>
-                            <p className="text-gray-600 text-xs mt-1">Messages will appear when station goes live</p>
-                          </div>
-                        </div>
-                      ) : displayedMessages.length === 0 ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/10 to-blue-500/10 flex items-center justify-center mx-auto mb-4 border border-cyan-500/20">
-                              <MessageCircle size={40} className="text-cyan-700" />
-                            </div>
-                            <p className="text-gray-400 text-sm font-medium">No messages yet</p>
-                            <p className="text-gray-600 text-xs mt-1">Be the first to say hello! 👋</p>
-                          </div>
-                        </div>
-                      ) : (
-                        displayedMessages.map((msg) => (
-                          <div key={msg.id} className="animate-fade-in">
-                            {msg.type === 'track' ? (
-                              /* Track Change Notification */
-                              <div className="relative bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-pink-500/10 border border-cyan-500/20 rounded-2xl p-4 overflow-hidden group/track">
-                                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-pink-500/5 opacity-0 group-hover/track:opacity-100 transition-opacity"></div>
-                                <div className="relative flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg">
-                                    <Music size={18} className="text-white" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-cyan-400 text-xs font-black uppercase mb-1">Track Changed</div>
-                                    <div className="text-white text-sm font-bold truncate">{msg.message}</div>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : msg.username === 'System' ? (
-                              /* System Messages */
-                              <div className="text-center">
-                                <span className="inline-block text-gray-500 text-xs italic bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                                  {msg.message}
-                                </span>
-                              </div>
-                            ) : (
-                              /* User Messages */
-                              <div className="group/msg bg-white/5 hover:bg-white/[0.08] rounded-2xl p-4 transition-all hover:scale-[1.01] border border-transparent hover:border-white/10">
-                                <div className="flex items-start gap-3">
-                                  {/* Avatar */}
-                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-lg shadow-cyan-500/20 border-2 border-white/10">
-                                    {msg.username[0].toUpperCase()}
-                                  </div>
-                                  
-                                  {/* Message Content */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-baseline gap-2 mb-1.5">
-                                      <span className="text-cyan-400 text-sm font-black truncate">{msg.username}</span>
-                                      <span className="text-gray-600 text-[10px] font-medium">
-                                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                      </span>
-                                    </div>
-                                    <p className="text-white text-sm leading-relaxed break-words">{msg.message}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Enhanced Chat Input with Emoji Picker (Task 17) */}
-                    {isLive && (
-                      <div className="border-t border-white/10 p-4 md:p-5 bg-black/20">
-                        {/* Emoji Picker Popup */}
-                        {showEmojiPicker && (
-                          <div className="absolute bottom-24 left-4 right-4 md:left-auto md:right-auto md:w-80 bg-gradient-to-br from-gray-900 to-black border-2 border-cyan-500/30 rounded-2xl shadow-2xl p-4 z-50 backdrop-blur-xl">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="text-white font-bold text-sm">Emoji</h4>
-                              <button
-                                onClick={() => setShowEmojiPicker(false)}
-                                className="text-gray-400 hover:text-white transition-colors"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                            <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent">
-                              {['😀', '😂', '😍', '🥰', '😎', '🤩', '🥳', '😇', '😊', '😋', '🎵', '🎶', '🎤', '🎧', '🎸', '🎹', '🎺', '🎷', '🔥', '💯', '❤️', '💕', '💖', '💙', '💜', '🧡', '💚', '💛', '👍', '👏', '🙌', '👋', '✨', '⭐', '🌟', '💫'].map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  onClick={() => {
-                                    setChatInput(prev => prev + emoji)
-                                    setShowEmojiPicker(false)
-                                  }}
-                                  className="text-2xl hover:scale-125 transition-transform active:scale-100 p-1 hover:bg-white/10 rounded-lg"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        <div className="flex gap-2 items-center">
-                          {/* Emoji Picker Button */}
-                          <button
-                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                            className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/50 transition-all group"
-                            title="Add emoji"
-                          >
-                            <Smile size={20} className="text-gray-400 group-hover:text-cyan-400 transition-colors" />
-                          </button>
-                          
-                          <input
-                            type="text"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !isSendingMessage) {
-                                e.preventDefault()
-                                sendMessage()
-                              }
-                            }}
-                            placeholder={isOwnProfile ? "Message your listeners..." : "Join the conversation..."}
-                            className="flex-1 bg-white/5 border-2 border-white/10 rounded-xl px-5 py-3.5 text-white text-sm font-medium focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={!isLive || isSendingMessage}
-                          />
-                          <button
-                            onClick={() => chatInput.trim() && !isSendingMessage && sendMessage()}
-                            disabled={!chatInput.trim() || !isLive || isSendingMessage}
-                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed disabled:opacity-50 rounded-xl px-6 py-3.5 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 relative"
-                          >
-                            {isSendingMessage ? (
-                              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                            ) : (
-                              <Send size={18} className="text-white" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ============ RIGHT: TRACK QUEUE with Enhanced Controls (Task 18) ============ */}
-                  <div className="relative bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                    {/* Queue Header with Controls */}
-                    <div className="relative bg-gradient-to-r from-purple-900/20 via-pink-900/20 to-purple-900/20 px-5 md:px-6 py-4 border-b border-white/10">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-                            <Music size={20} className="text-white" />
-                          </div>
-                          <span>Track Queue</span>
-                        </h3>
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/30 rounded-full">
-                          <span className="text-purple-400 text-xs font-black">{trackCount}</span>
-                          <span className="text-gray-400 text-xs">tracks</span>
-                        </div>
-                      </div>
-                      
-                      {/* Queue Controls */}
-                      {trackCount > 0 && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setQueueShuffle(!queueShuffle)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                              queueShuffle
-                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
-                                : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
-                            }`}
-                            title="Shuffle queue"
-                          >
-                            <Shuffle size={14} />
-                            Shuffle
-                          </button>
-                          <button
-                            onClick={() => setQueueRepeat(!queueRepeat)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                              queueRepeat
-                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
-                                : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
-                            }`}
-                            title="Repeat queue"
-                          >
-                            <Repeat size={14} />
-                            Repeat
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Track List */}
-                    <div className="h-[450px] md:h-[550px] overflow-y-auto p-4 md:p-5 space-y-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30">
-                      {trackCount === 0 ? (
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
-                              <Music size={40} className="text-gray-700" />
-                            </div>
-                            <p className="text-gray-500 text-sm font-medium mb-3">No tracks in queue</p>
-                            {isOwnProfile && (
-                              <button
-                                onClick={() => setShowUploadModal(true)}
-                                className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl text-sm font-bold transition-all shadow-lg"
-                              >
-                                Upload First Track
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        audioTracks.map((media, index) => {
-                          const isCurrentlyPlaying = playingId === media.id
-                          
-                          return (
-                            <div
-                              key={media.id}
-                              onClick={() => handlePlay(media)}
-                              className={`group relative bg-white/5 hover:bg-white/[0.08] rounded-2xl p-3.5 cursor-pointer transition-all hover:scale-[1.01] border ${
-                                isCurrentlyPlaying 
-                                  ? 'border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
-                                  : 'border-transparent hover:border-white/10'
-                              }`}
-                            >
-                              <div className="flex items-center gap-4">
-                                {/* Track Number / Play Button */}
-                                <div className="w-12 h-12 flex-shrink-0">
-                                  {isCurrentlyPlaying && isPlaying ? (
-                                    <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-xl shadow-cyan-500/30">
-                                      <Pause size={20} className="text-white" />
-                                    </div>
-                                  ) : (
-                                    <div className="w-full h-full bg-white/10 group-hover:bg-gradient-to-br group-hover:from-purple-500 group-hover:to-pink-600 rounded-xl flex items-center justify-center transition-all shadow-lg">
-                                      <span className="text-gray-400 group-hover:hidden font-bold text-sm">{index + 1}</span>
-                                      <Play size={20} className="text-white hidden group-hover:block ml-0.5" />
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Album Art */}
-                                <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
-                                  <Image
-                                    src={media.image_url || '/radio-logo.svg'}
-                                    alt={media.title}
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
-                                  />
-                                  {isCurrentlyPlaying && isPlaying && (
-                                    <div className="absolute inset-0 bg-cyan-500/30 flex items-center justify-center">
-                                      <div className="flex gap-0.5">
-                                        {[0, 0.2, 0.4].map((delay, i) => (
-                                          <div
-                                            key={i}
-                                            className="w-1 bg-white rounded-full animate-pulse"
-                                            style={{
-                                              height: `${12 + i * 4}px`,
-                                              animationDelay: `${delay}s`
-                                            }}
-                                          ></div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Track Info */}
-                                <div className="flex-1 min-w-0">
-                                  {editingTrackId === media.id && isOwnProfile ? (
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="text"
-                                        value={editingTrackTitle}
-                                        onChange={(e) => setEditingTrackTitle(e.target.value)}
-                                        onKeyPress={(e) => {
-                                          if (e.key === 'Enter') saveTrackTitle(media.id, editingTrackTitle)
-                                          if (e.key === 'Escape') {
-                                            setEditingTrackId(null)
-                                            setEditingTrackTitle('')
-                                          }
-                                        }}
-                                        className="flex-1 bg-white/10 border-2 border-cyan-500/50 rounded-lg px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-cyan-400"
-                                        autoFocus
-                                      />
-                                      <button
-                                        onClick={() => saveTrackTitle(media.id, editingTrackTitle)}
-                                        className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-all"
-                                      >
-                                        <Circle size={14} className="text-white fill-white" />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="group/title">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <div className={`font-bold text-sm md:text-base truncate ${isCurrentlyPlaying ? 'text-cyan-400' : 'text-white'}`}>
-                                          {media.title}
-                                        </div>
-                                        {isOwnProfile && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setEditingTrackId(media.id)
-                                              setEditingTrackTitle(media.title)
-                                            }}
-                                            className="opacity-0 group-hover/title:opacity-100 p-1 hover:bg-white/10 rounded transition-all"
-                                          >
-                                            <Edit2 size={12} className="text-gray-400 hover:text-cyan-400" />
-                                          </button>
-                                        )}
-                                      </div>
-                                      {media.audio_prompt && (
-                                        <div className="text-xs text-gray-500 truncate mb-1">{media.audio_prompt}</div>
-                                      )}
-                                      <div className="flex items-center gap-3 text-xs text-gray-600">
-                                        <div className="flex items-center gap-1">
-                                          <Play size={10} />
-                                          <span>{media.plays || 0}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <Heart size={10} />
-                                          <span>{media.likes || 0}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* More Options Icon */}
-                                <button className="p-2 hover:bg-white/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
-                                  <MoreVertical size={16} className="text-gray-400" />
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* ============ STATION STATS - Bottom Section (Own Profile Only) ============ */}
-                {isOwnProfile && (
-                  <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { label: 'Tracks', value: trackCount, color: 'cyan', icon: Music },
-                      { label: 'Total Plays', value: profile?.totalPlays || 0, color: 'purple', icon: Play },
-                      { label: 'Live Listeners', value: liveListeners, color: 'pink', icon: Users },
-                      { label: 'Status', value: isLive ? 'ON AIR' : 'OFFLINE', color: 'red', icon: RadioIcon }
-                    ].map((stat) => (
-                      <div
-                        key={stat.label}
-                        className="relative group bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl border border-white/10 rounded-2xl p-5 text-center overflow-hidden hover:scale-105 transition-transform"
-                      >
-                        <div className={`absolute inset-0 bg-gradient-to-br from-${stat.color}-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`}></div>
-                        <div className="relative">
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br from-${stat.color}-500/20 to-${stat.color}-600/20 border border-${stat.color}-500/30 flex items-center justify-center mx-auto mb-3`}>
-                            <stat.icon size={20} className={`text-${stat.color}-400`} />
-                          </div>
-                          <div className={`text-2xl md:text-3xl font-black text-${stat.color}-400 mb-1`}>
-                            {stat.value}
-                          </div>
-                          <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">
-                            {stat.label}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-              </div>
-            </div>
-          )}
-      </main>
-
-      {/* Bottom-Docked Badge with Username and Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 p-2 md:p-4 z-40">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full p-2 md:p-3 shadow-2xl">
-            <div className="flex items-center justify-between px-2 md:px-4">
-              {/* Left: Profile Picture + Username + Upload (if own) */}
-              <div className="flex items-center gap-1.5 md:gap-3 min-w-0 flex-1">
-                {/* Profile Picture */}
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 flex-shrink-0 border-2 border-white/30">
-                  {profile?.avatar ? (
-                    <img 
-                      src={profile.avatar} 
-                      alt={profile.username} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User size={16} className="text-white w-full h-full p-1.5" />
-                  )}
-                </div>
-                
-                <span className="text-xs md:text-sm font-black text-white truncate">
-                  @{profile?.username || 'Loading...'}
-                </span>
-                
-                {/* Upload Icon (Only for own profile) */}
-                {isOwnProfile && (
-                  <>
-                    <div className="hidden md:block w-px h-4 bg-white/20"></div>
-                    <button 
-                      onClick={() => setShowUploadModal(true)}
-                      className="p-1.5 md:p-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 rounded-full transition-all shadow-lg hover:scale-110 flex-shrink-0"
-                      title="Upload Content"
-                    >
-                      <Upload size={12} className="text-white md:w-[14px] md:h-[14px]" />
-                    </button>
-                  </>
-                )}
-              </div>
-              
-              {/* Right: Stats */}
-              <div className="flex items-center gap-2 md:gap-6 flex-shrink-0">
-                {/* Tracks Count */}
-                <div className="flex flex-col md:flex-row items-center md:gap-2">
-                  <span className="text-xs md:text-sm font-black text-white leading-none">{profile?.songCount || 0}</span>
-                  <span className="text-[9px] md:text-xs text-gray-400 leading-none">Tracks</span>
-                </div>
-                
-                {/* Divider */}
-                <div className="w-px h-4 md:h-4 bg-white/20"></div>
-                
-                {/* Plays Count */}
-                <div className="flex flex-col md:flex-row items-center md:gap-2">
-                  <span className="text-xs md:text-sm font-black text-white leading-none">{profile?.totalPlays || 0}</span>
-                  <span className="text-[9px] md:text-xs text-gray-400 leading-none">Plays</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Publish Release Modal - Lazy Loaded */}
-      <Suspense fallback={null}>
-        {showPublishModal && (
-          <CombineMediaModal
-            isOpen={showPublishModal}
-            onClose={() => {
-              setShowPublishModal(false)
-              // Refresh profile data
-            }}
-          />
-        )}
-      </Suspense>
+      {/* Main Content */}
+      {activeView === 'profile' ? (
+        <div className="px-8 pb-32">
+          {/* View Toggle */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Releases</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-cyan-500 text-black' : 'bg-white/10'}`}
+              >
+                <Grid size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded ${viewMode === 'list' ? 'bg-cyan-500 text-black' : 'bg-white/10'}`}
+              >
+                <ListIcon size={20} />
+              </button>
+            </div>
+          </div>
 
-      {/* Upload Content Modal - Lazy Loaded */}
-      <Suspense fallback={null}>
-        {showUploadModal && (
-          <ProfileUploadModal
-            isOpen={showUploadModal}
-            onClose={() => setShowUploadModal(false)}
-            onUploadComplete={() => {
-              fetchProfileData()
-            }}
-          />
-        )}
-      </Suspense>
+          {/* Track Grid/List */}
+          {tracks.length === 0 ? (
+            <div className="text-center py-20">
+              <Music size={64} className="mx-auto text-gray-600 mb-4" />
+              <p className="text-gray-400">No tracks yet</p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {tracks.map((track) => (
+                <div
+                  key={track.id}
+                  className="group relative bg-white/5 rounded-lg overflow-hidden hover:bg-white/10 transition-all cursor-pointer"
+                  onClick={() => handlePlayTrack(track)}
+                >
+                  <div className="relative aspect-square">
+                    <Image
+                      src={track.image_url}
+                      alt={track.title}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      {currentMedia?.id === track.id && isPlaying ? (
+                        <Pause size={48} className="text-white" />
+                      ) : (
+                        <Play size={48} className="text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-bold text-sm truncate">{track.title}</h3>
+                    <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
+                      <span>{track.plays} plays</span>
+                      <span>{track.likes} likes</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {tracks.map((track, index) => (
+                <div
+                  key={track.id}
+                  className="flex items-center gap-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer group"
+                  onClick={() => handlePlayTrack(track)}
+                >
+                  <div className="text-gray-400 w-8">{index + 1}</div>
+                  <div className="relative w-12 h-12 flex-shrink-0">
+                    <Image
+                      src={track.image_url}
+                      alt={track.title}
+                      fill
+                      className="object-cover rounded"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold">{track.title}</h3>
+                    <p className="text-sm text-gray-400">{track.genre}</p>
+                  </div>
+                  <div className="text-sm text-gray-400">{Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}</div>
+                  <div className="text-sm text-gray-400">{track.plays} plays</div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handlePlayTrack(track)
+                    }}
+                    className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    {currentMedia?.id === track.id && isPlaying ? (
+                      <Pause size={16} className="text-black" />
+                    ) : (
+                      <Play size={16} className="text-black ml-0.5" />
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Station View */
+        <div className="px-8 pb-32">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Video Call Area */}
+            <div className="lg:col-span-2">
+              <div className="bg-gradient-to-br from-cyan-900/20 to-black rounded-xl overflow-hidden aspect-video flex items-center justify-center border border-cyan-500/20">
+                {isLive ? (
+                  <div className="relative w-full h-full">
+                    <Video size={64} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-600" />
+                    <div className="absolute top-4 left-4 px-3 py-1 bg-red-500 rounded-full text-xs font-bold flex items-center gap-2">
+                      <Circle size={8} className="fill-current animate-pulse" />
+                      LIVE
+                    </div>
+                    <div className="absolute top-4 right-4 px-3 py-1 bg-black/60 backdrop-blur rounded-full text-xs">
+                      {viewerCount} viewers
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <Video size={64} className="mx-auto text-gray-600 mb-4" />
+                    <p className="text-gray-400">Stream offline</p>
+                    <button className="mt-4 px-6 py-2 bg-red-500 rounded-lg font-bold hover:bg-red-400 transition-all">
+                      <Mic size={16} className="inline mr-2" />
+                      Go Live
+                    </button>
+                  </div>
+                )}
+              </div>
 
-      {/* Banner Upload Modal - Lazy Loaded */}
-      <Suspense fallback={null}>
-        {showBannerModal && (
-          <BannerUploadModal
-            isOpen={showBannerModal}
-            onClose={() => setShowBannerModal(false)}
-            onSuccess={() => {
-              fetchProfileData()
-            }}
-          />
-        )}
-      </Suspense>
+              {/* Now Playing */}
+              {currentMedia && (
+                <div className="mt-6 p-4 bg-white/5 rounded-lg flex items-center gap-4">
+                  <div className="relative w-16 h-16 flex-shrink-0">
+                    <Image
+                      src={currentMedia.image_url || '/default-cover.jpg'}
+                      alt="Now Playing"
+                      fill
+                      className="object-cover rounded"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold">Now Playing</h3>
+                    <p className="text-sm text-gray-400">{currentMedia.title}</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-      {/* Create Post Modal - Lazy Loaded */}
-      <Suspense fallback={null}>
-        <CreatePostModal
-          isOpen={showCreatePostModal}
-          onClose={() => setShowCreatePostModal(false)}
-          userSongs={profile?.combinedMedia.filter(m => m.audio_url).map(m => ({
-            id: m.id,
-            title: m.title,
-            image_url: m.image_url || '/radio-logo.svg',
-            audio_url: m.audio_url || ''
-          })) || []}
-          onPostCreated={() => {
-            fetchPosts()
-          }}
-        />
-      </Suspense>
-
-      {/* Floating Navigation Button - Desktop hidden on profile */}
-      <FloatingNavButton hideOnDesktop={true} />
-
-      {/* Queue Toast Notification */}
-      {queueToast && (
-        <div className="fixed bottom-24 right-6 z-50 bg-cyan-500/90 backdrop-blur-md text-white px-4 py-3 rounded-lg shadow-xl shadow-cyan-500/30 animate-fade-in max-w-xs">
-          <p className="text-sm font-medium">{queueToast}</p>
+            {/* Live Chat */}
+            <div className="bg-black/60 backdrop-blur-md border border-cyan-500/20 rounded-xl overflow-hidden flex flex-col h-[600px]">
+              <div className="p-4 border-b border-white/10">
+                <h3 className="font-bold">Live Chat</h3>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {chatMessages.length === 0 ? (
+                  <p className="text-center text-gray-500 text-sm">No messages yet</p>
+                ) : (
+                  chatMessages.map((msg) => (
+                    <div key={msg.id} className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 flex-shrink-0" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm">{msg.username}</span>
+                          <span className="text-xs text-gray-500">{msg.timestamp.toLocaleTimeString()}</span>
+                        </div>
+                        <p className="text-sm text-gray-300">{msg.message}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="p-4 border-t border-white/10">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Send a message..."
+                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center hover:bg-cyan-400 transition-all"
+                  >
+                    <Send size={16} className="text-black" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
