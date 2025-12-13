@@ -2408,10 +2408,7 @@ export default function MultiTrackStudioV4() {
               </button>
               <button
                 onClick={() => {
-                  setBpm(tempBpm);
-                  if (daw) {
-                    daw.bpm = tempBpm;
-                  }
+                  updateBpm(tempBpm);
                   setShowBpmModal(false);
                 }}
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all font-bold shadow-lg shadow-cyan-500/30"
