@@ -630,3 +630,45 @@ input[placeholder*="Video"]:focus {
   animation: gradient 8s ease infinite;
 }
 
+/* Cyan Slider Styling */
+.slider-cyan::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22d3ee, #06b6d4);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+  transition: all 150ms ease;
+}
+
+.slider-cyan::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.8);
+}
+
+.slider-cyan::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 1);
+}
+
+.slider-cyan::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22d3ee, #06b6d4);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+  transition: all 150ms ease;
+  border: none;
+}
+
+.slider-cyan::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.8);
+}
+
+.slider-cyan::-moz-range-thumb:active {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 1);
+}

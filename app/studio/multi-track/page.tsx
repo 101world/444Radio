@@ -158,6 +158,10 @@ export default function MultiTrackStudioV4() {
   const [projectName, setProjectName] = useState('');
   const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav');
   const [exportQuality, setExportQuality] = useState('44100');
+  const [showBpmModal, setShowBpmModal] = useState(false);
+  const [tempBpm, setTempBpm] = useState(120);
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
+  const [metronomeVolume, setMetronomeVolume] = useState(0.5);
   const [trackHeights, setTrackHeights] = useState<Record<string, number>>({});
   const [resizingTrack, setResizingTrack] = useState<{id: string, startY: number, startHeight: number} | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -1165,10 +1169,15 @@ export default function MultiTrackStudioV4() {
             🔁 {loopEnabled ? 'ON' : 'OFF'}
           </button>
           <button
-            className="px-3 h-8 rounded-lg transition-all border text-xs font-bold bg-[#1a1a1a] text-gray-600 border-gray-800 opacity-50 cursor-not-allowed"
-            disabled
+            onClick={() => setMetronomeEnabled(!metronomeEnabled)}
+            className={`px-3 h-8 rounded-lg transition-all border text-xs font-bold ${
+              metronomeEnabled 
+                ? 'bg-cyan-500/30 text-cyan-300 border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
+                : 'bg-[#1a1a1a] text-gray-500 border-gray-700 hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30'
+            }`}
+            title="Metronome"
           >
-            🎯 Click
+            🎯 {metronomeEnabled ? 'ON' : 'OFF'}
           </button>
         </div>
 
@@ -1179,6 +1188,10 @@ export default function MultiTrackStudioV4() {
           <div className="text-sm font-mono text-cyan-400 font-bold tracking-wider tabular-nums">{formatTime(playhead)}</div>
           <div className="w-px h-5 bg-cyan-500/30" />
           <button
+            onClick={() => {
+              setTempBpm(bpm);
+              setShowBpmModal(true);
+            }}
             className="flex items-center gap-1.5 hover:bg-white/5 px-2 py-1 rounded transition-all"
             title="Click to adjust BPM"
           >
@@ -2302,6 +2315,109 @@ export default function MultiTrackStudioV4() {
             <div className="flex justify-between">
               <span>Total Clips</span>
               <span className="text-white font-mono">{tracks.reduce((sum, t) => sum + t.clips.length, 0)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BPM Modal */}
+      {showBpmModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] border border-cyan-500/30 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-cyan-500/20">
+            <h3 className="text-2xl font-bold mb-6 text-cyan-400">Tempo Settings</h3>
+            
+            {/* BPM Slider */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-sm text-gray-400">BPM</label>
+                <span className="text-3xl font-bold text-cyan-400 tabular-nums">{tempBpm}</span>
+              </div>
+              <input
+                type="range"
+                min="40"
+                max="240"
+                value={tempBpm}
+                onChange={(e) => setTempBpm(parseInt(e.target.value))}
+                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider-cyan"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>40</span>
+                <span>140</span>
+                <span>240</span>
+              </div>
+            </div>
+
+            {/* Tempo Presets */}
+            <div className="mb-6">
+              <label className="text-sm text-gray-400 mb-2 block">Quick Presets</label>
+              <div className="grid grid-cols-5 gap-2">
+                {[60, 90, 120, 140, 160].map(preset => (
+                  <button
+                    key={preset}
+                    onClick={() => setTempBpm(preset)}
+                    className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                      tempBpm === preset
+                        ? 'bg-cyan-500 text-black'
+                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-cyan-400 border border-white/10'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Metronome Settings */}
+            <div className="mb-6 p-4 bg-black/40 rounded-lg border border-white/10">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-semibold text-gray-300">Metronome</label>
+                <button
+                  onClick={() => setMetronomeEnabled(!metronomeEnabled)}
+                  className={`px-4 py-1 rounded-lg text-xs font-bold transition-all ${
+                    metronomeEnabled
+                      ? 'bg-cyan-500 text-black'
+                      : 'bg-white/10 text-gray-400'
+                  }`}
+                >
+                  {metronomeEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400">Volume</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={metronomeVolume}
+                  onChange={(e) => setMetronomeVolume(parseFloat(e.target.value))}
+                  disabled={!metronomeEnabled}
+                  className="flex-1 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer slider-cyan disabled:opacity-30"
+                />
+                <span className="text-xs text-cyan-400 font-mono w-8">{Math.round(metronomeVolume * 100)}%</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBpmModal(false)}
+                className="flex-1 px-6 py-3 bg-white/5 border border-white/10 text-gray-300 rounded-lg hover:bg-white/10 transition-all font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setBpm(tempBpm);
+                  if (daw) {
+                    daw.bpm = tempBpm;
+                  }
+                  setShowBpmModal(false);
+                }}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all font-bold shadow-lg shadow-cyan-500/30"
+              >
+                Apply
+              </button>
             </div>
           </div>
         </div>
