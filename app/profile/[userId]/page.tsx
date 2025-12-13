@@ -9,7 +9,7 @@ import { use } from 'react'
 import FloatingMenu from '../../components/FloatingMenu'
 import FloatingNavButton from '../../components/FloatingNavButton'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
-import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus, User } from 'lucide-react'
+import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus, User, Smile, ThumbsUp, Shuffle, Repeat } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import LikeButton from '../../components/LikeButton'
 
@@ -164,6 +164,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [commentInput, setCommentInput] = useState<{[key: string]: string}>({})
   const [isMobile, setIsMobile] = useState(false)
   const [queueToast, setQueueToast] = useState<string | null>(null)
+  // Task 17: Chat Features
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [messageReactions, setMessageReactions] = useState<{[key: string]: string[]}>({})
+  // Task 18: Queue Management
+  const [queueShuffle, setQueueShuffle] = useState(false)
+  const [queueRepeat, setQueueRepeat] = useState(false)
+  // Task 19: Broadcasting Features
+  const [streamQuality, setStreamQuality] = useState<'low' | 'medium' | 'high'>('high')
 
   // Detect mobile device
   useEffect(() => {
@@ -2208,9 +2216,38 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </div>
                     </div>
 
-                    {/* Right: Broadcast Controls (Own Profile Only) */}
+                    {/* Right: Broadcast Controls (Own Profile Only) with Quality Selector (Task 19) */}
                     {isOwnProfile && (
                       <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap">
+                        {/* Stream Quality Selector */}
+                        {isLive && (
+                          <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-xl border border-white/10">
+                            {(['low', 'medium', 'high'] as const).map((quality) => (
+                              <button
+                                key={quality}
+                                onClick={() => setStreamQuality(quality)}
+                                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                                  streamQuality === quality
+                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title={`${quality === 'low' ? '360p' : quality === 'medium' ? '720p' : '1080p'}`}
+                              >
+                                {quality.toUpperCase()}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Viewer Count Display */}
+                        {isLive && (
+                          <div className="flex items-center gap-2 px-4 py-3 bg-white/5 rounded-xl border border-white/10">
+                            <Users size={16} className="text-cyan-400" />
+                            <span className="text-white font-bold text-sm">{liveListeners}</span>
+                            <span className="text-gray-400 text-xs">watching</span>
+                          </div>
+                        )}
+                        
                         {/* Video Toggle */}
                         {isLive && (
                           <button
@@ -2252,7 +2289,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     )}
                   </div>
 
-                  {/* ============ LIVE VIDEO PLAYER ============ */}
+                  {/* ============ LIVE VIDEO PLAYER with Enhanced Controls (Task 16, 20) ============ */}
                   {isLive && showVideo && (
                     <div className="mt-6 pt-6 border-t border-white/10">
                       <div className="relative aspect-video bg-gradient-to-br from-black to-gray-900 rounded-2xl overflow-hidden shadow-2xl border-2 border-red-500/30 group/video">
@@ -2264,10 +2301,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           className="w-full h-full object-cover"
                         />
                         {/* Video Overlay Badges */}
-                        <div className="absolute top-4 left-4 flex items-center gap-3">
-                          <div className="bg-gradient-to-r from-red-600 to-pink-600 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2 shadow-xl border border-white/20">
+                        <div className="absolute top-4 left-4 flex items-center gap-3 flex-wrap">
+                          <div className="bg-gradient-to-r from-red-600 to-pink-600 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2 shadow-xl border border-white/20 animate-pulse">
                             <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></div>
                             <span className="text-white font-black text-xs uppercase tracking-wide">Live Video</span>
+                          </div>
+                          {/* Stream Quality Badge */}
+                          <div className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                            <span className="text-green-400 font-bold text-xs">
+                              {streamQuality === 'low' ? '360p' : streamQuality === 'medium' ? '720p' : '1080p HD'}
+                            </span>
                           </div>
                         </div>
                         {!isOwnProfile && (
@@ -2278,9 +2321,17 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                             </span>
                           </div>
                         )}
-                        {/* Video Quality Indicator */}
-                        <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-                          <span className="text-green-400 font-bold text-xs">HD</span>
+                        {/* Responsive Controls - Mobile Friendly (Task 20) */}
+                        <div className="absolute bottom-4 left-4 flex items-center gap-2 opacity-0 group-hover/video:opacity-100 transition-opacity md:opacity-100">
+                          <button
+                            className="p-2 md:p-3 bg-black/80 hover:bg-black rounded-lg border border-white/20 hover:border-cyan-500/50 transition-all touch-manipulation"
+                            onClick={() => {
+                              const video = isOwnProfile ? videoRef.current : broadcasterVideoRef.current
+                              if (video) video.paused ? video.play() : video.pause()
+                            }}
+                          >
+                            {isPlaying ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -2359,8 +2410,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   )}
                 </div>
 
-                {/* ============ MAIN CONTENT - CHAT & TRACK QUEUE (2-Column Grid) ============ */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* ============ MAIN CONTENT - CHAT & TRACK QUEUE (2-Column Grid, Mobile-Responsive Task 20) ============ */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                   
                   {/* ============ LEFT: LIVE CHAT ============ */}
                   <div className="relative bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
@@ -2382,10 +2433,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       </div>
                     </div>
 
-                    {/* Chat Messages Area */}
+                    {/* Chat Messages Area with modern scrollbar (Task 16) */}
                     <div 
                       ref={chatContainerRef}
-                      className="h-[450px] md:h-[550px] overflow-y-auto p-4 md:p-5 space-y-3 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30"
+                      className="h-[450px] md:h-[550px] overflow-y-auto p-4 md:p-5 space-y-3 scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-white/5 hover:scrollbar-thumb-cyan-400 transition-colors"
+                      style={{
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'rgba(6, 182, 212, 0.5) rgba(255, 255, 255, 0.05)'
+                      }}
                     >
                       {!isLive ? (
                         <div className="flex items-center justify-center h-full">
@@ -2458,10 +2513,48 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       )}
                     </div>
 
-                    {/* Chat Input */}
+                    {/* Enhanced Chat Input with Emoji Picker (Task 17) */}
                     {isLive && (
                       <div className="border-t border-white/10 p-4 md:p-5 bg-black/20">
-                        <div className="flex gap-3">
+                        {/* Emoji Picker Popup */}
+                        {showEmojiPicker && (
+                          <div className="absolute bottom-24 left-4 right-4 md:left-auto md:right-auto md:w-80 bg-gradient-to-br from-gray-900 to-black border-2 border-cyan-500/30 rounded-2xl shadow-2xl p-4 z-50 backdrop-blur-xl">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-white font-bold text-sm">Emoji</h4>
+                              <button
+                                onClick={() => setShowEmojiPicker(false)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-8 gap-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent">
+                              {['😀', '😂', '😍', '🥰', '😎', '🤩', '🥳', '😇', '😊', '😋', '🎵', '🎶', '🎤', '🎧', '🎸', '🎹', '🎺', '🎷', '🔥', '💯', '❤️', '💕', '💖', '💙', '💜', '🧡', '💚', '💛', '👍', '👏', '🙌', '👋', '✨', '⭐', '🌟', '💫'].map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  onClick={() => {
+                                    setChatInput(prev => prev + emoji)
+                                    setShowEmojiPicker(false)
+                                  }}
+                                  className="text-2xl hover:scale-125 transition-transform active:scale-100 p-1 hover:bg-white/10 rounded-lg"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-2 items-center">
+                          {/* Emoji Picker Button */}
+                          <button
+                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                            className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/50 transition-all group"
+                            title="Add emoji"
+                          >
+                            <Smile size={20} className="text-gray-400 group-hover:text-cyan-400 transition-colors" />
+                          </button>
+                          
                           <input
                             type="text"
                             value={chatInput}
@@ -2483,11 +2576,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     )}
                   </div>
 
-                  {/* ============ RIGHT: TRACK QUEUE ============ */}
+                  {/* ============ RIGHT: TRACK QUEUE with Enhanced Controls (Task 18) ============ */}
                   <div className="relative bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                    {/* Queue Header */}
+                    {/* Queue Header with Controls */}
                     <div className="relative bg-gradient-to-r from-purple-900/20 via-pink-900/20 to-purple-900/20 px-5 md:px-6 py-4 border-b border-white/10">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
                             <Music size={20} className="text-white" />
@@ -2499,6 +2592,36 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           <span className="text-gray-400 text-xs">tracks</span>
                         </div>
                       </div>
+                      
+                      {/* Queue Controls */}
+                      {trackCount > 0 && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setQueueShuffle(!queueShuffle)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                              queueShuffle
+                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                                : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                            }`}
+                            title="Shuffle queue"
+                          >
+                            <Shuffle size={14} />
+                            Shuffle
+                          </button>
+                          <button
+                            onClick={() => setQueueRepeat(!queueRepeat)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                              queueRepeat
+                                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                                : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                            }`}
+                            title="Repeat queue"
+                          >
+                            <Repeat size={14} />
+                            Repeat
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Track List */}
