@@ -6,6 +6,7 @@ import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
 import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
+import { Toaster } from 'sonner';
 import "./globals.css";
 
 const poppins = Poppins({
@@ -43,6 +44,7 @@ export default function RootLayout({
         <ClerkProvider>
           <AudioPlayerProvider>
             <GenerationQueueProvider>
+              <Toaster position="top-right" richColors closeButton />
               {children}
               <ConditionalGlobalPlayer />
               <GenerationMonitor />
