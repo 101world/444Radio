@@ -931,29 +931,233 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             <>
               {loading ? (
                 <div className="space-y-0">
-                  {/* Banner skeleton */}
-                  <div className="h-64 bg-white/5 animate-pulse"></div>
-                  {/* Horizontal scroll skeleton */}
-                  <div className="px-6 py-6">
-                    <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
-                    <div className="flex gap-2 overflow-x-auto">
-                      {[...Array(10)].map((_, i) => (
-                        <div key={i} className="w-32 h-32 bg-white/5 rounded-lg flex-shrink-0 animate-pulse"></div>
-                      ))}
+                  {/* Enhanced Skeleton Loaders (Task 15: Performance & Loading) */}
+                  {/* Desktop Hero Skeleton */}
+                  <div className="hidden md:block">
+                    {/* Banner skeleton */}
+                    <div className="h-80 bg-gradient-to-br from-white/5 to-white/[0.02] animate-pulse"></div>
+                    {/* Profile Info Skeleton */}
+                    <div className="relative -mt-24 px-8 pb-8">
+                      <div className="flex items-end gap-8">
+                        {/* Avatar skeleton */}
+                        <div className="w-48 h-48 rounded-3xl bg-gradient-to-br from-white/10 to-white/5 animate-pulse"></div>
+                        <div className="flex-1 pb-4 space-y-4">
+                          {/* Username skeleton */}
+                          <div className="h-12 w-64 bg-white/10 rounded-lg animate-pulse"></div>
+                          {/* Bio skeleton */}
+                          <div className="h-6 w-96 bg-white/5 rounded animate-pulse"></div>
+                          {/* Stats skeleton */}
+                          <div className="flex items-center gap-6 mt-4">
+                            {[...Array(4)].map((_, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 animate-pulse"></div>
+                                <div>
+                                  <div className="h-6 w-12 bg-white/10 rounded mb-1 animate-pulse"></div>
+                                  <div className="h-3 w-16 bg-white/5 rounded animate-pulse"></div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  {/* Grid skeleton */}
+                  
+                  {/* Mobile banner skeleton */}
+                  <div className="md:hidden h-64 bg-gradient-to-br from-white/5 to-white/[0.02] animate-pulse"></div>
+                  
+                  {/* Grid skeleton with staggered animation */}
                   <div className="px-6 py-6">
-                    <div className="h-6 w-32 bg-white/5 rounded mb-4 animate-pulse"></div>
-                    <div className="grid grid-cols-4 gap-4">
-                      {[...Array(12)].map((_, i) => (
-                        <div key={i} className="bg-white/5 rounded-lg h-48 animate-pulse"></div>
+                    <div className="h-8 w-40 bg-white/10 rounded-lg mb-6 animate-pulse"></div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {[...Array(8)].map((_, i) => (
+                        <div 
+                          key={i} 
+                          className="bg-gradient-to-br from-white/5 to-transparent rounded-2xl overflow-hidden border border-white/10"
+                          style={{
+                            animationDelay: `${i * 100}ms`,
+                            animation: 'fadeIn 0.6s ease-out forwards'
+                          }}
+                        >
+                          <div className="aspect-square bg-white/5 animate-pulse"></div>
+                          <div className="p-4 space-y-2">
+                            <div className="h-4 bg-white/10 rounded animate-pulse"></div>
+                            <div className="h-3 bg-white/5 rounded w-2/3 animate-pulse"></div>
+                            <div className="flex gap-3 mt-3">
+                              <div className="h-3 w-12 bg-white/5 rounded animate-pulse"></div>
+                              <div className="h-3 w-12 bg-white/5 rounded animate-pulse"></div>
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
                 </div>
               ) : profile?.combinedMedia && profile.combinedMedia.length > 0 ? (
                 <div className="space-y-0">
+                  {/* ========== NEW HERO SECTION (Tasks 11-15) ========== */}
+                  {/* Desktop Hero Section with Enhanced Profile */}
+                  <div className="hidden md:block relative">
+                    {/* Animated Gradient Background */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-blue-900/30 to-black overflow-hidden">
+                      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-5"></div>
+                      <div className="absolute top-0 left-0 right-0 h-full bg-gradient-to-b from-cyan-500/10 via-transparent to-transparent animate-pulse"></div>
+                    </div>
+
+                    {/* Banner Section */}
+                    <div className="relative h-80 overflow-hidden">
+                      {profile.banner_url ? (
+                        <div className="absolute inset-0">
+                          {profile.banner_type === 'video' ? (
+                            <video src={profile.banner_url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                          ) : (
+                            <Image src={profile.banner_url} alt="Profile banner" fill className="object-cover" unoptimized />
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black"></div>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0">
+                          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 via-blue-900/50 to-black"></div>
+                          {/* Animated mesh gradient */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-pink-500/20 animate-gradient bg-[length:200%_200%]"></div>
+                        </div>
+                      )}
+                      {isOwnProfile && (
+                        <button
+                          onClick={() => setShowBannerModal(true)}
+                          className="absolute right-6 bottom-6 px-4 py-2 rounded-xl bg-black/60 backdrop-blur-xl border border-white/20 text-sm font-medium text-white hover:bg-black/80 hover:border-cyan-400/50 transition-all shadow-lg hover:shadow-cyan-500/20"
+                        >
+                          <Upload size={14} className="inline mr-2" />
+                          Edit Banner
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Profile Info Section - Overlapping Banner */}
+                    <div className="relative -mt-24 px-8 pb-8">
+                      <div className="flex items-end gap-8">
+                        {/* Large Profile Picture with Border Effects */}
+                        <div className="relative group/avatar">
+                          <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-75 group-hover/avatar:opacity-100 transition-opacity animate-gradient bg-[length:200%_200%]"></div>
+                          <div className="relative w-48 h-48 rounded-3xl overflow-hidden border-4 border-black shadow-2xl">
+                            {profile.avatar ? (
+                              <Image src={profile.avatar} alt={profile.username} fill className="object-cover" unoptimized />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
+                                <User size={80} className="text-white" />
+                              </div>
+                            )}
+                          </div>
+                          {isOwnProfile && (
+                            <button
+                              onClick={() => setShowUploadModal(true)}
+                              className="absolute bottom-2 right-2 p-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white shadow-lg hover:shadow-cyan-500/50 transition-all"
+                              title="Change Profile Picture"
+                            >
+                              <Upload size={16} />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Profile Info and Stats */}
+                        <div className="flex-1 pb-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              {/* Username with Typography Enhancement */}
+                              <h1 className="text-5xl font-black text-white mb-3 tracking-tight">
+                                {profile.username}
+                              </h1>
+                              
+                              {/* Tagline/Bio */}
+                              {profile.tagline && (
+                                <p className="text-lg text-gray-300 mb-4 max-w-2xl">
+                                  {profile.tagline}
+                                </p>
+                              )}
+                              {profile.bio && !profile.tagline && (
+                                <p className="text-lg text-gray-300 mb-4 max-w-2xl line-clamp-2">
+                                  {profile.bio}
+                                </p>
+                              )}
+
+                              {/* Social Stats with Icons */}
+                              <div className="flex items-center gap-6 mt-4">
+                                <div className="flex items-center gap-2 group/stat cursor-default">
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center border border-cyan-500/30 group-hover/stat:border-cyan-400 transition-colors">
+                                    <Heart size={18} className="text-cyan-400" />
+                                  </div>
+                                  <div>
+                                    <div className="text-2xl font-black text-white">{profile.totalLikes?.toLocaleString() || 0}</div>
+                                    <div className="text-xs text-gray-400 uppercase tracking-wider">Likes</div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 group/stat cursor-default">
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center border border-purple-500/30 group-hover/stat:border-purple-400 transition-colors">
+                                    <Play size={18} className="text-purple-400" />
+                                  </div>
+                                  <div>
+                                    <div className="text-2xl font-black text-white">{profile.totalPlays?.toLocaleString() || 0}</div>
+                                    <div className="text-xs text-gray-400 uppercase tracking-wider">Plays</div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 group/stat cursor-default">
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500/20 to-red-500/20 flex items-center justify-center border border-pink-500/30 group-hover/stat:border-pink-400 transition-colors">
+                                    <Music size={18} className="text-pink-400" />
+                                  </div>
+                                  <div>
+                                    <div className="text-2xl font-black text-white">{profile.combinedMedia?.length || 0}</div>
+                                    <div className="text-xs text-gray-400 uppercase tracking-wider">Tracks</div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 group/stat cursor-default">
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center border border-green-500/30 group-hover/stat:border-green-400 transition-colors">
+                                    <Users size={18} className="text-green-400" />
+                                  </div>
+                                  <div>
+                                    <div className="text-2xl font-black text-white">{profile.followerCount?.toLocaleString() || 0}</div>
+                                    <div className="text-xs text-gray-400 uppercase tracking-wider">Followers</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons (Interactive Elements - Task 14) */}
+                            {!isOwnProfile && (
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => setIsFollowing(!isFollowing)}
+                                  className={`px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${
+                                    isFollowing
+                                      ? 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                                      : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/30'
+                                  }`}
+                                >
+                                  <UserPlus size={18} className="inline mr-2" />
+                                  {isFollowing ? 'Following' : 'Follow'}
+                                </button>
+                                <button
+                                  className="p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all"
+                                  title="Share Profile"
+                                >
+                                  <Share2 size={18} />
+                                </button>
+                                <button
+                                  className="p-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all"
+                                  title="More Options"
+                                >
+                                  <MoreVertical size={18} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Mobile Layout - Original Design */}
                   <div className="md:hidden space-y-0">
                   {/* SECTION 1: TOP BANNER - Banner or Cover Art Carousel */}
@@ -1074,99 +1278,132 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           firstTrack: profile.combinedMedia[0]?.title,
                           viewingUserId: resolvedParams.userId
                         })}
-                        {/* Desktop: 4 Column List View */}
+                        {/* Desktop: Enhanced Grid Layout (Task 12) */}
                         <div className="hidden md:block">
-                          <div className="grid grid-cols-4 gap-x-6 gap-y-1">
-                            {profile.combinedMedia.map((media) => {
+                          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {profile.combinedMedia.map((media, index) => {
                               const isCurrentlyPlaying = playingId === media.id
                               const hasAudio = !!media.audio_url
                               
                               return (
                                 <div 
                                   key={`desktop-${media.id}`} 
-                                  className={`group flex items-center gap-3 p-2 rounded-lg transition-all ${
-                                    hasAudio ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-                                  } ${
-                                    isCurrentlyPlaying 
-                                      ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' 
-                                      : hasAudio ? 'hover:bg-white/5' : ''
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    console.log('[Desktop Click]', media.title, 'ID:', media.id)
-                                    hasAudio && handlePlay(media)
+                                  className="group relative"
+                                  style={{
+                                    animationDelay: `${index * 50}ms`,
+                                    animation: 'fadeIn 0.5s ease-out forwards'
                                   }}
                                 >
-                                  {/* Thumbnail */}
-                                  <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden">
-                                    <img 
-                                      src={media.image_url} 
-                                      alt={media.title}
-                                      className="w-full h-full object-cover"
-                                    />
-                                    {hasAudio && (
-                                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                                          {isCurrentlyPlaying && isPlaying ? (
-                                            <Pause className="text-black" size={12} />
-                                          ) : (
-                                            <Play className="text-black ml-0.5" size={12} />
-                                          )}
+                                  {/* Card Container */}
+                                  <div 
+                                    className={`relative bg-gradient-to-br from-white/5 to-transparent backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10 transition-all duration-300 ${
+                                      hasAudio ? 'cursor-pointer hover:border-cyan-400/50 hover:shadow-xl hover:shadow-cyan-500/20 hover:-translate-y-1' : 'cursor-not-allowed opacity-50'
+                                    } ${
+                                      isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-xl shadow-cyan-500/30' : ''
+                                    }`}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      hasAudio && handlePlay(media)
+                                    }}
+                                  >
+                                    {/* Cover Image */}
+                                    <div className="relative aspect-square overflow-hidden">
+                                      <img 
+                                        src={media.image_url} 
+                                        alt={media.title}
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                        loading="lazy"
+                                      />
+                                      
+                                      {/* Gradient Overlay on Hover */}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                      
+                                      {/* Play Button Overlay (Task 12: hover effects with play preview) */}
+                                      {hasAudio && (
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                          <div className="w-16 h-16 rounded-full bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center shadow-2xl shadow-cyan-500/50 transition-all hover:scale-110">
+                                            {isCurrentlyPlaying && isPlaying ? (
+                                              <Pause className="text-white" size={28} />
+                                            ) : (
+                                              <Play className="text-white ml-1" size={28} />
+                                            )}
+                                          </div>
                                         </div>
+                                      )}
+                                      
+                                      {/* Playing Indicator */}
+                                      {isCurrentlyPlaying && isPlaying && (
+                                        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500 rounded-full shadow-lg">
+                                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                          <span className="text-white text-xs font-bold">Playing</span>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Quick Actions (bottom overlay) */}
+                                      <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        {hasAudio && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              const added = addToQueue({
+                                                id: media.id,
+                                                audioUrl: media.audio_url!,
+                                                title: media.title,
+                                                artist: profile.username,
+                                                imageUrl: media.image_url,
+                                                userId: media.user_id
+                                              })
+                                              if (added) {
+                                                setQueueToast(`Added "${media.title}" to queue`)
+                                              } else {
+                                                setQueueToast(`"${media.title}" already in queue`)
+                                              }
+                                            }}
+                                            className="flex-1 px-3 py-2 rounded-lg bg-black/80 backdrop-blur-sm hover:bg-black border border-white/20 hover:border-cyan-400 text-white text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+                                            title="Add to Queue"
+                                          >
+                                            <Plus size={14} />
+                                            Queue
+                                          </button>
+                                        )}
+                                        <LikeButton
+                                          releaseId={media.id}
+                                          initialLikesCount={media.likes || 0}
+                                          size="sm"
+                                          className="p-2 rounded-lg bg-black/80 backdrop-blur-sm hover:bg-black border border-white/20 hover:border-pink-400"
+                                        />
                                       </div>
-                                    )}
-                                    {isCurrentlyPlaying && isPlaying && (
-                                      <div className="absolute top-1 right-1 w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                                    )}
-                                  </div>
-                                  
-                                  {/* Track Info */}
-                                  <div className="flex-1 min-w-0 relative z-10">
-                                    <h3 className="font-semibold text-white truncate text-sm leading-tight">
-                                      {media.title}
-                                    </h3>
-                                    <div className="flex items-center gap-3 mt-0.5">
-                                      <p className="text-xs text-gray-400 truncate leading-tight">
+                                    </div>
+                                    
+                                    {/* Track Info (Task 12: metadata display) */}
+                                    <div className="p-4">
+                                      <h3 className="font-bold text-white truncate text-base mb-2 group-hover:text-cyan-400 transition-colors">
+                                        {media.title}
+                                      </h3>
+                                      <p className="text-sm text-gray-400 truncate mb-3">
                                         {profile.username}
                                       </p>
-                                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                                        <div className="flex items-center gap-1">
-                                          <Play size={10} />
-                                          <span>{media.plays || 0}</span>
+                                      
+                                      {/* Metadata: Plays, Likes, Duration */}
+                                      <div className="flex items-center justify-between text-xs text-gray-500">
+                                        <div className="flex items-center gap-3">
+                                          <div className="flex items-center gap-1" title="Plays">
+                                            <Play size={12} className="text-purple-400" />
+                                            <span>{media.plays?.toLocaleString() || 0}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1" title="Likes">
+                                            <Heart size={12} className="text-pink-400" />
+                                            <span>{media.likes?.toLocaleString() || 0}</span>
+                                          </div>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                          <Heart size={10} />
-                                          <span>{media.likes || 0}</span>
-                                        </div>
+                                        {media.duration && (
+                                          <span className="text-gray-600" title="Duration">
+                                            {Math.floor(media.duration / 60)}:{String(Math.floor(media.duration % 60)).padStart(2, '0')}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
-
-                                  {/* Add to Queue Button */}
-                                  {hasAudio && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        const added = addToQueue({
-                                          id: media.id,
-                                          audioUrl: media.audio_url!,
-                                          title: media.title,
-                                          artist: profile.username,
-                                          imageUrl: media.image_url,
-                                          userId: media.user_id
-                                        })
-                                        if (added) {
-                                          setQueueToast(`Added "${media.title}" to queue`)
-                                        } else {
-                                          setQueueToast(`"${media.title}" already in queue`)
-                                        }
-                                      }}
-                                      className="p-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 hover:text-cyan-300 transition-all"
-                                      title="Add to Queue"
-                                    >
-                                      <Plus size={14} />
-                                    </button>
-                                  )}
                                 </div>
                               )
                             })}
