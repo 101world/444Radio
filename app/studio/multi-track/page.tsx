@@ -96,12 +96,12 @@ async function renderWaveform(canvas: HTMLCanvasElement, audioBuffer: AudioBuffe
       height: canvas.height,
       backgroundColor: 'transparent',
       waveColor: color,
-      progressColor: color + '80',
+      progressColor: color + 'CC', // More opaque for better visibility
       showRMS: true,
       showPeaks: true
     });
 
-    const samplesPerPixel = Math.ceil(audioBuffer.length / canvas.width);
+    const samplesPerPixel = Math.max(1, Math.ceil(audioBuffer.length / canvas.width));
     renderer.generateWaveformData(audioBuffer, samplesPerPixel);
     renderer.render();
 
@@ -1010,8 +1010,60 @@ export default function MultiTrackStudioV4() {
     return Math.max(0, snappedTime); // Ensure non-negative
   };
 
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-200">
+      {/* Mobile Warning Modal */}
+      {isMobile && (
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-[100] p-6">
+          <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-cyan-500/30 rounded-2xl p-8 max-w-lg shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-300">
+            <div className="text-6xl mb-6 text-center">🖥️</div>
+            <h2 className="text-3xl font-bold text-white mb-4 text-center bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              Desktop Required
+            </h2>
+            <p className="text-gray-300 mb-6 text-center leading-relaxed">
+              The Multi-Track DAW requires a desktop computer for optimal performance. Features like precision editing, multiple tracks, and professional audio processing work best on larger screens.
+            </p>
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-3 text-sm text-gray-400">
+                <span className="text-cyan-400 text-lg">✓</span>
+                <span>Recommended: 1920x1080 or higher resolution</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-400">
+                <span className="text-cyan-400 text-lg">✓</span>
+                <span>Keyboard shortcuts for faster workflow</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-400">
+                <span className="text-cyan-400 text-lg">✓</span>
+                <span>Mouse/trackpad for precise editing</span>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => window.location.href = '/create'}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30"
+              >
+                Try Simple Creator
+              </button>
+              <button
+                onClick={() => setIsMobile(false)}
+                className="flex-1 px-6 py-3 bg-[#1f1f1f] text-gray-300 font-bold rounded-lg hover:bg-[#252525] border-2 border-gray-700 hover:border-cyan-500/50 transition-all"
+              >
+                Continue Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Toolbar */}
       <header className="h-14 bg-[#141414] border-b border-[#1f1f1f] flex items-center px-5 gap-5">
         <div className="flex items-center gap-3">
@@ -1796,8 +1848,8 @@ export default function MultiTrackStudioV4() {
                           key={clip.id}
                           className={`absolute rounded-xl overflow-hidden cursor-move transition-all duration-200 shadow-2xl will-change-transform ${
                             selectedClipId === clip.id 
-                              ? 'ring-4 ring-cyan-400/80 ring-offset-2 ring-offset-[#0a0a0a] scale-[1.03] z-20' 
-                              : 'hover:scale-[1.01] hover:shadow-3xl'
+                              ? 'ring-4 ring-cyan-400/80 ring-offset-2 ring-offset-[#0a0a0a] scale-[1.03] z-20 group' 
+                              : 'hover:scale-[1.01] hover:shadow-3xl group'
                           }`}
                           style={{
                             left: `${clip.startTime * zoom}px`,
@@ -1815,18 +1867,27 @@ export default function MultiTrackStudioV4() {
                           onMouseDown={(e) => handleClipMouseDown(e, track.id, clip.id, clip.startTime)}
                           title="Drag to move • Double-click to rename"
                         >
-                          {/* Clip Canvas for Waveform - Properly Sized */}
+                          {/* Snap Indicator - Shows when dragging near grid line */}
+                          {draggedClip?.clipId === clip.id && snapEnabled && (
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-cyan-500 text-black text-[10px] font-bold rounded whitespace-nowrap shadow-lg shadow-cyan-500/50 z-10 animate-in fade-in duration-100">
+                              🧲 Snap: {formatTime(snapTime(clip.startTime))}
+                            </div>
+                          )}
+                          
+                          {/* Clip Canvas for Waveform - Enhanced Colors */}
                           <canvas
                             ref={(canvas) => {
                               if (canvas && clip.buffer) {
-                                canvas.width = clip.duration * zoom;
+                                canvas.width = Math.max(1, clip.duration * zoom);
                                 canvas.height = 64;
-                                renderWaveform(canvas, clip.buffer, selectedClipId === clip.id ? '#00bcd4' : track.color, clip.id);
+                                // Use track color with better contrast
+                                const waveColor = selectedClipId === clip.id ? '#00bcd4' : track.color;
+                                renderWaveform(canvas, clip.buffer, waveColor, clip.id);
                               }
                             }}
-                            width={clip.duration * zoom}
+                            width={Math.max(1, clip.duration * zoom)}
                             height={64}
-                            className="absolute inset-0 w-full h-full"
+                            className="absolute inset-0 w-full h-full opacity-90 group-hover:opacity-100 transition-opacity"
                             style={{ objectFit: 'fill' }}
                           />
                           
@@ -2216,48 +2277,107 @@ export default function MultiTrackStudioV4() {
       )}
 
       {/* Export Modal */}
+      {/* Professional Export Modal - Enhanced */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowExportModal(false)}>
-          <div className="bg-[#0f0f0f]/95 border border-cyan-500/30 rounded-xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-              <span className="text-2xl">📤</span>
-              <span>Export Project</span>
-            </h2>
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">Audio Format</label>
-                <select 
-                  value={exportFormat}
-                  onChange={(e) => setExportFormat(e.target.value as 'wav' | 'mp3')}
-                  className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                >
-                  <option value="wav">WAV - Lossless</option>
-                  <option value="mp3">MP3 - Compressed</option>
-                </select>
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-200" onClick={() => setShowExportModal(false)}>
+          <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border-2 border-cyan-500/30 rounded-2xl p-8 max-w-lg w-full shadow-2xl shadow-cyan-500/20 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center text-2xl">
+                📤
               </div>
               <div>
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">Sample Rate</label>
-                <select 
-                  value={exportQuality}
-                  onChange={(e) => setExportQuality(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#1f1f1f] border border-cyan-500/30 text-white rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-                >
-                  <option value="44100">44.1 kHz (CD Quality)</option>
-                  <option value="48000">48 kHz (Professional)</option>
-                  <option value="96000">96 kHz (Hi-Res)</option>
-                </select>
+                <h2 className="text-2xl font-bold text-white">Export Project</h2>
+                <p className="text-sm text-gray-400">Download your masterpiece</p>
               </div>
             </div>
+            
+            <div className="space-y-5 mb-8">
+              {/* Format Selection */}
+              <div>
+                <label className="text-sm font-bold text-gray-300 mb-3 block uppercase tracking-wide">Audio Format</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setExportFormat('wav')}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      exportFormat === 'wav'
+                        ? 'bg-cyan-500/20 border-cyan-500 shadow-lg shadow-cyan-500/20'
+                        : 'bg-[#1f1f1f] border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="text-xl mb-1">🎵</div>
+                    <div className="font-bold text-white">WAV</div>
+                    <div className="text-xs text-gray-400">Lossless</div>
+                  </button>
+                  <button
+                    onClick={() => setExportFormat('mp3')}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      exportFormat === 'mp3'
+                        ? 'bg-cyan-500/20 border-cyan-500 shadow-lg shadow-cyan-500/20'
+                        : 'bg-[#1f1f1f] border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="text-xl mb-1">🎶</div>
+                    <div className="font-bold text-white">MP3</div>
+                    <div className="text-xs text-gray-400">Compressed</div>
+                  </button>
+                </div>
+              </div>
+              
+              {/* Quality Selection */}
+              <div>
+                <label className="text-sm font-bold text-gray-300 mb-3 block uppercase tracking-wide">Sample Rate</label>
+                <div className="space-y-2">
+                  {[
+                    { value: '44100', label: '44.1 kHz', desc: 'CD Quality', icon: '💿' },
+                    { value: '48000', label: '48 kHz', desc: 'Professional', icon: '🎚️' },
+                    { value: '96000', label: '96 kHz', desc: 'Hi-Resolution', icon: '💎' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => setExportQuality(option.value)}
+                      className={`w-full p-3 rounded-lg border-2 transition-all flex items-center gap-3 ${
+                        exportQuality === option.value
+                          ? 'bg-cyan-500/20 border-cyan-500 shadow-lg shadow-cyan-500/20'
+                          : 'bg-[#1f1f1f] border-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      <span className="text-xl">{option.icon}</span>
+                      <div className="flex-1 text-left">
+                        <div className="font-bold text-white">{option.label}</div>
+                        <div className="text-xs text-gray-400">{option.desc}</div>
+                      </div>
+                      {exportQuality === option.value && <span className="text-cyan-400">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Export Info */}
+              <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-cyan-400 mb-2">
+                  <span>ℹ️</span>
+                  <span className="font-bold">Export Details</span>
+                </div>
+                <div className="text-xs text-gray-300 space-y-1">
+                  <div>• Format: {exportFormat.toUpperCase()}</div>
+                  <div>• Quality: {exportQuality === '44100' ? 'CD' : exportQuality === '48000' ? 'Pro' : 'Hi-Res'} ({exportQuality} Hz)</div>
+                  <div>• Tracks: {tracks.length} active</div>
+                </div>
+              </div>
+            </div>
+            
             <div className="flex gap-3">
               <button 
                 onClick={() => {
                   handleExport(exportFormat, exportQuality);
                 }} 
-                className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+                className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black font-bold rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-105"
               >
-                📥 Export
+                📥 Export Now
               </button>
-              <button onClick={() => setShowExportModal(false)} className="flex-1 py-3 bg-[#1f1f1f] text-gray-300 border border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">Cancel</button>
+              <button onClick={() => setShowExportModal(false)} className="px-6 py-3 bg-[#1f1f1f] text-gray-300 border-2 border-gray-700 rounded-lg hover:bg-[#252525] hover:border-gray-600 transition-all font-semibold">
+                Cancel
+              </button>
             </div>
           </div>
         </div>
