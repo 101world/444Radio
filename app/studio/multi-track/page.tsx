@@ -1064,8 +1064,8 @@ export default function MultiTrackStudioV4() {
         </div>
       )}
 
-      {/* Top Toolbar */}
-      <header className="h-14 bg-gradient-to-r from-[#0f0f0f] via-[#141414] to-[#0f0f0f] border-b border-cyan-500/20 flex items-center px-5 gap-5 shadow-xl shadow-black/50">
+      {/* Top Toolbar - Fixed with better spacing and wrapping */}
+      <header className="min-h-14 max-h-16 bg-gradient-to-r from-[#0f0f0f] via-[#141414] to-[#0f0f0f] border-b border-cyan-500/20 flex items-center px-3 gap-2 shadow-xl shadow-black/50 overflow-x-auto scrollbar-thin">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center text-lg">
             🎵
@@ -1076,10 +1076,10 @@ export default function MultiTrackStudioV4() {
           </div>
         </div>
 
-        <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
+        <div className="w-px h-8 bg-[#2a2a2a] mx-1 flex-shrink-0" />
 
         {/* Professional Transport Controls */}
-        <div className="flex gap-3 items-center px-3 py-1 bg-[#0f0f0f]/80 rounded-xl border border-gray-800">
+        <div className="flex gap-2 items-center px-2 py-1 bg-[#0f0f0f]/80 rounded-xl border border-gray-800 flex-shrink-0">
           {/* Undo/Redo */}
           <div className="flex gap-1">
             <button
@@ -1160,10 +1160,10 @@ export default function MultiTrackStudioV4() {
           </div>
         </div>
 
-        <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
+        <div className="w-px h-8 bg-[#2a2a2a] mx-1 flex-shrink-0" />
 
         {/* Enhanced Playhead Display with BPM */}
-        <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-xl border border-cyan-500/30 shadow-lg shadow-cyan-500/10">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-xl border border-cyan-500/30 shadow-lg shadow-cyan-500/10 flex-shrink-0">
           <div className="text-base font-mono text-cyan-400 font-bold tracking-wider">{formatTime(playhead)}</div>
           <div className="w-px h-5 bg-gradient-to-b from-cyan-500/50 via-cyan-500 to-cyan-500/50" />
           <div className="flex items-center gap-2">
@@ -1172,10 +1172,10 @@ export default function MultiTrackStudioV4() {
           </div>
         </div>
 
-        <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
+        <div className="w-px h-8 bg-[#2a2a2a] mx-1 flex-shrink-0" />
 
         {/* Professional Zoom Controls */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-xl border border-cyan-500/20 shadow-lg">
+        <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-xl border border-cyan-500/20 shadow-lg max-w-md flex-shrink-0">
           <span className="text-[10px] text-gray-500 font-semibold">ZOOM</span>
           <button
             onClick={() => setZoom(Math.max(5, zoom - 10))}
@@ -1269,10 +1269,10 @@ export default function MultiTrackStudioV4() {
           <span className="text-cyan-400 font-mono text-xs w-10 text-right font-bold">{zoom}px</span>
         </div>
 
-        <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
+        <div className="w-px h-8 bg-[#2a2a2a] mx-1 flex-shrink-0" />
 
         {/* Snap Grid Control */}
-        <div className="flex gap-2 px-3 py-2 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-xl border border-cyan-500/20 shadow-lg">
+        <div className="flex gap-1.5 px-2 py-1.5 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-xl border border-cyan-500/20 shadow-lg flex-shrink-0">
           <span className="text-[10px] text-gray-500 font-semibold self-center">GRID</span>
           <button
             onClick={() => setSnapEnabled(!snapEnabled)}
@@ -1290,33 +1290,33 @@ export default function MultiTrackStudioV4() {
         <div className="flex-1" />
 
         {/* Project Controls */}
-        <div className="flex gap-2 mr-2">
+        <div className="flex gap-1.5 flex-shrink-0">
           <button
             onClick={() => setShowSaveModal(true)}
-            className="px-4 h-10 rounded-lg bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border-2 border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-sm"
+            className="px-3 h-9 rounded-lg bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-xs whitespace-nowrap"
             title="Save project (Cmd+S)"
           >
             💾 Save
           </button>
           <button
             onClick={() => setShowLoadModal(true)}
-            className="px-4 h-10 rounded-lg bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border-2 border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-sm"
+            className="px-3 h-9 rounded-lg bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-xs whitespace-nowrap"
           >
             📂 Load
           </button>
           <button
             onClick={() => setShowExportModal(true)}
-            className="px-4 h-10 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-black hover:from-cyan-400 hover:to-cyan-500 transition-all font-bold text-sm shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+            className="px-3 h-9 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-black hover:from-cyan-400 hover:to-cyan-500 transition-all font-bold text-xs shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 whitespace-nowrap"
           >
             📤 Export
           </button>
         </div>
 
         {/* View Toggles */}
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 flex-shrink-0">
           <button
             onClick={() => setShowMixer(!showMixer)}
-            className={`px-4 h-10 rounded-lg transition-all font-semibold text-sm border-2 ${
+            className={`px-3 h-9 rounded-lg transition-all font-semibold text-xs border whitespace-nowrap ${
               showMixer
                 ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black shadow-lg shadow-cyan-500/30 border-cyan-400'
                 : 'bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border-gray-700 hover:border-cyan-500/50'
@@ -1326,7 +1326,7 @@ export default function MultiTrackStudioV4() {
           </button>
           <button
             onClick={() => setShowEffects(!showEffects)}
-            className={`px-4 h-10 rounded-lg transition-all font-semibold text-sm border-2 opacity-50 cursor-not-allowed bg-[#1f1f1f] text-gray-600 border-gray-800`}
+            className={`px-3 h-9 rounded-lg transition-all font-semibold text-xs border whitespace-nowrap opacity-50 cursor-not-allowed bg-[#1f1f1f] text-gray-600 border-gray-800`}
             disabled
             title="Coming soon"
           >
