@@ -1092,14 +1092,14 @@ export default function MultiTrackStudioV4() {
                   ? 'bg-gradient-to-r from-purple-500/30 to-purple-600/30 text-purple-300 border-purple-500/50 shadow-lg shadow-purple-500/20' 
                   : 'bg-[#1f1f1f] text-gray-500 border-gray-700 hover:bg-[#252525] hover:text-purple-400 hover:border-purple-500/30'
               }`}
-              title=\"Loop region\"
+              title="Loop region"
             >
               🔁 {loopEnabled ? 'ON' : 'OFF'}
             </button>
             <button
-              className=\"px-3 h-8 rounded-lg transition-all border text-xs font-bold bg-[#1f1f1f] text-gray-600 border-gray-800 opacity-50 cursor-not-allowed\"
+              className="px-3 h-8 rounded-lg transition-all border text-xs font-bold bg-[#1f1f1f] text-gray-600 border-gray-800 opacity-50 cursor-not-allowed"
               disabled
-              title=\"Metronome (coming soon)\"
+              title="Metronome (coming soon)"
             >
               🎯 Click
             </button>
@@ -1218,10 +1218,6 @@ export default function MultiTrackStudioV4() {
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
         {/* Snap Grid Control */}
-        <div className="flex gap-2 px-2 py-1 bg-[#0f0f0f]/50 rounded-lg border border-gray-800"
-          <button
-            onClick={() => setLoopEnabled(!loopEnabled)}
-        {/* Snap Grid Control */}
         <div className="flex gap-2 px-2 py-1 bg-[#0f0f0f]/50 rounded-lg border border-gray-800">
           <span className="text-[10px] text-gray-500 font-semibold self-center">GRID</span>
           <button
@@ -1240,7 +1236,7 @@ export default function MultiTrackStudioV4() {
         <div className="flex-1" />
 
         {/* Project Controls */}
-        <div className="flex gap-2 mr-2"
+        <div className="flex gap-2 mr-2">
           <button
             onClick={() => setShowSaveModal(true)}
             className="px-4 h-10 rounded-lg bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border-2 border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-sm"
