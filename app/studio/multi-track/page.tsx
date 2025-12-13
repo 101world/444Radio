@@ -1253,47 +1253,53 @@ export default function MultiTrackStudioV4() {
               tracks.map((track, index) => (
                 <div
                   key={track.id}
-                  className={`p-3 border-b border-[#1a1a1a] cursor-pointer transition-all duration-150 ${
+                  className={`p-3.5 border-b border-[#1a1a1a] cursor-pointer transition-all duration-200 ${
                     selectedTrackId === track.id
-                      ? 'bg-cyan-500/10 border-l-4 border-l-cyan-500'
-                      : 'hover:bg-[#141414] border-l-4 border-l-transparent'
+                      ? 'bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 border-l-4 border-l-cyan-500 shadow-lg shadow-cyan-500/10'
+                      : 'hover:bg-white/[0.03] border-l-4 border-l-transparent hover:border-l-gray-700'
                   }`}
+                  style={{ height: '80px' }} // Match timeline track height
                   onClick={() => setSelectedTrackId(track.id)}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-xs font-bold text-cyan-400 border border-gray-700 shadow-inner">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      {/* Track Number */}
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-xs font-black text-cyan-400 border border-gray-700 shadow-inner">
                         {index + 1}
                       </div>
+                      {/* Color Picker */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedColorTrackId(track.id);
                           setShowColorPicker(true);
                         }}
-                        className="w-7 h-7 rounded-lg border-2 border-white/40 hover:ring-2 hover:ring-cyan-400 transition-all shadow-lg hover:scale-110 active:scale-95"
+                        className="w-7 h-7 rounded-lg border-2 border-white/50 hover:ring-2 hover:ring-cyan-400 transition-all shadow-lg hover:scale-110 active:scale-95"
                         style={{ backgroundColor: track.color }}
-                        title="Change color"
+                        title="Change track color"
                       />
-                      <div className="text-xl mr-1">
+                      {/* Track Type Icon */}
+                      <div className="text-lg leading-none">
                         {track.type === 'midi' ? '🎹' : '🎤'}
                       </div>
-                      <span className="text-sm font-semibold text-white">
+                      {/* Track Name */}
+                      <span className="text-sm font-bold text-white truncate max-w-[80px]">
                         {track.name}
                       </span>
                     </div>
+                    {/* Mute/Solo/Delete Buttons */}
                     <div className="flex gap-1">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleMute(track.id);
                         }}
-                        className={`px-1.5 py-0.5 text-[10px] rounded ${
+                        className={`w-6 h-6 text-[10px] font-bold rounded transition-all ${
                           track.muted
-                            ? 'bg-red-500 text-white'
-                            : 'bg-[#1f1f1f] text-gray-500 hover:bg-[#252525]'
+                            ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
+                            : 'bg-[#1f1f1f] text-gray-500 hover:bg-red-500/20 hover:text-red-400'
                         }`}
-                        title="Mute"
+                        title="Mute track"
                       >
                         M
                       </button>
@@ -1302,12 +1308,12 @@ export default function MultiTrackStudioV4() {
                           e.stopPropagation();
                           toggleSolo(track.id);
                         }}
-                        className={`px-1.5 py-0.5 text-[10px] rounded ${
+                        className={`w-6 h-6 text-[10px] font-bold rounded transition-all ${
                           track.solo
-                            ? 'bg-yellow-500 text-black'
-                            : 'bg-[#1f1f1f] text-gray-500 hover:bg-[#252525]'
+                            ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30'
+                            : 'bg-[#1f1f1f] text-gray-500 hover:bg-yellow-500/20 hover:text-yellow-400'
                         }`}
-                        title="Solo"
+                        title="Solo track"
                       >
                         S
                       </button>
@@ -1316,23 +1322,28 @@ export default function MultiTrackStudioV4() {
                           e.stopPropagation();
                           deleteTrack(track.id);
                         }}
-                        className="text-red-400 hover:text-red-300 text-xs"
+                        className="w-6 h-6 text-xs hover:bg-red-500/20 rounded transition-all hover:scale-110"
+                        title="Delete track"
                       >
                         🗑️
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                    <span className="px-1.5 py-0.5 bg-[#1f1f1f] rounded">
-                      {track.type.toUpperCase()}
+                  {/* Track Info */}
+                  <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-2">
+                    <span className="px-1.5 py-0.5 bg-[#1f1f1f] rounded font-mono uppercase">
+                      {track.type}
                     </span>
-                    <span>{track.clips.length} clips</span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-cyan-400">{track.clips.length}</span>
+                      {track.clips.length === 1 ? 'clip' : 'clips'}
+                    </span>
                   </div>
 
-                  {/* Mini volume fader */}
+                  {/* Volume Fader - Better Design */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-600">Vol</span>
+                    <span className="text-[9px] text-gray-600 font-mono uppercase w-7">Vol</span>
                     <input
                       type="range"
                       min="0"
@@ -1342,10 +1353,13 @@ export default function MultiTrackStudioV4() {
                         e.stopPropagation();
                         updateTrackVolume(track.id, parseInt(e.target.value));
                       }}
-                      className="flex-1 h-1"
+                      className="flex-1 h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-500/50 hover:[&::-webkit-slider-thumb]:bg-cyan-400"
                       onClick={(e) => e.stopPropagation()}
+                      title={`Volume: ${Math.round(track.volume * 100)}%`}
                     />
-                    <span className="text-[10px] text-gray-600 w-8">{Math.round(track.volume * 100)}%</span>
+                    <span className="text-[9px] text-gray-400 font-mono w-8 text-right">
+                      {Math.round(track.volume * 100)}
+                    </span>
                   </div>
                 </div>
               ))
@@ -1506,30 +1520,44 @@ export default function MultiTrackStudioV4() {
                 
                 return visibleTracks.map((track, idx) => {
                   const trackIndex = startIndex + idx;
-                const trackHeight = trackHeights[track.id] || 96;
+                const trackHeight = 80; // Fixed consistent height for all tracks
                 const isSelected = selectedTrackId === track.id;
                 return (
                 <div
                   key={track.id}
-                  className="border-b border-[#1f1f1f] relative group hover:bg-[#0f0f0f]"
+                  className={`border-b border-[#1f1f1f] relative group transition-colors ${
+                    isSelected ? 'bg-cyan-500/5' : 'hover:bg-white/[0.02]'
+                  }`}
                   style={{ height: `${trackHeight}px` }}
                   onClick={() => setSelectedTrackId(track.id)}
-                  onMouseMove={handleTrackResizeMove}
-                  onMouseUp={handleTrackResizeEnd}
-                  onMouseLeave={handleTrackResizeEnd}
                 >
-                  {/* Track Lane - Full Width Timeline Area */}
-                  <div className="flex-1 relative">
-                    <div className="absolute inset-0 flex items-center px-2">
+                  {/* Track Lane - Full Width Timeline Area with Perfect Alignment */}
+                  <div className="absolute inset-0 flex items-center">
                     {track.clips.length === 0 ? (
-                      <div className="text-xs text-gray-700">Empty track - add clips to see waveforms</div>
+                      <div className="text-xs text-gray-600 italic px-4">
+                        {isSelected ? '📁 Drag audio files here or click Upload' : 'Empty track'}
+                      </div>
                     ) : (
                       track.clips.map((clip, clipIndex) => (
                         <div
                           key={clip.id}
-                          className={`absolute h-16 rounded-lg overflow-hidden cursor-move transition-all duration-150 shadow-xl will-change-transform ${
-                            selectedClipId === clip.id ? 'ring-4 ring-cyan-400 ring-offset-2 ring-offset-[#0a0a0a] scale-105' : 'hover:scale-[1.02]'
+                          className={`absolute rounded-xl overflow-hidden cursor-move transition-all duration-200 shadow-2xl will-change-transform ${
+                            selectedClipId === clip.id 
+                              ? 'ring-4 ring-cyan-400/80 ring-offset-2 ring-offset-[#0a0a0a] scale-[1.03] z-20' 
+                              : 'hover:scale-[1.01] hover:shadow-3xl'
                           }`}
+                          style={{
+                            left: `${clip.startTime * zoom}px`,
+                            width: `${clip.duration * zoom}px`,
+                            height: '64px', // Fixed clip height for consistency
+                            top: '50%',
+                            transform: `translateY(-50%) ${selectedClipId === clip.id ? 'scale(1.03)' : ''}`,
+                            backgroundColor: `${track.color}15`,
+                            border: `2px solid ${selectedClipId === clip.id ? '#00bcd4' : track.color}`,
+                            boxShadow: selectedClipId === clip.id 
+                              ? `0 8px 32px ${track.color}60, 0 0 0 1px ${track.color}40 inset` 
+                              : `0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px ${track.color}20 inset`
+                          }}`}
                           style={{
                             left: `${clip.startTime * zoom}px`,
                             width: `${clip.duration * zoom}px`,
@@ -1539,65 +1567,103 @@ export default function MultiTrackStudioV4() {
                           }}
                           onClick={(e) => handleClipClick(e, clip.id, track.id)}
                           onMouseDown={(e) => handleClipMouseDown(e, track.id, clip.id, clip.startTime)}
-                          title="Drag to move, click to select"
+                          title="Drag to move • Double-click to rename"
                         >
-                          {/* Clip Canvas for Waveform */}
+                          {/* Clip Canvas for Waveform - Properly Sized */}
                           <canvas
                             ref={(canvas) => {
                               if (canvas && clip.buffer) {
+                                canvas.width = clip.duration * zoom;
+                                canvas.height = 64;
                                 renderWaveform(canvas, clip.buffer, selectedClipId === clip.id ? '#00bcd4' : track.color, clip.id);
                               }
                             }}
                             width={clip.duration * zoom}
                             height={64}
-                            className="w-full h-full"
+                            className="absolute inset-0 w-full h-full"
+                            style={{ objectFit: 'fill' }}
                           />
                           
-                          {/* Fade In Handle */}
-                          <div className="absolute left-0 top-0 bottom-0 w-2 bg-gradient-to-r from-black/50 to-transparent cursor-ew-resize hover:from-cyan-400/50"
+                          {/* Fade Handles - Better Visual Feedback */}
+                          <div 
+                            className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/60 to-transparent cursor-ew-resize hover:from-cyan-400/40 hover:w-4 transition-all group/fade"
                             title="Drag to adjust fade in"
-                          />
+                          >
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/30 rounded-full opacity-0 group-hover/fade:opacity-100 transition-opacity" />
+                          </div>
                           
-                          {/* Fade Out Handle */}
-                          <div className="absolute right-0 top-0 bottom-0 w-2 bg-gradient-to-l from-black/50 to-transparent cursor-ew-resize hover:from-cyan-400/50"
+                          <div 
+                            className="absolute right-0 top-0 bottom-0 w-3 bg-gradient-to-l from-black/60 to-transparent cursor-ew-resize hover:from-cyan-400/40 hover:w-4 transition-all group/fade"
                             title="Drag to adjust fade out"
-                          />
-                          
-                          {/* Gradient Overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent pointer-events-none" />
-                          
-                          {/* Clip Name Overlay */}
-                          <div className="absolute top-1 left-2 text-xs font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] bg-black/40 px-2 py-0.5 rounded">
-                            {clip.name || track.name}
+                          >
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/30 rounded-full opacity-0 group-hover/fade:opacity-100 transition-opacity" />
                           </div>
                           
-                          {/* Duration Label */}
-                          <div className="absolute bottom-1 right-2 text-[10px] font-bold text-white/80 drop-shadow-lg bg-black/40 px-1.5 py-0.5 rounded">
-                            {clip.duration.toFixed(2)}s
+                          {/* Premium Gradient Overlays */}
+                          <div className="absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-black/20 pointer-events-none" />
+                          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+                          
+                          {/* Clip Info Overlay - Better Typography */}
+                          <div className="absolute top-1.5 left-2.5 flex items-center gap-2 pointer-events-none">
+                            <div className="text-xs font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] bg-black/50 backdrop-blur-sm px-2 py-1 rounded-md border border-white/10">
+                              {clip.name || track.name}
+                            </div>
                           </div>
                           
-                          {/* Clip Actions (show on selected) */}
+                          {/* Duration & Position Labels */}
+                          <div className="absolute bottom-1.5 right-2.5 flex items-center gap-2 text-[10px] font-mono text-white/90 drop-shadow-lg pointer-events-none">
+                            <div className="bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded border border-white/10">
+                              {formatTime(clip.duration)}
+                            </div>
+                          </div>
+                          
+                          {/* Selection Indicator */}
                           {selectedClipId === clip.id && (
-                            <div className="absolute top-1 right-2 flex gap-1">
+                            <div className="absolute inset-0 border-2 border-cyan-400 rounded-xl pointer-events-none animate-pulse" 
+                                 style={{ animationDuration: '2s' }} 
+                            />
+                          )}
+                          
+                          {/* Clip Actions (show on selected) - Better Positioned */}
+                          {selectedClipId === clip.id && (
+                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/90 backdrop-blur-md px-2 py-1.5 rounded-lg border border-cyan-500/30 shadow-2xl shadow-cyan-500/20 z-30">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleSplitClip();
                                 }}
-                                className="px-1 py-0.5 text-[10px] bg-black/70 rounded hover:bg-cyan-500 transition-colors"
-                                title="Split (Cmd+E)"
+                                className="px-2 py-1 text-xs bg-cyan-500/20 hover:bg-cyan-500 text-cyan-400 hover:text-black rounded transition-all font-semibold border border-cyan-500/30"
+                                title="Split at playhead (E)"
                               >
-                                ✂️
+                                ✂️ Split
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Duplicate clip
+                                  if (daw && selectedTrackId) {
+                                    const newClip = { ...clip, id: `clip-${Date.now()}`, startTime: clip.startTime + clip.duration };
+                                    daw.trackManager.addClipToTrack(selectedTrackId, newClip);
+                                    setTracks([...daw.trackManager.getTracks()]);
+                                  }
+                                }}
+                                className="px-2 py-1 text-xs bg-purple-500/20 hover:bg-purple-500 text-purple-400 hover:text-black rounded transition-all font-semibold border border-purple-500/30"
+                                title="Duplicate clip (D)"
+                              >
+                                📋 Copy
                               </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDeleteClip();
                                 }}
-                                className="px-1 py-0.5 text-[10px] bg-black/70 rounded hover:bg-red-500 transition-colors"
-                                title="Delete (Del)"
+                                className="px-2 py-1 text-xs bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white rounded transition-all font-semibold border border-red-500/30"
+                                title="Delete clip (Del)"
                               >
-                                🗑️
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          )}
                               </button>
                             </div>
                           )}
