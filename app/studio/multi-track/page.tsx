@@ -1549,7 +1549,7 @@ export default function MultiTrackStudioV4() {
                           style={{
                             left: `${clip.startTime * zoom}px`,
                             width: `${clip.duration * zoom}px`,
-                            height: '64px', // Fixed clip height for consistency
+                            height: '64px',
                             top: '50%',
                             transform: `translateY(-50%) ${selectedClipId === clip.id ? 'scale(1.03)' : ''}`,
                             backgroundColor: `${track.color}15`,
@@ -1557,13 +1557,6 @@ export default function MultiTrackStudioV4() {
                             boxShadow: selectedClipId === clip.id 
                               ? `0 8px 32px ${track.color}60, 0 0 0 1px ${track.color}40 inset` 
                               : `0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px ${track.color}20 inset`
-                          }}`}
-                          style={{
-                            left: `${clip.startTime * zoom}px`,
-                            width: `${clip.duration * zoom}px`,
-                            backgroundColor: track.color + '30',
-                            border: `3px solid ${selectedClipId === clip.id ? '#00bcd4' : track.color}`,
-                            boxShadow: selectedClipId === clip.id ? `0 4px 20px ${track.color}80` : `0 2px 8px rgba(0,0,0,0.3)`
                           }}
                           onClick={(e) => handleClipClick(e, clip.id, track.id)}
                           onMouseDown={(e) => handleClipMouseDown(e, track.id, clip.id, clip.startTime)}
