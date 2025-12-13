@@ -1660,25 +1660,15 @@ export default function MultiTrackStudioV4() {
                         </div>
                       ))
                     )}
-                    </div>
-                    
-                    {/* Playhead Indicator (moves during playback) */}
-                    {isPlaying && (
-                      <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-lg shadow-cyan-400/50 pointer-events-none z-10"
-                        style={{ left: `${playhead * zoom}px` }}
-                      />
-                    )}
                   </div>
                   
-                  {/* Track Resize Handle */}
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-cyan-500/30 active:bg-cyan-500/50 transition-colors z-20 group/resize"
-                    onMouseDown={(e) => handleTrackResizeStart(e, track.id)}
-                    title="Drag to resize track height"
-                  >
-                    <div className="absolute inset-x-0 bottom-0 h-px bg-cyan-500/0 group-hover/resize:bg-cyan-500/50 transition-colors" />
-                  </div>
+                  {/* Playhead Indicator (moves during playback) */}
+                  {isPlaying && (
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-lg shadow-cyan-400/50 pointer-events-none z-10"
+                      style={{ left: `${playhead * zoom}px` }}
+                    />
+                  )}
                 </div>
               );
             });
