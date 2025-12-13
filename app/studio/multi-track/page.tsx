@@ -1636,8 +1636,8 @@ export default function MultiTrackStudioV4() {
                                   // Duplicate clip
                                   if (daw && selectedTrackId) {
                                     const newClip = { ...clip, id: `clip-${Date.now()}`, startTime: clip.startTime + clip.duration };
-                                    daw.trackManager.addClipToTrack(selectedTrackId, newClip);
-                                    setTracks([...daw.trackManager.getTracks()]);
+                                    daw.addClipToTrack(selectedTrackId, newClip);
+                                    setTracks([...daw.getTracks()]);
                                   }
                                 }}
                                 className="px-2 py-1 text-xs bg-purple-500/20 hover:bg-purple-500 text-purple-400 hover:text-black rounded transition-all font-semibold border border-purple-500/30"
