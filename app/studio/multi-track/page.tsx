@@ -1068,97 +1068,216 @@ export default function MultiTrackStudioV4() {
         </div>
       )}
 
-      {/* Minimal Top Toolbar - AIODE Style */}
-      <header className="h-12 bg-[#111111] border-b border-white/5 flex items-center px-3 gap-2 flex-shrink-0">
+      {/* Top Toolbar - Enhanced */}
+      <header className="h-14 bg-[#0a0a0a] border-b border-cyan-500/20 flex items-center px-4 gap-3 flex-shrink-0">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <span className="text-xs">🎵</span>
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+            <span className="text-sm">🎵</span>
           </div>
-          <div className="text-xs font-bold text-white">444 STUDIO</div>
+          <div className="text-sm font-bold text-white">444 STUDIO</div>
         </div>
 
-        <div className="flex-1" />
-
-        {/* Minimal Transport */}
-        <div className="flex items-center gap-1">
-          <Tooltip content="Stop" shortcut="S">
+        {/* Transport Controls */}
+        <div className="flex items-center gap-2">
+          <Tooltip content="Stop & Rewind" shortcut="S">
             <button
               onClick={() => { stop(); setPlayhead(0); }}
-              className="w-8 h-8 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-all"
+              className="w-10 h-10 bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all shadow-lg flex items-center justify-center text-lg"
             >
-              <span className="text-base">⏹</span>
+              <span>⏹</span>
             </button>
           </Tooltip>
           
           <Tooltip content={isPlaying ? 'Pause' : 'Play'} shortcut="Space">
             <button
               onClick={togglePlay}
-              className={`w-10 h-8 rounded transition-all ${
+              className={`w-12 h-10 rounded-lg font-bold transition-all shadow-xl flex items-center justify-center text-xl border ${
                 isPlaying
-                  ? 'bg-cyan-500 hover:bg-cyan-400 text-white'
-                  : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-cyan-500/50 border-cyan-400'
+                  : 'bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 text-cyan-400 border-cyan-500/50 hover:from-cyan-500/30 hover:to-cyan-600/30'
               }`}
             >
-              <span className="text-base">{isPlaying ? '⏸' : '▶'}</span>
+              {isPlaying ? '⏸' : '▶'}
             </button>
           </Tooltip>
           
           <Tooltip content={isRecording ? 'Stop Recording' : 'Record'} shortcut="R">
             <button
               onClick={toggleRecording}
-              className={`w-8 h-8 rounded transition-all ${
+              className={`w-10 h-10 rounded-lg transition-all shadow-lg flex items-center justify-center text-xl border ${
                 isRecording
-                  ? 'bg-red-500 hover:bg-red-400 text-white'
-                  : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'
+                  ? 'bg-red-500 text-white border-red-400 animate-pulse'
+                  : 'bg-[#1a1a1a] border-gray-700 text-red-400 hover:bg-red-500/20 hover:border-red-500/50'
               }`}
             >
-              <span className="text-base">●</span>
+              <span>●</span>
             </button>
           </Tooltip>
         </div>
 
-        <div className="w-px h-6 bg-white/10" />
+        <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
 
-        {/* Time & BPM */}
-        <div className="flex items-center gap-2 px-3 text-xs">
-          <span className="font-mono text-cyan-400 tabular-nums">{formatTime(playhead)}</span>
-          <span className="text-gray-600">|</span>
-          <span className="text-gray-500">BPM</span>
-          <span className="font-bold text-white tabular-nums">{bpm}</span>
+        {/* Loop & Metronome */}
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setLoopEnabled(!loopEnabled)}
+            className={`px-3 h-8 rounded-lg transition-all border text-xs font-bold ${
+              loopEnabled 
+                ? 'bg-cyan-500/30 text-cyan-300 border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
+                : 'bg-[#1a1a1a] text-gray-500 border-gray-700 hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30'
+            }`}
+          >
+            🔁 {loopEnabled ? 'ON' : 'OFF'}
+          </button>
+          <button
+            className="px-3 h-8 rounded-lg transition-all border text-xs font-bold bg-[#1a1a1a] text-gray-600 border-gray-800 opacity-50 cursor-not-allowed"
+            disabled
+          >
+            🎯 Click
+          </button>
         </div>
 
-        <div className="w-px h-6 bg-white/10" />
+        <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
 
-        {/* Zoom */}
-        <div className="flex items-center gap-1">
+        {/* Time & BPM Display */}
+        <div className="flex items-center gap-3 px-4 h-9 bg-black/40 rounded-lg border border-cyan-500/20">
+          <div className="text-sm font-mono text-cyan-400 font-bold tracking-wider tabular-nums">{formatTime(playhead)}</div>
+          <div className="w-px h-5 bg-cyan-500/30" />
+          <button
+            className="flex items-center gap-1.5 hover:bg-white/5 px-2 py-1 rounded transition-all"
+            title="Click to adjust BPM"
+          >
+            <span className="text-[10px] text-gray-500 font-semibold uppercase">BPM</span>
+            <span className="text-sm text-white font-bold tabular-nums">{bpm}</span>
+          </button>
+        </div>
+
+        <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
+
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-2 px-3 h-9 bg-black/40 rounded-lg border border-white/10">
+          <span className="text-[9px] text-gray-500 font-bold uppercase">Zoom</span>
           <button
             onClick={() => setZoom(Math.max(5, zoom - 10))}
-            className="w-6 h-6 text-xs bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-all"
+            className="w-6 h-6 text-xs bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 rounded transition-all border border-white/10 hover:border-cyan-500/50 font-bold"
           >
             −
           </button>
-          <span className="text-xs text-gray-500 w-8 text-center">{zoom}x</span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setZoom(10)}
+              className={`px-2 py-1 text-[10px] rounded transition-all border ${
+                zoom === 10 
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
+                  : 'bg-[#1a1a1a] text-gray-400 border-gray-800 hover:bg-[#202020] hover:text-cyan-400'
+              }`}
+            >
+              10x
+            </button>
+            <button
+              onClick={() => setZoom(25)}
+              className={`px-2 py-1 text-[10px] rounded transition-all border ${
+                zoom === 25 
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
+                  : 'bg-[#1a1a1a] text-gray-400 border-gray-800 hover:bg-[#202020] hover:text-cyan-400'
+              }`}
+            >
+              25x
+            </button>
+            <button
+              onClick={() => setZoom(50)}
+              className={`px-2 py-1 text-[10px] rounded transition-all border ${
+                zoom === 50 
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
+                  : 'bg-[#1a1a1a] text-gray-400 border-gray-800 hover:bg-[#202020] hover:text-cyan-400'
+              }`}
+            >
+              1:1
+            </button>
+          </div>
           <button
             onClick={() => setZoom(Math.min(200, zoom + 10))}
-            className="w-6 h-6 text-xs bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-all"
+            className="w-6 h-6 text-xs bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 rounded transition-all border border-white/10 hover:border-cyan-500/50 font-bold"
           >
             +
           </button>
+          <button
+            onClick={zoomToFit}
+            className="px-3 py-1 text-[10px] bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 text-cyan-400 rounded hover:from-cyan-500/30 hover:to-cyan-600/30 transition-all border border-cyan-500/30 font-semibold"
+          >
+            🎯 Fit
+          </button>
         </div>
 
-        
-        {/* Menu */}
-        <button className="px-2 text-xs text-gray-400 hover:text-white">File</button>
+        <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
+
+        {/* Snap Grid */}
+        <button
+          onClick={() => setSnapEnabled(!snapEnabled)}
+          className={`px-3 h-8 rounded-lg transition-all border text-xs font-bold ${
+            snapEnabled 
+              ? 'bg-cyan-500/30 text-cyan-300 border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
+              : 'bg-[#1a1a1a] text-gray-500 border-gray-700 hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30'
+          }`}
+        >
+          🧲 {snapEnabled ? 'ON' : 'OFF'}
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Project Controls */}
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setShowSaveModal(true)}
+            className="px-3 h-9 rounded-lg bg-[#1a1a1a] text-gray-300 hover:bg-[#202020] hover:text-cyan-400 border border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-xs"
+          >
+            💾 Save
+          </button>
+          <button
+            onClick={() => setShowLoadModal(true)}
+            className="px-3 h-9 rounded-lg bg-[#1a1a1a] text-gray-300 hover:bg-[#202020] hover:text-cyan-400 border border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-xs"
+          >
+            📂 Load
+          </button>
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="px-3 h-9 rounded-lg bg-gradient-to-r from-cyan-500 to-cyan-600 text-black hover:from-cyan-400 hover:to-cyan-500 transition-all font-bold text-xs shadow-lg shadow-cyan-500/30"
+          >
+            📤 Export
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Track List - AIODE Style */}
-        <div className="w-48 bg-[#111111] border-r border-white/5 flex flex-col flex-shrink-0">
-          {/* Minimal Track Header */}
-          <div className="h-10 px-2 border-b border-white/5 flex items-center gap-2">
-            <span className="text-[10px] text-gray-500 uppercase font-bold">Tracks</span>
+        {/* Track Sidebar - Enhanced */}
+        <div className="w-64 bg-gradient-to-b from-[#0a0a0a] to-[#050505] border-r border-cyan-500/20 flex flex-col flex-shrink-0 shadow-2xl shadow-black/50">
+          {/* Track Header */}
+          <div className="h-12 px-3 border-b border-cyan-500/10 flex items-center gap-2 bg-[#0a0a0a]">
+            <button
+              onClick={addTrack}
+              className="flex-1 h-8 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-black rounded-lg transition-all shadow-lg hover:shadow-cyan-500/50 font-semibold text-sm flex items-center justify-center gap-1.5"
+            >
+              <span>➕</span>
+              <span>Track</span>
+            </button>
+            
+            <input
+              type="file"
+              id="audio-upload"
+              accept="audio/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleFileUpload(e.target.files)}
+            />
+            <button
+              onClick={() => document.getElementById('audio-upload')?.click()}
+              className="flex-1 h-8 bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 hover:border-cyan-500/50 rounded-lg transition-all font-semibold text-sm flex items-center justify-center gap-1.5"
+            >
+              <span>📁</span>
+              <span>Upload</span>
+            </button>
           </div>
 
           {/* Minimal Track List */}
@@ -1178,103 +1297,171 @@ export default function MultiTrackStudioV4() {
                 return (
                 <div
                   key={track.id}
-                  className={`px-2 py-2 border-b border-white/5 cursor-pointer transition-all ${
+                  className={`p-3 border-b border-cyan-500/10 cursor-pointer transition-all ${
                     selectedTrackId === track.id
-                      ? 'bg-white/10'
-                      : 'hover:bg-white/5'
+                      ? 'bg-cyan-500/10 border-l-2 border-l-cyan-500'
+                      : 'hover:bg-white/[0.02] border-l-2 border-l-transparent hover:border-l-cyan-500/30'
+                  } ${
+                    isTrackActive ? 'ring-1 ring-inset ring-cyan-500/30' : ''
                   }`}
+                  style={{ minHeight: '88px' }}
                   onClick={() => setSelectedTrackId(track.id)}
                 >
-                  {/* Minimal Track Header */}
-                  <div className="flex items-center gap-2 mb-1.5">
-                    {/* Track Number */}
-                    <div className="w-4 h-4 rounded bg-white/5 flex items-center justify-center text-[9px] text-gray-400 flex-shrink-0">
-                      {index + 1}
+                  {/* Track Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {/* Track Number */}
+                      <div className={`w-6 h-6 rounded flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${
+                        isTrackActive 
+                          ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' 
+                          : 'bg-white/5 text-cyan-400 border border-white/10'
+                      }`}>
+                        {isTrackActive ? '▶' : index + 1}
+                      </div>
+                      
+                      {/* Color Indicator */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedColorTrackId(track.id);
+                          setShowColorPicker(true);
+                        }}
+                        className="w-6 h-6 rounded flex-shrink-0 border-2 border-white/30 hover:border-cyan-500/60 transition-all"
+                        style={{ backgroundColor: track.color }}
+                      />
+                      
+                      {/* Track Icon & Name */}
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <span className="text-sm">{track.type === 'midi' ? '🎹' : '🎤'}</span>
+                        {editingTrackId === track.id ? (
+                          <input
+                            type="text"
+                            value={editingTrackName}
+                            onChange={(e) => setEditingTrackName(e.target.value)}
+                            onBlur={() => {
+                              if (editingTrackName.trim()) {
+                                daw?.updateTrack(track.id, { name: editingTrackName.trim() });
+                                setTracks(daw?.getTracks() || []);
+                              }
+                              setEditingTrackId(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.currentTarget.blur();
+                              } else if (e.key === 'Escape') {
+                                setEditingTrackId(null);
+                              }
+                            }}
+                            autoFocus
+                            className="text-sm font-bold text-white bg-cyan-500/20 border border-cyan-500/50 rounded px-1 py-0.5 flex-1 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <span 
+                            className="text-sm font-bold text-white truncate flex-1 cursor-text hover:text-cyan-400 transition-colors"
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTrackId(track.id);
+                              setEditingTrackName(track.name);
+                            }}
+                          >
+                            {track.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
-                    {/* Track Name */}
-                    {editingTrackId === track.id ? (
-                      <input
-                        type="text"
-                        value={editingTrackName}
-                        onChange={(e) => setEditingTrackName(e.target.value)}
-                        onBlur={() => {
-                          if (editingTrackName.trim()) {
-                            daw?.updateTrack(track.id, { name: editingTrackName.trim() });
-                            setTracks(daw?.getTracks() || []);
-                          }
-                          setEditingTrackId(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur();
-                          } else if (e.key === 'Escape') {
-                            setEditingTrackId(null);
-                          }
-                        }}
-                        autoFocus
-                        className="text-xs text-white bg-white/10 border border-white/20 rounded px-1 py-0.5 flex-1 focus:outline-none"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    ) : (
-                      <span 
-                        className="text-xs text-white truncate flex-1"
-                        onDoubleClick={(e) => {
+                    {/* Mute/Solo/Delete Buttons */}
+                    <div className="flex gap-1">
+                      <button
+                        onClick={(e) => {
                           e.stopPropagation();
-                          setEditingTrackId(track.id);
-                          setEditingTrackName(track.name);
+                          toggleMute(track.id);
                         }}
+                        className={`w-6 h-6 text-[10px] font-bold rounded transition-all ${
+                          track.muted
+                            ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
+                            : 'bg-[#1a1a1a] text-gray-500 hover:bg-red-500/20 hover:text-red-400'
+                        }`}
                       >
-                        {track.name}
-                      </span>
-                    )}
-                    
-                    {/* Delete */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteTrack(track.id);
-                      }}
-                      className="w-4 h-4 text-[10px] text-gray-600 hover:text-red-400 transition-colors flex items-center justify-center"
-                    >
-                      ×
-                    </button>
+                        M
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSolo(track.id);
+                        }}
+                        className={`w-6 h-6 text-[10px] font-bold rounded transition-all ${
+                          track.solo
+                            ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30'
+                            : 'bg-[#1a1a1a] text-gray-500 hover:bg-cyan-500/20 hover:text-cyan-400'
+                        }`}
+                      >
+                        S
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteTrack(track.id);
+                        }}
+                        className="w-6 h-6 text-xs hover:bg-red-500/20 rounded transition-all hover:scale-110"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Minimal Controls */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => {
+                  {/* Track Info */}
+                  <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-1.5">
+                    <span className="px-1.5 py-0.5 bg-[#1a1a1a] rounded font-mono uppercase">
+                      {track.type}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-cyan-400">{track.clips.length}</span>
+                      {track.clips.length === 1 ? 'clip' : 'clips'}
+                    </span>
+                  </div>
+
+                  {/* Volume Fader */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] text-gray-600 font-bold uppercase w-7">Vol</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={track.volume * 100}
+                      onChange={(e) => {
                         e.stopPropagation();
-                        toggleMute(track.id);
+                        updateTrackVolume(track.id, parseInt(e.target.value));
                       }}
-                      className={`w-5 h-5 text-[9px] font-bold rounded transition-all ${
-                        track.muted
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'bg-white/5 text-gray-600 hover:text-gray-400'
-                      }`}
-                    >
-                      M
-                    </button>
-                    <button
-                      onClick={(e) => {
+                      className="flex-1 h-1.5 bg-gradient-to-r from-gray-800 to-gray-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-cyan-400 [&::-webkit-slider-thumb]:to-cyan-600 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-500/50"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-[9px] text-cyan-400 font-mono font-bold w-8 text-right">
+                      {Math.round(track.volume * 100)}
+                    </span>
+                  </div>
+
+                  {/* Pan Control */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-gray-600 font-bold uppercase w-7">Pan</span>
+                    <input
+                      type="range"
+                      min="-100"
+                      max="100"
+                      value={(track.pan || 0) * 100}
+                      onChange={(e) => {
                         e.stopPropagation();
-                        toggleSolo(track.id);
+                        const pan = parseInt(e.target.value) / 100;
+                        daw?.setTrackPan(track.id, pan);
+                        setTracks(daw?.getTracks() || []);
                       }}
-                      className={`w-5 h-5 text-[9px] font-bold rounded transition-all ${
-                        track.solo
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'bg-white/5 text-gray-600 hover:text-gray-400'
-                      }`}
-                    >
-                      S
-                    </button>
-                    <div className="flex-1 h-1 bg-white/5 rounded overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
-                        style={{ width: `${track.volume * 100}%` }}
-                      />
-                    </div>
+                      className="flex-1 h-1.5 bg-gradient-to-r from-cyan-900/30 via-gray-800 to-cyan-900/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-cyan-400 [&::-webkit-slider-thumb]:to-cyan-600 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-500/50"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-[9px] text-cyan-400 font-mono font-bold w-8 text-right">
+                      {(track.pan || 0) === 0 ? 'C' : (track.pan || 0) > 0 ? `R${Math.round((track.pan || 0) * 100)}` : `L${Math.abs(Math.round((track.pan || 0) * 100))}`}
+                    </span>
                   </div>
                 </div>
                 );
@@ -1736,37 +1923,29 @@ export default function MultiTrackStudioV4() {
         )}
       </div>
 
-      {/* Bottom Action Bar - AIODE Style */}
-      <footer className="h-12 bg-[#111111] border-t border-white/5 flex items-center justify-center gap-3 flex-shrink-0">
-        <input
-          type="file"
-          id="audio-upload"
-          accept="audio/*"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFileUpload(e.target.files)}
-        />
+      {/* Bottom Action Bar - Enhanced */}
+      <footer className="h-12 bg-[#0a0a0a] border-t border-cyan-500/20 flex items-center justify-center gap-3 flex-shrink-0">
         <button
           onClick={addTrack}
-          className="px-4 h-8 bg-white/5 hover:bg-white/10 text-white text-xs rounded transition-all"
+          className="px-4 h-8 bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 text-xs rounded transition-all font-semibold"
         >
           + NEW TRACK
         </button>
         <button
           onClick={() => document.getElementById('audio-upload')?.click()}
-          className="px-4 h-8 bg-white/5 hover:bg-white/10 text-white text-xs rounded transition-all"
+          className="px-4 h-8 bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 text-xs rounded transition-all font-semibold"
         >
           📁 IMPORT AUDIO
         </button>
         <button
           onClick={() => setShowSaveModal(true)}
-          className="px-4 h-8 bg-white/5 hover:bg-white/10 text-white text-xs rounded transition-all"
+          className="px-4 h-8 bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-cyan-500/30 text-xs rounded transition-all"
         >
           💾 SAVE PROJECT
         </button>
         <button
           onClick={() => setShowExportModal(true)}
-          className="px-4 h-8 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white text-xs font-bold rounded transition-all"
+          className="px-4 h-8 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-black text-xs font-bold rounded transition-all shadow-lg shadow-cyan-500/30"
         >
           📤 EXPORT
         </button>
