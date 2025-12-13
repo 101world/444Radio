@@ -178,12 +178,32 @@ export default function MultiTrackStudioV4() {
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const analyserNodesRef = useRef<Record<string, AnalyserNode>>({});
   const lastRafTime = useRef<number>(0);
+  const lastMetronomeBeat = useRef<number>(-1);
   const timelineRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
   const historyManagerRef = useRef<HistoryManager | null>(null);
   const recordingManagerRef = useRef<RecordingManager | null>(null);
   const projectManagerRef = useRef<ProjectManager | null>(null);
   const audioExporterRef = useRef<AudioExporter | null>(null);
+
+  // Metronome click generator
+  const playMetronomeClick = (isDownbeat: boolean = false) => {
+    if (!daw) return;
+    const audioContext = daw.getAudioContext();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Downbeat (first beat) = higher pitch, others = lower pitch
+    oscillator.frequency.value = isDownbeat ? 1200 : 800;
+    gainNode.gain.value = metronomeVolume * (isDownbeat ? 0.8 : 0.5);
+    
+    oscillator.start(audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+    oscillator.stop(audioContext.currentTime + 0.05);
+  };
 
   // Initialize DAW and Managers
   useEffect(() => {
@@ -363,6 +383,17 @@ export default function MultiTrackStudioV4() {
 
       const currentPlayhead = daw.getPlayhead();
       const playing = daw.isPlaying();
+      
+      // Metronome click on beat
+      if (metronomeEnabled && playing) {
+        const beatDuration = 60 / bpm; // seconds per beat
+        const currentBeat = Math.floor(currentPlayhead / beatDuration);
+        if (currentBeat !== lastMetronomeBeat.current && currentBeat >= 0) {
+          const isDownbeat = currentBeat % 4 === 0; // Every 4th beat is downbeat
+          playMetronomeClick(isDownbeat);
+          lastMetronomeBeat.current = currentBeat;
+        }
+      }
       
       // Only update state if changed to prevent unnecessary re-renders
       if (Math.abs(currentPlayhead - playhead) > 0.01) {
