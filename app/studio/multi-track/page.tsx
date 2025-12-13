@@ -605,12 +605,16 @@ export default function MultiTrackStudioV4() {
       playheadRef.current.style.transform = `translateX(${timeInSeconds * zoom}px)`;
     }
     
-    // If currently playing, continue playing from new position
+    // If currently playing, restart from new position
+    // If not playing, start playback from clicked position
     if (daw.isPlaying()) {
       daw.pause();
       setTimeout(() => {
         daw.play();
       }, 10);
+    } else {
+      // Start playback from the clicked position
+      daw.play();
     }
   };
 
@@ -720,7 +724,7 @@ export default function MultiTrackStudioV4() {
 
   const handleTrackResizeStart = (e: React.MouseEvent, trackId: string) => {
     e.stopPropagation();
-    const currentHeight = trackHeights[trackId] || 96;
+    const currentHeight = trackHeights[trackId] || 88;
     setResizingTrack({ id: trackId, startY: e.clientY, startHeight: currentHeight });
   };
 
@@ -831,7 +835,7 @@ export default function MultiTrackStudioV4() {
       // Implement multi-select based on bounds
       const selectedTrackIds = new Set<string>();
       tracks.forEach((track, idx) => {
-        const trackY = idx * 96; // Track height
+        const trackY = idx * 88; // Track height
         if (trackY >= minY && trackY <= maxY) {
           selectedTrackIds.add(track.id);
         }
