@@ -610,6 +610,88 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [isLive, stream])
 
+  // Toggle live broadcast
+  const toggleLive = useCallback(async () => {
+    if (!profile) return
+    
+    const newLiveState = !isLive
+    setIsLive(newLiveState)
+    
+    try {
+      const res = await fetch('/api/station', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isLive: newLiveState,
+          username: profile.username,
+          currentTrack: currentTrack ? {
+            id: currentTrack.id,
+            title: currentTrack.title,
+            image_url: currentTrack.imageUrl
+          } : null
+        })
+      })
+      
+      const data = await res.json()
+      if (data.success && data.station) {
+        setStationId(data.station.id)
+        if (newLiveState) {
+          loadMessages(data.station.id)
+        } else {
+          setChatMessages([])
+          setLiveListeners(0)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle live:', error)
+      setIsLive(!newLiveState) // Revert on error
+    }
+  }, [isLive, profile, currentTrack])
+
+  // Save station title
+  const saveStationTitle = useCallback(async () => {
+    if (!stationTitle.trim() || !profile) return
+    
+    try {
+      await fetch('/api/station', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isLive: isLive,
+          username: profile.username,
+          title: stationTitle
+        })
+      })
+      setEditingStationTitle(false)
+    } catch (error) {
+      console.error('Failed to save station title:', error)
+    }
+  }, [stationTitle, profile, isLive])
+
+  // Send chat message
+  const sendMessage = useCallback(async () => {
+    if (!chatInput.trim() || !stationId || !profile) return
+    
+    try {
+      const res = await fetch('/api/station/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stationId,
+          message: chatInput,
+          messageType: 'chat',
+          username: profile.username
+        })
+      })
+      
+      if (res.ok) {
+        setChatInput('')
+      }
+    } catch (error) {
+      console.error('Failed to send chat:', error)
+    }
+  }, [chatInput, stationId, profile])
+
   const fetchProfileData = async () => {
     setLoading(true)
     try {
