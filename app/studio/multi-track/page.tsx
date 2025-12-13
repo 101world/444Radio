@@ -1218,6 +1218,7 @@ export default function MultiTrackStudioV4() {
                 ? 'bg-cyan-500/30 text-cyan-300 border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
                 : 'bg-[#1a1a1a] text-gray-500 border-gray-700 hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30'
             }`}
+            title="Toggle Loop (L)"
           >
             🔁 {loopEnabled ? 'ON' : 'OFF'}
           </button>
@@ -1228,7 +1229,7 @@ export default function MultiTrackStudioV4() {
                 ? 'bg-cyan-500/30 text-cyan-300 border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
                 : 'bg-[#1a1a1a] text-gray-500 border-gray-700 hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30'
             }`}
-            title="Metronome"
+            title="Toggle Metronome (M) - Adjustable in BPM settings"
           >
             🎯 {metronomeEnabled ? 'ON' : 'OFF'}
           </button>
@@ -1261,6 +1262,7 @@ export default function MultiTrackStudioV4() {
           <button
             onClick={() => setZoom(Math.max(5, zoom - 10))}
             className="w-6 h-6 text-xs bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 rounded transition-all border border-white/10 hover:border-cyan-500/50 font-bold"
+            title="Zoom Out (-)"
           >
             −
           </button>
@@ -1299,12 +1301,14 @@ export default function MultiTrackStudioV4() {
           <button
             onClick={() => setZoom(Math.min(200, zoom + 10))}
             className="w-6 h-6 text-xs bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 rounded transition-all border border-white/10 hover:border-cyan-500/50 font-bold"
+            title="Zoom In (+)"
           >
             +
           </button>
           <button
             onClick={zoomToFit}
             className="px-3 py-1 text-[10px] bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 text-cyan-400 rounded hover:from-cyan-500/30 hover:to-cyan-600/30 transition-all border border-cyan-500/30 font-semibold"
+            title="Zoom to Fit All Content (F)"
           >
             🎯 Fit
           </button>
@@ -1320,6 +1324,7 @@ export default function MultiTrackStudioV4() {
               ? 'bg-cyan-500/30 text-cyan-300 border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
               : 'bg-[#1a1a1a] text-gray-500 border-gray-700 hover:bg-cyan-500/10 hover:text-cyan-400 hover:border-cyan-500/30'
           }`}
+          title="Snap to Grid (G) - Aligns clips to beats"
         >
           🧲 {snapEnabled ? 'ON' : 'OFF'}
         </button>
@@ -2028,12 +2033,14 @@ export default function MultiTrackStudioV4() {
         <button
           onClick={addTrack}
           className="px-4 h-8 bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 text-xs rounded transition-all font-semibold"
+          title="Add a new empty track"
         >
           + NEW TRACK
         </button>
         <button
           onClick={() => document.getElementById('audio-upload')?.click()}
           className="px-4 h-8 bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 text-xs rounded transition-all font-semibold"
+          title="Import audio file to new track"
         >
           📁 IMPORT AUDIO
         </button>
@@ -2044,18 +2051,21 @@ export default function MultiTrackStudioV4() {
               ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' 
               : 'bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-cyan-500/30'
           }`}
+          title="Toggle mixer panel - Volume & Pan controls for all tracks"
         >
           🎛️ MIXER
         </button>
         <button
           onClick={() => setShowSaveModal(true)}
           className="px-4 h-8 bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-cyan-500/30 text-xs rounded transition-all"
+          title="Save project to IndexedDB"
         >
           💾 SAVE PROJECT
         </button>
         <button
           onClick={() => setShowExportModal(true)}
           className="px-4 h-8 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-black text-xs font-bold rounded transition-all shadow-lg shadow-cyan-500/30"
+          title="Export final mix as WAV or MP3"
         >
           📤 EXPORT
         </button>
