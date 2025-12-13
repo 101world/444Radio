@@ -1078,44 +1078,98 @@ export default function MultiTrackStudioV4() {
 
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
-        {/* Playhead Display */}
-        <div className="flex items-center gap-2">
-          <div className="text-sm font-mono text-cyan-400">{formatTime(playhead)}</div>
-          <div className="text-xs text-gray-600">|</div>
-          <div className="text-xs text-gray-500">{bpm} BPM</div>
+        {/* Enhanced Playhead Display with BPM */}
+        <div className="flex items-center gap-3 px-3 py-1.5 bg-[#0f0f0f]/50 rounded-lg border border-cyan-500/20">
+          <div className="text-sm font-mono text-cyan-400 font-bold tracking-wider">{formatTime(playhead)}</div>
+          <div className="w-px h-4 bg-cyan-500/30" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-gray-500">BPM</span>
+            <span className="text-xs text-cyan-400 font-bold">{bpm}</span>
+          </div>
         </div>
 
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
-        {/* Zoom Control */}
-        <div className="flex items-center gap-2">
+        {/* Professional Zoom Controls */}
+        <div className="flex items-center gap-2 px-2 py-1 bg-[#0f0f0f]/50 rounded-lg border border-gray-800">
+          <span className="text-[10px] text-gray-500 font-semibold">ZOOM</span>
           <button
-            onClick={() => setZoom(10)}
-            className="px-2 py-1 text-[10px] bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-800"
-            title="Zoom out (10px/s)"
+            onClick={() => setZoom(Math.max(5, zoom - 10))}
+            className="px-2.5 py-1 text-xs bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-700 hover:border-cyan-500/30 font-bold"
+            title="Zoom out (-10)"
           >
-            10x
+            −
           </button>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setZoom(10)}
+              className={`px-2 py-1 text-[10px] rounded transition-all border ${
+                zoom === 10 
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
+                  : 'bg-[#1f1f1f] text-gray-400 border-gray-800 hover:bg-[#252525] hover:text-cyan-400'
+              }`}
+              title="Wide view (10px/s)"
+            >
+              10x
+            </button>
+            <button
+              onClick={() => setZoom(25)}
+              className={`px-2 py-1 text-[10px] rounded transition-all border ${
+                zoom === 25 
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
+                  : 'bg-[#1f1f1f] text-gray-400 border-gray-800 hover:bg-[#252525] hover:text-cyan-400'
+              }`}
+              title="Medium view (25px/s)"
+            >
+              25x
+            </button>
+            <button
+              onClick={() => setZoom(50)}
+              className={`px-2 py-1 text-[10px] rounded transition-all border ${
+                zoom === 50 
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
+                  : 'bg-[#1f1f1f] text-gray-400 border-gray-800 hover:bg-[#252525] hover:text-cyan-400'
+              }`}
+              title="1:1 view (50px/s)"
+            >
+              1:1
+            </button>
+            <button
+              onClick={() => setZoom(100)}
+              className={`px-2 py-1 text-[10px] rounded transition-all border ${
+                zoom === 100 
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
+                  : 'bg-[#1f1f1f] text-gray-400 border-gray-800 hover:bg-[#252525] hover:text-cyan-400'
+              }`}
+              title="Detail view (100px/s)"
+            >
+              2x
+            </button>
+            <button
+              onClick={() => setZoom(150)}
+              className={`px-2 py-1 text-[10px] rounded transition-all border ${
+                zoom === 150 
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' 
+                  : 'bg-[#1f1f1f] text-gray-400 border-gray-800 hover:bg-[#252525] hover:text-cyan-400'
+              }`}
+              title="High detail (150px/s)"
+            >
+              3x
+            </button>
+          </div>
           <button
-            onClick={() => setZoom(50)}
-            className="px-2 py-1 text-[10px] bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-800"
-            title="1:1 (50px/s)"
+            onClick={() => setZoom(Math.min(200, zoom + 10))}
+            className="px-2.5 py-1 text-xs bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-700 hover:border-cyan-500/30 font-bold"
+            title="Zoom in (+10)"
           >
-            1:1
-          </button>
-          <button
-            onClick={() => setZoom(100)}
-            className="px-2 py-1 text-[10px] bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-800"
-            title="Zoom in (100px/s)"
-          >
-            2x
+            +
           </button>
           <button
             onClick={zoomToFit}
-            className="px-2 py-1 text-[10px] bg-[#1f1f1f] text-cyan-400 rounded hover:bg-cyan-500/10 hover:text-cyan-300 transition-all border border-cyan-500/30"
+            className="px-3 py-1 text-[10px] bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 rounded hover:from-cyan-500/30 hover:to-purple-500/30 transition-all border border-cyan-500/30 font-semibold"
             title="Fit all clips to window"
           >
-            🖌️ Fit
+            🎯 Fit
           </button>
           <div className="w-px h-6 bg-[#2a2a2a]" />
           <span className="text-[10px] text-gray-600">🔍</span>
@@ -1369,35 +1423,85 @@ export default function MultiTrackStudioV4() {
 
         {/* Timeline Area */}
         <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-auto" ref={timelineRef}>
-          {/* Timeline Ruler */}
+          {/* Professional Timeline Ruler */}
           <div 
-            className="h-8 bg-[#0f0f0f] border-b border-[#1f1f1f] cursor-pointer hover:bg-[#141414] relative flex-shrink-0"
+            className="h-10 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a] border-b-2 border-cyan-500/20 cursor-pointer hover:bg-[#141414] relative flex-shrink-0 shadow-lg"
             onClick={handleRulerClick}
-            title="Click to seek"
+            title="Click to seek timeline"
           >
             <div className="absolute inset-0 overflow-x-auto overflow-y-hidden" style={{ width: '100%' }}>
               <div className="relative h-full" style={{ width: `${600 * zoom}px` }}>
                 {useMemo(() => {
                   const totalSeconds = 600;
-                  // Adaptive interval based on zoom - fewer markers at low zoom
-                  const interval = zoom < 10 ? 20 : zoom < 20 ? 10 : zoom < 50 ? 5 : zoom < 100 ? 2 : 1;
+                  // Adaptive intervals: show more detail at higher zoom
+                  const majorInterval = zoom < 10 ? 60 : zoom < 20 ? 30 : zoom < 40 ? 10 : zoom < 80 ? 5 : 1;
+                  const minorInterval = zoom >= 40 ? majorInterval / 5 : zoom >= 80 ? 0.5 : majorInterval / 2;
                   const markers: React.ReactElement[] = [];
-                  const maxMarkers = 100; // Cap at 100 markers
+                  const maxMarkers = 150;
                   
-                  for (let sec = 0; sec <= totalSeconds; sec += interval) {
-                    if (markers.length >= maxMarkers) break;
+                  // Beat markers (if zoom is high enough)
+                  const beatDuration = 60 / bpm;
+                  const showBeats = zoom >= 50;
+                  
+                  // Major time markers with labels
+                  for (let sec = 0; sec <= totalSeconds && markers.length < maxMarkers; sec += majorInterval) {
+                    const minutes = Math.floor(sec / 60);
+                    const seconds = sec % 60;
+                    const timeLabel = minutes > 0 
+                      ? `${minutes}:${seconds.toString().padStart(2, '0')}`
+                      : `${sec}s`;
+                    
                     markers.push(
                       <div 
-                        key={sec} 
-                        className="absolute top-0 h-full flex items-center pl-1 text-xs text-gray-500 border-l border-[#1f1f1f]/30" 
+                        key={`major-${sec}`} 
+                        className="absolute top-0 h-full flex flex-col justify-between border-l-2 border-cyan-500/30" 
                         style={{ left: `${sec * zoom}px` }}
                       >
-                        {sec}s
+                        <div className="text-[10px] text-cyan-400 font-mono font-bold px-1.5 py-0.5 bg-[#0f0f0f]/80 rounded-br">
+                          {timeLabel}
+                        </div>
+                        <div className="h-2 w-px bg-cyan-500/50" />
                       </div>
                     );
                   }
+                  
+                  // Minor time markers (subdivisions)
+                  if (zoom >= 20) {
+                    for (let sec = 0; sec <= totalSeconds && markers.length < maxMarkers; sec += minorInterval) {
+                      if (sec % majorInterval !== 0) { // Skip major markers
+                        markers.push(
+                          <div 
+                            key={`minor-${sec}`} 
+                            className="absolute top-0 h-full flex flex-col justify-end border-l border-gray-700/40" 
+                            style={{ left: `${sec * zoom}px` }}
+                          >
+                            <div className="h-1.5 w-px bg-gray-600/30" />
+                          </div>
+                        );
+                      }
+                    }
+                  }
+                  
+                  // Beat markers (shown at very high zoom)
+                  if (showBeats) {
+                    for (let beat = 0; beat <= totalSeconds / beatDuration && markers.length < maxMarkers; beat++) {
+                      const beatTime = beat * beatDuration;
+                      if (beatTime % majorInterval !== 0 && beatTime % minorInterval !== 0) {
+                        markers.push(
+                          <div 
+                            key={`beat-${beat}`} 
+                            className="absolute top-0 h-full flex flex-col justify-end border-l border-purple-500/20" 
+                            style={{ left: `${beatTime * zoom}px` }}
+                          >
+                            <div className="h-1 w-px bg-purple-400/20" />
+                          </div>
+                        );
+                      }
+                    }
+                  }
+                  
                   return markers;
-                }, [zoom])}
+                }, [zoom, bpm])}
               </div>
             </div>
           </div>
@@ -1420,43 +1524,100 @@ export default function MultiTrackStudioV4() {
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500 pointer-events-none" />
             </div>
             
-            {/* Professional Beat Grid Lines - Optimized */}
+            {/* Professional Beat Grid Lines - Enhanced */}
             {useMemo(() => {
               const beatDuration = 60 / bpm;
               const barDuration = beatDuration * 4;
               const totalDuration = 600;
               const gridLines: React.ReactElement[] = [];
               
-              // Adaptive grid density based on zoom
+              // Adaptive grid density based on zoom level
               const showBeats = zoom >= 40;
-              const skipFactor = zoom < 20 ? 4 : zoom < 40 ? 2 : 1; // Skip lines at low zoom
+              const showSubdivisions = zoom >= 80;
+              const skipFactor = zoom < 20 ? 4 : zoom < 40 ? 2 : 1;
               
               let lineCount = 0;
-              const maxLines = 200; // Cap at 200 lines for performance
+              const maxLines = 250;
               
-              for (let time = 0; time <= totalDuration; time += beatDuration) {
-                const isBar = Math.abs(time % barDuration) < 0.01;
-                const shouldShow = isBar || (showBeats && snapEnabled && (lineCount % skipFactor === 0));
-                
-                if (shouldShow && lineCount < maxLines) {
-                  gridLines.push(
-                    <div
-                      key={`grid-${time.toFixed(2)}`}
-                      className="absolute top-0 bottom-0 pointer-events-none"
-                      style={{
-                        left: `${time * zoom}px`,
-                        width: '1px',
-                        background: isBar 
-                          ? 'rgba(100, 200, 255, 0.15)' 
-                          : 'rgba(100, 200, 255, 0.05)'
-                      }}
-                    />
-                  );
-                }
+              // Bar lines (strongest)
+              for (let bar = 0; bar <= totalDuration / barDuration && lineCount < maxLines; bar++) {
+                const time = bar * barDuration;
+                gridLines.push(
+                  <div
+                    key={`bar-${bar}`}
+                    className="absolute top-0 bottom-0 pointer-events-none border-l-2 border-cyan-500/20"
+                    style={{ left: `${time * zoom}px` }}
+                  >
+                    <div className="absolute -top-px left-0 w-8 h-px bg-gradient-to-r from-cyan-500/30 to-transparent" />
+                  </div>
+                );
                 lineCount++;
               }
+              
+              // Beat lines (medium strength)
+              if (showBeats) {
+                for (let beat = 0; beat <= totalDuration / beatDuration && lineCount < maxLines; beat++) {
+                  const time = beat * beatDuration;
+                  const isBar = Math.abs(time % barDuration) < 0.01;
+                  
+                  if (!isBar && (lineCount % skipFactor === 0)) {
+                    gridLines.push(
+                      <div
+                        key={`beat-${beat}`}
+                        className="absolute top-0 bottom-0 pointer-events-none border-l border-purple-500/15"
+                        style={{ left: `${time * zoom}px` }}
+                      />
+                    );
+                    lineCount++;
+                  }
+                }
+              }
+              
+              // Subdivision lines (16th notes - weakest, only at very high zoom)
+              if (showSubdivisions && snapEnabled) {
+                const subdivisionDuration = beatDuration / 4;
+                for (let i = 0; i <= totalDuration / subdivisionDuration && lineCount < maxLines; i++) {
+                  const time = i * subdivisionDuration;
+                  const isBeat = Math.abs(time % beatDuration) < 0.01;
+                  const isBar = Math.abs(time % barDuration) < 0.01;
+                  
+                  if (!isBeat && !isBar) {
+                    gridLines.push(
+                      <div
+                        key={`sub-${i}`}
+                        className="absolute top-0 bottom-0 pointer-events-none border-l border-gray-700/10"
+                        style={{ left: `${time * zoom}px` }}
+                      />
+                    );
+                    lineCount++;
+                  }
+                }
+              }
+              
               return gridLines;
-            }, [bpm, zoom, snapEnabled])}
+            }, [zoom, bpm, snapEnabled])}            {/* Second-based grid (for reference at all zoom levels) */}
+            {useMemo(() => {
+              if (zoom >= 40) return null; // Don't show at high zoom (beats are better)
+              
+              const gridLines: React.ReactElement[] = [];
+              const interval = zoom < 10 ? 60 : zoom < 20 ? 30 : zoom < 40 ? 10 : 5;
+              const maxLines = 100;
+              
+              for (let sec = 0; sec <= 600 && gridLines.length < maxLines; sec += interval) {
+                gridLines.push(
+                  <div
+                    key={`sec-${sec}`}
+                    className="absolute top-0 bottom-0 pointer-events-none"
+                    style={{
+                      left: `${sec * zoom}px`,
+                      width: '1px',
+                      background: 'rgba(100, 200, 255, 0.12)'
+                    }}
+                  />
+                );
+              }
+              return gridLines;
+            }, [zoom])}
             
             {/* Legacy Grid Lines (when snap enabled) */}
             {false && snapEnabled && (
