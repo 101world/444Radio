@@ -143,6 +143,8 @@ export default function MultiTrackStudioV4() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [selectedColorTrackId, setSelectedColorTrackId] = useState<string | null>(null);
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [editingTrackName, setEditingTrackName] = useState<string>('');
   const [userProjects, setUserProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -1328,22 +1330,31 @@ export default function MultiTrackStudioV4() {
                 <div className="text-xs text-cyan-400">💡 Tip: Upload audio or add a new track</div>
               </div>
             ) : (
-              tracks.map((track, index) => (
+              tracks.map((track, index) => {
+                const isTrackActive = isPlaying && !track.muted && track.clips.some(clip => 
+                  playhead >= clip.startTime && playhead <= clip.startTime + clip.duration
+                );
+                
+                return (
                 <div
                   key={track.id}
                   className={`p-3.5 border-b border-[#1a1a1a] cursor-pointer transition-all duration-200 ${
                     selectedTrackId === track.id
                       ? 'bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 border-l-4 border-l-cyan-500 shadow-lg shadow-cyan-500/10'
                       : 'hover:bg-white/[0.03] border-l-4 border-l-transparent hover:border-l-gray-700'
-                  }`}
+                  } ${isTrackActive ? 'ring-1 ring-green-500/30 shadow-lg shadow-green-500/10' : ''}`}
                   style={{ height: '80px' }} // Match timeline track height
                   onClick={() => setSelectedTrackId(track.id)}
                 >
                   <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-2.5">
-                      {/* Track Number */}
-                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-xs font-black text-cyan-400 border border-gray-700 shadow-inner">
-                        {index + 1}
+                      {/* Track Number with activity indicator */}
+                      <div className={`w-7 h-7 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-xs font-black border shadow-inner transition-all ${
+                        isTrackActive 
+                          ? 'text-green-400 border-green-500/50 animate-pulse' 
+                          : 'text-cyan-400 border-gray-700'
+                      }`}>
+                        {isTrackActive ? '▶' : index + 1}
                       </div>
                       {/* Color Picker */}
                       <button
@@ -1360,10 +1371,43 @@ export default function MultiTrackStudioV4() {
                       <div className="text-lg leading-none">
                         {track.type === 'midi' ? '🎹' : '🎤'}
                       </div>
-                      {/* Track Name */}
-                      <span className="text-sm font-bold text-white truncate max-w-[80px]">
-                        {track.name}
-                      </span>
+                      {/* Track Name - Editable on double-click */}
+                      {editingTrackId === track.id ? (
+                        <input
+                          type="text"
+                          value={editingTrackName}
+                          onChange={(e) => setEditingTrackName(e.target.value)}
+                          onBlur={() => {
+                            if (editingTrackName.trim()) {
+                              daw?.updateTrack(track.id, { name: editingTrackName.trim() });
+                              setTracks(daw?.getTracks() || []);
+                            }
+                            setEditingTrackId(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur();
+                            } else if (e.key === 'Escape') {
+                              setEditingTrackId(null);
+                            }
+                          }}
+                          autoFocus
+                          className="text-sm font-bold text-white bg-cyan-500/20 border border-cyan-500/50 rounded px-1 py-0.5 max-w-[80px] focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span 
+                          className="text-sm font-bold text-white truncate max-w-[80px] cursor-text hover:text-cyan-400 transition-colors"
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setEditingTrackId(track.id);
+                            setEditingTrackName(track.name);
+                          }}
+                          title="Double-click to rename"
+                        >
+                          {track.name}
+                        </span>
+                      )}
                     </div>
                     {/* Mute/Solo/Delete Buttons */}
                     <div className="flex gap-1">
@@ -1409,7 +1453,7 @@ export default function MultiTrackStudioV4() {
                   </div>
 
                   {/* Track Info */}
-                  <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-2">
+                  <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-1.5">
                     <span className="px-1.5 py-0.5 bg-[#1f1f1f] rounded font-mono uppercase">
                       {track.type}
                     </span>
@@ -1419,9 +1463,9 @@ export default function MultiTrackStudioV4() {
                     </span>
                   </div>
 
-                  {/* Volume Fader - Better Design */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-gray-600 font-mono uppercase w-7">Vol</span>
+                  {/* Volume Fader - Enhanced */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] text-gray-600 font-bold uppercase w-7">Vol</span>
                     <input
                       type="range"
                       min="0"
@@ -1431,16 +1475,40 @@ export default function MultiTrackStudioV4() {
                         e.stopPropagation();
                         updateTrackVolume(track.id, parseInt(e.target.value));
                       }}
-                      className="flex-1 h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-500/50 hover:[&::-webkit-slider-thumb]:bg-cyan-400"
+                      className="flex-1 h-1.5 bg-gradient-to-r from-gray-800 to-gray-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-cyan-400 [&::-webkit-slider-thumb]:to-cyan-600 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-500/50 hover:[&::-webkit-slider-thumb]:scale-110 [&::-webkit-slider-thumb]:transition-transform"
                       onClick={(e) => e.stopPropagation()}
                       title={`Volume: ${Math.round(track.volume * 100)}%`}
                     />
-                    <span className="text-[9px] text-gray-400 font-mono w-8 text-right">
+                    <span className="text-[9px] text-cyan-400 font-mono font-bold w-8 text-right">
                       {Math.round(track.volume * 100)}
                     </span>
                   </div>
+
+                  {/* Pan Control - NEW */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-gray-600 font-bold uppercase w-7">Pan</span>
+                    <input
+                      type="range"
+                      min="-100"
+                      max="100"
+                      value={(track.pan || 0) * 100}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        const pan = parseInt(e.target.value) / 100;
+                        daw?.setTrackPan(track.id, pan);
+                        setTracks(daw?.getTracks() || []);
+                      }}
+                      className="flex-1 h-1.5 bg-gradient-to-r from-purple-900/30 via-gray-800 to-purple-900/30 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-purple-400 [&::-webkit-slider-thumb]:to-purple-600 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-500/50 hover:[&::-webkit-slider-thumb]:scale-110 [&::-webkit-slider-thumb]:transition-transform"
+                      onClick={(e) => e.stopPropagation()}
+                      title={`Pan: ${(track.pan || 0) > 0 ? 'R' : (track.pan || 0) < 0 ? 'L' : 'C'}${Math.abs(Math.round((track.pan || 0) * 100))}`}
+                    />
+                    <span className="text-[9px] text-purple-400 font-mono font-bold w-8 text-right">
+                      {(track.pan || 0) === 0 ? 'C' : (track.pan || 0) > 0 ? `R${Math.round((track.pan || 0) * 100)}` : `L${Math.abs(Math.round((track.pan || 0) * 100))}`}
+                    </span>
+                  </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

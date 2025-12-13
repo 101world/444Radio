@@ -322,6 +322,11 @@ export class MultiTrackDAW {
     return this.trackManager.getTracks()
   }
 
+  updateTrack(trackId: string, updates: Partial<Track>): void {
+    this.trackManager.updateTrack(trackId, updates)
+    this.emit('trackUpdated', { trackId, updates })
+  }
+
   // Clip Management
   addClipToTrack(trackId: string, clipConfig: Partial<import('./TrackManager').TrackClip>): void {
     const clip = this.trackManager.addClip(trackId, clipConfig)
