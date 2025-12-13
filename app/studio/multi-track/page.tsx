@@ -133,7 +133,7 @@ export default function MultiTrackStudioV4() {
   const [zoom, setZoom] = useState(50); // Pixels per second (default 50)
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
-  const [showMixer, setShowMixer] = useState(true);
+  const [showMixer, setShowMixer] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [snapEnabled, setSnapEnabled] = useState(true);
@@ -362,16 +362,23 @@ export default function MultiTrackStudioV4() {
       lastRafTime.current = timestamp;
 
       const currentPlayhead = daw.getPlayhead();
-      setPlayhead(currentPlayhead);
-      setIsPlaying(daw.isPlaying());
+      const playing = daw.isPlaying();
       
-      // Update visual position via transform
+      // Only update state if changed to prevent unnecessary re-renders
+      if (Math.abs(currentPlayhead - playhead) > 0.01) {
+        setPlayhead(currentPlayhead);
+      }
+      if (playing !== isPlaying) {
+        setIsPlaying(playing);
+      }
+      
+      // Update visual position via transform (no re-render)
       if (playheadRef.current) {
         playheadRef.current.style.transform = `translateX(${currentPlayhead * zoom}px)`;
       }
       
-      // Auto-scroll timeline to follow playhead during playback
-      if (timelineRef.current && daw.isPlaying()) {
+      // Auto-scroll timeline during playback only
+      if (playing && timelineRef.current) {
         const container = timelineRef.current.querySelector('.overflow-auto') as HTMLElement;
         if (container) {
           const playheadPixel = currentPlayhead * zoom;
@@ -388,7 +395,7 @@ export default function MultiTrackStudioV4() {
       }
       
       // Check loop boundaries
-      if (loopEnabled && daw.isPlaying() && currentPlayhead >= loopEnd) {
+      if (loopEnabled && playing && currentPlayhead >= loopEnd) {
         daw.seekTo(loopStart);
         setPlayhead(loopStart);
         if (playheadRef.current) {
@@ -396,8 +403,8 @@ export default function MultiTrackStudioV4() {
         }
       }
 
-      // Update VU meters (throttled to every 2 frames for performance)
-      if (daw.isPlaying()) {
+      // Update VU meters only when playing
+      if (playing) {
         const newVuLevels: Record<string, number> = {};
         tracks.forEach(track => {
           const analyser = analyserNodesRef.current[track.id];
@@ -405,19 +412,15 @@ export default function MultiTrackStudioV4() {
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(dataArray);
             const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-            newVuLevels[track.id] = average / 255; // Normalize to 0-1
+            newVuLevels[track.id] = average / 255;
           } else {
             newVuLevels[track.id] = 0;
           }
         });
         setVuLevels(newVuLevels);
-      } else {
-        // Reset VU levels when not playing
-        const resetLevels: Record<string, number> = {};
-        tracks.forEach(track => { resetLevels[track.id] = 0; });
-        setVuLevels(resetLevels);
       }
       
+      // Continue loop
       rafRef.current = requestAnimationFrame(loop);
     };
 
@@ -592,8 +595,23 @@ export default function MultiTrackStudioV4() {
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const timeInSeconds = snapTime(clickX / zoom);
+    
+    // Seek to clicked position
     daw.seekTo(timeInSeconds);
     setPlayhead(timeInSeconds);
+    
+    // Update visual position immediately
+    if (playheadRef.current) {
+      playheadRef.current.style.transform = `translateX(${timeInSeconds * zoom}px)`;
+    }
+    
+    // If currently playing, continue playing from new position
+    if (daw.isPlaying()) {
+      daw.pause();
+      setTimeout(() => {
+        daw.play();
+      }, 10);
+    }
   };
 
   const handleClipMouseDown = (e: React.MouseEvent, trackId: string, clipId: string, clipStartTime: number) => {
@@ -1983,6 +2001,16 @@ export default function MultiTrackStudioV4() {
           className="px-4 h-8 bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 text-xs rounded transition-all font-semibold"
         >
           📁 IMPORT AUDIO
+        </button>
+        <button
+          onClick={() => setShowMixer(!showMixer)}
+          className={`px-4 h-8 border text-xs rounded transition-all font-semibold ${
+            showMixer 
+              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' 
+              : 'bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-cyan-500/30'
+          }`}
+        >
+          🎛️ MIXER
         </button>
         <button
           onClick={() => setShowSaveModal(true)}

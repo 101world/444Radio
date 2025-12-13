@@ -10,6 +10,8 @@ import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Uploa
 import { supabase } from '@/lib/supabase'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
+import BannerUploadModal from '../../components/BannerUploadModal'
+import ProfileUploadModal from '../../components/ProfileUploadModal'
 
 interface ProfileData {
   userId: string
@@ -80,6 +82,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [showBannerUpload, setShowBannerUpload] = useState(false)
   const [showAvatarUpload, setShowAvatarUpload] = useState(false)
   const [showEditProfile, setShowEditProfile] = useState(false)
+  
+  // Edit profile form state
+  const [editFullName, setEditFullName] = useState('')
+  const [editBio, setEditBio] = useState('')
+  const [editLocation, setEditLocation] = useState('')
+  const [editWebsite, setEditWebsite] = useState('')
+  const [editTwitter, setEditTwitter] = useState('')
+  const [editInstagram, setEditInstagram] = useState('')
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
 
   // Load Profile Data
   useEffect(() => {
@@ -164,6 +175,18 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [userId, user?.id])
 
+  // Populate edit form when modal opens
+  useEffect(() => {
+    if (showEditProfile && profile) {
+      setEditFullName(profile.fullName || '')
+      setEditBio(profile.bio || '')
+      setEditLocation(profile.location || '')
+      setEditWebsite(profile.website || '')
+      setEditTwitter(profile.social_links?.twitter || '')
+      setEditInstagram(profile.social_links?.instagram || '')
+    }
+  }, [showEditProfile, profile])
+
   // Handle Follow/Unfollow
   const handleFollowToggle = async () => {
     if (!user?.id) return
@@ -188,6 +211,77 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       }
     } catch (error) {
       console.error('Error toggling follow:', error)
+    }
+  }
+
+  // Handle Banner Upload Success
+  const handleBannerSuccess = async (url: string) => {
+    setProfile(prev => prev ? { ...prev, banner_url: url } : null)
+    // Refresh profile data
+    const { data } = await supabase
+      .from('users')
+      .select('banner_url')
+      .eq('clerk_user_id', userId)
+      .single()
+    if (data) {
+      setProfile(prev => prev ? { ...prev, banner_url: data.banner_url } : null)
+    }
+  }
+
+  // Handle Avatar Upload Success  
+  const handleAvatarSuccess = async () => {
+    // Refresh profile data
+    const { data } = await supabase
+      .from('users')
+      .select('avatar_url')
+      .eq('clerk_user_id', userId)
+      .single()
+    if (data) {
+      setProfile(prev => prev ? { ...prev, avatar_url: data.avatar_url } : null)
+    }
+  }
+
+  // Handle Edit Profile Submit
+  const handleEditProfileSubmit = async () => {
+    if (!user?.id) return
+    
+    setIsUpdatingProfile(true)
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          full_name: editFullName,
+          bio: editBio,
+          location: editLocation,
+          website: editWebsite,
+          social_links: {
+            twitter: editTwitter,
+            instagram: editInstagram
+          }
+        })
+        .eq('clerk_user_id', user.id)
+      
+      if (error) throw error
+      
+      // Update local state
+      setProfile(prev => prev ? {
+        ...prev,
+        fullName: editFullName,
+        bio: editBio,
+        location: editLocation,
+        website: editWebsite,
+        social_links: {
+          twitter: editTwitter,
+          instagram: editInstagram
+        }
+      } : null)
+      
+      setShowEditProfile(false)
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      alert('Failed to update profile')
+    } finally {
+      setIsUpdatingProfile(false)
     }
   }
 
@@ -587,6 +681,129 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Banner Upload Modal */}
+      <BannerUploadModal
+        isOpen={showBannerUpload}
+        onClose={() => setShowBannerUpload(false)}
+        onSuccess={handleBannerSuccess}
+      />
+
+      {/* Avatar Upload Modal */}
+      <ProfileUploadModal
+        isOpen={showAvatarUpload}
+        onClose={() => setShowAvatarUpload(false)}
+        onUploadComplete={handleAvatarSuccess}
+      />
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] border border-cyan-500/30 rounded-2xl p-8 max-w-2xl w-full shadow-2xl shadow-cyan-500/20 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-cyan-400">Edit Profile</h3>
+              <button
+                onClick={() => setShowEditProfile(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <Edit2 size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Full Name */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
+                  placeholder="Your full name"
+                />
+              </div>
+
+              {/* Bio */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Bio</label>
+                <textarea
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white resize-none"
+                  placeholder="Tell us about yourself..."
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Location</label>
+                <input
+                  type="text"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
+                  placeholder="City, Country"
+                />
+              </div>
+
+              {/* Website */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Website</label>
+                <input
+                  type="url"
+                  value={editWebsite}
+                  onChange={(e) => setEditWebsite(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
+                  placeholder="https://yourwebsite.com"
+                />
+              </div>
+
+              {/* Social Links */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Twitter</label>
+                  <input
+                    type="text"
+                    value={editTwitter}
+                    onChange={(e) => setEditTwitter(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
+                    placeholder="@username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Instagram</label>
+                  <input
+                    type="text"
+                    value={editInstagram}
+                    onChange={(e) => setEditInstagram(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
+                    placeholder="@username"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowEditProfile(false)}
+                className="flex-1 px-6 py-3 bg-white/5 border border-white/10 text-gray-300 rounded-lg hover:bg-white/10 transition-all font-semibold"
+                disabled={isUpdatingProfile}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditProfileSubmit}
+                disabled={isUpdatingProfile}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all font-bold shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>
