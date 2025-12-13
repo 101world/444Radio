@@ -1024,10 +1024,7 @@ export default function MultiTrackStudioV4() {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-[#0a0a0a] via-[#050505] to-[#000000] text-gray-200">
-      {/* Animated Gradient Background */}
-      <AnimatedBackground />
-      
+    <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-200 overflow-hidden">
       {/* Mobile Warning Modal */}
       {isMobile && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
@@ -1071,41 +1068,42 @@ export default function MultiTrackStudioV4() {
         </div>
       )}
 
-      {/* Top Toolbar - Fixed with better spacing and wrapping */}
-      <header className="min-h-14 max-h-16 bg-gradient-to-r from-[#0f0f0f] via-[#141414] to-[#0f0f0f] border-b border-cyan-500/20 flex items-center px-3 gap-2 shadow-xl shadow-black/50 overflow-x-auto scrollbar-thin">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center text-lg">
-            🎵
+      {/* Top Toolbar - Professional & Aligned */}
+      <header className="h-14 bg-[#0f0f0f] border-b border-white/10 flex items-center px-4 gap-3 shadow-2xl flex-shrink-0 relative z-10">
+        {/* Logo */}
+        <div className="flex items-center gap-2 mr-2">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
+            <span className="text-base">🎵</span>
           </div>
-          <div>
-            <div className="text-sm font-bold text-white">444 Radio Studio v4.0</div>
-            <div className="text-xs text-gray-600">Professional DAW</div>
+          <div className="hidden lg:block">
+            <div className="text-xs font-bold text-white leading-tight">444 Studio</div>
+            <div className="text-[9px] text-gray-500 leading-tight">Multi-Track DAW</div>
           </div>
         </div>
 
-        <div className="w-px h-8 bg-[#2a2a2a] mx-1 flex-shrink-0" />
+        <div className="w-px h-8 bg-white/10 flex-shrink-0" />
 
-        {/* Professional Transport Controls */}
-        <div className="flex gap-2 items-center px-2 py-1 bg-[#0f0f0f]/80 rounded-xl border border-gray-800 flex-shrink-0">
+        {/* Transport Controls */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Undo/Redo */}
           <div className="flex gap-1">
             <button
               onClick={handleUndo}
-              className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-400 rounded-lg hover:bg-[#252525] hover:border-cyan-500/30 hover:text-cyan-400 transition-all"
+              className="w-8 h-8 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 rounded-lg transition-all border border-white/10 hover:border-cyan-500/50"
               title="Undo (Cmd+Z)"
             >
-              ↶
+              <span className="text-sm">↶</span>
             </button>
             <button
               onClick={handleRedo}
-              className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-400 rounded-lg hover:bg-[#252525] hover:border-cyan-500/30 hover:text-cyan-400 transition-all"
+              className="w-8 h-8 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 rounded-lg transition-all border border-white/10 hover:border-cyan-500/50"
               title="Redo (Cmd+Shift+Z)"
             >
-              ↷
+              <span className="text-sm">↷</span>
             </button>
           </div>
           
-          <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
+          <div className="w-px h-8 bg-white/10" />
           
           {/* Main Transport */}
           <div className="flex gap-2">
@@ -1170,29 +1168,29 @@ export default function MultiTrackStudioV4() {
           </div>
         </div>
 
-        <div className="w-px h-8 bg-[#2a2a2a] mx-1 flex-shrink-0" />
+        <div className="w-px h-8 bg-white/10 flex-shrink-0" />
 
-        {/* Enhanced Playhead Display with BPM */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-xl border border-cyan-500/30 shadow-lg shadow-cyan-500/10 flex-shrink-0">
-          <div className="text-base font-mono text-cyan-400 font-bold tracking-wider">{formatTime(playhead)}</div>
-          <div className="w-px h-5 bg-gradient-to-b from-cyan-500/50 via-cyan-500 to-cyan-500/50" />
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-gray-400 font-semibold">BPM</span>
-            <span className="text-sm text-cyan-300 font-black">{bpm}</span>
+        {/* Playhead & BPM Display */}
+        <div className="flex items-center gap-3 px-4 h-9 bg-black/40 rounded-lg border border-cyan-500/20 flex-shrink-0">
+          <div className="text-sm font-mono text-cyan-400 font-bold tracking-wider tabular-nums">{formatTime(playhead)}</div>
+          <div className="w-px h-5 bg-cyan-500/30" />
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-gray-500 font-semibold uppercase">BPM</span>
+            <span className="text-sm text-white font-bold tabular-nums">{bpm}</span>
           </div>
         </div>
 
-        <div className="w-px h-8 bg-[#2a2a2a] mx-1 flex-shrink-0" />
+        <div className="w-px h-8 bg-white/10 flex-shrink-0" />
 
-        {/* Professional Zoom Controls */}
-        <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-[#0f0f0f] to-[#1a1a1a] rounded-xl border border-cyan-500/20 shadow-lg max-w-md flex-shrink-0">
-          <span className="text-[10px] text-gray-500 font-semibold">ZOOM</span>
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-2 px-3 h-9 bg-black/40 rounded-lg border border-white/10 flex-shrink-0">
+          <span className="text-[9px] text-gray-500 font-bold uppercase">Zoom</span>
           <button
             onClick={() => setZoom(Math.max(5, zoom - 10))}
-            className="px-2.5 py-1 text-xs bg-[#1f1f1f] text-gray-400 rounded hover:bg-[#252525] hover:text-cyan-400 transition-all border border-gray-700 hover:border-cyan-500/30 font-bold"
-            title="Zoom out (-10)"
+            className="w-6 h-6 text-xs bg-white/5 hover:bg-white/10 text-gray-400 hover:text-cyan-400 rounded transition-all border border-white/10 hover:border-cyan-500/50 font-bold flex items-center justify-center"
+            title="Zoom out"
           >
-            −
+            <span>−</span>
           </button>
           <div className="flex gap-1">
             <button
@@ -1349,13 +1347,15 @@ export default function MultiTrackStudioV4() {
       <div className="flex-1 flex overflow-hidden">
         {/* Track List */}
         <div className="w-60 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a] border-r border-cyan-500/20 flex flex-col flex-shrink-0 shadow-2xl shadow-black/50">
-          <div className="p-3 border-b border-cyan-500/20 flex gap-2">
+          {/* Track List Header */}
+          <div className="h-12 px-3 border-b border-white/10 flex items-center gap-2 bg-[#0f0f0f]">
             <button
               onClick={addTrack}
-              className="flex-1 p-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-xl shadow-cyan-500/40 hover:scale-105 active:scale-95"
+              className="flex-1 h-8 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-lg transition-all shadow-lg hover:shadow-cyan-500/50 font-semibold text-sm flex items-center justify-center gap-1.5"
               title="Add Track"
             >
-              ➕
+              <span>➕</span>
+              <span className="hidden lg:inline">Track</span>
             </button>
             
             <input
@@ -1368,28 +1368,26 @@ export default function MultiTrackStudioV4() {
             />
             <button
               onClick={() => document.getElementById('audio-upload')?.click()}
-              className="flex-1 p-2 bg-[#1f1f1f] text-cyan-400 border-2 border-cyan-500/30 rounded-lg hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-all"
+              className="flex-1 h-8 bg-white/5 hover:bg-white/10 text-cyan-400 border border-white/10 hover:border-cyan-500/50 rounded-lg transition-all font-semibold text-sm flex items-center justify-center gap-1.5"
               title="Upload Audio"
             >
-              📁
+              <span>📁</span>
+              <span className="hidden lg:inline">Upload</span>
             </button>
-            
-            {/* Memory Pressure Indicator */}
-            {memoryPressure && (
-              <div className="px-2 py-1.5 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400 flex items-center gap-2">
-                <span className="animate-pulse">⚠️</span>
-                <span>High memory usage - cleaning buffers...</span>
-              </div>
-            )}
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             {tracks.length === 0 ? (
-              <div className="p-8 text-center">
-                <div className="text-5xl mb-4 animate-bounce">🎵</div>
-                <div className="text-xl font-bold text-white mb-2">No tracks yet</div>
-                <div className="text-sm text-gray-500 mb-4">Start creating your masterpiece</div>
-                <div className="text-xs text-cyan-400">💡 Tip: Upload audio or add a new track</div>
+              <div className="flex items-center justify-center h-full p-6">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">🎵</div>
+                  <div className="text-lg font-bold text-white mb-2">No Tracks Yet</div>
+                  <div className="text-sm text-gray-500 mb-4">Start building your project</div>
+                  <div className="text-xs text-cyan-400 bg-cyan-500/10 px-3 py-2 rounded-lg border border-cyan-500/20 inline-block">
+                    <span className="mr-1.5">💡</span>
+                    Click "Add Track" or upload audio files
+                  </div>
+                </div>
               </div>
             ) : (
               tracks.map((track, index) => {
@@ -1400,77 +1398,82 @@ export default function MultiTrackStudioV4() {
                 return (
                 <div
                   key={track.id}
-                  className={`p-3.5 border-b border-[#1a1a1a] cursor-pointer transition-all duration-200 ${
+                  className={`p-3 border-b border-white/5 cursor-pointer transition-all ${
                     selectedTrackId === track.id
-                      ? 'bg-gradient-to-r from-cyan-500/15 to-cyan-500/5 border-l-4 border-l-cyan-500 shadow-lg shadow-cyan-500/10'
-                      : 'hover:bg-white/[0.03] border-l-4 border-l-transparent hover:border-l-gray-700'
-                  } ${isTrackActive ? 'ring-1 ring-green-500/30 shadow-lg shadow-green-500/10' : ''}`}
-                  style={{ height: '80px' }} // Match timeline track height
+                      ? 'bg-cyan-500/10 border-l-2 border-l-cyan-500'
+                      : 'hover:bg-white/[0.02] border-l-2 border-l-transparent hover:border-l-white/20'
+                  } ${
+                    isTrackActive ? 'ring-1 ring-inset ring-green-500/30' : ''
+                  }`}
+                  style={{ minHeight: '88px' }}
                   onClick={() => setSelectedTrackId(track.id)}
                 >
-                  <div className="flex items-center justify-between mb-2.5">
-                    <div className="flex items-center gap-2.5">
-                      {/* Track Number with activity indicator */}
-                      <div className={`w-7 h-7 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-xs font-black border shadow-inner transition-all ${
+                  {/* Track Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {/* Track Number */}
+                      <div className={`w-6 h-6 rounded flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${
                         isTrackActive 
-                          ? 'text-green-400 border-green-500/50 animate-pulse' 
-                          : 'text-cyan-400 border-gray-700'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
+                          : 'bg-white/5 text-cyan-400 border border-white/10'
                       }`}>
                         {isTrackActive ? '▶' : index + 1}
                       </div>
-                      {/* Color Picker */}
+                      
+                      {/* Color Indicator */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedColorTrackId(track.id);
                           setShowColorPicker(true);
                         }}
-                        className="w-7 h-7 rounded-lg border-2 border-white/50 hover:ring-2 hover:ring-cyan-400 transition-all shadow-lg hover:scale-110 active:scale-95"
+                        className="w-6 h-6 rounded flex-shrink-0 border-2 border-white/30 hover:border-white/60 transition-all"
                         style={{ backgroundColor: track.color }}
-                        title="Change track color"
+                        title="Change color"
                       />
-                      {/* Track Type Icon */}
-                      <div className="text-lg leading-none">
-                        {track.type === 'midi' ? '🎹' : '🎤'}
-                      </div>
-                      {/* Track Name - Editable on double-click */}
-                      {editingTrackId === track.id ? (
-                        <input
-                          type="text"
-                          value={editingTrackName}
-                          onChange={(e) => setEditingTrackName(e.target.value)}
-                          onBlur={() => {
-                            if (editingTrackName.trim()) {
-                              daw?.updateTrack(track.id, { name: editingTrackName.trim() });
-                              setTracks(daw?.getTracks() || []);
-                            }
-                            setEditingTrackId(null);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.currentTarget.blur();
-                            } else if (e.key === 'Escape') {
+                      
+                      {/* Track Icon & Name */}
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <span className="text-sm">{track.type === 'midi' ? '🎹' : '🎤'}</span>
+                        {editingTrackId === track.id ? (
+                          <input
+                            type="text"
+                            value={editingTrackName}
+                            onChange={(e) => setEditingTrackName(e.target.value)}
+                            onBlur={() => {
+                              if (editingTrackName.trim()) {
+                                daw?.updateTrack(track.id, { name: editingTrackName.trim() });
+                                setTracks(daw?.getTracks() || []);
+                              }
                               setEditingTrackId(null);
-                            }
-                          }}
-                          autoFocus
-                          className="text-sm font-bold text-white bg-cyan-500/20 border border-cyan-500/50 rounded px-1 py-0.5 max-w-[80px] focus:outline-none focus:ring-1 focus:ring-cyan-400"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <span 
-                          className="text-sm font-bold text-white truncate max-w-[80px] cursor-text hover:text-cyan-400 transition-colors"
-                          onDoubleClick={(e) => {
-                            e.stopPropagation();
-                            setEditingTrackId(track.id);
-                            setEditingTrackName(track.name);
-                          }}
-                          title="Double-click to rename"
-                        >
-                          {track.name}
-                        </span>
-                      )}
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.currentTarget.blur();
+                              } else if (e.key === 'Escape') {
+                                setEditingTrackId(null);
+                              }
+                            }}
+                            autoFocus
+                            className="text-sm font-bold text-white bg-cyan-500/20 border border-cyan-500/50 rounded px-1 py-0.5 flex-1 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <span 
+                            className="text-sm font-bold text-white truncate flex-1 cursor-text hover:text-cyan-400 transition-colors"
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTrackId(track.id);
+                              setEditingTrackName(track.name);
+                            }}
+                            title="Double-click to rename"
+                          >
+                            {track.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    
                     {/* Mute/Solo/Delete Buttons */}
                     <div className="flex gap-1">
                       <button
@@ -1576,14 +1579,14 @@ export default function MultiTrackStudioV4() {
         </div>
 
         {/* Timeline Area */}
-        <div className="flex-1 flex flex-col bg-[#0a0a0a] overflow-auto" ref={timelineRef}>
-          {/* Professional Timeline Ruler */}
+        <div className="flex-1 flex flex-col bg-black overflow-hidden" ref={timelineRef}>
+          {/* Timeline Ruler */}
           <div 
-            className="h-10 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a] border-b-2 border-cyan-500/20 cursor-pointer hover:bg-[#141414] relative flex-shrink-0 shadow-lg"
+            className="h-10 bg-[#0f0f0f] border-b border-white/20 cursor-pointer hover:bg-[#121212] relative flex-shrink-0"
             onClick={handleRulerClick}
-            title="Click to seek timeline"
+            title="Click to seek"
           >
-            <div className="absolute inset-0 overflow-x-auto overflow-y-hidden" style={{ width: '100%' }}>
+            <div className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-none" style={{ width: '100%' }}>
               <div className="relative h-full" style={{ width: `${600 * zoom}px` }}>
                 {useMemo(() => {
                   const totalSeconds = 600;
@@ -1661,64 +1664,60 @@ export default function MultiTrackStudioV4() {
           </div>
 
           {/* Track Lanes */}
-          <div className="flex-1 relative" 
+          <div className="flex-1 relative bg-[#080808] overflow-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent" 
                onMouseMove={handleTimelineMouseMove}
                onMouseUp={handleTimelineMouseUp}
                onMouseLeave={handleTimelineMouseUp}>
-            {/* Playhead Indicator - Optimized with transform */}
+            {/* Playhead Indicator */}
             <div 
               ref={playheadRef}
-              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 shadow-lg shadow-red-500/50 cursor-ew-resize will-change-transform"
+              className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-30 shadow-[0_0_8px_rgba(239,68,68,0.6)] cursor-ew-resize will-change-transform"
               style={{ left: 0, transform: `translateX(${playhead * zoom}px)` }}
               onMouseDown={handlePlayheadMouseDown}
             >
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded whitespace-nowrap pointer-events-none">
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-red-500 text-white text-[9px] font-bold rounded shadow-lg whitespace-nowrap">
                 {formatTime(playhead)}
               </div>
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500 pointer-events-none" />
+              <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-red-500" />
             </div>
             
-            {/* Professional Beat Grid Lines - Enhanced */}
+            {/* Beat Grid */}
             {useMemo(() => {
               const beatDuration = 60 / bpm;
               const barDuration = beatDuration * 4;
               const totalDuration = 600;
               const gridLines: React.ReactElement[] = [];
               
-              // Adaptive grid density based on zoom level
               const showBeats = zoom >= 40;
               const showSubdivisions = zoom >= 80;
-              const skipFactor = zoom < 20 ? 4 : zoom < 40 ? 2 : 1;
               
               let lineCount = 0;
-              const maxLines = 250;
+              const maxLines = 200;
               
-              // Bar lines (strongest)
+              // Bar lines
               for (let bar = 0; bar <= totalDuration / barDuration && lineCount < maxLines; bar++) {
                 const time = bar * barDuration;
                 gridLines.push(
                   <div
                     key={`bar-${bar}`}
-                    className="absolute top-0 bottom-0 pointer-events-none border-l-2 border-cyan-500/20"
+                    className="absolute top-0 bottom-0 pointer-events-none border-l border-white/20"
                     style={{ left: `${time * zoom}px` }}
-                  >
-                    <div className="absolute -top-px left-0 w-8 h-px bg-gradient-to-r from-cyan-500/30 to-transparent" />
-                  </div>
+                  />
                 );
                 lineCount++;
               }
               
-              // Beat lines (medium strength)
+              // Beat lines
               if (showBeats) {
                 for (let beat = 0; beat <= totalDuration / beatDuration && lineCount < maxLines; beat++) {
                   const time = beat * beatDuration;
                   const isBar = Math.abs(time % barDuration) < 0.01;
                   
-                  if (!isBar && (lineCount % skipFactor === 0)) {
+                  if (!isBar) {
                     gridLines.push(
                       <div
                         key={`beat-${beat}`}
-                        className="absolute top-0 bottom-0 pointer-events-none border-l border-purple-500/15"
+                        className="absolute top-0 bottom-0 pointer-events-none border-l border-white/10"
                         style={{ left: `${time * zoom}px` }}
                       />
                     );
@@ -1727,7 +1726,7 @@ export default function MultiTrackStudioV4() {
                 }
               }
               
-              // Subdivision lines (16th notes - weakest, only at very high zoom)
+              // Subdivision lines
               if (showSubdivisions && snapEnabled) {
                 const subdivisionDuration = beatDuration / 4;
                 for (let i = 0; i <= totalDuration / subdivisionDuration && lineCount < maxLines; i++) {
@@ -1739,7 +1738,7 @@ export default function MultiTrackStudioV4() {
                     gridLines.push(
                       <div
                         key={`sub-${i}`}
-                        className="absolute top-0 bottom-0 pointer-events-none border-l border-gray-700/10"
+                        className="absolute top-0 bottom-0 pointer-events-none border-l border-white/5"
                         style={{ left: `${time * zoom}px` }}
                       />
                     );
@@ -1823,85 +1822,60 @@ export default function MultiTrackStudioV4() {
                 </div>
               </div>
             ) : (
-              (() => {
-                // Virtual scrolling: only render visible tracks
-                const TRACK_HEIGHT = 96;
-                const containerHeight = timelineRef.current?.clientHeight || 800;
-                const visibleCount = Math.ceil(containerHeight / TRACK_HEIGHT) + 2; // +2 for buffer
-                const scrollTop = timelineRef.current?.scrollTop || 0;
-                const startIndex = Math.max(0, Math.floor(scrollTop / TRACK_HEIGHT) - 1);
-                const endIndex = Math.min(tracks.length, startIndex + visibleCount);
-                const visibleTracks = tracks.slice(startIndex, endIndex);
-                
-                return visibleTracks.map((track, idx) => {
-                  const trackIndex = startIndex + idx;
-                const trackHeight = 80; // Fixed consistent height for all tracks
+              tracks.map((track, trackIndex) => {
+                const trackHeight = 88;
                 const isSelected = selectedTrackId === track.id;
                 return (
                 <div
                   key={track.id}
-                  className={`border-b border-[#1f1f1f] relative group transition-colors ${
-                    isSelected ? 'bg-cyan-500/5' : 'hover:bg-white/[0.02]'
+                  className={`border-b border-white/5 relative group transition-all ${
+                    isSelected ? 'bg-cyan-500/5 border-b-cyan-500/20' : 'hover:bg-white/[0.015]'
                   }`}
                   style={{ height: `${trackHeight}px` }}
                   onClick={() => setSelectedTrackId(track.id)}
                 >
-                  {/* Track Lane - Full Width Timeline Area with Perfect Alignment */}
-                  <div className="absolute inset-0 flex items-center">
+                  {/* Track Lane */}
+                  <div className="absolute inset-0 flex items-center px-2">
                     {track.clips.length === 0 ? (
-                      <div className="text-xs text-gray-600 italic px-4">
-                        {isSelected ? '📁 Drag audio files here or click Upload' : 'Empty track'}
+                      <div className="text-xs text-gray-600 italic">
+                        {isSelected ? '📁 Upload audio or drag files here' : 'Empty track'}
                       </div>
                     ) : (
                       track.clips.map((clip, clipIndex) => (
                         <div
                           key={clip.id}
-                          className={`absolute rounded-xl overflow-hidden cursor-move transition-all duration-200 shadow-2xl will-change-transform ${
+                          className={`absolute rounded-lg overflow-hidden cursor-move transition-all ${
                             selectedClipId === clip.id 
-                              ? 'ring-4 ring-cyan-400/80 ring-offset-2 ring-offset-[#0a0a0a] scale-[1.03] z-20 group' 
-                              : 'hover:scale-[1.01] hover:shadow-3xl group'
+                              ? 'ring-2 ring-cyan-400 z-20 shadow-xl shadow-cyan-500/30' 
+                              : 'hover:ring-1 hover:ring-white/30 shadow-lg'
                           }`}
                           style={{
                             left: `${clip.startTime * zoom}px`,
                             width: `${clip.duration * zoom}px`,
-                            height: '64px',
+                            height: '72px',
                             top: '50%',
-                            transform: `translateY(-50%) ${selectedClipId === clip.id ? 'scale(1.03)' : ''}`,
-                            backgroundColor: `${track.color}15`,
-                            border: `2px solid ${selectedClipId === clip.id ? '#00bcd4' : track.color}`,
-                            boxShadow: selectedClipId === clip.id 
-                              ? `0 8px 32px ${track.color}60, 0 0 0 1px ${track.color}40 inset` 
-                              : `0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px ${track.color}20 inset`
+                            transform: 'translateY(-50%)',
+                            backgroundColor: `${track.color}20`,
+                            border: `1px solid ${selectedClipId === clip.id ? '#22d3ee' : track.color}`,
                           }}
                           onClick={(e) => handleClipClick(e, clip.id, track.id)}
                           onMouseDown={(e) => handleClipMouseDown(e, track.id, clip.id, clip.startTime)}
-                          title="Drag to move • Double-click to rename"
+                          title="Drag to move"
                         >
-                          {/* Snap Indicator - Shows when dragging near grid line */}
-                          {draggedClip?.clipId === clip.id && snapEnabled && (
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-cyan-500 text-black text-[10px] font-bold rounded whitespace-nowrap shadow-lg shadow-cyan-500/50 z-10 animate-in fade-in duration-100">
-                              🧲 Snap: {formatTime(snapTime(clip.startTime))}
-                            </div>
-                          )}
-                          
-                          {/* Clip Canvas for Waveform - Enhanced Colors */}
+                          {/* Waveform Canvas */}
                           <canvas
                             ref={(canvas) => {
                               if (canvas && clip.buffer) {
                                 canvas.width = Math.max(1, clip.duration * zoom);
-                                canvas.height = 64;
-                                // Use track color with better contrast
-                                const waveColor = selectedClipId === clip.id ? '#00bcd4' : track.color;
+                                canvas.height = 72;
+                                const waveColor = selectedClipId === clip.id ? '#22d3ee' : track.color;
                                 renderWaveform(canvas, clip.buffer, waveColor, clip.id);
                               }
                             }}
                             width={Math.max(1, clip.duration * zoom)}
-                            height={64}
-                            className="absolute inset-0 w-full h-full opacity-90 group-hover:opacity-100 transition-opacity"
-                            style={{ objectFit: 'fill' }}
+                            height={72}
+                            className="absolute inset-0 w-full h-full opacity-80"
                           />
-                          
-                          {/* Fade Handles - Better Visual Feedback */}
                           <div 
                             className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/60 to-transparent cursor-ew-resize hover:from-cyan-400/40 hover:w-4 transition-all group/fade"
                             title="Drag to adjust fade in"
@@ -1995,8 +1969,7 @@ export default function MultiTrackStudioV4() {
                   )}
                 </div>
               );
-            });
-          })()
+            })
             )}
           </div>
         </div>
