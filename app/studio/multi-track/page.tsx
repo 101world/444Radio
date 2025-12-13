@@ -1065,7 +1065,7 @@ export default function MultiTrackStudioV4() {
       )}
 
       {/* Top Toolbar */}
-      <header className="h-14 bg-[#141414] border-b border-[#1f1f1f] flex items-center px-5 gap-5">
+      <header className="h-14 bg-gradient-to-r from-[#0f0f0f] via-[#141414] to-[#0f0f0f] border-b border-cyan-500/20 flex items-center px-5 gap-5 shadow-xl shadow-black/50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center text-lg">
             🎵
@@ -1338,11 +1338,11 @@ export default function MultiTrackStudioV4() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Track List */}
-        <div className="w-60 bg-[#0f0f0f] border-r border-[#1f1f1f] flex flex-col flex-shrink-0">
-          <div className="p-3 border-b border-[#1f1f1f] flex gap-2">
+        <div className="w-60 bg-gradient-to-b from-[#0f0f0f] to-[#0a0a0a] border-r border-cyan-500/20 flex flex-col flex-shrink-0 shadow-2xl shadow-black/50">
+          <div className="p-3 border-b border-cyan-500/20 flex gap-2">
             <button
               onClick={addTrack}
-              className="flex-1 p-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-lg shadow-cyan-500/30"
+              className="flex-1 p-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all shadow-xl shadow-cyan-500/40 hover:scale-105 active:scale-95"
               title="Add Track"
             >
               ➕
