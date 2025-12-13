@@ -12,6 +12,9 @@ import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import { Edit2, Grid, List as ListIcon, Upload, Music, Video, Image as ImageIcon, Users, Radio as RadioIcon, UserPlus, Play, Pause, ChevronLeft, ChevronRight, Send, Circle, ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Trash2, Plus, User, Smile, ThumbsUp, Shuffle, Repeat } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import LikeButton from '../../components/LikeButton'
+import AnimatedBackground from '../../components/AnimatedBackground'
+import DraggableQueue from '../../components/DraggableQueue'
+import { toast } from '@/lib/toast'
 
 // Lazy load heavy components
 const HolographicBackground = lazy(() => import('../../components/HolographicBackgroundClient'))
@@ -908,6 +911,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   return (
     <div className="min-h-screen bg-black text-white pb-32">
+      {/* Animated Gradient Background */}
+      <AnimatedBackground />
+      
       {/* Holographic 3D Background - Lazy Loaded */}
       <Suspense fallback={null}>
         {!isMobile && <HolographicBackground />}

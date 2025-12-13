@@ -9,6 +9,10 @@ import { RecordingManager } from '@/lib/audio/RecordingManager';
 import { ProjectManager } from '@/lib/audio/ProjectManager';
 import { AudioExporter } from '@/lib/audio/AudioExporter';
 import type { Track } from '@/lib/audio/TrackManager';
+import AnimatedBackground from '@/app/components/AnimatedBackground';
+import Tooltip from '@/app/components/Tooltip';
+import { toast } from '@/lib/toast';
+import { theme, buttonStyles } from '@/lib/design-system';
 
 // Loading Spinner Component
 function LoadingSpinner({ message }: { message: string }) {
@@ -1021,6 +1025,9 @@ export default function MultiTrackStudioV4() {
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-[#0a0a0a] via-[#050505] to-[#000000] text-gray-200">
+      {/* Animated Gradient Background */}
+      <AnimatedBackground />
+      
       {/* Mobile Warning Modal */}
       {isMobile && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
@@ -1102,37 +1109,40 @@ export default function MultiTrackStudioV4() {
           
           {/* Main Transport */}
           <div className="flex gap-2">
-            <button
-              onClick={() => { stop(); setPlayhead(0); }}
-              className="w-10 h-10 bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] border-2 border-gray-700 text-gray-300 rounded-lg hover:bg-gradient-to-br hover:from-[#353535] hover:to-[#252525] hover:border-gray-600 hover:text-white transition-all shadow-lg flex items-center justify-center text-lg group"
-              title="Stop & Rewind (S)"
-            >
-              <span className="group-hover:scale-110 transition-transform">⏹</span>
-            </button>
+            <Tooltip content="Stop & Rewind" shortcut="S">
+              <button
+                onClick={() => { stop(); setPlayhead(0); }}
+                className="w-10 h-10 bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] border-2 border-gray-700 text-gray-300 rounded-lg hover:bg-gradient-to-br hover:from-[#353535] hover:to-[#252525] hover:border-gray-600 hover:text-white transition-all shadow-lg flex items-center justify-center text-lg group"
+              >
+                <span className="group-hover:scale-110 transition-transform">⏹</span>
+              </button>
+            </Tooltip>
             
-            <button
-              onClick={togglePlay}
-              className={`w-14 h-10 rounded-lg font-bold transition-all shadow-xl flex items-center justify-center text-2xl border-2 ${
-                isPlaying
-                  ? 'bg-gradient-to-r from-cyan-500 via-cyan-600 to-blue-600 text-white shadow-cyan-500/50 border-cyan-400 hover:from-cyan-400 hover:via-cyan-500 hover:to-blue-500 animate-pulse'
-                  : 'bg-gradient-to-r from-green-500 via-green-600 to-emerald-600 text-white shadow-green-500/50 border-green-400 hover:from-green-400 hover:via-green-500 hover:to-emerald-500 hover:scale-105'
-              }`}
-              title={isPlaying ? 'Pause (Spacebar)' : 'Play (Spacebar)'}
-            >
-              {isPlaying ? '⏸' : '▶'}
-            </button>
+            <Tooltip content={isPlaying ? 'Pause' : 'Play'} shortcut="Space">
+              <button
+                onClick={togglePlay}
+                className={`w-14 h-10 rounded-lg font-bold transition-all shadow-xl flex items-center justify-center text-2xl border-2 ${
+                  isPlaying
+                    ? 'bg-gradient-to-r from-cyan-500 via-cyan-600 to-blue-600 text-white shadow-cyan-500/50 border-cyan-400 hover:from-cyan-400 hover:via-cyan-500 hover:to-blue-500 animate-pulse'
+                    : 'bg-gradient-to-r from-green-500 via-green-600 to-emerald-600 text-white shadow-green-500/50 border-green-400 hover:from-green-400 hover:via-green-500 hover:to-emerald-500 hover:scale-105'
+                }`}
+              >
+                {isPlaying ? '⏸' : '▶'}
+              </button>
+            </Tooltip>
             
-            <button
-              onClick={toggleRecording}
-              className={`w-10 h-10 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center text-xl border-2 ${
-                isRecording
-                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white animate-pulse border-red-400 shadow-red-500/60 scale-105'
-                  : 'bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] border-gray-700 text-red-400 hover:bg-gradient-to-br hover:from-red-500/20 hover:to-red-600/20 hover:border-red-500/50 hover:text-red-300 hover:shadow-red-500/30'
-              }`}
-              title={isRecording ? 'Stop Recording' : 'Record (R)'}
-            >
-              <span className={isRecording ? 'text-2xl' : 'text-xl'}>●</span>
-            </button>
+            <Tooltip content={isRecording ? 'Stop Recording' : 'Record'} shortcut="R">
+              <button
+                onClick={toggleRecording}
+                className={`w-10 h-10 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center text-xl border-2 ${
+                  isRecording
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 text-white animate-pulse border-red-400 shadow-red-500/60 scale-105'
+                    : 'bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] border-gray-700 text-red-400 hover:bg-gradient-to-br hover:from-red-500/20 hover:to-red-600/20 hover:border-red-500/50 hover:text-red-300 hover:shadow-red-500/30'
+                }`}
+              >
+                <span className={isRecording ? 'text-2xl' : 'text-xl'}>●</span>
+              </button>
+            </Tooltip>
           </div>
           
           <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
