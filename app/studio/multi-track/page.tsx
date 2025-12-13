@@ -1024,56 +1024,86 @@ export default function MultiTrackStudioV4() {
 
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
-        {/* Transport Controls */}
-        <div className="flex gap-2 items-center">
-          <button
-            onClick={handleUndo}
-            className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-500 rounded hover:bg-[#252525] transition-all"
-            title="Undo (Cmd+Z)"
-          >
-            ↶
-          </button>
-          <button
-            onClick={handleRedo}
-            className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-500 rounded hover:bg-[#252525] transition-all"
-            title="Redo (Cmd+Shift+Z)"
-          >
-            ↷
-          </button>
+        {/* Professional Transport Controls */}
+        <div className="flex gap-3 items-center px-3 py-1 bg-[#0f0f0f]/80 rounded-xl border border-gray-800">
+          {/* Undo/Redo */}
+          <div className="flex gap-1">
+            <button
+              onClick={handleUndo}
+              className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-400 rounded-lg hover:bg-[#252525] hover:border-cyan-500/30 hover:text-cyan-400 transition-all"
+              title="Undo (Cmd+Z)"
+            >
+              ↶
+            </button>
+            <button
+              onClick={handleRedo}
+              className="w-8 h-8 bg-[#1f1f1f] border border-[#2a2a2a] text-gray-400 rounded-lg hover:bg-[#252525] hover:border-cyan-500/30 hover:text-cyan-400 transition-all"
+              title="Redo (Cmd+Shift+Z)"
+            >
+              ↷
+            </button>
+          </div>
           
-          <div className="w-px h-8 bg-[#2a2a2a] mx-1" />
+          <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
           
-          <button
-            onClick={stop}
-            className="w-10 h-10 bg-gradient-to-br from-[#1f1f1f] to-[#151515] border-2 border-gray-700 text-gray-400 rounded-lg hover:bg-[#252525] hover:border-gray-600 hover:text-gray-300 transition-all shadow-lg flex items-center justify-center text-lg"
-            title="Stop (S)"
-          >
-            ⏹
-          </button>
+          {/* Main Transport */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => { stop(); setPlayhead(0); }}
+              className="w-10 h-10 bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] border-2 border-gray-700 text-gray-300 rounded-lg hover:bg-gradient-to-br hover:from-[#353535] hover:to-[#252525] hover:border-gray-600 hover:text-white transition-all shadow-lg flex items-center justify-center text-lg group"
+              title="Stop & Rewind (S)"
+            >
+              <span className="group-hover:scale-110 transition-transform">⏹</span>
+            </button>
+            
+            <button
+              onClick={togglePlay}
+              className={`w-14 h-10 rounded-lg font-bold transition-all shadow-xl flex items-center justify-center text-2xl border-2 ${
+                isPlaying
+                  ? 'bg-gradient-to-r from-cyan-500 via-cyan-600 to-blue-600 text-white shadow-cyan-500/50 border-cyan-400 hover:from-cyan-400 hover:via-cyan-500 hover:to-blue-500 animate-pulse'
+                  : 'bg-gradient-to-r from-green-500 via-green-600 to-emerald-600 text-white shadow-green-500/50 border-green-400 hover:from-green-400 hover:via-green-500 hover:to-emerald-500 hover:scale-105'
+              }`}
+              title={isPlaying ? 'Pause (Spacebar)' : 'Play (Spacebar)'}
+            >
+              {isPlaying ? '⏸' : '▶'}
+            </button>
+            
+            <button
+              onClick={toggleRecording}
+              className={`w-10 h-10 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center text-xl border-2 ${
+                isRecording
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white animate-pulse border-red-400 shadow-red-500/60 scale-105'
+                  : 'bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] border-gray-700 text-red-400 hover:bg-gradient-to-br hover:from-red-500/20 hover:to-red-600/20 hover:border-red-500/50 hover:text-red-300 hover:shadow-red-500/30'
+              }`}
+              title={isRecording ? 'Stop Recording' : 'Record (R)'}
+            >
+              <span className={isRecording ? 'text-2xl' : 'text-xl'}>●</span>
+            </button>
+          </div>
           
-          <button
-            onClick={togglePlay}
-            className={`w-12 h-10 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center text-xl ${
-              isPlaying
-                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-black shadow-cyan-500/40 hover:from-cyan-400 hover:to-cyan-500'
-                : 'bg-gradient-to-r from-green-500 to-green-600 text-black shadow-green-500/40 hover:from-green-400 hover:to-green-500'
-            }`}
-            title={isPlaying ? 'Pause (Spacebar)' : 'Play (Spacebar)'}
-          >
-            {isPlaying ? '⏸' : '▶'}
-          </button>
+          <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-700 to-transparent" />
           
-          <button
-            onClick={toggleRecording}
-            className={`w-10 h-10 rounded-lg font-bold transition-all shadow-lg flex items-center justify-center text-lg border-2 ${
-              isRecording
-                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white animate-pulse border-red-400 shadow-red-500/50'
-                : 'bg-gradient-to-br from-[#1f1f1f] to-[#151515] border-gray-700 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-300'
-            }`}
-            title="Record (R)"
-          >
-            ●
-          </button>
+          {/* Loop & Metronome */}
+          <div className="flex gap-1">
+            <button
+              onClick={() => setLoopEnabled(!loopEnabled)}
+              className={`px-3 h-8 rounded-lg transition-all border text-xs font-bold ${
+                loopEnabled 
+                  ? 'bg-gradient-to-r from-purple-500/30 to-purple-600/30 text-purple-300 border-purple-500/50 shadow-lg shadow-purple-500/20' 
+                  : 'bg-[#1f1f1f] text-gray-500 border-gray-700 hover:bg-[#252525] hover:text-purple-400 hover:border-purple-500/30'
+              }`}
+              title=\"Loop region\"
+            >
+              🔁 {loopEnabled ? 'ON' : 'OFF'}
+            </button>
+            <button
+              className=\"px-3 h-8 rounded-lg transition-all border text-xs font-bold bg-[#1f1f1f] text-gray-600 border-gray-800 opacity-50 cursor-not-allowed\"
+              disabled
+              title=\"Metronome (coming soon)\"
+            >
+              🎯 Click
+            </button>
+          </div>
         </div>
 
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
@@ -1179,40 +1209,38 @@ export default function MultiTrackStudioV4() {
             max="200"
             value={zoom}
             onChange={(e) => handleZoomChange(parseInt(e.target.value))}
-            className="w-20 h-1"
-            title="Timeline zoom"
+            className="w-24 h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-500/50"
+            title="Timeline zoom slider"
           />
-          <span className="text-cyan-400 font-mono text-xs w-10 text-right">{zoom}</span>
+          <span className="text-cyan-400 font-mono text-xs w-10 text-right font-bold">{zoom}px</span>
         </div>
 
         <div className="w-px h-8 bg-[#2a2a2a] mx-2" />
 
-        {/* Loop & Snap Controls */}
-        <div className="flex gap-2">
+        {/* Snap Grid Control */}
+        <div className="flex gap-2 px-2 py-1 bg-[#0f0f0f]/50 rounded-lg border border-gray-800"
           <button
             onClick={() => setLoopEnabled(!loopEnabled)}
-            className={`px-2 py-1 text-xs rounded transition-all ${
-              loopEnabled ? 'bg-cyan-500 text-black' : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
-            }`}
-            title="Loop region"
-          >
-            🔁
-          </button>
+        {/* Snap Grid Control */}
+        <div className="flex gap-2 px-2 py-1 bg-[#0f0f0f]/50 rounded-lg border border-gray-800">
+          <span className="text-[10px] text-gray-500 font-semibold self-center">GRID</span>
           <button
             onClick={() => setSnapEnabled(!snapEnabled)}
-            className={`px-2 py-1 text-xs rounded transition-all ${
-              snapEnabled ? 'bg-cyan-500 text-black' : 'bg-[#1f1f1f] text-gray-400 hover:bg-[#252525]'
+            className={`px-3 h-8 rounded-lg transition-all border text-xs font-bold ${
+              snapEnabled 
+                ? 'bg-gradient-to-r from-cyan-500/30 to-cyan-600/30 text-cyan-300 border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
+                : 'bg-[#1f1f1f] text-gray-500 border-gray-700 hover:bg-[#252525] hover:text-cyan-400 hover:border-cyan-500/30'
             }`}
-            title="Snap to grid"
+            title="Snap clips to beat grid"
           >
-            🧲
+            🧲 {snapEnabled ? 'ON' : 'OFF'}
           </button>
         </div>
 
         <div className="flex-1" />
 
         {/* Project Controls */}
-        <div className="flex gap-2 mr-2">
+        <div className="flex gap-2 mr-2"
           <button
             onClick={() => setShowSaveModal(true)}
             className="px-4 h-10 rounded-lg bg-[#1f1f1f] text-gray-300 hover:bg-[#252525] hover:text-cyan-400 border-2 border-gray-700 hover:border-cyan-500/50 transition-all font-semibold text-sm"
