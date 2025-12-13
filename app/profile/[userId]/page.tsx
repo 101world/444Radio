@@ -1852,49 +1852,68 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               )}
             </>
           ) : (
-            /* ========== STATION TAB - LIVE STREAMING INTERFACE ========== */
-            <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
-              {/* Desktop & Mobile Station Layout */}
-              <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+            /* ========== STATION TAB - LIVE STREAMING INTERFACE (REDESIGNED) ========== */
+            <div className="min-h-screen bg-gradient-to-br from-black via-red-950/10 to-black relative overflow-hidden">
+              {/* Animated Background Effects */}
+              <div className="absolute inset-0 opacity-30 pointer-events-none">
+                <div className="absolute top-20 left-20 w-96 h-96 bg-red-500/20 rounded-full blur-[120px] animate-pulse"></div>
+                <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-500/20 rounded-full blur-[120px] animate-pulse" style={{animationDelay: '2s'}}></div>
+              </div>
+
+              {/* Main Container */}
+              <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 relative z-10">
                 
-                {/* Station Header - Live Status & Controls */}
-                <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 md:p-6 mb-6 shadow-2xl">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    {/* Left: Station Info */}
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br ${
-                          isLive ? 'from-red-500 to-pink-600 animate-pulse' : 'from-gray-700 to-gray-800'
-                        } p-1 shadow-lg`}>
-                          <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
-                            <RadioIcon size={32} className={isLive ? 'text-red-400' : 'text-gray-500'} />
+                {/* ============ STATION HEADER - Premium Glassmorphism Design ============ */}
+                <div className="relative bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 mb-6 shadow-2xl overflow-hidden group">
+                  {/* Gradient Accent Bar */}
+                  <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${
+                    isLive ? 'from-red-500 via-pink-500 to-red-500 animate-pulse' : 'from-gray-600 to-gray-700'
+                  }`}></div>
+
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    {/* Left: Station Identity */}
+                    <div className="flex items-start gap-5">
+                      {/* Radio Icon with Glow */}
+                      <div className="relative flex-shrink-0">
+                        <div className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br ${
+                          isLive ? 'from-red-500/80 to-pink-600/80' : 'from-gray-700/50 to-gray-800/50'
+                        } p-[2px] shadow-2xl transition-all duration-500 ${
+                          isLive ? 'shadow-red-500/50 scale-105' : 'shadow-black/50'
+                        }`}>
+                          <div className="w-full h-full rounded-2xl bg-gradient-to-br from-black to-gray-900 flex items-center justify-center">
+                            <RadioIcon size={40} className={`transition-colors duration-500 ${isLive ? 'text-red-400' : 'text-gray-600'}`} />
                           </div>
                         </div>
+                        {/* Live Pulse Indicator */}
                         {isLive && (
-                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-red-500/50">
-                            <Circle size={10} className="fill-white text-white" />
+                          <div className="absolute -top-2 -right-2">
+                            <div className="relative w-7 h-7">
+                              <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
+                              <div className="relative w-full h-full bg-red-500 rounded-full flex items-center justify-center border-2 border-black shadow-lg">
+                                <Circle size={10} className="fill-white text-white" />
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
-                      <div>
+
+                      {/* Station Title & Status */}
+                      <div className="flex-1 min-w-0">
+                        {/* Title Editor */}
                         {editingStationTitle && isOwnProfile ? (
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-3">
                             <input
                               type="text"
                               value={stationTitle}
                               onChange={(e) => setStationTitle(e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  saveStationTitle()
-                                }
-                              }}
+                              onKeyPress={(e) => e.key === 'Enter' && saveStationTitle()}
                               placeholder="Enter station title..."
-                              className="bg-white/10 border border-cyan-500/50 rounded-lg px-3 py-1 text-lg font-black text-white focus:outline-none focus:border-cyan-400"
+                              className="flex-1 bg-white/10 border-2 border-red-500/50 rounded-xl px-4 py-2.5 text-lg md:text-xl font-black text-white placeholder-gray-500 focus:outline-none focus:border-red-400 transition-all"
                               autoFocus
                             />
                             <button
                               onClick={saveStationTitle}
-                              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-xs font-bold transition-all"
+                              className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 rounded-xl text-sm font-bold transition-all shadow-lg"
                             >
                               Save
                             </button>
@@ -1903,15 +1922,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                 setEditingStationTitle(false)
                                 setStationTitle('')
                               }}
-                              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-bold transition-all"
+                              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-bold transition-all"
                             >
                               Cancel
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-xl md:text-2xl font-black text-white">
-                              {stationTitle || (isOwnProfile ? '🎙️ My Station' : `🎙️ ${profile?.username}'s Station`)}
+                          <div className="flex items-center gap-3 mb-3 group/title">
+                            <h2 className="text-2xl md:text-3xl font-black text-white leading-tight truncate">
+                              {stationTitle || (isOwnProfile ? '🎙️ My Radio Station' : `🎙️ ${profile?.username}'s Radio`)}
                             </h2>
                             {isOwnProfile && (
                               <button
@@ -1919,82 +1938,87 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                   setStationTitle(stationTitle || `${profile?.username}'s Live Radio`)
                                   setEditingStationTitle(true)
                                 }}
-                                className="p-1.5 hover:bg-white/10 rounded-lg transition-all"
+                                className="p-2 hover:bg-white/10 rounded-lg transition-all opacity-0 group-hover/title:opacity-100"
                                 title="Edit station title"
                               >
-                                <Edit2 size={14} className="text-gray-400 hover:text-cyan-400" />
+                                <Edit2 size={16} className="text-gray-400 hover:text-red-400" />
                               </button>
                             )}
                           </div>
                         )}
+
+                        {/* Status Badges */}
                         <div className="flex items-center gap-3 flex-wrap">
-                          <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${
+                          {/* Live/Offline Badge */}
+                          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black uppercase tracking-wider transition-all ${
                             isLive 
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                              : 'bg-gray-700/50 text-gray-400 border border-gray-600/30'
+                              ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-400 border-2 border-red-500/40 shadow-lg shadow-red-500/30' 
+                              : 'bg-white/5 text-gray-500 border-2 border-gray-700/50'
                           }`}>
-                            <Circle size={6} className={`${isLive ? 'fill-red-400 text-red-400 animate-pulse' : 'fill-gray-500 text-gray-500'}`} />
-                            {isLive ? 'LIVE NOW' : 'OFFLINE'}
+                            <Circle size={8} className={`${isLive ? 'fill-red-400 text-red-400 animate-pulse' : 'fill-gray-600 text-gray-600'}`} />
+                            {isLive ? 'On Air' : 'Offline'}
                           </div>
+
+                          {/* Listener Count */}
                           {isLive && (
-                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-bold">
-                              <Users size={12} />
-                              {liveListeners} {liveListeners === 1 ? 'listener' : 'listeners'}
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-400 border-2 border-cyan-500/30 text-sm font-bold shadow-lg shadow-cyan-500/20">
+                              <Users size={14} />
+                              <span className="text-white">{liveListeners}</span>
+                              <span className="text-xs opacity-80">{liveListeners === 1 ? 'Listener' : 'Listeners'}</span>
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Right: Go Live / Stop Broadcast + Video Button (Own Profile Only) */}
+                    {/* Right: Broadcast Controls (Own Profile Only) */}
                     {isOwnProfile && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap">
+                        {/* Video Toggle */}
                         {isLive && (
                           <button
                             onClick={toggleVideo}
-                            className={`px-4 py-3 rounded-xl font-bold text-sm transition-all transform hover:scale-105 active:scale-95 shadow-lg ${
+                            className={`group/btn px-5 py-3.5 rounded-xl font-bold text-sm transition-all transform hover:scale-105 active:scale-95 shadow-xl flex items-center gap-2.5 ${
                               showVideo
-                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
-                                : 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white border border-white/20'
+                                ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-purple-500/50'
+                                : 'bg-white/10 hover:bg-white/20 border-2 border-white/20 text-white'
                             }`}
                             title={showVideo ? 'Stop Video' : 'Start Video'}
                           >
-                            <div className="flex items-center gap-2">
-                              <Video size={16} />
-                              <span className="hidden md:inline">{showVideo ? 'Stop Video' : 'Start Video'}</span>
-                            </div>
+                            <Video size={18} className={showVideo ? '' : 'text-purple-400'} />
+                            <span className="hidden md:inline whitespace-nowrap">{showVideo ? 'Stop Video' : 'Start Video'}</span>
                           </button>
                         )}
+
+                        {/* Go Live / Stop Broadcast */}
                         <button
                           onClick={toggleLive}
-                          className={`px-6 py-3 rounded-xl font-bold text-sm transition-all transform hover:scale-105 active:scale-95 shadow-lg ${
+                          className={`px-8 py-3.5 rounded-xl font-black text-base transition-all transform hover:scale-105 active:scale-95 shadow-2xl flex items-center gap-3 whitespace-nowrap ${
                             isLive
-                              ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white border border-white/20'
-                              : 'bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white'
+                              ? 'bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white border-2 border-white/20'
+                              : 'bg-gradient-to-r from-red-600 via-red-500 to-pink-600 hover:from-red-500 hover:via-red-400 hover:to-pink-500 text-white shadow-red-500/50 animate-pulse'
                           }`}
                         >
-                          <div className="flex items-center gap-2">
-                            {isLive ? (
-                              <>
-                                <Circle size={16} className="fill-white text-white" />
-                                <span>Stop Broadcast</span>
-                              </>
-                            ) : (
-                              <>
-                                <RadioIcon size={16} />
-                                <span>Go Live</span>
-                              </>
-                            )}
-                          </div>
+                          {isLive ? (
+                            <>
+                              <Circle size={18} className="fill-white text-white" />
+                              <span>End Broadcast</span>
+                            </>
+                          ) : (
+                            <>
+                              <RadioIcon size={18} />
+                              <span>Go Live</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     )}
                   </div>
 
-                  {/* Live Video Stream - Visible to all when active */}
+                  {/* ============ LIVE VIDEO PLAYER ============ */}
                   {isLive && showVideo && (
-                    <div className="mt-4 pt-4 border-t border-white/10">
-                      <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-red-500/30">
+                    <div className="mt-6 pt-6 border-t border-white/10">
+                      <div className="relative aspect-video bg-gradient-to-br from-black to-gray-900 rounded-2xl overflow-hidden shadow-2xl border-2 border-red-500/30 group/video">
                         <video
                           ref={isOwnProfile ? videoRef : broadcasterVideoRef}
                           autoPlay
@@ -2002,120 +2026,192 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                           muted={isOwnProfile}
                           className="w-full h-full object-cover"
                         />
-                        <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-2 shadow-lg">
-                          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                          <span className="text-white font-bold text-xs">LIVE VIDEO</span>
+                        {/* Video Overlay Badges */}
+                        <div className="absolute top-4 left-4 flex items-center gap-3">
+                          <div className="bg-gradient-to-r from-red-600 to-pink-600 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2 shadow-xl border border-white/20">
+                            <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse"></div>
+                            <span className="text-white font-black text-xs uppercase tracking-wide">Live Video</span>
+                          </div>
                         </div>
                         {!isOwnProfile && (
-                          <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                            <span className="text-white font-bold text-xs flex items-center gap-1.5">
-                              <Video size={12} />
+                          <div className="absolute bottom-4 right-4 bg-black/80 backdrop-blur-md px-4 py-2 rounded-full border border-white/20">
+                            <span className="text-white font-bold text-xs flex items-center gap-2">
+                              <Video size={14} className="text-purple-400" />
                               Broadcaster's Stream
                             </span>
                           </div>
                         )}
+                        {/* Video Quality Indicator */}
+                        <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                          <span className="text-green-400 font-bold text-xs">HD</span>
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Currently Playing Track */}
+                  {/* ============ NOW PLAYING CARD ============ */}
                   {isLive && currentTrack && (
-                    <div className="mt-4 pt-4 border-t border-white/10">
-                      <div className="flex items-center gap-3 bg-black/40 rounded-xl p-3">
-                        <div className="relative w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden flex-shrink-0">
-                          <Image
-                            src={currentTrack.imageUrl || '/radio-logo.svg'}
-                            alt={currentTrack.title}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-gray-400 mb-1">Now Playing</div>
-                          <div className="text-sm md:text-base font-bold text-white truncate">{currentTrack.title}</div>
-                          {currentTrack.artist && (
-                            <div className="text-xs text-gray-500 truncate mt-1">{currentTrack.artist}</div>
+                    <div className="mt-6 pt-6 border-t border-white/10">
+                      <div className="relative bg-gradient-to-br from-white/5 to-transparent backdrop-blur-sm rounded-2xl p-4 border border-white/10 overflow-hidden group/nowplaying">
+                        {/* Animated gradient background */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover/nowplaying:opacity-100 transition-opacity duration-500"></div>
+                        
+                        <div className="relative flex items-center gap-4">
+                          {/* Album Art with Glow */}
+                          <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-xl">
+                            <Image
+                              src={currentTrack.imageUrl || '/radio-logo.svg'}
+                              alt={currentTrack.title}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                            {/* Equalizer Animation */}
+                            {isPlaying && (
+                              <div className="absolute bottom-2 right-2 flex gap-0.5">
+                                {[0, 0.1, 0.2, 0.3].map((delay, i) => (
+                                  <div
+                                    key={i}
+                                    className="w-1 bg-cyan-400 rounded-full animate-pulse"
+                                    style={{
+                                      height: `${Math.random() * 12 + 8}px`,
+                                      animationDelay: `${delay}s`
+                                    }}
+                                  ></div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Track Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-red-400 uppercase tracking-wider mb-1.5 flex items-center gap-2">
+                              <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                              Now Playing
+                            </div>
+                            <div className="text-lg md:text-xl font-black text-white truncate mb-1">
+                              {currentTrack.title}
+                            </div>
+                            {currentTrack.artist && (
+                              <div className="text-sm text-gray-400 truncate flex items-center gap-2">
+                                <User size={12} />
+                                {currentTrack.artist}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Audio Visualizer */}
+                          {isPlaying && (
+                            <div className="hidden md:flex gap-1 items-end flex-shrink-0">
+                              {[...Array(5)].map((_, i) => (
+                                <div
+                                  key={i}
+                                  className="w-1.5 bg-gradient-to-t from-cyan-400 to-pink-400 rounded-full animate-pulse"
+                                  style={{
+                                    height: `${(i + 1) * 8}px`,
+                                    animationDelay: `${i * 0.1}s`
+                                  }}
+                                ></div>
+                              ))}
+                            </div>
                           )}
                         </div>
-                        {isPlaying && (
-                          <div className="flex gap-1">
-                            <div className="w-1 h-6 bg-cyan-400 rounded-full animate-pulse"></div>
-                            <div className="w-1 h-6 bg-cyan-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="w-1 h-6 bg-cyan-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Main Content Grid - Chat & Track Queue */}
+                {/* ============ MAIN CONTENT - CHAT & TRACK QUEUE (2-Column Grid) ============ */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   
-                  {/* LEFT: Live Chat */}
-                  <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-                    <div className="bg-gradient-to-r from-cyan-900/30 to-blue-900/30 px-4 md:px-6 py-4 border-b border-white/10">
-                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <MessageCircle size={20} className="text-cyan-400" />
-                        Live Chat
+                  {/* ============ LEFT: LIVE CHAT ============ */}
+                  <div className="relative bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+                    {/* Chat Header */}
+                    <div className="relative bg-gradient-to-r from-cyan-900/20 via-blue-900/20 to-cyan-900/20 px-5 md:px-6 py-4 border-b border-white/10">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                            <MessageCircle size={20} className="text-white" />
+                          </div>
+                          <span>Live Chat</span>
+                        </h3>
                         {isLive && (
-                          <span className="ml-auto text-xs bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded-full border border-cyan-500/30">
-                            Active
-                          </span>
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-full">
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                            <span className="text-cyan-400 text-xs font-bold uppercase">Active</span>
+                          </div>
                         )}
-                      </h3>
+                      </div>
                     </div>
 
-                    {/* Chat Messages - Optimized with ref and pagination */}
+                    {/* Chat Messages Area */}
                     <div 
                       ref={chatContainerRef}
-                      className="h-[400px] md:h-[500px] overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+                      className="h-[450px] md:h-[550px] overflow-y-auto p-4 md:p-5 space-y-3 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30"
                     >
                       {!isLive ? (
-                        <div className="flex items-center justify-center h-full text-center">
-                          <div>
-                            <MessageCircle size={48} className="text-gray-700 mx-auto mb-3" />
-                            <p className="text-gray-500 text-sm">Chat is disabled when station is offline</p>
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
+                              <MessageCircle size={40} className="text-gray-700" />
+                            </div>
+                            <p className="text-gray-500 text-sm font-medium">Chat is offline</p>
+                            <p className="text-gray-600 text-xs mt-1">Messages will appear when station goes live</p>
                           </div>
                         </div>
                       ) : displayedMessages.length === 0 ? (
-                        <div className="flex items-center justify-center h-full text-center">
-                          <div>
-                            <MessageCircle size={48} className="text-gray-700 mx-auto mb-3" />
-                            <p className="text-gray-500 text-sm">No messages yet. Start the conversation!</p>
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500/10 to-blue-500/10 flex items-center justify-center mx-auto mb-4 border border-cyan-500/20">
+                              <MessageCircle size={40} className="text-cyan-700" />
+                            </div>
+                            <p className="text-gray-400 text-sm font-medium">No messages yet</p>
+                            <p className="text-gray-600 text-xs mt-1">Be the first to say hello! 👋</p>
                           </div>
                         </div>
                       ) : (
                         displayedMessages.map((msg) => (
-                          <div key={msg.id} className="group">
+                          <div key={msg.id} className="animate-fade-in">
                             {msg.type === 'track' ? (
-                              <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3">
-                                <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1">
-                                  <Music size={12} />
-                                  <span>Track Changed</span>
-                                </div>
-                                <div className="text-white text-sm font-medium">{msg.message}</div>
-                              </div>
-                            ) : msg.username === 'System' ? (
-                              <div className="text-center">
-                                <span className="text-gray-500 text-xs italic">{msg.message}</span>
-                              </div>
-                            ) : (
-                              <div className="bg-white/5 hover:bg-white/10 rounded-lg p-3 transition-all">
-                                <div className="flex items-start gap-2">
-                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-600 to-blue-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                                    {msg.username[0].toUpperCase()}
+                              /* Track Change Notification */
+                              <div className="relative bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-pink-500/10 border border-cyan-500/20 rounded-2xl p-4 overflow-hidden group/track">
+                                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-pink-500/5 opacity-0 group-hover/track:opacity-100 transition-opacity"></div>
+                                <div className="relative flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg">
+                                    <Music size={18} className="text-white" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-baseline gap-2 mb-1">
-                                      <span className="text-cyan-400 text-xs font-bold truncate">{msg.username}</span>
-                                      <span className="text-gray-600 text-[10px]">
+                                    <div className="text-cyan-400 text-xs font-black uppercase mb-1">Track Changed</div>
+                                    <div className="text-white text-sm font-bold truncate">{msg.message}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : msg.username === 'System' ? (
+                              /* System Messages */
+                              <div className="text-center">
+                                <span className="inline-block text-gray-500 text-xs italic bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                                  {msg.message}
+                                </span>
+                              </div>
+                            ) : (
+                              /* User Messages */
+                              <div className="group/msg bg-white/5 hover:bg-white/[0.08] rounded-2xl p-4 transition-all hover:scale-[1.01] border border-transparent hover:border-white/10">
+                                <div className="flex items-start gap-3">
+                                  {/* Avatar */}
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-lg shadow-cyan-500/20 border-2 border-white/10">
+                                    {msg.username[0].toUpperCase()}
+                                  </div>
+                                  
+                                  {/* Message Content */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-baseline gap-2 mb-1.5">
+                                      <span className="text-cyan-400 text-sm font-black truncate">{msg.username}</span>
+                                      <span className="text-gray-600 text-[10px] font-medium">
                                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                       </span>
                                     </div>
-                                    <p className="text-white text-sm break-words">{msg.message}</p>
+                                    <p className="text-white text-sm leading-relaxed break-words">{msg.message}</p>
                                   </div>
                                 </div>
                               </div>
@@ -2127,29 +2223,21 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                     {/* Chat Input */}
                     {isLive && (
-                      <div className="border-t border-white/10 p-4">
-                        <div className="flex gap-2">
+                      <div className="border-t border-white/10 p-4 md:p-5 bg-black/20">
+                        <div className="flex gap-3">
                           <input
                             type="text"
                             value={chatInput}
                             onChange={(e) => setChatInput(e.target.value)}
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter' && chatInput.trim()) {
-                                sendMessage()
-                              }
-                            }}
-                            placeholder={isOwnProfile ? "Chat with your listeners..." : "Send a message..."}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all placeholder:text-gray-500"
+                            onKeyPress={(e) => e.key === 'Enter' && chatInput.trim() && sendMessage()}
+                            placeholder={isOwnProfile ? "Message your listeners..." : "Join the conversation..."}
+                            className="flex-1 bg-white/5 border-2 border-white/10 rounded-xl px-5 py-3.5 text-white text-sm font-medium focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all placeholder:text-gray-500"
                             disabled={!isLive}
                           />
                           <button
-                            onClick={() => {
-                              if (chatInput.trim()) {
-                                sendMessage()
-                              }
-                            }}
+                            onClick={() => chatInput.trim() && sendMessage()}
                             disabled={!chatInput.trim() || !isLive}
-                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed rounded-xl px-5 py-3 transition-all transform hover:scale-105 active:scale-95 shadow-lg"
+                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed disabled:opacity-50 rounded-xl px-6 py-3.5 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
                           >
                             <Send size={18} className="text-white" />
                           </button>
@@ -2158,69 +2246,74 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     )}
                   </div>
 
-                  {/* RIGHT: Track Queue / Playlist */}
-                  <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-                    <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 px-4 md:px-6 py-4 border-b border-white/10">
-                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <Music size={20} className="text-purple-400" />
-                        Track Queue
-                        <span className="ml-auto text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full border border-purple-500/30">
-                          {trackCount} tracks
-                        </span>
-                      </h3>
+                  {/* ============ RIGHT: TRACK QUEUE ============ */}
+                  <div className="relative bg-gradient-to-br from-white/5 via-white/[0.02] to-transparent backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+                    {/* Queue Header */}
+                    <div className="relative bg-gradient-to-r from-purple-900/20 via-pink-900/20 to-purple-900/20 px-5 md:px-6 py-4 border-b border-white/10">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg md:text-xl font-black text-white flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                            <Music size={20} className="text-white" />
+                          </div>
+                          <span>Track Queue</span>
+                        </h3>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/30 rounded-full">
+                          <span className="text-purple-400 text-xs font-black">{trackCount}</span>
+                          <span className="text-gray-400 text-xs">tracks</span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Track List */}
-                    <div className="h-[400px] md:h-[500px] overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    <div className="h-[450px] md:h-[550px] overflow-y-auto p-4 md:p-5 space-y-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent hover:scrollbar-thumb-white/30">
                       {trackCount === 0 ? (
-                        <div className="flex items-center justify-center h-full text-center">
-                          <div>
-                            <Music size={48} className="text-gray-700 mx-auto mb-3" />
-                            <p className="text-gray-500 text-sm">No tracks available</p>
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/10">
+                              <Music size={40} className="text-gray-700" />
+                            </div>
+                            <p className="text-gray-500 text-sm font-medium mb-3">No tracks in queue</p>
                             {isOwnProfile && (
                               <button
                                 onClick={() => setShowUploadModal(true)}
-                                className="mt-4 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-sm font-bold transition-all"
+                                className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl text-sm font-bold transition-all shadow-lg"
                               >
-                                Upload Your First Track
+                                Upload First Track
                               </button>
                             )}
                           </div>
                         </div>
                       ) : (
                         audioTracks.map((media, index) => {
-                            const isCurrentlyPlaying = playingId === media.id
-                            
-                          function formatDuration(duration: number): import("react").ReactNode {
-                            throw new Error('Function not implemented.')
-                          }
-
-                            return (
-                              <div
-                                key={media.id}
-                                onClick={() => handlePlay(media)}
-                                className={`group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all hover:bg-white/10 ${
-                                  isCurrentlyPlaying 
-                                    ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 shadow-lg' 
-                                    : 'bg-white/5 hover:scale-[1.02]'
-                                }`}
-                              >
+                          const isCurrentlyPlaying = playingId === media.id
+                          
+                          return (
+                            <div
+                              key={media.id}
+                              onClick={() => handlePlay(media)}
+                              className={`group relative bg-white/5 hover:bg-white/[0.08] rounded-2xl p-3.5 cursor-pointer transition-all hover:scale-[1.01] border ${
+                                isCurrentlyPlaying 
+                                  ? 'border-cyan-500/50 shadow-lg shadow-cyan-500/20' 
+                                  : 'border-transparent hover:border-white/10'
+                              }`}
+                            >
+                              <div className="flex items-center gap-4">
                                 {/* Track Number / Play Button */}
-                                <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
+                                <div className="w-12 h-12 flex-shrink-0">
                                   {isCurrentlyPlaying && isPlaying ? (
-                                    <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center shadow-lg">
-                                      <Pause size={18} className="text-black" />
+                                    <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-xl shadow-cyan-500/30">
+                                      <Pause size={20} className="text-white" />
                                     </div>
                                   ) : (
-                                    <div className="w-10 h-10 bg-white/10 group-hover:bg-cyan-500 rounded-lg flex items-center justify-center transition-all">
+                                    <div className="w-full h-full bg-white/10 group-hover:bg-gradient-to-br group-hover:from-purple-500 group-hover:to-pink-600 rounded-xl flex items-center justify-center transition-all shadow-lg">
                                       <span className="text-gray-400 group-hover:hidden font-bold text-sm">{index + 1}</span>
-                                      <Play size={18} className="text-white hidden group-hover:block ml-0.5" />
+                                      <Play size={20} className="text-white hidden group-hover:block ml-0.5" />
                                     </div>
                                   )}
                                 </div>
 
                                 {/* Album Art */}
-                                <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                                <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
                                   <Image
                                     src={media.image_url || '/radio-logo.svg'}
                                     alt={media.title}
@@ -2231,9 +2324,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                   {isCurrentlyPlaying && isPlaying && (
                                     <div className="absolute inset-0 bg-cyan-500/30 flex items-center justify-center">
                                       <div className="flex gap-0.5">
-                                        <div className="w-0.5 h-3 bg-white rounded-full animate-pulse"></div>
-                                        <div className="w-0.5 h-4 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                        <div className="w-0.5 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                                        {[0, 0.2, 0.4].map((delay, i) => (
+                                          <div
+                                            key={i}
+                                            className="w-1 bg-white rounded-full animate-pulse"
+                                            style={{
+                                              height: `${12 + i * 4}px`,
+                                              animationDelay: `${delay}s`
+                                            }}
+                                          ></div>
+                                        ))}
                                       </div>
                                     </div>
                                   )}
@@ -2248,91 +2348,99 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                                         value={editingTrackTitle}
                                         onChange={(e) => setEditingTrackTitle(e.target.value)}
                                         onKeyPress={(e) => {
-                                          if (e.key === 'Enter') {
-                                            saveTrackTitle(media.id, editingTrackTitle)
-                                          }
+                                          if (e.key === 'Enter') saveTrackTitle(media.id, editingTrackTitle)
                                           if (e.key === 'Escape') {
                                             setEditingTrackId(null)
                                             setEditingTrackTitle('')
                                           }
                                         }}
-                                        className="flex-1 bg-white/10 border border-cyan-500/50 rounded px-2 py-1 text-sm font-bold text-white focus:outline-none focus:border-cyan-400"
+                                        className="flex-1 bg-white/10 border-2 border-cyan-500/50 rounded-lg px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:border-cyan-400"
                                         autoFocus
                                       />
                                       <button
                                         onClick={() => saveTrackTitle(media.id, editingTrackTitle)}
-                                        className="p-1 bg-cyan-600 hover:bg-cyan-500 rounded transition-all"
-                                        title="Save"
+                                        className="p-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-all"
                                       >
-                                        <Circle size={12} className="text-white fill-white" />
+                                        <Circle size={14} className="text-white fill-white" />
                                       </button>
                                     </div>
                                   ) : (
-                                    <div className="flex items-center gap-2 group/title">
-                                      <div className={`font-bold text-sm truncate ${isCurrentlyPlaying ? 'text-cyan-400' : 'text-white'}`}>
-                                        {media.title}
+                                    <div className="group/title">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <div className={`font-bold text-sm md:text-base truncate ${isCurrentlyPlaying ? 'text-cyan-400' : 'text-white'}`}>
+                                          {media.title}
+                                        </div>
+                                        {isOwnProfile && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setEditingTrackId(media.id)
+                                              setEditingTrackTitle(media.title)
+                                            }}
+                                            className="opacity-0 group-hover/title:opacity-100 p-1 hover:bg-white/10 rounded transition-all"
+                                          >
+                                            <Edit2 size={12} className="text-gray-400 hover:text-cyan-400" />
+                                          </button>
+                                        )}
                                       </div>
-                                      {isOwnProfile && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setEditingTrackId(media.id)
-                                            setEditingTrackTitle(media.title)
-                                          }}
-                                          className="opacity-0 group-hover/title:opacity-100 p-1 hover:bg-white/10 rounded transition-all"
-                                          title="Edit title"
-                                        >
-                                          <Edit2 size={10} className="text-gray-400 hover:text-cyan-400" />
-                                        </button>
+                                      {media.audio_prompt && (
+                                        <div className="text-xs text-gray-500 truncate mb-1">{media.audio_prompt}</div>
                                       )}
+                                      <div className="flex items-center gap-3 text-xs text-gray-600">
+                                        <div className="flex items-center gap-1">
+                                          <Play size={10} />
+                                          <span>{media.plays || 0}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <Heart size={10} />
+                                          <span>{media.likes || 0}</span>
+                                        </div>
+                                      </div>
                                     </div>
                                   )}
-                                  {media.audio_prompt && (
-                                    <div className="text-xs text-gray-500 truncate">{media.audio_prompt}</div>
-                                  )}
-                                  <div className="flex items-center gap-3 mt-1">
-                                    <span className="text-xs text-gray-600 flex items-center gap-1">
-                                      <Play size={10} />
-                                      {media.plays || 0}
-                                    </span>
-                                  </div>
                                 </div>
+
+                                {/* More Options Icon */}
+                                <button className="p-2 hover:bg-white/10 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                  <MoreVertical size={16} className="text-gray-400" />
+                                </button>
                               </div>
-                            )
-                          })
+                            </div>
+                          )
+                        })
                       )}
                     </div>
                   </div>
 
                 </div>
 
-                {/* Station Stats - Bottom Section */}
+                {/* ============ STATION STATS - Bottom Section (Own Profile Only) ============ */}
                 {isOwnProfile && (
                   <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl border border-white/10 rounded-xl p-4 text-center">
-                      <div className="text-2xl md:text-3xl font-black text-cyan-400 mb-1">
-                        {trackCount}
+                    {[
+                      { label: 'Tracks', value: trackCount, color: 'cyan', icon: Music },
+                      { label: 'Total Plays', value: profile?.totalPlays || 0, color: 'purple', icon: Play },
+                      { label: 'Live Listeners', value: liveListeners, color: 'pink', icon: Users },
+                      { label: 'Status', value: isLive ? 'ON AIR' : 'OFFLINE', color: 'red', icon: RadioIcon }
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className="relative group bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl border border-white/10 rounded-2xl p-5 text-center overflow-hidden hover:scale-105 transition-transform"
+                      >
+                        <div className={`absolute inset-0 bg-gradient-to-br from-${stat.color}-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`}></div>
+                        <div className="relative">
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br from-${stat.color}-500/20 to-${stat.color}-600/20 border border-${stat.color}-500/30 flex items-center justify-center mx-auto mb-3`}>
+                            <stat.icon size={20} className={`text-${stat.color}-400`} />
+                          </div>
+                          <div className={`text-2xl md:text-3xl font-black text-${stat.color}-400 mb-1`}>
+                            {stat.value}
+                          </div>
+                          <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">
+                            {stat.label}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 uppercase">Total Tracks</div>
-                    </div>
-                    <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl border border-white/10 rounded-xl p-4 text-center">
-                      <div className="text-2xl md:text-3xl font-black text-purple-400 mb-1">
-                        {profile?.totalPlays || 0}
-                      </div>
-                      <div className="text-xs text-gray-500 uppercase">Total Plays</div>
-                    </div>
-                    <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl border border-white/10 rounded-xl p-4 text-center">
-                      <div className="text-2xl md:text-3xl font-black text-pink-400 mb-1">
-                        {liveListeners}
-                      </div>
-                      <div className="text-xs text-gray-500 uppercase">Live Listeners</div>
-                    </div>
-                    <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl border border-white/10 rounded-xl p-4 text-center">
-                      <div className="text-2xl md:text-3xl font-black text-red-400 mb-1">
-                        {isLive ? 'ON AIR' : 'OFFLINE'}
-                      </div>
-                      <div className="text-xs text-gray-500 uppercase">Status</div>
-                    </div>
+                    ))}
                   </div>
                 )}
 
