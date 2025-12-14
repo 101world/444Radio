@@ -28,16 +28,20 @@ export default function StationsPage() {
     if (!user?.id) return
     try {
       const { data } = await supabase
-        .from('users')
-        .select('is_live')
-        .eq('clerk_user_id', user.id)
+        .from('live_stations')
+        .select('is_live, listener_count')
+        .eq('user_id', user.id)
         .single()
       
       if (data) {
         setIsLive(data.is_live || false)
+        setViewerCount(data.listener_count || 0)
       }
     } catch (error) {
       console.error('[Stations] Load status error:', error)
+      // Station doesn't exist yet, user is not live
+      setIsLive(false)
+      setViewerCount(0)
     }
   }
 
@@ -48,12 +52,23 @@ export default function StationsPage() {
     try {
       const newLiveStatus = !isLive
       
-      const { error } = await supabase
-        .from('users')
-        .update({ is_live: newLiveStatus })
-        .eq('clerk_user_id', user.id)
+      // Use the station API endpoint
+      const response = await fetch('/api/station', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isLive: newLiveStatus,
+          username: user.username || user.firstName || 'Anonymous'
+        })
+      })
       
-      if (error) throw error
+      const data = await response.json()
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to toggle live status')
+      }
       
       setIsLive(newLiveStatus)
       console.log(`✅ [Stations] ${newLiveStatus ? 'Went' : 'Stopped'} live`)
@@ -64,7 +79,7 @@ export default function StationsPage() {
       }
     } catch (error) {
       console.error('❌ [Stations] Toggle live error:', error)
-      alert('Failed to toggle live status')
+      alert(error instanceof Error ? error.message : 'Failed to toggle live status')
     } finally {
       setIsTogglingLive(false)
     }

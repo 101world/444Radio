@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { use } from 'react'
 import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle } from 'lucide-react'
@@ -59,6 +59,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const { userId } = use(params)
   const { user } = useUser()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { playTrack, setPlaylist, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
 
   // Profile State
@@ -91,6 +92,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [editTwitter, setEditTwitter] = useState('')
   const [editInstagram, setEditInstagram] = useState('')
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+
+  // Check URL params for tab
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'station') {
+      setActiveView('station')
+    }
+  }, [searchParams])
 
   // Load Profile Data
   useEffect(() => {
@@ -133,6 +142,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
         if (tracksError) throw tracksError
 
+        // Check live status from live_stations table
+        const { data: liveData } = await supabase
+          .from('live_stations')
+          .select('is_live, listener_count')
+          .eq('user_id', userId)
+          .single()
+
         // Set profile data
         setProfile({
           userId: userData.clerk_user_id,
@@ -147,8 +163,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           joined_date: userData.created_at,
           website: userData.website || '',
           social_links: userData.social_links || {},
-          is_live: false
+          is_live: liveData?.is_live || false
         })
+
+        // Update station state
+        setIsLive(liveData?.is_live || false)
+        setViewerCount(liveData?.listener_count || 0)
 
         setTracks(tracksData.map((t: any) => ({
           id: t.id,
@@ -612,15 +632,68 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     <div className="absolute top-4 right-4 px-3 py-1 bg-black/60 backdrop-blur rounded-full text-xs">
                       {viewerCount} viewers
                     </div>
+                    {isOwnProfile && (
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/station', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  isLive: false,
+                                  username: profile?.username || user?.username || 'Anonymous'
+                                })
+                              })
+                              const data = await response.json()
+                              if (data.success) {
+                                setIsLive(false)
+                                console.log('\u2705 Ended stream successfully')
+                              }
+                            } catch (error) {
+                              console.error('\u274c End stream error:', error)
+                              alert('Failed to end stream')
+                            }
+                          }}
+                          className="px-6 py-2 bg-red-500 rounded-lg font-bold hover:bg-red-400 transition-all shadow-lg"
+                        >
+                          End Stream
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center">
                     <Video size={64} className="mx-auto text-gray-600 mb-4" />
                     <p className="text-gray-400">Stream offline</p>
-                    <button className="mt-4 px-6 py-2 bg-red-500 rounded-lg font-bold hover:bg-red-400 transition-all">
-                      <Mic size={16} className="inline mr-2" />
-                      Go Live
-                    </button>
+                    {isOwnProfile && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/station', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                isLive: true,
+                                username: profile?.username || user?.username || 'Anonymous'
+                              })
+                            })
+                            const data = await response.json()
+                            if (data.success) {
+                              setIsLive(true)
+                              console.log('\u2705 Went live successfully')
+                            }
+                          } catch (error) {
+                            console.error('\u274c Go live error:', error)
+                            alert('Failed to go live')
+                          }
+                        }}
+                        className="mt-4 px-6 py-2 bg-red-500 rounded-lg font-bold hover:bg-red-400 transition-all"
+                      >
+                        <Mic size={16} className="inline mr-2" />
+                        Go Live
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
