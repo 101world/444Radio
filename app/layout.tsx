@@ -6,6 +6,7 @@ import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
 import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
+import SkipToContent from './components/SkipToContent';
 import { Toaster } from 'sonner';
 import { defaultMetadata } from '@/lib/metadata';
 import "./globals.css";
@@ -37,8 +38,11 @@ export default function RootLayout({
         <ClerkProvider>
           <AudioPlayerProvider>
             <GenerationQueueProvider>
+              <SkipToContent />
               <Toaster position="top-right" richColors closeButton />
-              {children}
+              <main id="main-content" tabIndex={-1} className="focus:outline-none">
+                {children}
+              </main>
               <ConditionalGlobalPlayer />
               <GenerationMonitor />
             </GenerationQueueProvider>
