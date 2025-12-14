@@ -7,57 +7,6 @@ import Image from 'next/image'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
 export default function FloatingAudioPlayer() {
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      
-      switch (e.key.toLowerCase()) {
-        case ' ':
-          if (currentTrack) {
-            e.preventDefault()
-            togglePlayPause()
-          }
-          break
-        case 'arrowright':
-          if (e.shiftKey) {
-            playNext()
-          } else {
-            skipForward()
-          }
-          break
-        case 'arrowleft':
-          if (e.shiftKey) {
-            playPrevious()
-          } else {
-            skipBackward()
-          }
-          break
-        case 'arrowup':
-          e.preventDefault()
-          setVolume(Math.min(1, volume + 0.1))
-          break
-        case 'arrowdown':
-          e.preventDefault()
-          setVolume(Math.max(0, volume - 0.1))
-          break
-        case 'm':
-          setVolume(volume === 0 ? 0.7 : 0)
-          break
-        case 'l':
-          toggleLoop()
-          break
-        case 's':
-          toggleShuffle()
-          break
-      }
-    }
-    
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [currentTrack, togglePlayPause, playNext, playPrevious, skipForward, skipBackward, volume, setVolume, toggleLoop, toggleShuffle])
-
   const {
     currentTrack,
     isPlaying,
