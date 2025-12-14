@@ -215,9 +215,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   }
 
   // Handle Banner Upload Success
-  const handleBannerSuccess = async (url: string) => {
+  const handleBannerSuccess = async (url: string, type?: 'image' | 'video') => {
+    console.log('[Banner] Upload success:', url, type)
     setProfile(prev => prev ? { ...prev, banner_url: url } : null)
-    // Refresh profile data
+    setShowBannerUpload(false)
+    // Refresh profile data to confirm
     const { data } = await supabase
       .from('users')
       .select('banner_url')
@@ -229,7 +231,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   }
 
   // Handle Avatar Upload Success  
-  const handleAvatarSuccess = async () => {
+  const handleAvatarSuccess = async (url?: string) => {
+    console.log('[Avatar] Upload success:', url)
+    setShowAvatarUpload(false)
     // Refresh profile data
     const { data } = await supabase
       .from('users')
@@ -807,6 +811,24 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             </div>
           </div>
         </div>
+      )}
+
+      {/* Banner Upload Modal */}
+      {showBannerUpload && (
+        <BannerUploadModal
+          isOpen={showBannerUpload}
+          onClose={() => setShowBannerUpload(false)}
+          onSuccess={handleBannerSuccess}
+        />
+      )}
+
+      {/* Avatar Upload Modal */}
+      {showAvatarUpload && (
+        <ProfileUploadModal
+          isOpen={showAvatarUpload}
+          onClose={() => setShowAvatarUpload(false)}
+          onUploadComplete={handleAvatarSuccess}
+        />
       )}
     </div>
   )
