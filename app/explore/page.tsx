@@ -13,6 +13,7 @@ import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
 import LikeButton from '../components/LikeButton'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 // Lazy load heavy 3D background and modals
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
@@ -64,7 +65,7 @@ interface LiveStation {
   }
 }
 
-export default function ExplorePage() {
+function ExplorePageContent() {
   const router = useRouter()
   const [combinedMedia, setCombinedMedia] = useState<CombinedMedia[]>([])
   const [artists, setArtists] = useState<Artist[]>([])
@@ -926,5 +927,13 @@ export default function ExplorePage() {
         )}
       </Suspense>
     </div>
+  )
+}
+
+export default function ExplorePage() {
+  return (
+    <ErrorBoundary>
+      <ExplorePageContent />
+    </ErrorBoundary>
   )
 }
