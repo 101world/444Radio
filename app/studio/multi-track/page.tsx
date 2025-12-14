@@ -285,6 +285,32 @@ export default function MultiTrackStudioV4() {
             stop();
           }
           break;
+        case 'l':
+          e.preventDefault();
+          setLoopEnabled(!loopEnabled);
+          break;
+        case 'm':
+          e.preventDefault();
+          setMetronomeEnabled(!metronomeEnabled);
+          break;
+        case 'g':
+          e.preventDefault();
+          setSnapEnabled(!snapEnabled);
+          break;
+        case 'f':
+          e.preventDefault();
+          zoomToFit();
+          break;
+        case '+':
+        case '=':
+          e.preventDefault();
+          setZoom(Math.min(200, zoom + 10));
+          break;
+        case '-':
+        case '_':
+          e.preventDefault();
+          setZoom(Math.max(5, zoom - 10));
+          break;
         case 'delete':
         case 'backspace':
           if (selectedClipId && selectedTrackId) {
@@ -341,7 +367,7 @@ export default function MultiTrackStudioV4() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedClipId, selectedTrackId, daw, tracks, clipboardClip, playhead, isPlaying]);
+  }, [selectedClipId, selectedTrackId, daw, tracks, clipboardClip, playhead, isPlaying, loopEnabled, metronomeEnabled, snapEnabled, zoom]);
 
   // Playhead animation - optimized with transform + auto-scroll
   useEffect(() => {
