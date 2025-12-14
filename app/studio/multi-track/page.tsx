@@ -685,18 +685,43 @@ export default function MultiTrackStudioV4() {
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || !daw) return;
 
-    setIsLoading(true);
-    setLoadingMessage(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`);
-
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+    
+    // Validate files first
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      setLoadingMessage(`Processing ${i + 1}/${files.length}: ${file.name}`);
-      const arrayBuffer = await file.arrayBuffer();
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      if (['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac'].includes(fileExt || '')) {
+        validFiles.push(file);
+      } else {
+        invalidFiles.push(file.name);
+      }
+    }
+    
+    if (invalidFiles.length > 0) {
+      alert(`⚠️ Skipping invalid files:\\n${invalidFiles.join('\\n')}\\n\\nSupported: MP3, WAV, M4A, OGG, AAC, FLAC`);
+    }
+    
+    if (validFiles.length === 0) {
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingMessage(`Uploading ${validFiles.length} file${validFiles.length > 1 ? 's' : ''}...`);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < validFiles.length; i++) {
+      const file = validFiles[i];
+      setLoadingMessage(`Processing ${i + 1}/${validFiles.length}: ${file.name}`);
       
       try {
+        const arrayBuffer = await file.arrayBuffer();
         const audioContext = daw.getAudioContext();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        const trackName = file.name.replace(/\.(mp3|wav|m4a|ogg)$/i, '');
+        const trackName = file.name.replace(/\\.(mp3|wav|m4a|ogg|aac|flac)$/i, '');
         
         // Create track
         const track = daw.createTrack(trackName);
@@ -709,18 +734,28 @@ export default function MultiTrackStudioV4() {
           duration: audioBuffer.duration
         });
         
-        console.log(`✅ Loaded ${trackName} - duration: ${audioBuffer.duration.toFixed(2)}s, ${track.clips?.length || 0} clip(s)`);
+        console.log(`✅ [Upload] Loaded ${trackName} - ${audioBuffer.duration.toFixed(2)}s, ${audioBuffer.numberOfChannels}ch`);
         
         setTracks(daw.getTracks());
         setSelectedTrackId(track.id);
-      } catch (error) {
-        console.error('Failed to decode audio file:', error);
-        alert(`Failed to load ${file.name}. Make sure it's a valid audio file.`);
+        successCount++;
+      } catch (error: any) {
+        console.error(`❌ [Upload] Failed to decode ${file.name}:`, error);
+        failCount++;
       }
     }
     
     setIsLoading(false);
     setLoadingMessage('');
+    
+    // Summary alert
+    if (successCount > 0 && failCount === 0) {
+      alert(`✅ Successfully loaded ${successCount} track${successCount > 1 ? 's' : ''}!`);
+    } else if (successCount > 0 && failCount > 0) {
+      alert(`⚠️ Loaded ${successCount} track(s)\\nFailed: ${failCount} file(s)\\n\\nCheck console for details.`);
+    } else {
+      alert(`❌ Failed to load all files\\n\\nMake sure they are valid audio files and try again.`);
+    }
   };
 
   const updateTrackVolume = (trackId: string, volume: number) => {
@@ -977,7 +1012,10 @@ export default function MultiTrackStudioV4() {
   };
 
   const handleSaveProject = async (projectName: string) => {
-    if (!projectManagerRef.current || !daw || !user?.id) return;
+    if (!projectManagerRef.current || !daw || !user?.id) {
+      alert('Cannot save: DAW not initialized or user not logged in');
+      return;
+    }
     
     setIsLoading(true);
     setLoadingMessage('Saving project...');
@@ -993,11 +1031,14 @@ export default function MultiTrackStudioV4() {
         version: 1
       });
       
-      alert(`Project "${projectName}" saved successfully!`);
+      console.log(`[Save] Project saved successfully: ${projectId}`);
+      alert(`✅ Project "${projectName}" saved successfully!`);
+      setLastSaved(new Date());
       setShowSaveModal(false);
     } catch (error: any) {
-      console.error('Save failed:', error);
-      alert(`Failed to save project: ${error.message}`);
+      console.error('[Save] Failed:', error);
+      const errorMsg = error.message || 'Unknown error occurred';
+      alert(`❌ Failed to save project: ${errorMsg}\n\nTry again or check browser console for details.`);
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
@@ -1005,13 +1046,20 @@ export default function MultiTrackStudioV4() {
   };
 
   const handleLoadProject = async (projectId: string) => {
-    if (!projectManagerRef.current || !daw || !user?.id) return;
+    if (!projectManagerRef.current || !daw || !user?.id) {
+      alert('Cannot load: DAW not initialized or user not logged in');
+      return;
+    }
     
     setIsLoading(true);
     setLoadingMessage('Loading project...');
     
     try {
       const project = await projectManagerRef.current.loadProject(projectId);
+      
+      if (!project) {
+        throw new Error('Project not found or corrupted');
+      }
       
       // Clear current DAW state
       daw.dispose();
@@ -1027,11 +1075,13 @@ export default function MultiTrackStudioV4() {
       setDaw(newDaw);
       setBpm(project.bpm);
       setTracks(project.tracks);
-      alert(`Project "${project.name}" loaded successfully!`);
+      console.log(`[Load] Project loaded successfully: ${project.name}`);
+      alert(`✅ Project "${project.name}" loaded successfully!`);
       setShowLoadModal(false);
     } catch (error: any) {
-      console.error('Load failed:', error);
-      alert(`Failed to load project: ${error.message}`);
+      console.error('[Load] Failed:', error);
+      const errorMsg = error.message || 'Unknown error occurred';
+      alert(`❌ Failed to load project: ${errorMsg}\n\nThe project may be corrupted or incompatible.`);
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
@@ -1099,15 +1149,17 @@ export default function MultiTrackStudioV4() {
           result.blob,
           `444Radio-Export-${Date.now()}.${format}`
         );
-        alert('Export complete! Download started.');
+        console.log(`✅ [Export] ${format.toUpperCase()} export successful - ${(result.blob.size / 1024 / 1024).toFixed(2)}MB`);
+        alert(`✅ Export complete!\\n\\nFormat: ${format.toUpperCase()}\\nSize: ${(result.blob.size / 1024 / 1024).toFixed(2)}MB\\n\\nDownload started.`);
+        setShowExportModal(false);
       } else {
-        alert(`Export failed: ${result.error || 'Unknown error'}`);
+        throw new Error(result.error || 'Export failed - unknown error');
       }
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Export failed. See console for details.');
+    } catch (error: any) {
+      console.error('❌ [Export] Failed:', error);
+      const errorMsg = error.message || 'Unknown error occurred';
+      alert(`❌ Export failed: ${errorMsg}\\n\\nTry again or check browser console for details.`);
     } finally {
-      setShowExportModal(false);
       setIsLoading(false);
       setLoadingMessage('');
     }
