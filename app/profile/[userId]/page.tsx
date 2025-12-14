@@ -12,6 +12,7 @@ import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
 import BannerUploadModal from '../../components/BannerUploadModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
+import { ProfileHeaderSkeleton, TrackListSkeleton, LoadingPage } from '../../components/LoadingComponents'
 
 interface ProfileData {
   userId: string
@@ -355,8 +356,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-cyan-400 text-xl">Loading profile...</div>
+      <div className="min-h-screen bg-black text-white">
+        <ProfileHeaderSkeleton />
+        <div className="px-8 pb-32">
+          <TrackListSkeleton count={8} />
+        </div>
       </div>
     )
   }
