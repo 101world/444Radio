@@ -16,6 +16,9 @@ import { ProfileHeaderSkeleton, TrackListSkeleton, LoadingPage } from '../../com
 import { getPusherClient } from '@/lib/pusher-client'
 import { validateProfileForm, validateChatMessage } from '@/lib/validation'
 
+// Note: Cannot export metadata from 'use client' components
+// Dynamic metadata is handled via next/head or generateMetadata in server component wrapper
+
 interface ProfileData {
   userId: string
   username: string

@@ -7,6 +7,7 @@ import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
 import { Toaster } from 'sonner';
+import { defaultMetadata } from '@/lib/metadata';
 import "./globals.css";
 
 const poppins = Poppins({
@@ -14,15 +15,7 @@ const poppins = Poppins({
   weight: ["300", "400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "444RADIO.CO.IN",
-  description: "AI-powered music generation platform",
-  manifest: "/manifest.json",
-  icons: {
-    icon: "/studio/icon.png",
-    apple: "/studio/icon.png",
-  },
-};
+export const metadata: Metadata = defaultMetadata
 
 export const viewport = {
   width: "device-width",

@@ -19,6 +19,9 @@ import ErrorBoundary from '../components/ErrorBoundary'
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
 const LyricsModal = lazy(() => import('../components/LyricsModal'))
 
+// Note: Cannot export metadata from 'use client' components
+// Metadata is set in parent layout
+
 interface CombinedMedia {
   id: string
   title: string

@@ -6,6 +6,9 @@ import { useUser } from '@clerk/nextjs'
 import { Radio, Mic, Users, Settings, Circle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+// Note: Cannot export metadata from 'use client' components
+// Metadata is set in parent layout
+
 export default function StationsPage() {
   const router = useRouter()
   const { user, isLoaded } = useUser()

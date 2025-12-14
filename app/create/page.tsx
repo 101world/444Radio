@@ -17,6 +17,9 @@ import { useGenerationQueue } from '../contexts/GenerationQueueContext'
 
 const HolographicBackground = lazy(() => import('../components/HolographicBackgroundClient'))
 
+// Note: Cannot export metadata from 'use client' components
+// Metadata is set in parent layout
+
 type MessageType = 'user' | 'assistant' | 'generation'
 type GenerationType = 'music' | 'image' | 'video'
 

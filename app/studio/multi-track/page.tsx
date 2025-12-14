@@ -14,6 +14,9 @@ import Tooltip from '@/app/components/Tooltip';
 import { toast } from '@/lib/toast';
 import { theme, buttonStyles } from '@/lib/design-system';
 
+// Note: Cannot export metadata from 'use client' components
+// Metadata is set in parent layout
+
 // Loading Spinner Component
 function LoadingSpinner({ message }: { message: string }) {
   return (
