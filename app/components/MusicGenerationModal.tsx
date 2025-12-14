@@ -5,6 +5,7 @@ import { X, Music, Loader2, Sparkles } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
 import { LYRICS_DATABASE } from '@/lib/lyrics-database'
+import { validateGenerationPrompt } from '@/lib/validation'
 
 interface MusicModalProps {
   isOpen: boolean
@@ -56,8 +57,11 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
       return
     }
 
-    if (!prompt.trim() || prompt.length < 10 || prompt.length > 500) {
-      alert('Please enter a music description (10-500 characters)')
+    // Use validation library for prompt
+    const validation = validateGenerationPrompt(prompt)
+    if (!validation.isValid) {
+      const errorMessage = Object.values(validation.errors).join('. ')
+      alert(`❌ ${errorMessage}`)
       return
     }
 

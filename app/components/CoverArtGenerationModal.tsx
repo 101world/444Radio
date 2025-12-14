@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { X, Image as ImageIcon, Loader2, Sparkles, Download } from 'lucide-react'
+import { validateGenerationPrompt } from '@/lib/validation'
 
 interface CoverArtModalProps {
   isOpen: boolean
@@ -40,8 +41,11 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
       return
     }
 
-    if (!prompt.trim()) {
-      alert('Please enter an image description')
+    // Use validation library for prompt
+    const validation = validateGenerationPrompt(prompt)
+    if (!validation.isValid) {
+      const errorMessage = Object.values(validation.errors).join('. ')
+      alert(`❌ ${errorMessage}`)
       return
     }
 
