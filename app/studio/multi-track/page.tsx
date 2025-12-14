@@ -2115,6 +2115,29 @@ export default function MultiTrackStudioV4() {
                 <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">S</kbd>
               </div>
               <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Toggle Loop</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">L</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Toggle Metronome</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">M</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Toggle Snap Grid</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">G</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Zoom to Fit</span>
+                <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">F</kbd>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
+                <span className="text-gray-300">Zoom In / Out</span>
+                <div className="flex gap-2">
+                  <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">+</kbd>
+                  <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">-</kbd>
+                </div>
+              </div>
+              <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
                 <span className="text-gray-300">Save</span>
                 <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">Cmd+S</kbd>
               </div>
@@ -2127,7 +2150,7 @@ export default function MultiTrackStudioV4() {
                 <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">Cmd+E</kbd>
               </div>
               <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
-                <span className="text-gray-300">Delete</span>
+                <span className="text-gray-300">Delete Clip</span>
                 <kbd className="px-3 py-1.5 bg-[#1f1f1f] border border-cyan-500/30 rounded-md text-cyan-400 font-mono text-xs shadow-lg">Del</kbd>
               </div>
               <div className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-white/5 transition-colors">
