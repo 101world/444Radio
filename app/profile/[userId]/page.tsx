@@ -13,6 +13,8 @@ import FloatingMenu from '../../components/FloatingMenu'
 import BannerUploadModal from '../../components/BannerUploadModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import { ProfileHeaderSkeleton, TrackListSkeleton, LoadingPage } from '../../components/LoadingComponents'
+import { getPusherClient } from '@/lib/pusher-client'
+import { validateProfileForm, validateChatMessage } from '@/lib/validation'
 
 interface ProfileData {
   userId: string
@@ -93,6 +95,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [editTwitter, setEditTwitter] = useState('')
   const [editInstagram, setEditInstagram] = useState('')
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
+  const [chatError, setChatError] = useState<string>('')
 
   // Check URL params for tab
   useEffect(() => {
@@ -101,6 +105,46 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       setActiveView('station')
     }
   }, [searchParams])
+
+  // Real-time chat with Pusher
+  useEffect(() => {
+    if (!userId) return
+
+    const pusher = getPusherClient()
+    if (!pusher) {
+      console.log('📡 Pusher not configured - chat will use manual refresh')
+      return
+    }
+
+    // Subscribe to station channel for chat messages
+    const stationChannel = pusher.subscribe(`station-${userId}`)
+
+    stationChannel.bind('pusher:subscription_succeeded', () => {
+      console.log('✅ Connected to station chat:', `station-${userId}`)
+    })
+
+    stationChannel.bind('new-message', (data: any) => {
+      console.log('📩 New chat message:', data)
+      const newMessage: ChatMessage = {
+        id: data.id || Date.now().toString(),
+        user_id: data.user_id,
+        username: data.username,
+        avatar: data.avatar || '/default-avatar.png',
+        message: data.message,
+        timestamp: new Date(data.timestamp || Date.now())
+      }
+      setChatMessages(prev => [...prev, newMessage])
+    })
+
+    stationChannel.bind('pusher:subscription_error', (error: any) => {
+      console.error('❌ Station channel subscription error:', error)
+    })
+
+    return () => {
+      stationChannel.unbind_all()
+      pusher.unsubscribe(`station-${userId}`)
+    }
+  }, [userId])
 
   // Load Profile Data
   useEffect(() => {
@@ -195,6 +239,43 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       loadProfile()
     }
   }, [userId, user?.id])
+
+  // Load chat messages when viewing station tab
+  useEffect(() => {
+    async function loadChatMessages() {
+      if (activeView !== 'station') return
+
+      try {
+        const { data: stationData } = await supabase
+          .from('live_stations')
+          .select('id')
+          .eq('user_id', userId)
+          .single()
+
+        if (!stationData) return
+
+        const response = await fetch(`/api/station/messages?stationId=${stationData.id}&limit=50`)
+        const data = await response.json()
+
+        if (data.success && data.messages) {
+          const messages: ChatMessage[] = data.messages.map((m: any) => ({
+            id: m.id,
+            user_id: m.user_id,
+            username: m.username,
+            avatar: '/default-avatar.png',
+            message: m.message,
+            timestamp: new Date(m.created_at)
+          }))
+          setChatMessages(messages)
+          console.log(`✅ Loaded ${messages.length} chat messages`)
+        }
+      } catch (error) {
+        console.error('❌ Load chat messages error:', error)
+      }
+    }
+
+    loadChatMessages()
+  }, [activeView, userId])
 
   // Populate edit form when modal opens
   useEffect(() => {
@@ -337,21 +418,55 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   // Send Chat Message
   const handleSendMessage = async () => {
-    if (!chatInput.trim() || !user) return
+    if (!user) return
 
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      user_id: user.id,
-      username: user.username || 'Anonymous',
-      avatar: user.imageUrl || '/default-avatar.png',
-      message: chatInput,
-      timestamp: new Date()
+    // Validate message
+    const validation = validateChatMessage(chatInput)
+    if (!validation.isValid) {
+      setChatError(validation.errors.message || 'Invalid message')
+      return
     }
 
-    setChatMessages(prev => [...prev, newMessage])
-    setChatInput('')
+    const message = chatInput.trim()
+    setChatInput('') // Clear input immediately for better UX
+    setChatError('') // Clear error
 
-    // TODO: Send to real-time chat service
+    try {
+      // Get or create station ID
+      const { data: stationData } = await supabase
+        .from('live_stations')
+        .select('id')
+        .eq('user_id', userId)
+        .single()
+
+      if (!stationData) {
+        console.error('❌ Station not found')
+        return
+      }
+
+      // Send message to API (which will broadcast via Pusher)
+      const response = await fetch('/api/station/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stationId: stationData.id,
+          message: message,
+          username: user.username || user.firstName || 'Anonymous'
+        })
+      })
+
+      const data = await response.json()
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to send message')
+      }
+
+      console.log('✅ Message sent successfully')
+    } catch (error) {
+      console.error('❌ Send message error:', error)
+      // Re-add message to input if failed
+      setChatInput(message)
+      alert('Failed to send message')
+    }
   }
 
   if (loading) {

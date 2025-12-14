@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { getPusherServer } from '@/lib/pusher-server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,12 +23,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Get station to find the owner's user_id for channel
+    const { data: stationData } = await supabase
+      .from('live_stations')
+      .select('user_id')
+      .eq('id', stationId)
+      .single()
+
+    if (!stationData) {
+      return NextResponse.json({ error: 'Station not found' }, { status: 404 })
+    }
+
     const { data, error } = await supabase
       .from('station_messages')
       .insert({
         station_id: stationId,
         user_id: userId,
-        username: username,
+        username: username || 'Anonymous',
         message: message,
         message_type: messageType || 'chat'
       })
@@ -35,6 +47,20 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // Broadcast message to all listeners via Pusher
+    const pusher = getPusherServer()
+    if (pusher) {
+      await pusher.trigger(`station-${stationData.user_id}`, 'new-message', {
+        id: data.id,
+        user_id: userId,
+        username: username || 'Anonymous',
+        message: message,
+        timestamp: data.created_at
+      })
+      console.log(`📡 Broadcast message to station-${stationData.user_id}`)
+    }
+
     return NextResponse.json({ success: true, message: data })
   } catch (error) {
     console.error('Message POST error:', error)
