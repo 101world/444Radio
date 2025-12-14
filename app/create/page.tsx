@@ -1509,30 +1509,7 @@ function CreatePageContent() {
             {/* Divider */}
             <div className="w-px h-8 bg-cyan-500/30"></div>
 
-            {/* Instrumental Toggle - Only show for music */}
-            {selectedType === 'music' && (
-              <button
-                onClick={() => setIsInstrumental(!isInstrumental)}
-                className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
-                  isInstrumental
-                    ? 'bg-gradient-to-r from-purple-600/20 via-purple-500/20 to-purple-400/20 border-2 border-purple-400 scale-105'
-                    : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
-                }`}
-                title={isInstrumental ? "Instrumental Mode (5 credits)" : "Switch to Instrumental"}
-              >
-                <Music2 
-                  size={18} 
-                  className={`${
-                    isInstrumental ? 'text-purple-300' : 'text-cyan-400'
-                  } drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]`}
-                />
-                {isInstrumental && (
-                  <div className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-purple-500 rounded-full text-[8px] font-bold text-white">
-                    {instrumentalDuration}s
-                  </div>
-                )}
-              </button>
-            )}
+            {/* Instrumental toggle removed from UI (kept in logic) */}
 
             {/* Divider */}
             <div className="w-px h-8 bg-cyan-500/30"></div>
