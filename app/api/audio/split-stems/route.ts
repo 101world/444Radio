@@ -99,10 +99,9 @@ export async function POST(request: Request) {
 
       console.log('[Stem Split] Prediction created, waiting for completion...')
       
-      // Wait for completion with extended timeout
+      // Wait for completion with proper API syntax
       output = await replicate.wait(prediction, { 
-        timeout: 300000, // 5 minutes
-        poll: 5000 // check every 5 seconds
+        interval: 5000 // check every 5 seconds
       })
       
       console.log('[Stem Split] Replicate completed successfully')
