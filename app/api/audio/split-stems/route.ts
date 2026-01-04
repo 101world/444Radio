@@ -114,28 +114,39 @@ export async function POST(request: Request) {
 
     // Simple stem normalization - extract all available stems from output
     function normalizeStems(replicateOutput: any): Record<string, string> | null {
-      console.log('[Stem Split] normalizeStems input:', JSON.stringify(replicateOutput, null, 2))
+      console.log('[Stem Split] normalizeStems input type:', typeof replicateOutput)
+      console.log('[Stem Split] normalizeStems input keys:', Object.keys(replicateOutput || {}))
       
-      if (!replicateOutput) return null
+      if (!replicateOutput) {
+        console.log('[Stem Split] replicateOutput is null/undefined')
+        return null
+      }
       
       // The output might be nested under 'output' property or be direct
       const actualOutput = replicateOutput.output || replicateOutput
-      console.log('[Stem Split] actualOutput:', JSON.stringify(actualOutput, null, 2))
+      console.log('[Stem Split] actualOutput type:', typeof actualOutput)
+      console.log('[Stem Split] actualOutput keys:', Object.keys(actualOutput || {}))
       
       if (typeof actualOutput === 'object' && !Array.isArray(actualOutput)) {
         const stems: Record<string, string> = {}
+        let processedCount = 0
+        let skippedCount = 0
+        let extractedCount = 0
         
         for (const [key, value] of Object.entries(actualOutput)) {
-          console.log(`[Stem Split] Processing key: ${key}, value:`, value)
+          processedCount++
+          console.log(`[Stem Split] Processing ${processedCount}: ${key}, value type:`, typeof value, 'value:', value)
           
           // Skip null values and empty arrays
           if (value === null || value === undefined) {
-            console.log(`[Stem Split] Skipping ${key}: null/undefined`)
+            skippedCount++
+            console.log(`[Stem Split] Skipped ${key}: null/undefined`)
             continue
           }
           
           if (Array.isArray(value) && value.length === 0) {
-            console.log(`[Stem Split] Skipping ${key}: empty array`)
+            skippedCount++
+            console.log(`[Stem Split] Skipped ${key}: empty array`)
             continue
           }
           
@@ -145,6 +156,7 @@ export async function POST(request: Request) {
           if (typeof value === 'string' && value.startsWith('http')) {
             // Direct URL string
             url = value
+            console.log(`[Stem Split] Direct URL found for ${key}:`, url)
           } else if (value && typeof value === 'object' && !Array.isArray(value)) {
             // Object - check for nested URL properties
             if (typeof (value as any).url === 'string') {
@@ -163,7 +175,7 @@ export async function POST(request: Request) {
             }
           }
           
-          console.log(`[Stem Split] Extracted URL for ${key}:`, url)
+          console.log(`[Stem Split] Final URL for ${key}:`, url)
           
           // Include if it's a valid URL and looks like a stem
           if (url) {
@@ -172,16 +184,22 @@ export async function POST(request: Request) {
                              key.includes('instrumental') || key.includes('other') || key.includes('guitar') || 
                              key.includes('piano') || key.includes('stem') || key.includes('demucs') || key.includes('mdx')
             
+            console.log(`[Stem Split] ${key}: isAudioFile=${isAudioFile}, isStemKey=${isStemKey}`)
+            
             if (isAudioFile || isStemKey) {
               stems[key] = url
-              console.log(`[Stem Split] Added stem: ${key} -> ${url}`)
+              extractedCount++
+              console.log(`[Stem Split] ✅ Added stem ${extractedCount}: ${key} -> ${url}`)
             } else {
-              console.log(`[Stem Split] Skipped ${key}: not audio file or stem key`)
+              skippedCount++
+              console.log(`[Stem Split] ❌ Skipped ${key}: not audio file or stem key`)
             }
           }
         }
         
+        console.log(`[Stem Split] Processing summary: processed=${processedCount}, skipped=${skippedCount}, extracted=${extractedCount}`)
         console.log(`[Stem Split] Final stems object:`, stems)
+        console.log(`[Stem Split] Final stems keys:`, Object.keys(stems))
         return Object.keys(stems).length > 0 ? stems : null
       }
       
