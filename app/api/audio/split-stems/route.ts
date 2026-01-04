@@ -119,19 +119,31 @@ export async function POST(request: Request) {
           
           // Extract URL from various formats
           let url: string | null = null
+          
           if (typeof value === 'string' && value.startsWith('http')) {
+            // Direct URL string
             url = value
-          } else if (value && typeof value === 'object') {
+          } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+            // Object - check for nested URL properties
             if (typeof (value as any).url === 'string') {
               url = (value as any).url
             } else if ((value as any).audio && typeof (value as any).audio.download_uri === 'string') {
               url = (value as any).audio.download_uri
+            } else {
+              // Look for any property that contains a URL string
+              for (const [nestedKey, nestedValue] of Object.entries(value)) {
+                if (typeof nestedValue === 'string' && nestedValue.startsWith('http')) {
+                  console.log(`[Stem Split] Found nested URL in ${key}.${nestedKey}:`, nestedValue)
+                  url = nestedValue
+                  break
+                }
+              }
             }
           }
           
           console.log(`[Stem Split] Extracted URL for ${key}:`, url)
           
-          // Include if it's a valid URL and looks like an audio file or stem
+          // Include if it's a valid URL and looks like a stem
           if (url) {
             const isAudioFile = url.includes('.wav') || url.includes('.mp3') || url.includes('.flac')
             const isStemKey = key.includes('vocal') || key.includes('drum') || key.includes('bass') || 
