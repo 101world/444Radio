@@ -1146,8 +1146,7 @@ function CreatePageContent() {
       language: selectedLanguage,
       genre: genreParam,
       bpm: bpmParam ? parseInt(bpmParam) : undefined,
-      generateCoverArt,
-      instrumental: isInstrumental
+      generateCoverArt
     }
 
     // Add ACE-Step parameters for non-English languages

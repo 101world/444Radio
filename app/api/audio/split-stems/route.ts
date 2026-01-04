@@ -140,13 +140,13 @@ export async function POST(request: Request) {
         if (typeof obj === 'string' && obj.startsWith('http')) {
           // Found a URL string - check if it's audio (exclude .json files)
           if ((obj.includes('.wav') || obj.includes('.mp3') || obj.includes('.flac')) && !obj.includes('.json')) {
-            // Filter out unwanted stems
-            if (!path.includes('other') && !path.includes('analyzer_result')) {
+            // Filter out unwanted stems and empty URLs
+            if (!path.includes('other') && !path.includes('analyzer_result') && obj.trim().length > 10) {
               const key = path || `stem_${Object.keys(stems).length + 1}`
               stems[key] = obj
               console.log(`[Stem Split] ✅ Found audio URL at ${path}: ${obj}`)
             } else {
-              console.log(`[Stem Split] ⏭️ Skipped unwanted stem: ${path}`)
+              console.log(`[Stem Split] ⏭️ Skipped unwanted/empty stem: ${path}`)
             }
           } else if (obj.includes('.json')) {
             console.log(`[Stem Split] ⏭️ Skipped JSON file: ${path}`)
