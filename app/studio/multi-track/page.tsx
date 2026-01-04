@@ -77,7 +77,7 @@ function TimelineRuler({ zoom, playhead, duration, onSeek }: { zoom: number; pla
 }
 
 // Track lane component
-function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange, onPanChange, onClipDoubleClick }: {
+function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange, onPanChange, onClipDoubleClick, showAutomation, onToggleAutomation, onAddAutomationPoint, onMoveAutomationPoint, onDeleteAutomationPoint }: {
   track: Track
   zoom: number
   playhead: number
@@ -86,6 +86,11 @@ function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange
   onVolumeChange: (volume: number) => void
   onPanChange: (pan: number) => void
   onClipDoubleClick: (trackId: string, clipId: string) => void
+  showAutomation: boolean
+  onToggleAutomation: () => void
+  onAddAutomationPoint: (laneId: string, time: number, value: number) => void
+  onMoveAutomationPoint: (laneId: string, pointIndex: number, time: number, value: number) => void
+  onDeleteAutomationPoint: (laneId: string, pointIndex: number) => void
 }) {
   const [vuLevel, setVuLevel] = useState(0)
 
@@ -155,30 +160,65 @@ function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange
       </div>
 
       {/* Track content (clips timeline) */}
-      <div className="flex-1 relative min-h-[120px] bg-black/20">
-        {track.clips.map((clip) => {
-          const clipWidth = (clip.duration / 60) * zoom * 100
-          const clipLeft = (clip.startTime / 60) * zoom * 100
-          
-          return (
-            <div
-              key={clip.id}
-              className="absolute h-[80%] top-[10%] bg-gradient-to-r from-cyan-500/40 to-purple-500/40 backdrop-blur-sm border border-cyan-500/30 rounded-lg shadow-lg cursor-move hover:border-cyan-500/60 transition-all"
-              style={{
-                left: `${clipLeft}px`,
-                width: `${clipWidth}px`
-              }}
-              onDoubleClick={(e) => {
-                e.stopPropagation()
-                onClipDoubleClick(track.id, clip.id)
-              }}
-            >
-              <div className="p-2 text-xs text-white font-medium truncate">
-                {clip.name}
+      <div className="flex-1 flex flex-col">
+        <div className="relative min-h-[120px] bg-black/20">
+          {track.clips.map((clip) => {
+            const clipWidth = (clip.duration / 60) * zoom * 100
+            const clipLeft = (clip.startTime / 60) * zoom * 100
+            
+            return (
+              <div
+                key={clip.id}
+                className="absolute h-[80%] top-[10%] bg-gradient-to-r from-cyan-500/40 to-purple-500/40 backdrop-blur-sm border border-cyan-500/30 rounded-lg shadow-lg cursor-move hover:border-cyan-500/60 transition-all"
+                style={{
+                  left: `${clipLeft}px`,
+                  width: `${clipWidth}px`
+                }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation()
+                  onClipDoubleClick(track.id, clip.id)
+                }}
+              >
+                <div className="p-2 text-xs text-white font-medium truncate">
+                  {clip.name}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+          
+          {/* Automation toggle button */}
+          <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
+            <GlassButton
+              variant={showAutomation ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => onToggleAutomation()}
+            >
+              A
+            </GlassButton>
+          </div>
+        </div>
+        
+        {/* Automation lane */}
+        {showAutomation && (
+          <div className="border-t border-white/10">
+            <AutomationEditor
+              lane={{
+                id: `${track.id}-volume`,
+                trackId: track.id,
+                parameter: 'volume',
+                points: [],
+                color: '#06B6D4'
+              }}
+              duration={60}
+              zoom={zoom}
+              playhead={playhead}
+              onAddPoint={(time, value) => onAddAutomationPoint(`${track.id}-volume`, time, value)}
+              onMovePoint={(index, time, value) => onMoveAutomationPoint(`${track.id}-volume`, index, time, value)}
+              onDeletePoint={(index) => onDeleteAutomationPoint(`${track.id}-volume`, index)}
+              onClose={onToggleAutomation}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -749,6 +789,11 @@ export default function MultiTrackStudio() {
               onVolumeChange={(volume) => handleVolumeChange(track.id, volume)}
               onPanChange={(pan) => handlePanChange(track.id, pan)}
               onClipDoubleClick={handleClipDoubleClick}
+              showAutomation={showAutomation[track.id] || false}
+              onToggleAutomation={() => setShowAutomation(prev => ({ ...prev, [track.id]: !prev[track.id] }))}
+              onAddAutomationPoint={(laneId, time, value) => handleAddAutomationPoint(track.id, laneId, time, value)}
+              onMoveAutomationPoint={(laneId, index, time, value) => handleMoveAutomationPoint(track.id, laneId, index, time, value)}
+              onDeleteAutomationPoint={(laneId, index) => handleDeleteAutomationPoint(track.id, laneId, index)}
             />
           ))}
 
