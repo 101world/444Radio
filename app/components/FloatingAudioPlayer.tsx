@@ -573,10 +573,8 @@ export default function FloatingAudioPlayer() {
                   className="rounded-lg shadow-2xl shadow-cyan-500/20 object-cover cursor-pointer hover:opacity-90 transition-all"
                   onClick={() => setShowCoverArt(true)}
                   style={{ 
-                    width: 'auto', 
-                    height: 'auto', 
-                    maxWidth: `${Math.min(size.width - 80, 180)}px`,
-                    maxHeight: `${Math.min(size.width - 80, 180)}px`
+                    width: `${Math.min(size.width - 80, size.height - 200, 180)}px`,
+                    height: `${Math.min(size.width - 80, size.height - 200, 180)}px`
                   }}
                 />
               )}

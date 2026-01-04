@@ -941,50 +941,9 @@ function ExplorePageContent() {
         )}
       </main>
 
-      {/* Floating Search Bar - No Player Controls */}
-      {showSearchBox && (
-      <div className="fixed bottom-0 left-0 right-0 md:bottom-8 px-4 sm:px-6 lg:px-8 pb-safe md:pb-0 z-50">
-        <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
-          <div className="group relative">
-            {/* Glow Effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 transition-opacity duration-300"></div>
-            
-            {/* Search Bar Container */}
-            <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/40 md:bg-black/20 backdrop-blur-xl md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-hover:border-cyan-400/60 transition-colors duration-200 shadow-2xl">
-              <Search 
-                size={20} 
-                className="text-cyan-400 flex-shrink-0 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[22px] md:h-[22px]" 
-              />
-              <div className="flex-1 text-center md:text-left">
-                <input
-                  type="text"
-                  placeholder="Search tracks, artists..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && fetchCombinedMedia()}
-                  className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none"
-                />
-                <div className="text-xs text-cyan-400/60 mt-0.5 font-mono hidden md:block">
-                  Press Enter to search
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Quick Info - Below the bar */}
-          <div className="flex items-center justify-center gap-2 mt-2 md:mt-6 text-xs md:text-sm mb-2">
-            <span className="text-cyan-400/60 font-mono tracking-wider">
-              ✨ Discover new music
-            </span>
-          </div>
-        </div>
-      </div>
-      )}
-
       {/* Floating Navigation Button */}
       <FloatingNavButton 
-        showPromptToggle={true}
-        onTogglePrompt={() => setShowSearchBox(!showSearchBox)}
+        showPromptToggle={false}
       />
 
       {/* Lyrics Modal - Lazy Loaded */}

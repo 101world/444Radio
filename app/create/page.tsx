@@ -623,13 +623,28 @@ function CreatePageContent() {
       let finalBpm = bpm
       let wasAutoFilled = false
 
-      // Auto-generate missing fields based on prompt
+      // Auto-generate missing fields based on prompt using LLM
       if (!finalTitle.trim()) {
-        // Extract title from prompt (first 50 chars or first sentence)
-        finalTitle = originalPrompt.length > 50 ? originalPrompt.substring(0, 50).trim() + '...' : originalPrompt.trim()
-        setCustomTitle(finalTitle)
+        console.log('🤖 Auto-generating natural title from prompt...')
         wasAutoFilled = true
-        console.log('📝 Auto-filled title:', finalTitle)
+        try {
+          const titleResponse = await fetch('/api/generate/atom-title', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: originalPrompt })
+          })
+          const titleData = await titleResponse.json()
+          if (titleData.success && titleData.title) {
+            finalTitle = titleData.title
+            setCustomTitle(finalTitle)
+            console.log('✅ Auto-generated title:', finalTitle)
+          }
+        } catch (error) {
+          console.error('❌ Auto-title generation failed:', error)
+          // Fallback: use first few words
+          finalTitle = originalPrompt.split(' ').slice(0, 2).join(' ')
+          setCustomTitle(finalTitle)
+        }
       }
 
       // If no lyrics provided, auto-generate using Atom API
@@ -653,24 +668,28 @@ function CreatePageContent() {
         }
       }
 
-      // Auto-detect genre from prompt if not provided
+      // Auto-detect genre using LLM if not provided
       if (!finalGenre.trim()) {
-        const promptLower = originalPrompt.toLowerCase()
-        if (promptLower.includes('rock') || promptLower.includes('guitar')) finalGenre = 'rock'
-        else if (promptLower.includes('jazz') || promptLower.includes('saxophone')) finalGenre = 'jazz'
-        else if (promptLower.includes('hip hop') || promptLower.includes('rap')) finalGenre = 'hip-hop'
-        else if (promptLower.includes('electronic') || promptLower.includes('edm')) finalGenre = 'electronic'
-        else if (promptLower.includes('classical') || promptLower.includes('orchestra')) finalGenre = 'classical'
-        else if (promptLower.includes('country')) finalGenre = 'country'
-        else if (promptLower.includes('blues')) finalGenre = 'blues'
-        else if (promptLower.includes('reggae')) finalGenre = 'reggae'
-        else if (promptLower.includes('metal')) finalGenre = 'metal'
-        else if (promptLower.includes('folk')) finalGenre = 'folk'
-        else if (promptLower.includes('lofi') || promptLower.includes('chill')) finalGenre = 'lofi'
-        else finalGenre = 'pop' // Default fallback
-        setGenre(finalGenre)
+        console.log('🤖 Auto-detecting genre from prompt...')
         wasAutoFilled = true
-        console.log('🎸 Auto-detected genre:', finalGenre)
+        try {
+          const genreResponse = await fetch('/api/generate/atom-genre', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: originalPrompt })
+          })
+          const genreData = await genreResponse.json()
+          if (genreData.success && genreData.genre) {
+            finalGenre = genreData.genre
+            setGenre(finalGenre)
+            console.log('✅ Auto-detected genre:', finalGenre)
+          }
+        } catch (error) {
+          console.error('❌ Auto-genre detection failed:', error)
+          // Fallback to pop
+          finalGenre = 'pop'
+          setGenre(finalGenre)
+        }
       }
 
       // Auto-detect BPM from prompt if not provided
