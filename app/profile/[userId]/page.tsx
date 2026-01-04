@@ -169,14 +169,19 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
         // Check following status
         if (!isOwn && user?.id) {
-          const { data: followData } = await supabase
+          const { data: followData, error: followError } = await supabase
             .from('followers')
             .select('id')
             .eq('follower_id', user.id)
             .eq('following_id', userId)
-            .single()
+            .maybeSingle() // Use maybeSingle() instead of single() to handle "no rows" gracefully
           
-          setIsFollowing(!!followData)
+          // Only set following if we got data (not an error and not null)
+          if (!followError && followData) {
+            setIsFollowing(true)
+          } else {
+            setIsFollowing(false)
+          }
         }
 
         // Fetch tracks
@@ -602,9 +607,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               </div>
 
               {/* Bio */}
-              {profile.bio && (
-                <p className="mt-4 text-gray-300">{profile.bio}</p>
-              )}
+              <p className="mt-4 text-gray-300">
+                {profile.bio || 'No bio yet'}
+              </p>
 
               {/* Location & Joined */}
               <div className="flex items-center gap-4 mt-3 text-sm text-gray-400">

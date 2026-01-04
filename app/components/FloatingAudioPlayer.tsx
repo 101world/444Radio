@@ -1,10 +1,9 @@
 'use client'
 
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical, ChevronDown, ChevronUp, List, X, Repeat, Repeat1, Shuffle, RotateCcw, RotateCw, Maximize, Trash2, Music } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Maximize2, Minimize2, GripVertical, ChevronDown, ChevronUp, List, X, Repeat, Shuffle, RotateCcw, RotateCw, Maximize, Trash2, Music } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
 export default function FloatingAudioPlayer() {
   const {
@@ -561,7 +560,34 @@ export default function FloatingAudioPlayer() {
 
       {/* Player Content */}
       {activeTab === 'player' && (
-        <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="px-4 py-3 flex flex-col gap-3">
+          {/* Cover Art & Track Info - Desktop Only */}
+          {!isMobile && currentTrack && (
+            <div className="flex flex-col items-center gap-2 pb-3 border-b border-white/10">
+              {currentTrack.imageUrl && (
+                <Image
+                  src={currentTrack.imageUrl}
+                  alt={currentTrack.title}
+                  width={180}
+                  height={180}
+                  className="rounded-lg shadow-2xl shadow-cyan-500/20 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setShowCoverArt(true)}
+                  style={{ width: 'auto', height: 'auto', maxWidth: '180px', maxHeight: '180px' }}
+                />
+              )}
+              <div className="text-center w-full px-2">
+                <h3 className="text-white font-bold text-sm truncate">
+                  {currentTrack.title}
+                </h3>
+                {currentTrack.artist && (
+                  <p className="text-gray-400 text-xs truncate">
+                    {currentTrack.artist}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Main Controls */}
           <div className="flex items-center justify-center gap-3 no-drag">
             {/* Shuffle */}
@@ -696,7 +722,7 @@ export default function FloatingAudioPlayer() {
       {/* Queue Content */}
       {activeTab === 'queue' && isExpanded && (
         <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: `${size.height - 120}px` }}>
-          {queue.length === 0 ? (
+          {playlist.length === 0 ? (
             <div className="py-8 text-center text-gray-400">
               <List size={32} className="mx-auto mb-2 opacity-30" />
               <p className="text-xs">Your queue is empty</p>
@@ -707,111 +733,78 @@ export default function FloatingAudioPlayer() {
               {/* Queue Actions */}
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
                 <p className="text-xs text-gray-400">
-                  {queue.length} {queue.length === 1 ? 'track' : 'tracks'}
+                  {playlist.length} {playlist.length === 1 ? 'track' : 'tracks'}
                 </p>
-                <button
-                  onClick={clearQueue}
-                  className="text-[10px] text-red-400/70 hover:text-red-400 transition-colors flex items-center gap-1"
-                >
-                  <Trash2 size={12} />
-                  Clear All
-                </button>
               </div>
 
-              {/* Draggable Queue */}
-              <DragDropContext onDragEnd={(result: DropResult) => {
-                if (!result.destination) return
-                reorderQueue(result.source.index, result.destination.index)
-              }}>
-                <Droppable droppableId="queue">
-                  {(provided) => (
+              {/* Queue List */}
+              <div className="space-y-1">
+                {playlist.map((track, index) => {
+                  const isCurrentTrack = currentTrack?.id === track.id
+                  return (
                     <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className="space-y-1"
+                      key={`${track.id}-${index}`}
+                      className={`flex items-center gap-2 p-2 rounded-lg transition-all ${
+                        isCurrentTrack
+                          ? 'bg-cyan-500/20 border border-cyan-500/30'
+                          : 'hover:bg-white/5'
+                      }`}
                     >
-                      {queue.map((track, index) => {
-                        const isCurrentTrack = currentTrack?.id === track.id
-                        return (
-                          <Draggable key={track.id} draggableId={track.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                className={`flex items-center gap-2 p-2 rounded-lg transition-all ${
-                                  snapshot.isDragging
-                                    ? 'bg-cyan-500/30 shadow-lg shadow-cyan-500/20 scale-105'
-                                    : isCurrentTrack
-                                    ? 'bg-cyan-500/20 border border-cyan-500/30'
-                                    : 'hover:bg-white/5'
-                                }`}
-                              >
-                                {/* Drag Handle */}
-                                <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing text-gray-500 hover:text-gray-400 flex-shrink-0">
-                                  <GripVertical size={14} />
-                                </div>
+                      {/* Track Number */}
+                      <span className="text-[10px] text-gray-500 w-5 font-mono flex-shrink-0">
+                        {index + 1}
+                      </span>
 
-                                {/* Track Number */}
-                                <span className="text-[10px] text-gray-500 w-5 font-mono flex-shrink-0">
-                                  {index + 1}
-                                </span>
+                      {/* Track Info */}
+                      <button
+                        onClick={() => playTrack(track)}
+                        className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                      >
+                        {track.imageUrl && (
+                          <Image
+                            src={track.imageUrl}
+                            alt={track.title}
+                            width={32}
+                            height={32}
+                            className="w-8 h-8 rounded object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[11px] truncate ${
+                            isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
+                          }`}>
+                            {track.title}
+                          </p>
+                          {track.artist && (
+                            <p className="text-[9px] text-gray-400 truncate">
+                              {track.artist}
+                            </p>
+                          )}
+                        </div>
+                        {isCurrentTrack && isPlaying && (
+                          <div className="flex gap-0.5 flex-shrink-0">
+                            <div className="w-0.5 h-2 bg-cyan-400 animate-pulse"></div>
+                            <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                          </div>
+                        )}
+                      </button>
 
-                                {/* Track Info */}
-                                <button
-                                  onClick={() => playFromQueue(track)}
-                                  className="flex items-center gap-2 flex-1 min-w-0 text-left"
-                                >
-                                  {track.imageUrl && (
-                                    <Image
-                                      src={track.imageUrl}
-                                      alt={track.title}
-                                      width={32}
-                                      height={32}
-                                      className="w-8 h-8 rounded object-cover flex-shrink-0"
-                                    />
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <p className={`text-[11px] truncate ${
-                                      isCurrentTrack ? 'text-cyan-400 font-semibold' : 'text-white'
-                                    }`}>
-                                      {track.title}
-                                    </p>
-                                    {track.artist && (
-                                      <p className="text-[9px] text-gray-400 truncate">
-                                        {track.artist}
-                                      </p>
-                                    )}
-                                  </div>
-                                  {isCurrentTrack && isPlaying && (
-                                    <div className="flex gap-0.5 flex-shrink-0">
-                                      <div className="w-0.5 h-2 bg-cyan-400 animate-pulse"></div>
-                                      <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                                      <div className="w-0.5 h-2 bg-cyan-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                                    </div>
-                                  )}
-                                </button>
-
-                                {/* Remove Button */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    removeFromQueue(track.id)
-                                  }}
-                                  className="text-gray-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
-                                  title="Remove from queue"
-                                >
-                                  <X size={14} />
-                                </button>
-                              </div>
-                            )}
-                          </Draggable>
-                        )
-                      })}
-                      {provided.placeholder}
+                      {/* Remove Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeFromPlaylist(track.id)
+                        }}
+                        className="text-gray-500 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                        title="Remove from queue"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+                  )
+                })}
+              </div>
             </>
           )}
         </div>
