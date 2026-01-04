@@ -5,7 +5,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { createClient } from '@supabase/supabase-js'
 
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN!
+  auth: process.env.REPLICATE_API_KEY_LATEST!
 })
 
 const supabase = createClient(
