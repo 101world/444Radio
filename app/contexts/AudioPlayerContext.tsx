@@ -374,12 +374,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ mediaId: trackId, userId })
       })
       
-      // If media tracking fails, try songs table
+      // If media tracking fails, try songs table with compatible payload keys
       if (!mediaResponse.ok) {
         await fetch('/api/songs/track-play', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trackId, userId })
+          body: JSON.stringify({ mediaId: trackId, songId: trackId, userId })
         })
       }
     } catch (error) {

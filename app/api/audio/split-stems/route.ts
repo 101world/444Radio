@@ -112,12 +112,15 @@ export async function POST(request: Request) {
     console.log('[Stem Split] Replicate output:', JSON.stringify(output, null, 2))
     console.log('[Stem Split] Output keys:', Object.keys(output || {}))
 
+    const primaryOutput = output && output.output && typeof output.output === 'object' ? output.output : output
+    console.log('[Stem Split] Using output source keys:', Object.keys(primaryOutput || {}))
+
     // Normalize stems from output
     const detectedStems: Record<string, string> = {}
 
     for (const [stemName, keys] of Object.entries(stemKeyMap)) {
       for (const key of keys) {
-        const url = output ? extractUrl((output as any)[key]) : null
+        const url = primaryOutput ? extractUrl((primaryOutput as any)[key]) : null
         if (url) {
           detectedStems[stemName] = url
           console.log(`[Stem Split] Found ${stemName} at key: ${key}`)
@@ -127,9 +130,9 @@ export async function POST(request: Request) {
     }
 
     // Fallback: array-like output
-    if ((!detectedStems.vocals || !detectedStems.instrumental) && output) {
+    if ((!detectedStems.vocals || !detectedStems.instrumental) && primaryOutput) {
       console.log('[Stem Split] Trying alternative output format detection...')
-      const asArray = Array.isArray(output) ? output : Array.isArray(output?.output) ? output.output : null
+      const asArray = Array.isArray(primaryOutput) ? primaryOutput : Array.isArray(primaryOutput?.output) ? primaryOutput.output : null
       if (asArray && asArray.length >= 2) {
         detectedStems.vocals = extractUrl(asArray[0]) || detectedStems.vocals
         detectedStems.instrumental = extractUrl(asArray[1]) || detectedStems.instrumental
