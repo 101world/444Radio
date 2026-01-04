@@ -1686,26 +1686,6 @@ function CreatePageContent() {
             {/* Divider - Only show when advanced buttons are visible */}
             {showAdvancedButtons && <div className="w-px h-8 bg-cyan-500/30"></div>}
 
-            {/* Instrumental Button - Auto-sets lyrics to [Instrumental] - Hidden by default */}
-            {showAdvancedButtons && selectedType === 'music' && (
-              <button
-                onClick={() => {
-                  setCustomLyrics('[Instrumental]')
-                  setShowLyricsModal(true)
-                }}
-                className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
-                title="Generate Instrumental"
-              >
-                <Music2 
-                  size={18} 
-                  className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]"
-                />
-              </button>
-            )}
-
-            {/* Divider - Only show when advanced buttons are visible */}
-            {showAdvancedButtons && <div className="w-px h-8 bg-cyan-500/30"></div>}
-
             {/* Lyrics Button - Only show for regular music, not instrumental - Hidden by default */}
             {showAdvancedButtons && selectedType === 'music' && !isInstrumental && (
               <button
@@ -1843,6 +1823,20 @@ function CreatePageContent() {
           <div 
             className="group relative active:scale-95 md:hover:scale-105 transition-transform duration-200"
           >
+            {/* Instrumental Button - Text button above prompt box */}
+            {selectedType === 'music' && (
+              <div className="flex justify-end mb-2">
+                <button
+                  onClick={() => {
+                    setCustomLyrics('[Instrumental]')
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/30 rounded-lg hover:bg-purple-500/20 hover:border-purple-400/50 transition-all backdrop-blur-sm"
+                >
+                  🎹 Instrumental
+                </button>
+              </div>
+            )}
+
             {/* Glow Effect - Simplified for mobile */}
             {!isMobile && <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>}
             
