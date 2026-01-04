@@ -40,6 +40,12 @@ interface Message {
   stems?: {
     vocals: string
     instrumental: string
+    drums?: string
+    bass?: string
+    other?: string
+    guitar?: string
+    piano?: string
+    [key: string]: string | undefined
   }
   timestamp: Date
   isGenerating?: boolean
@@ -1292,10 +1298,7 @@ function CreatePageContent() {
               ...msg,
               content: `✅ Stems separated successfully! Used ${data.creditsUsed} credits. ${data.creditsRemaining} credits remaining.`,
               isGenerating: false,
-              stems: {
-                vocals: data.stems.vocals,
-                instrumental: data.stems.instrumental
-              }
+              stems: data.stems
             }
           : msg
       ))
@@ -1615,81 +1618,120 @@ function CreatePageContent() {
                 {/* Stems Result - Unified Playable Display */}
                 {message.stems && (
                   <div className="space-y-3 max-w-md mx-auto">
-                    {/* Vocals Stem */}
-                    <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-purple-900/30 via-black/50 to-black/60 border-2 border-purple-500/30 rounded-2xl overflow-hidden hover:border-purple-400/50 transition-all">
-                      <div className="p-4">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => {
-                              const vocalsTrack = {
-                                id: `${message.id}-vocals`,
-                                title: '🎤 Vocals',
-                                artist: 'Stem Split',
-                                artworkUrl: '',
-                                audioUrl: message.stems!.vocals,
-                                userId: ''
-                              }
-                              playTrack(vocalsTrack)
-                            }}
-                            className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center hover:scale-110 transition-transform"
-                          >
-                            {currentTrack?.audioUrl === message.stems.vocals && isPlaying ? (
-                              <Pause size={20} className="text-white" />
-                            ) : (
-                              <Play size={20} className="text-white ml-0.5" />
-                            )}
-                          </button>
-                          <div className="flex-1">
-                            <h4 className="text-sm font-bold text-white">🎤 Vocals</h4>
-                            <p className="text-xs text-gray-400">Isolated vocal track</p>
+                    {[
+                      {
+                        key: 'vocals',
+                        title: '🎤 Vocals',
+                        description: 'Isolated vocal track',
+                        gradient: 'from-purple-600 to-purple-400',
+                        border: 'border-purple-500/30',
+                        hover: 'hover:border-purple-400/50',
+                        hoverBg: 'hover:bg-purple-500/20',
+                        text: 'text-purple-400'
+                      },
+                      {
+                        key: 'instrumental',
+                        title: '🎹 Instrumental',
+                        description: 'Music without vocals',
+                        gradient: 'from-cyan-600 to-cyan-400',
+                        border: 'border-cyan-500/30',
+                        hover: 'hover:border-cyan-400/50',
+                        hoverBg: 'hover:bg-cyan-500/20',
+                        text: 'text-cyan-400'
+                      },
+                      {
+                        key: 'drums',
+                        title: '🥁 Drums',
+                        description: 'Percussion only',
+                        gradient: 'from-amber-600 to-amber-400',
+                        border: 'border-amber-500/30',
+                        hover: 'hover:border-amber-400/50',
+                        hoverBg: 'hover:bg-amber-500/20',
+                        text: 'text-amber-300'
+                      },
+                      {
+                        key: 'bass',
+                        title: '🪕 Bass',
+                        description: 'Low-end bassline',
+                        gradient: 'from-emerald-600 to-emerald-400',
+                        border: 'border-emerald-500/30',
+                        hover: 'hover:border-emerald-400/50',
+                        hoverBg: 'hover:bg-emerald-500/20',
+                        text: 'text-emerald-300'
+                      },
+                      {
+                        key: 'guitar',
+                        title: '🎸 Guitar',
+                        description: 'Isolated guitar',
+                        gradient: 'from-orange-600 to-orange-400',
+                        border: 'border-orange-500/30',
+                        hover: 'hover:border-orange-400/50',
+                        hoverBg: 'hover:bg-orange-500/20',
+                        text: 'text-orange-300'
+                      },
+                      {
+                        key: 'piano',
+                        title: '🎹 Piano',
+                        description: 'Isolated keys',
+                        gradient: 'from-indigo-600 to-indigo-400',
+                        border: 'border-indigo-500/30',
+                        hover: 'hover:border-indigo-400/50',
+                        hoverBg: 'hover:bg-indigo-500/20',
+                        text: 'text-indigo-300'
+                      },
+                      {
+                        key: 'other',
+                        title: '✨ Other',
+                        description: 'Everything else',
+                        gradient: 'from-slate-600 to-slate-400',
+                        border: 'border-slate-500/30',
+                        hover: 'hover:border-slate-400/50',
+                        hoverBg: 'hover:bg-slate-500/20',
+                        text: 'text-slate-200'
+                      }
+                    ]
+                      .filter(def => message.stems && message.stems[def.key])
+                      .map(def => (
+                        <div
+                          key={def.key}
+                          className={`backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/50 via-black/50 to-black/60 border-2 ${def.border} rounded-2xl overflow-hidden ${def.hover} transition-all`}
+                        >
+                          <div className="p-4">
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => {
+                                  const track = {
+                                    id: `${message.id}-${def.key}`,
+                                    title: def.title,
+                                    artist: 'Stem Split',
+                                    artworkUrl: '',
+                                    audioUrl: message.stems![def.key]!,
+                                    userId: ''
+                                  }
+                                  playTrack(track)
+                                }}
+                                className={`flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br ${def.gradient} flex items-center justify-center hover:scale-110 transition-transform`}
+                              >
+                                {currentTrack?.audioUrl === message.stems![def.key] && isPlaying ? (
+                                  <Pause size={20} className="text-white" />
+                                ) : (
+                                  <Play size={20} className="text-white ml-0.5" />
+                                )}
+                              </button>
+                              <div className="flex-1">
+                                <h4 className="text-sm font-bold text-white">{def.title}</h4>
+                                <p className="text-xs text-gray-400">{def.description}</p>
+                              </div>
+                              <button
+                                onClick={() => handleDownload(message.stems![def.key]!, `${def.key}.mp3`, 'mp3')}
+                                className={`p-2 ${def.hoverBg} rounded-lg transition-colors`}
+                              >
+                                <Download size={16} className={def.text} />
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            onClick={() => handleDownload(message.stems!.vocals, 'vocals.mp3', 'mp3')}
-                            className="p-2 hover:bg-purple-500/20 rounded-lg transition-colors"
-                          >
-                            <Download size={16} className="text-purple-400" />
-                          </button>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Instrumental Stem */}
-                    <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-cyan-900/30 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-2xl overflow-hidden hover:border-cyan-400/50 transition-all">
-                      <div className="p-4">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => {
-                              const instrumentalTrack = {
-                                id: `${message.id}-instrumental`,
-                                title: '🎹 Instrumental',
-                                artist: 'Stem Split',
-                                artworkUrl: '',
-                                audioUrl: message.stems!.instrumental,
-                                userId: ''
-                              }
-                              playTrack(instrumentalTrack)
-                            }}
-                            className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-400 flex items-center justify-center hover:scale-110 transition-transform"
-                          >
-                            {currentTrack?.audioUrl === message.stems.instrumental && isPlaying ? (
-                              <Pause size={20} className="text-white" />
-                            ) : (
-                              <Play size={20} className="text-white ml-0.5" />
-                            )}
-                          </button>
-                          <div className="flex-1">
-                            <h4 className="text-sm font-bold text-white">🎹 Instrumental</h4>
-                            <p className="text-xs text-gray-400">Music without vocals</p>
-                          </div>
-                          <button
-                            onClick={() => handleDownload(message.stems!.instrumental, 'instrumental.mp3', 'mp3')}
-                            className="p-2 hover:bg-cyan-500/20 rounded-lg transition-colors"
-                          >
-                            <Download size={16} className="text-cyan-400" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      ))}
                   </div>
                 )}
 

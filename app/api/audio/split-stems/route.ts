@@ -60,6 +60,27 @@ export async function POST(request: Request) {
     console.log('[Stem Split] Calling Replicate API...')
 
     // Run stem separation with proper parameters from schema
+    const extractUrl = (val: any): string | null => {
+      if (!val) return null
+      if (Array.isArray(val)) return val.find(Boolean) || null
+      if (typeof val === 'string') return val
+      if (typeof val === 'object') {
+        if (typeof (val as any).url === 'string') return (val as any).url
+        if ((val as any).audio?.download_uri) return (val as any).audio.download_uri
+      }
+      return null
+    }
+
+    const stemKeyMap: Record<string, string[]> = {
+      vocals: ['mdx_vocals', 'demucs_vocals', 'vocals', 'vocal', 'voice', 'Vocals', 'mdxnet_vocals'],
+      instrumental: ['mdx_instrumental', 'mdx_other', 'instrumental', 'music', 'accompaniment', 'Instrumental', 'mdxnet_other', 'no_vocals'],
+      drums: ['demucs_drums', 'drums'],
+      bass: ['demucs_bass', 'bass'],
+      other: ['demucs_other', 'other'],
+      guitar: ['demucs_guitar', 'guitar'],
+      piano: ['demucs_piano', 'piano']
+    }
+
     let output: any
     try {
       output = await replicate.run(
@@ -91,52 +112,35 @@ export async function POST(request: Request) {
     console.log('[Stem Split] Replicate output:', JSON.stringify(output, null, 2))
     console.log('[Stem Split] Output keys:', Object.keys(output || {}))
 
-    // Handle different possible output formats from Replicate
-    let vocalsUrl: string | null = null
-    let instrumentalUrl: string | null = null
+    // Normalize stems from output
+    const detectedStems: Record<string, string> = {}
 
-    // Try multiple possible key names for vocals
-    const possibleVocalsKeys = ['mdx_vocals', 'vocals', 'vocal', 'voice', 'Vocals', 'mdxnet_vocals']
-    const possibleInstrumentalKeys = ['mdx_instrumental', 'mdx_other', 'instrumental', 'music', 'accompaniment', 'Instrumental', 'mdxnet_other', 'no_vocals']
-
-    for (const key of possibleVocalsKeys) {
-      if (output && output[key]) {
-        vocalsUrl = Array.isArray(output[key]) ? output[key][0] : output[key]
-        console.log(`[Stem Split] Found vocals at key: ${key}`)
-        break
-      }
-    }
-
-    for (const key of possibleInstrumentalKeys) {
-      if (output && output[key]) {
-        instrumentalUrl = Array.isArray(output[key]) ? output[key][0] : output[key]
-        console.log(`[Stem Split] Found instrumental at key: ${key}`)
-        break
-      }
-    }
-
-    // If still not found, check if output is an array or object with file URLs
-    if (!vocalsUrl && !instrumentalUrl && output) {
-      console.log('[Stem Split] Trying alternative output format detection...')
-      
-      // If output is an array of URLs
-      if (Array.isArray(output) && output.length >= 2) {
-        vocalsUrl = output[0]
-        instrumentalUrl = output[1]
-        console.log('[Stem Split] Using array format - [0] vocals, [1] instrumental')
-      }
-      // If output has 'output' property
-      else if (output.output) {
-        const outputData = output.output
-        if (Array.isArray(outputData) && outputData.length >= 2) {
-          vocalsUrl = outputData[0]
-          instrumentalUrl = outputData[1]
-          console.log('[Stem Split] Using output.output array format')
+    for (const [stemName, keys] of Object.entries(stemKeyMap)) {
+      for (const key of keys) {
+        const url = output ? extractUrl((output as any)[key]) : null
+        if (url) {
+          detectedStems[stemName] = url
+          console.log(`[Stem Split] Found ${stemName} at key: ${key}`)
+          break
         }
       }
     }
 
-    // Check if we got valid URLs
+    // Fallback: array-like output
+    if ((!detectedStems.vocals || !detectedStems.instrumental) && output) {
+      console.log('[Stem Split] Trying alternative output format detection...')
+      const asArray = Array.isArray(output) ? output : Array.isArray(output?.output) ? output.output : null
+      if (asArray && asArray.length >= 2) {
+        detectedStems.vocals = extractUrl(asArray[0]) || detectedStems.vocals
+        detectedStems.instrumental = extractUrl(asArray[1]) || detectedStems.instrumental
+        console.log('[Stem Split] Using array format for vocals/instrumental fallback')
+      }
+    }
+
+    const vocalsUrl = detectedStems.vocals
+    const instrumentalUrl = detectedStems.instrumental
+
+    // Check if we got mandatory URLs
     if (!vocalsUrl || !instrumentalUrl) {
       console.error('[Stem Split] Could not find vocal/instrumental URLs in output:', output)
       console.error('[Stem Split] Available keys:', Object.keys(output || {}))
@@ -149,16 +153,6 @@ export async function POST(request: Request) {
         error: 'Could not find separated audio in Replicate output',
         availableKeys: Object.keys(output || {})
       }, { status: 500 })
-    }
-
-    if (!vocalsUrl || !instrumentalUrl) {
-      console.error('[Stem Split] Missing URLs - vocals:', vocalsUrl, 'instrumental:', instrumentalUrl)
-      // Refund credits
-      await supabase
-        .from('users')
-        .update({ credits: userData.credits })
-        .eq('clerk_user_id', userId)
-      return NextResponse.json({ error: 'Stem URLs not found in output' }, { status: 500 })
     }
 
     // Download vocals
@@ -228,14 +222,19 @@ export async function POST(request: Request) {
 
     console.log('[Stem Split] Success! Vocals:', vocalsUpload.url, 'Instrumental:', instrumentalUpload.url)
 
+    // Merge uploaded URLs with any additional stems detected (demucs_* etc.)
+    const responseStems = {
+      ...detectedStems,
+      vocals: vocalsUpload.url,
+      instrumental: instrumentalUpload.url
+    }
+
     return NextResponse.json({ 
       success: true,
-      stems: {
-        vocals: vocalsUpload.url,
-        instrumental: instrumentalUpload.url
-      },
+      stems: responseStems,
       creditsUsed: STEM_SPLIT_COST,
-      creditsRemaining: userData.credits - STEM_SPLIT_COST
+      creditsRemaining: userData.credits - STEM_SPLIT_COST,
+      rawOutputKeys: Object.keys(output || {})
     })
   } catch (error) {
     console.error('[Stem Split] Error:', error)
