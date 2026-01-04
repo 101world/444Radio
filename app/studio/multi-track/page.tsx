@@ -575,30 +575,26 @@ export default function MultiTrackStudio() {
 
   const handleClipSplit = (position: number) => {
     if (!selectedClip || !daw) return
-    // TODO: Implement split in DAW
-    console.log(`Split clip at ${position}s`)
+    daw.splitClip(selectedClip.trackId, selectedClip.clipId, position)
     toast.success('Clip split successfully')
     setShowClipEditor(false)
   }
 
   const handleClipTrim = (startTime: number, duration: number) => {
     if (!selectedClip || !daw) return
-    // TODO: Implement trim in DAW
-    console.log(`Trim clip: start ${startTime}s, duration ${duration}s`)
+    daw.trimClip(selectedClip.trackId, selectedClip.clipId, startTime, duration)
     toast.success('Clip trimmed successfully')
   }
 
   const handleClipFadeChange = (fadeIn: number, fadeOut: number) => {
     if (!selectedClip || !daw) return
-    // TODO: Implement fade in DAW
-    console.log(`Fade: in ${fadeIn}s, out ${fadeOut}s`)
+    daw.applyClipFade(selectedClip.trackId, selectedClip.clipId, fadeIn, fadeOut)
     toast.success('Fade applied successfully')
   }
 
   const handleClipDelete = () => {
     if (!selectedClip || !daw) return
-    // TODO: Implement delete in DAW
-    console.log('Delete clip')
+    daw.deleteClip(selectedClip.trackId, selectedClip.clipId)
     toast.success('Clip deleted')
     setShowClipEditor(false)
     setSelectedClip(null)

@@ -526,6 +526,79 @@ export class MultiTrackDAW {
     this.mixingConsole.toggleSolo(trackId)
   }
 
+  // Clip manipulation
+  splitClip(trackId: string, clipId: string, splitTime: number): void {
+    const track = this.trackManager.getTrack(trackId)
+    if (!track) return
+
+    const clipIndex = track.clips.findIndex(c => c.id === clipId)
+    if (clipIndex === -1) return
+
+    const clip = track.clips[clipIndex]
+    
+    // Create two new clips from the split
+    const leftClip = {
+      ...clip,
+      id: `${clip.id}-left`,
+      duration: splitTime - clip.startTime,
+      name: `${clip.name || 'Clip'} (L)`
+    }
+
+    const rightClip = {
+      ...clip,
+      id: `${clip.id}-right`,
+      startTime: splitTime,
+      duration: clip.duration - (splitTime - clip.startTime),
+      offset: clip.offset + (splitTime - clip.startTime),
+      name: `${clip.name || 'Clip'} (R)`
+    }
+
+    // Replace original clip with two new clips
+    track.clips.splice(clipIndex, 1, leftClip, rightClip)
+    
+    this.emit('clipSplit', { trackId, originalClipId: clipId, leftClip, rightClip })
+  }
+
+  trimClip(trackId: string, clipId: string, newStartTime: number, newDuration: number): void {
+    const track = this.trackManager.getTrack(trackId)
+    if (!track) return
+
+    const clip = track.clips.find(c => c.id === clipId)
+    if (!clip) return
+
+    // Calculate new offset based on trim
+    const trimAmount = newStartTime - clip.startTime
+    clip.offset += trimAmount
+    clip.startTime = newStartTime
+    clip.duration = newDuration
+
+    this.emit('clipTrimmed', { trackId, clipId, startTime: newStartTime, duration: newDuration })
+  }
+
+  applyClipFade(trackId: string, clipId: string, fadeIn: number, fadeOut: number): void {
+    const track = this.trackManager.getTrack(trackId)
+    if (!track) return
+
+    const clip = track.clips.find(c => c.id === clipId)
+    if (!clip) return
+
+    clip.fadeIn = { duration: fadeIn, curve: 'linear' }
+    clip.fadeOut = { duration: fadeOut, curve: 'linear' }
+
+    this.emit('clipFadeApplied', { trackId, clipId, fadeIn, fadeOut })
+  }
+
+  deleteClip(trackId: string, clipId: string): void {
+    const track = this.trackManager.getTrack(trackId)
+    if (!track) return
+
+    const clipIndex = track.clips.findIndex(c => c.id === clipId)
+    if (clipIndex !== -1) {
+      track.clips.splice(clipIndex, 1)
+      this.emit('clipDeleted', { trackId, clipId })
+    }
+  }
+
   // MIDI
   createMIDITrack(name: string): void {
     const track = this.midiManager.createMIDITrack(name)
