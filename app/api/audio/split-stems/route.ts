@@ -194,33 +194,51 @@ export async function POST(request: Request) {
     if (!allStems || Object.keys(allStems).length === 0) {
       console.error('[Stem Split] Could not find any stems in output. Full output:', JSON.stringify(output, null, 2))
       
-      // Check if the output has empty objects - this might indicate the model couldn't process the audio
-      const hasEmptyObjects = output && typeof output === 'object' && Object.values(output).some(v => 
-        v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0
-      )
+      // Check if ALL stem-related fields are null/empty - indicates total processing failure
+      const actualOutput = output?.output || output
+      let totalFailure = false
       
-      if (hasEmptyObjects) {
-        console.error('[Stem Split] Output contains empty objects - model may have failed to process audio URL:', audioUrl)
+      if (actualOutput && typeof actualOutput === 'object') {
+        const stemFields = Object.entries(actualOutput).filter(([key]) => 
+          key.includes('vocal') || key.includes('drum') || key.includes('bass') || 
+          key.includes('instrumental') || key.includes('other') || key.includes('demucs') || key.includes('mdx')
+        )
+        
+        // Only consider it a total failure if we have stem fields but ALL are null/empty
+        if (stemFields.length > 0) {
+          const allEmpty = stemFields.every(([_, value]) => {
+            if (value === null || value === undefined) return true
+            if (Array.isArray(value) && value.length === 0) return true
+            if (typeof value === 'object' && Object.keys(value).length === 0) return true
+            return false
+          })
+          totalFailure = allEmpty
+        }
+      }
+      
+      if (totalFailure) {
+        console.error('[Stem Split] Total processing failure - all stem fields are null/empty for audio URL:', audioUrl)
         // Refund credits
         await supabase
           .from('users')
           .update({ credits: userData.credits })
           .eq('clerk_user_id', userId)
         return NextResponse.json({ 
-          error: 'Audio processing failed - the AI model could not access or process the audio file. Please try with a different audio file.',
-          debug: 'Model returned empty objects instead of audio URLs',
+          error: 'Audio processing failed - the AI model could not process the audio file. Please try with a different audio file.',
+          debug: 'All stem separation fields returned null/empty',
           audioUrlTested: audioUrl,
           rawOutput: output
         }, { status: 500 })
       }
       
+      // If not total failure, it might be a parsing issue
       // Refund credits
       await supabase
         .from('users')
         .update({ credits: userData.credits })
         .eq('clerk_user_id', userId)
       return NextResponse.json({ 
-        error: 'Could not find separated audio in Replicate output',
+        error: 'Could not extract stems from Replicate output',
         availableKeys: Object.keys(output || {}),
         rawOutput: output,
         debug: 'Check server logs for detailed stem extraction debug info'
