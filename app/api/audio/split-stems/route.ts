@@ -91,15 +91,32 @@ export async function POST(request: Request) {
     console.log('[Stem Split] Output keys:', Object.keys(output || {}))
 
     // Simple stem normalization - extract all available stems from output
-    function normalizeStems(output: any): Record<string, string> | null {
-      if (!output) return null
+    function normalizeStems(replicateOutput: any): Record<string, string> | null {
+      console.log('[Stem Split] normalizeStems input:', JSON.stringify(replicateOutput, null, 2))
       
-      // Check if output has an 'output' property (nested structure)
-      const actualOutput = output.output || output
+      if (!replicateOutput) return null
+      
+      // The output might be nested under 'output' property or be direct
+      const actualOutput = replicateOutput.output || replicateOutput
+      console.log('[Stem Split] actualOutput:', JSON.stringify(actualOutput, null, 2))
       
       if (typeof actualOutput === 'object' && !Array.isArray(actualOutput)) {
         const stems: Record<string, string> = {}
+        
         for (const [key, value] of Object.entries(actualOutput)) {
+          console.log(`[Stem Split] Processing key: ${key}, value:`, value)
+          
+          // Skip null values and empty arrays
+          if (value === null || value === undefined) {
+            console.log(`[Stem Split] Skipping ${key}: null/undefined`)
+            continue
+          }
+          
+          if (Array.isArray(value) && value.length === 0) {
+            console.log(`[Stem Split] Skipping ${key}: empty array`)
+            continue
+          }
+          
           // Extract URL from various formats
           let url: string | null = null
           if (typeof value === 'string' && value.startsWith('http')) {
@@ -112,26 +129,36 @@ export async function POST(request: Request) {
             }
           }
           
-          // Only include audio stems (skip null, arrays, non-audio files)
-          if (url && (
-            url.includes('.wav') || url.includes('.mp3') || url.includes('.flac') ||
-            key.includes('vocal') || key.includes('drum') || key.includes('bass') || 
-            key.includes('instrumental') || key.includes('other') || key.includes('guitar') || 
-            key.includes('piano') || key.includes('stem')
-          )) {
-            stems[key] = url
+          console.log(`[Stem Split] Extracted URL for ${key}:`, url)
+          
+          // Include if it's a valid URL and looks like an audio file or stem
+          if (url) {
+            const isAudioFile = url.includes('.wav') || url.includes('.mp3') || url.includes('.flac')
+            const isStemKey = key.includes('vocal') || key.includes('drum') || key.includes('bass') || 
+                             key.includes('instrumental') || key.includes('other') || key.includes('guitar') || 
+                             key.includes('piano') || key.includes('stem') || key.includes('demucs') || key.includes('mdx')
+            
+            if (isAudioFile || isStemKey) {
+              stems[key] = url
+              console.log(`[Stem Split] Added stem: ${key} -> ${url}`)
+            } else {
+              console.log(`[Stem Split] Skipped ${key}: not audio file or stem key`)
+            }
           }
         }
+        
+        console.log(`[Stem Split] Final stems object:`, stems)
         return Object.keys(stems).length > 0 ? stems : null
       }
       
+      console.log('[Stem Split] actualOutput is not an object, returning null')
       return null
     }
 
     const allStems = normalizeStems(output)
     
     if (!allStems || Object.keys(allStems).length === 0) {
-      console.error('[Stem Split] Could not find any stems in output:', output)
+      console.error('[Stem Split] Could not find any stems in output. Full output:', JSON.stringify(output, null, 2))
       // Refund credits
       await supabase
         .from('users')
@@ -140,7 +167,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         error: 'Could not find separated audio in Replicate output',
         availableKeys: Object.keys(output || {}),
-        rawOutput: output
+        rawOutput: output,
+        debug: 'Check server logs for detailed stem extraction debug info'
       }, { status: 500 })
     }
 
