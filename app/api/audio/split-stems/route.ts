@@ -164,6 +164,12 @@ export async function POST(request: Request) {
     // Normalize stems from output
     const detectedStems: Record<string, string> = {}
 
+    // Direct reads for common keys before heuristic matching
+    const directVocals = extractUrl((primaryOutput as any)?.mdx_vocals) || extractUrl((primaryOutput as any)?.demucs_vocals)
+    const directInstr = extractUrl((primaryOutput as any)?.mdx_instrumental) || extractUrl((primaryOutput as any)?.demucs_other) || extractUrl((primaryOutput as any)?.demucs_bass)
+    if (directVocals) detectedStems.vocals = directVocals
+    if (directInstr) detectedStems.instrumental = directInstr
+
     for (const [stemName, keys] of Object.entries(stemKeyMap)) {
       for (const key of keys) {
         const url = lookupUrl(key)
@@ -186,6 +192,12 @@ export async function POST(request: Request) {
       }
     }
 
+    // Fallback: if no instrumental but demucs_other exists, use it as instrumental proxy
+    if (!detectedStems.instrumental && detectedStems.other) {
+      detectedStems.instrumental = detectedStems.other
+      console.log('[Stem Split] Using demucs_other as instrumental fallback')
+    }
+
     const vocalsUrl = detectedStems.vocals
     const instrumentalUrl = detectedStems.instrumental
 
@@ -201,7 +213,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         error: 'Could not find separated audio in Replicate output',
         availableKeys: Object.keys(primaryOutput || {}),
-        flatKeys: Object.keys(flatPrimary || {})
+        flatKeys: Object.keys(flatPrimary || {}),
+        detected: detectedStems
       }, { status: 500 })
     }
 

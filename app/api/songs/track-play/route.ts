@@ -36,10 +36,12 @@ export async function POST(req: Request) {
       .single()
 
     if (!currentMedia) {
-      return corsResponse(NextResponse.json(
-        { error: 'Media not found' },
-        { status: 404 }
-      ))
+      // Gracefully ignore missing media to prevent noisy 404s on fallback
+      return corsResponse(NextResponse.json({
+        success: true,
+        plays: 0,
+        message: 'Media not found - play not counted'
+      }))
     }
 
     // Don't count artist's own plays
