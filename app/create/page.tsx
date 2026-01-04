@@ -1700,6 +1700,7 @@ function CreatePageContent() {
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => {
+                                  if (!url) return
                                   const track = {
                                     id: `${message.id}-${key}`,
                                     title: def.title,
