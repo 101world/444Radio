@@ -37,6 +37,10 @@ interface Message {
     prompt?: string
     lyrics?: string
   }
+  stems?: {
+    vocals: string
+    instrumental: string
+  }
   timestamp: Date
   isGenerating?: boolean
 }
@@ -1278,31 +1282,20 @@ function CreatePageContent() {
 
       const data = await response.json()
 
-      // Replace processing message with result
+      // Replace processing message with unified stems result
       setMessages(prev => prev.map(msg =>
         msg.id === processingMessage.id
           ? {
               ...msg,
-              content: '✅ Stems separated! Download below:',
+              content: `✅ Stems separated successfully! Used ${data.creditsUsed} credits. ${data.creditsRemaining} credits remaining.`,
               isGenerating: false,
-              result: {
-                url: data.stems.vocals,
-                audioUrl: data.stems.vocals,
-                imageUrl: data.stems.instrumental,
-                title: 'Separated Stems'
+              stems: {
+                vocals: data.stems.vocals,
+                instrumental: data.stems.instrumental
               }
             }
           : msg
       ))
-
-      // Add download links as a new message
-      const stemsMessage: Message = {
-        id: `${messageId}-stems-result`,
-        type: 'assistant',
-        content: `🎤 **Vocals**: [Download](${data.stems.vocals})\n🎹 **Instrumental**: [Download](${data.stems.instrumental})`,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, stemsMessage])
     } catch (error) {
       console.error('Stem splitting error:', error)
       setMessages(prev => prev.map(msg =>
@@ -1611,6 +1604,87 @@ function CreatePageContent() {
                         <Layers size={14} />
                         Library
                       </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* Stems Result - Unified Playable Display */}
+                {message.stems && (
+                  <div className="space-y-3 max-w-md mx-auto">
+                    {/* Vocals Stem */}
+                    <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-purple-900/30 via-black/50 to-black/60 border-2 border-purple-500/30 rounded-2xl overflow-hidden hover:border-purple-400/50 transition-all">
+                      <div className="p-4">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => {
+                              const vocalsTrack = {
+                                id: `${message.id}-vocals`,
+                                title: '🎤 Vocals',
+                                artist: 'Stem Split',
+                                artwork_url: '',
+                                audio_url: message.stems!.vocals,
+                                user_id: ''
+                              }
+                              playTrack(vocalsTrack)
+                            }}
+                            className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center hover:scale-110 transition-transform"
+                          >
+                            {currentTrack?.audio_url === message.stems.vocals && isPlaying ? (
+                              <Pause size={20} className="text-white" />
+                            ) : (
+                              <Play size={20} className="text-white ml-0.5" />
+                            )}
+                          </button>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-bold text-white">🎤 Vocals</h4>
+                            <p className="text-xs text-gray-400">Isolated vocal track</p>
+                          </div>
+                          <button
+                            onClick={() => handleDownload(message.stems!.vocals, 'vocals.mp3', 'mp3')}
+                            className="p-2 hover:bg-purple-500/20 rounded-lg transition-colors"
+                          >
+                            <Download size={16} className="text-purple-400" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Instrumental Stem */}
+                    <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-cyan-900/30 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-2xl overflow-hidden hover:border-cyan-400/50 transition-all">
+                      <div className="p-4">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => {
+                              const instrumentalTrack = {
+                                id: `${message.id}-instrumental`,
+                                title: '🎹 Instrumental',
+                                artist: 'Stem Split',
+                                artwork_url: '',
+                                audio_url: message.stems!.instrumental,
+                                user_id: ''
+                              }
+                              playTrack(instrumentalTrack)
+                            }}
+                            className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-400 flex items-center justify-center hover:scale-110 transition-transform"
+                          >
+                            {currentTrack?.audio_url === message.stems.instrumental && isPlaying ? (
+                              <Pause size={20} className="text-white" />
+                            ) : (
+                              <Play size={20} className="text-white ml-0.5" />
+                            )}
+                          </button>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-bold text-white">🎹 Instrumental</h4>
+                            <p className="text-xs text-gray-400">Music without vocals</p>
+                          </div>
+                          <button
+                            onClick={() => handleDownload(message.stems!.instrumental, 'instrumental.mp3', 'mp3')}
+                            className="p-2 hover:bg-cyan-500/20 rounded-lg transition-colors"
+                          >
+                            <Download size={16} className="text-cyan-400" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
