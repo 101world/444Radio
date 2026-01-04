@@ -12,6 +12,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+/**
+ * Sanitize error messages to hide technical details from users
+ */
+function sanitizeError(error: any): string {
+  // Hide all technical details - users should only see generic message
+  return '444 radio is locking in, please try again in few minutes'
+}
+
 const STEM_SPLIT_COST = 5
 
 export async function POST(request: Request) {
@@ -208,8 +216,8 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[Stem Split] Error:', error)
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Failed to split stems',
-      details: error instanceof Error ? error.stack : undefined
+      error: sanitizeError(error),
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     }, { status: 500 })
   }
 }

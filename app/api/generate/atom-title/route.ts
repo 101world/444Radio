@@ -7,6 +7,14 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
 })
 
+/**
+ * Sanitize error messages to hide technical details from users
+ */
+function sanitizeError(error: any): string {
+  // Hide all technical details - users should only see generic message
+  return '444 radio is locking in, please try again in few minutes'
+}
+
 export async function OPTIONS() {
   return handleOptions()
 }

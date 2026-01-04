@@ -9,6 +9,31 @@ const replicate = new Replicate({
 })
 
 /**
+ * Sanitize error messages to hide technical details from users
+ */
+function sanitizeError(error: any): string {
+  const errorStr = error instanceof Error ? error.message : String(error)
+  
+  // Hide all technical details - users should only see generic message
+  if (errorStr.includes('429') || 
+      errorStr.includes('rate limit') || 
+      errorStr.includes('replicate') ||
+      errorStr.includes('supabase') ||
+      errorStr.includes('cloudflare') ||
+      errorStr.includes('vercel') ||
+      errorStr.includes('API') ||
+      errorStr.includes('throttled') ||
+      errorStr.includes('prediction') ||
+      errorStr.includes('status') ||
+      errorStr.includes('failed with')) {
+    return '444 radio is locking in, please try again in few minutes'
+  }
+  
+  // Generic fallback for any other technical errors
+  return '444 radio is locking in, please try again in few minutes'
+}
+
+/**
  * Expand lyrics to reach target length based on duration
  * Short: 200-300 chars, Medium: 350-500 chars, Long: 500-600 chars
  */
@@ -241,7 +266,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           { 
             success: false, 
-            error: genError instanceof Error ? genError.message : 'Music generation failed',
+            error: sanitizeError(genError),
             creditsRefunded: false,
             creditsRemaining: userCredits
           },
@@ -326,7 +351,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           { 
             success: false, 
-            error: genError instanceof Error ? genError.message : 'Music generation failed',
+            error: sanitizeError(genError),
             creditsRefunded: false,
             creditsRemaining: userCredits
           },
@@ -601,7 +626,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Music generation failed',
+        error: sanitizeError(error),
         creditsRefunded: false, // No deduction happened
         // Note: We don't have userCredits here if error happened before credit check
       },

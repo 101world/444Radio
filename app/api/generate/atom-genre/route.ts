@@ -7,6 +7,14 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
 })
 
+/**
+ * Sanitize error messages to hide technical details from users
+ */
+function sanitizeError(error: any): string {
+  // Hide all technical details - users should only see generic message
+  return '444 radio is locking in, please try again in few minutes'
+}
+
 export async function OPTIONS() {
   return handleOptions()
 }
@@ -84,14 +92,8 @@ export async function POST(req: NextRequest) {
       stack: error?.stack
     })
     
-    let errorMessage = 'Failed to detect genre with Atom'
-    if (error instanceof Error) {
-      errorMessage = error.message
-    }
-    
-    if (error?.response?.data) {
-      errorMessage = `Replicate API error: ${JSON.stringify(error.response.data)}`
-    }
+    // Use sanitized error message for users
+    const errorMessage = sanitizeError(error)
     
     return corsResponse(NextResponse.json({ 
       success: false,
