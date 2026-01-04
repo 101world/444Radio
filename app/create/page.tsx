@@ -1823,20 +1823,6 @@ function CreatePageContent() {
           <div 
             className="group relative active:scale-95 md:hover:scale-105 transition-transform duration-200"
           >
-            {/* Instrumental Button - Text button above prompt box */}
-            {selectedType === 'music' && (
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={() => {
-                    setCustomLyrics('[Instrumental]')
-                  }}
-                  className="px-3 py-1.5 text-xs font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/30 rounded-lg hover:bg-purple-500/20 hover:border-purple-400/50 transition-all backdrop-blur-sm"
-                >
-                  🎹 Instrumental
-                </button>
-              </div>
-            )}
-
             {/* Glow Effect - Simplified for mobile */}
             {!isMobile && <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 blur-lg md:blur-xl opacity-30 md:opacity-40 group-hover:opacity-70 group-active:opacity-60 transition-opacity duration-300"></div>}
             
@@ -1915,6 +1901,17 @@ function CreatePageContent() {
                   disabled={selectedType === 'video'}
                   className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                 />
+                
+                {/* Instrumental Button - Inside prompt box */}
+                {selectedType === 'music' && (
+                  <button
+                    onClick={() => setCustomLyrics('[Instrumental]')}
+                    className="mt-1.5 px-2 py-0.5 text-[10px] font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/30 rounded hover:bg-purple-500/20 hover:border-purple-400/50 transition-all"
+                  >
+                    🎹 Instrumental
+                  </button>
+                )}
+                
                 <div className="flex items-center justify-between gap-2 mt-0.5">
                   <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
                     {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
