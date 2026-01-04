@@ -563,7 +563,7 @@ function CreatePageContent() {
     setShowTitleError(false)
 
     // Check credits before generation
-    const creditsNeeded = isInstrumental ? 5 : (selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0)
+    const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0
     if (userCredits !== null && userCredits < creditsNeeded) {
       alert(`⚡ Insufficient credits! You need ${creditsNeeded} credits but only have ${userCredits}. Visit the pricing page to get more.`)
       return
@@ -572,53 +572,20 @@ function CreatePageContent() {
     // Close any open parameter modals
     closeAllModals()
 
-    // For instrumental generation - Different workflow
-    if (selectedType === 'music' && isInstrumental) {
-      const generationId = Date.now().toString()
-      const userMessage: Message = {
-        id: generationId,
-        type: 'user',
-        content: `🎹 Generate instrumental (${instrumentalDuration}s): "${input}"`,
-        timestamp: new Date()
-      }
-
-      const generatingMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'generation',
-        content: activeGenerations.size > 0 ? '🎹 Queued - will start soon...' : '🎹 Generating instrumental track...',
-        generationType: 'music',
-        isGenerating: true,
-        timestamp: new Date()
-      }
-
-      setMessages(prev => [...prev, userMessage, generatingMessage])
-      setGenerationQueue(prev => [...prev, generatingMessage.id])
-      setInput('')
-
-      // Process instrumental queue
-      processInstrumentalQueue(generatingMessage.id, {
-        prompt: input,
-        duration: instrumentalDuration,
-        steps: instrumentalSteps
-      })
-
-      return
-    }
-
-    // For music generation - Generate directly without modal
+    // Standard generation workflow (including instrumental via LLM)
     if (selectedType === 'music') {
       const generationId = Date.now().toString()
       const userMessage: Message = {
         id: generationId,
         type: 'user',
-        content: `🎵 Generate music: "${input}"`,
+        content: isInstrumental ? `🎹 Generate instrumental: "${input}"` : `🎵 Generate music: "${input}"`,
         timestamp: new Date()
       }
 
       const generatingMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'generation',
-        content: activeGenerations.size > 0 ? '🎵 Queued - will start soon...' : '🎵 Generating your track...',
+        content: activeGenerations.size > 0 ? '� Queued - will start soon...' : `🎵 Generating your ${isInstrumental ? 'instrumental ' : ''}track...`,
         generationType: 'music',
         isGenerating: true,
         timestamp: new Date()
@@ -929,129 +896,6 @@ function CreatePageContent() {
   }
 
   // Instrumental queue processing function
-  const processInstrumentalQueue = async (
-    messageId: string,
-    params: {
-      prompt: string
-      duration: number
-      steps: number
-    }
-  ) => {
-    console.log('[Instrumental] Starting generation:', { messageId, params })
-    
-    // Add to persistent generation queue
-    const genId = addGeneration({
-      type: 'music',
-      prompt: params.prompt,
-      title: `Instrumental: ${params.prompt.substring(0, 40)}`
-    })
-    
-    // Link the message to the generation queue item
-    setMessages(prev => prev.map(msg =>
-      msg.id === messageId ? { ...msg, generationId: genId } : msg
-    ))
-    
-    try {
-      // Add to active generations
-      setActiveGenerations(prev => new Set(prev).add(messageId))
-      
-      // Update generation queue status
-      updateGeneration(genId, { status: 'generating', progress: 10 })
-      
-      // Update message to generating
-      setMessages(prev => prev.map(msg =>
-        msg.id === messageId
-          ? { ...msg, content: '🎹 Generating instrumental track...', isGenerating: true }
-          : msg
-      ))
-
-      // Call instrumental API
-      console.log('[Instrumental] Calling API with:', params)
-      console.log('[Instrumental] API URL:', '/api/generate/instrumental')
-      const response = await fetch('/api/generate/instrumental', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: params.prompt,
-          duration: params.duration,
-          steps: params.steps
-        })
-      })
-
-      console.log('[Instrumental] Response status:', response.status, response.statusText)
-      const result = await response.json()
-      console.log('[Instrumental] API response:', result)
-      console.log('[Instrumental] Response OK?', response.ok, 'Result success?', result.success)
-
-      if (!response.ok || !result.success) {
-        console.error('[Instrumental] Generation failed:', result.error)
-        throw new Error(result.error || 'Instrumental generation failed')
-      }
-
-      // Update generation queue with success
-      updateGeneration(genId, {
-        status: 'completed',
-        progress: 100,
-        result: {
-          audioUrl: result.audioUrl,
-          title: `Instrumental: ${params.prompt.substring(0, 40)}`
-        }
-      })
-
-      // Update message with result
-      setMessages(prev => prev.map(msg =>
-        msg.id === messageId
-          ? {
-              ...msg,
-              isGenerating: false,
-              content: '✅ Instrumental track generated!',
-              result: {
-                audioUrl: result.audioUrl,
-                title: `Instrumental: ${params.prompt.substring(0, 40)}`
-              }
-            }
-          : msg
-      ))
-
-      // Refresh credits
-      fetchCredits()
-
-      // Add assistant response
-      if (!result.error) {
-        const assistantMessage: Message = {
-          id: (Date.now() + Math.random()).toString(),
-          type: 'assistant',
-          content: `Your ${params.duration}s instrumental track is ready! Used 5 credits. ${result.creditsRemaining} credits remaining.`,
-          timestamp: new Date()
-        }
-        console.log('[Instrumental] Adding assistant message:', assistantMessage)
-        setMessages(prev => [...prev, assistantMessage])
-      }
-    } catch (error) {
-      console.error('Instrumental generation error:', error)
-      
-      // Update persistent queue with error
-      updateGeneration(genId, {
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
-      
-      setMessages(prev => prev.map(msg => 
-        msg.id === messageId
-          ? { ...msg, isGenerating: false, content: '❌ Instrumental generation failed. Please try again.' }
-          : msg
-      ))
-    } finally {
-      // Remove from queue and active generations
-      setGenerationQueue(prev => prev.filter(id => id !== messageId))
-      setActiveGenerations(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(messageId)
-        return newSet
-      })
-    }
-  }
-
   // Legacy isGenerating based on active generations
   useEffect(() => {
     setIsGenerating(activeGenerations.size > 0)
@@ -1875,7 +1719,7 @@ function CreatePageContent() {
                 {isLoadingCredits ? '...' : userCredits}
               </span>
               <span className="text-xs text-cyan-400/60 font-mono">
-                {isInstrumental ? '(-5)' : (selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : '')}
+                {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : ''}
               </span>
             </div>
           </div>
