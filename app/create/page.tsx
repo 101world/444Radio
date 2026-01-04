@@ -1278,9 +1278,12 @@ function CreatePageContent() {
         body: JSON.stringify({ audioUrl })
       })
 
-      if (!response.ok) throw new Error('Stem splitting failed')
-
       const data = await response.json()
+
+      if (!response.ok) {
+        // Show specific error message from API
+        throw new Error(data.error || 'Stem splitting failed')
+      }
 
       // Replace processing message with unified stems result
       setMessages(prev => prev.map(msg =>
@@ -1298,9 +1301,10 @@ function CreatePageContent() {
       ))
     } catch (error) {
       console.error('Stem splitting error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to split stems. Please try again.'
       setMessages(prev => prev.map(msg =>
         msg.id === processingMessage.id
-          ? { ...msg, content: '❌ Failed to split stems. Please try again.', isGenerating: false }
+          ? { ...msg, content: `❌ ${errorMessage}`, isGenerating: false }
           : msg
       ))
     } finally {
