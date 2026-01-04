@@ -366,7 +366,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       const response = await fetch('/api/profile/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bio: editBio })
+        body: JSON.stringify({
+          full_name: editFullName,
+          bio: editBio,
+          location: editLocation,
+          website: editWebsite,
+          social_links: {
+            twitter: editTwitter,
+            instagram: editInstagram
+          }
+        })
       })
 
       if (!response.ok) throw new Error('Failed to update profile')
@@ -374,7 +383,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       const data = await response.json()
       
       // Update local state with server response
-      setProfile(prev => prev ? { ...prev, bio: data.profile.bio } : null)
+      setProfile(prev => prev ? {
+        ...prev,
+        fullName: data.profile.full_name,
+        bio: data.profile.bio,
+        location: data.profile.location,
+        website: data.profile.website,
+        social_links: data.profile.social_links
+      } : null)
       
       setShowEditProfile(false)
     } catch (error) {

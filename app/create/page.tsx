@@ -116,6 +116,10 @@ function CreatePageContent() {
   const [mediaRecorder, setMediaRecorder] = useState<unknown | null>(null)
   const [isGeneratingAtomLyrics, setIsGeneratingAtomLyrics] = useState(false)
   
+  // Stem splitting state
+  const [isSplittingStems, setIsSplittingStems] = useState(false)
+  const [splitStemsMessageId, setSplitStemsMessageId] = useState<string | null>(null)
+  
   // Title validation state
   const [showTitleError, setShowTitleError] = useState(false)
 
@@ -1248,6 +1252,70 @@ function CreatePageContent() {
     }
   }
 
+  // Handle stem splitting
+  const handleSplitStems = async (audioUrl: string, messageId: string) => {
+    setIsSplittingStems(true)
+    setSplitStemsMessageId(messageId)
+
+    // Add "processing" message
+    const processingMessage: Message = {
+      id: `${messageId}-stems-processing`,
+      type: 'assistant',
+      content: '🎵 Splitting stems... This may take 1-2 minutes.',
+      timestamp: new Date(),
+      isGenerating: true
+    }
+    setMessages(prev => [...prev, processingMessage])
+
+    try {
+      const response = await fetch('/api/audio/split-stems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioUrl })
+      })
+
+      if (!response.ok) throw new Error('Stem splitting failed')
+
+      const data = await response.json()
+
+      // Replace processing message with result
+      setMessages(prev => prev.map(msg =>
+        msg.id === processingMessage.id
+          ? {
+              ...msg,
+              content: '✅ Stems separated! Download below:',
+              isGenerating: false,
+              result: {
+                url: data.stems.vocals,
+                audioUrl: data.stems.vocals,
+                imageUrl: data.stems.instrumental,
+                title: 'Separated Stems'
+              }
+            }
+          : msg
+      ))
+
+      // Add download links as a new message
+      const stemsMessage: Message = {
+        id: `${messageId}-stems-result`,
+        type: 'assistant',
+        content: `🎤 **Vocals**: [Download](${data.stems.vocals})\n🎹 **Instrumental**: [Download](${data.stems.instrumental})`,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, stemsMessage])
+    } catch (error) {
+      console.error('Stem splitting error:', error)
+      setMessages(prev => prev.map(msg =>
+        msg.id === processingMessage.id
+          ? { ...msg, content: '❌ Failed to split stems. Please try again.', isGenerating: false }
+          : msg
+      ))
+    } finally {
+      setIsSplittingStems(false)
+      setSplitStemsMessageId(null)
+    }
+  }
+
   // Convert AudioBuffer to WAV blob
   const audioBufferToWav = (buffer: AudioBuffer): Blob => {
     const length = buffer.length * buffer.numberOfChannels * 2 + 44
@@ -1446,32 +1514,42 @@ function CreatePageContent() {
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex border-t border-white/10">
-                      <div className="flex-1 flex border-r border-white/10">
-                        <button
-                          onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`, 'mp3')}
-                          className="flex-1 px-4 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/5"
-                          title="Download MP3"
+                    <div className="flex flex-col border-t border-white/10">
+                      <div className="flex">
+                        <div className="flex-1 flex border-r border-white/10">
+                          <button
+                            onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`, 'mp3')}
+                            className="flex-1 px-4 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/5"
+                            title="Download MP3"
+                          >
+                            <Download size={18} />
+                            MP3
+                          </button>
+                          <button
+                            onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`, 'wav')}
+                            className="flex-1 px-4 py-4 hover:bg-white/10 text-sm font-medium text-cyan-300 flex items-center justify-center gap-2 transition-colors"
+                            title="Download WAV (High Quality)"
+                          >
+                            <Download size={18} />
+                            WAV
+                          </button>
+                        </div>
+                        <Link
+                          href="/library"
+                          className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors"
                         >
-                          <Download size={18} />
-                          MP3
-                        </button>
-                        <button
-                          onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.mp3`, 'wav')}
-                          className="flex-1 px-4 py-4 hover:bg-white/10 text-sm font-medium text-cyan-300 flex items-center justify-center gap-2 transition-colors"
-                          title="Download WAV (High Quality)"
-                        >
-                          <Download size={18} />
-                          WAV
-                        </button>
+                          <Layers size={18} />
+                          Library
+                        </Link>
                       </div>
-                      <Link
-                        href="/library"
-                        className="flex-1 px-6 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors"
+                      <button
+                        onClick={() => handleSplitStems(message.result!.audioUrl!, message.id)}
+                        className="w-full px-6 py-4 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 border-t border-white/10 text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-all"
+                        title="Split audio into vocals and instrumental"
                       >
-                        <Layers size={18} />
-                        Library
-                      </Link>
+                        <Sparkles size={18} />
+                        Split Stems
+                      </button>
                     </div>
                   </div>
                 )}

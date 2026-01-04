@@ -15,13 +15,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { bio } = await request.json()
+    const { full_name, bio, location, website, social_links } = await request.json()
 
-    // Update only bio (other fields don't exist in DB yet)
+    // Update all profile fields
     const { error } = await supabaseAdmin
       .from('users')
       .update({
+        full_name,
         bio,
+        location,
+        website,
+        social_links,
         updated_at: new Date().toISOString()
       })
       .eq('clerk_user_id', clerkUserId)
@@ -30,7 +34,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true,
-      profile: { bio }
+      profile: { full_name, bio, location, website, social_links }
     })
   } catch (error) {
     console.error('Profile update API error:', error)
