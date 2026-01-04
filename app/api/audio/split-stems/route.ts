@@ -81,6 +81,41 @@ export async function POST(request: Request) {
       piano: ['demucs_piano', 'piano']
     }
 
+    // Collect URL-like strings from nested objects/arrays (depth-limited)
+    const flattenUrls = (value: any, prefix = '', depth = 0, maxDepth = 4, acc: Record<string, string> = {}): Record<string, string> => {
+      if (value == null || depth > maxDepth) return acc
+
+      const add = (key: string, url: any) => {
+        const extracted = extractUrl(url)
+        if (extracted) acc[key] = extracted
+      }
+
+      if (typeof value === 'string') {
+        add(prefix || 'root', value)
+        return acc
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach((item, idx) => {
+          flattenUrls(item, `${prefix}[${idx}]`, depth + 1, maxDepth, acc)
+        })
+        return acc
+      }
+
+      if (typeof value === 'object') {
+        // Direct url/audio objects
+        add(prefix || 'root', value)
+
+        Object.entries(value).forEach(([k, v]) => {
+          const nextPrefix = prefix ? `${prefix}.${k}` : k
+          flattenUrls(v, nextPrefix, depth + 1, maxDepth, acc)
+        })
+        return acc
+      }
+
+      return acc
+    }
+
     let output: any
     try {
       output = await replicate.run(
@@ -115,12 +150,23 @@ export async function POST(request: Request) {
     const primaryOutput = output && output.output && typeof output.output === 'object' ? output.output : output
     console.log('[Stem Split] Using output source keys:', Object.keys(primaryOutput || {}))
 
+    const flatPrimary = flattenUrls(primaryOutput)
+    const flatAll = output === primaryOutput ? flatPrimary : flattenUrls(output)
+    const lookupUrl = (key: string): string | null => {
+      if (flatPrimary[key]) return flatPrimary[key]
+      if (flatAll[key]) return flatAll[key]
+      const matchPrimary = Object.entries(flatPrimary).find(([k]) => k.endsWith(key) || k.includes(`.${key}`))
+      if (matchPrimary) return matchPrimary[1]
+      const matchAll = Object.entries(flatAll).find(([k]) => k.endsWith(key) || k.includes(`.${key}`))
+      return matchAll ? matchAll[1] : null
+    }
+
     // Normalize stems from output
     const detectedStems: Record<string, string> = {}
 
     for (const [stemName, keys] of Object.entries(stemKeyMap)) {
       for (const key of keys) {
-        const url = primaryOutput ? extractUrl((primaryOutput as any)[key]) : null
+        const url = lookupUrl(key)
         if (url) {
           detectedStems[stemName] = url
           console.log(`[Stem Split] Found ${stemName} at key: ${key}`)
@@ -132,7 +178,7 @@ export async function POST(request: Request) {
     // Fallback: array-like output
     if ((!detectedStems.vocals || !detectedStems.instrumental) && primaryOutput) {
       console.log('[Stem Split] Trying alternative output format detection...')
-      const asArray = Array.isArray(primaryOutput) ? primaryOutput : Array.isArray(primaryOutput?.output) ? primaryOutput.output : null
+      const asArray = Array.isArray(primaryOutput) ? primaryOutput : Array.isArray((primaryOutput as any)?.output) ? (primaryOutput as any).output : null
       if (asArray && asArray.length >= 2) {
         detectedStems.vocals = extractUrl(asArray[0]) || detectedStems.vocals
         detectedStems.instrumental = extractUrl(asArray[1]) || detectedStems.instrumental
@@ -154,7 +200,8 @@ export async function POST(request: Request) {
         .eq('clerk_user_id', userId)
       return NextResponse.json({ 
         error: 'Could not find separated audio in Replicate output',
-        availableKeys: Object.keys(output || {})
+        availableKeys: Object.keys(primaryOutput || {}),
+        flatKeys: Object.keys(flatPrimary || {})
       }, { status: 500 })
     }
 
