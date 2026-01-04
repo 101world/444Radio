@@ -35,24 +35,23 @@ export async function GET() {
     const data = await response.json()
     let user = data?.[0]
 
-    // If user doesn't exist, create them with 0 credits (must decrypt first)
+    // If user doesn't exist, upsert them (avoids unique constraint race with webhook)
     if (!user) {
-      console.log(`Creating user ${userId} in Supabase (webhook race condition)`)
-      
+      console.log(`Creating or fetching user ${userId} in Supabase (webhook race condition)`)      
       const createResponse = await fetch(
-        `${supabaseUrl}/rest/v1/users`,
+        `${supabaseUrl}/rest/v1/users?on_conflict=clerk_user_id`,
         {
           method: 'POST',
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
             'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
+            'Prefer': 'return=representation,resolution=merge-duplicates'
           },
           body: JSON.stringify({
             clerk_user_id: userId,
             email: '', // Will be updated by webhook
-            credits: 0, // Users must decrypt to get 20 credits
+            credits: 20, // Give 20 credits automatically on signup
             total_generated: 0
           })
         }
@@ -61,7 +60,7 @@ export async function GET() {
       if (createResponse.ok) {
         const newUserData = await createResponse.json()
         user = newUserData?.[0]
-        console.log('User created successfully')
+        console.log('User created via upsert')
       } else {
         // User might have been created by webhook in the meantime, try fetching again
         const retryResponse = await fetch(

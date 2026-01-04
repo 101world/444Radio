@@ -53,26 +53,14 @@ export async function POST(req: Request) {
     const { id, email_addresses, username, image_url } = evt.data
 
     try {
-      // Check if user already exists (prevent duplicates)
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('clerk_user_id')
-        .eq('clerk_user_id', id)
-        .single()
-      
-      if (existingUser) {
-        console.log('User already exists, skipping creation:', id)
-        return new Response('User already exists', { status: 200 })
-      }
-
-      // Insert user into Supabase with 0 credits (must decrypt to get 20)
-      const { error } = await supabase.from('users').insert({
+      // Upsert user to avoid duplicate key races with other writers
+      const { error } = await supabase.from('users').upsert({
         clerk_user_id: id,
         email: email_addresses[0]?.email_address || '',
         username: username || null,
         profile_image_url: image_url || null,
-        credits: 0, // Users must decrypt the codekey to get 20 credits
-      })
+        credits: 20, // Give 20 credits automatically on signup
+      }, { onConflict: 'clerk_user_id' })
 
       if (error) {
         console.error('Error creating user in Supabase:', error)
