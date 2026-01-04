@@ -845,16 +845,19 @@ export default function MultiTrackStudio() {
           }
         }}
         onTrackEQChange={(trackId, band, value) => {
-          // TODO: Implement EQ in DAW
-          console.log(`Track ${trackId} EQ ${band}: ${value}`)
+          if (daw) {
+            daw.setTrackEQ(trackId, band, value)
+          }
         }}
         onTrackCompressionChange={(trackId, value) => {
-          // TODO: Implement compression in DAW
-          console.log(`Track ${trackId} compression: ${value}`)
+          if (daw) {
+            daw.setTrackCompression(trackId, value)
+          }
         }}
         onTrackReverbChange={(trackId, value) => {
-          // TODO: Implement reverb in DAW
-          console.log(`Track ${trackId} reverb: ${value}`)
+          if (daw) {
+            daw.setTrackReverb(trackId, value)
+          }
         }}
       />
 

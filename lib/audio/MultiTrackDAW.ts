@@ -451,6 +451,71 @@ export class MultiTrackDAW {
     this.mixingConsole.setPan(trackId, pan)
   }
 
+  // Effect controls
+  setTrackEQ(trackId: string, band: 'low' | 'mid' | 'high', value: number): void {
+    const strip = this.mixingConsole.getChannelStrip(trackId)
+    if (!strip) return
+
+    // Map UI values (0-1) to frequency/gain values
+    let frequency: number
+    let gain: number
+    
+    switch (band) {
+      case 'low':
+        frequency = 100 + (value * 400) // 100Hz to 500Hz
+        gain = (value - 0.5) * 24 // -12dB to +12dB
+        break
+      case 'mid':
+        frequency = 500 + (value * 3500) // 500Hz to 4kHz
+        gain = (value - 0.5) * 24
+        break
+      case 'high':
+        frequency = 4000 + (value * 12000) // 4kHz to 16kHz
+        gain = (value - 0.5) * 24
+        break
+    }
+
+    // Update the EQ band in the mixing console
+    const bandIndex = band === 'low' ? 0 : band === 'mid' ? 1 : 2
+    if (strip.eq[bandIndex]) {
+      this.mixingConsole.updateEQBand(trackId, strip.eq[bandIndex].id, { frequency, gain })
+    }
+    
+    this.emit('trackEffectUpdated', { trackId, effect: 'eq', band, value })
+  }
+
+  setTrackCompression(trackId: string, value: number): void {
+    const strip = this.mixingConsole.getChannelStrip(trackId)
+    if (!strip) return
+
+    // Map UI value (0-1) to compression parameters
+    const threshold = -40 + (value * 40) // -40dB to 0dB
+    const ratio = 1 + (value * 19) // 1:1 to 20:1
+    
+    this.mixingConsole.updateCompressor(trackId, {
+      enabled: value > 0.01,
+      threshold,
+      ratio,
+      attack: 10, // Fixed 10ms attack
+      release: 100, // Fixed 100ms release
+      knee: 3,
+      makeupGain: value * 6 // Auto makeup gain
+    })
+    
+    this.emit('trackEffectUpdated', { trackId, effect: 'compression', value })
+  }
+
+  setTrackReverb(trackId: string, value: number): void {
+    // Reverb is typically implemented as a send effect
+    // For now, we'll add it to the first available send slot
+    const strip = this.mixingConsole.getChannelStrip(trackId)
+    if (!strip || !strip.sends[0]) return
+
+    this.mixingConsole.updateSend(trackId, strip.sends[0].id, { amount: value })
+    
+    this.emit('trackEffectUpdated', { trackId, effect: 'reverb', value })
+  }
+
   toggleTrackMute(trackId: string): void {
     this.trackManager.toggleMute(trackId)
     this.mixingConsole.toggleMute(trackId)
