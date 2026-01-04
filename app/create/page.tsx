@@ -1724,7 +1724,7 @@ function CreatePageContent() {
                                 <p className="text-xs text-gray-400">{def.description}</p>
                               </div>
                               <button
-                                onClick={() => handleDownload(url, `${key.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`, 'mp3')}
+                                onClick={() => url && handleDownload(url, `${key.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`, 'mp3')}
                                 className={`p-2 ${def.hoverBg} rounded-lg transition-colors`}
                               >
                                 <Download size={16} className={def.text} />
