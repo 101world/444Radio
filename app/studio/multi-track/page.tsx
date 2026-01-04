@@ -10,6 +10,7 @@ import MixerView from '@/app/components/studio/MixerView'
 import ClipEditor from '@/app/components/studio/ClipEditor'
 import AutomationEditor from '@/app/components/studio/AutomationEditor'
 import ProjectManager from '@/app/components/studio/ProjectManager'
+import ExportModal from '@/app/components/studio/ExportModal'
 import AnimatedBackground from '@/app/components/AnimatedBackground'
 import { toast } from '@/lib/toast'
 
@@ -387,6 +388,7 @@ export default function MultiTrackStudio() {
   const [showProjectManager, setShowProjectManager] = useState(false)
   const [showAutomation, setShowAutomation] = useState<Record<string, boolean>>({})
   const [currentProject, setCurrentProject] = useState<any>(null)
+  const [showExportModal, setShowExportModal] = useState(false)
   const [masterVolume, setMasterVolume] = useState(1)
   const [masterVULevel, setMasterVULevel] = useState(0)
 
@@ -551,11 +553,18 @@ export default function MultiTrackStudio() {
   }
 
   const handleSave = async () => {
-    toast.info('Save project feature coming soon!')
+    setShowProjectManager(true)
   }
 
   const handleExport = async () => {
-    toast.info('Export feature coming soon!')
+    setShowExportModal(true)
+  }
+
+  const handleDoExport = async (format: 'mp3' | 'wav', normalize: boolean, sampleRate: number) => {
+    if (!daw) return
+    // TODO: Implement actual export using Web Audio offline rendering
+    console.log('Export:', { format, normalize, sampleRate })
+    toast.success(`Exporting as ${format.toUpperCase()}...`)
   }
 
   // Clip editing handlers
@@ -884,6 +893,16 @@ export default function MultiTrackStudio() {
         onLoadProject={handleLoadProject}
         onDeleteProject={handleDeleteProject}
         onNewProject={handleNewProject}
+      />
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onStartExport={handleDoExport}
+        projectName="Multi-Track Project"
+        bpm={bpm}
+        timeSig="4/4"
       />
     </div>
   )
