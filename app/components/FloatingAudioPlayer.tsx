@@ -42,7 +42,6 @@ export default function FloatingAudioPlayer() {
   const [isExpanded, setIsExpanded] = useState(true)
   const [isMobileCollapsed, setIsMobileCollapsed] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
-  const [showCoverArt, setShowCoverArt] = useState(false)
   const [activeTab, setActiveTab] = useState<'player' | 'queue'>('player')
   const [isDragging, setIsDragging] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
@@ -570,11 +569,12 @@ export default function FloatingAudioPlayer() {
                   alt={currentTrack.title}
                   width={180}
                   height={180}
-                  className="rounded-lg shadow-2xl shadow-cyan-500/20 object-cover cursor-pointer hover:opacity-90 transition-all"
-                  onClick={() => setShowCoverArt(true)}
+                  className="rounded-lg shadow-2xl shadow-cyan-500/20 object-cover transition-all"
                   style={{ 
-                    width: `${Math.min(size.width - 80, size.height - 200, 180)}px`,
-                    height: `${Math.min(size.width - 80, size.height - 200, 180)}px`
+                    width: `${Math.min(size.width - 80, size.height - 250, 180)}px`,
+                    height: `${Math.min(size.width - 80, size.height - 250, 180)}px`,
+                    maxWidth: '100%',
+                    maxHeight: '100%'
                   }}
                 />
               )}
@@ -707,15 +707,6 @@ export default function FloatingAudioPlayer() {
                 />
                 <span className="text-[10px] text-gray-400 w-8 text-right">{Math.round(volume * 100)}%</span>
               </div>
-
-              {/* Cover Art Button */}
-              <button
-                onClick={() => setShowCoverArt(true)}
-                className="text-gray-400 hover:text-cyan-400 transition-colors p-1"
-                title="View Cover Art"
-              >
-                <Maximize size={16} />
-              </button>
             </div>
           </>
         )}
@@ -826,207 +817,7 @@ export default function FloatingAudioPlayer() {
         </div>
       )}
 
-      {/* Cover Art Modal - COMPACT PLAYER SIZE - Click anywhere to close */}
-      {showCoverArt && currentTrack && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center animate-fadeIn overflow-hidden bg-black cursor-pointer"
-          onClick={() => setShowCoverArt(false)}
-        >
-          {/* Dynamic Background Blur from Cover Art */}
-          {currentTrack.imageUrl && (
-            <div className="fixed inset-0 overflow-hidden">
-              <div 
-                className="absolute inset-0 scale-110 blur-[80px] opacity-20"
-                style={{
-                  backgroundImage: `url(${currentTrack.imageUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
-            </div>
-          )}
-
-          <div className="relative w-full min-h-screen flex flex-col py-3" onClick={(e) => e.stopPropagation()}>
-            {/* Top Bar */}
-            <div className="relative z-10 flex items-center justify-between px-4 mb-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowCoverArt(false)
-                }}
-                className="flex items-center gap-1.5 text-white/60 hover:text-white transition-all"
-              >
-                <div className="w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/50 transition-all">
-                  <X size={12} />
-                </div>
-                <span className="text-[10px] font-medium hidden sm:block">ESC or Click anywhere</span>
-              </button>
-            </div>
-
-            {/* Main Content - Very Compact */}
-            <div className="flex-1 flex items-center justify-center px-4">
-              <div className="w-full max-w-sm">
-                <div className="flex flex-col items-center gap-4">
-                  
-                  {/* Album Art - Small */}
-                  {currentTrack.imageUrl ? (
-                    <div className="relative w-full max-w-[200px]">
-                      <div className="relative aspect-square w-full rounded-lg overflow-hidden shadow-2xl ring-1 ring-white/10">
-                        <Image
-                          src={currentTrack.imageUrl}
-                          alt={currentTrack.title}
-                          fill
-                          className="object-cover"
-                          priority
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full max-w-[200px] aspect-square rounded-lg bg-gradient-to-br from-gray-900 to-black border border-white/5 flex items-center justify-center">
-                      <Music size={36} className="text-white/10" />
-                    </div>
-                  )}
-
-                  {/* Track Info - Compact */}
-                  <div className="text-center space-y-0.5 w-full px-2">
-                    <h1 className="text-lg sm:text-xl font-bold text-white leading-tight truncate">
-                      {currentTrack.title}
-                    </h1>
-                    {currentTrack.artist && (
-                      <p className="text-xs sm:text-sm font-medium text-white/50 truncate">
-                        {currentTrack.artist}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Controls Section - Compact */}
-                  <div className="w-full space-y-3">
-                    
-                    {/* Progress Bar */}
-                    <div className="space-y-1">
-                      <input
-                        type="range"
-                        min="0"
-                        max={duration || 0}
-                        value={currentTime}
-                        onChange={handleSeek}
-                        className="w-full h-1 rounded-full appearance-none cursor-pointer hover:h-1.5 transition-all"
-                        style={{
-                          background: `linear-gradient(to right, 
-                            rgb(255 255 255) 0%, 
-                            rgb(255 255 255) ${(currentTime / duration) * 100}%, 
-                            rgba(255,255,255,0.15) ${(currentTime / duration) * 100}%, 
-                            rgba(255,255,255,0.15) 100%)`
-                        }}
-                      />
-                      <div className="flex justify-between text-[10px] font-medium text-white/40">
-                        <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(duration)}</span>
-                      </div>
-                    </div>
-
-                    {/* Main Playback Controls */}
-                    <div className="flex items-center justify-center gap-4">
-                      <button
-                        onClick={toggleShuffle}
-                        className={`transition-all ${isShuffled ? 'text-white' : 'text-white/30 hover:text-white/70'}`}
-                        aria-label="Shuffle"
-                      >
-                        <Shuffle size={14} strokeWidth={2.5} />
-                      </button>
-
-                      <button
-                        onClick={playPrevious}
-                        className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
-                        aria-label="Previous"
-                      >
-                        <SkipBack size={22} fill="currentColor" />
-                      </button>
-
-                      {/* Play/Pause Button */}
-                      <button
-                        onClick={togglePlayPause}
-                        className="w-12 h-12 rounded-full bg-white hover:scale-105 active:scale-95 flex items-center justify-center transition-all shadow-2xl"
-                        aria-label={isPlaying ? "Pause" : "Play"}
-                      >
-                        {isPlaying ? (
-                          <Pause size={16} className="text-black" fill="currentColor" />
-                        ) : (
-                          <Play size={16} className="text-black ml-0.5" fill="currentColor" />
-                        )}
-                      </button>
-
-                      <button
-                        onClick={playNext}
-                        className="text-white/70 hover:text-white transition-all hover:scale-110 active:scale-95"
-                        aria-label="Next"
-                      >
-                        <SkipForward size={22} fill="currentColor" />
-                      </button>
-
-                      <button
-                        onClick={toggleLoop}
-                        className={`transition-all ${isLooping ? 'text-white' : 'text-white/30 hover:text-white/70'}`}
-                        aria-label={isLooping ? "Loop: On" : "Loop: Off"}
-                      >
-                        <Repeat size={14} strokeWidth={2.5} />
-                      </button>
-                    </div>
-
-                    {/* Secondary Controls - Single Compact Row */}
-                    <div className="flex items-center justify-center gap-3">
-                      {/* Time Skip */}
-                      <button
-                        onClick={() => skipBackward(10)}
-                        className="text-white/40 hover:text-white/80 transition-all"
-                        aria-label="Rewind 10s"
-                      >
-                        <RotateCcw size={12} />
-                      </button>
-
-                      {/* Volume Control - Compact Inline */}
-                      <div className="flex items-center gap-2 flex-1 max-w-[160px]">
-                        <button
-                          onClick={() => setVolume(volume === 0 ? 0.7 : 0)}
-                          className="text-white/50 hover:text-white transition-all"
-                        >
-                          {volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                        </button>
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={volume}
-                          onChange={handleVolumeChange}
-                          className="flex-1 h-1 rounded-full appearance-none cursor-pointer"
-                          style={{
-                            background: `linear-gradient(to right, 
-                              rgb(255 255 255) 0%, 
-                              rgb(255 255 255) ${volume * 100}%, 
-                              rgba(255,255,255,0.15) ${volume * 100}%, 
-                              rgba(255,255,255,0.15) 100%)`
-                          }}
-                        />
-                      </div>
-
-                      <button
-                        onClick={() => skipForward(10)}
-                        className="text-white/40 hover:text-white/80 transition-all"
-                        aria-label="Forward 10s"
-                      >
-                        <RotateCw size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Custom slider styles */}
 
       {/* Custom slider styles */}
       <style jsx>{`
