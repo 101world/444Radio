@@ -12,7 +12,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const STEM_SPLIT_COST = 8
+const STEM_SPLIT_COST = 5
 
 export async function POST(request: Request) {
   try {
@@ -138,11 +138,18 @@ export async function POST(request: Request) {
         if (!obj) return
         
         if (typeof obj === 'string' && obj.startsWith('http')) {
-          // Found a URL string - check if it's audio
-          if (obj.includes('.wav') || obj.includes('.mp3') || obj.includes('.flac') || obj.includes('replicate.delivery')) {
-            const key = path || `stem_${Object.keys(stems).length + 1}`
-            stems[key] = obj
-            console.log(`[Stem Split] ✅ Found audio URL at ${path}: ${obj}`)
+          // Found a URL string - check if it's audio (exclude .json files)
+          if ((obj.includes('.wav') || obj.includes('.mp3') || obj.includes('.flac')) && !obj.includes('.json')) {
+            // Filter out unwanted stems
+            if (!path.includes('other') && !path.includes('analyzer_result')) {
+              const key = path || `stem_${Object.keys(stems).length + 1}`
+              stems[key] = obj
+              console.log(`[Stem Split] ✅ Found audio URL at ${path}: ${obj}`)
+            } else {
+              console.log(`[Stem Split] ⏭️ Skipped unwanted stem: ${path}`)
+            }
+          } else if (obj.includes('.json')) {
+            console.log(`[Stem Split] ⏭️ Skipped JSON file: ${path}`)
           }
         } else if (typeof obj === 'object' && !Array.isArray(obj)) {
           // Recursively search object properties

@@ -1141,12 +1141,13 @@ function CreatePageContent() {
     const requestBody: any = {
       prompt: fullPrompt,
       title,
-      lyrics,
+      lyrics: isInstrumental ? '[Instrumental]' : lyrics,
       duration,
       language: selectedLanguage,
       genre: genreParam,
       bpm: bpmParam ? parseInt(bpmParam) : undefined,
-      generateCoverArt
+      generateCoverArt,
+      instrumental: isInstrumental
     }
 
     // Add ACE-Step parameters for non-English languages
@@ -1986,6 +1987,21 @@ function CreatePageContent() {
                 )}
               </button>
 
+              {/* Instrumental Toggle Button - New Position */}
+              {selectedType === 'music' && (
+                <button
+                  onClick={() => setIsInstrumental(!isInstrumental)}
+                  className={`relative flex-shrink-0 px-2 py-1 rounded-full text-xs font-semibold transition-all duration-300 ${
+                    isInstrumental
+                      ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
+                      : 'bg-purple-500/20 border border-purple-500/40 text-purple-400 hover:bg-purple-500/30 hover:border-purple-400'
+                  }`}
+                  title={isInstrumental ? 'Switch to Vocal Mode' : 'Switch to Instrumental Mode'}
+                >
+                  INST
+                </button>
+              )}
+
               {/* Input Field */}
               <div className="flex-1 text-center md:text-left">
                 <input
@@ -2022,16 +2038,6 @@ function CreatePageContent() {
                   disabled={selectedType === 'video'}
                   className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                 />
-                
-                {/* Instrumental Button - Inside prompt box */}
-                {selectedType === 'music' && (
-                  <button
-                    onClick={() => setCustomLyrics('[Instrumental]')}
-                    className="mt-1.5 px-2 py-0.5 text-[10px] font-semibold text-purple-400 bg-purple-500/10 border border-purple-500/30 rounded hover:bg-purple-500/20 hover:border-purple-400/50 transition-all"
-                  >
-                    🎹 Instrumental
-                  </button>
-                )}
                 
                 <div className="flex items-center justify-between gap-2 mt-0.5">
                   <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
