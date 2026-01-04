@@ -1615,85 +1615,85 @@ function CreatePageContent() {
                   </div>
                 )}
 
-                {/* Stems Result - Unified Playable Display */}
+                {/* Stems Result - Dynamic Display for All Stems */}
                 {message.stems && (
                   <div className="space-y-3 max-w-md mx-auto">
-                    {[
-                      {
-                        key: 'vocals',
-                        title: '🎤 Vocals',
-                        description: 'Isolated vocal track',
-                        gradient: 'from-purple-600 to-purple-400',
-                        border: 'border-purple-500/30',
-                        hover: 'hover:border-purple-400/50',
-                        hoverBg: 'hover:bg-purple-500/20',
-                        text: 'text-purple-400'
-                      },
-                      {
-                        key: 'instrumental',
-                        title: '🎹 Instrumental',
-                        description: 'Music without vocals',
-                        gradient: 'from-cyan-600 to-cyan-400',
-                        border: 'border-cyan-500/30',
-                        hover: 'hover:border-cyan-400/50',
-                        hoverBg: 'hover:bg-cyan-500/20',
-                        text: 'text-cyan-400'
-                      },
-                      {
-                        key: 'drums',
-                        title: '🥁 Drums',
-                        description: 'Percussion only',
-                        gradient: 'from-amber-600 to-amber-400',
-                        border: 'border-amber-500/30',
-                        hover: 'hover:border-amber-400/50',
-                        hoverBg: 'hover:bg-amber-500/20',
-                        text: 'text-amber-300'
-                      },
-                      {
-                        key: 'bass',
-                        title: '🪕 Bass',
-                        description: 'Low-end bassline',
-                        gradient: 'from-emerald-600 to-emerald-400',
-                        border: 'border-emerald-500/30',
-                        hover: 'hover:border-emerald-400/50',
-                        hoverBg: 'hover:bg-emerald-500/20',
-                        text: 'text-emerald-300'
-                      },
-                      {
-                        key: 'guitar',
-                        title: '🎸 Guitar',
-                        description: 'Isolated guitar',
-                        gradient: 'from-orange-600 to-orange-400',
-                        border: 'border-orange-500/30',
-                        hover: 'hover:border-orange-400/50',
-                        hoverBg: 'hover:bg-orange-500/20',
-                        text: 'text-orange-300'
-                      },
-                      {
-                        key: 'piano',
-                        title: '🎹 Piano',
-                        description: 'Isolated keys',
-                        gradient: 'from-indigo-600 to-indigo-400',
-                        border: 'border-indigo-500/30',
-                        hover: 'hover:border-indigo-400/50',
-                        hoverBg: 'hover:bg-indigo-500/20',
-                        text: 'text-indigo-300'
-                      },
-                      {
-                        key: 'other',
-                        title: '✨ Other',
-                        description: 'Everything else',
-                        gradient: 'from-slate-600 to-slate-400',
-                        border: 'border-slate-500/30',
-                        hover: 'hover:border-slate-400/50',
-                        hoverBg: 'hover:bg-slate-500/20',
-                        text: 'text-slate-200'
-                      }
-                    ]
-                      .filter(def => message.stems && message.stems[def.key])
-                      .map(def => (
+                    {Object.entries(message.stems)
+                      .filter(([key, url]) => url && typeof url === 'string')
+                      .map(([key, url]) => {
+                        // Dynamic stem type detection
+                        const getStemDisplay = (stemKey: string) => {
+                          const k = stemKey.toLowerCase()
+                          if (k.includes('vocal')) return {
+                            title: '🎤 Vocals',
+                            description: 'Isolated vocal track',
+                            gradient: 'from-purple-600 to-purple-400',
+                            border: 'border-purple-500/30',
+                            hover: 'hover:border-purple-400/50',
+                            hoverBg: 'hover:bg-purple-500/20',
+                            text: 'text-purple-400'
+                          }
+                          if (k.includes('instrumental') || k.includes('accompaniment')) return {
+                            title: '🎹 Instrumental',
+                            description: 'Music without vocals',
+                            gradient: 'from-cyan-600 to-cyan-400',
+                            border: 'border-cyan-500/30',
+                            hover: 'hover:border-cyan-400/50',
+                            hoverBg: 'hover:bg-cyan-500/20',
+                            text: 'text-cyan-400'
+                          }
+                          if (k.includes('drum')) return {
+                            title: '🥁 Drums',
+                            description: 'Percussion only',
+                            gradient: 'from-amber-600 to-amber-400',
+                            border: 'border-amber-500/30',
+                            hover: 'hover:border-amber-400/50',
+                            hoverBg: 'hover:bg-amber-500/20',
+                            text: 'text-amber-300'
+                          }
+                          if (k.includes('bass')) return {
+                            title: '🪕 Bass',
+                            description: 'Low-end bassline',
+                            gradient: 'from-emerald-600 to-emerald-400',
+                            border: 'border-emerald-500/30',
+                            hover: 'hover:border-emerald-400/50',
+                            hoverBg: 'hover:bg-emerald-500/20',
+                            text: 'text-emerald-300'
+                          }
+                          if (k.includes('guitar')) return {
+                            title: '🎸 Guitar',
+                            description: 'Isolated guitar',
+                            gradient: 'from-orange-600 to-orange-400',
+                            border: 'border-orange-500/30',
+                            hover: 'hover:border-orange-400/50',
+                            hoverBg: 'hover:bg-orange-500/20',
+                            text: 'text-orange-300'
+                          }
+                          if (k.includes('piano')) return {
+                            title: '🎹 Piano',
+                            description: 'Isolated keys',
+                            gradient: 'from-indigo-600 to-indigo-400',
+                            border: 'border-indigo-500/30',
+                            hover: 'hover:border-indigo-400/50',
+                            hoverBg: 'hover:bg-indigo-500/20',
+                            text: 'text-indigo-300'
+                          }
+                          // Default for "other" or unknown stems
+                          return {
+                            title: `✨ ${key.charAt(0).toUpperCase() + key.slice(1).replace(/[_-]/g, ' ')}`,
+                            description: 'Isolated audio track',
+                            gradient: 'from-slate-600 to-slate-400',
+                            border: 'border-slate-500/30',
+                            hover: 'hover:border-slate-400/50',
+                            hoverBg: 'hover:bg-slate-500/20',
+                            text: 'text-slate-200'
+                          }
+                        }
+
+                        const def = getStemDisplay(key)
+                        return (
                         <div
-                          key={def.key}
+                          key={key}
                           className={`backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/50 via-black/50 to-black/60 border-2 ${def.border} rounded-2xl overflow-hidden ${def.hover} transition-all`}
                         >
                           <div className="p-4">
@@ -1701,18 +1701,18 @@ function CreatePageContent() {
                               <button
                                 onClick={() => {
                                   const track = {
-                                    id: `${message.id}-${def.key}`,
+                                    id: `${message.id}-${key}`,
                                     title: def.title,
                                     artist: 'Stem Split',
                                     artworkUrl: '',
-                                    audioUrl: message.stems![def.key]!,
+                                    audioUrl: url,
                                     userId: ''
                                   }
                                   playTrack(track)
                                 }}
                                 className={`flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br ${def.gradient} flex items-center justify-center hover:scale-110 transition-transform`}
                               >
-                                {currentTrack?.audioUrl === message.stems![def.key] && isPlaying ? (
+                                {currentTrack?.audioUrl === url && isPlaying ? (
                                   <Pause size={20} className="text-white" />
                                 ) : (
                                   <Play size={20} className="text-white ml-0.5" />
@@ -1723,7 +1723,7 @@ function CreatePageContent() {
                                 <p className="text-xs text-gray-400">{def.description}</p>
                               </div>
                               <button
-                                onClick={() => handleDownload(message.stems![def.key]!, `${def.key}.mp3`, 'mp3')}
+                                onClick={() => handleDownload(url, `${key.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`, 'mp3')}
                                 className={`p-2 ${def.hoverBg} rounded-lg transition-colors`}
                               >
                                 <Download size={16} className={def.text} />
@@ -1731,7 +1731,7 @@ function CreatePageContent() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                      )})}
                   </div>
                 )}
 
