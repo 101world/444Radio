@@ -627,8 +627,14 @@ function CreatePageContent() {
         }
       }
 
-      // If no lyrics provided, auto-generate using Atom API
-      if (!finalLyrics.trim()) {
+      // Handle lyrics based on instrumental mode
+      if (isInstrumental) {
+        // For instrumental mode, set lyrics to [Instrumental]
+        finalLyrics = '[Instrumental]'
+        setCustomLyrics(finalLyrics)
+        console.log('🎹 Instrumental mode: setting lyrics to [Instrumental]')
+      } else if (!finalLyrics.trim()) {
+        // Only auto-generate lyrics if not in instrumental mode and no lyrics provided
         console.log('🤖 Auto-generating lyrics from prompt...')
         wasAutoFilled = true
         try {
@@ -695,7 +701,8 @@ function CreatePageContent() {
       if (wasAutoFilled) {
         const autoFilledFields: string[] = []
         if (!customTitle.trim()) autoFilledFields.push('Title')
-        if (!customLyrics.trim()) autoFilledFields.push('Lyrics')
+        if (!customLyrics.trim() && !isInstrumental) autoFilledFields.push('Lyrics')
+        if (isInstrumental) autoFilledFields.push('Instrumental Mode')
         if (!genre.trim()) autoFilledFields.push(`Genre (${finalGenre})`)
         if (!bpm.trim()) autoFilledFields.push(`BPM (${finalBpm})`)
         
@@ -983,7 +990,7 @@ function CreatePageContent() {
     const requestBody: any = {
       prompt: fullPrompt,
       title,
-      lyrics: isInstrumental ? '[Instrumental]' : lyrics,
+      lyrics: lyrics, // Pass lyrics as-is (either regular lyrics or [Instrumental])
       duration,
       language: selectedLanguage,
       genre: genreParam,
