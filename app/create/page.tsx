@@ -1621,15 +1621,15 @@ function CreatePageContent() {
                                 id: `${message.id}-vocals`,
                                 title: '🎤 Vocals',
                                 artist: 'Stem Split',
-                                artwork_url: '',
-                                audio_url: message.stems!.vocals,
-                                user_id: ''
+                                artworkUrl: '',
+                                audioUrl: message.stems!.vocals,
+                                userId: ''
                               }
                               playTrack(vocalsTrack)
                             }}
                             className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center hover:scale-110 transition-transform"
                           >
-                            {currentTrack?.audio_url === message.stems.vocals && isPlaying ? (
+                            {currentTrack?.audioUrl === message.stems.vocals && isPlaying ? (
                               <Pause size={20} className="text-white" />
                             ) : (
                               <Play size={20} className="text-white ml-0.5" />
@@ -1659,15 +1659,15 @@ function CreatePageContent() {
                                 id: `${message.id}-instrumental`,
                                 title: '🎹 Instrumental',
                                 artist: 'Stem Split',
-                                artwork_url: '',
-                                audio_url: message.stems!.instrumental,
-                                user_id: ''
+                                artworkUrl: '',
+                                audioUrl: message.stems!.instrumental,
+                                userId: ''
                               }
                               playTrack(instrumentalTrack)
                             }}
                             className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-400 flex items-center justify-center hover:scale-110 transition-transform"
                           >
-                            {currentTrack?.audio_url === message.stems.instrumental && isPlaying ? (
+                            {currentTrack?.audioUrl === message.stems.instrumental && isPlaying ? (
                               <Pause size={20} className="text-white" />
                             ) : (
                               <Play size={20} className="text-white ml-0.5" />
