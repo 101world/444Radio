@@ -80,25 +80,32 @@ export async function POST(request: Request) {
     console.log(`[Stem Split] Processing audio: ${audioUrl}`)
     console.log('[Stem Split] Calling Replicate API...')
 
-    // Run stem separation with proper parameters from schema
+    // Run stem separation with proper parameters and extended timeout
     let output: any
     try {
-      output = await replicate.run(
-        "erickluis00/all-in-one-audio:f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e",
-        {
-          input: {
-            music_input: audioUrl,
-            audioSeparator: true,
-            audioSeparatorModel: "Kim_Vocal_2.onnx",
-            model: "harmonix-all",
-            sonify: false,
-            visualize: false,
-            include_embeddings: false,
-            include_activations: false
-          }
+      const prediction = await replicate.predictions.create({
+        version: "f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e",
+        input: {
+          music_input: audioUrl,
+          audioSeparator: true,
+          audioSeparatorModel: "Kim_Vocal_2.onnx",
+          model: "harmonix-all",
+          sonify: false,
+          visualize: false,
+          include_embeddings: false,
+          include_activations: false
         }
-      ) as any
-      console.log('[Stem Split] Replicate API call completed')
+      })
+
+      console.log('[Stem Split] Prediction created, waiting for completion...')
+      
+      // Wait for completion with extended timeout
+      output = await replicate.wait(prediction, { 
+        timeout: 300000, // 5 minutes
+        poll: 5000 // check every 5 seconds
+      })
+      
+      console.log('[Stem Split] Replicate completed successfully')
     } catch (replicateError) {
       console.error('[Stem Split] Replicate API error:', replicateError)
       // Refund credits
@@ -106,160 +113,80 @@ export async function POST(request: Request) {
         .from('users')
         .update({ credits: userData.credits })
         .eq('clerk_user_id', userId)
-      throw new Error(`Replicate API failed: ${replicateError instanceof Error ? replicateError.message : 'Unknown error'}`)
+      
+      return NextResponse.json({ 
+        error: `AI service failed: ${replicateError instanceof Error ? replicateError.message : 'Unknown error'}. Credits have been refunded.`,
+        refunded: true 
+      }, { status: 500 })
     }
 
     console.log('[Stem Split] Replicate output:', JSON.stringify(output, null, 2))
     console.log('[Stem Split] Output keys:', Object.keys(output || {}))
 
-    // Simple stem normalization - extract all available stems from output
+    // BULLETPROOF stem extraction - find ANY valid audio URLs
     function normalizeStems(replicateOutput: any): Record<string, string> | null {
-      console.log('[Stem Split] normalizeStems input type:', typeof replicateOutput)
-      console.log('[Stem Split] normalizeStems input keys:', Object.keys(replicateOutput || {}))
+      console.log('[Stem Split] Starting bulletproof stem extraction...')
       
       if (!replicateOutput) {
-        console.log('[Stem Split] replicateOutput is null/undefined')
+        console.log('[Stem Split] No output received')
         return null
       }
       
-      // The output might be nested under 'output' property or be direct
-      const actualOutput = replicateOutput.output || replicateOutput
-      console.log('[Stem Split] actualOutput type:', typeof actualOutput)
-      console.log('[Stem Split] actualOutput keys:', Object.keys(actualOutput || {}))
+      const stems: Record<string, string> = {}
       
-      if (typeof actualOutput === 'object' && !Array.isArray(actualOutput)) {
-        const stems: Record<string, string> = {}
-        let processedCount = 0
-        let skippedCount = 0
-        let extractedCount = 0
+      // Recursive function to find all URLs in any nested object
+      function findAllUrls(obj: any, path = ''): void {
+        if (!obj) return
         
-        for (const [key, value] of Object.entries(actualOutput)) {
-          processedCount++
-          console.log(`[Stem Split] Processing ${processedCount}: ${key}, value type:`, typeof value, 'value:', value)
-          
-          // Skip null values and empty arrays
-          if (value === null || value === undefined) {
-            skippedCount++
-            console.log(`[Stem Split] Skipped ${key}: null/undefined`)
-            continue
+        if (typeof obj === 'string' && obj.startsWith('http')) {
+          // Found a URL string - check if it's audio
+          if (obj.includes('.wav') || obj.includes('.mp3') || obj.includes('.flac') || obj.includes('replicate.delivery')) {
+            const key = path || `stem_${Object.keys(stems).length + 1}`
+            stems[key] = obj
+            console.log(`[Stem Split] ✅ Found audio URL at ${path}: ${obj}`)
           }
-          
-          if (Array.isArray(value) && value.length === 0) {
-            skippedCount++
-            console.log(`[Stem Split] Skipped ${key}: empty array`)
-            continue
+        } else if (typeof obj === 'object' && !Array.isArray(obj)) {
+          // Recursively search object properties
+          for (const [key, value] of Object.entries(obj)) {
+            const newPath = path ? `${path}.${key}` : key
+            findAllUrls(value, newPath)
           }
-          
-          // Extract URL from various formats
-          let url: string | null = null
-          
-          if (typeof value === 'string' && value.startsWith('http')) {
-            // Direct URL string
-            url = value
-            console.log(`[Stem Split] Direct URL found for ${key}:`, url)
-          } else if (value && typeof value === 'object' && !Array.isArray(value)) {
-            // Object - check for nested URL properties
-            if (typeof (value as any).url === 'string') {
-              url = (value as any).url
-            } else if ((value as any).audio && typeof (value as any).audio.download_uri === 'string') {
-              url = (value as any).audio.download_uri
-            } else {
-              // Look for any property that contains a URL string
-              for (const [nestedKey, nestedValue] of Object.entries(value)) {
-                if (typeof nestedValue === 'string' && nestedValue.startsWith('http')) {
-                  console.log(`[Stem Split] Found nested URL in ${key}.${nestedKey}:`, nestedValue)
-                  url = nestedValue
-                  break
-                }
-              }
-            }
-          }
-          
-          console.log(`[Stem Split] Final URL for ${key}:`, url)
-          
-          // Include if it's a valid URL and looks like a stem
-          if (url) {
-            const isAudioFile = url.includes('.wav') || url.includes('.mp3') || url.includes('.flac')
-            const isStemKey = key.includes('vocal') || key.includes('drum') || key.includes('bass') || 
-                             key.includes('instrumental') || key.includes('other') || key.includes('guitar') || 
-                             key.includes('piano') || key.includes('stem') || key.includes('demucs') || key.includes('mdx')
-            
-            console.log(`[Stem Split] ${key}: isAudioFile=${isAudioFile}, isStemKey=${isStemKey}`)
-            
-            if (isAudioFile || isStemKey) {
-              stems[key] = url
-              extractedCount++
-              console.log(`[Stem Split] ✅ Added stem ${extractedCount}: ${key} -> ${url}`)
-            } else {
-              skippedCount++
-              console.log(`[Stem Split] ❌ Skipped ${key}: not audio file or stem key`)
-            }
-          }
+        } else if (Array.isArray(obj)) {
+          // Search array elements
+          obj.forEach((item, index) => {
+            const newPath = path ? `${path}[${index}]` : `[${index}]`
+            findAllUrls(item, newPath)
+          })
         }
-        
-        console.log(`[Stem Split] Processing summary: processed=${processedCount}, skipped=${skippedCount}, extracted=${extractedCount}`)
-        console.log(`[Stem Split] Final stems object:`, stems)
-        console.log(`[Stem Split] Final stems keys:`, Object.keys(stems))
-        return Object.keys(stems).length > 0 ? stems : null
       }
       
-      console.log('[Stem Split] actualOutput is not an object, returning null')
-      return null
+      // Find all URLs in the entire response
+      findAllUrls(replicateOutput)
+      
+      console.log(`[Stem Split] Bulletproof extraction found ${Object.keys(stems).length} stems:`, Object.keys(stems))
+      
+      return Object.keys(stems).length > 0 ? stems : null
     }
 
     const allStems = normalizeStems(output)
     
     if (!allStems || Object.keys(allStems).length === 0) {
-      console.error('[Stem Split] Could not find any stems in output. Full output:', JSON.stringify(output, null, 2))
+      console.error('[Stem Split] No audio stems found in Replicate output')
+      console.error('[Stem Split] Raw output:', JSON.stringify(output, null, 2))
       
-      // Check if ALL stem-related fields are null/empty - indicates total processing failure
-      const actualOutput = output?.output || output
-      let totalFailure = false
-      
-      if (actualOutput && typeof actualOutput === 'object') {
-        const stemFields = Object.entries(actualOutput).filter(([key]) => 
-          key.includes('vocal') || key.includes('drum') || key.includes('bass') || 
-          key.includes('instrumental') || key.includes('other') || key.includes('demucs') || key.includes('mdx')
-        )
-        
-        // Only consider it a total failure if we have stem fields but ALL are null/empty
-        if (stemFields.length > 0) {
-          const allEmpty = stemFields.every(([_, value]) => {
-            if (value === null || value === undefined) return true
-            if (Array.isArray(value) && value.length === 0) return true
-            if (typeof value === 'object' && Object.keys(value).length === 0) return true
-            return false
-          })
-          totalFailure = allEmpty
-        }
-      }
-      
-      if (totalFailure) {
-        console.error('[Stem Split] Total processing failure - all stem fields are null/empty for audio URL:', audioUrl)
-        // Refund credits
-        await supabase
-          .from('users')
-          .update({ credits: userData.credits })
-          .eq('clerk_user_id', userId)
-        return NextResponse.json({ 
-          error: 'Audio processing failed - the AI model could not process the audio file. Please try with a different audio file.',
-          debug: 'All stem separation fields returned null/empty',
-          audioUrlTested: audioUrl,
-          rawOutput: output
-        }, { status: 500 })
-      }
-      
-      // If not total failure, it might be a parsing issue
       // Refund credits
       await supabase
         .from('users')
         .update({ credits: userData.credits })
         .eq('clerk_user_id', userId)
+      
       return NextResponse.json({ 
-        error: 'Could not extract stems from Replicate output',
-        availableKeys: Object.keys(output || {}),
-        rawOutput: output,
-        debug: 'Check server logs for detailed stem extraction debug info'
+        error: 'No audio stems could be extracted from the AI response. Your credits have been refunded. Please try with a different audio file.',
+        refunded: true,
+        debug: {
+          outputKeys: Object.keys(output || {}),
+          outputType: typeof output
+        }
       }, { status: 500 })
     }
 
