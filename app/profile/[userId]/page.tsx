@@ -170,7 +170,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         // Check following status
         if (!isOwn && user?.id) {
           const { data: followData, error: followError } = await supabase
-            .from('followers')
+            .from('follows')
             .select('id')
             .eq('follower_id', user.id)
             .eq('following_id', userId)
@@ -304,7 +304,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     try {
       if (isFollowing) {
         await supabase
-          .from('followers')
+          .from('follows')
           .delete()
           .eq('follower_id', user.id)
           .eq('following_id', userId)
@@ -313,7 +313,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         setProfile(prev => prev ? { ...prev, follower_count: prev.follower_count - 1 } : null)
       } else {
         await supabase
-          .from('followers')
+          .from('follows')
           .insert({ follower_id: user.id, following_id: userId })
         
         setIsFollowing(true)
