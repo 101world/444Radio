@@ -1686,7 +1686,22 @@ function CreatePageContent() {
             {/* Divider - Only show when advanced buttons are visible */}
             {showAdvancedButtons && <div className="w-px h-8 bg-cyan-500/30"></div>}
 
-            {/* Instrumental toggle removed from UI (kept in logic) */}
+            {/* Instrumental Button - Auto-sets lyrics to [Instrumental] - Hidden by default */}
+            {showAdvancedButtons && selectedType === 'music' && (
+              <button
+                onClick={() => {
+                  setCustomLyrics('[Instrumental]')
+                  setShowLyricsModal(true)
+                }}
+                className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
+                title="Generate Instrumental"
+              >
+                <Music2 
+                  size={18} 
+                  className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]"
+                />
+              </button>
+            )}
 
             {/* Divider - Only show when advanced buttons are visible */}
             {showAdvancedButtons && <div className="w-px h-8 bg-cyan-500/30"></div>}
