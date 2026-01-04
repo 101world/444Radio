@@ -198,6 +198,23 @@ export async function POST(request: Request) {
       console.log('[Stem Split] Using demucs_other as instrumental fallback')
     }
 
+    // Heuristic fallback: pick first URL containing keywords
+    const allUrls = Object.values({ ...flatPrimary, ...flatAll }).filter(Boolean) as string[]
+    if (!detectedStems.vocals) {
+      const vocalGuess = allUrls.find(u => /vocals?/i.test(u))
+      if (vocalGuess) {
+        detectedStems.vocals = vocalGuess
+        console.log('[Stem Split] Heuristic vocals guess:', vocalGuess)
+      }
+    }
+    if (!detectedStems.instrumental) {
+      const instrGuess = allUrls.find(u => /instrumental|accompaniment|_other\.wav/i.test(u))
+      if (instrGuess) {
+        detectedStems.instrumental = instrGuess
+        console.log('[Stem Split] Heuristic instrumental guess:', instrGuess)
+      }
+    }
+
     const vocalsUrl = detectedStems.vocals
     const instrumentalUrl = detectedStems.instrumental
 
@@ -214,7 +231,8 @@ export async function POST(request: Request) {
         error: 'Could not find separated audio in Replicate output',
         availableKeys: Object.keys(primaryOutput || {}),
         flatKeys: Object.keys(flatPrimary || {}),
-        detected: detectedStems
+        detected: detectedStems,
+        flatUrlsSample: Object.entries(flatPrimary || {}).slice(0, 10)
       }, { status: 500 })
     }
 
