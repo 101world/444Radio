@@ -207,7 +207,7 @@ function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange
                 id: `${track.id}-volume`,
                 trackId: track.id,
                 parameter: 'volume',
-                points: [],
+                points: track.automation.find(l => l.id === `${track.id}-volume`)?.points || [],
                 color: '#06B6D4'
               }}
               duration={60}
@@ -631,18 +631,18 @@ export default function MultiTrackStudio() {
 
   // Automation handlers
   const handleAddAutomationPoint = (trackId: string, laneId: string, time: number, value: number) => {
-    // TODO: Add automation point to DAW
-    console.log(`Add automation point: track ${trackId}, lane ${laneId}, time ${time}s, value ${value}`)
+    if (!daw) return
+    daw.addAutomationPoint(trackId, laneId, time, value)
   }
 
   const handleMoveAutomationPoint = (trackId: string, laneId: string, pointIndex: number, time: number, value: number) => {
-    // TODO: Move automation point in DAW
-    console.log(`Move automation point: index ${pointIndex}, time ${time}s, value ${value}`)
+    if (!daw) return
+    daw.moveAutomationPoint(trackId, laneId, pointIndex, time, value)
   }
 
   const handleDeleteAutomationPoint = (trackId: string, laneId: string, pointIndex: number) => {
-    // TODO: Delete automation point from DAW
-    console.log(`Delete automation point: index ${pointIndex}`)
+    if (!daw) return
+    daw.deleteAutomationPoint(trackId, laneId, pointIndex)
   }
 
   const handleGenerate = async (params: any) => {

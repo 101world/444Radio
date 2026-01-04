@@ -599,6 +599,71 @@ export class MultiTrackDAW {
     }
   }
 
+  // Automation
+  addAutomationPoint(trackId: string, laneId: string, time: number, value: number): void {
+    const track = this.trackManager.getTrack(trackId)
+    if (!track) return
+
+    let lane = track.automation.find(l => l.id === laneId)
+    
+    // Create lane if it doesn't exist
+    if (!lane) {
+      lane = {
+        id: laneId,
+        parameter: laneId.split('-').pop() || 'volume',
+        points: [],
+        visible: true
+      }
+      track.automation.push(lane)
+    }
+
+    // Add point in chronological order
+    const point = { time, value, curve: 'linear' as const }
+    const insertIndex = lane.points.findIndex(p => p.time > time)
+    
+    if (insertIndex === -1) {
+      lane.points.push(point)
+    } else {
+      lane.points.splice(insertIndex, 0, point)
+    }
+
+    this.emit('automationPointAdded', { trackId, laneId, time, value })
+  }
+
+  moveAutomationPoint(trackId: string, laneId: string, pointIndex: number, time: number, value: number): void {
+    const track = this.trackManager.getTrack(trackId)
+    if (!track) return
+
+    const lane = track.automation.find(l => l.id === laneId)
+    if (!lane || !lane.points[pointIndex]) return
+
+    // Update point
+    lane.points[pointIndex].time = time
+    lane.points[pointIndex].value = value
+
+    // Re-sort points by time
+    lane.points.sort((a, b) => a.time - b.time)
+
+    this.emit('automationPointMoved', { trackId, laneId, pointIndex, time, value })
+  }
+
+  deleteAutomationPoint(trackId: string, laneId: string, pointIndex: number): void {
+    const track = this.trackManager.getTrack(trackId)
+    if (!track) return
+
+    const lane = track.automation.find(l => l.id === laneId)
+    if (!lane || !lane.points[pointIndex]) return
+
+    lane.points.splice(pointIndex, 1)
+
+    this.emit('automationPointDeleted', { trackId, laneId, pointIndex })
+  }
+
+  getAutomationLane(trackId: string, laneId: string) {
+    const track = this.trackManager.getTrack(trackId)
+    return track?.automation.find(l => l.id === laneId)
+  }
+
   // MIDI
   createMIDITrack(name: string): void {
     const track = this.midiManager.createMIDITrack(name)
