@@ -297,28 +297,30 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [showEditProfile, profile])
 
-  // Handle Follow/Unfollow
+  // Handle Follow/Unfollow via API
   const handleFollowToggle = async () => {
     if (!user?.id) return
 
     try {
-      if (isFollowing) {
-        await supabase
-          .from('follows')
-          .delete()
-          .eq('follower_id', user.id)
-          .eq('following_id', userId)
-        
-        setIsFollowing(false)
-        setProfile(prev => prev ? { ...prev, follower_count: prev.follower_count - 1 } : null)
-      } else {
-        await supabase
-          .from('follows')
-          .insert({ follower_id: user.id, following_id: userId })
-        
-        setIsFollowing(true)
-        setProfile(prev => prev ? { ...prev, follower_count: prev.follower_count + 1 } : null)
-      }
+      const response = await fetch('/api/profile/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetUserId: userId,
+          action: isFollowing ? 'unfollow' : 'follow'
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to update follow status')
+
+      const data = await response.json()
+      setIsFollowing(data.isFollowing)
+      setProfile(prev => prev ? { 
+        ...prev, 
+        follower_count: data.isFollowing 
+          ? prev.follower_count + 1 
+          : prev.follower_count - 1 
+      } : null)
     } catch (error) {
       console.error('Error toggling follow:', error)
     }
@@ -355,15 +357,16 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }
 
-  // Handle Edit Profile Submit
+  // Handle Edit Profile Submit via API
   const handleEditProfileSubmit = async () => {
     if (!user?.id) return
     
     setIsUpdatingProfile(true)
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
+      const response = await fetch('/api/profile/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           full_name: editFullName,
           bio: editBio,
           location: editLocation,
@@ -373,21 +376,20 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             instagram: editInstagram
           }
         })
-        .eq('clerk_user_id', user.id)
+      })
+
+      if (!response.ok) throw new Error('Failed to update profile')
+
+      const data = await response.json()
       
-      if (error) throw error
-      
-      // Update local state
+      // Update local state with server response
       setProfile(prev => prev ? {
         ...prev,
-        fullName: editFullName,
-        bio: editBio,
-        location: editLocation,
-        website: editWebsite,
-        social_links: {
-          twitter: editTwitter,
-          instagram: editInstagram
-        }
+        fullName: data.profile.full_name,
+        bio: data.profile.bio,
+        location: data.profile.location,
+        website: data.profile.website,
+        social_links: data.profile.social_links
       } : null)
       
       setShowEditProfile(false)
