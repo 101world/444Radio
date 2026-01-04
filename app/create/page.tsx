@@ -102,10 +102,8 @@ function CreatePageContent() {
   const [songDuration, setSongDuration] = useState<'short' | 'medium' | 'long'>('medium')
   const [generateCoverArt, setGenerateCoverArt] = useState(false)
   
-  // Instrumental mode
+  // Instrumental mode (LLM approach - no API parameters needed)
   const [isInstrumental, setIsInstrumental] = useState(false)
-  const [instrumentalDuration, setInstrumentalDuration] = useState(60) // Default 60 seconds, max 240
-  const [instrumentalSteps, setInstrumentalSteps] = useState(90) // Default 90 steps (creativity/quality), range 20-150
   
   // ACE-Step parameters (for non-English)
   const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
@@ -1724,61 +1722,13 @@ function CreatePageContent() {
             </div>
           </div>
 
-          {/* Instrumental Duration & Creativity Sliders - Only show when instrumental mode is active */}
+          {/* Instrumental Mode: Using LLM approach - no parameters needed */}
           {isInstrumental && selectedType === 'music' && (
             <div className="space-y-3 px-4 md:px-0">
-              {/* Duration Slider */}
-              <div className="space-y-2 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-purple-400 uppercase tracking-wide flex items-center gap-2">
-                    <Music2 size={14} className="text-purple-400" />
-                    Duration
-                  </label>
-                  <span className="text-sm font-bold text-purple-300">{instrumentalDuration}s</span>
-                </div>
-                <input
-                  type="range"
-                  min="10"
-                  max="240"
-                  step="10"
-                  value={instrumentalDuration}
-                  onChange={(e) => setInstrumentalDuration(Number(e.target.value))}
-                  className="w-full h-2 bg-purple-900/30 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                />
-                <div className="flex justify-between text-xs text-purple-400/60">
-                  <span>10s</span>
-                  <span>240s (4 min)</span>
-                </div>
-              </div>
-
-              {/* Creativity/Quality Slider */}
-              <div className="space-y-2 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-purple-400 uppercase tracking-wide flex items-center gap-2">
-                    <Sparkles size={14} className="text-purple-400" />
-                    Creativity / Quality
-                  </label>
-                  <span className="text-sm font-bold text-purple-300">{instrumentalSteps} steps</span>
-                </div>
-                <input
-                  type="range"
-                  min="20"
-                  max="150"
-                  step="10"
-                  value={instrumentalSteps}
-                  onChange={(e) => setInstrumentalSteps(Number(e.target.value))}
-                  className="w-full h-2 bg-purple-900/30 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                />
-                <div className="flex justify-between text-xs text-purple-400/60">
-                  <span>20 (Fast)</span>
-                  <span>150 (Best Quality)</span>
-                </div>
-              </div>
-
               {/* Credits Info */}
               <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg backdrop-blur-sm">
                 <p className="text-xs text-purple-300/80 text-center">
-                  💰 <span className="font-bold">5 credits</span> • Instrumental music based on your tags/prompt
+                  💰 <span className="font-bold">5 credits</span> • Instrumental music via LLM knowledge approach
                 </p>
               </div>
             </div>
