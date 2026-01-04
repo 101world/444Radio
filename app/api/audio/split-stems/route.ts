@@ -97,7 +97,7 @@ export async function POST(request: Request) {
 
     // Try multiple possible key names for vocals
     const possibleVocalsKeys = ['mdx_vocals', 'vocals', 'vocal', 'voice', 'Vocals', 'mdxnet_vocals']
-    const possibleInstrumentalKeys = ['mdx_other', 'instrumental', 'music', 'accompaniment', 'Instrumental', 'mdxnet_other', 'no_vocals']
+    const possibleInstrumentalKeys = ['mdx_instrumental', 'mdx_other', 'instrumental', 'music', 'accompaniment', 'Instrumental', 'mdxnet_other', 'no_vocals']
 
     for (const key of possibleVocalsKeys) {
       if (output && output[key]) {
