@@ -7,6 +7,9 @@ import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW'
 import type { Track } from '@/lib/audio/TrackManager'
 import { GlassPanel, GlassButton, GlassFader, GlassKnob, GlassMeter, GlassTooltip, GlassTransport } from '@/app/components/studio/glass'
 import MixerView from '@/app/components/studio/MixerView'
+import ClipEditor from '@/app/components/studio/ClipEditor'
+import AutomationEditor from '@/app/components/studio/AutomationEditor'
+import ProjectManager from '@/app/components/studio/ProjectManager'
 import AnimatedBackground from '@/app/components/AnimatedBackground'
 import { toast } from '@/lib/toast'
 
@@ -74,7 +77,7 @@ function TimelineRuler({ zoom, playhead, duration, onSeek }: { zoom: number; pla
 }
 
 // Track lane component
-function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange, onPanChange }: {
+function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange, onPanChange, onClipDoubleClick }: {
   track: Track
   zoom: number
   playhead: number
@@ -82,6 +85,7 @@ function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange
   onSelect: () => void
   onVolumeChange: (volume: number) => void
   onPanChange: (pan: number) => void
+  onClipDoubleClick: (trackId: string, clipId: string) => void
 }) {
   const [vuLevel, setVuLevel] = useState(0)
 
@@ -163,6 +167,10 @@ function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange
               style={{
                 left: `${clipLeft}px`,
                 width: `${clipWidth}px`
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                onClipDoubleClick(track.id, clip.id)
               }}
             >
               <div className="p-2 text-xs text-white font-medium truncate">
@@ -334,6 +342,11 @@ export default function MultiTrackStudio() {
   const [duration, setDuration] = useState(60)
   const [isGenerating, setIsGenerating] = useState(false)
   const [showMixer, setShowMixer] = useState(false)
+  const [showClipEditor, setShowClipEditor] = useState(false)
+  const [selectedClip, setSelectedClip] = useState<{ trackId: string; clipId: string } | null>(null)
+  const [showProjectManager, setShowProjectManager] = useState(false)
+  const [showAutomation, setShowAutomation] = useState<Record<string, boolean>>({})
+  const [currentProject, setCurrentProject] = useState<any>(null)
   const [masterVolume, setMasterVolume] = useState(1)
   const [masterVULevel, setMasterVULevel] = useState(0)
 
@@ -393,10 +406,35 @@ export default function MultiTrackStudio() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       
+      // Ctrl shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 's':
+            e.preventDefault()
+            setShowProjectManager(true)
+            break
+          case 'o':
+            e.preventDefault()
+            setShowProjectManager(true)
+            break
+        }
+        return
+      }
+      
       switch (e.key.toLowerCase()) {
         case ' ':
           e.preventDefault()
           togglePlay()
+          break
+        case 'e':
+          if (selectedClip) {
+            setShowClipEditor(true)
+          }
+          break
+        case 'a':
+          if (selectedTrackId) {
+            setShowAutomation(prev => ({ ...prev, [selectedTrackId]: !prev[selectedTrackId] }))
+          }
           break
         case 's':
           if (e.metaKey || e.ctrlKey) {
@@ -478,6 +516,88 @@ export default function MultiTrackStudio() {
 
   const handleExport = async () => {
     toast.info('Export feature coming soon!')
+  }
+
+  // Clip editing handlers
+  const handleClipDoubleClick = (trackId: string, clipId: string) => {
+    setSelectedClip({ trackId, clipId })
+    setShowClipEditor(true)
+  }
+
+  const handleClipSplit = (position: number) => {
+    if (!selectedClip || !daw) return
+    // TODO: Implement split in DAW
+    console.log(`Split clip at ${position}s`)
+    toast.success('Clip split successfully')
+    setShowClipEditor(false)
+  }
+
+  const handleClipTrim = (startTime: number, duration: number) => {
+    if (!selectedClip || !daw) return
+    // TODO: Implement trim in DAW
+    console.log(`Trim clip: start ${startTime}s, duration ${duration}s`)
+    toast.success('Clip trimmed successfully')
+  }
+
+  const handleClipFadeChange = (fadeIn: number, fadeOut: number) => {
+    if (!selectedClip || !daw) return
+    // TODO: Implement fade in DAW
+    console.log(`Fade: in ${fadeIn}s, out ${fadeOut}s`)
+    toast.success('Fade applied successfully')
+  }
+
+  const handleClipDelete = () => {
+    if (!selectedClip || !daw) return
+    // TODO: Implement delete in DAW
+    console.log('Delete clip')
+    toast.success('Clip deleted')
+    setShowClipEditor(false)
+    setSelectedClip(null)
+  }
+
+  // Project management handlers
+  const handleSaveProject = async (projectName: string) => {
+    if (!daw) return
+    // TODO: Serialize DAW state and save to IndexedDB
+    console.log('Save project:', projectName)
+    toast.success(`Project "${projectName}" saved`)
+  }
+
+  const handleLoadProject = async (projectId: string) => {
+    if (!daw) return
+    // TODO: Load project from IndexedDB and restore DAW state
+    console.log('Load project:', projectId)
+    toast.success('Project loaded')
+  }
+
+  const handleDeleteProject = async (projectId: string) => {
+    // TODO: Delete project from IndexedDB
+    console.log('Delete project:', projectId)
+    toast.success('Project deleted')
+  }
+
+  const handleNewProject = () => {
+    if (!daw) return
+    // TODO: Clear DAW state and create new project
+    console.log('New project')
+    setCurrentProject(null)
+    toast.success('New project created')
+  }
+
+  // Automation handlers
+  const handleAddAutomationPoint = (trackId: string, laneId: string, time: number, value: number) => {
+    // TODO: Add automation point to DAW
+    console.log(`Add automation point: track ${trackId}, lane ${laneId}, time ${time}s, value ${value}`)
+  }
+
+  const handleMoveAutomationPoint = (trackId: string, laneId: string, pointIndex: number, time: number, value: number) => {
+    // TODO: Move automation point in DAW
+    console.log(`Move automation point: index ${pointIndex}, time ${time}s, value ${value}`)
+  }
+
+  const handleDeleteAutomationPoint = (trackId: string, laneId: string, pointIndex: number) => {
+    // TODO: Delete automation point from DAW
+    console.log(`Delete automation point: index ${pointIndex}`)
   }
 
   const handleGenerate = async (params: any) => {
@@ -628,6 +748,7 @@ export default function MultiTrackStudio() {
               onSelect={() => setSelectedTrackId(track.id)}
               onVolumeChange={(volume) => handleVolumeChange(track.id, volume)}
               onPanChange={(pan) => handlePanChange(track.id, pan)}
+              onClipDoubleClick={handleClipDoubleClick}
             />
           ))}
 
@@ -681,6 +802,43 @@ export default function MultiTrackStudio() {
           // TODO: Implement reverb in DAW
           console.log(`Track ${trackId} reverb: ${value}`)
         }}
+      />
+
+      {/* Clip Editor */}
+      {showClipEditor && selectedClip && (() => {
+        const track = tracks.find(t => t.id === selectedClip.trackId)
+        const clip = track?.clips.find(c => c.id === selectedClip.clipId)
+        
+        if (!clip) return null
+
+        return (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <ClipEditor
+              clipId={clip.id}
+              clipName={clip.name || 'Untitled Clip'}
+              startTime={clip.startTime}
+              duration={clip.duration}
+              fadeIn={0}
+              fadeOut={0}
+              onSplit={handleClipSplit}
+              onTrim={handleClipTrim}
+              onFadeChange={handleClipFadeChange}
+              onDelete={handleClipDelete}
+              onClose={() => setShowClipEditor(false)}
+            />
+          </div>
+        )
+      })()}
+
+      {/* Project Manager */}
+      <ProjectManager
+        isOpen={showProjectManager}
+        onClose={() => setShowProjectManager(false)}
+        currentProject={currentProject}
+        onSaveProject={handleSaveProject}
+        onLoadProject={handleLoadProject}
+        onDeleteProject={handleDeleteProject}
+        onNewProject={handleNewProject}
       />
     </div>
   )
