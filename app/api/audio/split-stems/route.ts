@@ -27,6 +27,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Audio URL required' }, { status: 400 })
     }
 
+    // Validate audio URL is accessible
+    console.log('[Stem Split] Validating audio URL accessibility:', audioUrl)
+    try {
+      const headResponse = await fetch(audioUrl, { method: 'HEAD' })
+      if (!headResponse.ok) {
+        console.error('[Stem Split] Audio URL not accessible:', headResponse.status, headResponse.statusText)
+        return NextResponse.json({ 
+          error: `Audio file not accessible (HTTP ${headResponse.status}). Please try with a publicly accessible audio URL.`,
+          audioUrl,
+          statusCode: headResponse.status 
+        }, { status: 400 })
+      }
+      console.log('[Stem Split] Audio URL is accessible, content-type:', headResponse.headers.get('content-type'))
+    } catch (urlError) {
+      console.error('[Stem Split] Failed to validate audio URL:', urlError)
+      return NextResponse.json({ 
+        error: 'Audio URL is not accessible. Please ensure the audio file is publicly available.',
+        audioUrl,
+        urlError: urlError instanceof Error ? urlError.message : 'Unknown error'
+      }, { status: 400 })
+    }
+
     // Check credits
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -171,6 +193,27 @@ export async function POST(request: Request) {
     
     if (!allStems || Object.keys(allStems).length === 0) {
       console.error('[Stem Split] Could not find any stems in output. Full output:', JSON.stringify(output, null, 2))
+      
+      // Check if the output has empty objects - this might indicate the model couldn't process the audio
+      const hasEmptyObjects = output && typeof output === 'object' && Object.values(output).some(v => 
+        v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0
+      )
+      
+      if (hasEmptyObjects) {
+        console.error('[Stem Split] Output contains empty objects - model may have failed to process audio URL:', audioUrl)
+        // Refund credits
+        await supabase
+          .from('users')
+          .update({ credits: userData.credits })
+          .eq('clerk_user_id', userId)
+        return NextResponse.json({ 
+          error: 'Audio processing failed - the AI model could not access or process the audio file. Please try with a different audio file.',
+          debug: 'Model returned empty objects instead of audio URLs',
+          audioUrlTested: audioUrl,
+          rawOutput: output
+        }, { status: 500 })
+      }
+      
       // Refund credits
       await supabase
         .from('users')
