@@ -12,12 +12,20 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { audioUrl, imageUrl, title } = await req.json()
+    const {
+      audioUrl,
+      imageUrl,
+      title,
+      audioPrompt,
+      imagePrompt,
+      isPublic,
+      metadata
+    } = await req.json()
 
     if (!audioUrl || !imageUrl) {
       return NextResponse.json(
@@ -26,8 +34,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Insert combined media into database
-    // Using only columns that exist in the combined_media table
+    // Extract metadata fields
+    const genre = metadata?.genre || null
+    const mood = metadata?.mood || null
+    const bpm = metadata?.bpm || null
+    const vocals = metadata?.vocals || null
+    const language = metadata?.language || null
+    const description = metadata?.description || null
+    const tags = metadata?.tags || []
+
+    // Insert combined media into database with full metadata
     const { data, error } = await supabase
       .from('combined_media')
       .insert({
@@ -35,6 +51,13 @@ export async function POST(req: NextRequest) {
         audio_url: audioUrl,
         image_url: imageUrl,
         title: title || 'Untitled Track',
+        genre: genre,
+        mood: mood,
+        bpm: bpm,
+        vocals: vocals,
+        language: language,
+        description: description,
+        tags: tags,
         created_at: new Date().toISOString(),
         likes: 0,
         plays: 0
@@ -121,4 +144,3 @@ export async function GET() {
     )
   }
 }
-

@@ -755,43 +755,175 @@ function ExplorePageContent() {
               <div className="px-6 py-8">
                 {genres.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-gray-400">No genres found yet</p>
+                    <div className="text-6xl mb-4">🎸</div>
+                    <h2 className="text-2xl font-bold text-white mb-2">No Genres Yet</h2>
+                    <p className="text-gray-400 mb-8">Genres will appear as artists release tracks with genre tags</p>
+                    <button
+                      onClick={() => setActiveTab('tracks')}
+                      className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/30"
+                    >
+                      Browse All Tracks
+                    </button>
                   </div>
                 ) : (
                   <>
-                    {/* Small helper showing how many genres are available */}
-                    <div className="mb-4 text-sm text-gray-400">Showing {genres.length} genre{genres.length !== 1 ? 's' : ''}</div>
-                    <div className="flex gap-4 mb-6 overflow-x-auto scrollbar-hide">
-                      {genres.map((g) => (
-                        <button key={g} onClick={() => setSelectedGenre(g)} className={`px-4 py-2 rounded-full ${selectedGenre === g ? 'bg-cyan-500 text-white' : 'bg-white/5 text-gray-300'}`}>
-                          {g}
+                    {/* Genre Filter Buttons - Enhanced */}
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-bold mb-4 relative z-10">🎸 Browse by Genre</h2>
+                      <div className="flex gap-3 mb-4 overflow-x-auto scrollbar-hide pb-2">
+                        {/* All Genres Button */}
+                        <button
+                          onClick={() => setSelectedGenre(null)}
+                          className={`px-6 py-3 rounded-full font-semibold whitespace-nowrap transition-all ${
+                            selectedGenre === null
+                              ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30'
+                              : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white border border-white/20 hover:border-cyan-400/50'
+                          }`}
+                        >
+                          🎵 All Genres ({combinedMedia.length})
                         </button>
-                      ))}
+
+                        {/* Individual Genre Buttons */}
+                        {genres.map((genre) => {
+                          const genreCount = combinedMedia.filter(m =>
+                            m.genre?.toLowerCase() === genre.toLowerCase()
+                          ).length
+
+                          return (
+                            <button
+                              key={genre}
+                              onClick={() => setSelectedGenre(genre)}
+                              className={`px-4 py-3 rounded-full font-medium whitespace-nowrap transition-all border ${
+                                selectedGenre === genre
+                                  ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30 border-cyan-400'
+                                  : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border-white/10 hover:border-cyan-400/30'
+                              }`}
+                            >
+                              {genre} ({genreCount})
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
+
+                    {/* Genre Content */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {(() => {
-                        const filteredMedia = selectedGenre ? combinedMedia.filter(m => m.genre === selectedGenre) : combinedMedia
+                        // Case-insensitive genre filtering
+                        const filteredMedia = selectedGenre
+                          ? combinedMedia.filter(m =>
+                              m.genre?.toLowerCase() === selectedGenre.toLowerCase()
+                            )
+                          : combinedMedia
+
                         if (filteredMedia.length === 0 && selectedGenre) {
                           return (
                             <div className="col-span-full text-center py-12">
                               <Music size={64} className="mx-auto text-gray-600 mb-4" />
                               <h3 className="text-xl font-semibold text-gray-400 mb-2">No tracks in "{selectedGenre}" genre yet</h3>
-                              <p className="text-gray-500">Be the first to create music in this genre!</p>
+                              <p className="text-gray-500 mb-6">Be the first to create music in this genre!</p>
+                              <button
+                                onClick={() => setSelectedGenre(null)}
+                                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/30"
+                              >
+                                Show All Genres
+                              </button>
                             </div>
                           )
                         }
-                        return filteredMedia.map((media) => (
-                          <div key={media.id} className="bg-black/40 p-4 rounded-lg">
-                            {media.image_url ? (
-                              <img src={media.image_url} alt={media.title} className="w-full h-40 object-cover rounded" />
-                            ) : (
-                              <div className="w-full h-40 bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center rounded">
-                                <Music size={48} className="text-cyan-400/40" />
+
+                        return filteredMedia.map((media) => {
+                          const isCurrentlyPlaying = playingId === media.id
+
+                          return (
+                            <div
+                              key={media.id}
+                              className={`group cursor-pointer transition-all hover:scale-105 ${
+                                isCurrentlyPlaying
+                                  ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-400/30'
+                                  : ''
+                              }`}
+                              onClick={() => handlePlay(media)}
+                            >
+                              <div className="bg-black/40 backdrop-blur-sm p-4 rounded-xl border border-white/10 hover:border-cyan-400/30 transition-all">
+                                {/* Cover Art */}
+                                <div className="relative aspect-square mb-4 rounded-lg overflow-hidden">
+                                  {media.image_url ? (
+                                    <Image
+                                      src={media.image_url}
+                                      alt={media.title}
+                                      width={300}
+                                      height={300}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      quality={75}
+                                      unoptimized
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center">
+                                      <Music size={48} className="text-cyan-400/40" />
+                                    </div>
+                                  )}
+
+                                  {/* Play Button Overlay */}
+                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                                      {isCurrentlyPlaying && isPlaying ? (
+                                        <Pause className="text-black" size={20} />
+                                      ) : (
+                                        <Play className="text-black ml-1" size={20} />
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Genre Badge */}
+                                  {media.genre && (
+                                    <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-cyan-400 text-xs font-bold px-2 py-1 rounded-full">
+                                      {media.genre}
+                                    </div>
+                                  )}
+
+                                  {/* Playing Indicator */}
+                                  {isCurrentlyPlaying && isPlaying && (
+                                    <div className="absolute top-2 right-2 w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
+                                  )}
+                                </div>
+
+                                {/* Track Info */}
+                                <div>
+                                  <h3 className="text-white font-semibold text-lg mb-1 truncate">{media.title}</h3>
+                                  <Link
+                                    href={`/profile/${media.user_id}`}
+                                    className="text-gray-400 hover:text-cyan-400 transition-colors text-sm truncate block"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {media.users?.username || media.username || 'Unknown Artist'}
+                                  </Link>
+
+                                  {/* Stats */}
+                                  <div className="flex items-center justify-between mt-3">
+                                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                                      <div className="flex items-center gap-1">
+                                        <Play size={12} />
+                                        <span>{media.plays || 0}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Like Button */}
+                                    <div onClick={(e) => e.stopPropagation()}>
+                                      <LikeButton
+                                        releaseId={media.id}
+                                        initialLikesCount={media.likes || 0}
+                                        size="sm"
+                                        showCount={true}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                            )}
-                            <h3 className="mt-2 text-white font-semibold">{media.title}</h3>
-                          </div>
-                        ))
+                            </div>
+                          )
+                        })
                       })()}
                     </div>
                   </>
