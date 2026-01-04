@@ -767,164 +767,105 @@ function ExplorePageContent() {
                   </div>
                 ) : (
                   <>
-                    {/* Genre Filter Buttons - Enhanced */}
-                    <div className="mb-6">
-                      <h2 className="text-2xl font-bold mb-4 relative z-10">🎸 Browse by Genre</h2>
-                      <div className="flex gap-3 mb-4 overflow-x-auto scrollbar-hide pb-2">
-                        {/* All Genres Button */}
-                        <button
-                          onClick={() => setSelectedGenre(null)}
-                          className={`px-6 py-3 rounded-full font-semibold whitespace-nowrap transition-all ${
-                            selectedGenre === null
-                              ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30'
-                              : 'bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white border border-white/20 hover:border-cyan-400/50'
-                          }`}
-                        >
-                          🎵 All Genres ({combinedMedia.length})
-                        </button>
+                    <h2 className="text-2xl font-bold mb-6 relative z-10">🎸 Browse by Genre</h2>
+                    
+                    {/* Genre Thumbnails Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                      {genres.map((genre) => {
+                        // Get all tracks for this genre
+                        const genreTracks = combinedMedia.filter(m =>
+                          m.genre?.toLowerCase() === genre.toLowerCase()
+                        )
+                        
+                        // Get first track's image for thumbnail
+                        const thumbnailImage = genreTracks[0]?.image_url
+                        const trackCount = genreTracks.length
+                        
+                        // Check if this genre is currently playing
+                        const isGenrePlaying = genreTracks.some(track => 
+                          track.id === playingId && isPlaying
+                        )
 
-                        {/* Individual Genre Buttons */}
-                        {genres.map((genre) => {
-                          const genreCount = combinedMedia.filter(m =>
-                            m.genre?.toLowerCase() === genre.toLowerCase()
-                          ).length
-
-                          return (
-                            <button
-                              key={genre}
-                              onClick={() => setSelectedGenre(genre)}
-                              className={`px-4 py-3 rounded-full font-medium whitespace-nowrap transition-all border ${
-                                selectedGenre === genre
-                                  ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30 border-cyan-400'
-                                  : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border-white/10 hover:border-cyan-400/30'
-                              }`}
-                            >
-                              {genre} ({genreCount})
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Genre Content */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {(() => {
-                        // Case-insensitive genre filtering
-                        const filteredMedia = selectedGenre
-                          ? combinedMedia.filter(m =>
-                              m.genre?.toLowerCase() === selectedGenre.toLowerCase()
-                            )
-                          : combinedMedia
-
-                        if (filteredMedia.length === 0 && selectedGenre) {
-                          return (
-                            <div className="col-span-full text-center py-12">
-                              <Music size={64} className="mx-auto text-gray-600 mb-4" />
-                              <h3 className="text-xl font-semibold text-gray-400 mb-2">No tracks in "{selectedGenre}" genre yet</h3>
-                              <p className="text-gray-500 mb-6">Be the first to create music in this genre!</p>
-                              <button
-                                onClick={() => setSelectedGenre(null)}
-                                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-cyan-500/30"
-                              >
-                                Show All Genres
-                              </button>
-                            </div>
-                          )
+                        const handleGenreClick = () => {
+                          if (genreTracks.length > 0) {
+                            // Set playlist to all tracks in this genre
+                            setPlaylist(genreTracks.map(m => ({
+                              id: m.id,
+                              title: m.title,
+                              audioUrl: m.audioUrl || m.audio_url,
+                              imageUrl: m.imageUrl || m.image_url,
+                              artist: m.users?.username || m.username || 'Unknown Artist'
+                            })))
+                            
+                            // Auto-play the first track
+                            playTrack({
+                              id: genreTracks[0].id,
+                              title: genreTracks[0].title,
+                              audioUrl: genreTracks[0].audioUrl || genreTracks[0].audio_url,
+                              imageUrl: genreTracks[0].imageUrl || genreTracks[0].image_url,
+                              artist: genreTracks[0].users?.username || genreTracks[0].username || 'Unknown Artist'
+                            })
+                            setShowSearchBox(false)
+                          }
                         }
 
-                        return filteredMedia.map((media) => {
-                          const isCurrentlyPlaying = playingId === media.id
-
-                          return (
-                            <div
-                              key={media.id}
-                              className={`group cursor-pointer transition-all hover:scale-105 ${
-                                isCurrentlyPlaying
-                                  ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-400/30'
-                                  : ''
-                              }`}
-                              onClick={() => handlePlay(media)}
-                            >
-                              <div className="bg-black/40 backdrop-blur-sm p-4 rounded-xl border border-white/10 hover:border-cyan-400/30 transition-all">
-                                {/* Cover Art */}
-                                <div className="relative aspect-square mb-4 rounded-lg overflow-hidden">
-                                  {media.image_url ? (
-                                    <Image
-                                      src={media.image_url}
-                                      alt={media.title}
-                                      width={300}
-                                      height={300}
-                                      className="w-full h-full object-cover"
-                                      loading="lazy"
-                                      quality={75}
-                                      unoptimized
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center">
-                                      <Music size={48} className="text-cyan-400/40" />
-                                    </div>
-                                  )}
-
-                                  {/* Play Button Overlay */}
-                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
-                                      {isCurrentlyPlaying && isPlaying ? (
-                                        <Pause className="text-black" size={20} />
-                                      ) : (
-                                        <Play className="text-black ml-1" size={20} />
-                                      )}
-                                    </div>
+                        return (
+                          <div
+                            key={genre}
+                            onClick={handleGenreClick}
+                            className={`group cursor-pointer transition-all hover:scale-105 ${
+                              isGenrePlaying ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-400/30' : ''
+                            }`}
+                          >
+                            <div className="bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 hover:border-cyan-400/30 transition-all overflow-hidden">
+                              {/* Genre Thumbnail */}
+                              <div className="relative aspect-square">
+                                {thumbnailImage ? (
+                                  <Image
+                                    src={thumbnailImage}
+                                    alt={genre}
+                                    width={200}
+                                    height={200}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                    quality={75}
+                                    unoptimized
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center">
+                                    <Music size={48} className="text-cyan-400/40" />
                                   </div>
-
-                                  {/* Genre Badge */}
-                                  {media.genre && (
-                                    <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-cyan-400 text-xs font-bold px-2 py-1 rounded-full">
-                                      {media.genre}
-                                    </div>
-                                  )}
-
-                                  {/* Playing Indicator */}
-                                  {isCurrentlyPlaying && isPlaying && (
-                                    <div className="absolute top-2 right-2 w-3 h-3 bg-cyan-400 rounded-full animate-pulse shadow-lg shadow-cyan-400/50"></div>
-                                  )}
+                                )}
+                                
+                                {/* Overlay with Genre Info */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent flex flex-col items-center justify-end p-4">
+                                  <h3 className="text-white font-bold text-lg mb-1 capitalize">{genre}</h3>
+                                  <p className="text-cyan-400 text-sm font-medium">{trackCount} {trackCount === 1 ? 'track' : 'tracks'}</p>
                                 </div>
 
-                                {/* Track Info */}
-                                <div>
-                                  <h3 className="text-white font-semibold text-lg mb-1 truncate">{media.title}</h3>
-                                  <Link
-                                    href={`/profile/${media.user_id}`}
-                                    className="text-gray-400 hover:text-cyan-400 transition-colors text-sm truncate block"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {media.users?.username || media.username || 'Unknown Artist'}
-                                  </Link>
-
-                                  {/* Stats */}
-                                  <div className="flex items-center justify-between mt-3">
-                                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                                      <div className="flex items-center gap-1">
-                                        <Play size={12} />
-                                        <span>{media.plays || 0}</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Like Button */}
-                                    <div onClick={(e) => e.stopPropagation()}>
-                                      <LikeButton
-                                        releaseId={media.id}
-                                        initialLikesCount={media.likes || 0}
-                                        size="sm"
-                                        showCount={true}
-                                      />
-                                    </div>
+                                {/* Play Button Overlay */}
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="w-16 h-16 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                                    {isGenrePlaying ? (
+                                      <Pause className="text-black" size={28} />
+                                    ) : (
+                                      <Play className="text-black ml-1" size={28} />
+                                    )}
                                   </div>
                                 </div>
+
+                                {/* Playing Indicator */}
+                                {isGenrePlaying && (
+                                  <div className="absolute top-3 right-3 flex items-center gap-2 bg-cyan-400/90 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                                    <div className="w-2 h-2 bg-black rounded-full animate-pulse"></div>
+                                    <span className="text-black text-xs font-bold">Playing</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          )
-                        })
-                      })()}
+                          </div>
+                        )
+                      })}
                     </div>
                   </>
                 )}
