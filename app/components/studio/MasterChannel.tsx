@@ -1,85 +1,129 @@
 /**
- * MasterChannel - Master track mixer strip
- * Always visible in inspector, controls master output
+ * MasterChannel - Master track mixer strip with glassmorphism
+ * Always visible in mixer view, controls master output with spectrum analyzer
  */
 
-'use client';
+'use client'
 
-import { Volume2, VolumeX } from 'lucide-react';
-import { useStudio } from '@/app/contexts/StudioContext';
+import { useState, useRef, useEffect } from 'react'
+import { GlassPanel, GlassFader, GlassMeter } from './glass'
 
-export default function MasterChannel() {
-  const { masterVolume, setMasterVolume } = useStudio();
+interface MasterChannelProps {
+  volume: number
+  vuLevel: number
+  onVolumeChange: (volume: number) => void
+}
+
+export default function MasterChannel({ volume, vuLevel, onVolumeChange }: MasterChannelProps) {
+  const [analyserData, setAnalyserData] = useState<Uint8Array>(new Uint8Array(32))
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Spectrum analyzer visualization
+  useEffect(() => {
+    if (!canvasRef.current) return
+
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animationId: number
+
+    const draw = () => {
+      const width = canvas.width
+      const height = canvas.height
+
+      // Clear canvas
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+      ctx.fillRect(0, 0, width, height)
+
+      // Draw spectrum bars
+      const barWidth = width / analyserData.length
+      const gradient = ctx.createLinearGradient(0, height, 0, 0)
+      gradient.addColorStop(0, '#06B6D4')
+      gradient.addColorStop(0.5, '#A855F7')
+      gradient.addColorStop(1, '#EC4899')
+
+      analyserData.forEach((value, index) => {
+        const barHeight = (value / 255) * height
+        const x = index * barWidth
+
+        ctx.fillStyle = gradient
+        ctx.fillRect(x, height - barHeight, barWidth - 2, barHeight)
+      })
+
+      animationId = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId)
+    }
+  }, [analyserData])
 
   return (
-    <div className="border-b border-gray-700 bg-gradient-to-b from-pink-900/10 to-cyan-900/10">
-      <div className="px-4 py-3 border-b border-gray-700/50">
-        <h3 className="text-sm font-bold text-pink-400">Master Channel</h3>
+    <GlassPanel blur="lg" glow="cyan" className="w-40 p-4 flex flex-col gap-4">
+      {/* Master label */}
+      <div className="text-center">
+        <div className="text-sm font-bold text-white">MASTER</div>
+        <div className="text-[10px] text-cyan-400">Output</div>
       </div>
 
-      <div className="px-4 py-4 space-y-4">
-        {/* Master Volume */}
-        <div>
-          <label className="text-xs text-gray-400 mb-2 block">Master Volume</label>
-          <div className="flex items-center gap-2">
-            {masterVolume === 0 ? (
-              <VolumeX className="w-4 h-4 text-gray-400" />
-            ) : (
-              <Volume2 className="w-4 h-4 text-pink-400" />
-            )}
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={masterVolume}
-              onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
-              className="flex-1 h-2 accent-pink-500"
-            />
-            <span className="text-xs text-gray-400 w-12 text-right">
-              {Math.round(masterVolume * 100)}%
-            </span>
-          </div>
-        </div>
+      {/* Spectrum analyzer */}
+      <div className="bg-black/40 rounded-lg p-2 border border-white/10">
+        <canvas
+          ref={canvasRef}
+          width={120}
+          height={80}
+          className="w-full h-20"
+        />
+      </div>
 
-        {/* VU Meter Placeholder */}
-        <div>
-          <label className="text-xs text-gray-400 mb-2 block">Output Level</label>
-          <div className="h-20 bg-black/30 rounded border border-gray-700 flex items-end justify-center gap-1 p-2">
-            {/* Simple VU meter visualization */}
-            {Array.from({ length: 20 }).map((_, i) => (
-              <div
-                key={i}
-                className={`flex-1 rounded-t transition-all ${
-                  i < Math.floor(masterVolume * 20)
-                    ? i < 14
-                      ? 'bg-green-500'
-                      : i < 18
-                      ? 'bg-yellow-500'
-                      : 'bg-red-500'
-                    : 'bg-gray-800'
-                }`}
-                style={{ 
-                  height: `${((i + 1) / 20) * 100}%`,
-                  opacity: i < Math.floor(masterVolume * 20) ? 1 : 0.3,
-                }}
-              />
-            ))}
-          </div>
+      {/* Limiter indicator */}
+      <div className="flex flex-col gap-1">
+        <div className="flex justify-between text-[10px]">
+          <span className="text-gray-400">Limiter</span>
+          <span className={`font-mono ${vuLevel > 0.95 ? 'text-red-400' : 'text-gray-500'}`}>
+            {vuLevel > 0.95 ? 'ACTIVE' : 'OFF'}
+          </span>
         </div>
-
-        {/* Stats */}
-        <div className="pt-3 border-t border-gray-700/50 space-y-1 text-xs text-gray-400">
-          <div className="flex justify-between">
-            <span>Peak:</span>
-            <span className="text-white">-6.2 dB</span>
-          </div>
-          <div className="flex justify-between">
-            <span>RMS:</span>
-            <span className="text-white">-12.4 dB</span>
-          </div>
+        <div className="h-1 bg-black/40 rounded-full overflow-hidden">
+          <div
+            className={`h-full transition-all duration-100 ${
+              vuLevel > 0.95 ? 'bg-red-500' : 'bg-gray-600'
+            }`}
+            style={{ width: `${Math.min(100, (vuLevel / 0.95) * 100)}%` }}
+          />
         </div>
       </div>
-    </div>
-  );
+
+      {/* Volume fader + VU meter */}
+      <div className="flex justify-center gap-3 flex-1 min-h-[160px]">
+        <GlassFader
+          value={volume}
+          onChange={onVolumeChange}
+          color="cyan"
+          orientation="vertical"
+          showValue
+          className="h-full"
+        />
+        <GlassMeter
+          level={vuLevel}
+          color="cyan"
+          orientation="vertical"
+          className="h-full"
+          showPeak
+        />
+      </div>
+
+      {/* Output level display */}
+      <div className="text-center">
+        <div className="text-xs font-mono text-white">
+          {(vuLevel * 100).toFixed(1)}%
+        </div>
+        <div className="text-[10px] text-gray-400">Level</div>
+      </div>
+    </GlassPanel>
+  )
 }
+

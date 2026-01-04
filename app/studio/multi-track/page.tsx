@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { Sparkles, Music, Upload, Plus, Minus, Save, Download, Settings } from 'lucide-react'
+import { Sparkles, Music, Upload, Plus, Minus, Save, Download, Settings, Sliders } from 'lucide-react'
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW'
 import type { Track } from '@/lib/audio/TrackManager'
 import { GlassPanel, GlassButton, GlassFader, GlassKnob, GlassMeter, GlassTooltip, GlassTransport } from '@/app/components/studio/glass'
+import MixerView from '@/app/components/studio/MixerView'
 import AnimatedBackground from '@/app/components/AnimatedBackground'
 import { toast } from '@/lib/toast'
 
@@ -332,6 +333,9 @@ export default function MultiTrackStudio() {
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
   const [duration, setDuration] = useState(60)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [showMixer, setShowMixer] = useState(false)
+  const [masterVolume, setMasterVolume] = useState(1)
+  const [masterVULevel, setMasterVULevel] = useState(0)
 
   const rafRef = useRef<number | undefined>(undefined)
 
@@ -402,6 +406,10 @@ export default function MultiTrackStudio() {
             stop()
           }
           break
+        case 'm':
+          e.preventDefault()
+          setShowMixer(!showMixer)
+          break
         case '+':
         case '=':
           e.preventDefault()
@@ -417,7 +425,7 @@ export default function MultiTrackStudio() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [zoom])
+  }, [zoom, showMixer])
 
   const togglePlay = () => {
     if (!daw) return
@@ -573,6 +581,10 @@ export default function MultiTrackStudio() {
 
           <div className="w-px h-8 bg-white/10" />
 
+          <GlassTooltip content="Open Mixer (M)">
+            <GlassButton variant="secondary" size="sm" icon={<Sliders className="w-4 h-4" />} onClick={() => setShowMixer(true)}>{''}</GlassButton>
+          </GlassTooltip>
+
           <GlassTooltip content="Save Project (Ctrl+S)">
             <GlassButton variant="secondary" size="sm" icon={<Save className="w-4 h-4" />} onClick={handleSave}>{''}</GlassButton>
           </GlassTooltip>
@@ -634,6 +646,42 @@ export default function MultiTrackStudio() {
 
       {/* AI Generation Panel */}
       <AIGenerationPanel onGenerate={handleGenerate} isGenerating={isGenerating} />
+
+      {/* Mixer View */}
+      <MixerView
+        isOpen={showMixer}
+        onClose={() => setShowMixer(false)}
+        tracks={tracks}
+        masterVolume={masterVolume}
+        masterVULevel={masterVULevel}
+        onMasterVolumeChange={setMasterVolume}
+        onTrackVolumeChange={(trackId, volume) => handleVolumeChange(trackId, volume)}
+        onTrackPanChange={(trackId, pan) => handlePanChange(trackId, pan)}
+        onTrackMuteToggle={(trackId) => {
+          if (daw) {
+            daw.toggleTrackMute(trackId)
+            setTracks(daw.getTracks())
+          }
+        }}
+        onTrackSoloToggle={(trackId) => {
+          if (daw) {
+            daw.toggleTrackSolo(trackId)
+            setTracks(daw.getTracks())
+          }
+        }}
+        onTrackEQChange={(trackId, band, value) => {
+          // TODO: Implement EQ in DAW
+          console.log(`Track ${trackId} EQ ${band}: ${value}`)
+        }}
+        onTrackCompressionChange={(trackId, value) => {
+          // TODO: Implement compression in DAW
+          console.log(`Track ${trackId} compression: ${value}`)
+        }}
+        onTrackReverbChange={(trackId, value) => {
+          // TODO: Implement reverb in DAW
+          console.log(`Track ${trackId} reverb: ${value}`)
+        }}
+      />
     </div>
   )
 }
