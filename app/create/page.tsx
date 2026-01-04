@@ -611,6 +611,9 @@ function CreatePageContent() {
 
       setMessages(prev => [...prev, userMessage, generatingMessage])
       setGenerationQueue(prev => [...prev, generatingMessage.id])
+      
+      // Store original prompt before clearing input
+      const originalPrompt = input
       setInput('')
 
       // Smart auto-fill: If user hasn't filled mandatory fields, auto-generate them
@@ -618,25 +621,31 @@ function CreatePageContent() {
       let finalLyrics = customLyrics
       let finalGenre = genre
       let finalBpm = bpm
+      let wasAutoFilled = false
 
       // Auto-generate missing fields based on prompt
       if (!finalTitle.trim()) {
         // Extract title from prompt (first 50 chars or first sentence)
-        finalTitle = input.length > 50 ? input.substring(0, 50).trim() + '...' : input.trim()
+        finalTitle = originalPrompt.length > 50 ? originalPrompt.substring(0, 50).trim() + '...' : originalPrompt.trim()
+        setCustomTitle(finalTitle)
+        wasAutoFilled = true
+        console.log('📝 Auto-filled title:', finalTitle)
       }
 
       // If no lyrics provided, auto-generate using Atom API
       if (!finalLyrics.trim()) {
         console.log('🤖 Auto-generating lyrics from prompt...')
+        wasAutoFilled = true
         try {
           const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: input })
+            body: JSON.stringify({ prompt: originalPrompt })
           })
           const lyricsData = await lyricsResponse.json()
           if (lyricsData.success && lyricsData.lyrics) {
             finalLyrics = lyricsData.lyrics
+            setCustomLyrics(finalLyrics)
             console.log('✅ Auto-generated lyrics:', finalLyrics.substring(0, 100) + '...')
           }
         } catch (error) {
@@ -646,7 +655,7 @@ function CreatePageContent() {
 
       // Auto-detect genre from prompt if not provided
       if (!finalGenre.trim()) {
-        const promptLower = input.toLowerCase()
+        const promptLower = originalPrompt.toLowerCase()
         if (promptLower.includes('rock') || promptLower.includes('guitar')) finalGenre = 'rock'
         else if (promptLower.includes('jazz') || promptLower.includes('saxophone')) finalGenre = 'jazz'
         else if (promptLower.includes('hip hop') || promptLower.includes('rap')) finalGenre = 'hip-hop'
@@ -659,12 +668,14 @@ function CreatePageContent() {
         else if (promptLower.includes('folk')) finalGenre = 'folk'
         else if (promptLower.includes('lofi') || promptLower.includes('chill')) finalGenre = 'lofi'
         else finalGenre = 'pop' // Default fallback
+        setGenre(finalGenre)
+        wasAutoFilled = true
         console.log('🎸 Auto-detected genre:', finalGenre)
       }
 
       // Auto-detect BPM from prompt if not provided
       if (!finalBpm.trim()) {
-        const promptLower = input.toLowerCase()
+        const promptLower = originalPrompt.toLowerCase()
         if (promptLower.includes('fast') || promptLower.includes('energetic') || promptLower.includes('upbeat')) finalBpm = '140'
         else if (promptLower.includes('slow') || promptLower.includes('chill') || promptLower.includes('relaxing')) finalBpm = '80'
         else if (promptLower.includes('medium') || promptLower.includes('moderate')) finalBpm = '110'
@@ -676,12 +687,31 @@ function CreatePageContent() {
           else if (finalGenre.includes('lofi') || finalGenre.includes('chill')) finalBpm = '85'
           else finalBpm = '110' // Default moderate BPM
         }
+        setBpm(finalBpm)
+        wasAutoFilled = true
         console.log('🥁 Auto-detected BPM:', finalBpm)
+      }
+
+      // Show user what was auto-filled
+      if (wasAutoFilled) {
+        const autoFilledFields: string[] = []
+        if (!customTitle.trim()) autoFilledFields.push('Title')
+        if (!customLyrics.trim()) autoFilledFields.push('Lyrics')
+        if (!genre.trim()) autoFilledFields.push(`Genre (${finalGenre})`)
+        if (!bpm.trim()) autoFilledFields.push(`BPM (${finalBpm})`)
+        
+        const autoFillMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          type: 'assistant',
+          content: `✨ Auto-filled: ${autoFilledFields.join(', ')}`,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, autoFillMessage])
       }
 
       // Process queue asynchronously with auto-filled or user-provided values
       processQueue(generatingMessage.id, 'music', {
-        prompt: input,
+        prompt: originalPrompt,
         genre: finalGenre,
         bpm: finalBpm,
         customTitle: finalTitle,
@@ -689,12 +719,8 @@ function CreatePageContent() {
         songDuration
       })
 
-      // Clear parameters after queueing
-      setCustomTitle('')
-      setGenre('')
-      setCustomLyrics('')
-      setBpm('')
-      setSongDuration('medium')
+      // Don't clear parameters - keep them visible so user can see what was auto-filled
+      // They'll be cleared after the next generation or manually
       return
     }
 
