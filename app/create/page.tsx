@@ -514,25 +514,8 @@ function CreatePageContent() {
       return
     }
 
-    // MANDATORY: Check for title before music generation (ONLY for regular music, NOT instrumental)
-    if (selectedType === 'music' && !isInstrumental && !customTitle.trim()) {
-      // Open the lyrics modal first
-      setShowLyricsModal(true)
-      // Open parameters section and highlight title field
-      setShowTitleError(true)
-      // Scroll to parameters section smoothly after modal opens
-      setTimeout(() => {
-        const paramsSection = document.getElementById('parameters-section')
-        if (paramsSection) {
-          paramsSection.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
-      }, 100)
-      // Auto-clear error after 5 seconds
-      setTimeout(() => setShowTitleError(false), 5000)
-      return
-    }
-
     // Validate title length if provided (ONLY for regular music, NOT instrumental)
+    // Note: Title is now auto-generated if not provided, so we only validate if user enters it
     if (selectedType === 'music' && !isInstrumental && customTitle.trim()) {
       const titleLength = customTitle.trim().length
       if (titleLength < 3) {
@@ -630,13 +613,79 @@ function CreatePageContent() {
       setGenerationQueue(prev => [...prev, generatingMessage.id])
       setInput('')
 
-      // Process queue asynchronously
+      // Smart auto-fill: If user hasn't filled mandatory fields, auto-generate them
+      let finalTitle = customTitle
+      let finalLyrics = customLyrics
+      let finalGenre = genre
+      let finalBpm = bpm
+
+      // Auto-generate missing fields based on prompt
+      if (!finalTitle.trim()) {
+        // Extract title from prompt (first 50 chars or first sentence)
+        finalTitle = input.length > 50 ? input.substring(0, 50).trim() + '...' : input.trim()
+      }
+
+      // If no lyrics provided, auto-generate using Atom API
+      if (!finalLyrics.trim()) {
+        console.log('🤖 Auto-generating lyrics from prompt...')
+        try {
+          const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: input })
+          })
+          const lyricsData = await lyricsResponse.json()
+          if (lyricsData.success && lyricsData.lyrics) {
+            finalLyrics = lyricsData.lyrics
+            console.log('✅ Auto-generated lyrics:', finalLyrics.substring(0, 100) + '...')
+          }
+        } catch (error) {
+          console.error('❌ Auto-lyrics generation failed:', error)
+        }
+      }
+
+      // Auto-detect genre from prompt if not provided
+      if (!finalGenre.trim()) {
+        const promptLower = input.toLowerCase()
+        if (promptLower.includes('rock') || promptLower.includes('guitar')) finalGenre = 'rock'
+        else if (promptLower.includes('jazz') || promptLower.includes('saxophone')) finalGenre = 'jazz'
+        else if (promptLower.includes('hip hop') || promptLower.includes('rap')) finalGenre = 'hip-hop'
+        else if (promptLower.includes('electronic') || promptLower.includes('edm')) finalGenre = 'electronic'
+        else if (promptLower.includes('classical') || promptLower.includes('orchestra')) finalGenre = 'classical'
+        else if (promptLower.includes('country')) finalGenre = 'country'
+        else if (promptLower.includes('blues')) finalGenre = 'blues'
+        else if (promptLower.includes('reggae')) finalGenre = 'reggae'
+        else if (promptLower.includes('metal')) finalGenre = 'metal'
+        else if (promptLower.includes('folk')) finalGenre = 'folk'
+        else if (promptLower.includes('lofi') || promptLower.includes('chill')) finalGenre = 'lofi'
+        else finalGenre = 'pop' // Default fallback
+        console.log('🎸 Auto-detected genre:', finalGenre)
+      }
+
+      // Auto-detect BPM from prompt if not provided
+      if (!finalBpm.trim()) {
+        const promptLower = input.toLowerCase()
+        if (promptLower.includes('fast') || promptLower.includes('energetic') || promptLower.includes('upbeat')) finalBpm = '140'
+        else if (promptLower.includes('slow') || promptLower.includes('chill') || promptLower.includes('relaxing')) finalBpm = '80'
+        else if (promptLower.includes('medium') || promptLower.includes('moderate')) finalBpm = '110'
+        else {
+          // BPM based on genre
+          if (finalGenre.includes('electronic') || finalGenre.includes('edm')) finalBpm = '128'
+          else if (finalGenre.includes('hip-hop') || finalGenre.includes('rap')) finalBpm = '90'
+          else if (finalGenre.includes('rock')) finalBpm = '120'
+          else if (finalGenre.includes('lofi') || finalGenre.includes('chill')) finalBpm = '85'
+          else finalBpm = '110' // Default moderate BPM
+        }
+        console.log('🥁 Auto-detected BPM:', finalBpm)
+      }
+
+      // Process queue asynchronously with auto-filled or user-provided values
       processQueue(generatingMessage.id, 'music', {
         prompt: input,
-        genre,
-        bpm,
-        customTitle,
-        customLyrics,
+        genre: finalGenre,
+        bpm: finalBpm,
+        customTitle: finalTitle,
+        customLyrics: finalLyrics,
         songDuration
       })
 
