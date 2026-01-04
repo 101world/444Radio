@@ -603,22 +603,79 @@ export default function MultiTrackStudio() {
   // Project management handlers
   const handleSaveProject = async (projectName: string) => {
     if (!daw) return
-    // TODO: Serialize DAW state and save to IndexedDB
-    console.log('Save project:', projectName)
-    toast.success(`Project "${projectName}" saved`)
+    
+    try {
+      // Serialize DAW state
+      const projectData = daw.serializeProject(projectName)
+      projectData.id = `project-${Date.now()}`
+      projectData.updatedAt = Date.now()
+
+      // Save to IndexedDB
+      const db = await openProjectDatabase()
+      const transaction = db.transaction(['projects'], 'readwrite')
+      const store = transaction.objectStore('projects')
+      await store.put(projectData)
+
+      setCurrentProject(projectData)
+      toast.success(`Project "${projectName}" saved`)
+    } catch (error) {
+      console.error('Save error:', error)
+      toast.error('Failed to save project')
+    }
   }
 
   const handleLoadProject = async (projectId: string) => {
     if (!daw) return
-    // TODO: Load project from IndexedDB and restore DAW state
-    console.log('Load project:', projectId)
-    toast.success('Project loaded')
+    
+    try {
+      // Load from IndexedDB
+      const db = await openProjectDatabase()
+      const transaction = db.transaction(['projects'], 'readonly')
+      const store = transaction.objectStore('projects')
+      const request = store.get(projectId)
+
+      request.onsuccess = async () => {
+        const projectData = request.result
+        if (projectData) {
+          await daw.deserializeProject(projectData)
+          setCurrentProject(projectData)
+          setTracks(daw.getTracks())
+          setBpm(projectData.bpm || 120)
+          toast.success('Project loaded')
+        }
+      }
+    } catch (error) {
+      console.error('Load error:', error)
+      toast.error('Failed to load project')
+    }
   }
 
   const handleDeleteProject = async (projectId: string) => {
-    // TODO: Delete project from IndexedDB
-    console.log('Delete project:', projectId)
-    toast.success('Project deleted')
+    try {
+      const db = await openProjectDatabase()
+      const transaction = db.transaction(['projects'], 'readwrite')
+      const store = transaction.objectStore('projects')
+      await store.delete(projectId)
+      toast.success('Project deleted')
+    } catch (error) {
+      console.error('Delete error:', error)
+      toast.error('Failed to delete project')
+    }
+  }
+
+  const openProjectDatabase = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('444RadioProjects', 1)
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result)
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result
+        if (!db.objectStoreNames.contains('projects')) {
+          const store = db.createObjectStore('projects', { keyPath: 'id' })
+          store.createIndex('updatedAt', 'updatedAt', { unique: false })
+        }
+      }
+    })
   }
 
   const handleNewProject = () => {

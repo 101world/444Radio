@@ -664,6 +664,92 @@ export class MultiTrackDAW {
     return track?.automation.find(l => l.id === laneId)
   }
 
+  // Project Management
+  serializeProject(projectName: string): any {
+    const tracks = this.trackManager.getTracks()
+    
+    return {
+      name: projectName,
+      version: '1.0',
+      bpm: this.transportState.bpm,
+      sampleRate: this.audioContext.sampleRate,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      tracks: tracks.map(track => ({
+        id: track.id,
+        name: track.name,
+        type: track.type,
+        color: track.color,
+        volume: track.volume,
+        pan: track.pan,
+        muted: track.muted,
+        solo: track.solo,
+        clips: track.clips.map(clip => ({
+          id: clip.id,
+          name: clip.name,
+          startTime: clip.startTime,
+          duration: clip.duration,
+          offset: clip.offset,
+          fadeIn: clip.fadeIn,
+          fadeOut: clip.fadeOut,
+          gain: clip.gain,
+          // Note: audio buffer not serialized, needs to be reloaded
+          bufferUrl: (clip as any).bufferUrl // Store URL if available
+        })),
+        automation: track.automation.map(lane => ({
+          id: lane.id,
+          parameter: lane.parameter,
+          visible: lane.visible,
+          points: lane.points
+        }))
+      }))
+    }
+  }
+
+  async deserializeProject(projectData: any): Promise<void> {
+    // Clear existing tracks
+    const existingTracks = this.trackManager.getTracks()
+    existingTracks.forEach(track => {
+      this.trackManager.deleteTrack(track.id)
+    })
+
+    // Restore BPM
+    this.setBPM(projectData.bpm || 120)
+
+    // Restore tracks
+    for (const trackData of projectData.tracks) {
+      const track = this.trackManager.createTrack({
+        id: trackData.id,
+        name: trackData.name,
+        type: trackData.type,
+        color: trackData.color
+      })
+
+      // Restore track settings
+      this.setTrackVolume(trackData.id, trackData.volume)
+      this.setTrackPan(trackData.id, trackData.pan)
+      if (trackData.muted) this.toggleTrackMute(trackData.id)
+      if (trackData.solo) this.toggleTrackSolo(trackData.id)
+
+      // Restore clips (without audio buffers - need to be reloaded separately)
+      track.clips = trackData.clips.map((clipData: any) => ({
+        ...clipData,
+        trackId: track.id,
+        locked: false
+      }))
+
+      // Restore automation
+      track.automation = trackData.automation.map((laneData: any) => ({
+        ...laneData
+      }))
+
+      // Create channel strip
+      this.mixingConsole.createChannelStrip(track.id, track.name, track.type)
+    }
+
+    this.emit('projectLoaded', projectData)
+  }
+
   // MIDI
   createMIDITrack(name: string): void {
     const track = this.midiManager.createMIDITrack(name)
