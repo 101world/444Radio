@@ -561,7 +561,7 @@ export default function FloatingAudioPlayer() {
       {/* Player Content */}
       {activeTab === 'player' && (
         <div className="px-4 py-3 flex flex-col gap-3">
-          {/* Cover Art & Track Info - Desktop Only */}
+          {/* Cover Art & Track Info - Desktop Only - Responsive to player size */}
           {!isMobile && currentTrack && (
             <div className="flex flex-col items-center gap-2 pb-3 border-b border-white/10">
               {currentTrack.imageUrl && (
@@ -570,9 +570,14 @@ export default function FloatingAudioPlayer() {
                   alt={currentTrack.title}
                   width={180}
                   height={180}
-                  className="rounded-lg shadow-2xl shadow-cyan-500/20 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                  className="rounded-lg shadow-2xl shadow-cyan-500/20 object-cover cursor-pointer hover:opacity-90 transition-all"
                   onClick={() => setShowCoverArt(true)}
-                  style={{ width: 'auto', height: 'auto', maxWidth: '180px', maxHeight: '180px' }}
+                  style={{ 
+                    width: 'auto', 
+                    height: 'auto', 
+                    maxWidth: `${Math.min(size.width - 80, 180)}px`,
+                    maxHeight: `${Math.min(size.width - 80, 180)}px`
+                  }}
                 />
               )}
               <div className="text-center w-full px-2">
@@ -823,10 +828,10 @@ export default function FloatingAudioPlayer() {
         </div>
       )}
 
-      {/* Cover Art Modal - COMPACT PLAYER SIZE */}
+      {/* Cover Art Modal - COMPACT PLAYER SIZE - Click anywhere to close */}
       {showCoverArt && currentTrack && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center animate-fadeIn overflow-hidden bg-black"
+          className="fixed inset-0 z-[100] flex items-center justify-center animate-fadeIn overflow-hidden bg-black cursor-pointer"
           onClick={() => setShowCoverArt(false)}
         >
           {/* Dynamic Background Blur from Cover Art */}
@@ -848,13 +853,16 @@ export default function FloatingAudioPlayer() {
             {/* Top Bar */}
             <div className="relative z-10 flex items-center justify-between px-4 mb-2">
               <button
-                onClick={() => setShowCoverArt(false)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowCoverArt(false)
+                }}
                 className="flex items-center gap-1.5 text-white/60 hover:text-white transition-all"
               >
                 <div className="w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 flex items-center justify-center hover:bg-black/50 transition-all">
                   <X size={12} />
                 </div>
-                <span className="text-[10px] font-medium hidden sm:block">ESC</span>
+                <span className="text-[10px] font-medium hidden sm:block">ESC or Click anywhere</span>
               </button>
             </div>
 
