@@ -605,7 +605,7 @@ export default function TrackInspector() {
               >
                 {isStemming ? 'Processing…' : 'Split Track Into Stems'}
               </button>
-              <p className="text-xs text-cyan-400/70">Creates new tracks for Vocals, Drums, Bass, etc. 💰 Cost: 15 credits</p>
+              <p className="text-xs text-cyan-400/70">Creates new tracks for Vocals, Drums, Bass, etc. 💰 Cost: 5 credits</p>
             </div>
           )}
         </div>

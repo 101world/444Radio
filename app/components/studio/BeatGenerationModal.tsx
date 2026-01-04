@@ -109,7 +109,7 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">Generate AI Beat</h2>
-              <p className="text-sm text-cyan-400/70">AI Generation • 16 credits</p>
+              <p className="text-sm text-cyan-400/70">AI Generation • 2 credits</p>
             </div>
           </div>
           <button
@@ -188,7 +188,7 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-cyan-500/30">
           <p className="text-sm text-gray-400">
-            Cost: <span className="text-white font-semibold">16 credits</span>
+            Cost: <span className="text-white font-semibold">2 credits</span>
           </p>
           <div className="flex gap-3">
             <button

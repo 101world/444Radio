@@ -1735,7 +1735,7 @@ function CreatePageContent() {
               {/* Credits Info */}
               <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg backdrop-blur-sm">
                 <p className="text-xs text-purple-300/80 text-center">
-                  💰 <span className="font-bold">5 credits</span> • Instrumental music via LLM knowledge approach
+                  💰 <span className="font-bold">2 credits</span> • Instrumental music via LLM knowledge approach
                 </p>
               </div>
             </div>

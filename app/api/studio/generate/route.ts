@@ -25,10 +25,10 @@ export async function OPTIONS() {
 // Credit costs for studio operations
 const CREDITS_COST = {
   'create-song': 2,        // Music generation with minimax/music-1.5
-  'create-beat': 16,       // Instrumental with stable-audio-2.5
-  'stem-split': 20,        // Stem splitter with demucs
+  'create-beat': 2,        // Instrumental (same as regular music)
+  'stem-split': 5,         // Stem splitter with demucs
   'auto-tune': 1,          // Auto-tune effect
-  'effects': 0.1,          // Audio effects chain (stable-audio)
+  'effects': 1,            // Audio effects chain (stable-audio)
 } as const
 
 type GenerationType = keyof typeof CREDITS_COST
