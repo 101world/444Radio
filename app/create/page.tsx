@@ -1113,6 +1113,12 @@ function CreatePageContent() {
 
   // Handle stem splitting
   const handleSplitStems = async (audioUrl: string, messageId: string) => {
+    // Check credits before splitting (stem splitting costs 5 credits)
+    if (userCredits !== null && userCredits < 5) {
+      alert(`⚡ Insufficient credits! You need 5 credits to split stems but only have ${userCredits}. Visit the pricing page to get more.`)
+      return
+    }
+
     setIsSplittingStems(true)
     setSplitStemsMessageId(messageId)
 
@@ -1138,6 +1144,11 @@ function CreatePageContent() {
       if (!response.ok) {
         // Show specific error message from API
         throw new Error(data.error || 'Stem splitting failed')
+      }
+
+      // Update user credits with remaining amount
+      if (data.creditsRemaining !== undefined) {
+        setUserCredits(data.creditsRemaining)
       }
 
       // Replace processing message with unified stems result
@@ -1397,7 +1408,8 @@ function CreatePageContent() {
                         title="Split audio into vocals and instrumental"
                       >
                         <Sparkles size={18} />
-                        Split Stems
+                        <span>Split Stems</span>
+                        <span className="text-xs text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">5</span>
                       </button>
                     </div>
                   </div>
