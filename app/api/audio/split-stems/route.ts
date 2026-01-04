@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
-import { uploadToR2 } from '@/lib/r2-upload'
 import { createClient } from '@supabase/supabase-js'
 
 const replicate = new Replicate({
@@ -60,62 +59,6 @@ export async function POST(request: Request) {
     console.log('[Stem Split] Calling Replicate API...')
 
     // Run stem separation with proper parameters from schema
-    const extractUrl = (val: any): string | null => {
-      if (!val) return null
-      if (Array.isArray(val)) return val.find(Boolean) || null
-      if (typeof val === 'string') return val
-      if (typeof val === 'object') {
-        if (typeof (val as any).url === 'string') return (val as any).url
-        if ((val as any).audio?.download_uri) return (val as any).audio.download_uri
-      }
-      return null
-    }
-
-    const stemKeyMap: Record<string, string[]> = {
-      vocals: ['mdx_vocals', 'demucs_vocals', 'vocals', 'vocal', 'voice', 'Vocals', 'mdxnet_vocals'],
-      instrumental: ['mdx_instrumental', 'mdx_other', 'instrumental', 'music', 'accompaniment', 'Instrumental', 'mdxnet_other', 'no_vocals'],
-      drums: ['demucs_drums', 'drums'],
-      bass: ['demucs_bass', 'bass'],
-      other: ['demucs_other', 'other'],
-      guitar: ['demucs_guitar', 'guitar'],
-      piano: ['demucs_piano', 'piano']
-    }
-
-    // Collect URL-like strings from nested objects/arrays (depth-limited)
-    const flattenUrls = (value: any, prefix = '', depth = 0, maxDepth = 4, acc: Record<string, string> = {}): Record<string, string> => {
-      if (value == null || depth > maxDepth) return acc
-
-      const add = (key: string, url: any) => {
-        const extracted = extractUrl(url)
-        if (extracted) acc[key] = extracted
-      }
-
-      if (typeof value === 'string') {
-        add(prefix || 'root', value)
-        return acc
-      }
-
-      if (Array.isArray(value)) {
-        value.forEach((item, idx) => {
-          flattenUrls(item, `${prefix}[${idx}]`, depth + 1, maxDepth, acc)
-        })
-        return acc
-      }
-
-      if (typeof value === 'object') {
-        // Direct url/audio objects
-        add(prefix || 'root', value)
-
-        Object.entries(value).forEach(([k, v]) => {
-          const nextPrefix = prefix ? `${prefix}.${k}` : k
-          flattenUrls(v, nextPrefix, depth + 1, maxDepth, acc)
-        })
-        return acc
-      }
-
-      return acc
-    }
-
     let output: any
     try {
       output = await replicate.run(
@@ -147,81 +90,48 @@ export async function POST(request: Request) {
     console.log('[Stem Split] Replicate output:', JSON.stringify(output, null, 2))
     console.log('[Stem Split] Output keys:', Object.keys(output || {}))
 
-    const primaryOutput = output && output.output && typeof output.output === 'object' ? output.output : output
-    console.log('[Stem Split] Using output source keys:', Object.keys(primaryOutput || {}))
-
-    const flatPrimary = flattenUrls(primaryOutput)
-    const flatAll = output === primaryOutput ? flatPrimary : flattenUrls(output)
-    const lookupUrl = (key: string): string | null => {
-      if (flatPrimary[key]) return flatPrimary[key]
-      if (flatAll[key]) return flatAll[key]
-      const matchPrimary = Object.entries(flatPrimary).find(([k]) => k.endsWith(key) || k.includes(`.${key}`))
-      if (matchPrimary) return matchPrimary[1]
-      const matchAll = Object.entries(flatAll).find(([k]) => k.endsWith(key) || k.includes(`.${key}`))
-      return matchAll ? matchAll[1] : null
-    }
-
-    // Normalize stems from output
-    const detectedStems: Record<string, string> = {}
-
-    // Direct reads for common keys before heuristic matching
-    const directVocals = extractUrl((primaryOutput as any)?.mdx_vocals) || extractUrl((primaryOutput as any)?.demucs_vocals)
-    const directInstr = extractUrl((primaryOutput as any)?.mdx_instrumental) || extractUrl((primaryOutput as any)?.demucs_other) || extractUrl((primaryOutput as any)?.demucs_bass)
-    if (directVocals) detectedStems.vocals = directVocals
-    if (directInstr) detectedStems.instrumental = directInstr
-
-    for (const [stemName, keys] of Object.entries(stemKeyMap)) {
-      for (const key of keys) {
-        const url = lookupUrl(key)
-        if (url) {
-          detectedStems[stemName] = url
-          console.log(`[Stem Split] Found ${stemName} at key: ${key}`)
-          break
+    // Simple stem normalization - extract all available stems from output
+    function normalizeStems(output: any): Record<string, string> | null {
+      if (!output) return null
+      
+      // Check if output has an 'output' property (nested structure)
+      const actualOutput = output.output || output
+      
+      if (typeof actualOutput === 'object' && !Array.isArray(actualOutput)) {
+        const stems: Record<string, string> = {}
+        for (const [key, value] of Object.entries(actualOutput)) {
+          // Extract URL from various formats
+          let url: string | null = null
+          if (typeof value === 'string' && value.startsWith('http')) {
+            url = value
+          } else if (value && typeof value === 'object') {
+            if (typeof (value as any).url === 'string') {
+              url = (value as any).url
+            } else if ((value as any).audio && typeof (value as any).audio.download_uri === 'string') {
+              url = (value as any).audio.download_uri
+            }
+          }
+          
+          // Only include audio stems (skip null, arrays, non-audio files)
+          if (url && (
+            url.includes('.wav') || url.includes('.mp3') || url.includes('.flac') ||
+            key.includes('vocal') || key.includes('drum') || key.includes('bass') || 
+            key.includes('instrumental') || key.includes('other') || key.includes('guitar') || 
+            key.includes('piano') || key.includes('stem')
+          )) {
+            stems[key] = url
+          }
         }
+        return Object.keys(stems).length > 0 ? stems : null
       }
+      
+      return null
     }
 
-    // Fallback: array-like output
-    if ((!detectedStems.vocals || !detectedStems.instrumental) && primaryOutput) {
-      console.log('[Stem Split] Trying alternative output format detection...')
-      const asArray = Array.isArray(primaryOutput) ? primaryOutput : Array.isArray((primaryOutput as any)?.output) ? (primaryOutput as any).output : null
-      if (asArray && asArray.length >= 2) {
-        detectedStems.vocals = extractUrl(asArray[0]) || detectedStems.vocals
-        detectedStems.instrumental = extractUrl(asArray[1]) || detectedStems.instrumental
-        console.log('[Stem Split] Using array format for vocals/instrumental fallback')
-      }
-    }
-
-    // Fallback: if no instrumental but demucs_other exists, use it as instrumental proxy
-    if (!detectedStems.instrumental && detectedStems.other) {
-      detectedStems.instrumental = detectedStems.other
-      console.log('[Stem Split] Using demucs_other as instrumental fallback')
-    }
-
-    // Heuristic fallback: pick first URL containing keywords
-    const allUrls = Object.values({ ...flatPrimary, ...flatAll }).filter(Boolean) as string[]
-    if (!detectedStems.vocals) {
-      const vocalGuess = allUrls.find(u => /vocals?/i.test(u))
-      if (vocalGuess) {
-        detectedStems.vocals = vocalGuess
-        console.log('[Stem Split] Heuristic vocals guess:', vocalGuess)
-      }
-    }
-    if (!detectedStems.instrumental) {
-      const instrGuess = allUrls.find(u => /instrumental|accompaniment|_other\.wav/i.test(u))
-      if (instrGuess) {
-        detectedStems.instrumental = instrGuess
-        console.log('[Stem Split] Heuristic instrumental guess:', instrGuess)
-      }
-    }
-
-    const vocalsUrl = detectedStems.vocals
-    const instrumentalUrl = detectedStems.instrumental
-
-    // Check if we got mandatory URLs
-    if (!vocalsUrl || !instrumentalUrl) {
-      console.error('[Stem Split] Could not find vocal/instrumental URLs in output:', output)
-      console.error('[Stem Split] Available keys:', Object.keys(output || {}))
+    const allStems = normalizeStems(output)
+    
+    if (!allStems || Object.keys(allStems).length === 0) {
+      console.error('[Stem Split] Could not find any stems in output:', output)
       // Refund credits
       await supabase
         .from('users')
@@ -229,90 +139,16 @@ export async function POST(request: Request) {
         .eq('clerk_user_id', userId)
       return NextResponse.json({ 
         error: 'Could not find separated audio in Replicate output',
-        availableKeys: Object.keys(primaryOutput || {}),
-        flatKeys: Object.keys(flatPrimary || {}),
-        detected: detectedStems,
-        flatUrlsSample: Object.entries(flatPrimary || {}).slice(0, 10)
+        availableKeys: Object.keys(output || {}),
+        rawOutput: output
       }, { status: 500 })
     }
 
-    // Download vocals
-    console.log('[Stem Split] Downloading vocals from:', vocalsUrl)
-    let vocalsBlob: Blob
-    try {
-      const vocalsResponse = await fetch(vocalsUrl, {
-        signal: AbortSignal.timeout(60000) // 60 second timeout
-      })
-      if (!vocalsResponse.ok) {
-        throw new Error(`HTTP ${vocalsResponse.status}: ${vocalsResponse.statusText}`)
-      }
-      vocalsBlob = await vocalsResponse.blob()
-      console.log('[Stem Split] Vocals downloaded:', vocalsBlob.size, 'bytes')
-    } catch (downloadError) {
-      console.error('[Stem Split] Vocals download failed:', downloadError)
-      // Refund credits
-      await supabase
-        .from('users')
-        .update({ credits: userData.credits })
-        .eq('clerk_user_id', userId)
-      throw new Error(`Failed to download vocals: ${downloadError instanceof Error ? downloadError.message : 'Unknown error'}`)
-    }
-    const vocalsFile = new File([vocalsBlob], 'vocals.mp3', { type: 'audio/mpeg' })
-
-    // Download instrumental
-    console.log('[Stem Split] Downloading instrumental from:', instrumentalUrl)
-    let instrumentalBlob: Blob
-    try {
-      const instrumentalResponse = await fetch(instrumentalUrl, {
-        signal: AbortSignal.timeout(60000) // 60 second timeout
-      })
-      if (!instrumentalResponse.ok) {
-        throw new Error(`HTTP ${instrumentalResponse.status}: ${instrumentalResponse.statusText}`)
-      }
-      instrumentalBlob = await instrumentalResponse.blob()
-      console.log('[Stem Split] Instrumental downloaded:', instrumentalBlob.size, 'bytes')
-    } catch (downloadError) {
-      console.error('[Stem Split] Instrumental download failed:', downloadError)
-      // Refund credits
-      await supabase
-        .from('users')
-        .update({ credits: userData.credits })
-        .eq('clerk_user_id', userId)
-      throw new Error(`Failed to download instrumental: ${downloadError instanceof Error ? downloadError.message : 'Unknown error'}`)
-    }
-    const instrumentalFile = new File([instrumentalBlob], 'instrumental.mp3', { type: 'audio/mpeg' })
-
-    // Upload to R2
-    const timestamp = Date.now()
-    const vocalsKey = `stems/${userId}/vocals-${timestamp}.mp3`
-    const instrumentalKey = `stems/${userId}/instrumental-${timestamp}.mp3`
-
-    console.log('[Stem Split] Uploading to R2...')
-    const vocalsUpload = await uploadToR2(vocalsFile, 'audio-files', vocalsKey)
-    const instrumentalUpload = await uploadToR2(instrumentalFile, 'audio-files', instrumentalKey)
-
-    if (!vocalsUpload.success || !instrumentalUpload.success) {
-      console.error('[Stem Split] R2 upload failed - vocals:', vocalsUpload, 'instrumental:', instrumentalUpload)
-      // Refund credits
-      await supabase
-        .from('users')
-        .update({ credits: userData.credits })
-        .eq('clerk_user_id', userId)
-      throw new Error('Failed to upload stems to R2')
-    }
-
-    console.log('[Stem Split] Success! Vocals:', vocalsUpload.url, 'Instrumental:', instrumentalUpload.url)
-
-    // Merge uploaded URLs with any additional stems detected (demucs_* etc.)
-    const responseStems = {
-      ...detectedStems,
-      vocals: vocalsUpload.url,
-      instrumental: instrumentalUpload.url
-    }
+    console.log(`[Stem Split] Success! Found ${Object.keys(allStems).length} stems:`, Object.keys(allStems))
 
     return NextResponse.json({ 
       success: true,
-      stems: responseStems,
+      stems: allStems,
       creditsUsed: STEM_SPLIT_COST,
       creditsRemaining: userData.credits - STEM_SPLIT_COST,
       rawOutputKeys: Object.keys(output || {})
