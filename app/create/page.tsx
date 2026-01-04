@@ -109,6 +109,7 @@ function CreatePageContent() {
   const [showLyricsModal, setShowLyricsModal] = useState(false)
   const [showBpmModal, setShowBpmModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showAdvancedButtons, setShowAdvancedButtons] = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState('English')
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -1558,7 +1559,8 @@ function CreatePageContent() {
           
           {/* Icon Row Above Prompt Box */}
           <div className="flex items-center justify-center gap-3 mb-3 md:mb-4">
-            {/* Music Type Button */}
+            {/* Music Type Button - Hidden by default */}
+            {showAdvancedButtons && (
             <button
               onClick={() => setSelectedType('music')}
               className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
@@ -1578,8 +1580,10 @@ function CreatePageContent() {
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
               )}
             </button>
+            )}
 
-            {/* Image Type Button */}
+            {/* Image Type Button - Hidden by default */}
+            {showAdvancedButtons && (
             <button
               onClick={() => setSelectedType('image')}
               className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
@@ -1599,17 +1603,18 @@ function CreatePageContent() {
                 <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
               )}
             </button>
+            )}
 
-            {/* Divider */}
-            <div className="w-px h-8 bg-cyan-500/30"></div>
+            {/* Divider - Only show when advanced buttons are visible */}
+            {showAdvancedButtons && <div className="w-px h-8 bg-cyan-500/30"></div>}
 
             {/* Instrumental toggle removed from UI (kept in logic) */}
 
-            {/* Divider */}
-            <div className="w-px h-8 bg-cyan-500/30"></div>
+            {/* Divider - Only show when advanced buttons are visible */}
+            {showAdvancedButtons && <div className="w-px h-8 bg-cyan-500/30"></div>}
 
-            {/* Lyrics Button - Only show for regular music, not instrumental */}
-            {selectedType === 'music' && !isInstrumental && (
+            {/* Lyrics Button - Only show for regular music, not instrumental - Hidden by default */}
+            {showAdvancedButtons && selectedType === 'music' && !isInstrumental && (
               <button
                 onClick={() => setShowLyricsModal(true)}
                 className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
@@ -1628,7 +1633,8 @@ function CreatePageContent() {
               </button>
             )}
 
-            {/* Rocket Button */}
+            {/* Rocket Button - Hidden by default */}
+            {showAdvancedButtons && (
             <button
               onClick={() => handleOpenRelease()}
               className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
@@ -1639,8 +1645,10 @@ function CreatePageContent() {
                 className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
               />
             </button>
+            )}
 
-            {/* Clear Chat Button */}
+            {/* Clear Chat Button - Hidden by default */}
+            {showAdvancedButtons && (
             <button
               onClick={() => {
                 if (confirm('Clear all chat messages? This cannot be undone.')) {
@@ -1661,11 +1669,12 @@ function CreatePageContent() {
                 className="text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.9)] md:w-[20px] md:h-[20px]"
               />
             </button>
+            )}
 
             {/* Divider */}
             <div className="hidden md:block w-px h-8 bg-cyan-500/30"></div>
 
-            {/* Credits Display */}
+            {/* Credits Display - Always Visible */}
             <div className="hidden md:flex items-center gap-2 px-3 md:px-4 py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
               <Zap size={16} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
               <span className="text-sm font-bold text-white">
@@ -1747,6 +1756,22 @@ function CreatePageContent() {
             {/* Input Container */}
             <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/60 md:bg-black/20 backdrop-blur-sm md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-lg md:shadow-2xl">
               
+              {/* Toggle Advanced Buttons - Plus Icon */}
+              <button
+                onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
+                className={`relative flex-shrink-0 p-2 rounded-full transition-all duration-300 ${
+                  showAdvancedButtons
+                    ? 'bg-cyan-500 shadow-lg shadow-cyan-500/50 scale-110'
+                    : 'bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 hover:border-cyan-400 hover:scale-110'
+                }`}
+                title={showAdvancedButtons ? 'Hide Options' : 'Show Options'}
+              >
+                <PlusCircle 
+                  size={16} 
+                  className={`${showAdvancedButtons ? 'text-black rotate-45' : 'text-cyan-400'} transition-transform duration-300`}
+                />
+              </button>
+
               {/* Record Button - Small Dot/Mic */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
