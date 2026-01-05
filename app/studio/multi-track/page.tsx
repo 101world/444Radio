@@ -15,7 +15,7 @@ import AnimatedBackground from '@/app/components/AnimatedBackground'
 import { toast } from '@/lib/toast'
 
 // Timeline ruler component
-function TimelineRuler({ zoom, playhead, duration, onSeek }: { zoom: number; playhead: number; duration: number; onSeek: (time: number) => void }) {
+function TimelineRuler({ zoom, playhead, duration, scrollLeft, onSeek }: { zoom: number; playhead: number; duration: number; scrollLeft: number; onSeek: (time: number) => void }) {
   const rulerRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -35,22 +35,28 @@ function TimelineRuler({ zoom, playhead, duration, onSeek }: { zoom: number; pla
   const handleSeek = (e: React.MouseEvent) => {
     if (!rulerRef.current) return
     const rect = rulerRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const time = (x / rect.width) * duration
+    const x = e.clientX - rect.left + scrollLeft
+    const time = x / zoom
     onSeek(Math.max(0, Math.min(duration, time)))
   }
 
-  // Generate time markers
+  // Generate time markers every second
   const markers = []
-  const interval = zoom < 20 ? 5 : zoom < 50 ? 1 : 0.5
-  for (let t = 0; t <= duration; t += interval) {
-    const x = (t / duration) * 100
+  const totalWidth = duration * zoom
+  for (let t = 0; t <= duration; t += 1) {
+    const x = t * zoom
     const minutes = Math.floor(t / 60)
     const seconds = Math.floor(t % 60)
+    const isMajor = t % 4 === 0
+    
     markers.push(
-      <div key={t} className="absolute flex flex-col items-center" style={{ left: `${x}%` }}>
-        <div className="w-px h-3 bg-cyan-500/50" />
-        <span className="text-[10px] text-gray-400 mt-1">{minutes}:{seconds.toString().padStart(2, '0')}</span>
+      <div key={t} className="absolute" style={{ left: `${x}px` }}>
+        <div className={`w-px ${isMajor ? 'h-4 bg-gray-400' : 'h-2 bg-gray-600'}`} />
+        {isMajor && (
+          <span className="absolute top-5 left-1/2 -translate-x-1/2 text-[10px] text-gray-400 whitespace-nowrap">
+            {minutes}:{seconds.toString().padStart(2, '0')}
+          </span>
+        )}
       </div>
     )
   }
@@ -58,30 +64,34 @@ function TimelineRuler({ zoom, playhead, duration, onSeek }: { zoom: number; pla
   return (
     <div
       ref={rulerRef}
-      className="relative h-12 bg-black/40 backdrop-blur-md border-b border-white/10 cursor-pointer select-none"
+      className="sticky left-0 h-14 bg-[#1a1a1a] border-b border-gray-700 cursor-pointer select-none overflow-hidden z-20"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {markers}
-      
-      {/* Playhead */}
-      <div
-        className="absolute top-0 bottom-0 w-0.5 bg-cyan-500 shadow-lg shadow-cyan-500/50 pointer-events-none z-10"
-        style={{ left: `${(playhead / duration) * 100}%` }}
-      >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-cyan-500 rounded-full shadow-lg shadow-cyan-500/50" />
+      <div className="relative h-full" style={{ width: `${totalWidth}px`, marginLeft: `-${scrollLeft}px` }}>
+        {markers}
+        
+        {/* Playhead */}
+        <div
+          className="absolute top-0 bottom-0 w-0.5 bg-cyan-500 pointer-events-none z-30"
+          style={{ left: `${playhead * zoom + scrollLeft}px` }}
+        >
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-cyan-500" />
+        </div>
       </div>
     </div>
   )
 }
 
 // Track lane component
-function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange, onPanChange, onClipDoubleClick, showAutomation, onToggleAutomation, onAddAutomationPoint, onMoveAutomationPoint, onDeleteAutomationPoint }: {
+function TrackLane({ track, zoom, playhead, scrollLeft, duration, isSelected, onSelect, onVolumeChange, onPanChange, onClipDoubleClick, showAutomation, onToggleAutomation, onAddAutomationPoint, onMoveAutomationPoint, onDeleteAutomationPoint }: {
   track: Track
   zoom: number
   playhead: number
+  scrollLeft: number
+  duration: number
   isSelected: boolean
   onSelect: () => void
   onVolumeChange: (volume: number) => void
@@ -161,41 +171,49 @@ function TrackLane({ track, zoom, playhead, isSelected, onSelect, onVolumeChange
       </div>
 
       {/* Track content (clips timeline) */}
-      <div className="flex-1 flex flex-col">
-        <div className="relative min-h-[120px] bg-black/20">
-          {track.clips.map((clip) => {
-            const clipWidth = (clip.duration / 60) * zoom * 100
-            const clipLeft = (clip.startTime / 60) * zoom * 100
-            
-            return (
+      <div className="flex-1 relative overflow-hidden">
+        <div className="relative h-24 bg-[#0f0f0f]">
+          <div className="absolute inset-0" style={{ width: `${duration * zoom}px` }}>
+            {/* Grid lines every 4 beats */}
+            {Array.from({ length: Math.ceil(duration / 4) }).map((_, i) => (
               <div
-                key={clip.id}
-                className="absolute h-[80%] top-[10%] bg-gradient-to-r from-cyan-500/40 to-purple-500/40 backdrop-blur-sm border border-cyan-500/30 rounded-lg shadow-lg cursor-move hover:border-cyan-500/60 transition-all"
-                style={{
-                  left: `${clipLeft}px`,
-                  width: `${clipWidth}px`
-                }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation()
-                  onClipDoubleClick(track.id, clip.id)
-                }}
-              >
-                <div className="p-2 text-xs text-white font-medium truncate">
-                  {clip.name}
+                key={i}
+                className="absolute top-0 bottom-0 w-px bg-gray-800"
+                style={{ left: `${i * 4 * zoom}px` }}
+              />
+            ))}
+            
+            {/* Clips */}
+            {track.clips.map((clip) => {
+              const clipWidth = clip.duration * zoom
+              const clipLeft = clip.startTime * zoom
+              
+              return (
+                <div
+                  key={clip.id}
+                  className="absolute top-2 h-20 bg-gradient-to-br from-orange-500/80 to-orange-600/90 border-l-2 border-orange-400 rounded-sm cursor-move hover:brightness-110 transition-all group"
+                  style={{
+                    left: `${clipLeft}px`,
+                    width: `${Math.max(clipWidth, 40)}px`
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation()
+                    onClipDoubleClick(track.id, clip.id)
+                  }}
+                >
+                  <div className="p-1.5 text-[11px] text-white font-medium truncate">
+                    {clip.name}
+                  </div>
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-              </div>
-            )
-          })}
-          
-          {/* Automation toggle button */}
-          <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
-            <GlassButton
-              variant={showAutomation ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => onToggleAutomation()}
-            >
-              A
-            </GlassButton>
+              )
+            })}
+            
+            {/* Playhead indicator */}
+            <div
+              className="absolute top-0 bottom-0 w-0.5 bg-cyan-500 pointer-events-none z-10"
+              style={{ left: `${playhead * zoom}px` }}
+            />
           </div>
         </div>
         
@@ -380,8 +398,10 @@ export default function MultiTrackStudio() {
   const [bpm, setBpm] = useState(120)
   const [zoom, setZoom] = useState(50)
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
-  const [duration, setDuration] = useState(60)
+  const [duration, setDuration] = useState(120)
+  const [scrollLeft, setScrollLeft] = useState(0)
   const [isGenerating, setIsGenerating] = useState(false)
+  const timelineRef = useRef<HTMLDivElement>(null)
   const [showMixer, setShowMixer] = useState(false)
   const [showClipEditor, setShowClipEditor] = useState(false)
   const [selectedClip, setSelectedClip] = useState<{ trackId: string; clipId: string } | null>(null)
@@ -777,10 +797,8 @@ export default function MultiTrackStudio() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white overflow-hidden">
-      <AnimatedBackground />
-
       {/* Header */}
-      <div className="relative z-10 h-20 bg-black/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-6">
+      <div className="relative z-10 h-16 bg-[#1a1a1a] border-b border-gray-800 flex items-center justify-between px-4">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-500 to-purple-500 bg-clip-text text-transparent">
             Multi-Track Studio
@@ -836,28 +854,35 @@ export default function MultiTrackStudio() {
       {/* Main content */}
       <div className="relative z-10 flex-1 flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
         {/* Timeline ruler */}
-        <TimelineRuler zoom={zoom} playhead={playhead} duration={duration} onSeek={handleSeek} />
+        <TimelineRuler zoom={zoom} playhead={playhead} duration={duration} scrollLeft={scrollLeft} onSeek={handleSeek} />
 
         {/* Tracks */}
-        <div className="flex-1 overflow-y-auto">
-          {tracks.map((track) => (
-            <TrackLane
-              key={track.id}
-              track={track}
-              zoom={zoom}
-              playhead={playhead}
-              isSelected={selectedTrackId === track.id}
-              onSelect={() => setSelectedTrackId(track.id)}
-              onVolumeChange={(volume) => handleVolumeChange(track.id, volume)}
-              onPanChange={(pan) => handlePanChange(track.id, pan)}
-              onClipDoubleClick={handleClipDoubleClick}
-              showAutomation={showAutomation[track.id] || false}
-              onToggleAutomation={() => setShowAutomation(prev => ({ ...prev, [track.id]: !prev[track.id] }))}
-              onAddAutomationPoint={(laneId, time, value) => handleAddAutomationPoint(track.id, laneId, time, value)}
-              onMoveAutomationPoint={(laneId, index, time, value) => handleMoveAutomationPoint(track.id, laneId, index, time, value)}
-              onDeleteAutomationPoint={(laneId, index) => handleDeleteAutomationPoint(track.id, laneId, index)}
-            />
-          ))}
+        <div 
+          ref={timelineRef}
+          className="flex-1 overflow-x-auto overflow-y-auto bg-[#0a0a0a]"
+          onScroll={(e) => setScrollLeft(e.currentTarget.scrollLeft)}
+        >
+          <div style={{ minWidth: `${duration * zoom + 100}px` }}>
+            {tracks.map((track) => (
+              <TrackLane
+                key={track.id}
+                track={track}
+                zoom={zoom}
+                playhead={playhead}
+                scrollLeft={scrollLeft}
+                duration={duration}
+                isSelected={selectedTrackId === track.id}
+                onSelect={() => setSelectedTrackId(track.id)}
+                onVolumeChange={(volume) => handleVolumeChange(track.id, volume)}
+                onPanChange={(pan) => handlePanChange(track.id, pan)}
+                onClipDoubleClick={handleClipDoubleClick}
+                showAutomation={showAutomation[track.id] || false}
+                onToggleAutomation={() => setShowAutomation(prev => ({ ...prev, [track.id]: !prev[track.id] }))}
+                onAddAutomationPoint={(laneId, time, value) => handleAddAutomationPoint(track.id, laneId, time, value)}
+                onMoveAutomationPoint={(laneId, index, time, value) => handleMoveAutomationPoint(track.id, laneId, index, time, value)}
+                onDeleteAutomationPoint={(laneId, index) => handleDeleteAutomationPoint(track.id, laneId, index)}
+              />
+            ))}
 
           {/* Add track button */}
           <div className="p-4 border-b border-white/10">
@@ -870,6 +895,7 @@ export default function MultiTrackStudio() {
             </GlassButton>
           </div>
         </div>
+      </div>
       </div>
 
       {/* AI Generation Panel */}
