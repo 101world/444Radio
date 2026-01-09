@@ -41,8 +41,14 @@ export default function DAWv2() {
   const [peakLevels, setPeakLevels] = useState<{[trackId: string]: number}>({});
   const [waveformZoom, setWaveformZoom] = useState(1);
   const [showMiniMap, setShowMiniMap] = useState(true);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null);
+  const [metronomeFlash, setMetronomeFlash] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const timelineWidth = 201 * zoom; // Fixed width calculation for alignment
 
   // Initialize DAW
   useEffect(() => {
@@ -105,6 +111,13 @@ export default function DAWv2() {
 
     initDAW();
   }, [user]);
+  
+  // Load library after DAW is initialized
+  useEffect(() => {
+    if (user && !loading) {
+      loadLibrary();
+    }
+  }, [user, loading]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -153,21 +166,52 @@ export default function DAWv2() {
   // Transport controls
   const handlePlay = useCallback(() => {
     if (!daw) return;
-    daw.play();
-    setIsPlaying(true);
-  }, [daw]);
+    try {
+      daw.play();
+      setIsPlaying(true);
+      
+      // Metronome beat flash effect
+      if (metronomeEnabled) {
+        const beatInterval = (60 / bpm) * 1000; // ms per beat
+        const flashMetronome = setInterval(() => {
+          setMetronomeFlash(true);
+          setTimeout(() => setMetronomeFlash(false), 100);
+        }, beatInterval);
+        
+        // Clear on pause/stop
+        const checkPlaying = setInterval(() => {
+          if (!daw.getTransportState().isPlaying) {
+            clearInterval(flashMetronome);
+            clearInterval(checkPlaying);
+          }
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Playback error:', error);
+    }
+  }, [daw, metronomeEnabled, bpm]);
 
   const handlePause = useCallback(() => {
     if (!daw) return;
-    daw.pause();
-    setIsPlaying(false);
+    try {
+      daw.pause();
+      setIsPlaying(false);
+      setMetronomeFlash(false);
+    } catch (error) {
+      console.error('Pause error:', error);
+    }
   }, [daw]);
 
   const handleStop = useCallback(() => {
     if (!daw) return;
-    daw.stop();
-    setIsPlaying(false);
-    setPlayhead(0);
+    try {
+      daw.stop();
+      setIsPlaying(false);
+      setPlayhead(0);
+      setMetronomeFlash(false);
+    } catch (error) {
+      console.error('Stop error:', error);
+    }
   }, [daw]);
 
   // Add track
@@ -184,14 +228,75 @@ export default function DAWv2() {
     try {
       const response = await fetch('/api/media');
       const data = await response.json();
-      setLibrary(data.filter((item: any) => item.type === 'audio'));
+      if (data && Array.isArray(data)) {
+        setLibrary(data.filter((item: any) => item.type === 'audio'));
+      }
     } catch (error) {
       console.error('Library load failed:', error);
     }
   }, [user]);
+  
+  // Import audio file
+  const handleImport = useCallback(async () => {
+    if (!importFile || !user) return;
+    
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      formData.append('type', 'audio');
+      formData.append('title', importFile.name.replace(/\.[^/.]+$/, ''));
+      
+      const response = await fetch('/api/profile/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (response.ok) {
+        await loadLibrary(); // Refresh library
+        setShowImportModal(false);
+        setImportFile(null);
+        addToHistory(`Imported ${importFile.name}`);
+      } else {
+        alert('Import failed');
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Import failed');
+    } finally {
+      setUploading(false);
+    }
+  }, [importFile, user, loadLibrary]);
+  
+  // Start recording
+  const handleStartRecording = useCallback(async (trackId: string) => {
+    if (!daw) return;
+    try {
+      setRecordingTrackId(trackId);
+      addToHistory(`Started recording on ${daw.getTracks().find(t => t.id === trackId)?.name}`);
+      // TODO: Integrate with RecordingManager from MultiTrackDAW
+      // await daw.startRecording(trackId);
+    } catch (error) {
+      console.error('Recording error:', error);
+    }
+  }, [daw]);
+  
+  // Stop recording
+  const handleStopRecording = useCallback(async () => {
+    if (!daw || !recordingTrackId) return;
+    try {
+      // TODO: Integrate with RecordingManager
+      // const recordedBuffer = await daw.stopRecording();
+      // Upload to R2 and create clip
+      setRecordingTrackId(null);
+      addToHistory('Recording stopped');
+    } catch (error) {
+      console.error('Stop recording error:', error);
+    }
+  }, [daw, recordingTrackId]);
 
   // Add clip from library
-  const handleAddClip = useCallback(async (audioUrl: string, trackId: string) => {
+  const handleAddClip = useCallback(async (audioUrl: string, trackId: string, startTime: number = 0) => {
     if (!daw) return;
     try {
       const response = await fetch(audioUrl);
@@ -199,17 +304,27 @@ export default function DAWv2() {
       const audioContext = new AudioContext();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       
-      daw.addClipToTrack(trackId, {
-        startTime: playhead,
+      // Create clip using DAW engine
+      const clip: TrackClip = {
+        id: `clip-${Date.now()}`,
+        trackId: trackId,
+        startTime: startTime,
+        duration: audioBuffer.duration,
+        offset: 0,
+        gain: 1,
+        fadeIn: { duration: 0, curve: 'linear' },
+        fadeOut: { duration: 0, curve: 'linear' },
         buffer: audioBuffer,
-        name: 'Audio Clip'
-      });
+        locked: false
+      };
+      
+      daw.addClipToTrack(trackId, clip);
       setTracks(daw.getTracks());
-      setShowBrowser(false);
+      addToHistory(`Added clip to ${daw.getTracks().find(t => t.id === trackId)?.name}`);
     } catch (error) {
       console.error('Clip add failed:', error);
     }
-  }, [daw, playhead]);
+  }, [daw]);
 
   // Render waveform
   const renderWaveform = useCallback((canvas: HTMLCanvasElement, audioBuffer: AudioBuffer) => {
@@ -372,7 +487,6 @@ export default function DAWv2() {
     );
   }
 
-  const timelineWidth = 200 * zoom;
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col overflow-hidden">
@@ -412,17 +526,27 @@ export default function DAWv2() {
             </button>
             <button
               onClick={() => setMetronomeEnabled(!metronomeEnabled)}
-              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors ${
-                metronomeEnabled ? 'bg-teal-500 text-black font-semibold' : 'bg-slate-900 text-gray-400'
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all ${
+                metronomeEnabled 
+                  ? (metronomeFlash ? 'bg-cyan-400 text-black scale-110' : 'bg-teal-500 text-black font-semibold')
+                  : 'bg-slate-900 text-gray-400'
               }`}
               title="Metronome (C)"
             >
-              <Volume2 size={13} />
-              Click
+              <Volume2 size={13} className={metronomeFlash && metronomeEnabled ? 'animate-pulse' : ''} />
+              {metronomeFlash && metronomeEnabled ? '●' : 'Click'}
             </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors bg-slate-900 text-gray-400 hover:bg-slate-800"
+            title="Import Audio"
+          >
+            <FolderOpen size={14} />
+            Import
+          </button>
           <button
             onClick={() => setShowHistoryPanel(!showHistoryPanel)}
             className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors ${
@@ -702,6 +826,24 @@ export default function DAWv2() {
                   >
                     A
                   </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (recordingTrackId === track.id) {
+                        handleStopRecording();
+                      } else {
+                        handleStartRecording(track.id);
+                      }
+                    }}
+                    className={`px-2 py-1 text-xs rounded ${
+                      recordingTrackId === track.id 
+                        ? 'bg-red-500 text-white animate-pulse' 
+                        : 'bg-slate-700 text-gray-400 hover:bg-red-500/30'
+                    }`}
+                    title="Record"
+                  >
+                    ●
+                  </button>
                 </div>
               </div>
             ))}
@@ -793,6 +935,17 @@ export default function DAWv2() {
                     trackIndex % 2 === 0 ? 'bg-slate-900' : 'bg-slate-950'
                   }`}
                   style={{ width: `${timelineWidth}px` }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    const audioUrl = e.dataTransfer.getData('audioUrl');
+                    if (audioUrl && timelineRef.current) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const offsetX = e.clientX - rect.left;
+                      const startTime = offsetX / zoom;
+                      await handleAddClip(audioUrl, track.id, startTime);
+                    }
+                  }}
                 >
                   {/* Loop Region Highlight */}
                 {loopEnabled && (
@@ -1273,63 +1426,160 @@ export default function DAWv2() {
       {/* Generate AI Modal */}
       {showGenerateModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-slate-950 border border-cyan-500/30 rounded-xl p-8 max-w-2xl w-full">
+          <div className="bg-slate-950 border border-cyan-500/30 rounded-xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-cyan-400">Generate AI Track</h2>
+              <div>
+                <h2 className="text-2xl font-bold text-cyan-400">AI Music Generation</h2>
+                <p className="text-sm text-gray-400 mt-1">Create professional tracks with AI</p>
+              </div>
               <button
                 onClick={() => setShowGenerateModal(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-white text-2xl"
               >
                 ✕
               </button>
             </div>
             
-            <form className="space-y-4">
+            <form className="space-y-6">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Prompt</label>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Track Prompt</label>
                 <textarea
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 focus:outline-none"
-                  rows={3}
-                  placeholder="Describe your track..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white focus:border-cyan-500 focus:outline-none resize-none"
+                  rows={4}
+                  placeholder="Describe your track in detail... (e.g., 'Lo-fi hip hop beat with vinyl crackle, warm rhodes piano, and mellow drums')"
                 />
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-gray-500">Be specific for better results</span>
+                  <span className="text-xs text-cyan-400">Powered by AI</span>
+                </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Genre</label>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">Genre</label>
                   <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 focus:outline-none">
-                    <option>Lo-fi</option>
-                    <option>Hip Hop</option>
-                    <option>Electronic</option>
-                    <option>Jazz</option>
+                    <option value="lofi">Lo-fi</option>
+                    <option value="hiphop">Hip Hop</option>
+                    <option value="electronic">Electronic</option>
+                    <option value="jazz">Jazz</option>
+                    <option value="rnb">R&B</option>
+                    <option value="techno">Techno</option>
+                    <option value="ambient">Ambient</option>
+                    <option value="trap">Trap</option>
                   </select>
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">BPM</label>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">BPM</label>
                   <input
                     type="number"
                     defaultValue={120}
+                    min={60}
+                    max={200}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 focus:outline-none"
                   />
                 </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">Duration</label>
+                  <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 focus:outline-none">
+                    <option value="30">30 seconds</option>
+                    <option value="60">1 minute</option>
+                    <option value="90">1.5 minutes</option>
+                    <option value="120">2 minutes</option>
+                  </select>
+                </div>
               </div>
               
-              <button
-                type="button"
-                onClick={() => {
-                  const promptInput = document.querySelector('textarea[placeholder="Describe your track..."]') as HTMLTextAreaElement;
-                  const genreSelect = document.querySelector('select') as HTMLSelectElement;
-                  const bpmInput = document.querySelector('input[type="number"]') as HTMLInputElement;
-                  if (promptInput && genreSelect && bpmInput) {
-                    handleGenerateTrack(promptInput.value, genreSelect.value, parseInt(bpmInput.value));
-                  }
-                }}
-                disabled={generatingTrack}
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {generatingTrack ? 'Generating...' : 'Generate Track'}
-              </button>
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">Lyrics (Optional)</label>
+                <textarea
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white focus:border-cyan-500 focus:outline-none resize-none font-mono text-sm"
+                  rows={5}
+                  placeholder="Enter custom lyrics here...
+
+Verse 1:
+...
+
+Chorus:
+..."
+                />
+                <div className="text-xs text-gray-500 mt-2">Leave empty for instrumental track</div>
+              </div>
+              
+              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-300">Advanced Options</h3>
+                  <button type="button" className="text-xs text-cyan-400 hover:text-cyan-300">Toggle</button>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="instrumental" className="accent-cyan-500" />
+                    <label htmlFor="instrumental" className="text-gray-400">Instrumental only</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="loopable" className="accent-cyan-500" defaultChecked />
+                    <label htmlFor="loopable" className="text-gray-400">Make loopable</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="mastering" className="accent-cyan-500" defaultChecked />
+                    <label htmlFor="mastering" className="text-gray-400">Auto-mastering</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="stereo" className="accent-cyan-500" defaultChecked />
+                    <label htmlFor="stereo" className="text-gray-400">Stereo output</label>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const promptInput = document.querySelector('textarea[placeholder*="Describe your track"]') as HTMLTextAreaElement;
+                    const genreSelect = document.querySelector('select') as HTMLSelectElement;
+                    const bpmInput = document.querySelector('input[type="number"]') as HTMLInputElement;
+                    if (promptInput && genreSelect && bpmInput) {
+                      handleGenerateTrack(promptInput.value, genreSelect.value, parseInt(bpmInput.value));
+                    }
+                  }}
+                  disabled={generatingTrack}
+                  className="flex-1 py-4 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-black font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-cyan-500/50"
+                >
+                  {generatingTrack ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="animate-spin">⚙</span>
+                      Generating Track...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      ✨ Generate Track
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowGenerateModal(false)}
+                  className="px-6 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+              
+              {generatingTrack && (
+                <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                    <span className="text-cyan-400 font-semibold">AI Processing</span>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    Creating your track... This may take 30-60 seconds
+                  </div>
+                  <div className="mt-3 bg-slate-900 rounded-full h-2 overflow-hidden">
+                    <div className="bg-gradient-to-r from-cyan-500 to-teal-500 h-full animate-pulse" style={{width: '60%'}}></div>
+                  </div>
+                </div>
+              )}
             </form>
           </div>
         </div>
@@ -1444,6 +1694,59 @@ export default function DAWv2() {
                 }}
               >
                 Export & Download
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-slate-950 border border-cyan-500/30 rounded-xl p-8 max-w-lg w-full">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-cyan-400">Import Audio</h2>
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Select Audio File</label>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-cyan-500 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-cyan-500 file:text-black file:cursor-pointer hover:file:bg-cyan-600"
+                />
+                <div className="text-xs text-gray-500 mt-2">
+                  Supported: MP3, WAV, OGG, M4A
+                </div>
+              </div>
+              
+              {importFile && (
+                <div className="bg-slate-900 p-4 rounded-lg">
+                  <div className="text-white font-medium">{importFile.name}</div>
+                  <div className="text-gray-500 text-xs mt-1">
+                    Size: {(importFile.size / 1024 / 1024).toFixed(2)} MB
+                  </div>
+                </div>
+              )}
+              
+              <button
+                type="button"
+                onClick={handleImport}
+                disabled={!importFile || uploading}
+                className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploading ? 'Uploading...' : 'Import to Library'}
               </button>
             </div>
           </div>
