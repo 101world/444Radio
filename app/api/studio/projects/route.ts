@@ -22,8 +22,8 @@ export async function GET() {
   const supabase = getAdminSupabase()
   const { data, error } = await supabase
     .from('studio_projects')
-    .select('id, name, updated_at')
-    .eq('clerk_user_id', userId)
+    .select('id, title, updated_at')
+    .eq('user_id', userId)
     .order('updated_at', { ascending: false })
 
   if (error) {
@@ -40,8 +40,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null as any)
-  if (!body || !body.name || !body.data) {
-    return corsResponse(NextResponse.json({ error: 'Missing name or data' }, { status: 400 }))
+  if (!body || !body.title || !body.tracks) {
+    return corsResponse(NextResponse.json({ error: 'Missing title or tracks' }, { status: 400 }))
   }
 
   const supabase = getAdminSupabase()
@@ -50,9 +50,13 @@ export async function POST(request: Request) {
     // Update existing
     const { error } = await supabase
       .from('studio_projects')
-      .update({ name: body.name, data: body.data })
+      .update({ 
+        title: body.title, 
+        tracks: body.tracks, 
+        tempo: body.tempo || 120 
+      })
       .eq('id', body.id)
-      .eq('clerk_user_id', userId)
+      .eq('user_id', userId)
 
     if (error) {
       console.error('POST update /api/studio/projects error', error)
@@ -64,7 +68,12 @@ export async function POST(request: Request) {
     // Create new
     const { data, error } = await supabase
       .from('studio_projects')
-      .insert({ name: body.name, data: body.data, clerk_user_id: userId })
+      .insert({ 
+        title: body.title, 
+        tracks: body.tracks, 
+        tempo: body.tempo || 120, 
+        user_id: userId 
+      })
       .select('id')
       .single()
 
@@ -92,7 +101,7 @@ export async function DELETE(request: Request) {
     .from('studio_projects')
     .delete()
     .eq('id', id)
-    .eq('clerk_user_id', userId)
+    .eq('user_id', userId)
 
   if (error) {
     console.error('DELETE /api/studio/projects error', error)
