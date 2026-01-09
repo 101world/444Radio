@@ -46,8 +46,10 @@ export default function DAWv2() {
   const [uploading, setUploading] = useState(false);
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null);
   const [metronomeFlash, setMetronomeFlash] = useState(false);
+  const [metronomeInterval, setMetronomeInterval] = useState<NodeJS.Timeout | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const TRACK_HEIGHT = 120; // Fixed track height like Ableton
   const timelineWidth = 201 * zoom; // Fixed width calculation for alignment
 
   // Initialize DAW
@@ -73,7 +75,15 @@ export default function DAWv2() {
           if (dawInstance) {
             const state = dawInstance.getTransportState();
             if (state.isPlaying) {
-              setPlayhead(state.currentTime);
+              let currentTime = state.currentTime;
+              
+              // Handle loop
+              if (loopEnabled && currentTime >= loopEnd) {
+                dawInstance.seekTo(loopStart);
+                currentTime = loopStart;
+              }
+              
+              setPlayhead(currentTime);
               setIsPlaying(true);
               
               // Update audio meters
@@ -173,18 +183,11 @@ export default function DAWv2() {
       // Metronome beat flash effect
       if (metronomeEnabled) {
         const beatInterval = (60 / bpm) * 1000; // ms per beat
-        const flashMetronome = setInterval(() => {
+        const interval = setInterval(() => {
           setMetronomeFlash(true);
           setTimeout(() => setMetronomeFlash(false), 100);
         }, beatInterval);
-        
-        // Clear on pause/stop
-        const checkPlaying = setInterval(() => {
-          if (!daw.getTransportState().isPlaying) {
-            clearInterval(flashMetronome);
-            clearInterval(checkPlaying);
-          }
-        }, 100);
+        setMetronomeInterval(interval);
       }
     } catch (error) {
       console.error('Playback error:', error);
@@ -197,10 +200,14 @@ export default function DAWv2() {
       daw.pause();
       setIsPlaying(false);
       setMetronomeFlash(false);
+      if (metronomeInterval) {
+        clearInterval(metronomeInterval);
+        setMetronomeInterval(null);
+      }
     } catch (error) {
       console.error('Pause error:', error);
     }
-  }, [daw]);
+  }, [daw, metronomeInterval]);
 
   const handleStop = useCallback(() => {
     if (!daw) return;
@@ -209,10 +216,14 @@ export default function DAWv2() {
       setIsPlaying(false);
       setPlayhead(0);
       setMetronomeFlash(false);
+      if (metronomeInterval) {
+        clearInterval(metronomeInterval);
+        setMetronomeInterval(null);
+      }
     } catch (error) {
       console.error('Stop error:', error);
     }
-  }, [daw]);
+  }, [daw, metronomeInterval]);
 
   // Add track
   const handleAddTrack = useCallback(() => {
@@ -754,9 +765,10 @@ export default function DAWv2() {
             {tracks.map((track, index) => (
               <div
                 key={track.id}
-                className={`h-32 border-b border-slate-800 p-4 cursor-pointer transition-colors ${
+                className={`border-b border-slate-800 p-4 cursor-pointer transition-colors ${
                   selectedTrackId === track.id ? 'bg-slate-800' : 'hover:bg-slate-900'
                 }`}
+                style={{ height: `${TRACK_HEIGHT}px` }}
                 onClick={() => setSelectedTrackId(track.id)}
               >
                 <div className="text-sm font-semibold text-cyan-400 mb-2">{track.name}</div>
@@ -931,10 +943,10 @@ export default function DAWv2() {
             {tracks.map((track, trackIndex) => (
               <React.Fragment key={track.id}>
                 <div
-                  className={`h-32 border-b border-slate-800 relative ${
+                  className={`border-b border-slate-800 relative ${
                     trackIndex % 2 === 0 ? 'bg-slate-900' : 'bg-slate-950'
                   }`}
-                  style={{ width: `${timelineWidth}px` }}
+                  style={{ width: `${timelineWidth}px`, height: `${TRACK_HEIGHT}px` }}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={async (e) => {
                     e.preventDefault();
