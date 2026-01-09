@@ -384,11 +384,70 @@ export default function DAWv2() {
         </div>
       </div>
 
-      {/* Timeline & Tracks */}
-      <div className="flex-1 overflow-auto">
-        <div className="flex">
-          {/* Track Headers */}
-          <div className="w-48 flex-shrink-0 bg-slate-950 border-r border-slate-800">
+      {/* Main Workspace */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Browser Panel */}
+        {showBrowser && (
+          <div className="w-64 border-r border-slate-800 bg-[#1a1a1a] flex flex-col">
+            <div className="p-4 border-b border-slate-800">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search library..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm placeholder-gray-500 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Your Library</h3>
+              
+              {library.length === 0 ? (
+                <button
+                  onClick={loadLibrary}
+                  className="w-full py-2 px-4 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg text-sm transition-colors"
+                >
+                  Load Library
+                </button>
+              ) : (
+                <div className="space-y-1">
+                  {library
+                    .filter(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()))
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('audioUrl', item.audio_url);
+                          e.dataTransfer.setData('title', item.title);
+                        }}
+                        className="p-3 bg-slate-900 hover:bg-slate-800 rounded-lg cursor-move transition-colors group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Music size={14} className="text-cyan-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white truncate">{item.title}</div>
+                            {item.genre && (
+                              <div className="text-xs text-gray-500">{item.genre}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Timeline & Tracks */}
+        <div className="flex-1 overflow-auto">
+          <div className="flex">
+            {/* Track Headers */}
+            <div className="w-48 flex-shrink-0 bg-slate-950 border-r border-slate-800">
             {tracks.map((track, index) => (
               <div
                 key={track.id}
@@ -525,43 +584,75 @@ export default function DAWv2() {
           </div>
         </div>
       </div>
+      </div>
 
-      {/* Library Modal */}
-      {showBrowser && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-slate-950 border border-cyan-500/30 rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-auto">
+      {/* Modals */}
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#1a1a1a] border border-cyan-500/30 rounded-xl p-8 max-w-2xl w-full">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-cyan-400">Your Library</h2>
+              <h2 className="text-2xl font-bold text-cyan-400">Keyboard Shortcuts</h2>
               <button
-                onClick={() => setShowBrowser(false)}
-                className="text-gray-400 hover:text-white"
+                onClick={() => setShowShortcuts(false)}
+                className="text-gray-400 hover:text-white text-2xl"
               >
                 ✕
               </button>
             </div>
             
-            {library.length === 0 && (
-              <div className="text-center py-8">
-                <button
-                  onClick={loadLibrary}
-                  className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 text-black rounded-lg transition-colors"
-                >
-                  Load Library
-                </button>
-              </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-4">
-              {library.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-slate-900 border border-slate-800 rounded-lg p-4 hover:border-cyan-500/50 transition-colors cursor-pointer"
-                  onClick={() => selectedTrackId && handleAddClip(item.audio_url, selectedTrackId)}
-                >
-                  <div className="text-sm font-semibold text-white mb-2">{item.title}</div>
-                  <div className="text-xs text-gray-400">Click to add to selected track</div>
+            <div className="grid grid-cols-2 gap-6 text-sm">
+              <div>
+                <h3 className="font-semibold text-white mb-3 uppercase tracking-wider">Transport</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Play / Pause</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">Space</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Loop On/Off</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">L</kbd>
+                  </div>
                 </div>
-              ))}
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white mb-3 uppercase tracking-wider">View</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Toggle Browser</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">B</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Toggle Mixer</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">M</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Show Shortcuts</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">?</kbd>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white mb-3 uppercase tracking-wider">Project</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Save</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">Cmd+S</kbd>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white mb-3 uppercase tracking-wider">Tips</h3>
+                <div className="space-y-2 text-gray-400 text-xs">
+                  <div>• Drag audio from browser to tracks</div>
+                  <div>• Use loop for section work</div>
+                  <div>• Solo/Mute for better mixing</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
