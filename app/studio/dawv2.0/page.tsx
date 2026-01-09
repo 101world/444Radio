@@ -85,7 +85,8 @@ export default function DAWProRebuild() {
   const TIMELINE_HEIGHT = 48
   const TRANSPORT_HEIGHT = 72
   const GRID_SUBDIVISION = 4 // 16th notes
-  const timelineWidth = 400 * zoom // 400 seconds visible
+  const TIMELINE_SECONDS = 180 // reduce DOM nodes for smoother UI (3 minutes visible)
+  const timelineWidth = TIMELINE_SECONDS * zoom
 
   useEffect(() => {
     loopRef.current = { enabled: loopEnabled, start: loopStart, end: loopEnd }
@@ -1153,7 +1154,7 @@ export default function DAWProRebuild() {
                 className="sticky top-0 z-10 bg-[#0d0d0d] border-b border-gray-800 relative"
                 style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
               >
-                {Array.from({ length: 401 }).map((_, i) => (
+                {Array.from({ length: TIMELINE_SECONDS + 1 }).map((_, i) => (
                   <div
                     key={i}
                     className="absolute top-0 h-full"
@@ -1243,7 +1244,7 @@ export default function DAWProRebuild() {
                   }}
                 >
                   {/* Grid Lines */}
-                  {Array.from({ length: 401 * GRID_SUBDIVISION }).map((_, i) => (
+                  {Array.from({ length: (TIMELINE_SECONDS + 1) * GRID_SUBDIVISION }).map((_, i) => (
                     <div
                       key={i}
                       className="absolute top-0 bottom-0 border-l pointer-events-none"
