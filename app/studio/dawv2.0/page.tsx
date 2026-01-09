@@ -606,6 +606,96 @@ export default function DAWv2() {
           </div>
         </div>
       </div>
+
+        {/* Mixer Panel */}
+        {showMixer && (
+          <div className="w-80 border-l border-slate-800 bg-[#1a1a1a] flex flex-col overflow-y-auto">
+            <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+              <Sliders size={18} className="text-cyan-400" />
+              <h3 className="text-lg font-semibold text-white">Mixer</h3>
+            </div>
+            
+            <div className="flex-1 p-4">
+              <div className="grid grid-cols-2 gap-4">
+                {tracks.map((track) => (
+                  <div key={track.id} className="bg-slate-900 rounded-lg p-4 border border-slate-800">
+                    <div className="text-sm font-semibold text-cyan-400 mb-4 truncate">{track.name}</div>
+                    
+                    {/* Vertical Fader */}
+                    <div className="flex flex-col items-center mb-4">
+                      <div className="h-32 w-8 bg-slate-950 rounded-full relative border border-slate-700">
+                        <div
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-cyan-500 to-cyan-400 rounded-full transition-all"
+                          style={{ height: `${track.volume * 100}%` }}
+                        />
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={track.volume * 100}
+                          onChange={(e) => {
+                            if (daw) {
+                              daw.updateTrack(track.id, { volume: parseFloat(e.target.value) / 100 });
+                              setTracks([...daw.getTracks()]);
+                            }
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-ns-resize"
+                          style={{ writingMode: 'vertical-lr' } as React.CSSProperties}
+                        />
+                      </div>
+                      <div className="text-xs text-gray-400 mt-2 font-mono">
+                        {(track.volume * 100).toFixed(0)}%
+                      </div>
+                    </div>
+
+                    {/* Pan Control */}
+                    <div className="mb-3">
+                      <div className="text-xs text-gray-400 mb-1">Pan</div>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        defaultValue="0"
+                        className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400"
+                      />
+                      <div className="text-xs text-center text-gray-500 mt-1">C</div>
+                    </div>
+
+                    {/* Mute/Solo */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          if (daw) {
+                            daw.updateTrack(track.id, { muted: !track.muted });
+                            setTracks([...daw.getTracks()]);
+                          }
+                        }}
+                        className={`flex-1 py-1 text-xs rounded font-semibold transition-colors ${
+                          track.muted ? 'bg-red-500 text-white' : 'bg-slate-700 text-gray-400'
+                        }`}
+                      >
+                        M
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (daw) {
+                            daw.updateTrack(track.id, { solo: !track.solo });
+                            setTracks([...daw.getTracks()]);
+                          }
+                        }}
+                        className={`flex-1 py-1 text-xs rounded font-semibold transition-colors ${
+                          track.solo ? 'bg-yellow-500 text-black' : 'bg-slate-700 text-gray-400'
+                        }`}
+                      >
+                        S
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
