@@ -512,6 +512,17 @@ export default function DAWv2() {
             {/* Time Ruler */}
             <div className="h-12 bg-slate-950 border-b border-slate-800 sticky top-0 z-10 overflow-hidden">
               <div style={{ width: `${timelineWidth}px` }} className="relative h-full">
+                {/* Loop Region Highlight */}
+                {loopEnabled && (
+                  <div
+                    className="absolute top-0 bottom-0 bg-yellow-500/10 border-l-2 border-r-2 border-yellow-500 pointer-events-none"
+                    style={{
+                      left: `${loopStart * zoom}px`,
+                      width: `${(loopEnd - loopStart) * zoom}px`
+                    }}
+                  />
+                )}
+                
                 {Array.from({ length: 201 }).map((_, i) => (
                   <div
                     key={i}
@@ -533,6 +544,17 @@ export default function DAWv2() {
                 }`}
                 style={{ width: `${timelineWidth}px` }}
               >
+                {/* Loop Region Highlight */}
+                {loopEnabled && (
+                  <div
+                    className="absolute top-0 bottom-0 bg-yellow-500/5 border-l border-r border-yellow-500/30 pointer-events-none z-5"
+                    style={{
+                      left: `${loopStart * zoom}px`,
+                      width: `${(loopEnd - loopStart) * zoom}px`
+                    }}
+                  />
+                )}
+                
                 {/* Grid lines */}
                 {Array.from({ length: 201 }).map((_, i) => (
                   <div
