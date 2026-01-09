@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW';
 import type { Track, TrackClip } from '@/lib/audio/TrackManager';
-import { Play, Pause, Square, Plus, Upload, Save, FolderOpen, Download, Settings } from 'lucide-react';
+import { Play, Pause, Square, Plus, Save, FolderOpen, Grid3x3, Repeat, Volume2, Sliders, ZoomIn, ZoomOut, Search, Music, SkipBack, SkipForward, HelpCircle, Scissors } from 'lucide-react';
 
 export default function DAWv2() {
   const { user } = useUser();
@@ -16,10 +16,18 @@ export default function DAWv2() {
   const [zoom, setZoom] = useState(50); // pixels per second
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
-  const [showLibrary, setShowLibrary] = useState(false);
+  const [showBrowser, setShowBrowser] = useState(true);
+  const [showMixer, setShowMixer] = useState(false);
+  const [showClipEditor, setShowClipEditor] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [library, setLibrary] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [loopEnabled, setLoopEnabled] = useState(false);
+  const [loopStart, setLoopStart] = useState(0);
+  const [loopEnd, setLoopEnd] = useState(16);
+  const [searchTerm, setSearchTerm] = useState('');
   const timelineRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map());
 
@@ -61,6 +69,32 @@ export default function DAWv2() {
 
     initDAW();
   }, [user]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        isPlaying ? handlePause() : handlePlay();
+      } else if (e.key === '?') {
+        setShowShortcuts(true);
+      } else if (e.key === 'Escape') {
+        setShowShortcuts(false);
+      } else if (e.key === 'b' || e.key === 'B') {
+        setShowBrowser(!showBrowser);
+      } else if (e.key === 'm' || e.key === 'M') {
+        setShowMixer(!showMixer);
+      } else if (e.key === 'l' || e.key === 'L') {
+        setLoopEnabled(!loopEnabled);
+      } else if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isPlaying, showBrowser, showMixer, loopEnabled]);
 
   // Transport controls
   const handlePlay = useCallback(() => {
@@ -117,7 +151,7 @@ export default function DAWv2() {
         name: 'Audio Clip'
       });
       setTracks(daw.getTracks());
-      setShowLibrary(false);
+      setShowBrowser(false);
     } catch (error) {
       console.error('Clip add failed:', error);
     }
@@ -204,7 +238,7 @@ export default function DAWv2() {
             Save
           </button>
           <button
-            onClick={() => setShowLibrary(true)}
+            onClick={() => setShowBrowser(true)}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center gap-2 transition-colors"
           >
             <FolderOpen size={16} />
@@ -397,13 +431,13 @@ export default function DAWv2() {
       </div>
 
       {/* Library Modal */}
-      {showLibrary && (
+      {showBrowser && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-slate-950 border border-cyan-500/30 rounded-xl p-8 max-w-4xl w-full max-h-[80vh] overflow-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-cyan-400">Your Library</h2>
               <button
-                onClick={() => setShowLibrary(false)}
+                onClick={() => setShowBrowser(false)}
                 className="text-gray-400 hover:text-white"
               >
                 ✕
