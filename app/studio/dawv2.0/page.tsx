@@ -49,6 +49,15 @@ export default function DAWProRebuild() {
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null)
   const [projectName, setProjectName] = useState('Untitled Project')
   const [saving, setSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'autosaving'>('idle')
+  const [saveTick, setSaveTick] = useState(false)
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
+  const [projects, setProjects] = useState<any[]>([])
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+  const autosaveTimer = useRef<NodeJS.Timeout | null>(null)
+  const [dragPreview, setDragPreview] = useState<{ time: number; trackId: string | null } | null>(null)
+  const [draggingLoopHandle, setDraggingLoopHandle] = useState<'start' | 'end' | null>(null)
+  const [activeLoopHandle, setActiveLoopHandle] = useState<'start' | 'end' | null>(null)
 
   // Advanced generation modal states
   const [showGenerateModal, setShowGenerateModal] = useState(false)
@@ -68,6 +77,7 @@ export default function DAWProRebuild() {
 
   const timelineRef = useRef<HTMLDivElement>(null)
   const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map())
+  const loopRef = useRef({ enabled: false, start: 0, end: 32 })
 
   // Ableton-style constants
   const TRACK_HEIGHT = 100
@@ -76,6 +86,10 @@ export default function DAWProRebuild() {
   const TRANSPORT_HEIGHT = 72
   const GRID_SUBDIVISION = 4 // 16th notes
   const timelineWidth = 400 * zoom // 400 seconds visible
+
+  useEffect(() => {
+    loopRef.current = { enabled: loopEnabled, start: loopStart, end: loopEnd }
+  }, [loopEnabled, loopStart, loopEnd])
 
   // Initialize DAW
   useEffect(() => {
@@ -102,9 +116,10 @@ export default function DAWProRebuild() {
               let currentTime = state.currentTime
 
               // Loop enforcement
-              if (loopEnabled && currentTime >= loopEnd) {
-                dawInstance.seekTo(loopStart)
-                currentTime = loopStart
+              const loop = loopRef.current
+              if (loop.enabled && currentTime >= loop.end) {
+                dawInstance.seekTo(loop.start)
+                currentTime = loop.start
               }
 
               setPlayhead(currentTime)
@@ -123,7 +138,7 @@ export default function DAWProRebuild() {
     }
 
     initDAW()
-  }, [user, loopEnabled, loopStart, loopEnd])
+  }, [user])
 
   // Load library
   useEffect(() => {
@@ -131,6 +146,12 @@ export default function DAWProRebuild() {
       loadLibrary()
     }
   }, [user, loading])
+
+  useEffect(() => {
+    if (user && daw && !loading) {
+      fetchProjects()
+    }
+  }, [user, daw, loading, fetchProjects])
 
   const loadLibrary = async () => {
     try {
@@ -143,6 +164,86 @@ export default function DAWProRebuild() {
       console.error('Library load failed:', error)
     }
   }
+
+  const snapTime = useCallback(
+    (time: number) =>
+      snapEnabled ? Math.round(time * GRID_SUBDIVISION) / GRID_SUBDIVISION : time,
+    [snapEnabled]
+  )
+
+  const beatLength = useCallback(() => 60 / bpm, [bpm])
+
+  const formatBarsBeats = useCallback(
+    (time: number) => {
+      const bl = beatLength()
+      const totalBeats = time / bl
+      const bar = Math.floor(totalBeats / 4) + 1
+      const beatInBar = Math.floor(totalBeats % 4) + 1
+      const sub = Math.floor(((totalBeats - Math.floor(totalBeats)) * GRID_SUBDIVISION)) + 1
+      return `${bar}:${beatInBar}.${sub}`
+    },
+    [beatLength]
+  )
+
+  // Simple toast helper
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 2500)
+  }, [])
+
+  const addClipFromUrl = useCallback(
+    async (
+      audioUrl: string,
+      trackId: string,
+      options: Partial<TrackClip> & { respectSnap?: boolean } = {}
+    ) => {
+      if (!daw) return null
+
+      try {
+        const proxyUrl = `/api/r2/audio-proxy?url=${encodeURIComponent(audioUrl)}`
+        const response = await fetch(proxyUrl)
+        if (!response.ok) throw new Error('Fetch failed')
+
+        const arrayBuffer = await response.arrayBuffer()
+        const audioContext = daw.getAudioContext()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0))
+
+        const shouldSnap = options.respectSnap ?? snapEnabled
+        const start = options.startTime ?? 0
+
+        const clip: TrackClip = {
+          id: options.id || `clip-${Date.now()}`,
+          trackId,
+          startTime: shouldSnap ? snapTime(start) : start,
+          duration: options.duration ?? audioBuffer.duration,
+          offset: options.offset ?? 0,
+          gain: options.gain ?? 1,
+          fadeIn: options.fadeIn || { duration: 0.01, curve: 'exponential' },
+          fadeOut: options.fadeOut || { duration: 0.01, curve: 'exponential' },
+          buffer: audioBuffer,
+          locked: options.locked ?? false,
+          sourceUrl: audioUrl,
+          name: options.name,
+          color: options.color
+        }
+
+        daw.addClipToTrack(trackId, clip)
+        setTracks(daw.getTracks())
+        return clip
+      } catch (error) {
+        console.error('Clip decode/add failed:', error)
+        throw error
+      }
+    },
+    [daw, snapEnabled, GRID_SUBDIVISION]
+  )
+
+  const serializeTracks = useCallback((allTracks: Track[]) => {
+    return allTracks.map((track) => ({
+      ...track,
+      clips: track.clips.map(({ buffer, ...rest }) => ({ ...rest }))
+    }))
+  }, [])
 
   // Transport controls
   const handlePlay = useCallback(() => {
@@ -188,46 +289,24 @@ export default function DAWProRebuild() {
     async (audioUrl: string, trackId: string, startTime: number = 0) => {
       if (!daw) return
       try {
-        const proxyUrl = `/api/r2/audio-proxy?url=${encodeURIComponent(audioUrl)}`
-        const response = await fetch(proxyUrl)
-        if (!response.ok) throw new Error('Fetch failed')
-
-        const arrayBuffer = await response.arrayBuffer()
-        const audioContext = new AudioContext()
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-
-        const clip: TrackClip = {
-          id: `clip-${Date.now()}`,
-          trackId,
-          startTime: snapEnabled
-            ? Math.round(startTime * GRID_SUBDIVISION) / GRID_SUBDIVISION
-            : startTime,
-          duration: audioBuffer.duration,
-          offset: 0,
-          gain: 1,
-          fadeIn: { duration: 0.01, curve: 'exponential' },
-          fadeOut: { duration: 0.01, curve: 'exponential' },
-          buffer: audioBuffer,
-          locked: false
-        }
-
-        daw.addClipToTrack(trackId, clip)
-        setTracks(daw.getTracks())
+        await addClipFromUrl(audioUrl, trackId, { startTime, respectSnap: true })
       } catch (error) {
         console.error('Clip add failed:', error)
-        alert('Failed to add clip. Please try again.')
+        showToast('Failed to add clip. Please try again.', 'error')
       }
     },
-    [daw, snapEnabled, GRID_SUBDIVISION]
+    [daw, addClipFromUrl, showToast]
   )
 
-  const handleSave = async () => {
+  const handleSave = async (mode: 'manual' | 'auto' = 'manual') => {
     if (!daw || saving) return
     setSaving(true)
+    setSaveStatus(mode === 'auto' ? 'autosaving' : 'saving')
     try {
       const projectData = {
+        id: currentProjectId || undefined,
         title: projectName, // Using 'title' to match schema
-        tracks: daw.getTracks(),
+        tracks: serializeTracks(daw.getTracks()),
         tempo: bpm // Using 'tempo' to match schema
       }
 
@@ -238,23 +317,33 @@ export default function DAWProRebuild() {
       })
 
       if (response.ok) {
-        alert('✅ Project saved successfully!')
+        const data = await response.json()
+        if (data.id) {
+          setCurrentProjectId(data.id)
+        }
+        await fetchProjects()
+        if (mode === 'manual') {
+          showToast('Project saved', 'success')
+        }
+        setSaveTick(true)
+        setTimeout(() => setSaveTick(false), 1000)
       } else {
         const error = await response.json()
-        alert(`❌ Save failed: ${error.error}`)
+        showToast(`Save failed: ${error.error || 'Unknown error'}`, 'error')
       }
     } catch (error) {
       console.error('Save error:', error)
-      alert('❌ Save failed. Please try again.')
+      showToast('Save failed. Please try again.', 'error')
     } finally {
       setSaving(false)
+      setTimeout(() => setSaveStatus('idle'), 600)
     }
   }
 
   // AI Generation handler
   const handleGenerate = async () => {
     if (!genPrompt.trim()) {
-      alert('Please enter a prompt')
+      showToast('Please enter a prompt', 'error')
       return
     }
 
@@ -369,7 +458,7 @@ export default function DAWProRebuild() {
       const result = await response.json()
 
       if (result.success && result.audioUrl) {
-        alert(`✅ Track generated! "${finalTitle}" is ready.`)
+        showToast(`Track generated: "${finalTitle}"`, 'success')
         // Refresh library to show new track
         await loadLibrary()
         setShowGenerateModal(false)
@@ -385,7 +474,7 @@ export default function DAWProRebuild() {
       }
     } catch (error) {
       console.error('Generation error:', error)
-      alert('❌ Generation failed. Please try again.')
+      showToast('Generation failed. Please try again.', 'error')
     } finally {
       setGeneratingTrack(false)
     }
@@ -394,7 +483,7 @@ export default function DAWProRebuild() {
   // Stem splitter handler
   const handleSplitStems = async () => {
     if (!selectedAudioForStems) {
-      alert('Please select an audio track to split')
+      showToast('Please select an audio track to split', 'error')
       return
     }
 
@@ -417,17 +506,206 @@ export default function DAWProRebuild() {
 
       if (data.success && data.stems) {
         setStemResults(data.stems)
-        alert('✅ Stems separated successfully!')
+        showToast('Stems separated successfully!', 'success')
       } else {
         throw new Error('No stems returned')
       }
     } catch (error) {
       console.error('Stem splitting error:', error)
-      alert('❌ Stem splitting failed. Please try again.')
+      showToast('Stem splitting failed. Please try again.', 'error')
     } finally {
       setIsSplittingStems(false)
     }
   }
+
+  const handleDeleteProject = useCallback(async () => {
+    if (!currentProjectId) return
+    const confirmDelete = window.confirm('Delete this project? This cannot be undone.')
+    if (!confirmDelete) return
+    try {
+      const response = await fetch(`/api/studio/projects?id=${currentProjectId}`, {
+        method: 'DELETE'
+      })
+      if (response.ok) {
+        showToast('Project deleted', 'success')
+        setCurrentProjectId(null)
+        await fetchProjects()
+        resetProject()
+      } else {
+        const err = await response.json()
+        showToast(`Delete failed: ${err.error || 'Unknown error'}`, 'error')
+      }
+    } catch (error) {
+      console.error('Delete project failed:', error)
+      showToast('Delete failed. Please try again.', 'error')
+    }
+  }, [currentProjectId, fetchProjects, resetProject, showToast])
+
+  // Loop handle drag listeners
+  useEffect(() => {
+    const handleMove = (e: MouseEvent) => {
+      if (!draggingLoopHandle || !timelineRef.current) return
+      const rect = timelineRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
+      const time = Math.max(0, snapTime(x / zoom))
+
+      if (draggingLoopHandle === 'start') {
+        setLoopStart(Math.min(time, loopEnd - 0.25))
+      } else {
+        setLoopEnd(Math.max(time, loopStart + 0.25))
+      }
+    }
+
+    const handleUp = () => setDraggingLoopHandle(null)
+
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+    }
+  }, [draggingLoopHandle, loopEnd, loopStart, snapTime, zoom])
+
+  // Autosave: debounce 2s after playhead/track change
+  const queueAutosave = useCallback(() => {
+    if (!currentProjectId) return // avoid autosave before first explicit save
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
+    autosaveTimer.current = setTimeout(() => {
+      handleSave('auto')
+    }, 2000)
+  }, [handleSave, currentProjectId])
+
+  const resetProject = useCallback(() => {
+    if (!daw) return
+    try {
+      daw.stop()
+      const trackManager = daw.getTrackManager()
+      trackManager.getTracks().forEach((t) => trackManager.deleteTrack(t.id))
+      for (let i = 0; i < 8; i++) {
+        trackManager.createTrack({ name: `${i + 1} Audio` })
+      }
+      setProjectName('Untitled Project')
+      setCurrentProjectId(null)
+      setBpm(120)
+      daw.setBPM(120)
+      setTracks(daw.getTracks())
+    } catch (error) {
+      console.error('Reset project failed:', error)
+    }
+  }, [daw])
+
+  const handleLoadProject = useCallback(
+    async (projectId: string) => {
+      if (!projectId) return
+      const project = projects.find((p) => p.id === projectId)
+      if (!project) return
+      await hydrateProject(project)
+      setCurrentProjectId(projectId)
+    },
+    [projects, hydrateProject]
+  )
+
+  const handleRenameProject = useCallback(async () => {
+    if (!currentProjectId) return
+    const newName = window.prompt('Rename project to:', projectName)
+    if (!newName || !newName.trim()) return
+    setProjectName(newName.trim())
+    await handleSave('manual')
+    showToast('Project renamed', 'success')
+  }, [currentProjectId, handleSave, projectName, showToast])
+
+  const handleDuplicateProject = useCallback(async () => {
+    if (!currentProjectId) return
+    const project = projects.find((p) => p.id === currentProjectId)
+    if (!project) return
+    const newTitle = `${project.title || 'Untitled'} (Copy)`
+    try {
+      const response = await fetch('/api/studio/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle,
+          tracks: project.tracks,
+          tempo: project.tempo || 120
+        })
+      })
+      if (response.ok) {
+        showToast('Project duplicated', 'success')
+        await fetchProjects()
+      } else {
+        const err = await response.json()
+        showToast(`Duplicate failed: ${err.error || 'Unknown error'}`, 'error')
+      }
+    } catch (error) {
+      console.error('Duplicate project failed:', error)
+      showToast('Duplicate failed. Please try again.', 'error')
+    }
+  }, [currentProjectId, projects, fetchProjects, showToast])
+
+  // Autosave hooks
+  useEffect(() => {
+    if (daw) {
+      queueAutosave()
+    }
+  }, [tracks, bpm, queueAutosave, daw])
+
+  const hydrateProject = useCallback(
+    async (project: any) => {
+      if (!daw || !project?.tracks) return
+
+      try {
+        daw.stop()
+        const trackManager = daw.getTrackManager()
+
+        // Clear existing tracks
+        trackManager.getTracks().forEach((t) => trackManager.deleteTrack(t.id))
+
+        for (const trackData of project.tracks as any[]) {
+          const { clips = [], ...rest } = trackData || {}
+          const newTrack = trackManager.createTrack({ ...rest, clips: [] })
+
+          for (const clipData of clips) {
+            if (!clipData?.sourceUrl) continue
+            try {
+              await addClipFromUrl(clipData.sourceUrl, newTrack.id, {
+                ...clipData,
+                respectSnap: false
+              })
+            } catch (err) {
+              console.error('Clip hydrate failed:', err)
+            }
+          }
+        }
+
+        if (project.tempo) {
+          setBpm(project.tempo)
+          daw.setBPM(project.tempo)
+        }
+
+        setProjectName(project.title || 'Untitled Project')
+        setCurrentProjectId(project.id || null)
+        setTracks(daw.getTracks())
+      } catch (error) {
+        console.error('Project hydrate failed:', error)
+      }
+    },
+    [addClipFromUrl, daw]
+  )
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const response = await fetch('/api/studio/projects')
+      if (!response.ok) return
+      const data = await response.json()
+      setProjects(data.projects || [])
+
+      if (!currentProjectId && data.projects && data.projects.length > 0 && data.projects[0].tracks) {
+        await hydrateProject(data.projects[0])
+      }
+    } catch (error) {
+      console.error('Project load failed:', error)
+    }
+  }, [hydrateProject, currentProjectId])
 
   const renderWaveform = (canvas: HTMLCanvasElement, buffer: AudioBuffer) => {
     const ctx = canvas.getContext('2d')
@@ -472,12 +750,23 @@ export default function DAWProRebuild() {
       } else if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         handleSave()
+      } else if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault()
+        setShowBrowser((prev) => !prev)
+      } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && loopEnabled && activeLoopHandle) {
+        e.preventDefault()
+        const step = beatLength() / GRID_SUBDIVISION
+        if (activeLoopHandle === 'start') {
+          setLoopStart((prev) => Math.max(0, e.key === 'ArrowLeft' ? prev - step : Math.min(prev + step, loopEnd - 0.25)))
+        } else {
+          setLoopEnd((prev) => Math.max(loopStart + 0.25, e.key === 'ArrowLeft' ? prev - step : prev + step))
+        }
       }
     }
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [isPlaying, handlePlay, handlePause, handleSave])
+  }, [isPlaying, handlePlay, handlePause, handleSave, loopEnabled, activeLoopHandle, beatLength, loopEnd, loopStart])
 
   if (loading) {
     return (
@@ -510,6 +799,60 @@ export default function DAWProRebuild() {
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
+            <div className="text-xs text-gray-500 uppercase font-medium">Project</div>
+            <select
+              value={currentProjectId || ''}
+              onChange={(e) => {
+                const id = e.target.value
+                if (!id) {
+                  resetProject()
+                } else {
+                  handleLoadProject(id)
+                }
+              }}
+              className="bg-[#1a1a1a] border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none min-w-[200px]"
+            >
+              <option value="">New Project</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title || 'Untitled'}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={resetProject}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm"
+              title="Start a new project"
+            >
+              New
+            </button>
+            <button
+              onClick={handleDeleteProject}
+              disabled={!currentProjectId}
+              className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm disabled:opacity-40"
+              title={currentProjectId ? 'Delete current project' : 'No project to delete'}
+            >
+              Delete
+            </button>
+            <button
+              onClick={handleRenameProject}
+              disabled={!currentProjectId}
+              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm disabled:opacity-40"
+              title={currentProjectId ? 'Rename current project' : 'No project to rename'}
+            >
+              Rename
+            </button>
+            <button
+              onClick={handleDuplicateProject}
+              disabled={!currentProjectId}
+              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm disabled:opacity-40"
+              title={currentProjectId ? 'Duplicate current project' : 'No project to duplicate'}
+            >
+              Duplicate
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
             <div className="text-xs text-gray-500 uppercase font-medium">BPM</div>
             <input
               type="number"
@@ -525,17 +868,23 @@ export default function DAWProRebuild() {
             onClick={handleSave}
             disabled={saving}
             className="px-5 py-2 bg-cyan-500 hover:bg-cyan-600 text-black rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            title={currentProjectId ? 'Save project' : 'Save as new project'}
           >
-            <Save size={16} />
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {saving ? (saveStatus === 'autosaving' ? 'Autosaving...' : 'Saving...') : currentProjectId ? 'Save' : 'Save As'}
           </button>
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            className="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white rounded-lg font-medium transition-opacity flex items-center gap-2"
-          >
-            <Sparkles size={16} />
-            Generate AI
-          </button>
+          <div className="text-xs text-gray-500 min-w-[90px] text-right">
+            {saveStatus === 'saving' && 'Saving...'}
+            {saveStatus === 'autosaving' && 'Autosaving...'}
+          </div>
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              className="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white rounded-lg font-medium transition-opacity flex items-center gap-2"
+              title="AI generation"
+            >
+              <Sparkles size={16} />
+              Generate AI
+            </button>
         </div>
       </div>
 
@@ -572,10 +921,21 @@ export default function DAWProRebuild() {
         </div>
 
         <div className="flex-1 flex items-center justify-center gap-4">
-          <div className="text-3xl font-mono tabular-nums text-cyan-400 font-bold tracking-wider">
+          <div className="text-3xl font-mono tabular-nums text-cyan-400 font-bold tracking-wider" title={showBrowser ? 'Press B to hide browser' : 'Press B to show browser'}>
             {Math.floor(playhead / 60)}:{String(Math.floor(playhead % 60)).padStart(2, '0')}.
             {String(Math.floor((playhead % 1) * 100)).padStart(2, '0')}
           </div>
+          {(saveStatus === 'saving' || saveStatus === 'autosaving') && (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/40 text-cyan-100 text-xs">
+              <Loader2 size={14} className="animate-spin" />
+              {saveStatus === 'autosaving' ? 'Autosaving…' : 'Saving…'}
+            </div>
+          )}
+          {saveStatus === 'idle' && saveTick && (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-100 text-xs">
+              ✓ Saved
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
@@ -662,7 +1022,9 @@ export default function DAWProRebuild() {
                     onDragStart={(e) => {
                       e.dataTransfer.setData('audioUrl', item.audio_url)
                       e.dataTransfer.setData('title', item.title)
+                      setDragPreview({ time: 0, trackId: null })
                     }}
+                    onDragEnd={() => setDragPreview(null)}
                     className="p-3 mb-2 bg-[#1a1a1a] hover:bg-[#252525] rounded-lg cursor-move transition-all hover:scale-[1.02] group"
                   >
                     <div className="flex items-center gap-3 mb-2">
@@ -815,6 +1177,36 @@ export default function DAWProRebuild() {
                     }}
                   />
                 )}
+
+                {loopEnabled && (
+                  <>
+                    <div
+                      className={`absolute -bottom-2 w-3 h-6 bg-orange-500 rounded cursor-ew-resize ${
+                        activeLoopHandle === 'start' ? 'ring-2 ring-orange-300' : ''
+                      }`}
+                      style={{ left: `${loopStart * zoom - 6}px` }}
+                      onMouseDown={() => {
+                        setDraggingLoopHandle('start')
+                        setActiveLoopHandle('start')
+                      }}
+                      title="Drag to set loop start"
+                    />
+                    <div
+                      className={`absolute -bottom-2 w-3 h-6 bg-orange-500 rounded cursor-ew-resize ${
+                        activeLoopHandle === 'end' ? 'ring-2 ring-orange-300' : ''
+                      }`}
+                      style={{ left: `${loopEnd * zoom - 6}px` }}
+                      onMouseDown={() => {
+                        setDraggingLoopHandle('end')
+                        setActiveLoopHandle('end')
+                      }}
+                      title="Drag to set loop end"
+                    />
+                    <div className="absolute -bottom-8 left-2 text-[11px] text-orange-200 bg-[#1a1a1a] px-2 py-1 rounded border border-orange-500/40">
+                      Loop {formatBarsBeats(loopStart)} → {formatBarsBeats(loopEnd)}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Tracks */}
@@ -834,9 +1226,21 @@ export default function DAWProRebuild() {
                     if (audioUrl) {
                       const rect = e.currentTarget.getBoundingClientRect()
                       const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
-                      const startTime = x / zoom
+                      const startTime = snapTime(x / zoom)
                       await handleAddClip(audioUrl, track.id, startTime)
                     }
+                    setDragPreview(null)
+                  }}
+                  onDragLeave={() => setDragPreview(null)}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
+                    const time = snapTime(x / zoom)
+                    setDragPreview({ time, trackId: track.id })
                   }}
                 >
                   {/* Grid Lines */}
@@ -898,6 +1302,19 @@ export default function DAWProRebuild() {
               >
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-cyan-400 rotate-45 rounded-sm" />
               </div>
+
+              {/* Drag Ghost */}
+              {dragPreview && (
+                <div
+                  className="absolute top-0 bottom-0 w-px bg-cyan-500/70 z-30 pointer-events-none"
+                  style={{ left: `${dragPreview.time * zoom}px` }}
+                >
+                  <div className="absolute -top-6 -left-8 px-2 py-1 rounded bg-[#0d0d0d] border border-cyan-500/40 text-xs text-cyan-100 whitespace-nowrap">
+                    {dragPreview.trackId ? 'Drop here' : 'Drag'} @{' '}
+                    {snapEnabled ? formatBarsBeats(dragPreview.time) : `${dragPreview.time.toFixed(2)}s`}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1136,6 +1553,21 @@ export default function DAWProRebuild() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-lg text-sm font-medium z-50 border ${
+            toast.type === 'success'
+              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-200'
+              : toast.type === 'error'
+              ? 'bg-red-500/20 border-red-500/40 text-red-200'
+              : 'bg-gray-800 border-gray-700 text-gray-200'
+          }`}
+        >
+          {toast.message}
         </div>
       )}
     </div>

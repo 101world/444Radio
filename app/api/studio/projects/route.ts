@@ -23,7 +23,7 @@ export async function GET() {
     const supabase = getAdminSupabase()
     const { data, error } = await supabase
       .from('studio_projects')
-      .select('id, title, updated_at')
+      .select('id, title, updated_at, tracks, tempo')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 

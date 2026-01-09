@@ -44,6 +44,7 @@ export interface TrackClip {
   fadeIn: FadeConfig
   fadeOut: FadeConfig
   buffer?: AudioBuffer
+  sourceUrl?: string
   color?: string
   name?: string
   locked: boolean
