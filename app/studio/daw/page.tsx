@@ -124,6 +124,8 @@ export default function DAWStudio() {
   const [library, setLibrary] = useState<any[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [userCredits, setUserCredits] = useState(0)
+  const [draggedClip, setDraggedClip] = useState<{ clip: AudioClip; offsetX: number } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   // Refs
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -574,6 +576,8 @@ export default function DAWStudio() {
   // ============================================================================
 
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isDragging) return // Don't select if we just finished dragging
+    
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -596,7 +600,82 @@ export default function DAWStudio() {
     })
 
     setSelectedClip(clickedClip?.id || null)
+  }, [clips, tracks, zoom, isDragging])
+
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    // Find clip under mouse
+    const clickedClip = clips.find(clip => {
+      const track = tracks.find(t => t.id === clip.trackId)
+      if (!track) return false
+
+      const trackIndex = tracks.indexOf(track)
+      const clipX = clip.startTime * PIXELS_PER_SECOND * zoom
+      const clipY = trackIndex * TRACK_HEIGHT + 10
+      const clipW = clip.duration * PIXELS_PER_SECOND * zoom
+      const clipH = TRACK_HEIGHT - 20
+
+      return x >= clipX && x <= clipX + clipW && y >= clipY && y <= clipY + clipH
+    })
+
+    if (clickedClip) {
+      const clipX = clickedClip.startTime * PIXELS_PER_SECOND * zoom
+      setDraggedClip({ clip: clickedClip, offsetX: x - clipX })
+      setIsDragging(true)
+      setSelectedClip(clickedClip.id)
+    }
   }, [clips, tracks, zoom])
+
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!draggedClip) return
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    // Calculate new start time (snap to 0.1s grid)
+    const newStartTime = Math.max(0, Math.round((x - draggedClip.offsetX) / (PIXELS_PER_SECOND * zoom) * 10) / 10)
+
+    // Check which track we're over
+    const trackIndex = Math.floor(y / TRACK_HEIGHT)
+    const newTrack = tracks[trackIndex]
+
+    if (newTrack) {
+      setClips(prev => prev.map(c => 
+        c.id === draggedClip.clip.id 
+          ? { ...c, startTime: newStartTime, trackId: newTrack.id, color: newTrack.color }
+          : c
+      ))
+    }
+  }, [draggedClip, tracks, zoom])
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (draggedClip) {
+      setTimeout(() => setIsDragging(false), 50) // Delay to prevent immediate click after drag
+    }
+    setDraggedClip(null)
+  }, [draggedClip])
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (draggedClip) {
+        setTimeout(() => setIsDragging(false), 50)
+      }
+      setDraggedClip(null)
+    }
+
+    window.addEventListener('mouseup', handleGlobalMouseUp)
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
+  }, [draggedClip])
 
   // ============================================================================
   // RENDER
@@ -787,8 +866,11 @@ export default function DAWStudio() {
             />
             <canvas
               ref={canvasRef}
-              className="cursor-pointer"
+              className="cursor-move"
               onClick={handleCanvasClick}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
             />
           </div>
         </div>
