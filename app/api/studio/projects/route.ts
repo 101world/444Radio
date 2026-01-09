@@ -9,6 +9,29 @@ function getAdminSupabase() {
   return createClient(url, key)
 }
 
+function isMissingColumn(error: any) {
+  return error?.code === '42703' || /column .* does not exist/i.test(error?.message || '')
+}
+
+function isRLSPolicyError(error: any) {
+  return error?.code === '42501' || /row[- ]level security/i.test(error?.message || '')
+}
+
+function mapLegacyProjects(data: any[]) {
+  return (data || []).map((item) => ({
+    id: item.id,
+    title: item.name,
+    tracks: Array.isArray(item.data?.tracks) ? item.data.tracks : item.data || [],
+    tempo:
+      typeof item.data?.tempo === 'number'
+        ? item.data.tempo
+        : typeof item.data?.bpm === 'number'
+        ? item.data.bpm
+        : 120,
+    updated_at: item.updated_at
+  }))
+}
+
 export function OPTIONS() {
   return handleOptions()
 }
@@ -29,11 +52,43 @@ export async function GET() {
 
     if (error) {
       console.error('GET /api/studio/projects error:', JSON.stringify(error, null, 2))
-      // Return empty array if table doesn't exist yet
       if (error.message?.includes('relation') || error.code === '42P01') {
         return corsResponse(NextResponse.json({ projects: [], note: 'Table not yet created' }))
       }
-      return corsResponse(NextResponse.json({ error: 'Failed to load projects', details: error.message }, { status: 500 }))
+      if (isRLSPolicyError(error)) {
+        return corsResponse(
+          NextResponse.json(
+            {
+              error: 'Database permissions blocked the request',
+              details: 'Supabase RLS denied access. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.'
+            },
+            { status: 403 }
+          )
+        )
+      }
+      if (isMissingColumn(error)) {
+        // Legacy schema fallback (name/data + clerk_user_id)
+        const { data: legacyData, error: legacyError } = await supabase
+          .from('studio_projects')
+          .select('id, name, data, updated_at')
+          .eq('clerk_user_id', userId)
+          .order('updated_at', { ascending: false })
+
+        if (legacyError) {
+          console.error('GET /api/studio/projects legacy fallback error:', JSON.stringify(legacyError, null, 2))
+          return corsResponse(
+            NextResponse.json(
+              { error: 'Failed to load projects', details: legacyError.message },
+              { status: 500 }
+            )
+          )
+        }
+
+        return corsResponse(NextResponse.json({ projects: mapLegacyProjects(legacyData) }))
+      }
+      return corsResponse(
+        NextResponse.json({ error: 'Failed to load projects', details: error.message }, { status: 500 })
+      )
     }
     return corsResponse(NextResponse.json({ projects: data || [] }))
   } catch (err: any) {
@@ -60,32 +115,65 @@ export async function POST(request: Request) {
     const supabase = getAdminSupabase()
 
     if (body.id) {
-      // Update existing
+      // Update existing (new schema)
       const { error } = await supabase
         .from('studio_projects')
-        .update({ 
-          title: body.title, 
-          tracks: body.tracks, 
-          tempo: body.tempo || 120 
+        .update({
+          title: body.title,
+          tracks: body.tracks,
+          tempo: body.tempo || 120
         })
         .eq('id', body.id)
         .eq('user_id', userId)
 
       if (error) {
         console.error('POST update /api/studio/projects error:', JSON.stringify(error, null, 2))
-        return corsResponse(NextResponse.json({ error: 'Failed to update project', details: error.message }, { status: 500 }))
+        if (isRLSPolicyError(error)) {
+          return corsResponse(
+            NextResponse.json(
+              {
+                error: 'Database permissions blocked the request',
+                details: 'Supabase RLS denied access. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.'
+              },
+              { status: 403 }
+            )
+          )
+        }
+        if (isMissingColumn(error)) {
+          // Legacy schema fallback (name/data + clerk_user_id)
+          const { error: legacyError } = await supabase
+            .from('studio_projects')
+            .update({
+              name: body.title,
+              data: { tracks: body.tracks, tempo: body.tempo || 120 }
+            })
+            .eq('id', body.id)
+            .eq('clerk_user_id', userId)
+
+          if (legacyError) {
+            console.error('POST update legacy /api/studio/projects error:', JSON.stringify(legacyError, null, 2))
+            return corsResponse(
+              NextResponse.json({ error: 'Failed to update project', details: legacyError.message }, { status: 500 })
+            )
+          }
+
+          return corsResponse(NextResponse.json({ success: true, id: body.id }))
+        }
+        return corsResponse(
+          NextResponse.json({ error: 'Failed to update project', details: error.message }, { status: 500 })
+        )
       }
 
       return corsResponse(NextResponse.json({ success: true, id: body.id }))
     } else {
-      // Create new
+      // Create new (new schema)
       const { data, error } = await supabase
         .from('studio_projects')
-        .insert({ 
-          title: body.title, 
-          tracks: body.tracks, 
-          tempo: body.tempo || 120, 
-          user_id: userId 
+        .insert({
+          title: body.title,
+          tracks: body.tracks,
+          tempo: body.tempo || 120,
+          user_id: userId
         })
         .select('id')
         .single()
@@ -93,8 +181,52 @@ export async function POST(request: Request) {
       if (error) {
         console.error('POST insert /api/studio/projects error:', JSON.stringify(error, null, 2))
         if (error.message?.includes('relation') || error.code === '42P01') {
-          return corsResponse(NextResponse.json({ error: 'Database table not created yet. Please run migrations.', details: error.message }, { status: 500 }))
+          return corsResponse(
+            NextResponse.json(
+              { error: 'Database table not created yet. Please run migrations.', details: error.message },
+              { status: 500 }
+            )
+          )
         }
+
+        if (isRLSPolicyError(error)) {
+          return corsResponse(
+            NextResponse.json(
+              {
+                error: 'Database permissions blocked the request',
+                details: 'Supabase RLS denied access. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.'
+              },
+              { status: 403 }
+            )
+          )
+        }
+
+        if (isMissingColumn(error)) {
+          // Legacy schema fallback (name/data + clerk_user_id)
+          const { data: legacyData, error: legacyError } = await supabase
+            .from('studio_projects')
+            .insert({
+              name: body.title,
+              data: { tracks: body.tracks, tempo: body.tempo || 120 },
+              clerk_user_id: userId
+            })
+            .select('id')
+            .single()
+
+          if (legacyError) {
+            console.error('POST insert legacy /api/studio/projects error:', JSON.stringify(legacyError, null, 2))
+            return corsResponse(
+              NextResponse.json(
+                { error: 'Failed to create project', details: legacyError.message },
+                { status: 500 }
+              )
+            )
+          }
+
+          console.log('POST /api/studio/projects: Project created (legacy)', { projectId: legacyData?.id })
+          return corsResponse(NextResponse.json({ success: true, id: legacyData?.id }))
+        }
+
         return corsResponse(NextResponse.json({ error: 'Failed to create project', details: error.message }, { status: 500 }))
       }
 
@@ -126,6 +258,32 @@ export async function DELETE(request: Request) {
 
   if (error) {
     console.error('DELETE /api/studio/projects error', error)
+    if (isRLSPolicyError(error)) {
+      return corsResponse(
+        NextResponse.json(
+          {
+            error: 'Database permissions blocked the request',
+            details: 'Supabase RLS denied access. Ensure SUPABASE_SERVICE_ROLE_KEY is set on the server.'
+          },
+          { status: 403 }
+        )
+      )
+    }
+    if (isMissingColumn(error)) {
+      const { error: legacyError } = await supabase
+        .from('studio_projects')
+        .delete()
+        .eq('id', id)
+        .eq('clerk_user_id', userId)
+
+      if (legacyError) {
+        console.error('DELETE legacy /api/studio/projects error', legacyError)
+        return corsResponse(NextResponse.json({ error: 'Failed to delete project' }, { status: 500 }))
+      }
+
+      return corsResponse(NextResponse.json({ success: true }))
+    }
+
     return corsResponse(NextResponse.json({ error: 'Failed to delete project' }, { status: 500 }))
   }
   return corsResponse(NextResponse.json({ success: true }))
