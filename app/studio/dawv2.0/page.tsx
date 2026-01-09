@@ -577,7 +577,10 @@ export default function DAWv2() {
                         left: `${clipLeft}px`,
                         width: `${clipWidth}px`
                       }}
-                      onClick={() => setSelectedClipId(clip.id)}
+                      onClick={() => {
+                        setSelectedClipId(clip.id);
+                        setShowClipEditor(true);
+                      }}
                     >
                       <canvas
                         ref={(canvas) => {
@@ -697,6 +700,123 @@ export default function DAWv2() {
           </div>
         )}
       </div>
+
+      {/* Clip Editor Panel */}
+      {showClipEditor && selectedClipId && (
+        <div className="h-56 border-t border-slate-800 bg-[#1a1a1a] flex flex-col">
+          <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Scissors size={18} className="text-cyan-400" />
+              <h3 className="text-base font-semibold text-white">Clip Editor</h3>
+              <span className="text-xs text-gray-500">
+                {tracks
+                  .flatMap(t => t.clips)
+                  .find(c => c.id === selectedClipId)?.id.slice(0, 8) || 'No clip'}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setShowClipEditor(false);
+                setSelectedClipId(null);
+              }}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="flex-1 p-6">
+            <div className="grid grid-cols-3 gap-6 h-full">
+              {/* Trim Controls */}
+              <div className="bg-slate-900 rounded-lg p-4 border border-slate-800">
+                <h4 className="text-sm font-semibold text-cyan-400 mb-3">Trim</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Start Time</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded text-white text-sm focus:border-cyan-500 focus:outline-none"
+                      placeholder="0.0s"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">End Time</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded text-white text-sm focus:border-cyan-500 focus:outline-none"
+                      placeholder="Auto"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Fade Controls */}
+              <div className="bg-slate-900 rounded-lg p-4 border border-slate-800">
+                <h4 className="text-sm font-semibold text-cyan-400 mb-3">Fades</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Fade In</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      defaultValue="0"
+                      className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400"
+                    />
+                    <div className="text-xs text-gray-500 text-center mt-1">0.0s</div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Fade Out</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      defaultValue="0"
+                      className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400"
+                    />
+                    <div className="text-xs text-gray-500 text-center mt-1">0.0s</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Gain & Pitch Controls */}
+              <div className="bg-slate-900 rounded-lg p-4 border border-slate-800">
+                <h4 className="text-sm font-semibold text-cyan-400 mb-3">Adjustments</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Gain</label>
+                    <input
+                      type="range"
+                      min="-20"
+                      max="20"
+                      step="1"
+                      defaultValue="0"
+                      className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400"
+                    />
+                    <div className="text-xs text-gray-500 text-center mt-1">0 dB</div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Pitch</label>
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      step="1"
+                      defaultValue="0"
+                      className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400"
+                    />
+                    <div className="text-xs text-gray-500 text-center mt-1">0 st</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
 
