@@ -219,73 +219,169 @@ export default function DAWv2() {
     );
   }
 
-  const timelineWidth = 200 * zoom; // 200 seconds * zoom
+  const timelineWidth = 200 * zoom;
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
-      {/* Header */}
-      <div className="h-16 border-b border-slate-800 bg-slate-950 flex items-center justify-between px-6">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-cyan-400">444 DAW v2.0</h1>
-          <div className="text-sm text-gray-400">BPM: {bpm}</div>
+    <div className="min-h-screen bg-black text-white flex flex-col overflow-hidden">
+      {/* Header - Professional */}
+      <div className="h-14 border-b border-slate-800 bg-[#1a1a1a] flex items-center justify-between px-4">
+        <div className="flex items-center gap-6">
+          <h1 className="text-xl font-bold text-cyan-400 tracking-tight">444 Studio</h1>
+          <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 rounded">
+              <span className="text-gray-400">BPM</span>
+              <input 
+                type="number" 
+                value={bpm}
+                onChange={(e) => setBpm(parseInt(e.target.value) || 120)}
+                className="w-12 bg-transparent text-cyan-400 font-mono outline-none"
+              />
+            </div>
+            <button
+              onClick={() => setSnapEnabled(!snapEnabled)}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors ${
+                snapEnabled ? 'bg-cyan-500 text-black font-semibold' : 'bg-slate-900 text-gray-400'
+              }`}
+              title="Snap to Grid"
+            >
+              <Grid3x3 size={13} />
+              Snap
+            </button>
+            <button
+              onClick={() => setLoopEnabled(!loopEnabled)}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors ${
+                loopEnabled ? 'bg-yellow-500 text-black font-semibold' : 'bg-slate-900 text-gray-400'
+              }`}
+              title="Loop Region (L)"
+            >
+              <Repeat size={13} />
+              Loop
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-black rounded-lg flex items-center gap-2 transition-colors"
+            onClick={() => setShowBrowser(!showBrowser)}
+            className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors ${
+              showBrowser ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-900 text-gray-400'
+            }`}
+            title="Browser (B)"
           >
-            <Save size={16} />
+            <FolderOpen size={14} />
+            Browser
+          </button>
+          <button
+            onClick={() => setShowMixer(!showMixer)}
+            className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors ${
+              showMixer ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-900 text-gray-400'
+            }`}
+            title="Mixer (M)"
+          >
+            <Sliders size={14} />
+            Mixer
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-1.5 bg-cyan-500 hover:bg-cyan-600 text-black rounded text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            title="Save Project (Cmd+S)"
+          >
+            <Save size={14} />
             Save
           </button>
           <button
-            onClick={() => setShowBrowser(true)}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center gap-2 transition-colors"
-          >
-            <FolderOpen size={16} />
-            Library
-          </button>
-          <button
             onClick={() => setShowGenerateModal(true)}
-            className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-black rounded-lg transition-colors"
+            className="px-4 py-1.5 bg-teal-500 hover:bg-teal-600 text-black rounded text-xs font-semibold transition-colors"
           >
             Generate AI
+          </button>
+          <button
+            onClick={() => setShowShortcuts(true)}
+            className="w-8 h-8 bg-slate-900 hover:bg-slate-800 rounded flex items-center justify-center transition-colors"
+            title="Keyboard Shortcuts (?)"
+          >
           </button>
         </div>
       </div>
 
-      {/* Transport Controls */}
-      <div className="h-20 border-b border-slate-800 bg-slate-950 flex items-center justify-center gap-4">
+      {/* Transport Controls - Professional */}
+      <div className="h-16 border-b border-slate-800 bg-[#0f0f0f] flex items-center justify-center gap-3">
+        <button
+          onClick={() => {
+            if (daw) {
+              daw.seekTo(0);
+              setPlayhead(0);
+            }
+          }}
+          className="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded flex items-center justify-center transition-colors"
+          title="Return to Zero"
+        >
+          <SkipBack size={16} />
+        </button>
         <button
           onClick={handleStop}
-          className="w-12 h-12 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition-colors"
+          className="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded flex items-center justify-center transition-colors"
+          title="Stop"
         >
-          <Square size={20} fill="white" />
+          <Square size={16} fill="white" />
         </button>
         {!isPlaying ? (
           <button
             onClick={handlePlay}
-            className="w-16 h-16 bg-cyan-500 hover:bg-cyan-600 rounded-lg flex items-center justify-center transition-colors"
+            className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 rounded-full flex items-center justify-center transition-all shadow-lg shadow-cyan-500/30"
+            title="Play (Space)"
           >
-            <Play size={28} fill="black" />
+            <Play size={24} fill="black" className="ml-0.5" />
           </button>
         ) : (
           <button
             onClick={handlePause}
-            className="w-16 h-16 bg-cyan-500 hover:bg-cyan-600 rounded-lg flex items-center justify-center transition-colors"
+            className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 rounded-full flex items-center justify-center transition-all shadow-lg shadow-cyan-500/30"
+            title="Pause (Space)"
           >
-            <Pause size={28} fill="black" />
+            <Pause size={24} fill="black" />
           </button>
         )}
-        <div className="text-cyan-400 font-mono text-lg min-w-[100px] text-center">
-          {playhead.toFixed(2)}s
+        <button
+          onClick={() => {
+            if (daw) {
+              daw.seekTo(loopEnd);
+            }
+          }}
+          className="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded flex items-center justify-center transition-colors"
+          title="Skip to Loop End"
+        >
+          <SkipForward size={16} />
+        </button>
+        <div className="text-cyan-400 font-mono text-lg min-w-[100px] text-center bg-slate-900 px-4 py-2 rounded ml-4">
+          {Math.floor(playhead / 60)}:{(playhead % 60).toFixed(2).padStart(5, '0')}
         </div>
         <button
           onClick={handleAddTrack}
-          className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-black rounded-lg flex items-center gap-2 transition-colors"
+          className="px-4 py-2 bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 border border-teal-500/30 rounded flex items-center gap-2 transition-colors"
+          title="Add Track"
         >
           <Plus size={16} />
-          Add Track
+          Track
         </button>
+        <div className="flex items-center gap-2 ml-4">
+          <button
+            onClick={() => setZoom(Math.max(10, zoom - 10))}
+            className="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded flex items-center justify-center transition-colors"
+            title="Zoom Out"
+          >
+            <ZoomOut size={14} />
+          </button>
+          <div className="text-xs text-gray-400 min-w-[60px] text-center font-mono">
+            {zoom}px/s
+          </div>
+          <button
+            onClick={() => setZoom(Math.min(200, zoom + 10))}
+            className="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded flex items-center justify-center transition-colors"
+            title="Zoom In"
+          >
+            <ZoomIn size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Timeline & Tracks */}
