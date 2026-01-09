@@ -270,13 +270,13 @@ export default function DAWStudio() {
     canvas.height = TIMELINE_HEIGHT
 
     // Background
-    ctx.fillStyle = '#0a0a0a'
+    ctx.fillStyle = '#0f172a'
     ctx.fillRect(0, 0, width, TIMELINE_HEIGHT)
 
     // Grid lines and markers
-    ctx.strokeStyle = '#333'
-    ctx.fillStyle = '#888'
-    ctx.font = '10px monospace'
+    ctx.strokeStyle = '#334155'
+    ctx.fillStyle = '#cbd5e1'
+    ctx.font = '11px monospace'
 
     const secondsPerMarker = zoom < 0.5 ? 10 : zoom < 1 ? 5 : zoom < 2 ? 2 : 1
     
@@ -290,12 +290,12 @@ export default function DAWStudio() {
 
       const mins = Math.floor(t / 60)
       const secs = t % 60
-      ctx.fillText(`${mins}:${secs.toString().padStart(2, '0')}`, x + 4, 12)
+      ctx.fillText(`${mins}:${secs.toString().padStart(2, '0')}`, x + 4, 14)
     }
 
     // Playhead
     const playheadX = currentTime * PIXELS_PER_SECOND * zoom
-    ctx.strokeStyle = '#ef4444'
+    ctx.strokeStyle = '#06b6d4'
     ctx.lineWidth = 2
     ctx.beginPath()
     ctx.moveTo(playheadX, 0)
@@ -324,15 +324,15 @@ export default function DAWStudio() {
       const y = index * TRACK_HEIGHT
 
       // Track background
-      ctx.fillStyle = index % 2 === 0 ? '#0f0f0f' : '#1a1a1a'
+      ctx.fillStyle = index % 2 === 0 ? '#0f172a' : '#1e293b'
       ctx.fillRect(0, y, width, TRACK_HEIGHT)
 
       // Track border
-      ctx.strokeStyle = '#333'
+      ctx.strokeStyle = '#334155'
       ctx.strokeRect(0, y, width, TRACK_HEIGHT)
 
       // Beat grid
-      ctx.strokeStyle = '#222'
+      ctx.strokeStyle = '#1e293b'
       const beatsPerSecond = tempo / 60
       const secondsPerBeat = 1 / beatsPerSecond
       for (let t = 0; t <= duration; t += secondsPerBeat) {
@@ -356,7 +356,7 @@ export default function DAWStudio() {
       const h = TRACK_HEIGHT - 20
 
       // Clip background
-      ctx.fillStyle = clip.id === selectedClip ? track.color : track.color + 'aa'
+      ctx.fillStyle = clip.id === selectedClip ? track.color : track.color + 'cc'
       ctx.fillRect(x, y, w, h)
 
       // Waveform
@@ -367,7 +367,7 @@ export default function DAWStudio() {
       }
 
       // Clip border
-      ctx.strokeStyle = clip.id === selectedClip ? '#fff' : '#666'
+      ctx.strokeStyle = clip.id === selectedClip ? '#06b6d4' : '#64748b'
       ctx.lineWidth = clip.id === selectedClip ? 2 : 1
       ctx.strokeRect(x, y, w, h)
 
@@ -379,7 +379,7 @@ export default function DAWStudio() {
 
     // Playhead
     const playheadX = currentTime * PIXELS_PER_SECOND * zoom
-    ctx.strokeStyle = '#ef4444'
+    ctx.strokeStyle = '#06b6d4'
     ctx.lineWidth = 2
     ctx.beginPath()
     ctx.moveTo(playheadX, 0)
@@ -682,20 +682,20 @@ export default function DAWStudio() {
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-purple-950 to-gray-950 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
       <AnimatedBackground />
       
       <div className="relative z-10">
         {/* Header */}
-        <div className="border-b border-white/10 bg-black/40 backdrop-blur-xl p-4">
+        <div className="border-b border-cyan-500/20 bg-slate-950/80 backdrop-blur-xl p-4">
           <div className="max-w-[2000px] mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Music className="text-purple-400" size={32} />
+              <Music className="text-cyan-400" size={32} />
               <input
                 type="text"
                 value={projectTitle}
                 onChange={(e) => setProjectTitle(e.target.value)}
-                className="text-2xl font-bold bg-transparent border-b border-purple-500/50 focus:border-purple-400 focus:outline-none px-2 py-1"
+                className="text-2xl font-bold bg-transparent border-b border-cyan-500/50 focus:border-cyan-400 focus:outline-none px-2 py-1"
                 placeholder="Project Title"
               />
               <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -704,7 +704,7 @@ export default function DAWStudio() {
                   type="number"
                   value={tempo}
                   onChange={(e) => setTempo(parseInt(e.target.value) || 120)}
-                  className="bg-gray-800/50 px-2 py-1 rounded w-16 text-center"
+                  className="bg-slate-800/50 border border-slate-700 px-2 py-1 rounded w-16 text-center"
                   min="40"
                   max="240"
                 />
@@ -712,18 +712,18 @@ export default function DAWStudio() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="text-sm px-3 py-1 bg-purple-600/20 border border-purple-500/30 rounded">
+              <div className="text-sm px-3 py-1 bg-cyan-600/20 border border-cyan-500/30 rounded">
                 {userCredits} Credits
               </div>
               <button
                 onClick={() => setShowMixer(!showMixer)}
-                className={`px-4 py-2 rounded transition ${showMixer ? 'bg-purple-600' : 'bg-gray-800/50 hover:bg-gray-700/50'}`}
+                className={`px-4 py-2 rounded transition ${showMixer ? 'bg-cyan-600' : 'bg-slate-800/50 hover:bg-slate-700/50'}`}
               >
                 <Sliders size={18} />
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded transition flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 rounded transition flex items-center gap-2"
               >
                 <Save size={18} />
                 Save
@@ -733,43 +733,43 @@ export default function DAWStudio() {
         </div>
 
         {/* Transport Controls */}
-        <div className="border-b border-white/10 bg-black/40 backdrop-blur-xl p-4">
+        <div className="border-b border-cyan-500/20 bg-slate-950/60 backdrop-blur-xl p-4">
           <div className="max-w-[2000px] mx-auto flex items-center gap-4">
             <button
               onClick={isPlaying ? handlePause : handlePlay}
-              className="bg-purple-600 hover:bg-purple-500 p-4 rounded-full transition"
+              className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 p-4 rounded-full transition shadow-lg shadow-cyan-500/20"
             >
               {isPlaying ? <Pause size={24} /> : <Play size={24} />}
             </button>
             <button
               onClick={handleStop}
-              className="bg-gray-800 hover:bg-gray-700 p-4 rounded-full transition"
+              className="bg-slate-800 hover:bg-slate-700 p-4 rounded-full transition border border-slate-700"
             >
               <Square size={24} />
             </button>
 
             <div className="flex-1 flex items-center gap-2 text-sm">
-              <span className="font-mono">{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}</span>
-              <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+              <span className="font-mono text-cyan-400">{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}</span>
+              <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
                 <div
-                  className="h-full bg-purple-500"
+                  className="h-full bg-gradient-to-r from-cyan-500 to-teal-500"
                   style={{ width: `${(currentTime / duration) * 100}%` }}
                 />
               </div>
-              <span className="font-mono">{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
+              <span className="font-mono text-gray-400">{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setZoom(prev => Math.max(0.25, prev - 0.25))}
-                className="p-2 bg-gray-800 hover:bg-gray-700 rounded transition"
+                className="p-2 bg-slate-800 hover:bg-slate-700 rounded transition border border-slate-700"
               >
                 <ZoomOut size={18} />
               </button>
-              <span className="text-sm">{Math.round(zoom * 100)}%</span>
+              <span className="text-sm text-cyan-400 font-mono">{Math.round(zoom * 100)}%</span>
               <button
                 onClick={() => setZoom(prev => Math.min(4, prev + 0.25))}
-                className="p-2 bg-gray-800 hover:bg-gray-700 rounded transition"
+                className="p-2 bg-slate-800 hover:bg-slate-700 rounded transition border border-slate-700"
               >
                 <ZoomIn size={18} />
               </button>
@@ -784,7 +784,7 @@ export default function DAWStudio() {
             </button>
             <button
               onClick={() => setShowGenerate(true)}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded transition flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 rounded transition flex items-center gap-2"
             >
               <Wand2 size={18} />
               Generate AI
@@ -802,21 +802,21 @@ export default function DAWStudio() {
         {/* Main Content */}
         <div className="flex max-w-[2000px] mx-auto">
           {/* Track Headers */}
-          <div className="w-64 border-r border-white/10 bg-black/40 backdrop-blur-xl">
-            <div className="h-10 border-b border-white/10" />
+          <div className="w-64 border-r border-cyan-500/20 bg-slate-950/80 backdrop-blur-xl">
+            <div className="h-10 border-b border-cyan-500/20" />
             <div>
               {tracks.map((track, index) => (
                 <div
                   key={track.id}
-                  className="h-[100px] border-b border-white/10 p-4 flex flex-col justify-between"
-                  style={{ backgroundColor: index % 2 === 0 ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.5)' }}
+                  className="h-[100px] border-b border-cyan-500/20 p-4 flex flex-col justify-between"
+                  style={{ backgroundColor: index % 2 === 0 ? 'rgba(15,23,42,0.6)' : 'rgba(30,41,59,0.6)' }}
                 >
                   <div className="flex items-center justify-between">
                     <input
                       type="text"
                       value={track.name}
                       onChange={(e) => updateTrack(track.id, { name: e.target.value })}
-                      className="bg-transparent border-b border-gray-700 focus:border-purple-400 focus:outline-none px-1 text-sm w-full"
+                      className="bg-transparent border-b border-slate-700 focus:border-cyan-400 focus:outline-none px-1 text-sm w-full"
                     />
                     <button
                       onClick={() => removeTrack(track.id)}
@@ -828,13 +828,13 @@ export default function DAWStudio() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => updateTrack(track.id, { muted: !track.muted })}
-                      className={`px-2 py-1 text-xs rounded ${track.muted ? 'bg-red-600' : 'bg-gray-700'}`}
+                      className={`px-2 py-1 text-xs rounded ${track.muted ? 'bg-red-600' : 'bg-slate-700'}`}
                     >
                       M
                     </button>
                     <button
                       onClick={() => updateTrack(track.id, { solo: !track.solo })}
-                      className={`px-2 py-1 text-xs rounded ${track.solo ? 'bg-yellow-600' : 'bg-gray-700'}`}
+                      className={`px-2 py-1 text-xs rounded ${track.solo ? 'bg-yellow-600' : 'bg-slate-700'}`}
                     >
                       S
                     </button>
@@ -845,7 +845,7 @@ export default function DAWStudio() {
                       step="0.01"
                       value={track.volume}
                       onChange={(e) => updateTrack(track.id, { volume: parseFloat(e.target.value) })}
-                      className="flex-1"
+                      className="flex-1 accent-cyan-500"
                     />
                   </div>
                 </div>
@@ -854,10 +854,10 @@ export default function DAWStudio() {
           </div>
 
           {/* Timeline & Tracks */}
-          <div className="flex-1 overflow-auto max-h-[calc(100vh-200px)]">
+          <div className="flex-1 overflow-auto max-h-[calc(100vh-200px)] bg-slate-900">
             <canvas
               ref={timelineCanvasRef}
-              className="border-b border-white/10 cursor-pointer"
+              className="border-b border-cyan-500/20 cursor-pointer"
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect()
                 const x = e.clientX - rect.left
@@ -878,10 +878,10 @@ export default function DAWStudio() {
         {/* Library Modal */}
         {showLibrary && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-8">
-            <div className="bg-gray-900 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto p-8 border border-purple-500/30">
+            <div className="bg-slate-900 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto p-8 border border-cyan-500/30">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Your Library</h2>
-                <button onClick={() => setShowLibrary(false)}>
+                <h2 className="text-2xl font-bold text-cyan-400">Your Library</h2>
+                <button onClick={() => setShowLibrary(false)} className="text-gray-400 hover:text-white">
                   <X size={24} />
                 </button>
               </div>
@@ -919,10 +919,10 @@ export default function DAWStudio() {
         {/* Generate AI Modal */}
         {showGenerate && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-8">
-            <div className="bg-gray-900 rounded-xl max-w-2xl w-full p-8 border border-purple-500/30">
+            <div className="bg-slate-900 rounded-xl max-w-2xl w-full p-8 border border-cyan-500/30">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Generate AI Music</h2>
-                <button onClick={() => setShowGenerate(false)}>
+                <h2 className="text-2xl font-bold text-cyan-400">Generate AI Music</h2>
+                <button onClick={() => setShowGenerate(false)} className="text-gray-400 hover:text-white">
                   <X size={24} />
                 </button>
               </div>
@@ -982,7 +982,7 @@ function AIGenerateForm({
               key={g}
               onClick={() => setGenre(g)}
               className={`px-4 py-2 rounded capitalize transition ${
-                genre === g ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'
+                genre === g ? 'bg-gradient-to-r from-cyan-600 to-teal-600' : 'bg-slate-800 hover:bg-slate-700'
               }`}
             >
               {g}
@@ -1026,9 +1026,9 @@ function AIGenerateForm({
 function AnimatedBackground() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-blue-900/20" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full filter blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full filter blur-3xl animate-pulse delay-1000" />
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/10 via-transparent to-teal-900/10" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full filter blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500/5 rounded-full filter blur-3xl animate-pulse delay-1000" />
     </div>
   )
 }
