@@ -5,7 +5,7 @@
 
 // Guard: only execute in AudioWorklet context
 if (typeof AudioWorkletProcessor === 'undefined') {
-  console.warn('[AudioWorklet] Skipping - not in worklet context');
+  // Silent skip - this file should only run in AudioWorklet context
 } else {
 
 class AudioProcessor extends AudioWorkletProcessor {

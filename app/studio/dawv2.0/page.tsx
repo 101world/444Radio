@@ -310,7 +310,14 @@ export default function DAWv2() {
   const handleAddClip = useCallback(async (audioUrl: string, trackId: string, startTime: number = 0) => {
     if (!daw) return;
     try {
-      const response = await fetch(audioUrl);
+      // Use proxy to avoid CORS issues with R2
+      const proxyUrl = `/api/r2/audio-proxy?url=${encodeURIComponent(audioUrl)}`;
+      const response = await fetch(proxyUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch audio: ${response.status}`);
+      }
+      
       const arrayBuffer = await response.arrayBuffer();
       const audioContext = new AudioContext();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
