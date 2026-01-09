@@ -147,12 +147,6 @@ export default function DAWProRebuild() {
     }
   }, [user, loading])
 
-  useEffect(() => {
-    if (user && daw && !loading) {
-      fetchProjects()
-    }
-  }, [user, daw, loading, fetchProjects])
-
   const loadLibrary = async () => {
     try {
       const response = await fetch('/api/media')
@@ -518,29 +512,6 @@ export default function DAWProRebuild() {
     }
   }
 
-  const handleDeleteProject = useCallback(async () => {
-    if (!currentProjectId) return
-    const confirmDelete = window.confirm('Delete this project? This cannot be undone.')
-    if (!confirmDelete) return
-    try {
-      const response = await fetch(`/api/studio/projects?id=${currentProjectId}`, {
-        method: 'DELETE'
-      })
-      if (response.ok) {
-        showToast('Project deleted', 'success')
-        setCurrentProjectId(null)
-        await fetchProjects()
-        resetProject()
-      } else {
-        const err = await response.json()
-        showToast(`Delete failed: ${err.error || 'Unknown error'}`, 'error')
-      }
-    } catch (error) {
-      console.error('Delete project failed:', error)
-      showToast('Delete failed. Please try again.', 'error')
-    }
-  }, [currentProjectId, fetchProjects, resetProject, showToast])
-
   // Loop handle drag listeners
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
@@ -594,17 +565,6 @@ export default function DAWProRebuild() {
     }
   }, [daw])
 
-  const handleLoadProject = useCallback(
-    async (projectId: string) => {
-      if (!projectId) return
-      const project = projects.find((p) => p.id === projectId)
-      if (!project) return
-      await hydrateProject(project)
-      setCurrentProjectId(projectId)
-    },
-    [projects, hydrateProject]
-  )
-
   const handleRenameProject = useCallback(async () => {
     if (!currentProjectId) return
     const newName = window.prompt('Rename project to:', projectName)
@@ -613,34 +573,6 @@ export default function DAWProRebuild() {
     await handleSave('manual')
     showToast('Project renamed', 'success')
   }, [currentProjectId, handleSave, projectName, showToast])
-
-  const handleDuplicateProject = useCallback(async () => {
-    if (!currentProjectId) return
-    const project = projects.find((p) => p.id === currentProjectId)
-    if (!project) return
-    const newTitle = `${project.title || 'Untitled'} (Copy)`
-    try {
-      const response = await fetch('/api/studio/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: newTitle,
-          tracks: project.tracks,
-          tempo: project.tempo || 120
-        })
-      })
-      if (response.ok) {
-        showToast('Project duplicated', 'success')
-        await fetchProjects()
-      } else {
-        const err = await response.json()
-        showToast(`Duplicate failed: ${err.error || 'Unknown error'}`, 'error')
-      }
-    } catch (error) {
-      console.error('Duplicate project failed:', error)
-      showToast('Duplicate failed. Please try again.', 'error')
-    }
-  }, [currentProjectId, projects, fetchProjects, showToast])
 
   // Autosave hooks
   useEffect(() => {
@@ -692,6 +624,17 @@ export default function DAWProRebuild() {
     [addClipFromUrl, daw]
   )
 
+  const handleLoadProject = useCallback(
+    async (projectId: string) => {
+      if (!projectId) return
+      const project = projects.find((p) => p.id === projectId)
+      if (!project) return
+      await hydrateProject(project)
+      setCurrentProjectId(projectId)
+    },
+    [projects, hydrateProject]
+  )
+
   const fetchProjects = useCallback(async () => {
     try {
       const response = await fetch('/api/studio/projects')
@@ -706,6 +649,63 @@ export default function DAWProRebuild() {
       console.error('Project load failed:', error)
     }
   }, [hydrateProject, currentProjectId])
+
+  const handleDeleteProject = useCallback(async () => {
+    if (!currentProjectId) return
+    const confirmDelete = window.confirm('Delete this project? This cannot be undone.')
+    if (!confirmDelete) return
+    try {
+      const response = await fetch(`/api/studio/projects?id=${currentProjectId}`, {
+        method: 'DELETE'
+      })
+      if (response.ok) {
+        showToast('Project deleted', 'success')
+        setCurrentProjectId(null)
+        await fetchProjects()
+        resetProject()
+      } else {
+        const err = await response.json()
+        showToast(`Delete failed: ${err.error || 'Unknown error'}`, 'error')
+      }
+    } catch (error) {
+      console.error('Delete project failed:', error)
+      showToast('Delete failed. Please try again.', 'error')
+    }
+  }, [currentProjectId, fetchProjects, resetProject, showToast])
+
+  const handleDuplicateProject = useCallback(async () => {
+    if (!currentProjectId) return
+    const project = projects.find((p) => p.id === currentProjectId)
+    if (!project) return
+    const newTitle = `${project.title || 'Untitled'} (Copy)`
+    try {
+      const response = await fetch('/api/studio/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newTitle,
+          tracks: project.tracks,
+          tempo: project.tempo || 120
+        })
+      })
+      if (response.ok) {
+        showToast('Project duplicated', 'success')
+        await fetchProjects()
+      } else {
+        const err = await response.json()
+        showToast(`Duplicate failed: ${err.error || 'Unknown error'}`, 'error')
+      }
+    } catch (error) {
+      console.error('Duplicate project failed:', error)
+      showToast('Duplicate failed. Please try again.', 'error')
+    }
+  }, [currentProjectId, projects, fetchProjects, showToast])
+
+  useEffect(() => {
+    if (user && daw && !loading) {
+      fetchProjects()
+    }
+  }, [user, daw, loading, fetchProjects])
 
   const renderWaveform = (canvas: HTMLCanvasElement, buffer: AudioBuffer) => {
     const ctx = canvas.getContext('2d')
@@ -865,7 +865,7 @@ export default function DAWProRebuild() {
           </div>
 
           <button
-            onClick={handleSave}
+            onClick={() => handleSave('manual')}
             disabled={saving}
             className="px-5 py-2 bg-cyan-500 hover:bg-cyan-600 text-black rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
             title={currentProjectId ? 'Save project' : 'Save as new project'}
@@ -1219,7 +1219,6 @@ export default function DAWProRebuild() {
                     width: `${timelineWidth}px`,
                     backgroundColor: idx % 2 === 0 ? '#0a0a0a' : '#0d0d0d'
                   }}
-                  onDragOver={(e) => e.preventDefault()}
                   onDrop={async (e) => {
                     e.preventDefault()
                     const audioUrl = e.dataTransfer.getData('audioUrl')
