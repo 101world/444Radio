@@ -21,6 +21,8 @@ export default function DAWv2() {
   const [showClipEditor, setShowClipEditor] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [library, setLibrary] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [snapEnabled, setSnapEnabled] = useState(true);
@@ -28,6 +30,11 @@ export default function DAWv2() {
   const [loopStart, setLoopStart] = useState(0);
   const [loopEnd, setLoopEnd] = useState(16);
   const [searchTerm, setSearchTerm] = useState('');
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
+  const [markers, setMarkers] = useState<Array<{id: string, time: number, name: string, color: string}>>([]);
+  const [selectedClips, setSelectedClips] = useState<Set<string>>(new Set());
+  const [history, setHistory] = useState<Array<{action: string, timestamp: number}>>([]);
+  const [generatingTrack, setGeneratingTrack] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map());
 
@@ -87,14 +94,32 @@ export default function DAWv2() {
         setShowMixer(!showMixer);
       } else if (e.key === 'l' || e.key === 'L') {
         setLoopEnabled(!loopEnabled);
+      } else if (e.key === 'c' || e.key === 'C') {
+        setMetronomeEnabled(!metronomeEnabled);
       } else if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         handleSave();
+      } else if (e.key === 'z' && (e.metaKey || e.ctrlKey) && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if (e.key === 'z' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+        e.preventDefault();
+        handleRedo();
+      } else if (e.key === 'd' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleDuplicateClips();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedClips.size > 0) {
+          e.preventDefault();
+          handleDeleteClips();
+        }
+      } else if (e.key === 'h' || e.key === 'H') {
+        setShowHistoryPanel(!showHistoryPanel);
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [isPlaying, showBrowser, showMixer, loopEnabled]);
+  }, [isPlaying, showBrowser, showMixer, loopEnabled, metronomeEnabled, showHistoryPanel, selectedClips]);
 
   // Transport controls
   const handlePlay = useCallback(() => {
@@ -205,11 +230,110 @@ export default function DAWv2() {
       });
       if (response.ok) {
         alert('Project saved!');
+        addToHistory('Save Project');
       }
     } catch (error) {
       console.error('Save failed:', error);
     }
   }, [daw, user]);
+
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    if (daw) {
+      // In future: wire to daw.historyManager.undo()
+      addToHistory('Undo');
+    }
+  }, [daw]);
+
+  const handleRedo = useCallback(() => {
+    if (daw) {
+      // In future: wire to daw.historyManager.redo()
+      addToHistory('Redo');
+    }
+  }, [daw]);
+
+  // Clip manipulation handlers
+  const handleDuplicateClips = useCallback(() => {
+    if (selectedClips.size === 0) return;
+    selectedClips.forEach(clipId => {
+      // Find clip and duplicate it
+      tracks.forEach(track => {
+        const clip = track.clips.find(c => c.id === clipId);
+        if (clip && daw) {
+          // Create a deep copy of the clip
+          const newClip = {
+            ...clip,
+            id: `clip-${Date.now()}-${Math.random()}`,
+            startTime: clip.startTime + (clip.duration || 5)
+          };
+          track.clips.push(newClip);
+        }
+      });
+    });
+    setTracks([...tracks]);
+    addToHistory(`Duplicate ${selectedClips.size} clip(s)`);
+  }, [selectedClips, tracks, daw]);
+
+  const handleDeleteClips = useCallback(() => {
+    if (selectedClips.size === 0) return;
+    selectedClips.forEach(clipId => {
+      tracks.forEach(track => {
+        const clipIndex = track.clips.findIndex(c => c.id === clipId);
+        if (clipIndex !== -1) {
+          track.clips.splice(clipIndex, 1);
+        }
+      });
+    });
+    setTracks([...tracks]);
+    setSelectedClips(new Set());
+    addToHistory(`Delete ${selectedClips.size} clip(s)`);
+  }, [selectedClips, tracks]);
+
+  // Add marker
+  const handleAddMarker = useCallback(() => {
+    const newMarker = {
+      id: `marker-${Date.now()}`,
+      time: playhead,
+      name: `Marker ${markers.length + 1}`,
+      color: '#06b6d4'
+    };
+    setMarkers([...markers, newMarker]);
+    addToHistory('Add Marker');
+  }, [playhead, markers]);
+
+  // History management
+  const addToHistory = useCallback((action: string) => {
+    setHistory(prev => [...prev, { action, timestamp: Date.now() }].slice(-50));
+  }, []);
+
+  // AI Generate Track
+  const handleGenerateTrack = useCallback(async (prompt: string, genre: string, bpm: number) => {
+    if (!daw || !user) return;
+    setGeneratingTrack(true);
+    try {
+      const response = await fetch('/api/generate/music', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, genre, bpm })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Add generated track
+        const newTrack = daw.createTrack(`AI: ${genre}`);
+        if (data.audio_url && newTrack) {
+          await handleAddClip(data.audio_url, newTrack.id);
+        }
+        setTracks([...daw.getTracks()]);
+        addToHistory('Generate AI Track');
+        setShowGenerateModal(false);
+      }
+    } catch (error) {
+      console.error('Generation failed:', error);
+    } finally {
+      setGeneratingTrack(false);
+    }
+  }, [daw, user, handleAddClip]);
 
   if (loading) {
     return (
@@ -257,9 +381,28 @@ export default function DAWv2() {
               <Repeat size={13} />
               Loop
             </button>
+            <button
+              onClick={() => setMetronomeEnabled(!metronomeEnabled)}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors ${
+                metronomeEnabled ? 'bg-teal-500 text-black font-semibold' : 'bg-slate-900 text-gray-400'
+              }`}
+              title="Metronome (C)"
+            >
+              <Volume2 size={13} />
+              Click
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHistoryPanel(!showHistoryPanel)}
+            className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors ${
+              showHistoryPanel ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-900 text-gray-400'
+            }`}
+            title="History (H)"
+          >
+            ↺ History
+          </button>
           <button
             onClick={() => setShowBrowser(!showBrowser)}
             className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 transition-colors ${
@@ -287,6 +430,13 @@ export default function DAWv2() {
           >
             <Save size={14} />
             Save
+          </button>
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="px-4 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded text-xs font-semibold transition-colors"
+            title="Export Audio"
+          >
+            ⬇ Export
           </button>
           <button
             onClick={() => setShowGenerateModal(true)}
@@ -523,6 +673,23 @@ export default function DAWv2() {
                   />
                 )}
                 
+                {/* Markers */}
+                {markers.map(marker => (
+                  <div
+                    key={marker.id}
+                    className="absolute top-0 bottom-0 w-0.5 z-20 cursor-pointer group"
+                    style={{ left: `${marker.time * zoom}px`, backgroundColor: marker.color }}
+                    title={marker.name}
+                  >
+                    <div className="absolute top-0 -mt-1 w-3 h-3 rounded-full border-2"
+                      style={{ borderColor: marker.color, backgroundColor: marker.color, left: '-5px' }}
+                    />
+                    <div className="absolute top-4 left-1 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 bg-black/80 px-2 py-1 rounded">
+                      {marker.name}
+                    </div>
+                  </div>
+                ))}
+                
                 {Array.from({ length: 201 }).map((_, i) => (
                   <div
                     key={i}
@@ -572,14 +739,31 @@ export default function DAWv2() {
                   return (
                     <div
                       key={clip.id}
-                      className="absolute top-2 bottom-2 bg-cyan-500/20 border border-cyan-500/50 rounded overflow-hidden cursor-move hover:bg-cyan-500/30 transition-colors"
+                      className={`absolute top-2 bottom-2 rounded overflow-hidden cursor-move transition-colors ${
+                        selectedClips.has(clip.id) 
+                          ? 'bg-cyan-500/40 border-2 border-cyan-400' 
+                          : 'bg-cyan-500/20 border border-cyan-500/50 hover:bg-cyan-500/30'
+                      }`}
                       style={{
                         left: `${clipLeft}px`,
                         width: `${clipWidth}px`
                       }}
-                      onClick={() => {
-                        setSelectedClipId(clip.id);
-                        setShowClipEditor(true);
+                      onClick={(e) => {
+                        if (e.shiftKey) {
+                          // Multi-select
+                          const newSelected = new Set(selectedClips);
+                          if (newSelected.has(clip.id)) {
+                            newSelected.delete(clip.id);
+                          } else {
+                            newSelected.add(clip.id);
+                          }
+                          setSelectedClips(newSelected);
+                        } else {
+                          // Single select
+                          setSelectedClipId(clip.id);
+                          setSelectedClips(new Set([clip.id]));
+                          setShowClipEditor(true);
+                        }
                       }}
                     >
                       <canvas
@@ -846,6 +1030,10 @@ export default function DAWv2() {
                     <span className="text-gray-400">Loop On/Off</span>
                     <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">L</kbd>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Metronome</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">C</kbd>
+                  </div>
                 </div>
               </div>
 
@@ -861,8 +1049,30 @@ export default function DAWv2() {
                     <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">M</kbd>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Show Shortcuts</span>
-                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">?</kbd>
+                    <span className="text-gray-400">History Panel</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">H</kbd>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-white mb-3 uppercase tracking-wider">Edit</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Undo</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">Cmd+Z</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Redo</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">Cmd+Shift+Z</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Duplicate Clip</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">Cmd+D</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Delete Clip</span>
+                    <kbd className="px-2 py-1 bg-slate-900 text-cyan-400 rounded font-mono">Del</kbd>
                   </div>
                 </div>
               </div>
@@ -937,11 +1147,135 @@ export default function DAWv2() {
               
               <button
                 type="button"
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-black font-semibold rounded-lg transition-colors"
+                onClick={() => {
+                  const promptInput = document.querySelector('textarea[placeholder="Describe your track..."]') as HTMLTextAreaElement;
+                  const genreSelect = document.querySelector('select') as HTMLSelectElement;
+                  const bpmInput = document.querySelector('input[type="number"]') as HTMLInputElement;
+                  if (promptInput && genreSelect && bpmInput) {
+                    handleGenerateTrack(promptInput.value, genreSelect.value, parseInt(bpmInput.value));
+                  }
+                }}
+                disabled={generatingTrack}
+                className="w-full py-3 bg-cyan-500 hover:bg-cyan-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Generate Track
+                {generatingTrack ? 'Generating...' : 'Generate Track'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* History Panel */}
+      {showHistoryPanel && (
+        <div className="fixed right-4 top-20 w-80 bg-slate-950 border border-cyan-500/30 rounded-xl p-4 shadow-2xl z-50 max-h-96 overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-cyan-400">History</h3>
+            <button
+              onClick={() => setShowHistoryPanel(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={handleUndo}
+              className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-sm transition-colors"
+              title="Undo (Cmd+Z)"
+            >
+              ↶ Undo
+            </button>
+            <button
+              onClick={handleRedo}
+              className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded text-sm transition-colors"
+              title="Redo (Cmd+Shift+Z)"
+            >
+              ↷ Redo
+            </button>
+          </div>
+          
+          <div className="space-y-2">
+            {history.length === 0 ? (
+              <div className="text-gray-500 text-sm text-center py-4">No actions yet</div>
+            ) : (
+              history.slice().reverse().map((item, index) => (
+                <div key={index} className="bg-slate-900 p-3 rounded text-sm">
+                  <div className="text-white font-medium">{item.action}</div>
+                  <div className="text-gray-500 text-xs mt-1">
+                    {new Date(item.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-slate-950 border border-purple-500/30 rounded-xl p-8 max-w-lg w-full">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-purple-400">Export Audio</h2>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Export Range</label>
+                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-purple-500 focus:outline-none">
+                  <option>Full Project</option>
+                  <option>Loop Region</option>
+                  <option>Selected Clips</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Format</label>
+                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-purple-500 focus:outline-none">
+                  <option>WAV 24-bit</option>
+                  <option>WAV 16-bit</option>
+                  <option>MP3 320kbps</option>
+                  <option>FLAC</option>
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Title</label>
+                  <input
+                    type="text"
+                    placeholder="My Track"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-purple-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Artist</label>
+                  <input
+                    type="text"
+                    placeholder="Artist Name"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-purple-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg transition-colors"
+                onClick={() => {
+                  alert('Export feature coming soon! Will bounce audio and trigger download.');
+                  setShowExportModal(false);
+                }}
+              >
+                Export & Download
+              </button>
+            </div>
           </div>
         </div>
       )}
