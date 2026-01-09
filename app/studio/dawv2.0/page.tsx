@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW';
 import type { Track, TrackClip } from '@/lib/audio/TrackManager';
@@ -35,6 +35,12 @@ export default function DAWv2() {
   const [selectedClips, setSelectedClips] = useState<Set<string>>(new Set());
   const [history, setHistory] = useState<Array<{action: string, timestamp: number}>>([]);
   const [generatingTrack, setGeneratingTrack] = useState(false);
+  const [showAutomation, setShowAutomation] = useState<Set<string>>(new Set());
+  const [automationMode, setAutomationMode] = useState<{[trackId: string]: 'volume' | 'pan'}>({});
+  const [audioLevels, setAudioLevels] = useState<{[trackId: string]: number}>({});
+  const [peakLevels, setPeakLevels] = useState<{[trackId: string]: number}>({});
+  const [waveformZoom, setWaveformZoom] = useState(1);
+  const [showMiniMap, setShowMiniMap] = useState(true);
   const timelineRef = useRef<HTMLDivElement>(null);
   const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map());
 
@@ -63,6 +69,29 @@ export default function DAWv2() {
             if (state.isPlaying) {
               setPlayhead(state.currentTime);
               setIsPlaying(true);
+              
+              // Update audio meters
+              const newLevels: {[key: string]: number} = {};
+              const newPeaks: {[key: string]: number} = {};
+              dawInstance.getTracks().forEach(track => {
+                // Simulate audio level (0-1) - in production, use AudioAnalyzer
+                const randomLevel = Math.random() * 0.7;
+                newLevels[track.id] = randomLevel;
+                newPeaks[track.id] = Math.max(peakLevels[track.id] || 0, randomLevel);
+              });
+              setAudioLevels(newLevels);
+              setPeakLevels(newPeaks);
+              
+              // Decay peak levels
+              setTimeout(() => {
+                setPeakLevels(prev => {
+                  const decayed = {...prev};
+                  Object.keys(decayed).forEach(key => {
+                    decayed[key] = Math.max(0, decayed[key] - 0.01);
+                  });
+                  return decayed;
+                });
+              }, 1000);
             }
           }
           requestAnimationFrame(updatePlayhead);
@@ -652,6 +681,27 @@ export default function DAWv2() {
                   >
                     S
                   </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newSet = new Set(showAutomation);
+                      if (newSet.has(track.id)) {
+                        newSet.delete(track.id);
+                      } else {
+                        newSet.add(track.id);
+                        if (!automationMode[track.id]) {
+                          setAutomationMode({...automationMode, [track.id]: 'volume'});
+                        }
+                      }
+                      setShowAutomation(newSet);
+                    }}
+                    className={`px-2 py-1 text-xs rounded ${
+                      showAutomation.has(track.id) ? 'bg-purple-500 text-white' : 'bg-slate-700 text-gray-400'
+                    }`}
+                    title="Toggle Automation"
+                  >
+                    A
+                  </button>
                 </div>
               </div>
             ))}
@@ -659,6 +709,39 @@ export default function DAWv2() {
 
           {/* Timeline */}
           <div ref={timelineRef} className="flex-1 relative bg-slate-900">
+            {/* Mini-Map Overview */}
+            {showMiniMap && (
+              <div className="h-8 bg-slate-950 border-b border-slate-800 relative overflow-hidden">
+                <div className="h-full flex items-center px-2">
+                  {/* Simplified track representation */}
+                  <div className="flex-1 h-4 bg-slate-800 rounded-sm relative">
+                    {tracks.map(track => (
+                      <React.Fragment key={track.id}>
+                        {track.clips.map(clip => (
+                          <div 
+                            key={clip.id}
+                            className="absolute top-0 bottom-0 bg-cyan-500/40"
+                            style={{
+                              left: `${(clip.startTime / 200) * 100}%`,
+                              width: `${((clip.duration || 0) / 200) * 100}%`
+                            }}
+                          />
+                        ))}
+                      </React.Fragment>
+                    ))}
+                    {/* Viewport indicator */}
+                    <div 
+                      className="absolute top-0 bottom-0 border-2 border-cyan-400 bg-cyan-400/10"
+                      style={{
+                        left: '0%',
+                        width: '20%' // Represents current viewport
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Time Ruler */}
             <div className="h-12 bg-slate-950 border-b border-slate-800 sticky top-0 z-10 overflow-hidden">
               <div style={{ width: `${timelineWidth}px` }} className="relative h-full">
@@ -704,14 +787,14 @@ export default function DAWv2() {
 
             {/* Tracks */}
             {tracks.map((track, trackIndex) => (
-              <div
-                key={track.id}
-                className={`h-32 border-b border-slate-800 relative ${
-                  trackIndex % 2 === 0 ? 'bg-slate-900' : 'bg-slate-950'
-                }`}
-                style={{ width: `${timelineWidth}px` }}
-              >
-                {/* Loop Region Highlight */}
+              <React.Fragment key={track.id}>
+                <div
+                  className={`h-32 border-b border-slate-800 relative ${
+                    trackIndex % 2 === 0 ? 'bg-slate-900' : 'bg-slate-950'
+                  }`}
+                  style={{ width: `${timelineWidth}px` }}
+                >
+                  {/* Loop Region Highlight */}
                 {loopEnabled && (
                   <div
                     className="absolute top-0 bottom-0 bg-yellow-500/5 border-l border-r border-yellow-500/30 pointer-events-none z-5"
@@ -781,6 +864,50 @@ export default function DAWv2() {
                   );
                 })}
               </div>
+              
+              {/* Automation Lane */}
+              {showAutomation.has(track.id) && (
+                <div className="h-20 border-b border-slate-800 bg-slate-950/50 relative" style={{ width: `${timelineWidth}px` }}>
+                  {/* Grid lines */}
+                  {Array.from({ length: 201 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute top-0 bottom-0 border-l border-slate-800/30"
+                      style={{ left: `${i * zoom}px` }}
+                    />
+                  ))}
+                  
+                  {/* Parameter selector and automation curve */}
+                  <div className="absolute top-1 left-2 z-10">
+                    <select
+                      value={automationMode[track.id] || 'volume'}
+                      onChange={(e) => setAutomationMode({...automationMode, [track.id]: e.target.value as 'volume' | 'pan'})}
+                      className="text-xs bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
+                    >
+                      <option value="volume">Volume</option>
+                      <option value="pan">Pan</option>
+                    </select>
+                  </div>
+                  
+                  {/* Automation line (horizontal at 50% for now) */}
+                  <div 
+                    className={`absolute left-0 right-0 h-0.5 ${
+                      automationMode[track.id] === 'pan' ? 'bg-yellow-500' : 'bg-cyan-500'
+                    }`}
+                    style={{ top: '50%' }}
+                  >
+                    {/* Example automation points */}
+                    <div className="absolute w-2 h-2 rounded-full bg-white -ml-1 -mt-1 cursor-pointer" style={{ left: '10%' }} />
+                    <div className="absolute w-2 h-2 rounded-full bg-white -ml-1 -mt-1 cursor-pointer" style={{ left: '50%' }} />
+                    <div className="absolute w-2 h-2 rounded-full bg-white -ml-1 -mt-1 cursor-pointer" style={{ left: '80%' }} />
+                  </div>
+                  
+                  <div className="absolute bottom-1 left-2 text-[10px] text-gray-600">
+                    {automationMode[track.id] === 'pan' ? 'L ← → R' : '0% ↑ 100%'}
+                  </div>
+                </div>
+              )}
+              </React.Fragment>
             ))}
 
             {/* Playhead */}
@@ -808,9 +935,36 @@ export default function DAWv2() {
                   <div key={track.id} className="bg-slate-900 rounded-lg p-4 border border-slate-800">
                     <div className="text-sm font-semibold text-cyan-400 mb-4 truncate">{track.name}</div>
                     
-                    {/* Vertical Fader */}
-                    <div className="flex flex-col items-center mb-4">
-                      <div className="h-32 w-8 bg-slate-950 rounded-full relative border border-slate-700">
+                    {/* VU Meter */}
+                    <div className="flex gap-2 mb-4">
+                      <div className="flex-1 h-32 bg-slate-950 rounded relative border border-slate-700 overflow-hidden">
+                        {/* Peak hold indicator */}
+                        {peakLevels[track.id] > 0 && (
+                          <div 
+                            className="absolute left-0 right-0 h-0.5 bg-white transition-all duration-100"
+                            style={{ bottom: `${(peakLevels[track.id] || 0) * 100}%` }}
+                          />
+                        )}
+                        {/* Active level */}
+                        <div 
+                          className="absolute bottom-0 left-0 right-0 transition-all duration-75"
+                          style={{ 
+                            height: `${(audioLevels[track.id] || 0) * 100}%`,
+                            background: (audioLevels[track.id] || 0) > 0.85 
+                              ? 'linear-gradient(to top, #ef4444, #f97316)' 
+                              : (audioLevels[track.id] || 0) > 0.65
+                              ? 'linear-gradient(to top, #eab308, #f59e0b)'
+                              : 'linear-gradient(to top, #22c55e, #10b981)'
+                          }}
+                        />
+                        {/* Scale marks */}
+                        <div className="absolute top-0 right-0 text-[8px] text-gray-600 pr-0.5">0</div>
+                        <div className="absolute top-[35%] right-0 text-[8px] text-gray-600 pr-0.5">-12</div>
+                        <div className="absolute bottom-0 right-0 text-[8px] text-gray-600 pr-0.5">-∞</div>
+                      </div>
+                      
+                      {/* Vertical Fader */}
+                      <div className="w-8 h-32 bg-slate-950 rounded-full relative border border-slate-700">
                         <div
                           className="absolute bottom-0 w-full bg-gradient-to-t from-cyan-500 to-cyan-400 rounded-full transition-all"
                           style={{ height: `${track.volume * 100}%` }}
@@ -897,6 +1051,22 @@ export default function DAWv2() {
                   .flatMap(t => t.clips)
                   .find(c => c.id === selectedClipId)?.id.slice(0, 8) || 'No clip'}
               </span>
+              <div className="flex items-center gap-2 ml-4">
+                <span className="text-xs text-gray-400">Waveform Zoom:</span>
+                <button
+                  onClick={() => setWaveformZoom(Math.max(0.5, waveformZoom - 0.25))}
+                  className="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded flex items-center justify-center text-white"
+                >
+                  -
+                </button>
+                <span className="text-xs text-cyan-400 font-mono w-12 text-center">{(waveformZoom * 100).toFixed(0)}%</span>
+                <button
+                  onClick={() => setWaveformZoom(Math.min(4, waveformZoom + 0.25))}
+                  className="w-6 h-6 bg-slate-800 hover:bg-slate-700 rounded flex items-center justify-center text-white"
+                >
+                  +
+                </button>
+              </div>
             </div>
             <button
               onClick={() => {
