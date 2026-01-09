@@ -5,8 +5,11 @@ import { createClient } from '@supabase/supabase-js'
 
 function getAdminSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  return createClient(url, key)
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceRoleKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY env for server-side access')
+  }
+  return createClient(url, serviceRoleKey)
 }
 
 function isMissingColumn(error: any) {
@@ -93,6 +96,17 @@ export async function GET() {
     return corsResponse(NextResponse.json({ projects: data || [] }))
   } catch (err: any) {
     console.error('GET /api/studio/projects exception:', err)
+    if (err?.message?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+      return corsResponse(
+        NextResponse.json(
+          {
+            error: 'Server configuration error',
+            details: 'SUPABASE_SERVICE_ROLE_KEY is missing. Set it in Vercel env vars to enable studio projects.'
+          },
+          { status: 500 }
+        )
+      )
+    }
     return corsResponse(NextResponse.json({ error: 'Server error', details: err.message }, { status: 500 }))
   }
 }
@@ -235,6 +249,17 @@ export async function POST(request: Request) {
     }
   } catch (err: any) {
     console.error('POST /api/studio/projects exception:', err)
+    if (err?.message?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+      return corsResponse(
+        NextResponse.json(
+          {
+            error: 'Server configuration error',
+            details: 'SUPABASE_SERVICE_ROLE_KEY is missing. Set it in Vercel env vars to enable studio projects.'
+          },
+          { status: 500 }
+        )
+      )
+    }
     return corsResponse(NextResponse.json({ error: 'Server error', details: err.message }, { status: 500 }))
   }
 }
