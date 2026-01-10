@@ -49,10 +49,16 @@ export async function POST() {
     const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString('base64')
     console.log('[Subscription] Auth header (first 20 chars):', authHeader.substring(0, 20))
 
+    // Prepare customer name
+    const customerName = user.firstName && user.lastName 
+      ? `${user.firstName} ${user.lastName}`.trim()
+      : user.firstName || user.username || userEmail.split('@')[0]
+
     // Step 4: Create FRESH Razorpay customer (don't reuse existing)
     // CRITICAL: Removed fail_existing so each user gets their own customer record
     // This prevents "RIZZ PATNI" name from being reused for all users
     console.log('[Subscription] Creating fresh Razorpay customer for:', userEmail)
+    console.log('[Subscription] Customer name:', customerName)
     const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
       method: 'POST',
       headers: {
