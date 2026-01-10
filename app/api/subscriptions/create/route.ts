@@ -151,7 +151,7 @@ export async function POST(request: Request) {
           billing_cycle: billing,
           credits: planConfig.credits.toString()
         },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/profile`,
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/?payment=success`,
         callback_method: 'get'
       })
     })

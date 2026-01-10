@@ -1,7 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward, X } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
@@ -22,9 +22,11 @@ interface Track {
 
 export default function HomePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [promptText, setPromptText] = useState('')
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const { 
     setPlaylist, 
     playTrack, 
@@ -40,6 +42,17 @@ export default function HomePage() {
     playNext,
     playPrevious
   } = useAudioPlayer()
+
+  // Check for payment success
+  useEffect(() => {
+    if (searchParams.get('payment') === 'success') {
+      setShowSuccessMessage(true)
+      // Auto-hide after 8 seconds
+      setTimeout(() => setShowSuccessMessage(false), 8000)
+      // Clean URL
+      window.history.replaceState({}, '', '/')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     fetchAllTracks()
@@ -328,6 +341,48 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Success Message Toast */}
+      {showSuccessMessage && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="relative group">
+            {/* Glowing background */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition duration-300"></div>
+            
+            {/* Content */}
+            <div className="relative bg-black border-2 border-cyan-400/50 rounded-2xl px-8 py-6 shadow-2xl shadow-cyan-500/50 backdrop-blur-xl">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-400 flex items-center justify-center">
+                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </div>
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-2xl font-black text-white mb-2 bg-gradient-to-r from-white via-cyan-200 to-white bg-clip-text text-transparent">
+                    Thank You! 🎉
+                  </h3>
+                  <p className="text-cyan-300 text-lg font-medium mb-1">
+                    Your subscription is active!
+                  </p>
+                  <p className="text-cyan-400/80 text-sm">
+                    Can't wait to hear what you create with <span className="font-bold text-cyan-300">444</span>
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowSuccessMessage(false)}
+                  className="flex-shrink-0 text-cyan-400/60 hover:text-cyan-400 transition-colors duration-200"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Navigation Button */}
       <FloatingNavButton 
