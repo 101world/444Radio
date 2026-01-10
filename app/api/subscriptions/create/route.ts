@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     console.log('[Create Subscription] User:', userId, 'Email:', userEmail)
 
     // Step 1: Create or fetch customer
-    let customerId: string
+    let customerId: string | undefined
 
     // Try to find existing customer by email
     const searchResponse = await fetch(
