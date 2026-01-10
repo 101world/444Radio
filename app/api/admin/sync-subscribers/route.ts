@@ -1,24 +1,21 @@
-/**
- * MANUAL SUBSCRIBER FIX
- * 
- * Since the sync script needs env vars, use this simpler approach:
- * Create an API endpoint to sync subscribers, then call it
- */
-
-// Create this file: app/api/admin/sync-subscribers/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { corsResponse, handleOptions } from '@/lib/cors'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+export async function OPTIONS() {
+  return handleOptions()
+}
+
 export async function GET() {
-  return NextResponse.json({ 
+  return corsResponse(NextResponse.json({ 
     message: 'Use POST to sync subscribers',
     endpoint: '/api/admin/sync-subscribers'
-  })
+  }))
 }
 
 export async function POST(request: Request) {
@@ -161,6 +158,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('[Sync] Error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return corsResponse(NextResponse.json({ error: error.message }, { status: 500 }))
   }
 }
