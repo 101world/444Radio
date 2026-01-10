@@ -143,6 +143,7 @@ export async function POST() {
 
     // Step 6: Create payment link for subscription
     console.log('[Subscription] Creating payment link...')
+    console.log('[Subscription] Payment link for customer:', customerName)
     
     const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
@@ -154,8 +155,12 @@ export async function POST() {
         amount: 45000, // ₹450 in paise
         currency: 'INR',
         accept_partial: false,
-        description: 'Creator 444 Monthly Subscription',
-        customer_id: customerId,
+        description: '444Radio Creator Plan - Monthly Subscription',
+        customer: {
+          name: customerName,
+          email: userEmail,
+          contact: ''
+        },
         notify: {
           sms: false,
           email: true
@@ -163,10 +168,12 @@ export async function POST() {
         reminder_enable: true,
         callback_url: 'https://444radio.co.in/library',
         callback_method: 'get',
+        reference_id: subscription.id,
         notes: {
           subscription_id: subscription.id,
           clerk_user_id: userId,
-          plan_id: planId
+          plan_id: planId,
+          customer_id: customerId
         }
       })
     })
