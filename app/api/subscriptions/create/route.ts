@@ -24,12 +24,22 @@ export async function POST(request: Request) {
 
     const userEmail = user.emailAddresses[0].emailAddress
 
+    // Check Razorpay credentials
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      console.error('[Create Subscription] Missing Razorpay credentials')
+      return corsResponse(NextResponse.json({ 
+        error: 'Razorpay configuration error',
+        details: 'Missing API credentials'
+      }, { status: 500 }))
+    }
+
     // Razorpay credentials
     const razorpayAuth = Buffer.from(
       `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
     ).toString('base64')
 
     console.log('[Create Subscription] User:', userId, 'Email:', userEmail)
+    console.log('[Create Subscription] Razorpay Key ID:', process.env.RAZORPAY_KEY_ID)
 
     // Step 1: Create or fetch customer
     let customerId: string | undefined
@@ -44,16 +54,23 @@ export async function POST(request: Request) {
       }
     )
 
+    console.log('[Create Subscription] Search customer status:', searchResponse.status)
+
     if (searchResponse.ok) {
       const searchData = await searchResponse.json()
+      console.log('[Create Subscription] Search results:', searchData)
       if (searchData.items && searchData.items.length > 0) {
         customerId = searchData.items[0].id
         console.log('[Create Subscription] Found existing customer:', customerId)
       }
+    } else {
+      const errorText = await searchResponse.text()
+      console.error('[Create Subscription] Customer search failed:', errorText)
     }
 
     // Create customer if not found
     if (!customerId) {
+      console.log('[Create Subscription] Creating new customer for:', userEmail)
       const createCustomerResponse = await fetch(
         'https://api.razorpay.com/v1/customers',
         {
@@ -69,6 +86,8 @@ export async function POST(request: Request) {
         }
       )
 
+      console.log('[Create Subscription] Create customer status:', createCustomerResponse.status)
+
       if (!createCustomerResponse.ok) {
         const error = await createCustomerResponse.text()
         console.error('[Create Subscription] Customer creation failed:', error)
@@ -83,8 +102,7 @@ export async function POST(request: Request) {
       console.log('[Create Subscription] Created new customer:', customerId)
     }
 
-    // Step 2: Create subscription
-    const planId = process.env.RAZORPAY_CREATOR_PLAN_ID || 'plan_S2DGVK6J270rtt'
+    // Sole.log('[Create Subscription] Creating subscription with plan:', planId, 'customer:', customerId)
     
     const subscriptionResponse = await fetch(
       'https://api.razorpay.com/v1/subscriptions',
@@ -108,6 +126,8 @@ export async function POST(request: Request) {
       }
     )
 
+    console.log('[Create Subscription] Subscription response status:', subscriptionResponse.status)
+
     if (!subscriptionResponse.ok) {
       const error = await subscriptionResponse.text()
       console.error('[Create Subscription] Subscription creation failed:', error)
@@ -116,6 +136,10 @@ export async function POST(request: Request) {
         details: error 
       }, { status: 500 }))
     }
+
+    const subscriptionData = await subscriptionResponse.json()
+    console.log('[Create Subscription] Created subscription:', subscriptionData.id)
+    console.log('[Create Subscription] Payment URL:', subscriptionData.short_url
 
     const subscriptionData = await subscriptionResponse.json()
     console.log('[Create Subscription] Created subscription:', subscriptionData.id)
