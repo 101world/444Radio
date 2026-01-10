@@ -33,14 +33,30 @@ export async function POST(request: Request) {
         await handleSubscriptionSuccess(event.payload.subscription.entity)
         break
 
+      case 'subscription.paused':
+        await handleSubscriptionPaused(event.payload.subscription.entity)
+        break
+
+      case 'subscription.resumed':
+        await handleSubscriptionResumed(event.payload.subscription.entity)
+        break
+
       case 'subscription.cancelled':
       case 'subscription.expired':
         await handleSubscriptionEnd(event.payload.subscription.entity)
         break
 
+      case 'subscription.updated':
+        await handleSubscriptionUpdated(event.payload.subscription.entity)
+        break
+
       case 'payment.authorized':
       case 'payment.captured':
         await handlePaymentSuccess(event.payload.payment.entity)
+        break
+
+      case 'payment.failed':
+        await handlePaymentFailed(event.payload.payment.entity)
         break
 
       default:
@@ -161,7 +177,62 @@ async function handleSubscriptionEnd(subscription: any) {
   }
 }
 
+async function handleSubscriptionPaused(subscription: any) {
+  console.log('[Razorpay] Subscription paused:', subscription.id)
+
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({
+      subscription_status: 'paused',
+      updated_at: new Date().toISOString()
+    })
+    .eq('subscription_id', subscription.id)
+
+  if (error) {
+    console.error('[Razorpay] Failed to update subscription status:', error)
+  }
+}
+
+async function handleSubscriptionResumed(subscription: any) {
+  console.log('[Razorpay] Subscription resumed:', subscription.id)
+
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({
+      subscription_status: 'active',
+      updated_at: new Date().toISOString()
+    })
+    .eq('subscription_id', subscription.id)
+
+  if (error) {
+    console.error('[Razorpay] Failed to update subscription status:', error)
+  }
+}
+
+async function handleSubscriptionUpdated(subscription: any) {
+  console.log('[Razorpay] Subscription updated:', subscription.id)
+
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({
+      subscription_plan: subscription.plan_id,
+      subscription_end: subscription.end_at,
+      updated_at: new Date().toISOString()
+    })
+    .eq('subscription_id', subscription.id)
+
+  if (error) {
+    console.error('[Razorpay] Failed to update subscription:', error)
+  }
+}
+
 async function handlePaymentSuccess(payment: any) {
   console.log('[Razorpay] Payment captured:', payment.id)
   // Additional payment handling logic if needed
+}
+
+async function handlePaymentFailed(payment: any) {
+  console.log('[Razorpay] Payment failed:', payment.id)
+  console.log('[Razorpay] Error:', payment.error_code, payment.error_description)
+  // Optionally notify user about failed payment
 }
