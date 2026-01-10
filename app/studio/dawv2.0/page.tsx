@@ -58,6 +58,7 @@ export default function DAWProRebuild() {
   const [dragPreview, setDragPreview] = useState<{ time: number; trackId: string | null } | null>(null)
   const [draggingLoopHandle, setDraggingLoopHandle] = useState<'start' | 'end' | null>(null)
   const [activeLoopHandle, setActiveLoopHandle] = useState<'start' | 'end' | null>(null)
+  const [draggingClip, setDraggingClip] = useState<{ clipId: string; trackId: string; offsetX: number } | null>(null)
   const audioBufferCache = useRef<Map<string, Promise<AudioBuffer>>>(new Map())
   const isHydratingRef = useRef(false)
   const [dirtyCounter, setDirtyCounter] = useState(0)
@@ -1092,7 +1093,7 @@ export default function DAWProRebuild() {
                 ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/50'
                 : 'bg-gray-800 hover:bg-gray-700'
             }`}
-            title={isPlaying ? 'Pause' : 'Play'}
+            title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
           >
             {isPlaying ? <Pause size={22} /> : <Play size={22} />}
           </button>
@@ -1108,7 +1109,7 @@ export default function DAWProRebuild() {
         </div>
 
         <div className="flex-1 flex items-center justify-center gap-4">
-          <div className="text-3xl font-mono tabular-nums text-cyan-400 font-bold tracking-wider" title={showBrowser ? 'Press B to hide browser' : 'Press B to show browser'}>
+          <div className="text-3xl font-mono tabular-nums text-cyan-400 font-bold tracking-wider" title="Press B to toggle browser | Press Space to play/pause | Ctrl+S to save">
             {Math.floor(playhead / 60)}:{String(Math.floor(playhead % 60)).padStart(2, '0')}.
             {String(Math.floor((playhead % 1) * 100)).padStart(2, '0')}
           </div>
@@ -1160,6 +1161,24 @@ export default function DAWProRebuild() {
             <Grid3x3 size={16} className="inline mr-2" />
             Snap
           </button>
+          <div className="flex items-center gap-2 ml-4">
+            <div className="text-xs text-gray-500 uppercase font-medium">Zoom</div>
+            <button
+              onClick={() => setZoom((prev) => Math.max(10, prev - 10))}
+              className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded text-lg font-bold"
+              title="Zoom out"
+            >
+              -
+            </button>
+            <div className="text-xs text-gray-400 w-12 text-center">{zoom}px/s</div>
+            <button
+              onClick={() => setZoom((prev) => Math.min(200, prev + 10))}
+              className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded text-lg font-bold"
+              title="Zoom in"
+            >
+              +
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1172,15 +1191,50 @@ export default function DAWProRebuild() {
               <div className="text-sm font-bold text-gray-300 uppercase tracking-wide">
                 Browser
               </div>
-              <button
-                onClick={() => {
-                  setShowStemSplitter(true)
-                }}
-                className="px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded text-xs font-medium transition-colors flex items-center gap-1"
-              >
-                <Scissors size={12} />
-                Stem Split
-              </button>
+              <div className="flex gap-2">
+                <label className="px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer">
+                  <Download size={12} />
+                  Import
+                  <input
+                    type="file"
+                    accept="audio/mp3,audio/wav,audio/mpeg,audio/wave"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      try {
+                        const formData = new FormData()
+                        formData.append('file', file)
+                        formData.append('title', file.name.replace(/\.[^/.]+$/, ''))
+                        formData.append('type', 'audio')
+                        const response = await fetch('/api/profile/upload', {
+                          method: 'POST',
+                          body: formData
+                        })
+                        if (response.ok) {
+                          showToast('Audio imported successfully', 'success')
+                          await loadLibrary()
+                        } else {
+                          showToast('Import failed', 'error')
+                        }
+                      } catch (error) {
+                        console.error('Import error:', error)
+                        showToast('Import failed', 'error')
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+                <button
+                  onClick={() => {
+                    setShowStemSplitter(true)
+                  }}
+                  className="px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                >
+                  <Scissors size={12} />
+                  Stem Split
+                </button>
+              </div>
             </div>
             <div className="p-4">
               <div className="relative">
@@ -1353,8 +1407,15 @@ export default function DAWProRebuild() {
                   style={{ width: `${timelineWidth}px` }}
                 >
                   <div
-                    className="sticky top-0 z-10 bg-[#0d0d0d] border-b border-gray-800 relative"
+                    className="sticky top-0 z-10 bg-[#0d0d0d] border-b border-gray-800 relative cursor-pointer"
                     style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const x = e.clientX - rect.left
+                      const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
+                      daw?.seekTo(time)
+                      setPlayhead(time)
+                    }}
                   >
                     {timeMarkerIndices.map((second) => (
                       <div
@@ -1425,8 +1486,9 @@ export default function DAWProRebuild() {
                         const audioUrl = e.dataTransfer.getData('audioUrl')
                         if (audioUrl) {
                           const rect = e.currentTarget.getBoundingClientRect()
-                          const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
-                          const startTime = snapTime(x / zoom)
+                          const scrollLeft = timelineRef.current?.scrollLeft || 0
+                          const x = e.clientX - rect.left + scrollLeft - TRACK_HEADER_WIDTH
+                          const startTime = snapTime(Math.max(0, x) / zoom)
                           await handleAddClip(audioUrl, track.id, startTime)
                         }
                         setDragPreview(null)
@@ -1438,8 +1500,9 @@ export default function DAWProRebuild() {
                       onDragOver={(e) => {
                         e.preventDefault()
                         const rect = e.currentTarget.getBoundingClientRect()
-                        const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
-                        const time = snapTime(x / zoom)
+                        const scrollLeft = timelineRef.current?.scrollLeft || 0
+                        const x = e.clientX - rect.left + scrollLeft - TRACK_HEADER_WIDTH
+                        const time = snapTime(Math.max(0, x) / zoom)
                         setDragPreview({ time, trackId: track.id })
                       }}
                     >
@@ -1457,12 +1520,46 @@ export default function DAWProRebuild() {
                       {track.clips.map((clip) => (
                         <div
                           key={clip.id}
-                          className="absolute top-2 bottom-2 bg-gradient-to-br from-cyan-500/30 to-purple-500/20 border-2 border-cyan-500/50 rounded-lg overflow-hidden cursor-move hover:border-cyan-400 transition-all shadow-lg hover:shadow-cyan-500/30"
+                          className={`absolute top-2 bottom-2 bg-gradient-to-br from-cyan-500/30 to-purple-500/20 border-2 rounded-lg overflow-hidden cursor-move hover:border-cyan-400 transition-all shadow-lg hover:shadow-cyan-500/30 ${
+                            selectedClipId === clip.id ? 'border-cyan-400 ring-2 ring-cyan-400/50' : 'border-cyan-500/50'
+                          }`}
                           style={{
                             left: `${clip.startTime * zoom}px`,
                             width: `${clip.duration * zoom}px`
                           }}
                           onClick={() => setSelectedClipId(clip.id)}
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                            setSelectedClipId(clip.id)
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const offsetX = e.clientX - rect.left
+                            setDraggingClip({ clipId: clip.id, trackId: track.id, offsetX })
+                            
+                            const handleMove = (moveE: MouseEvent) => {
+                              if (!timelineRef.current) return
+                              const timelineRect = timelineRef.current.getBoundingClientRect()
+                              const scrollLeft = timelineRef.current.scrollLeft
+                              const x = moveE.clientX - timelineRect.left + scrollLeft - TRACK_HEADER_WIDTH - offsetX
+                              const newStartTime = snapTime(Math.max(0, x / zoom))
+                              
+                              if (daw) {
+                                const trackManager = daw.getTrackManager()
+                                const updatedClip = { ...clip, startTime: newStartTime }
+                                trackManager.updateClip(track.id, clip.id, updatedClip)
+                                setTracks(daw.getTracks())
+                              }
+                            }
+                            
+                            const handleUp = () => {
+                              setDraggingClip(null)
+                              markProjectDirty()
+                              window.removeEventListener('mousemove', handleMove)
+                              window.removeEventListener('mouseup', handleUp)
+                            }
+                            
+                            window.addEventListener('mousemove', handleMove)
+                            window.addEventListener('mouseup', handleUp)
+                          }}
                         >
                           <canvas
                             ref={(canvas) => {
@@ -1472,7 +1569,7 @@ export default function DAWProRebuild() {
                                 renderWaveform(canvas, clip.buffer)
                               }
                             }}
-                            className="w-full h-full"
+                            className="w-full h-full pointer-events-none"
                           />
                         </div>
                       ))}
@@ -1490,13 +1587,31 @@ export default function DAWProRebuild() {
                   ))}
 
                   <div
-                    className="absolute top-0 w-1 bg-cyan-400 z-20 pointer-events-none shadow-lg shadow-cyan-500/50"
+                    className="absolute top-0 w-1 bg-cyan-400 z-20 shadow-lg shadow-cyan-500/50 cursor-ew-resize"
                     style={{
                       left: `${playhead * zoom}px`,
-                      height: `${TIMELINE_HEIGHT + tracks.length * TRACK_HEIGHT}px`
+                      height: `${TIMELINE_HEIGHT + tracks.length * TRACK_HEIGHT}px`,
+                      pointerEvents: 'auto'
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation()
+                      const startX = e.clientX
+                      const startPlayhead = playhead
+                      const handleMove = (moveE: MouseEvent) => {
+                        const delta = (moveE.clientX - startX) / zoom
+                        const newTime = Math.max(0, Math.min(TIMELINE_SECONDS, startPlayhead + delta))
+                        daw?.seekTo(newTime)
+                        setPlayhead(newTime)
+                      }
+                      const handleUp = () => {
+                        window.removeEventListener('mousemove', handleMove)
+                        window.removeEventListener('mouseup', handleUp)
+                      }
+                      window.addEventListener('mousemove', handleMove)
+                      window.addEventListener('mouseup', handleUp)
                     }}
                   >
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-cyan-400 rotate-45 rounded-sm" />
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-cyan-400 rotate-45 rounded-sm pointer-events-none" />
                   </div>
 
                   {dragPreview && (
