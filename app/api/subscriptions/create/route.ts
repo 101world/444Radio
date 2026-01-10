@@ -54,59 +54,78 @@ export async function POST() {
       ? `${user.firstName} ${user.lastName}`.trim()
       : user.firstName || user.username || userEmail.split('@')[0]
 
-    // Step 4: Get or create Razorpay customer
-    // Use fail_existing to reuse customer if email exists (Razorpay requirement)
-    // Then immediately update the name to current user's name
-    console.log('[Subscription] Getting/creating Razorpay customer for:', userEmail)
-    console.log('[Subscription] Customer name:', customerName)
-    const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${authHeader}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        email: userEmail,
-        fail_existing: '0' // Return existing customer if found
+    // Step 4: Check if user already has a Razorpay customer ID in Supabase
+    console.log('[Subscription] Checking for existing Razorpay customer in Supabase')
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('razorpay_customer_id')
+      .eq('clerk_user_id', userId)
+      .single()
+
+    let customerId = userData?.razorpay_customer_id
+
+    if (customerId) {
+      // User has existing customer, update the name
+      console.log('[Subscription] Found existing Razorpay customer:', customerId)
+      console.log('[Subscription] Updating customer name to:', customerName)
+      
+      await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: customerName,
+          email: userEmail
+        })
       })
-    })
-
-    console.log('[Subscription] Customer API status:', customerRes.status)
-
-    if (!customerRes.ok) {
-      const error = await customerRes.text()
-      console.error('[Subscription] Customer API error:', error)
-      console.error('[Subscription] Status:', customerRes.status)
-      return corsResponse(
-        NextResponse.json({ 
-          error: 'Failed to setup payment account',
-          status: customerRes.status,
-          details: error
-        }, { status: 500 })
-      )
-    }
-
-    const customer = await customerRes.json()
-    const customerId = customer.id
-    console.log('[Subscription] Customer ID:', customerId)
-
-    // CRITICAL: Update customer name to current user (overrides old name)
-    console.log('[Subscription] Updating customer name to:', customerName)
-    const updateRes = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Basic ${authHeader}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: customerName
-      })
-    })
-
-    if (!updateRes.ok) {
-      console.error('[Subscription] Failed to update customer name, continuing anyway')
     } else {
-      console.log('[Subscription] Customer name updated successfully')
+      // Create new Razorpay customer
+      console.log('[Subscription] Creating new Razorpay customer for:', userEmail)
+      console.log('[Subscription] Customer name:', customerName)
+      
+      const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: customerName,
+          email: userEmail,
+          contact: ''
+        })
+      })
+
+      console.log('[Subscription] Customer API status:', customerRes.status)
+
+      if (!customerRes.ok) {
+        const error = await customerRes.text()
+        console.error('[Subscription] Customer API error:', error)
+        return corsResponse(
+          NextResponse.json({ 
+            error: 'Failed to create customer',
+            details: error
+          }, { status: 500 })
+        )
+      }
+
+      const customer = await customerRes.json()
+      customerId = customer.id
+      console.log('[Subscription] New customer created:', customerId)
+
+      // Save customer ID to Supabase for future use
+      await supabase
+        .from('users')
+        .update({ razorpay_customer_id: customerId })
+        .eq('clerk_user_id', userId)
     }
 
     // Step 5: Create subscription
