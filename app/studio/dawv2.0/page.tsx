@@ -113,9 +113,9 @@ export default function DAWProRebuild() {
       }
       frameId = requestAnimationFrame(() => {
         const scrollLeft = timelineEl.scrollLeft
-        const width = timelineEl.clientWidth || 1
+        const viewportWidth = Math.max(1, timelineEl.clientWidth - TRACK_HEADER_WIDTH)
         const nextStart = Math.max(0, scrollLeft / zoom)
-        const nextEnd = Math.min(TIMELINE_SECONDS, (scrollLeft + width) / zoom)
+        const nextEnd = Math.min(TIMELINE_SECONDS, (scrollLeft + viewportWidth) / zoom)
 
         setVisibleRange((prev) => {
           if (
@@ -145,7 +145,7 @@ export default function DAWProRebuild() {
       }
       resizeObserver?.disconnect()
     }
-  }, [zoom, TIMELINE_SECONDS])
+  }, [zoom, TIMELINE_SECONDS, TRACK_HEADER_WIDTH])
 
   // Initialize DAW
   useEffect(() => {
@@ -1245,265 +1245,273 @@ export default function DAWProRebuild() {
 
         {/* Timeline Area */}
         <div className="flex-1 flex flex-col overflow-hidden bg-[#0a0a0a]">
-          <div className="flex-1 flex overflow-hidden">
-            {/* Track Headers */}
-            <div
-              className="flex-shrink-0 bg-[#111] border-r border-gray-800 overflow-y-hidden"
-              style={{ width: `${TRACK_HEADER_WIDTH}px` }}
-            >
-              {tracks.map((track, idx) => (
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full overflow-auto relative" ref={timelineRef}>
+              <div
+                className="relative inline-flex min-w-full"
+                style={{ minWidth: `${TRACK_HEADER_WIDTH + timelineWidth}px` }}
+              >
                 <div
-                  key={track.id}
-                  style={{ height: `${TRACK_HEIGHT}px` }}
-                  className={`border-b border-gray-800 p-4 cursor-pointer transition-all ${
-                    selectedTrackId === track.id
-                      ? 'bg-[#1a1a1a] border-l-4 border-l-cyan-500'
-                      : 'hover:bg-[#151515]'
-                  }`}
-                  onClick={() => setSelectedTrackId(track.id)}
+                  className="sticky left-0 z-30 flex-shrink-0 bg-[#111] border-r border-gray-800"
+                  style={{ width: `${TRACK_HEADER_WIDTH}px` }}
                 >
-                  <div className="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">
-                    {track.name}
-                    {selectedTrackId === track.id && (
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                  <div
+                    className="sticky top-0 z-30 bg-[#111] border-b border-gray-800 flex items-center px-4 text-xs font-semibold uppercase tracking-wide text-gray-500"
+                    style={{ height: `${TIMELINE_HEIGHT}px` }}
+                  >
+                    Tracks
+                  </div>
+                  <div>
+                    {tracks.map((track, idx) => (
+                      <div
+                        key={track.id}
+                        style={{ height: `${TRACK_HEIGHT}px` }}
+                        className={`border-b border-gray-800 p-4 cursor-pointer transition-all ${
+                          selectedTrackId === track.id
+                            ? 'bg-[#1a1a1a] border-l-4 border-l-cyan-500'
+                            : 'hover:bg-[#151515]'
+                        }`}
+                        onClick={() => setSelectedTrackId(track.id)}
+                      >
+                        <div className="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">
+                          {track.name}
+                          {selectedTrackId === track.id && (
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                          )}
+                        </div>
+                        <div className="flex gap-2 mb-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              daw?.updateTrack(track.id, { muted: !track.muted })
+                              setTracks(daw?.getTracks() || [])
+                              markProjectDirty()
+                            }}
+                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                              track.muted
+                                ? 'bg-red-500 text-white'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            }`}
+                          >
+                            M
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              daw?.updateTrack(track.id, { solo: !track.solo })
+                              setTracks(daw?.getTracks() || [])
+                              markProjectDirty()
+                            }}
+                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                              track.solo
+                                ? 'bg-yellow-500 text-black'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            }`}
+                          >
+                            S
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setRecordingTrackId(recordingTrackId === track.id ? null : track.id)
+                            }}
+                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                              recordingTrackId === track.id
+                                ? 'bg-red-500 text-white animate-pulse'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                            }`}
+                          >
+                            ●
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Volume2 size={14} className="text-gray-500" />
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={track.volume * 100}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              daw?.updateTrack(track.id, { volume: Number(e.target.value) / 100 })
+                              setTracks(daw?.getTracks() || [])
+                              markProjectDirty()
+                            }}
+                            className="flex-1 accent-cyan-500"
+                          />
+                          <div className="text-xs text-gray-500 w-8 text-right">
+                            {Math.round(track.volume * 100)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  className="relative flex-1"
+                  style={{ width: `${timelineWidth}px` }}
+                >
+                  <div
+                    className="sticky top-0 z-10 bg-[#0d0d0d] border-b border-gray-800 relative"
+                    style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
+                  >
+                    {timeMarkerIndices.map((second) => (
+                      <div
+                        key={second}
+                        className="absolute top-0 h-full"
+                        style={{ left: `${second * zoom}px` }}
+                      >
+                        <div className="h-full border-l border-gray-700 relative">
+                          <span className="text-xs text-gray-500 ml-2 absolute top-2">
+                            {second}s
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {loopEnabled && (
+                      <div
+                        className="absolute top-0 bottom-0 bg-orange-500/20 border-l-2 border-r-2 border-orange-500"
+                        style={{
+                          left: `${loopStart * zoom}px`,
+                          width: `${(loopEnd - loopStart) * zoom}px`
+                        }}
+                      />
+                    )}
+
+                    {loopEnabled && (
+                      <>
+                        <div
+                          className={`absolute -bottom-2 w-3 h-6 bg-orange-500 rounded cursor-ew-resize ${
+                            activeLoopHandle === 'start' ? 'ring-2 ring-orange-300' : ''
+                          }`}
+                          style={{ left: `${loopStart * zoom - 6}px` }}
+                          onMouseDown={() => {
+                            setDraggingLoopHandle('start')
+                            setActiveLoopHandle('start')
+                          }}
+                          title="Drag to set loop start"
+                        />
+                        <div
+                          className={`absolute -bottom-2 w-3 h-6 bg-orange-500 rounded cursor-ew-resize ${
+                            activeLoopHandle === 'end' ? 'ring-2 ring-orange-300' : ''
+                          }`}
+                          style={{ left: `${loopEnd * zoom - 6}px` }}
+                          onMouseDown={() => {
+                            setDraggingLoopHandle('end')
+                            setActiveLoopHandle('end')
+                          }}
+                          title="Drag to set loop end"
+                        />
+                        <div className="absolute -bottom-8 left-2 text-[11px] text-orange-200 bg-[#1a1a1a] px-2 py-1 rounded border border-orange-500/40">
+                          Loop {formatBarsBeats(loopStart)} → {formatBarsBeats(loopEnd)}
+                        </div>
+                      </>
                     )}
                   </div>
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        daw?.updateTrack(track.id, { muted: !track.muted })
-                        setTracks(daw?.getTracks() || [])
-                        markProjectDirty()
-                      }}
-                      className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
-                        track.muted
-                          ? 'bg-red-500 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
-                    >
-                      M
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        daw?.updateTrack(track.id, { solo: !track.solo })
-                        setTracks(daw?.getTracks() || [])
-                        markProjectDirty()
-                      }}
-                      className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
-                        track.solo
-                          ? 'bg-yellow-500 text-black'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
-                    >
-                      S
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setRecordingTrackId(recordingTrackId === track.id ? null : track.id)
-                      }}
-                      className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
-                        recordingTrackId === track.id
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
-                    >
-                      ●
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Volume2 size={14} className="text-gray-500" />
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={track.volume * 100}
-                      onChange={(e) => {
-                        e.stopPropagation()
-                        daw?.updateTrack(track.id, { volume: Number(e.target.value) / 100 })
-                        setTracks(daw?.getTracks() || [])
-                        markProjectDirty()
-                      }}
-                      className="flex-1 accent-cyan-500"
-                    />
-                    <div className="text-xs text-gray-500 w-8 text-right">
-                      {Math.round(track.volume * 100)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Timeline */}
-            <div className="flex-1 overflow-auto relative" ref={timelineRef}>
-              {/* Time Ruler */}
-              <div
-                className="sticky top-0 z-10 bg-[#0d0d0d] border-b border-gray-800 relative"
-                style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
-              >
-                {timeMarkerIndices.map((second) => (
-                  <div
-                    key={second}
-                    className="absolute top-0 h-full"
-                    style={{ left: `${second * zoom}px` }}
-                  >
-                    <div className="h-full border-l border-gray-700 relative">
-                      <span className="text-xs text-gray-500 ml-2 absolute top-2">
-                        {second}s
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  {tracks.map((track, idx) => (
+                    <div
+                      key={track.id}
+                      className="relative border-b border-gray-800"
+                      style={{
+                        height: `${TRACK_HEIGHT}px`,
+                        width: `${timelineWidth}px`,
+                        backgroundColor: idx % 2 === 0 ? '#0a0a0a' : '#0d0d0d'
+                      }}
+                      onDrop={async (e) => {
+                        e.preventDefault()
+                        const audioUrl = e.dataTransfer.getData('audioUrl')
+                        if (audioUrl) {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
+                          const startTime = snapTime(x / zoom)
+                          await handleAddClip(audioUrl, track.id, startTime)
+                        }
+                        setDragPreview(null)
+                      }}
+                      onDragLeave={() => setDragPreview(null)}
+                      onDragEnter={(e) => {
+                        e.preventDefault()
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
+                        const time = snapTime(x / zoom)
+                        setDragPreview({ time, trackId: track.id })
+                      }}
+                    >
+                      {gridLineIndices.map((stepIndex) => (
+                        <div
+                          key={stepIndex}
+                          className="absolute top-0 bottom-0 border-l pointer-events-none"
+                          style={{
+                            left: `${(stepIndex / GRID_SUBDIVISION) * zoom}px`,
+                            borderColor: stepIndex % GRID_SUBDIVISION === 0 ? '#333' : '#222'
+                          }}
+                        />
+                      ))}
 
-                {/* Loop Region */}
-                {loopEnabled && (
+                      {track.clips.map((clip) => (
+                        <div
+                          key={clip.id}
+                          className="absolute top-2 bottom-2 bg-gradient-to-br from-cyan-500/30 to-purple-500/20 border-2 border-cyan-500/50 rounded-lg overflow-hidden cursor-move hover:border-cyan-400 transition-all shadow-lg hover:shadow-cyan-500/30"
+                          style={{
+                            left: `${clip.startTime * zoom}px`,
+                            width: `${clip.duration * zoom}px`
+                          }}
+                          onClick={() => setSelectedClipId(clip.id)}
+                        >
+                          <canvas
+                            ref={(canvas) => {
+                              if (canvas && clip.buffer) {
+                                canvas.width = clip.duration * zoom
+                                canvas.height = TRACK_HEIGHT - 16
+                                renderWaveform(canvas, clip.buffer)
+                              }
+                            }}
+                            className="w-full h-full"
+                          />
+                        </div>
+                      ))}
+
+                      {loopEnabled && (
+                        <div
+                          className="absolute top-0 bottom-0 bg-orange-500/5 pointer-events-none"
+                          style={{
+                            left: `${loopStart * zoom}px`,
+                            width: `${(loopEnd - loopStart) * zoom}px`
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+
                   <div
-                    className="absolute top-0 bottom-0 bg-orange-500/20 border-l-2 border-r-2 border-orange-500"
+                    className="absolute top-0 w-1 bg-cyan-400 z-20 pointer-events-none shadow-lg shadow-cyan-500/50"
                     style={{
-                      left: `${loopStart * zoom}px`,
-                      width: `${(loopEnd - loopStart) * zoom}px`
+                      left: `${playhead * zoom}px`,
+                      height: `${TIMELINE_HEIGHT + tracks.length * TRACK_HEIGHT}px`
                     }}
-                  />
-                )}
+                  >
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-cyan-400 rotate-45 rounded-sm" />
+                  </div>
 
-                {loopEnabled && (
-                  <>
+                  {dragPreview && (
                     <div
-                      className={`absolute -bottom-2 w-3 h-6 bg-orange-500 rounded cursor-ew-resize ${
-                        activeLoopHandle === 'start' ? 'ring-2 ring-orange-300' : ''
-                      }`}
-                      style={{ left: `${loopStart * zoom - 6}px` }}
-                      onMouseDown={() => {
-                        setDraggingLoopHandle('start')
-                        setActiveLoopHandle('start')
-                      }}
-                      title="Drag to set loop start"
-                    />
-                    <div
-                      className={`absolute -bottom-2 w-3 h-6 bg-orange-500 rounded cursor-ew-resize ${
-                        activeLoopHandle === 'end' ? 'ring-2 ring-orange-300' : ''
-                      }`}
-                      style={{ left: `${loopEnd * zoom - 6}px` }}
-                      onMouseDown={() => {
-                        setDraggingLoopHandle('end')
-                        setActiveLoopHandle('end')
-                      }}
-                      title="Drag to set loop end"
-                    />
-                    <div className="absolute -bottom-8 left-2 text-[11px] text-orange-200 bg-[#1a1a1a] px-2 py-1 rounded border border-orange-500/40">
-                      Loop {formatBarsBeats(loopStart)} → {formatBarsBeats(loopEnd)}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Tracks */}
-              {tracks.map((track, idx) => (
-                <div
-                  key={track.id}
-                  className="relative border-b border-gray-800"
-                  style={{
-                    height: `${TRACK_HEIGHT}px`,
-                    width: `${timelineWidth}px`,
-                    backgroundColor: idx % 2 === 0 ? '#0a0a0a' : '#0d0d0d'
-                  }}
-                  onDrop={async (e) => {
-                    e.preventDefault()
-                    const audioUrl = e.dataTransfer.getData('audioUrl')
-                    if (audioUrl) {
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
-                      const startTime = snapTime(x / zoom)
-                      await handleAddClip(audioUrl, track.id, startTime)
-                    }
-                    setDragPreview(null)
-                  }}
-                  onDragLeave={() => setDragPreview(null)}
-                  onDragEnter={(e) => {
-                    e.preventDefault()
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
-                    const time = snapTime(x / zoom)
-                    setDragPreview({ time, trackId: track.id })
-                  }}
-                >
-                  {/* Grid Lines */}
-                  {gridLineIndices.map((stepIndex) => (
-                    <div
-                      key={stepIndex}
-                      className="absolute top-0 bottom-0 border-l pointer-events-none"
-                      style={{
-                        left: `${(stepIndex / GRID_SUBDIVISION) * zoom}px`,
-                        borderColor: stepIndex % GRID_SUBDIVISION === 0 ? '#333' : '#222'
-                      }}
-                    />
-                  ))}
-
-                  {/* Clips */}
-                  {track.clips.map((clip) => (
-                    <div
-                      key={clip.id}
-                      className="absolute top-2 bottom-2 bg-gradient-to-br from-cyan-500/30 to-purple-500/20 border-2 border-cyan-500/50 rounded-lg overflow-hidden cursor-move hover:border-cyan-400 transition-all shadow-lg hover:shadow-cyan-500/30"
-                      style={{
-                        left: `${clip.startTime * zoom}px`,
-                        width: `${clip.duration * zoom}px`
-                      }}
-                      onClick={() => setSelectedClipId(clip.id)}
+                      className="absolute top-0 bottom-0 w-px bg-cyan-500/70 z-30 pointer-events-none"
+                      style={{ left: `${dragPreview.time * zoom}px` }}
                     >
-                      <canvas
-                        ref={(canvas) => {
-                          if (canvas && clip.buffer) {
-                            canvas.width = clip.duration * zoom
-                            canvas.height = TRACK_HEIGHT - 16
-                            renderWaveform(canvas, clip.buffer)
-                          }
-                        }}
-                        className="w-full h-full"
-                      />
+                      <div className="absolute -top-6 -left-8 px-2 py-1 rounded bg-[#0d0d0d] border border-cyan-500/40 text-xs text-cyan-100 whitespace-nowrap">
+                        {dragPreview.trackId ? 'Drop here' : 'Drag'} @{' '}
+                        {snapEnabled ? formatBarsBeats(dragPreview.time) : `${dragPreview.time.toFixed(2)}s`}
+                      </div>
                     </div>
-                  ))}
-
-                  {/* Loop Region Overlay */}
-                  {loopEnabled && (
-                    <div
-                      className="absolute top-0 bottom-0 bg-orange-500/5 pointer-events-none"
-                      style={{
-                        left: `${loopStart * zoom}px`,
-                        width: `${(loopEnd - loopStart) * zoom}px`
-                      }}
-                    />
                   )}
                 </div>
-              ))}
-
-              {/* Playhead */}
-              <div
-                className="absolute top-0 w-1 bg-cyan-400 z-20 pointer-events-none shadow-lg shadow-cyan-500/50"
-                style={{
-                  left: `${playhead * zoom}px`,
-                  height: `${TIMELINE_HEIGHT + tracks.length * TRACK_HEIGHT}px`
-                }}
-              >
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-cyan-400 rotate-45 rounded-sm" />
               </div>
-
-              {/* Drag Ghost */}
-              {dragPreview && (
-                <div
-                  className="absolute top-0 bottom-0 w-px bg-cyan-500/70 z-30 pointer-events-none"
-                  style={{ left: `${dragPreview.time * zoom}px` }}
-                >
-                  <div className="absolute -top-6 -left-8 px-2 py-1 rounded bg-[#0d0d0d] border border-cyan-500/40 text-xs text-cyan-100 whitespace-nowrap">
-                    {dragPreview.trackId ? 'Drop here' : 'Drag'} @{' '}
-                    {snapEnabled ? formatBarsBeats(dragPreview.time) : `${dragPreview.time.toFixed(2)}s`}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
