@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
@@ -7,13 +6,18 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   console.log('[Razorpay Webhook] POST request received')
   try {
-    const body = await request.text()
-    const signature = request.headers.get('x-razorpay-signature')
+    const body = await req.text()
+    const signature = req.headers.get('x-razorpay-signature')
 
     console.log('[Razorpay Webhook] Processing webhook, signature:', signature ? 'present' : 'missing')
+
+    if (!signature) {
+      console.error('[Razorpay Webhook] No signature provided')
+      return new Response('No signature', { status: 400 })
+    }
 
     // Verify webhook signature
     const expectedSignature = crypto
@@ -23,7 +27,7 @@ export async function POST(request: Request) {
 
     if (signature !== expectedSignature) {
       console.error('[Razorpay Webhook] Invalid signature')
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+      return new Response('Invalid signature', { status: 401 })
     }
 
     const event = JSON.parse(body)
@@ -80,10 +84,16 @@ export async function POST(request: Request) {
         console.log('[Razorpay Webhook] Unhandled event:', event.event)
     }
 
-    return NextResponse.json({ success: true })
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
   } catch (error) {
     console.error('[Razorpay Webhook] Error:', error)
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
+    return new Response(JSON.stringify({ error: 'Webhook processing failed' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
 }
 
