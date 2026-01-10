@@ -71,7 +71,8 @@ async function handleRazorpayWebhook(req: Request, signature: string) {
             .update({
               credits: newCredits,
               subscription_status: 'active',
-              subscription_plan: notes.subscription_id || planType
+              subscription_plan: planType,
+              subscription_id: notes.subscription_id
             })
             .eq('clerk_user_id', notes.clerk_user_id)
           

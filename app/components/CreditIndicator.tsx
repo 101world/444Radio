@@ -10,6 +10,7 @@ export default function CreditIndicator() {
   const [credits, setCredits] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none')
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string>('creator')
 
   // Fetch real credits and subscription status from API
   useEffect(() => {
@@ -20,6 +21,7 @@ export default function CreditIndicator() {
           .then(data => {
             setCredits(data.credits || 0)
             setSubscriptionStatus(data.subscription_status || 'none')
+            setSubscriptionPlan(data.subscription_plan || 'creator')
             setIsLoading(false)
           })
           .catch(err => {
@@ -65,7 +67,9 @@ export default function CreditIndicator() {
             {isLoading ? '...' : credits}
           </span>
           {isSubscribed && (
-            <span className="text-yellow-300 text-[10px] font-bold leading-tight">CREATOR</span>
+            <span className="text-yellow-300 text-[10px] font-bold leading-tight">
+              {subscriptionPlan.toUpperCase()}
+            </span>
           )}
         </div>
       </div>

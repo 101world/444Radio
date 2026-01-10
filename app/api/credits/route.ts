@@ -35,12 +35,13 @@ export async function GET() {
     const data = await response.json()
     let user = data?.[0]
     
-    // Try to get subscription status separately (may not exist yet)
+    // Try to get subscription status and plan separately (may not exist yet)
     let subscriptionStatus = 'none'
+    let subscriptionPlan = 'creator'
     if (user) {
       try {
         const subResponse = await fetch(
-          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=subscription_status`,
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=subscription_status,subscription_plan`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -51,6 +52,7 @@ export async function GET() {
         if (subResponse.ok) {
           const subData = await subResponse.json()
           subscriptionStatus = subData?.[0]?.subscription_status || 'none'
+          subscriptionPlan = subData?.[0]?.subscription_plan || 'creator'
         }
       } catch (e) {
         // Column doesn't exist yet, that's okay
@@ -106,7 +108,8 @@ export async function GET() {
     return corsResponse(NextResponse.json({ 
       credits: user?.credits || 0, // Default to 0 if still not found
       totalGenerated: user?.total_generated || 0,
-      subscription_status: subscriptionStatus
+      subscription_status: subscriptionStatus,
+      subscription_plan: subscriptionPlan
     }))
   } catch (error) {
     console.error('Error fetching credits:', error)
