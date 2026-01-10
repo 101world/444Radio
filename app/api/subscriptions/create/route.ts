@@ -120,14 +120,59 @@ export async function POST() {
 
     const subscription = await subRes.json()
     console.log('[Subscription] Success! ID:', subscription.id)
-    console.log('[Subscription] Payment URL:', subscription.short_url)
 
-    // Step 6: Return payment URL
+    // Step 6: Create payment link for subscription
+    console.log('[Subscription] Creating payment link...')
+    const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${authHeader}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: 45000, // ₹450 in paise
+        currency: 'INR',
+        accept_partial: false,
+        description: 'Creator 444 Monthly Subscription',
+        customer: {
+          name: user.firstName || 'Creator',
+          email: userEmail
+        },
+        notify: {
+          sms: false,
+          email: true
+        },
+        reminder_enable: true,
+        callback_url: 'https://444radio.co.in/library',
+        callback_method: 'get',
+        notes: {
+          subscription_id: subscription.id,
+          clerk_user_id: userId,
+          plan_id: planId
+        }
+      })
+    })
+
+    if (!linkRes.ok) {
+      const error = await linkRes.text()
+      console.error('[Subscription] Payment link creation failed:', error)
+      return corsResponse(
+        NextResponse.json({ 
+          error: 'Failed to create payment link',
+          details: error
+        }, { status: 500 })
+      )
+    }
+
+    const paymentLink = await linkRes.json()
+    console.log('[Subscription] Payment link created:', paymentLink.short_url)
+
+    // Return payment link URL
     return corsResponse(
       NextResponse.json({
         success: true,
         subscription_id: subscription.id,
-        short_url: subscription.short_url,
+        short_url: paymentLink.short_url,
         customer_id: customerId
       })
     )
