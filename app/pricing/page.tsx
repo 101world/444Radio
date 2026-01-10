@@ -318,9 +318,9 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 rounded-full">
-                    <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">CREATOR</span>
+                    <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">PRO</span>
                   </div>
-                  {userSubscription?.status === 'active' && userSubscription?.plan === 'creator' && (
+                  {userSubscription?.status === 'active' && userSubscription?.plan === 'pro' && (
                     <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/50 rounded-full">
                       <span className="text-green-300 text-xs font-bold uppercase tracking-wider">✓ CURRENT PLAN</span>
                     </div>
