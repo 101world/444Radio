@@ -713,10 +713,12 @@ export default function DAWProRebuild() {
       daw.setBPM(120)
       setTracks(daw.getTracks())
       setDirtyCounter(0)
+      showToast('New project created', 'success')
     } catch (error) {
       console.error('Reset project failed:', error)
+      showToast('Failed to create new project', 'error')
     }
-  }, [daw])
+  }, [daw, showToast])
 
   const handleRenameProject = useCallback(async () => {
     if (!currentProjectId) return
@@ -1047,9 +1049,23 @@ export default function DAWProRebuild() {
               value={bpm}
               onChange={(e) => {
                 const next = Number(e.target.value)
-                setBpm(next)
-                daw?.setBPM(next)
-                markProjectDirty()
+                if (next >= 60 && next <= 200 && daw) {
+                  setBpm(next)
+                  daw.setBPM(next)
+                  markProjectDirty()
+                  // Clear and reset metronome if active
+                  if (metronomeInterval) {
+                    clearInterval(metronomeInterval)
+                    setMetronomeInterval(null)
+                    if (metronomeEnabled && isPlaying) {
+                      const interval = setInterval(() => {
+                        setMetronomeFlash(true)
+                        setTimeout(() => setMetronomeFlash(false), 50)
+                      }, (60 / next) * 1000)
+                      setMetronomeInterval(interval)
+                    }
+                  }
+                }
               }}
               className="w-16 bg-[#0a0a0a] border border-gray-800 rounded px-2 py-1 text-sm text-center focus:border-cyan-500 focus:outline-none text-white font-mono"
               min="60"
@@ -1075,11 +1091,11 @@ export default function DAWProRebuild() {
 
           <button
             onClick={() => setShowGenerateModal(true)}
-            className="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg shadow-purple-500/20"
+            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold transition-all flex items-center gap-2 shadow-xl shadow-purple-500/30 border border-purple-400/30"
             title="AI generation"
           >
-            <Sparkles size={16} />
-            Generate
+            <Sparkles size={18} className="animate-pulse" />
+            Generate AI
           </button>
 
           <button
@@ -1174,15 +1190,17 @@ export default function DAWProRebuild() {
           </button>
           <button
             onClick={() => setMetronomeEnabled(!metronomeEnabled)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
               metronomeEnabled
                 ? metronomeFlash
-                  ? 'bg-cyan-400 text-black scale-110'
-                  : 'bg-cyan-500 text-black'
-                : 'bg-gray-800 hover:bg-gray-700'
+                  ? 'bg-cyan-500 text-black scale-110 shadow-lg shadow-cyan-500/50'
+                  : 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30'
+                : 'bg-gray-800 hover:bg-gray-700 text-white'
             }`}
+            title="Toggle metronome"
           >
-            {metronomeFlash ? '●' : 'Click'}
+            {metronomeFlash ? '🔊' : '🎵'}
+            <span>Click</span>
           </button>
           <button
             onClick={() => setSnapEnabled(!snapEnabled)}
@@ -1388,18 +1406,13 @@ export default function DAWProRebuild() {
                         }`}
                         onClick={() => setSelectedTrackId(track.id)}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
-                              {track.name}
-                            </div>
-                            {selectedTrackId === track.id && (
-                              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-                            )}
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
+                            {track.name}
                           </div>
-                          <div className="text-xs text-gray-600 font-mono">
-                            #{idx + 1}
-                          </div>
+                          {selectedTrackId === track.id && (
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                          )}
                         </div>
                         <div className="flex gap-2 mb-3">
                           <button
