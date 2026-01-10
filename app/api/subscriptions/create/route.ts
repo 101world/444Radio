@@ -49,8 +49,10 @@ export async function POST() {
     const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString('base64')
     console.log('[Subscription] Auth header (first 20 chars):', authHeader.substring(0, 20))
 
-    // Step 4: Get or create Razorpay customer (required for subscriptions)
-    console.log('[Subscription] Getting Razorpay customer for:', userEmail)
+    // Step 4: Create FRESH Razorpay customer (don't reuse existing)
+    // CRITICAL: Removed fail_existing so each user gets their own customer record
+    // This prevents "RIZZ PATNI" name from being reused for all users
+    console.log('[Subscription] Creating fresh Razorpay customer for:', userEmail)
     const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
       method: 'POST',
       headers: {
@@ -58,8 +60,9 @@ export async function POST() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        name: customerName,
         email: userEmail,
-        fail_existing: '0' // Returns existing customer if found
+        contact: ''
       })
     })
 
@@ -80,26 +83,7 @@ export async function POST() {
 
     const customer = await customerRes.json()
     const customerId = customer.id
-    console.log('[Subscription] Customer ready:', customerId)
-
-    // Update customer name (in case it's an old customer with wrong name)
-    const customerName = user.firstName && user.lastName 
-      ? `${user.firstName} ${user.lastName}`.trim()
-      : user.firstName || user.username || userEmail.split('@')[0]
-    
-    console.log('[Subscription] Updating customer name to:', customerName)
-    
-    await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Basic ${authHeader}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: customerName,
-        email: userEmail
-      })
-    })
+    console.log('[Subscription] Fresh customer created:', customerId, 'Name:', customerName)
 
     // Step 5: Create subscription
     console.log('[Subscription] Creating subscription with plan:', planId)
