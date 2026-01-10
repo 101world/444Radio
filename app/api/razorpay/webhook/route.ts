@@ -267,11 +267,23 @@ async function handlePaymentCaptured(payment: any) {
     return
   }
 
+  // Get current credits
+  const { data: userData, error: fetchError } = await supabaseAdmin
+    .from('users')
+    .select('credits')
+    .eq('clerk_user_id', clerkUserId)
+    .single()
+
+  if (fetchError || !userData) {
+    console.error('[Razorpay] Failed to fetch user:', fetchError)
+    return
+  }
+
   // Deliver 100 credits and activate Creator status
   const { error } = await supabaseAdmin
     .from('users')
     .update({
-      credits: supabaseAdmin.raw('credits + 100'),
+      credits: (userData.credits || 0) + 100,
       subscription_status: 'active',
       subscription_plan: 'plan_S2DGVK6J270rtt',
       updated_at: new Date().toISOString()
