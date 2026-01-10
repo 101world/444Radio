@@ -16,16 +16,6 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@clerk/nextjs'],
   },
   
-  // Turbopack optimizations (moved from experimental.turbo)
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
-  },
-  
   typescript: {
     // Ignore TypeScript errors during build (optional, be careful with this)
     ignoreBuildErrors: false,
