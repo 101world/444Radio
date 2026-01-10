@@ -142,8 +142,10 @@ export async function POST() {
     console.log('[Subscription] Success! ID:', subscription.id)
 
     // Step 6: Create payment link for subscription
+    // Note: Not passing customer info to avoid Razorpay using cached customer data
+    // Customer is already linked via subscription, tracked via notes
     console.log('[Subscription] Creating payment link...')
-    console.log('[Subscription] Payment link for customer:', customerName)
+    console.log('[Subscription] For user:', customerName, userEmail)
     
     const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
@@ -156,11 +158,6 @@ export async function POST() {
         currency: 'INR',
         accept_partial: false,
         description: '444Radio Creator Plan - Monthly Subscription',
-        customer: {
-          name: customerName,
-          email: userEmail,
-          contact: ''
-        },
         notify: {
           sms: false,
           email: true
@@ -173,7 +170,9 @@ export async function POST() {
           subscription_id: subscription.id,
           clerk_user_id: userId,
           plan_id: planId,
-          customer_id: customerId
+          customer_id: customerId,
+          customer_name: customerName,
+          customer_email: userEmail
         }
       })
     })
