@@ -75,7 +75,7 @@ export async function POST() {
       console.log('[Subscription] Found existing Razorpay customer:', customerId)
       console.log('[Subscription] Updating customer name to:', customerName)
       
-      await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
+      const updateRes = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
         method: 'PATCH',
         headers: {
           Authorization: `Basic ${authHeader}`,
@@ -86,6 +86,14 @@ export async function POST() {
           email: userEmail
         })
       })
+
+      if (!updateRes.ok) {
+        console.error('[Subscription] Failed to update customer name')
+      } else {
+        console.log('[Subscription] Customer name updated, waiting for sync...')
+        // Wait 2 seconds for Razorpay to sync the updated name
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
     } else {
       // Create new Razorpay customer (or get existing if email already used)
       console.log('[Subscription] Creating new Razorpay customer for:', userEmail)
@@ -124,7 +132,7 @@ export async function POST() {
 
       // Update customer name to current user's name (in case it was an old customer)
       console.log('[Subscription] Updating customer name to:', customerName)
-      await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
+      const updateRes = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
         method: 'PATCH',
         headers: {
           Authorization: `Basic ${authHeader}`,
@@ -135,6 +143,12 @@ export async function POST() {
           email: userEmail
         })
       })
+
+      if (updateRes.ok) {
+        console.log('[Subscription] Customer name updated, waiting for sync...')
+        // Wait 2 seconds for Razorpay to sync the updated name
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
 
       // Save customer ID to Supabase for future use
       await supabase
