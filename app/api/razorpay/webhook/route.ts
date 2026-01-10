@@ -36,8 +36,13 @@ export async function POST(request: Request) {
     // }
     // Note: Direct access - no .entity nested object
     
-    // Handle subscription events
+    // Handle different event types
     switch (event.event) {
+      // Payment link completed - deliver credits immediately
+      case 'payment.captured':
+        await handlePaymentCaptured(event.payload.payment)
+        break
+
       case 'subscription.activated':
       case 'subscription.charged':
         await handleSubscriptionSuccess(event.payload.subscription)
@@ -237,8 +242,47 @@ async function handleSubscriptionUpdated(subscription: any) {
 }
 
 async function handlePaymentSuccess(payment: any) {
-  console.log('[Razorpay] Payment captured:', payment.id)
+  console.log('[Razorpay] Payment authorized:', payment.id)
   // Additional payment handling logic if needed
+}
+
+async function handlePaymentCaptured(payment: any) {
+  console.log('[Razorpay] Payment captured:', payment.id, 'Amount:', payment.amount)
+
+  // Check if this is a Creator subscription payment (₹45000 = ₹450)
+  if (payment.amount !== 45000) {
+    console.log('[Razorpay] Not a Creator subscription amount, skipping')
+    return
+  }
+
+  // Get user by notes (clerk_user_id should be in payment notes)
+  const notes = payment.notes || {}
+  const clerkUserId = notes.clerk_user_id
+  const email = payment.email
+
+  console.log('[Razorpay] Looking for user:', clerkUserId, email)
+
+  if (!clerkUserId) {
+    console.error('[Razorpay] No clerk_user_id in payment notes')
+    return
+  }
+
+  // Deliver 100 credits and activate Creator status
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({
+      credits: supabaseAdmin.raw('credits + 100'),
+      subscription_status: 'active',
+      subscription_plan: 'plan_S2DGVK6J270rtt',
+      updated_at: new Date().toISOString()
+    })
+    .eq('clerk_user_id', clerkUserId)
+
+  if (error) {
+    console.error('[Razorpay] Failed to deliver credits:', error)
+  } else {
+    console.log('[Razorpay] ✅ Delivered 100 credits + Creator status to:', clerkUserId)
+  }
 }
 
 async function handlePaymentFailed(payment: any) {

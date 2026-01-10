@@ -16,7 +16,7 @@ export async function POST() {
       )
     }
 
-    // Step 2: Get user email
+    // Step 2: Get user details
     const user = await currentUser()
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
@@ -27,17 +27,12 @@ export async function POST() {
       )
     }
 
-    console.log('[Subscription] Starting for user:', userId, 'email:', userEmail)
-    console.log('[Subscription] User name:', user.firstName, user.lastName, user.username)
+    console.log('[Subscription] Creating payment link for:', userId, userEmail)
 
     // Step 3: Check credentials
     const keyId = process.env.RAZORPAY_KEY_ID
     const keySecret = process.env.RAZORPAY_KEY_SECRET
     const planId = process.env.RAZORPAY_CREATOR_PLAN_ID || 'plan_S2DGVK6J270rtt'
-
-    console.log('[Subscription] Key ID (first 10 chars):', keyId?.substring(0, 10))
-    console.log('[Subscription] Key Secret exists:', !!keySecret)
-    console.log('[Subscription] Plan ID:', planId)
 
     if (!keyId || !keySecret) {
       console.error('[Subscription] Missing Razorpay credentials')
@@ -47,139 +42,79 @@ export async function POST() {
     }
 
     const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString('base64')
-    console.log('[Subscription] Auth header (first 20 chars):', authHeader.substring(0, 20))
 
     // Prepare customer name
     const customerName = user.firstName && user.lastName 
       ? `${user.firstName} ${user.lastName}`.trim()
       : user.firstName || user.username || userEmail.split('@')[0]
 
-    // Step 4: Check if user already has a Razorpay customer ID in Supabase
-    console.log('[Subscription] Checking for existing Razorpay customer in Supabase')
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('razorpay_customer_id')
-      .eq('clerk_user_id', userId)
-      .single()
-
-    let customerId = userData?.razorpay_customer_id
-
-    if (customerId) {
-      // User has existing customer, update the name
-      console.log('[Subscription] Found existing Razorpay customer:', customerId)
-      console.log('[Subscription] Updating customer name to:', customerName)
-      
-      const updateRes = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Basic ${authHeader}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: customerName,
-          email: userEmail
-        })
-      })
-
-      if (!updateRes.ok) {
-        console.error('[Subscription] Failed to update customer name')
-      } else {
-        console.log('[Subscription] Customer name updated')
-      }
-    } else {
-      // Create new Razorpay customer (or get existing if email already used)
-      console.log('[Subscription] Creating new Razorpay customer for:', userEmail)
-      console.log('[Subscription] Customer name:', customerName)
-      
-      const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${authHeader}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: customerName,
-          email: userEmail,
-          contact: '',
-          fail_existing: '0' // Return existing customer if email already registered
-        })
-      })
-
-      console.log('[Subscription] Customer API status:', customerRes.status)
-
-      if (!customerRes.ok) {
-        const error = await customerRes.text()
-        console.error('[Subscription] Customer API error:', error)
-        return corsResponse(
-          NextResponse.json({ 
-            error: 'Failed to create customer',
-            details: error
-          }, { status: 500 })
-        )
-      }
-
-      const customer = await customerRes.json()
-      customerId = customer.id
-      console.log('[Subscription] Got/created customer:', customerId)
-
-      // Update customer name to current user's name (in case it was an old customer)
-      console.log('[Subscription] Updating customer name to:', customerName)
-      const updateRes = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Basic ${authHeader}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: customerName,
-          email: userEmail
-        })
-      })
-
-      if (updateRes.ok) {
-        console.log('[Subscription] Customer name updated')
-      }
-
-      // Save customer ID to Supabase for future use
-      await supabase
-        .from('users')
-        .update({ razorpay_customer_id: customerId })
-        .eq('clerk_user_id', userId)
-    }
-
-    // Step 5: Create subscription
-    console.log('[Subscription] Creating subscription with plan:', planId)
-    const subRes = await fetch('https://api.razorpay.com/v1/subscriptions', {
+    // Step 4: Create standalone payment link (no pre-created subscription/customer)
+    console.log('[Subscription] Creating standalone payment link for:', customerName)
+    const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
       headers: {
         Authorization: `Basic ${authHeader}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        plan_id: planId,
-        customer_id: customerId,
-        total_count: 12,
-        quantity: 1,
-        customer_notify: 1,
-        addons: [],
+        amount: 45000, // ₹450
+        currency: 'INR',
+        accept_partial: false,
+        description: `444Radio Creator Subscription for ${customerName}`,
+        customer: {
+          name: customerName,
+          email: userEmail
+        },
+        notify: {
+          sms: false,
+          email: true
+        },
+        reminder_enable: true,
         notes: {
           clerk_user_id: userId,
-          email: userEmail
-        }
+          plan_id: planId,
+          subscription_type: 'creator'
+        },
+        callback_url: 'https://444radio.co.in/profile',
+        callback_method: 'get'
       })
     })
 
-    console.log('[Subscription] Subscription API status:', subRes.status)
+    console.log('[Subscription] Payment link API status:', linkRes.status)
 
-    if (!subRes.ok) {
-      const error = await subRes.text()
-      console.error('[Subscription] Subscription API error:', error)
+    if (!linkRes.ok) {
+      const error = await linkRes.text()
+      console.error('[Subscription] Payment link error:', error)
+      return corsResponse(
+        NextResponse.json({ 
+          error: 'Failed to create payment link',
+          details: error
+        }, { status: 500 })
+      )
+    }
+
+    const link = await linkRes.json()
+    console.log('[Subscription] Payment link created:', link.id)
+
+    return corsResponse(
+      NextResponse.json({
+        success: true,
+        short_url: link.short_url,
+        payment_link_id: link.id
+      })
+    )
+
+  } catch (error) {
+    console.error('[Subscription] Unexpected error:', error)
+    return corsResponse(
+      NextResponse.json({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 })
+    )
+  }
+}
+
       console.error('[Subscription] Status:', subRes.status)
       return corsResponse(
         NextResponse.json({ 
