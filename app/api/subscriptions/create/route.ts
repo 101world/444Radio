@@ -120,17 +120,15 @@ export async function POST() {
         amount: 45000,
         currency: 'INR',
         description: `444Radio Creator - ${customerName}`,
-        customer: {
-          name: customerName,
-          email: userEmail
-        },
         notify: {
           email: true
         },
         reminder_enable: true,
         notes: {
           subscription_id: subscription.id,
-          clerk_user_id: userId
+          customer_id: customer.id,
+          clerk_user_id: userId,
+          customer_name: customerName
         },
         callback_url: 'https://444radio.co.in/profile',
         callback_method: 'get'
