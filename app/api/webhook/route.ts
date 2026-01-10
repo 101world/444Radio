@@ -176,16 +176,29 @@ async function handleRazorpayWebhook(req: Request, signature: string) {
       
       // Extract credits from notes (sent from subscription creation)
       const creditsToAdd = notes.credits ? parseInt(notes.credits) : 0
-      let planType = notes.plan_type || 'creator'
       const billingCycle = notes.billing_cycle || 'monthly'
       
-      // If plan_type is missing, try to extract from subscription_id (for recurring charges)
-      if (!notes.plan_type && notes.subscription_id) {
-        const subId = notes.subscription_id.toLowerCase()
-        if (subId.includes('studio')) planType = 'studio'
-        else if (subId.includes('pro')) planType = 'pro'
-        else planType = 'creator'
+      // Determine plan type from plan_id (most reliable), then plan_type, then fallback
+      let planType = 'creator'
+      const planId = (notes.plan_id || '').toUpperCase()
+      const notePlanType = notes.plan_type || ''
+      
+      // Match exact Razorpay plan IDs
+      if (planId.includes('S2DI') || planId.includes('S2DO')) {
+        // Studio plans: S2DIdCKNcV6TtA (monthly), S2DOABOeGedJHk (annual)
+        planType = 'studio'
+      } else if (planId.includes('S2DH') || planId.includes('S2DN')) {
+        // Pro plans: S2DHUGo7n1m6iv (monthly), S2DNEvy1YzYWNh (annual)
+        planType = 'pro'
+      } else if (planId.includes('S2DG') || planId.includes('S2DJ')) {
+        // Creator plans: S2DGVK6J270rtt (monthly), S2DJv0bFnWoNLS (annual)
+        planType = 'creator'
+      } else if (notePlanType) {
+        // Fallback to plan_type from notes
+        planType = notePlanType
       }
+      
+      console.log(`[Razorpay] Plan detection: plan_id=${planId}, note_plan=${notePlanType}, detected=${planType}`)
       
       if (creditsToAdd > 0 && notes.clerk_user_id) {
         const { data: user } = await supabaseAdmin

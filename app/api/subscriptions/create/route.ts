@@ -147,6 +147,7 @@ export async function POST(request: Request) {
           customer_id: customer.id,
           subscription_id: subscription.id,
           customer_name: customerName,
+          plan_id: planConfig.planId,
           plan_type: planType,
           billing_cycle: billing,
           credits: planConfig.credits.toString()
