@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     // Create customer if not found
-    if (!customerId!) {
+    if (!customerId) {
       const createCustomerResponse = await fetch(
         'https://api.razorpay.com/v1/customers',
         {
