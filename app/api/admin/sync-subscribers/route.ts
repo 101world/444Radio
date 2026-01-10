@@ -20,12 +20,29 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    // Allow sync without auth for now - can add later
+    // Check env vars exist
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      console.error('[Sync] Missing Razorpay credentials')
+      return corsResponse(NextResponse.json({ 
+        error: 'Missing Razorpay credentials',
+        details: 'RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in environment variables'
+      }, { status: 500 }))
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('[Sync] Missing Supabase credentials')
+      return corsResponse(NextResponse.json({ 
+        error: 'Missing Supabase credentials',
+        details: 'NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set'
+      }, { status: 500 }))
+    }
+
     const razorpayAuth = Buffer.from(
       `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
     ).toString('base64')
 
     console.log('[Sync] Fetching subscriptions from Razorpay...')
+    console.log('[Sync] Using key:', process.env.RAZORPAY_KEY_ID?.substring(0, 15) + '...')
 
     // Fetch all subscriptions
     const response = await fetch('https://api.razorpay.com/v1/subscriptions?count=100', {
@@ -36,8 +53,12 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('[Sync] Razorpay API error:', error)
-      return NextResponse.json({ error: 'Razorpay API failed', details: error }, { status: 500 })
+      console.error('[Sync] Razorpay API error:', response.status, error)
+      return corsResponse(NextResponse.json({ 
+        error: 'Razorpay API failed', 
+        status: response.status,
+        details: error 
+      }, { status: 500 }))
     }
 
     const data = await response.json()
@@ -148,16 +169,21 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    return corsResponse(NextResponse.json({
       success: true,
       total: subscriptions.length,
       synced,
       errors,
       results
-    })
+    }))
 
   } catch (error: any) {
-    console.error('[Sync] Error:', error)
-    return corsResponse(NextResponse.json({ error: error.message }, { status: 500 }))
+    console.error('[Sync] Unexpected error:', error)
+    console.error('[Sync] Stack:', error.stack)
+    return corsResponse(NextResponse.json({ 
+      error: error.message,
+      details: error.stack,
+      type: error.name
+    }, { status: 500 }))
   }
 }
