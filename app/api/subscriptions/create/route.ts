@@ -41,7 +41,7 @@ export async function POST() {
 
     console.log('[Subscription] Creating for:', customerName, userEmail)
 
-    // Step 1: Create NEW customer (fresh, no reuse)
+    // Step 1: Get or create customer
     const custRes = await fetch('https://api.razorpay.com/v1/customers', {
       method: 'POST',
       headers: {
@@ -51,22 +51,35 @@ export async function POST() {
       body: JSON.stringify({
         name: customerName,
         email: userEmail,
-        fail_existing: '1' // Create new customer every time
+        fail_existing: '0' // Return existing customer if email exists
       })
     })
 
     if (!custRes.ok) {
       const error = await custRes.text()
-      console.error('[Subscription] Customer creation failed:', error)
+      console.error('[Subscription] Customer error:', error)
       return corsResponse(
-        NextResponse.json({ error: 'Customer creation failed', details: error }, { status: 500 })
+        NextResponse.json({ error: 'Customer error', details: error }, { status: 500 })
       )
     }
 
     const customer = await custRes.json()
-    console.log('[Subscription] Customer created:', customer.id)
+    console.log('[Subscription] Customer:', customer.id)
 
-    // Step 2: Create subscription
+    // Step 2: Update customer name (in case it's an old customer with wrong name)
+    await fetch(`https://api.razorpay.com/v1/customers/${customer.id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Basic ${authHeader}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: customerName,
+        email: userEmail
+      })
+    })
+
+    // Step 3: Create subscription
     const subRes = await fetch('https://api.razorpay.com/v1/subscriptions', {
       method: 'POST',
       headers: {
