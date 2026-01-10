@@ -32,7 +32,7 @@ export default function DAWProRebuild() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [playhead, setPlayhead] = useState(0)
   const [bpm, setBpm] = useState(120)
-  const [zoom, setZoom] = useState(40) // pixels per second
+  const [zoom, setZoom] = useState(200) // pixels per second - default 200 for clean view
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null)
   const [showBrowser, setShowBrowser] = useState(true)
@@ -1529,11 +1529,12 @@ export default function DAWProRebuild() {
                   {tracks.map((track, idx) => (
                     <div
                       key={track.id}
-                      className="relative border-b border-gray-800"
+                      className="relative border-b border-gray-800/50"
                       style={{
                         height: `${TRACK_HEIGHT}px`,
                         width: `${timelineWidth}px`,
-                        backgroundColor: idx % 2 === 0 ? '#0a0a0a' : '#0d0d0d'
+                        backgroundColor: idx % 2 === 0 ? '#0a0a0a' : '#0d0d0d',
+                        zIndex: 1
                       }}
                       onDrop={async (e) => {
                         e.preventDefault()
@@ -1575,11 +1576,12 @@ export default function DAWProRebuild() {
                         <div
                           key={clip.id}
                           className={`absolute top-2 bottom-2 bg-gradient-to-br from-cyan-500/30 to-purple-500/20 border-2 rounded-lg overflow-hidden cursor-move hover:border-cyan-400 transition-all shadow-lg hover:shadow-cyan-500/30 ${
-                            selectedClipId === clip.id ? 'border-cyan-400 ring-2 ring-cyan-400/50' : 'border-cyan-500/50'
+                            selectedClipId === clip.id ? 'border-cyan-400 ring-2 ring-cyan-400/50 z-10' : 'border-cyan-500/50 z-[2]'
                           }`}
                           style={{
                             left: `${clip.startTime * zoom}px`,
-                            width: `${clip.duration * zoom}px`
+                            width: `${clip.duration * zoom}px`,
+                            zIndex: selectedClipId === clip.id ? 10 : 2
                           }}
                           onClick={() => setSelectedClipId(clip.id)}
                           onMouseDown={(e) => {
@@ -1641,11 +1643,12 @@ export default function DAWProRebuild() {
                   ))}
 
                   <div
-                    className="absolute top-0 w-1 bg-cyan-400 z-20 shadow-lg shadow-cyan-500/50 cursor-ew-resize"
+                    className="absolute top-0 w-1 bg-cyan-400 shadow-lg shadow-cyan-500/50 cursor-ew-resize"
                     style={{
                       left: `${playhead * zoom}px`,
                       height: `${TIMELINE_HEIGHT + tracks.length * TRACK_HEIGHT}px`,
-                      pointerEvents: 'auto'
+                      pointerEvents: 'auto',
+                      zIndex: 20
                     }}
                     onMouseDown={(e) => {
                       e.stopPropagation()
@@ -1670,8 +1673,8 @@ export default function DAWProRebuild() {
 
                   {dragPreview && (
                     <div
-                      className="absolute top-0 bottom-0 w-px bg-cyan-500/70 z-30 pointer-events-none"
-                      style={{ left: `${dragPreview.time * zoom}px` }}
+                      className="absolute top-0 bottom-0 w-px bg-cyan-500/70 pointer-events-none"
+                      style={{ left: `${dragPreview.time * zoom}px`, zIndex: 30 }}
                     >
                       <div className="absolute -top-6 -left-8 px-2 py-1 rounded bg-[#0d0d0d] border border-cyan-500/40 text-xs text-cyan-100 whitespace-nowrap">
                         {dragPreview.trackId ? 'Drop here' : 'Drag'} @{' '}
