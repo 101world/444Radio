@@ -21,31 +21,18 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { full_name, bio, location, website, social_links } = body
+    console.log('[Profile Edit] Raw body:', body)
 
-    console.log('[Profile Edit] Updating profile for user:', clerkUserId)
-    console.log('[Profile Edit] Body:', { full_name, bio, location, website, social_links })
-
-    // Check if Supabase client is initialized
-    if (!supabaseAdmin) {
-      console.error('[Profile Edit] Supabase client not initialized')
-      return corsResponse(NextResponse.json({ 
-        error: 'Database connection failed',
-        details: 'Supabase client not initialized'
-      }, { status: 500 }))
-    }
-
-    // Update only basic profile fields that exist in users table
+    // Only update username and bio (columns that definitely exist)
     const updateData: any = {
       updated_at: new Date().toISOString()
     }
     
-    // Only add fields if they're provided
-    if (full_name !== undefined) updateData.full_name = full_name || null
-    if (bio !== undefined) updateData.bio = bio || null
-    if (location !== undefined) updateData.location = location || null
-    if (website !== undefined) updateData.website = website || null
-    if (social_links !== undefined) updateData.social_links = social_links || null
+    // Map frontend fields to database columns
+    if (body.username !== undefined) updateData.username = body.username || null
+    if (body.bio !== undefined) updateData.bio = body.bio || null
+    
+    console.log('[Profile Edit] Update data:', updateData)
 
     const { error, data } = await supabaseAdmin
       .from('users')
