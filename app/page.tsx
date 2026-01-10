@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Play, Pause } from 'lucide-react'
+import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
@@ -25,7 +25,21 @@ export default function HomePage() {
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [promptText, setPromptText] = useState('')
-  const { setPlaylist, playTrack, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
+  const { 
+    setPlaylist, 
+    playTrack, 
+    currentTrack, 
+    isPlaying, 
+    togglePlayPause, 
+    isShuffled, 
+    isLooping, 
+    toggleShuffle, 
+    toggleLoop,
+    currentTime,
+    duration,
+    playNext,
+    playPrevious
+  } = useAudioPlayer()
 
   useEffect(() => {
     fetchAllTracks()
@@ -104,6 +118,13 @@ export default function HomePage() {
     router.push('/create')
   }
 
+  const formatTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return '00:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
   return (
     <>
       {/* 3D Background with lazy loading */}
@@ -131,25 +152,10 @@ export default function HomePage() {
       <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10">
         {/* Landing View - Centered Hero */}
         <div className="max-w-4xl w-full">
-          <div className="flex flex-col items-center justify-center text-center space-y-6">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
             
-            {/* Play button replacing music icon */}
-            <button
-              onClick={handlePlayAll}
-              className="relative group transition-all duration-300 hover:scale-105 active:scale-95"
-            >
-              <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full group-hover:bg-cyan-500/30 transition-all duration-300" />
-              <div className="relative bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-full p-6 transition-all duration-300 backdrop-blur-xl">
-                {isPlaying && currentTrack ? (
-                  <Pause className="w-12 h-12 text-cyan-400" strokeWidth={2} fill="currentColor" />
-                ) : (
-                  <Play className="w-12 h-12 text-cyan-400 ml-1" strokeWidth={2} fill="currentColor" />
-                )}
-              </div>
-            </button>
-
-            {/* Smaller title */}
-            <div>
+            {/* 444 RADIO Header */}
+            <div className="relative mb-3">
               <h1 
                 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight"
                 style={{
@@ -159,10 +165,155 @@ export default function HomePage() {
               >
                 444 RADIO
               </h1>
+              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 blur-lg -z-10" />
+            </div>
+
+            {/* Compact Radio Player */}
+            <div className="relative group w-full max-w-md">
+              {/* Glow effect */}
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-cyan-500/20 rounded-2xl blur-lg opacity-60 group-hover:opacity-90 transition duration-300" />
+              
+              <div className="relative bg-black/90 backdrop-blur-2xl border-2 border-cyan-500/50 rounded-2xl p-4 transition-all duration-300 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
+                {/* LED Display Header */}
+                <div className="bg-black/90 border border-cyan-500/30 rounded-lg px-4 py-2 mb-3">
+                  <div 
+                    className="text-center text-cyan-400 text-sm tracking-[0.3em] font-mono font-bold"
+                    style={{ 
+                      textShadow: '0 0 12px rgba(34, 211, 238, 0.6)',
+                      fontFamily: 'Courier New, monospace'
+                    }}
+                  >
+                    AI-MUSIC GENERATOR
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {/* Vinyl/Disc Visual */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-28 h-28 rounded-xl bg-gradient-to-br from-gray-900 via-gray-800 to-black border-2 border-cyan-500/40 overflow-hidden relative group/disc shadow-lg shadow-cyan-500/20">
+                      {currentTrack?.imageUrl ? (
+                        <>
+                          <img 
+                            src={currentTrack.imageUrl} 
+                            alt="Cover" 
+                            className="w-full h-full object-cover"
+                          />
+                          {isPlaying && (
+                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 animate-pulse" />
+                          )}
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Music2 className="w-10 h-10 text-cyan-400/50" />
+                        </div>
+                      )}
+                      
+                      {/* Vinyl reflection effect */}
+                      {isPlaying && (
+                        <div 
+                          className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"
+                          style={{
+                            animation: 'spin 3s linear infinite'
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Info & Controls */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    {/* Track Info */}
+                    <div className="mb-3">
+                      <h3 className="text-white font-bold text-sm truncate leading-tight mb-0.5">
+                        {currentTrack?.title || 'Purple Hearts'}
+                      </h3>
+                      <p className="text-cyan-400/70 text-xs truncate leading-tight">
+                        Kendrick Lamar, Summer Walk...
+                      </p>
+                    </div>
+
+                    {/* Time Display */}
+                    <div className="flex items-center justify-center mb-3">
+                      <span className="text-2xl font-bold text-cyan-400 font-mono leading-none">
+                        {formatTime(currentTime)}
+                      </span>
+                    </div>
+
+                    {/* Track Name Above Controls */}
+                    <div className="text-center mb-2">
+                      <p className="text-white/80 text-xs truncate">
+                        {currentTrack?.title || 'No Track Playing'}
+                      </p>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center justify-center gap-2">
+                      {/* Shuffle */}
+                      <button
+                        onClick={toggleShuffle}
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                          isShuffled 
+                            ? 'bg-cyan-500/30 text-cyan-400' 
+                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-cyan-400'
+                        }`}
+                        title="Shuffle"
+                      >
+                        <Shuffle className="w-4 h-4" />
+                      </button>
+
+                      {/* Previous Track */}
+                      <button
+                        onClick={playPrevious}
+                        className="p-2 rounded-lg bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-cyan-400 transition-all duration-200"
+                        title="Previous Track"
+                      >
+                        <SkipBack className="w-4 h-4" />
+                      </button>
+
+                      {/* Play/Pause */}
+                      <button
+                        onClick={handlePlayAll}
+                        className="relative group/play flex-shrink-0"
+                      >
+                        <div className="absolute inset-0 bg-cyan-500 rounded-full blur-md opacity-50 group-hover/play:opacity-80 transition-opacity" />
+                        <div className="relative bg-cyan-500 hover:bg-cyan-400 p-3 rounded-full transition-all duration-200 transform group-hover/play:scale-110 active:scale-95 shadow-lg shadow-cyan-500/50">
+                          {isPlaying && currentTrack ? (
+                            <Pause className="w-5 h-5 text-white" fill="white" />
+                          ) : (
+                            <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Next Track */}
+                      <button
+                        onClick={playNext}
+                        className="p-2 rounded-lg bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-cyan-400 transition-all duration-200"
+                        title="Next Track"
+                      >
+                        <SkipForward className="w-4 h-4" />
+                      </button>
+
+                      {/* Loop */}
+                      <button
+                        onClick={toggleLoop}
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                          isLooping 
+                            ? 'bg-cyan-500/30 text-cyan-400' 
+                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-cyan-400'
+                        }`}
+                        title="Loop"
+                      >
+                        <Repeat className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Aesthetic describe your sound bar - navigates to create page */}
-            <div className="w-full max-w-2xl mt-4">
+            <div className="w-full max-w-md">
               <div className="relative group cursor-pointer" onClick={handleInputClick}>
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500/20 via-cyan-400/20 to-cyan-500/20 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-300"></div>
                 <div className="relative">
