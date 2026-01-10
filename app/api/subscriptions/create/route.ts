@@ -154,21 +154,7 @@ export async function POST(request: Request) {
         },
         callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/?payment=success`,
         callback_method: 'get',
-        upi_link: true,
-        options: {
-          checkout: {
-            name: '444Radio',
-            description: `${planType.toUpperCase()} ${billing === 'annual' ? 'Annual' : 'Monthly'} Subscription`,
-            theme: {
-              color: '#06B6D4',
-              backdrop_color: '#000000'
-            },
-            prefill: {
-              name: customerName,
-              email: userEmail
-            }
-          }
-        }
+        upi_link: true
       })
     })
 
