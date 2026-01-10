@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
     return corsResponse(NextResponse.json({ 
       success: true,
-      profile: data[0]
+      user: data[0] || {}
     }))
   } catch (error) {
     console.error('[Profile Edit] API error:', error)
