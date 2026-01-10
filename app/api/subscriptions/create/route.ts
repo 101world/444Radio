@@ -139,10 +139,7 @@ export async function POST(request: Request) {
 
     const subscriptionData = await subscriptionResponse.json()
     console.log('[Create Subscription] Created subscription:', subscriptionData.id)
-    console.log('[Create Subscription] Payment URL:', subscriptionData.short_url
-
-    const subscriptionData = await subscriptionResponse.json()
-    console.log('[Create Subscription] Created subscription:', subscriptionData.id)
+    console.log('[Create Subscription] Payment URL:', subscriptionData.short_url)
 
     // Return the short URL for payment
     return corsResponse(NextResponse.json({
