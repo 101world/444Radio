@@ -53,8 +53,16 @@ async function handleRazorpayWebhook(req: Request, signature: string) {
       
       // Extract credits from notes (sent from subscription creation)
       const creditsToAdd = notes.credits ? parseInt(notes.credits) : 0
-      const planType = notes.plan_type || 'unknown'
-      const billingCycle = notes.billing_cycle || 'unknown'
+      let planType = notes.plan_type || 'creator'
+      const billingCycle = notes.billing_cycle || 'monthly'
+      
+      // If plan_type is missing, try to extract from subscription_id (for recurring charges)
+      if (!notes.plan_type && notes.subscription_id) {
+        const subId = notes.subscription_id.toLowerCase()
+        if (subId.includes('studio')) planType = 'studio'
+        else if (subId.includes('pro')) planType = 'pro'
+        else planType = 'creator'
+      }
       
       if (creditsToAdd > 0 && notes.clerk_user_id) {
         const { data: user } = await supabaseAdmin

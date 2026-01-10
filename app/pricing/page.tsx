@@ -19,12 +19,31 @@ export default function Pricing() {
   const [creditAmount, setCreditAmount] = useState(5) // Default $5
   const [showPolicyModal, setShowPolicyModal] = useState(false)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null) // 'creator', 'pro', 'studio'
+  const [userSubscription, setUserSubscription] = useState<{
+    status: string
+    plan: string
+  } | null>(null)
   
   // Rates
   const buyRate = 0.04 // $0.04 per credit (on-demand)
   const subscriptionRate = 0.03 // $0.03 per credit (subscription)
   // Calculate credits based on amount (buy credits on demand)
   const creditsFromDollars = Math.floor(creditAmount / buyRate)
+  
+  // Fetch user subscription status
+  useEffect(() => {
+    fetch('/api/credits')
+      .then(res => res.json())
+      .then(data => {
+        if (data.subscription_status === 'active') {
+          setUserSubscription({
+            status: data.subscription_status,
+            plan: data.subscription_plan || 'creator'
+          })
+        }
+      })
+      .catch(err => console.error('Failed to fetch subscription:', err))
+  }, [])
   
   // ESC key handler to go back to explore
   useEffect(() => {
@@ -260,10 +279,16 @@ export default function Pricing() {
                     alert('Network error: ' + error.message)
                   }
                 }}
-                disabled={loadingPlan === 'creator'}
-                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={loadingPlan === 'creator' || (userSubscription?.plan === 'creator' && userSubscription?.status === 'active')}
+                className={`w-full py-4 px-4 rounded-xl font-bold transition-all duration-300 shadow-lg text-sm flex items-center justify-center gap-2 ${
+                  userSubscription?.plan === 'creator' && userSubscription?.status === 'active'
+                    ? 'bg-green-600/30 text-green-300 border-2 border-green-400/50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-cyan-500/40 group-hover:scale-105 hover:from-cyan-700 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
               >
-                {loadingPlan === 'creator' ? (
+                {userSubscription?.plan === 'creator' && userSubscription?.status === 'active' ? (
+                  '✓ Current Plan'
+                ) : loadingPlan === 'creator' ? (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -291,8 +316,15 @@ export default function Pricing() {
 
             <div className="relative flex flex-col flex-grow">
               <div className="mb-8">
-                <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 rounded-full mb-4">
-                  <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">PRO</span>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 rounded-full">
+                    <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">CREATOR</span>
+                  </div>
+                  {userSubscription?.status === 'active' && userSubscription?.plan === 'creator' && (
+                    <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/50 rounded-full">
+                      <span className="text-green-300 text-xs font-bold uppercase tracking-wider">✓ CURRENT PLAN</span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-cyan-400/50 text-xs">For professionals</p>
               </div>
@@ -379,10 +411,16 @@ export default function Pricing() {
                     alert('Network error: ' + error.message)
                   }
                 }}
-                disabled={loadingPlan === 'pro'}
-                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={loadingPlan === 'pro' || (userSubscription?.plan === 'pro' && userSubscription?.status === 'active')}
+                className={`w-full py-4 px-4 rounded-xl font-bold transition-all duration-300 shadow-lg text-sm flex items-center justify-center gap-2 ${
+                  userSubscription?.plan === 'pro' && userSubscription?.status === 'active'
+                    ? 'bg-green-600/30 text-green-300 border-2 border-green-400/50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-cyan-500/40 group-hover:scale-105 hover:from-cyan-700 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
               >
-                {loadingPlan === 'pro' ? (
+                {userSubscription?.plan === 'pro' && userSubscription?.status === 'active' ? (
+                  '✓ Current Plan'
+                ) : loadingPlan === 'pro' ? (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -405,8 +443,15 @@ export default function Pricing() {
 
             <div className="relative flex flex-col flex-grow">
               <div className="mb-8">
-                <div className="inline-block px-3 py-1.5 bg-purple-500/20 border border-purple-400/50 rounded-full mb-4">
-                  <span className="text-purple-200 text-xs font-bold uppercase tracking-wider">STUDIO</span>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="inline-block px-3 py-1.5 bg-purple-500/20 border border-purple-400/50 rounded-full">
+                    <span className="text-purple-200 text-xs font-bold uppercase tracking-wider">STUDIO</span>
+                  </div>
+                  {userSubscription?.status === 'active' && userSubscription?.plan === 'studio' && (
+                    <div className="inline-block px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/50 rounded-full">
+                      <span className="text-green-300 text-xs font-bold uppercase tracking-wider">✓ CURRENT PLAN</span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-cyan-400/50 text-xs">Unlimited everything</p>
               </div>
@@ -493,10 +538,16 @@ export default function Pricing() {
                     alert('Network error: ' + error.message)
                   }
                 }}
-                disabled={loadingPlan === 'studio'}
-                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={loadingPlan === 'studio' || (userSubscription?.plan === 'studio' && userSubscription?.status === 'active')}
+                className={`w-full py-4 px-4 rounded-xl font-bold transition-all duration-300 shadow-lg text-sm flex items-center justify-center gap-2 ${
+                  userSubscription?.plan === 'studio' && userSubscription?.status === 'active'
+                    ? 'bg-green-600/30 text-green-300 border-2 border-green-400/50 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-cyan-500/40 group-hover:scale-105 hover:from-cyan-700 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
               >
-                {loadingPlan === 'studio' ? (
+                {userSubscription?.plan === 'studio' && userSubscription?.status === 'active' ? (
+                  '✓ Current Plan'
+                ) : loadingPlan === 'studio' ? (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
