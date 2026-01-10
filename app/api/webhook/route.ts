@@ -44,11 +44,12 @@ async function handleRazorpayWebhook(req: Request, signature: string) {
 
     // Handle payment.captured
     if (event.event === 'payment.captured') {
-      const payment = event.payload.payment.entity
-      const amount = payment.amount
-      const notes = payment.notes || {}
+      // Razorpay payload: event.payload.payment.entity (entity has the actual data)
+      const paymentEntity = event.payload.payment?.entity || event.payload.payment
+      const amount = paymentEntity.amount
+      const notes = paymentEntity.notes || {}
       
-      console.log('[Razorpay] Payment captured:', payment.id, 'Amount:', amount, 'Notes:', notes)
+      console.log('[Razorpay] Payment captured:', paymentEntity.id, 'Amount:', amount, 'Notes:', JSON.stringify(notes))
       
       if (amount === 45000 && notes.clerk_user_id) {
         const { data: user } = await supabaseAdmin
