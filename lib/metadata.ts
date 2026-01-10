@@ -37,6 +37,7 @@ export function generateMetadata(page: {
   const url = page.path ? `${siteConfig.url}${page.path}` : siteConfig.url
 
   return {
+    metadataBase: new URL(siteConfig.url),
     title,
     description,
     keywords: siteConfig.keywords.join(', '),
