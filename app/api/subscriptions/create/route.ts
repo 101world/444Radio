@@ -155,14 +155,12 @@ export async function POST() {
         currency: 'INR',
         accept_partial: false,
         description: 'Creator 444 Monthly Subscription',
-        customer: {
-          name: customerName,
-          email: userEmail
-        },
+        customer_id: customerId,
         notify: {
           sms: false,
           email: true
-        },minder_enable: true,
+        },
+        reminder_enable: true,
         callback_url: 'https://444radio.co.in/library',
         callback_method: 'get',
         notes: {
