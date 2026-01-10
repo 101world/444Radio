@@ -11,6 +11,13 @@ const supabaseAdmin = createClient(
 )
 
 export async function POST(req: Request) {
+  // Check for special admin fix request
+  const url = new URL(req.url)
+  if (url.searchParams.get('fix_subscriptions') === 'true') {
+    console.log('[ADMIN] Running subscription plan fix...')
+    return fixSubscriptionPlans()
+  }
+  
   // Check if it's a Razorpay webhook (has x-razorpay-signature header)
   const razorpaySignature = req.headers.get('x-razorpay-signature')
   
@@ -22,6 +29,69 @@ export async function POST(req: Request) {
   // Otherwise, handle as Clerk webhook
   console.log('[SHARED WEBHOOK] Clerk webhook detected')
   return handleClerkWebhook(req)
+}
+
+async function fixSubscriptionPlans() {
+  try {
+    // Get all active subscriptions
+    const { data: users, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('clerk_user_id, subscription_plan, subscription_id')
+      .eq('subscription_status', 'active')
+
+    if (fetchError) throw fetchError
+
+    const usersToFix = users?.filter(u => 
+      u.subscription_plan && (
+        u.subscription_plan.startsWith('sub_') || 
+        u.subscription_plan.startsWith('plan_')
+      )
+    ) || []
+
+    console.log(`[FIX] Found ${usersToFix.length} users to fix`)
+
+    let fixed = 0
+    for (const user of usersToFix) {
+      const subId = (user.subscription_id || '').toLowerCase()
+      let planType = 'creator' // default
+
+      // Determine plan type from subscription_id
+      if (subId.includes('studio') || subId.includes('s2di') || subId.includes('s2do')) {
+        planType = 'studio'
+      } else if (subId.includes('pro') || subId.includes('s2dh') || subId.includes('s2dn')) {
+        planType = 'pro'
+      }
+
+      // Update the user
+      const { error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({ subscription_plan: planType })
+        .eq('clerk_user_id', user.clerk_user_id)
+
+      if (!updateError) {
+        console.log(`[FIX] ✅ ${user.clerk_user_id}: ${user.subscription_plan} → ${planType}`)
+        fixed++
+      } else {
+        console.error(`[FIX] ❌ ${user.clerk_user_id}:`, updateError)
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: `Fixed ${fixed} out of ${usersToFix.length} users`,
+      fixed,
+      total: usersToFix.length
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  } catch (error: any) {
+    console.error('[FIX] Error:', error)
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
 }
 
 async function handleRazorpayWebhook(req: Request, signature: string) {
