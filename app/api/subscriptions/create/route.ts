@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
@@ -15,13 +15,14 @@ export async function POST(request: Request) {
     }
 
     // Get user email from Clerk
-    const { getAuth } = await import('@clerk/nextjs/server')
-    const { sessionClaims } = await getAuth(request as any)
-    const userEmail = sessionClaims?.email as string
-
-    if (!userEmail) {
+    const user = await currentUser()
+    
+    if (!user?.emailAddresses?.[0]?.emailAddress) {
+      console.error('[Create Subscription] No email found for user:', userId)
       return corsResponse(NextResponse.json({ error: 'Email not found' }, { status: 400 }))
     }
+
+    const userEmail = user.emailAddresses[0].emailAddress
 
     // Razorpay credentials
     const razorpayAuth = Buffer.from(
