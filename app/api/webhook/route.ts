@@ -53,13 +53,18 @@ async function fixSubscriptionPlans() {
     let fixed = 0
     for (const user of usersToFix) {
       const subId = (user.subscription_id || '').toLowerCase()
+      const planId = (user.subscription_plan || '').toLowerCase()
       let planType = 'creator' // default
 
-      // Determine plan type from subscription_id
-      if (subId.includes('studio') || subId.includes('s2di') || subId.includes('s2do')) {
+      // Determine plan type from subscription_id OR subscription_plan (which might have plan_id)
+      const combinedId = `${subId} ${planId}`
+      
+      if (combinedId.includes('studio') || combinedId.includes('s2di') || combinedId.includes('s2do')) {
         planType = 'studio'
-      } else if (subId.includes('pro') || subId.includes('s2dh') || subId.includes('s2dn')) {
+      } else if (combinedId.includes('pro') || combinedId.includes('s2dh') || combinedId.includes('s2dn')) {
         planType = 'pro'
+      } else if (combinedId.includes('creator') || combinedId.includes('s2dg') || combinedId.includes('s2dj')) {
+        planType = 'creator'
       }
 
       // Update the user
@@ -69,7 +74,7 @@ async function fixSubscriptionPlans() {
         .eq('clerk_user_id', user.clerk_user_id)
 
       if (!updateError) {
-        console.log(`[FIX] ✅ ${user.clerk_user_id}: ${user.subscription_plan} → ${planType}`)
+        console.log(`[FIX] ✅ ${user.clerk_user_id}: ${user.subscription_plan} → ${planType} (from: ${subId.substring(0, 15)}, ${planId.substring(0, 15)})`)
         fixed++
       } else {
         console.error(`[FIX] ❌ ${user.clerk_user_id}:`, updateError)
