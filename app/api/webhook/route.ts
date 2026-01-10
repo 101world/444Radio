@@ -51,20 +51,47 @@ export async function POST(req: Request) {
 
   if (eventType === 'user.created') {
     const { id, email_addresses, username, image_url } = evt.data
+    const emailAddress = email_addresses[0]?.email_address || ''
 
     try {
-      // Upsert user to avoid duplicate key races with other writers
-      const { error } = await supabase.from('users').upsert({
-        clerk_user_id: id,
-        email: email_addresses[0]?.email_address || '',
-        username: username || null,
-        profile_image_url: image_url || null,
-        credits: 20, // Give 20 credits automatically on signup
-      }, { onConflict: 'clerk_user_id' })
+      // Check if user already exists from Razorpay subscription (temp_ user)
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', emailAddress)
+        .single()
 
-      if (error) {
-        console.error('Error creating user in Supabase:', error)
-        return new Response('Error creating user', { status: 500 })
+      if (existingUser && existingUser.clerk_user_id.startsWith('temp_')) {
+        // Update temp user with real Clerk ID (preserve their subscription & credits)
+        console.log('[Clerk Webhook] Linking existing Razorpay subscriber:', emailAddress)
+        const { error } = await supabase
+          .from('users')
+          .update({
+            clerk_user_id: id,
+            username: username || existingUser.username,
+            profile_image_url: image_url || existingUser.profile_image_url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('email', emailAddress)
+
+        if (error) {
+          console.error('Error updating temp user:', error)
+          return new Response('Error updating user', { status: 500 })
+        }
+      } else {
+        // New user - create normally
+        const { error } = await supabase.from('users').upsert({
+          clerk_user_id: id,
+          email: emailAddress,
+          username: username || null,
+          profile_image_url: image_url || null,
+          credits: 20, // Give 20 credits automatically on signup
+        }, { onConflict: 'clerk_user_id' })
+
+        if (error) {
+          console.error('Error creating user in Supabase:', error)
+          return new Response('Error creating user', { status: 500 })
+        }
       }
     } catch (err) {
       console.error('Unexpected error in user.created webhook:', err)
