@@ -1,5 +1,6 @@
 {
   "buildCommand": "next build",
+  "framework": "nextjs",
   "functions": {
     "app/api/**/*.ts": {
       "memory": 1024,
