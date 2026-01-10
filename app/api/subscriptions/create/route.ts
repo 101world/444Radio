@@ -26,7 +26,6 @@ export async function POST() {
 
     const keyId = process.env.RAZORPAY_KEY_ID
     const keySecret = process.env.RAZORPAY_KEY_SECRET
-    const planId = 'plan_S2DGVK6J270rtt' // Creator 444 plan
 
     if (!keyId || !keySecret) {
       return corsResponse(
@@ -39,77 +38,9 @@ export async function POST() {
       ? `${user.firstName} ${user.lastName}`.trim()
       : user.firstName || user.username || userEmail.split('@')[0]
 
-    console.log('[Subscription] Creating for:', customerName, userEmail)
+    console.log('[Payment] Creating standalone payment for:', customerName, userEmail)
 
-    // Step 1: Get or create customer
-    const custRes = await fetch('https://api.razorpay.com/v1/customers', {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${authHeader}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: customerName,
-        email: userEmail,
-        fail_existing: '0' // Return existing customer if email exists
-      })
-    })
-
-    if (!custRes.ok) {
-      const error = await custRes.text()
-      console.error('[Subscription] Customer error:', error)
-      return corsResponse(
-        NextResponse.json({ error: 'Customer error', details: error }, { status: 500 })
-      )
-    }
-
-    const customer = await custRes.json()
-    console.log('[Subscription] Customer:', customer.id)
-
-    // Step 2: Update customer name (in case it's an old customer with wrong name)
-    await fetch(`https://api.razorpay.com/v1/customers/${customer.id}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Basic ${authHeader}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: customerName,
-        email: userEmail
-      })
-    })
-
-    // Step 3: Create subscription
-    const subRes = await fetch('https://api.razorpay.com/v1/subscriptions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${authHeader}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        plan_id: planId,
-        customer_id: customer.id,
-        quantity: 1,
-        total_count: 12,
-        customer_notify: 1,
-        notes: {
-          clerk_user_id: userId
-        }
-      })
-    })
-
-    if (!subRes.ok) {
-      const error = await subRes.text()
-      console.error('[Subscription] Subscription creation failed:', error)
-      return corsResponse(
-        NextResponse.json({ error: 'Subscription creation failed', details: error }, { status: 500 })
-      )
-    }
-
-    const subscription = await subRes.json()
-    console.log('[Subscription] Created:', subscription.id)
-
-    // Step 4: Create payment link for the subscription
+    // Create ONLY payment link (no subscription yet - create in webhook after payment)
     const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
       headers: {
@@ -119,16 +50,15 @@ export async function POST() {
       body: JSON.stringify({
         amount: 45000,
         currency: 'INR',
-        description: `444Radio Creator - ${customerName}`,
+        description: `444Radio Creator Subscription - ${customerName}`,
         notify: {
           email: true
         },
-        reminder_enable: true,
         notes: {
-          subscription_id: subscription.id,
-          customer_id: customer.id,
           clerk_user_id: userId,
-          customer_name: customerName
+          user_email: userEmail,
+          user_name: customerName,
+          plan_type: 'creator'
         },
         callback_url: 'https://444radio.co.in/profile',
         callback_method: 'get'
@@ -137,14 +67,14 @@ export async function POST() {
 
     if (!linkRes.ok) {
       const error = await linkRes.text()
-      console.error('[Subscription] Payment link failed:', error)
+      console.error('[Payment] Failed:', error)
       return corsResponse(
-        NextResponse.json({ error: 'Payment link creation failed', details: error }, { status: 500 })
+        NextResponse.json({ error: 'Payment creation failed', details: error }, { status: 500 })
       )
     }
 
     const link = await linkRes.json()
-    console.log('[Subscription] Payment link:', link.short_url)
+    console.log('[Payment] Created:', link.short_url)
 
     return corsResponse(
       NextResponse.json({
@@ -154,7 +84,7 @@ export async function POST() {
     )
 
   } catch (error) {
-    console.error('[Subscription] Error:', error)
+    console.error('[Payment] Error:', error)
     return corsResponse(
       NextResponse.json({ 
         error: 'Internal error',

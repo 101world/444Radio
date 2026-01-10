@@ -38,9 +38,13 @@ export async function POST(request: Request) {
     
     // Handle different event types
     switch (event.event) {
-      // Payment link completed - deliver credits immediately
+      // Payment completed - deliver credits immediately
       case 'payment.captured':
         await handlePaymentCaptured(event.payload.payment)
+        break
+
+      case 'payment.authorized':
+        await handlePaymentSuccess(event.payload.payment)
         break
 
       case 'subscription.activated':
@@ -63,11 +67,6 @@ export async function POST(request: Request) {
 
       case 'subscription.updated':
         await handleSubscriptionUpdated(event.payload.subscription)
-        break
-
-      case 'payment.authorized':
-      case 'payment.captured':
-        await handlePaymentSuccess(event.payload.payment)
         break
 
       case 'payment.failed':
@@ -247,30 +246,37 @@ async function handlePaymentSuccess(payment: any) {
 }
 
 async function handlePaymentCaptured(payment: any) {
-  console.log('[Razorpay] Payment captured:', payment.id, 'Amount:', payment.amount)
+  // CRITICAL: Razorpay sends payment.entity in webhook, not just payment
+  const paymentEntity = payment.entity || payment
+  
+  console.log('[Razorpay] Payment captured:', paymentEntity.id, 'Amount:', paymentEntity.amount)
+  console.log('[Razorpay] Payment notes:', JSON.stringify(paymentEntity.notes))
+  console.log('[Razorpay] Payment email:', paymentEntity.email)
 
   // Check if this is a Creator subscription payment (₹45000 = ₹450)
-  if (payment.amount !== 45000) {
+  if (paymentEntity.amount !== 45000) {
     console.log('[Razorpay] Not a Creator subscription amount, skipping')
     return
   }
 
   // Get user by notes (clerk_user_id should be in payment notes)
-  const notes = payment.notes || {}
+  const notes = paymentEntity.notes || {}
   const clerkUserId = notes.clerk_user_id
-  const email = payment.email
 
-  console.log('[Razorpay] Looking for user:', clerkUserId, email)
+  console.log('[Razorpay] Extracted clerk_user_id:', clerkUserId)
 
   if (!clerkUserId) {
     console.error('[Razorpay] No clerk_user_id in payment notes')
+    console.error('[Razorpay] Available notes:', Object.keys(notes))
     return
   }
+
+  console.log('[Razorpay] Fetching user from Supabase...')
 
   // Get current credits
   const { data: userData, error: fetchError } = await supabaseAdmin
     .from('users')
-    .select('credits')
+    .select('credits, email')
     .eq('clerk_user_id', clerkUserId)
     .single()
 
@@ -279,6 +285,8 @@ async function handlePaymentCaptured(payment: any) {
     return
   }
 
+  console.log('[Razorpay] Found user:', userData.email, 'Current credits:', userData.credits)
+
   // Deliver 100 credits and activate Creator status
   const { error } = await supabaseAdmin
     .from('users')
@@ -286,6 +294,8 @@ async function handlePaymentCaptured(payment: any) {
       credits: (userData.credits || 0) + 100,
       subscription_status: 'active',
       subscription_plan: 'plan_S2DGVK6J270rtt',
+      razorpay_customer_id: notes.customer_id,
+      subscription_id: notes.subscription_id,
       updated_at: new Date().toISOString()
     })
     .eq('clerk_user_id', clerkUserId)
@@ -293,7 +303,8 @@ async function handlePaymentCaptured(payment: any) {
   if (error) {
     console.error('[Razorpay] Failed to deliver credits:', error)
   } else {
-    console.log('[Razorpay] ✅ Delivered 100 credits + Creator status to:', clerkUserId)
+    console.log('[Razorpay] ✅ SUCCESS! Delivered 100 credits + Creator status to:', userData.email)
+    console.log('[Razorpay] New credit balance:', (userData.credits || 0) + 100)
   }
 }
 
