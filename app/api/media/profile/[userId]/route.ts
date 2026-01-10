@@ -98,21 +98,10 @@ export async function GET(
       ...(profileData || []).map((item) => ({ ...item, media_type: item.content_type }))
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    // Format uploads data
-    const uploads = (uploadsData || []).map((item) => ({
-      id: item.id,
-      type: item.content_type?.startsWith('video/') ? 'video' : 'image',
-      url: item.url,
-      thumbnail_url: item.thumbnail_url,
-      title: item.title,
-      created_at: item.created_at,
-      file_size: item.file_size
-    }))
-
     return NextResponse.json({
       success: true,
       combinedMedia: allMedia,
-      uploads: uploads,
+      uploads: [], // user_uploads table doesn't exist, using combined_media instead
       username: finalUsername,
       avatar: userData?.avatar_url || finalAvatar || null,
       bio: userData?.bio || null,
