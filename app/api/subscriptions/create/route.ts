@@ -142,10 +142,12 @@ export async function POST() {
     console.log('[Subscription] Success! ID:', subscription.id)
 
     // Step 6: Create payment link for subscription
-    // IMPORTANT: Must pass customer object explicitly in payment link
-    // Payment links DON'T inherit customer data from subscriptions/reference_id
+    // CRITICAL: Don't pass customer object - Razorpay matches by email and uses
+    // existing customer's stored name. Instead, we track everything via notes
+    // and let webhook match by subscription_id -> customer_id -> user
     console.log('[Subscription] Creating payment link...')
     console.log('[Subscription] For user:', customerName, userEmail)
+    console.log('[Subscription] Subscription ID:', subscription.id)
     
     const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
@@ -157,12 +159,7 @@ export async function POST() {
         amount: 45000, // ₹450 in paise
         currency: 'INR',
         accept_partial: false,
-        description: '444Radio Creator Plan - Monthly Subscription',
-        customer: {
-          name: customerName,
-          email: userEmail,
-          contact: ''
-        },
+        description: `444Radio Creator Plan for ${customerName}`,
         notify: {
           sms: false,
           email: true
@@ -175,7 +172,9 @@ export async function POST() {
           subscription_id: subscription.id,
           clerk_user_id: userId,
           plan_id: planId,
-          customer_id: customerId
+          customer_id: customerId,
+          customer_name: customerName,
+          customer_email: userEmail
         }
       })
     })
