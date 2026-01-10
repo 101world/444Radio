@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         amount: planConfig.price * 100, // Convert to paise
         currency: 'INR',
-        description: `🎵 444Radio ${planType.toUpperCase()} Plan - Unlock ${planConfig.credits} AI music generation credits`,
+        description: `${planType.toUpperCase()} ${billing === 'annual' ? 'Annual' : 'Monthly'} Plan - ${planConfig.credits} credits`,
         customer: {
           name: customerName,
           email: userEmail
@@ -147,14 +147,12 @@ export async function POST(request: Request) {
           customer_id: customer.id,
           subscription_id: subscription.id,
           customer_name: customerName,
-          plan_id: planConfig.planId,
           plan_type: planType,
           billing_cycle: billing,
           credits: planConfig.credits.toString()
         },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/?payment=success`,
-        callback_method: 'get',
-        upi_link: true
+        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/profile`,
+        callback_method: 'get'
       })
     })
 
