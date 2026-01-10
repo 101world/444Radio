@@ -135,7 +135,9 @@ export async function POST() {
         accept_partial: false,
         description: 'Creator 444 Monthly Subscription',
         customer: {
-          name: user.firstName || 'Creator',
+          name: user.firstName && user.lastName 
+            ? `${user.firstName} ${user.lastName}`.trim()
+            : user.firstName || user.username || userEmail.split('@')[0],
           email: userEmail
         },
         notify: {
