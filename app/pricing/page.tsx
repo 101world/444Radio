@@ -511,25 +511,6 @@ export default function Pricing() {
             </div>
           </div>
         </div>
-                    
-                    const data = await response.json()
-                    
-                    if (data.success && data.short_url) {
-                      window.location.href = data.short_url
-                    } else {
-                      alert(`Error: ${data.error || 'Unknown error'}`)
-                    }
-                  } catch (error: any) {
-                    alert('Network error: ' + error.message)
-                  }
-                }}
-                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm"
-              >
-                Get Started
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Buy Credits Section */}
         <div className="mb-24">
