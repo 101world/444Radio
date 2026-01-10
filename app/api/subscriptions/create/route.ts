@@ -87,7 +87,7 @@ export async function POST() {
         })
       })
     } else {
-      // Create new Razorpay customer
+      // Create new Razorpay customer (or get existing if email already used)
       console.log('[Subscription] Creating new Razorpay customer for:', userEmail)
       console.log('[Subscription] Customer name:', customerName)
       
@@ -100,7 +100,8 @@ export async function POST() {
         body: JSON.stringify({
           name: customerName,
           email: userEmail,
-          contact: ''
+          contact: '',
+          fail_existing: '0' // Return existing customer if email already registered
         })
       })
 
@@ -119,7 +120,21 @@ export async function POST() {
 
       const customer = await customerRes.json()
       customerId = customer.id
-      console.log('[Subscription] New customer created:', customerId)
+      console.log('[Subscription] Got/created customer:', customerId)
+
+      // Update customer name to current user's name (in case it was an old customer)
+      console.log('[Subscription] Updating customer name to:', customerName)
+      await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: customerName,
+          email: userEmail
+        })
+      })
 
       // Save customer ID to Supabase for future use
       await supabase
