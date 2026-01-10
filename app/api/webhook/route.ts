@@ -18,6 +18,14 @@ export async function POST(req: Request) {
     return fixSubscriptionPlans()
   }
   
+  // Manual plan override (admin only)
+  const setPlan = url.searchParams.get('set_plan')
+  const userEmail = url.searchParams.get('email')
+  if (setPlan && userEmail) {
+    console.log('[ADMIN] Setting plan for user...')
+    return setUserPlan(userEmail, setPlan)
+  }
+  
   // Check if it's a Razorpay webhook (has x-razorpay-signature header)
   const razorpaySignature = req.headers.get('x-razorpay-signature')
   
@@ -31,9 +39,47 @@ export async function POST(req: Request) {
   return handleClerkWebhook(req)
 }
 
+async function setUserPlan(email: string, planType: string) {
+  try {
+    // Validate plan type
+    if (!['creator', 'pro', 'studio'].includes(planType)) {
+      return new Response(JSON.stringify({ error: 'Invalid plan type' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Update user
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .update({ subscription_plan: planType })
+      .eq('email', email)
+      .select('email, subscription_plan')
+
+    if (error) throw error
+
+    console.log(`[ADMIN] ✅ Set ${email} to ${planType}`)
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: `Set ${email} to ${planType} plan`,
+      data
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  } catch (error: any) {
+    console.error('[ADMIN] Error:', error)
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+}
+
 async function fixSubscriptionPlans() {
   try {
-    // Get ALL active subscriptions (don't filter by subscription_plan value)
+    // Get ONLY users who have subscription IDs in subscription_plan field (not plan names)
     const { data: users, error: fetchError } = await supabaseAdmin
       .from('users')
       .select('clerk_user_id, subscription_plan, subscription_id, email')
@@ -41,10 +87,18 @@ async function fixSubscriptionPlans() {
 
     if (fetchError) throw fetchError
 
-    console.log(`[FIX] Found ${users?.length || 0} active users to check`)
+    // Filter to only users who need fixing (have sub_ or plan_ in subscription_plan)
+    const usersToFix = users?.filter(u => 
+      u.subscription_plan && (
+        u.subscription_plan.startsWith('sub_') || 
+        u.subscription_plan.startsWith('plan_')
+      )
+    ) || []
+
+    console.log(`[FIX] Found ${users?.length || 0} active users, ${usersToFix.length} need fixing`)
 
     let fixed = 0
-    for (const user of users || []) {
+    for (const user of usersToFix) {
       const subId = (user.subscription_id || '').toLowerCase()
       const planId = (user.subscription_plan || '').toLowerCase()
       let planType = 'creator' // default
@@ -76,9 +130,10 @@ async function fixSubscriptionPlans() {
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Fixed ${fixed} out of ${users?.length || 0} users`,
+      message: `Fixed ${fixed} out of ${usersToFix.length} users`,
       fixed,
-      total: users?.length || 0
+      total: usersToFix.length,
+      totalActive: users?.length || 0
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
