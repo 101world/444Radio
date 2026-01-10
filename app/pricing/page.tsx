@@ -18,6 +18,7 @@ export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [creditAmount, setCreditAmount] = useState(5) // Default $5
   const [showPolicyModal, setShowPolicyModal] = useState(false)
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null) // 'creator', 'pro', 'studio'
   
   // Rates
   const buyRate = 0.04 // $0.04 per credit (on-demand)
@@ -226,6 +227,7 @@ export default function Pricing() {
               <button
                 onClick={async () => {
                   try {
+                    setLoadingPlan('creator')
                     console.log('Creating Creator subscription...')
                     const response = await fetch('/api/subscriptions/create', {
                       method: 'POST',
@@ -247,19 +249,31 @@ export default function Pricing() {
                     if (data.success && data.short_url) {
                       window.location.href = data.short_url
                     } else {
-                      // Show detailed error
+                      setLoadingPlan(null)
                       const errorMsg = `Error: ${data.error}\nStatus: ${data.status || 'unknown'}\nDetails: ${data.details || 'none'}`
                       console.error('Subscription failed:', errorMsg)
                       alert(errorMsg)
                     }
                   } catch (error: any) {
+                    setLoadingPlan(null)
                     console.error('Subscription error:', error)
                     alert('Network error: ' + error.message)
                   }
                 }}
-                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm"
+                disabled={loadingPlan === 'creator'}
+                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Get Started
+                {loadingPlan === 'creator' ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Creating payment link...</span>
+                  </>
+                ) : (
+                  'Get Started'
+                )}
               </button>
             </div>
           </div>
@@ -337,6 +351,7 @@ export default function Pricing() {
               <button
                 onClick={async () => {
                   try {
+                    setLoadingPlan('pro')
                     console.log('Creating Pro subscription...')
                     const response = await fetch('/api/subscriptions/create', {
                       method: 'POST',
@@ -356,15 +371,28 @@ export default function Pricing() {
                     if (data.success && data.short_url) {
                       window.location.href = data.short_url
                     } else {
+                      setLoadingPlan(null)
                       alert(`Error: ${data.error || 'Unknown error'}`)
                     }
                   } catch (error: any) {
+                    setLoadingPlan(null)
                     alert('Network error: ' + error.message)
                   }
                 }}
-                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm"
+                disabled={loadingPlan === 'pro'}
+                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Get Started
+                {loadingPlan === 'pro' ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Creating payment link...</span>
+                  </>
+                ) : (
+                  'Get Started'
+                )}
               </button>
             </div>
           </div>
@@ -437,9 +465,49 @@ export default function Pricing() {
               <button
                 onClick={async () => {
                   try {
+                    setLoadingPlan('studio')
                     console.log('Creating Studio subscription...')
                     const response = await fetch('/api/subscriptions/create', {
                       method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                      },
+                      body: JSON.stringify({
+                        plan: 'studio',
+                        billing: billingCycle
+                      })
+                    })
+                    
+                    const data = await response.json()
+                    
+                    if (data.success && data.short_url) {
+                      window.location.href = data.short_url
+                    } else {
+                      setLoadingPlan(null)
+                      alert(`Error: ${data.error || 'Unknown error'}`)
+                    }
+                  } catch (error: any) {
+                    setLoadingPlan(null)
+                    alert('Network error: ' + error.message)
+                  }
+                }}
+                disabled={loadingPlan === 'studio'}
+                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loadingPlan === 'studio' ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Creating payment link...</span>
+                  </>
+                ) : (
+                  'Get Started'
+                )}
+              </button>
                       headers: {
                         'Content-Type': 'application/json',
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
