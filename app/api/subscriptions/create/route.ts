@@ -142,9 +142,9 @@ export async function POST() {
     console.log('[Subscription] Success! ID:', subscription.id)
 
     // Step 6: Create payment link for subscription
-    // CRITICAL: Don't pass customer object - Razorpay matches by email and uses
-    // existing customer's stored name. Instead, we track everything via notes
-    // and let webhook match by subscription_id -> customer_id -> user
+    // CRITICAL FIX: Don't pass customer OR reference_id
+    // reference_id links to subscription which has customer_id -> Razorpay pulls old name
+    // Solution: Standalone payment link, track via notes, webhook links after payment
     console.log('[Subscription] Creating payment link...')
     console.log('[Subscription] For user:', customerName, userEmail)
     console.log('[Subscription] Subscription ID:', subscription.id)
@@ -167,7 +167,6 @@ export async function POST() {
         reminder_enable: true,
         callback_url: 'https://444radio.co.in/library',
         callback_method: 'get',
-        reference_id: subscription.id,
         notes: {
           subscription_id: subscription.id,
           clerk_user_id: userId,
