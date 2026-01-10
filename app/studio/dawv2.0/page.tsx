@@ -25,10 +25,11 @@ import {
   Mic
 } from 'lucide-react'
 
-// Extend Window interface for drag throttling
+// Extend Window interface for drag throttling and pending clip tracking
 declare global {
   interface Window {
     lastDragUpdate?: number
+    pendingClips?: Set<string>
   }
 }
 
@@ -66,6 +67,7 @@ export default function DAWProRebuild() {
   const [draggingLoopHandle, setDraggingLoopHandle] = useState<'start' | 'end' | null>(null)
   const [activeLoopHandle, setActiveLoopHandle] = useState<'start' | 'end' | null>(null)
   const [draggingClip, setDraggingClip] = useState<{ clipId: string; trackId: string; offsetX: number } | null>(null)
+  const [loadingClips, setLoadingClips] = useState<Set<string>>(new Set())
   const audioBufferCache = useRef<Map<string, Promise<AudioBuffer>>>(new Map())
   const isHydratingRef = useRef(false)
   const [dirtyCounter, setDirtyCounter] = useState(0)
@@ -333,6 +335,11 @@ export default function DAWProRebuild() {
     ) => {
       if (!daw) return null
 
+      const clipKey = `${trackId}-${audioUrl}-${options.startTime || 0}`
+      
+      // Show loading state
+      setLoadingClips(prev => new Set(prev).add(clipKey))
+
       try {
         const audioBuffer = await getAudioBuffer(audioUrl)
         const { respectSnap, skipStateUpdate, skipDirtyFlag, ...clipOptions } = options
@@ -369,6 +376,13 @@ export default function DAWProRebuild() {
       } catch (error) {
         console.error('Clip decode/add failed:', error)
         throw error
+      } finally {
+        // Hide loading state
+        setLoadingClips(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(clipKey)
+          return newSet
+        })
       }
     },
     [daw, getAudioBuffer, snapEnabled, snapTime, markProjectDirty]
@@ -424,11 +438,24 @@ export default function DAWProRebuild() {
   const handleAddClip = useCallback(
     async (audioUrl: string, trackId: string, startTime: number = 0) => {
       if (!daw) return
+      
+      // Prevent duplicate additions
+      const clipKey = `${trackId}-${audioUrl}-${startTime}`
+      if (window.pendingClips?.has(clipKey)) {
+        console.log('Duplicate clip add prevented')
+        return
+      }
+      
+      if (!window.pendingClips) window.pendingClips = new Set()
+      window.pendingClips.add(clipKey)
+      
       try {
         await addClipFromUrl(audioUrl, trackId, { startTime, respectSnap: true })
       } catch (error) {
         console.error('Clip add failed:', error)
         showToast('Failed to add clip. Please try again.', 'error')
+      } finally {
+        window.pendingClips.delete(clipKey)
       }
     },
     [daw, addClipFromUrl, showToast]
@@ -894,36 +921,53 @@ export default function DAWProRebuild() {
     }
   }, [user, daw, loading, fetchProjects])
 
-  const renderWaveform = (canvas: HTMLCanvasElement, buffer: AudioBuffer) => {
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const width = canvas.width
-    const height = canvas.height
-    const data = buffer.getChannelData(0)
-    const step = Math.ceil(data.length / width)
-    const amp = height / 2
-
-    ctx.fillStyle = '#0a0a0a'
-    ctx.fillRect(0, 0, width, height)
-
-    ctx.strokeStyle = '#06b6d4'
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-
-    for (let i = 0; i < width; i++) {
-      const min = Math.min(
-        ...Array.from({ length: step }, (_, j) => data[i * step + j] || 0)
-      )
-      const max = Math.max(
-        ...Array.from({ length: step }, (_, j) => data[i * step + j] || 0)
-      )
-      ctx.moveTo(i, (1 + min) * amp)
-      ctx.lineTo(i, (1 + max) * amp)
+  const renderWaveform = useCallback((canvas: HTMLCanvasElement, buffer: AudioBuffer) => {
+    // Defer rendering to prevent blocking - use requestIdleCallback with fallback to setTimeout
+    const deferRender = (callback: () => void) => {
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(callback, { timeout: 2000 })
+      } else {
+        setTimeout(callback, 0)
+      }
     }
+    
+    deferRender(() => {
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
 
-    ctx.stroke()
-  }
+      const width = canvas.width
+      const height = canvas.height
+      const data = buffer.getChannelData(0)
+      const step = Math.ceil(data.length / width)
+      const amp = height / 2
+
+      ctx.fillStyle = '#0a0a0a'
+      ctx.fillRect(0, 0, width, height)
+
+      ctx.strokeStyle = '#06b6d4'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+
+      // Optimized: access data directly instead of creating arrays
+      for (let i = 0; i < width; i++) {
+        let min = 1
+        let max = -1
+        const offset = i * step
+        
+        // Direct access is much faster than Array.from + spread
+        for (let j = 0; j < step && offset + j < data.length; j++) {
+          const sample = data[offset + j]
+          if (sample < min) min = sample
+          if (sample > max) max = sample
+        }
+        
+        ctx.moveTo(i, (1 + min) * amp)
+        ctx.lineTo(i, (1 + max) * amp)
+      }
+
+      ctx.stroke()
+    })
+  }, [])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1666,9 +1710,10 @@ export default function DAWProRebuild() {
                         >
                           <canvas
                             ref={(canvas) => {
-                              if (canvas && clip.buffer) {
+                              if (canvas && clip.buffer && !canvas.dataset.rendered) {
                                 canvas.width = clip.duration * zoom
                                 canvas.height = TRACK_HEIGHT - 16
+                                canvas.dataset.rendered = 'true'
                                 renderWaveform(canvas, clip.buffer)
                               }
                             }}
@@ -1685,6 +1730,16 @@ export default function DAWProRebuild() {
                             width: `${(loopEnd - loopStart) * zoom}px`
                           }}
                         />
+                      )}
+                      
+                      {/* Loading indicator for clips being added to this track */}
+                      {Array.from(loadingClips).some(key => key.startsWith(`${track.id}-`)) && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none z-30">
+                          <div className="flex items-center gap-3 px-4 py-2 bg-gray-900/90 rounded-lg border border-cyan-500/30">
+                            <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-sm text-gray-300">Loading audio...</span>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
