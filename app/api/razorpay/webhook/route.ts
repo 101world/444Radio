@@ -7,6 +7,22 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Allow all origins for webhook (Razorpay needs to POST)
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+export async function OPTIONS() {
+  return NextResponse.json({}, {
+    status: 200,
+    headers: {
+      'Allow': 'POST, OPTIONS',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, x-razorpay-signature'
+    }
+  })
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.text()
