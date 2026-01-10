@@ -334,7 +334,36 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <button className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
+              <button
+                onClick={async () => {
+                  try {
+                    console.log('Creating Pro subscription...')
+                    const response = await fetch('/api/subscriptions/create', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                      },
+                      body: JSON.stringify({
+                        plan: 'pro',
+                        billing: billingCycle
+                      })
+                    })
+                    
+                    const data = await response.json()
+                    
+                    if (data.success && data.short_url) {
+                      window.location.href = data.short_url
+                    } else {
+                      alert(`Error: ${data.error || 'Unknown error'}`)
+                    }
+                  } catch (error: any) {
+                    alert('Network error: ' + error.message)
+                  }
+                }}
+                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm"
+              >
                 Get Started
               </button>
             </div>
@@ -357,7 +386,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-5xl font-black bg-gradient-to-br from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
-                    ${billingCycle === 'monthly' ? '35' : '336'}
+                    ₹{billingCycle === 'monthly' ? '3,160' : '30,330'}
                   </span>
                   <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
@@ -365,7 +394,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
-                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 20%</span>
+                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 4%</span>
                   </div>
                 )}
               </div>
@@ -377,7 +406,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">Unlimited</span> credits</span>
+                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">1,500 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -385,7 +414,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">Unlimited generations</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~750 songs or 1,500 cover art</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -405,7 +434,36 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <button className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
+              <button
+                onClick={async () => {
+                  try {
+                    console.log('Creating Studio subscription...')
+                    const response = await fetch('/api/subscriptions/create', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                      },
+                      body: JSON.stringify({
+                        plan: 'studio',
+                        billing: billingCycle
+                      })
+                    })
+                    
+                    const data = await response.json()
+                    
+                    if (data.success && data.short_url) {
+                      window.location.href = data.short_url
+                    } else {
+                      alert(`Error: ${data.error || 'Unknown error'}`)
+                    }
+                  } catch (error: any) {
+                    alert('Network error: ' + error.message)
+                  }
+                }}
+                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm"
+              >
                 Get Started
               </button>
             </div>
