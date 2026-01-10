@@ -54,10 +54,10 @@ export async function POST() {
       ? `${user.firstName} ${user.lastName}`.trim()
       : user.firstName || user.username || userEmail.split('@')[0]
 
-    // Step 4: Create FRESH Razorpay customer (don't reuse existing)
-    // CRITICAL: Removed fail_existing so each user gets their own customer record
-    // This prevents "RIZZ PATNI" name from being reused for all users
-    console.log('[Subscription] Creating fresh Razorpay customer for:', userEmail)
+    // Step 4: Get or create Razorpay customer
+    // Use fail_existing to reuse customer if email exists (Razorpay requirement)
+    // Then immediately update the name to current user's name
+    console.log('[Subscription] Getting/creating Razorpay customer for:', userEmail)
     console.log('[Subscription] Customer name:', customerName)
     const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
       method: 'POST',
@@ -66,9 +66,8 @@ export async function POST() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        name: customerName,
         email: userEmail,
-        contact: ''
+        fail_existing: '0' // Return existing customer if found
       })
     })
 
@@ -89,7 +88,26 @@ export async function POST() {
 
     const customer = await customerRes.json()
     const customerId = customer.id
-    console.log('[Subscription] Fresh customer created:', customerId, 'Name:', customerName)
+    console.log('[Subscription] Customer ID:', customerId)
+
+    // CRITICAL: Update customer name to current user (overrides old name)
+    console.log('[Subscription] Updating customer name to:', customerName)
+    const updateRes = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Basic ${authHeader}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: customerName
+      })
+    })
+
+    if (!updateRes.ok) {
+      console.error('[Subscription] Failed to update customer name, continuing anyway')
+    } else {
+      console.log('[Subscription] Customer name updated successfully')
+    }
 
     // Step 5: Create subscription
     console.log('[Subscription] Creating subscription with plan:', planId)
