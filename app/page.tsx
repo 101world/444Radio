@@ -225,10 +225,10 @@ export default function HomePage() {
                     {/* Track Info */}
                     <div className="mb-3">
                       <h3 className="text-white font-bold text-sm truncate leading-tight mb-0.5">
-                        {currentTrack?.title || 'Purple Hearts'}
+                        {currentTrack?.title || 'No Track'}
                       </h3>
                       <p className="text-cyan-400/70 text-xs truncate leading-tight">
-                        Kendrick Lamar, Summer Walk...
+                        {currentTrack?.artist || 'Hit play to start'}
                       </p>
                     </div>
 
@@ -242,7 +242,7 @@ export default function HomePage() {
                     {/* Track Name Above Controls */}
                     <div className="text-center mb-2">
                       <p className="text-white/80 text-xs truncate">
-                        {currentTrack?.title || 'No Track Playing'}
+                        {currentTrack?.title || ''}
                       </p>
                     </div>
 
