@@ -223,9 +223,16 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <button className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
-                Get Started
-              </button>
+              <a 
+                href="https://rzp.io/rzp/KchQndS"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full"
+              >
+                <button className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
+                  Get Started
+                </button>
+              </a>
             </div>
           </div>
 
