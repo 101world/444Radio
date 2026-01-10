@@ -25,6 +25,13 @@ import {
   Mic
 } from 'lucide-react'
 
+// Extend Window interface for drag throttling
+declare global {
+  interface Window {
+    lastDragUpdate?: number
+  }
+}
+
 export default function DAWProRebuild() {
   const { user } = useUser()
   const [daw, setDaw] = useState<MultiTrackDAW | null>(null)
@@ -350,7 +357,10 @@ export default function DAWProRebuild() {
 
         daw.addClipToTrack(trackId, clip)
         if (!skipStateUpdate) {
-          setTracks(daw.getTracks())
+          // Use requestAnimationFrame to batch state updates and prevent glitching
+          requestAnimationFrame(() => {
+            setTracks(daw.getTracks())
+          })
         }
         if (!skipDirtyFlag) {
           markProjectDirty()
@@ -972,6 +982,8 @@ export default function DAWProRebuild() {
             <div>
               <h1 className="text-lg font-bold text-white">444 Studio Pro</h1>
               <input
+                id="project-name"
+                name="projectName"
                 type="text"
                 value={projectName}
                 onChange={(e) => {
@@ -1029,6 +1041,8 @@ export default function DAWProRebuild() {
           <div className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-4 py-2">
             <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider">BPM</span>
             <input
+              id="bpm-input"
+              name="bpm"
               type="number"
               value={bpm}
               onChange={(e) => {
@@ -1223,6 +1237,8 @@ export default function DAWProRebuild() {
                   <Download size={13} />
                   Import Audio
                   <input
+                    id="audio-import"
+                    name="audioFile"
                     type="file"
                     accept="audio/mp3,audio/wav,audio/mpeg,audio/wave"
                     className="hidden"
@@ -1268,6 +1284,8 @@ export default function DAWProRebuild() {
                   size={15}
                 />
                 <input
+                  id="library-search"
+                  name="search"
                   type="text"
                   placeholder="Search your library..."
                   value={searchTerm}
@@ -1434,6 +1452,8 @@ export default function DAWProRebuild() {
                         <div className="flex items-center gap-3 bg-[#0a0a0a] border border-gray-800/50 rounded-lg px-3 py-2">
                           <Volume2 size={14} className="text-cyan-500 flex-shrink-0" />
                           <input
+                            id={`volume-${track.id}`}
+                            name={`volume-track-${idx + 1}`}
                             type="range"
                             min="0"
                             max="100"
@@ -1540,13 +1560,22 @@ export default function DAWProRebuild() {
                         e.preventDefault()
                         const audioUrl = e.dataTransfer.getData('audioUrl')
                         if (audioUrl) {
+                          setDragPreview(null) // Clear preview immediately
                           const rect = e.currentTarget.getBoundingClientRect()
                           const scrollLeft = timelineRef.current?.scrollLeft || 0
                           const x = e.clientX - rect.left + scrollLeft - TRACK_HEADER_WIDTH
                           const startTime = snapTime(Math.max(0, x) / zoom)
-                          await handleAddClip(audioUrl, track.id, startTime)
+                          
+                          // Show loading state
+                          showToast('Adding clip...', 'info')
+                          
+                          try {
+                            await handleAddClip(audioUrl, track.id, startTime)
+                            showToast('✓ Clip added', 'success')
+                          } catch (error) {
+                            console.error('Drop failed:', error)
+                          }
                         }
-                        setDragPreview(null)
                       }}
                       onDragLeave={() => setDragPreview(null)}
                       onDragEnter={(e) => {
@@ -1554,11 +1583,16 @@ export default function DAWProRebuild() {
                       }}
                       onDragOver={(e) => {
                         e.preventDefault()
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        const scrollLeft = timelineRef.current?.scrollLeft || 0
-                        const x = e.clientX - rect.left + scrollLeft - TRACK_HEADER_WIDTH
-                        const time = snapTime(Math.max(0, x) / zoom)
-                        setDragPreview({ time, trackId: track.id })
+                        // Throttle drag preview updates to every 50ms to prevent excessive re-renders
+                        const now = Date.now()
+                        if (!window.lastDragUpdate || now - window.lastDragUpdate > 50) {
+                          window.lastDragUpdate = now
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          const scrollLeft = timelineRef.current?.scrollLeft || 0
+                          const x = e.clientX - rect.left + scrollLeft - TRACK_HEADER_WIDTH
+                          const time = snapTime(Math.max(0, x) / zoom)
+                          setDragPreview({ time, trackId: track.id })
+                        }
                       }}
                     >
                       {gridLineIndices.map((stepIndex) => (
