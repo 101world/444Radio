@@ -962,38 +962,41 @@ export default function DAWProRebuild() {
         </div>
       )}
       {/* Top Bar */}
-      <div className="h-14 bg-[#111] border-b border-gray-800 flex items-center justify-between px-6">
+      <div className="h-20 bg-gradient-to-r from-[#0a0a0a] via-[#0d0d0d] to-[#0a0a0a] border-b border-gray-800/50 flex items-center justify-between px-6 backdrop-blur-sm">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Music2 className="w-6 h-6 text-cyan-400" />
-            <div className="text-cyan-400 font-bold text-xl">444 Studio Pro</div>
+          {/* Logo/Title */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-lg flex items-center justify-center">
+              <Music2 size={20} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">444 Studio Pro</h1>
+              <input
+                type="text"
+                value={projectName}
+                onChange={(e) => {
+                  setProjectName(e.target.value)
+                  markProjectDirty()
+                }}
+                className="bg-transparent border-none text-xs text-gray-500 focus:text-cyan-400 focus:outline-none w-48 -mt-0.5"
+                placeholder="Project Name"
+              />
+            </div>
           </div>
-          <input
-            type="text"
-            value={projectName}
-            onChange={(e) => {
-              setProjectName(e.target.value)
-              markProjectDirty()
-            }}
-            className="bg-[#1a1a1a] border border-gray-700 rounded px-4 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none min-w-[240px]"
-            placeholder="Project Name"
-          />
-        </div>
 
-        <div className="flex items-center gap-4">
+          {/* Divider */}
+          <div className="h-8 w-px bg-gray-800"></div>
+
+          {/* Project Controls */}
           <div className="flex items-center gap-2">
-            <div className="text-xs text-gray-500 uppercase font-medium">Project</div>
             <select
               value={currentProjectId || ''}
               onChange={(e) => {
                 const id = e.target.value
-                if (!id) {
-                  resetProject()
-                } else {
-                  handleLoadProject(id)
-                }
+                if (!id) resetProject()
+                else handleLoadProject(id)
               }}
-              className="bg-[#1a1a1a] border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none min-w-[200px]"
+              className="bg-[#1a1a1a] border border-gray-700/50 hover:border-gray-600 rounded-lg px-4 py-2 text-sm focus:border-cyan-500 focus:outline-none min-w-[160px] transition-all"
             >
               <option value="">New Project</option>
               {projects.map((p) => (
@@ -1004,39 +1007,27 @@ export default function DAWProRebuild() {
             </select>
             <button
               onClick={resetProject}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm"
-              title="Start a new project"
+              className="px-4 py-2 bg-[#1a1a1a] hover:bg-gray-800 border border-gray-700/50 hover:border-gray-600 text-gray-300 rounded-lg text-sm transition-all"
+              title="New project"
             >
               New
             </button>
             <button
-              onClick={handleDeleteProject}
-              disabled={!currentProjectId}
-              className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm disabled:opacity-40"
-              title={currentProjectId ? 'Delete current project' : 'No project to delete'}
-            >
-              Delete
-            </button>
-            <button
               onClick={handleRenameProject}
               disabled={!currentProjectId}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm disabled:opacity-40"
-              title={currentProjectId ? 'Rename current project' : 'No project to rename'}
+              className="px-4 py-2 bg-[#1a1a1a] hover:bg-gray-800 border border-gray-700/50 hover:border-gray-600 text-gray-300 rounded-lg text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="Rename"
             >
               Rename
             </button>
-            <button
-              onClick={handleDuplicateProject}
-              disabled={!currentProjectId}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm disabled:opacity-40"
-              title={currentProjectId ? 'Duplicate current project' : 'No project to duplicate'}
-            >
-              Duplicate
-            </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="text-xs text-gray-500 uppercase font-medium">BPM</div>
+          {/* Divider */}
+          <div className="h-8 w-px bg-gray-800"></div>
+
+          {/* BPM */}
+          <div className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-4 py-2">
+            <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider">BPM</span>
             <input
               type="number"
               value={bpm}
@@ -1046,33 +1037,62 @@ export default function DAWProRebuild() {
                 daw?.setBPM(next)
                 markProjectDirty()
               }}
-              className="w-20 bg-[#1a1a1a] border border-gray-700 rounded px-3 py-1.5 text-sm text-center focus:border-cyan-500 focus:outline-none"
+              className="w-16 bg-[#0a0a0a] border border-gray-800 rounded px-2 py-1 text-sm text-center focus:border-cyan-500 focus:outline-none text-white font-mono"
               min="60"
               max="200"
             />
           </div>
+        </div>
+
+        {/* Right Side Actions */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowBrowser(!showBrowser)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              showBrowser
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                : 'bg-[#1a1a1a] text-gray-400 border border-gray-700/50 hover:border-gray-600'
+            }`}
+            title="Toggle browser (B)"
+          >
+            <Music2 size={16} />
+            Browser
+          </button>
+
+          <button
+            onClick={() => setShowGenerateModal(true)}
+            className="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg shadow-purple-500/20"
+            title="AI generation"
+          >
+            <Sparkles size={16} />
+            Generate
+          </button>
 
           <button
             onClick={() => handleSave('manual')}
             disabled={saving}
-            className="px-5 py-2 bg-cyan-500 hover:bg-cyan-600 text-black rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-black rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-cyan-500/20"
             title={currentProjectId ? 'Save project' : 'Save as new project'}
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {saving ? (saveStatus === 'autosaving' ? 'Autosaving...' : 'Saving...') : currentProjectId ? 'Save' : 'Save As'}
+            {saving ? 'Saving' : 'Save'}
           </button>
-          <div className="text-xs text-gray-500 min-w-[90px] text-right">
-            {saveStatus === 'saving' && 'Saving...'}
-            {saveStatus === 'autosaving' && 'Autosaving...'}
-          </div>
-            <button
-              onClick={() => setShowGenerateModal(true)}
-              className="px-5 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white rounded-lg font-medium transition-opacity flex items-center gap-2"
-              title="AI generation"
-            >
-              <Sparkles size={16} />
-              Generate AI
-            </button>
+
+          {(saveStatus !== 'idle' || saveTick) && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-medium">
+              {saveStatus !== 'idle' ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  {saveStatus === 'autosaving' ? 'Auto' : 'Saving'}
+                </>
+              ) : (
+                <>
+                  <span className="text-emerald-400">✓</span>
+                  Saved
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1186,15 +1206,22 @@ export default function DAWProRebuild() {
       <div className="flex-1 flex overflow-hidden">
         {/* Browser Panel */}
         {showBrowser && (
-          <div className="w-72 bg-[#0d0d0d] border-r border-gray-800 flex flex-col">
-            <div className="h-12 border-b border-gray-800 flex items-center justify-between px-4">
-              <div className="text-sm font-bold text-gray-300 uppercase tracking-wide">
-                Browser
+          <div className="w-80 bg-gradient-to-b from-[#0a0a0a] to-[#0d0d0d] border-r border-gray-800/50 flex flex-col">
+            <div className="h-16 border-b border-gray-800/50 flex flex-col justify-center px-5">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-bold text-gray-200 uppercase tracking-wider">
+                  Library
+                </h2>
+                <div className="text-xs text-gray-500 font-medium">
+                  {library.filter((item) =>
+                    item.title.toLowerCase().includes(searchTerm.toLowerCase())
+                  ).length} tracks
+                </div>
               </div>
               <div className="flex gap-2">
-                <label className="px-3 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded text-xs font-medium transition-colors flex items-center gap-1 cursor-pointer">
-                  <Download size={12} />
-                  Import
+                <label className="px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 hover:from-cyan-500/30 hover:to-cyan-600/30 border border-cyan-500/30 text-cyan-400 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
+                  <Download size={13} />
+                  Import Audio
                   <input
                     type="file"
                     accept="audio/mp3,audio/wav,audio/mpeg,audio/wave"
@@ -1212,7 +1239,7 @@ export default function DAWProRebuild() {
                           body: formData
                         })
                         if (response.ok) {
-                          showToast('Audio imported successfully', 'success')
+                          showToast('✓ Audio imported', 'success')
                           await loadLibrary()
                         } else {
                           showToast('Import failed', 'error')
@@ -1226,73 +1253,89 @@ export default function DAWProRebuild() {
                   />
                 </label>
                 <button
-                  onClick={() => {
-                    setShowStemSplitter(true)
-                  }}
-                  className="px-3 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                  onClick={() => setShowStemSplitter(true)}
+                  className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 text-purple-400 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
                 >
-                  <Scissors size={12} />
+                  <Scissors size={13} />
                   Stem Split
                 </button>
               </div>
             </div>
-            <div className="p-4">
+            <div className="p-4 pb-2">
               <div className="relative">
                 <Search
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
-                  size={16}
+                  size={15}
                 />
                 <input
                   type="text"
-                  placeholder="Search tracks..."
+                  placeholder="Search your library..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-gray-700 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:border-cyan-500 focus:outline-none"
+                  className="w-full bg-[#1a1a1a] border border-gray-700/50 hover:border-gray-600 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:border-cyan-500 focus:outline-none transition-all placeholder:text-gray-600"
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-3 pb-3">
-              {library
-                .filter((item) =>
-                  item.title.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-                .map((item) => (
-                  <div
-                    key={item.id}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('audioUrl', item.audio_url)
-                      e.dataTransfer.setData('title', item.title)
-                      setDragPreview({ time: 0, trackId: null })
-                    }}
-                    onDragEnd={() => setDragPreview(null)}
-                    className="p-3 mb-2 bg-[#1a1a1a] hover:bg-[#252525] rounded-lg cursor-move transition-all hover:scale-[1.02] group"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 bg-cyan-500/20 rounded flex items-center justify-center flex-shrink-0">
-                        <Music size={16} className="text-cyan-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white font-medium truncate group-hover:text-cyan-400 transition-colors">
-                          {item.title}
+            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+              {library.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <div className="w-16 h-16 bg-gray-800/50 rounded-full flex items-center justify-center mb-4">
+                    <Music size={28} className="text-gray-600" />
+                  </div>
+                  <p className="text-sm text-gray-500 mb-2">No tracks yet</p>
+                  <p className="text-xs text-gray-600">Import audio or generate with AI</p>
+                </div>
+              ) : (
+                library
+                  .filter((item) =>
+                    item.title.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('audioUrl', item.audio_url)
+                        e.dataTransfer.setData('title', item.title)
+                        setDragPreview({ time: 0, trackId: null })
+                      }}
+                      onDragEnd={() => setDragPreview(null)}
+                      className="group relative bg-gradient-to-br from-[#1a1a1a] to-[#151515] hover:from-[#202020] hover:to-[#1a1a1a] border border-gray-800/50 hover:border-gray-700 rounded-xl p-4 cursor-move transition-all duration-200 hover:scale-[1.01] hover:shadow-lg hover:shadow-cyan-500/10"
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/30 to-purple-500/30 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                          <Music size={20} className="text-cyan-400" />
                         </div>
-                        {item.genre && (
-                          <div className="text-xs text-gray-500 mt-0.5">{item.genre}</div>
-                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm text-white font-semibold truncate group-hover:text-cyan-400 transition-colors mb-1">
+                            {item.title}
+                          </div>
+                          {item.genre && (
+                            <div className="text-xs text-gray-500 capitalize">{item.genre}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedAudioForStems(item.audio_url)
+                            setShowStemSplitter(true)
+                          }}
+                          className="flex-1 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <Scissors size={12} />
+                          Split
+                        </button>
+                      </div>
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="px-2 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-xs text-cyan-400 font-medium">
+                          Drag to timeline
+                        </div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        setSelectedAudioForStems(item.audio_url)
-                        setShowStemSplitter(true)
-                      }}
-                      className="w-full px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1"
-                    >
-                      <Scissors size={12} />
-                      Split Stems
-                    </button>
-                  </div>
-                ))}
+                  ))
+              )}
             </div>
           </div>
         )}
@@ -1320,18 +1363,25 @@ export default function DAWProRebuild() {
                       <div
                         key={track.id}
                         style={{ height: `${TRACK_HEIGHT}px` }}
-                        className={`border-b border-gray-800 p-4 cursor-pointer transition-all ${
+                        className={`border-b border-gray-800/50 p-4 cursor-pointer transition-all group ${
                           selectedTrackId === track.id
-                            ? 'bg-[#1a1a1a] border-l-4 border-l-cyan-500'
-                            : 'hover:bg-[#151515]'
+                            ? 'bg-gradient-to-r from-[#1a1a1a] to-[#151515] border-l-4 border-l-cyan-500 shadow-lg shadow-cyan-500/10'
+                            : 'hover:bg-[#151515] hover:border-l-4 hover:border-l-gray-700'
                         }`}
                         onClick={() => setSelectedTrackId(track.id)}
                       >
-                        <div className="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-2">
-                          {track.name}
-                          {selectedTrackId === track.id && (
-                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
-                          )}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
+                              {track.name}
+                            </div>
+                            {selectedTrackId === track.id && (
+                              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-600 font-mono">
+                            #{idx + 1}
+                          </div>
                         </div>
                         <div className="flex gap-2 mb-3">
                           <button
@@ -1341,11 +1391,12 @@ export default function DAWProRebuild() {
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
                               track.muted
-                                ? 'bg-red-500 text-white'
-                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                ? 'bg-red-500 text-white shadow-red-500/30'
+                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:border-gray-600'
                             }`}
+                            title="Mute track"
                           >
                             M
                           </button>
@@ -1356,11 +1407,12 @@ export default function DAWProRebuild() {
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
                               track.solo
-                                ? 'bg-yellow-500 text-black'
-                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                ? 'bg-yellow-500 text-black shadow-yellow-500/30'
+                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:border-gray-600'
                             }`}
+                            title="Solo track"
                           >
                             S
                           </button>
@@ -1369,17 +1421,18 @@ export default function DAWProRebuild() {
                               e.stopPropagation()
                               setRecordingTrackId(recordingTrackId === track.id ? null : track.id)
                             }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
                               recordingTrackId === track.id
-                                ? 'bg-red-500 text-white animate-pulse'
-                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                ? 'bg-red-500 text-white animate-pulse shadow-red-500/50'
+                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:border-gray-600'
                             }`}
+                            title="Arm for recording"
                           >
                             ●
                           </button>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Volume2 size={14} className="text-gray-500" />
+                        <div className="flex items-center gap-3 bg-[#0a0a0a] border border-gray-800/50 rounded-lg px-3 py-2">
+                          <Volume2 size={14} className="text-cyan-500 flex-shrink-0" />
                           <input
                             type="range"
                             min="0"
@@ -1392,9 +1445,10 @@ export default function DAWProRebuild() {
                               markProjectDirty()
                             }}
                             className="flex-1 accent-cyan-500"
+                            title={`Volume: ${Math.round(track.volume * 100)}%`}
                           />
-                          <div className="text-xs text-gray-500 w-8 text-right">
-                            {Math.round(track.volume * 100)}
+                          <div className="text-xs text-gray-400 font-mono w-10 text-right">
+                            {Math.round(track.volume * 100)}%
                           </div>
                         </div>
                       </div>
