@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
+
+// Load environment variables
+dotenv.config({ path: '.env.local' })
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,6 +22,7 @@ async function syncAllSubscribers() {
   ).toString('base64')
 
   console.log('Fetching all subscriptions from Razorpay...')
+  console.log('Using Key ID:', process.env.RAZORPAY_KEY_ID?.substring(0, 15) + '...')
 
   // Fetch all subscriptions from Razorpay
   const response = await fetch('https://api.razorpay.com/v1/subscriptions?count=100', {
@@ -26,7 +31,13 @@ async function syncAllSubscribers() {
     }
   })
 
+  if (!response.ok) {
+    console.error('Razorpay API error:', response.status, await response.text())
+    return
+  }
+
   const data = await response.json()
+  console.log('API Response:', JSON.stringify(data, null, 2))
   const subscriptions = data.items || []
 
   console.log(`Found ${subscriptions.length} subscriptions`)
