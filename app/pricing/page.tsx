@@ -243,7 +243,7 @@ export default function Pricing() {
                       console.error('Subscription failed:', errorMsg)
                       alert(errorMsg)
                     }
-                  } catch (error) {
+                  } catch (error: any) {
                     console.error('Subscription error:', error)
                     alert('Network error: ' + error.message)
                   }
