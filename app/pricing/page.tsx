@@ -223,16 +223,27 @@ export default function Pricing() {
                 </li>
               </ul>
 
-              <a 
-                href="https://rzp.io/rzp/KchQndS"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full"
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/subscriptions/create', {
+                      method: 'POST'
+                    })
+                    const data = await response.json()
+                    if (data.success && data.short_url) {
+                      window.location.href = data.short_url
+                    } else {
+                      alert('Failed to create subscription: ' + (data.error || 'Unknown error'))
+                    }
+                  } catch (error) {
+                    console.error('Subscription error:', error)
+                    alert('Failed to create subscription. Please try again.')
+                  }
+                }}
+                className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm"
               >
-                <button className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm">
-                  Get Started
-                </button>
-              </a>
+                Get Started
+              </button>
             </div>
           </div>
 
