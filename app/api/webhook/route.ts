@@ -33,25 +33,18 @@ export async function POST(req: Request) {
 
 async function fixSubscriptionPlans() {
   try {
-    // Get all active subscriptions
+    // Get ALL active subscriptions (don't filter by subscription_plan value)
     const { data: users, error: fetchError } = await supabaseAdmin
       .from('users')
-      .select('clerk_user_id, subscription_plan, subscription_id')
+      .select('clerk_user_id, subscription_plan, subscription_id, email')
       .eq('subscription_status', 'active')
 
     if (fetchError) throw fetchError
 
-    const usersToFix = users?.filter(u => 
-      u.subscription_plan && (
-        u.subscription_plan.startsWith('sub_') || 
-        u.subscription_plan.startsWith('plan_')
-      )
-    ) || []
-
-    console.log(`[FIX] Found ${usersToFix.length} users to fix`)
+    console.log(`[FIX] Found ${users?.length || 0} active users to check`)
 
     let fixed = 0
-    for (const user of usersToFix) {
+    for (const user of users || []) {
       const subId = (user.subscription_id || '').toLowerCase()
       const planId = (user.subscription_plan || '').toLowerCase()
       let planType = 'creator' // default
@@ -74,18 +67,18 @@ async function fixSubscriptionPlans() {
         .eq('clerk_user_id', user.clerk_user_id)
 
       if (!updateError) {
-        console.log(`[FIX] ✅ ${user.clerk_user_id}: ${user.subscription_plan} → ${planType} (from: ${subId.substring(0, 15)}, ${planId.substring(0, 15)})`)
+        console.log(`[FIX] ✅ ${user.email}: ${user.subscription_plan} → ${planType} (sub: ${subId.substring(0, 20)}, plan: ${planId.substring(0, 20)})`)
         fixed++
       } else {
-        console.error(`[FIX] ❌ ${user.clerk_user_id}:`, updateError)
+        console.error(`[FIX] ❌ ${user.email}:`, updateError)
       }
     }
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Fixed ${fixed} out of ${usersToFix.length} users`,
+      message: `Fixed ${fixed} out of ${users?.length || 0} users`,
       fixed,
-      total: usersToFix.length
+      total: users?.length || 0
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
