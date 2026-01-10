@@ -35,17 +35,21 @@ export async function POST(request: Request) {
       }, { status: 500 }))
     }
 
-    // Update all profile fields
+    // Update only basic profile fields that exist in users table
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    }
+    
+    // Only add fields if they're provided
+    if (full_name !== undefined) updateData.full_name = full_name || null
+    if (bio !== undefined) updateData.bio = bio || null
+    if (location !== undefined) updateData.location = location || null
+    if (website !== undefined) updateData.website = website || null
+    if (social_links !== undefined) updateData.social_links = social_links || null
+
     const { error, data } = await supabaseAdmin
       .from('users')
-      .update({
-        full_name: full_name || null,
-        bio: bio || null,
-        location: location || null,
-        website: website || null,
-        social_links: social_links || null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('clerk_user_id', clerkUserId)
       .select()
 

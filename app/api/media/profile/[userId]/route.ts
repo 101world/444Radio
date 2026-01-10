@@ -38,16 +38,7 @@ export async function GET(
       console.error('Profile media error:', profileError)
     }
 
-    // Fetch user's uploads (images and videos)
-    const { data: uploadsData, error: uploadsError } = await supabase
-      .from('user_uploads')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (uploadsError) {
-      console.error('Uploads error:', uploadsError)
-    }
+    // Note: user_uploads table doesn't exist, using combined_media instead
 
     // Fetch user profile basics (including banner fields)
     const { data: userData } = await supabase
