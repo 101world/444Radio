@@ -102,7 +102,10 @@ export async function POST(request: Request) {
       console.log('[Create Subscription] Created new customer:', customerId)
     }
 
-    // Sole.log('[Create Subscription] Creating subscription with plan:', planId, 'customer:', customerId)
+    // Step 2: Create subscription
+    const planId = process.env.RAZORPAY_CREATOR_PLAN_ID || 'plan_S2DGVK6J270rtt'
+    
+    console.log('[Create Subscription] Creating subscription with plan:', planId, 'customer:', customerId)
     
     const subscriptionResponse = await fetch(
       'https://api.razorpay.com/v1/subscriptions',
