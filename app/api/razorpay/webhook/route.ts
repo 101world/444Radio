@@ -60,23 +60,68 @@ async function handleSubscriptionSuccess(subscription: any) {
   const customerId = subscription.customer_id
   const planId = subscription.plan_id
 
-  // Find user by Razorpay customer ID (need to store this during signup)
-  const { data: user, error } = await supabaseAdmin
+  // First try: Find user by Razorpay customer ID
+  let { data: user, error } = await supabaseAdmin
     .from('users')
     .select('*')
     .eq('razorpay_customer_id', customerId)
     .single()
 
+  // Second try: If not found by customer ID, fetch customer email from Razorpay and match
   if (error || !user) {
+    console.log('[Razorpay] User not found by customer ID, fetching from Razorpay API')
+    
+    try {
+      // Fetch customer details from Razorpay
+      const razorpayAuth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64')
+      const customerResponse = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
+        headers: {
+          'Authorization': `Basic ${razorpayAuth}`
+        }
+      })
+
+      if (customerResponse.ok) {
+        const customer = await customerResponse.json()
+        const email = customer.email
+
+        console.log('[Razorpay] Customer email:', email)
+
+        // Find user by email
+        const { data: userByEmail, error: emailError } = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .single()
+
+        if (!emailError && userByEmail) {
+          user = userByEmail
+          console.log('[Razorpay] Found user by email:', email)
+          
+          // Store the customer ID for future lookups
+          await supabaseAdmin
+            .from('users')
+            .update({ razorpay_customer_id: customerId })
+            .eq('clerk_user_id', user.clerk_user_id)
+        }
+      }
+    } catch (fetchError) {
+      console.error('[Razorpay] Failed to fetch customer from Razorpay:', fetchError)
+    }
+  }
+
+  if (!user) {
     console.error('[Razorpay] User not found for customer:', customerId)
     return
   }
 
-  // Determine credits based on plan
+  // Determine credits based on plan (support both env var and hardcoded plan ID)
   let creditsToAdd = 0
-  if (planId === process.env.RAZORPAY_CREATOR_PLAN_ID) {
+  const creatorPlanId = process.env.RAZORPAY_CREATOR_PLAN_ID || 'plan_S2DGVK6J270rtt'
+  if (planId === creatorPlanId) {
     creditsToAdd = 100 // Creator plan gives 100 credits
   }
+
+  console.log('[Razorpay] Adding', creditsToAdd, 'credits to user:', user.clerk_user_id)
 
   // Update user credits and subscription status
   const { error: updateError } = await supabaseAdmin
@@ -88,6 +133,7 @@ async function handleSubscriptionSuccess(subscription: any) {
       subscription_id: subscription.id,
       subscription_start: subscription.start_at,
       subscription_end: subscription.end_at,
+      razorpay_customer_id: customerId,
       updated_at: new Date().toISOString()
     })
     .eq('clerk_user_id', user.clerk_user_id)
@@ -95,7 +141,7 @@ async function handleSubscriptionSuccess(subscription: any) {
   if (updateError) {
     console.error('[Razorpay] Failed to update user:', updateError)
   } else {
-    console.log('[Razorpay] Added', creditsToAdd, 'credits to user:', user.clerk_user_id)
+    console.log('[Razorpay] Successfully added', creditsToAdd, 'credits to user:', user.clerk_user_id)
   }
 }
 

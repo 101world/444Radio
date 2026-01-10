@@ -17,9 +17,9 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
-    // First, try to fetch the user
+    // First, try to fetch the user with core fields only (always exist)
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated,subscription_status`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -34,6 +34,29 @@ export async function GET() {
 
     const data = await response.json()
     let user = data?.[0]
+    
+    // Try to get subscription status separately (may not exist yet)
+    let subscriptionStatus = 'none'
+    if (user) {
+      try {
+        const subResponse = await fetch(
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=subscription_status`,
+          {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+            }
+          }
+        )
+        if (subResponse.ok) {
+          const subData = await subResponse.json()
+          subscriptionStatus = subData?.[0]?.subscription_status || 'none'
+        }
+      } catch (e) {
+        // Column doesn't exist yet, that's okay
+        console.log('Subscription column not found, using default')
+      }
+    }
 
     // If user doesn't exist, upsert them (avoids unique constraint race with webhook)
     if (!user) {
@@ -64,7 +87,7 @@ export async function GET() {
       } else {
         // User might have been created by webhook in the meantime, try fetching again
         const retryResponse = await fetch(
-          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated,subscription_status`,
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -83,7 +106,7 @@ export async function GET() {
     return corsResponse(NextResponse.json({ 
       credits: user?.credits || 0, // Default to 0 if still not found
       totalGenerated: user?.total_generated || 0,
-      subscription_status: user?.subscription_status || 'none'
+      subscription_status: subscriptionStatus
     }))
   } catch (error) {
     console.error('Error fetching credits:', error)
@@ -107,7 +130,7 @@ export async function POST() {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated,subscription_status`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated`,
       {
         method: 'GET',
         headers: {
@@ -123,11 +146,31 @@ export async function POST() {
 
     const data = await response.json()
     const user = data?.[0]
+    
+    // Try to get subscription status
+    let subscriptionStatus = 'none'
+    try {
+      const subResponse = await fetch(
+        `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=subscription_status`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          }
+        }
+      )
+      if (subResponse.ok) {
+        const subData = await subResponse.json()
+        subscriptionStatus = subData?.[0]?.subscription_status || 'none'
+      }
+    } catch (e) {
+      console.log('Subscription column not found in POST')
+    }
 
     return corsResponse(NextResponse.json({ 
       credits: user?.credits || 0,
       totalGenerated: user?.total_generated || 0,
-      subscription_status: user?.subscription_status || 'none'
+      subscription_status: subscriptionStatus
     }))
   } catch (error) {
     console.error('Error fetching credits (POST):', error)
