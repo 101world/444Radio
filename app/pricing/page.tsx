@@ -228,7 +228,11 @@ export default function Pricing() {
                   try {
                     console.log('Creating subscription...')
                     const response = await fetch('/api/subscriptions/create', {
-                      method: 'POST'
+                      method: 'POST',
+                      headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                      }
                     })
                     
                     console.log('Response status:', response.status)
