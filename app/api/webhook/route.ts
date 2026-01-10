@@ -2,8 +2,90 @@ import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
 import { supabase } from '../../../lib/supabase'
+import crypto from 'crypto'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: Request) {
+  // Check if it's a Razorpay webhook (has x-razorpay-signature header)
+  const razorpaySignature = req.headers.get('x-razorpay-signature')
+  
+  if (razorpaySignature) {
+    console.log('[SHARED WEBHOOK] Razorpay webhook detected')
+    return handleRazorpayWebhook(req, razorpaySignature)
+  }
+  
+  // Otherwise, handle as Clerk webhook
+  console.log('[SHARED WEBHOOK] Clerk webhook detected')
+  return handleClerkWebhook(req)
+}
+
+async function handleRazorpayWebhook(req: Request, signature: string) {
+  try {
+    const body = await req.text()
+    
+    // Verify signature
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
+      .update(body)
+      .digest('hex')
+
+    if (signature !== expectedSignature) {
+      console.error('[Razorpay] Invalid signature')
+      return new Response('Invalid signature', { status: 401 })
+    }
+
+    const event = JSON.parse(body)
+    console.log('[Razorpay] Event:', event.event)
+
+    // Handle payment.captured
+    if (event.event === 'payment.captured') {
+      const payment = event.payload.payment.entity
+      const amount = payment.amount
+      const notes = payment.notes || {}
+      
+      console.log('[Razorpay] Payment captured:', payment.id, 'Amount:', amount, 'Notes:', notes)
+      
+      if (amount === 45000 && notes.clerk_user_id) {
+        const { data: user } = await supabaseAdmin
+          .from('users')
+          .select('credits')
+          .eq('clerk_user_id', notes.clerk_user_id)
+          .single()
+
+        if (user) {
+          await supabaseAdmin
+            .from('users')
+            .update({
+              credits: user.credits + 100,
+              subscription_status: 'active',
+              subscription_plan: 'plan_S2DGVK6J270rtt'
+            })
+            .eq('clerk_user_id', notes.clerk_user_id)
+          
+          console.log('[Razorpay] ✅ Credits delivered to:', notes.clerk_user_id)
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  } catch (error) {
+    console.error('[Razorpay] Error:', error)
+    return new Response(JSON.stringify({ error: 'Webhook failed' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
+  }
+}
+
+async function handleClerkWebhook(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
 
   if (!WEBHOOK_SECRET) {
