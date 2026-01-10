@@ -90,9 +90,7 @@ export async function POST() {
       if (!updateRes.ok) {
         console.error('[Subscription] Failed to update customer name')
       } else {
-        console.log('[Subscription] Customer name updated, waiting for sync...')
-        // Wait 2 seconds for Razorpay to sync the updated name
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        console.log('[Subscription] Customer name updated')
       }
     } else {
       // Create new Razorpay customer (or get existing if email already used)
@@ -145,9 +143,7 @@ export async function POST() {
       })
 
       if (updateRes.ok) {
-        console.log('[Subscription] Customer name updated, waiting for sync...')
-        // Wait 2 seconds for Razorpay to sync the updated name
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        console.log('[Subscription] Customer name updated')
       }
 
       // Save customer ID to Supabase for future use
