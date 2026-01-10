@@ -28,6 +28,7 @@ export async function POST() {
     }
 
     console.log('[Subscription] Starting for user:', userId, 'email:', userEmail)
+    console.log('[Subscription] User name:', user.firstName, user.lastName, user.username)
 
     // Step 3: Check credentials
     const keyId = process.env.RAZORPAY_KEY_ID
@@ -123,6 +124,13 @@ export async function POST() {
 
     // Step 6: Create payment link for subscription
     console.log('[Subscription] Creating payment link...')
+    
+    const customerName = user.firstName && user.lastName 
+      ? `${user.firstName} ${user.lastName}`.trim()
+      : user.firstName || user.username || userEmail.split('@')[0]
+    
+    console.log('[Subscription] Customer name for payment link:', customerName)
+    
     const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
       headers: {
@@ -135,9 +143,7 @@ export async function POST() {
         accept_partial: false,
         description: 'Creator 444 Monthly Subscription',
         customer: {
-          name: user.firstName && user.lastName 
-            ? `${user.firstName} ${user.lastName}`.trim()
-            : user.firstName || user.username || userEmail.split('@')[0],
+          name: customerName,
           email: userEmail
         },
         notify: {
