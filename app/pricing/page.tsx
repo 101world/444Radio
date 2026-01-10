@@ -175,7 +175,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-5xl font-black bg-gradient-to-br from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent">
-                    ${billingCycle === 'monthly' ? '5' : '48'}
+                    ₹{billingCycle === 'monthly' ? '450' : '4,420'}
                   </span>
                   <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
@@ -183,7 +183,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
-                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 20%</span>
+                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 18%</span>
                   </div>
                 )}
               </div>
@@ -195,7 +195,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">200 credits</span> per month</span>
+                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">100 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -203,7 +203,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~100 songs or 200 cover art</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~50 songs or 100 cover art</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -226,13 +226,18 @@ export default function Pricing() {
               <button
                 onClick={async () => {
                   try {
-                    console.log('Creating subscription...')
+                    console.log('Creating Creator subscription...')
                     const response = await fetch('/api/subscriptions/create', {
                       method: 'POST',
                       headers: {
+                        'Content-Type': 'application/json',
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
                         'Pragma': 'no-cache'
-                      }
+                      },
+                      body: JSON.stringify({
+                        plan: 'creator',
+                        billing: billingCycle
+                      })
                     })
                     
                     console.log('Response status:', response.status)
@@ -281,7 +286,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-5xl font-black bg-gradient-to-br from-white via-cyan-200 to-purple-200 bg-clip-text text-transparent">
-                    ${billingCycle === 'monthly' ? '15' : '144'}
+                    ₹{billingCycle === 'monthly' ? '1,355' : '13,090'}
                   </span>
                   <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
@@ -289,7 +294,7 @@ export default function Pricing() {
                 </div>
                 {billingCycle === 'annual' && (
                   <div className="inline-block px-2 py-0.5 bg-cyan-500/15 border border-cyan-400/40 rounded-full">
-                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 20%</span>
+                    <span className="text-cyan-300 text-[10px] font-bold">SAVE 19%</span>
                   </div>
                 )}
               </div>

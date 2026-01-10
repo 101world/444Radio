@@ -51,7 +51,12 @@ async function handleRazorpayWebhook(req: Request, signature: string) {
       
       console.log('[Razorpay] Payment captured:', paymentEntity.id, 'Amount:', amount, 'Notes:', JSON.stringify(notes))
       
-      if (amount === 45000 && notes.clerk_user_id) {
+      // Extract credits from notes (sent from subscription creation)
+      const creditsToAdd = notes.credits ? parseInt(notes.credits) : 0
+      const planType = notes.plan_type || 'unknown'
+      const billingCycle = notes.billing_cycle || 'unknown'
+      
+      if (creditsToAdd > 0 && notes.clerk_user_id) {
         const { data: user } = await supabaseAdmin
           .from('users')
           .select('credits')
@@ -59,17 +64,24 @@ async function handleRazorpayWebhook(req: Request, signature: string) {
           .single()
 
         if (user) {
+          const newCredits = user.credits + creditsToAdd
+          
           await supabaseAdmin
             .from('users')
             .update({
-              credits: user.credits + 100,
+              credits: newCredits,
               subscription_status: 'active',
-              subscription_plan: 'plan_S2DGVK6J270rtt'
+              subscription_plan: notes.subscription_id || planType
             })
             .eq('clerk_user_id', notes.clerk_user_id)
           
-          console.log('[Razorpay] ✅ Credits delivered to:', notes.clerk_user_id)
+          console.log(`[Razorpay] ✅ ${creditsToAdd} credits delivered to ${notes.clerk_user_id} (${planType} ${billingCycle})`)
+          console.log(`[Razorpay] New balance: ${newCredits} credits`)
+        } else {
+          console.error('[Razorpay] User not found:', notes.clerk_user_id)
         }
+      } else {
+        console.log('[Razorpay] No credits to add or missing user ID')
       }
     }
 
