@@ -26,37 +26,47 @@ export async function POST(request: Request) {
     const event = JSON.parse(body)
     console.log('[Razorpay Webhook] Event received:', event.event)
 
+    // Razorpay webhook payload structure:
+    // {
+    //   event: "subscription.activated",
+    //   payload: {
+    //     subscription: { id, customer_id, plan_id, status, start_at, end_at, ... }
+    //     payment: { id, amount, status, customer_id, ... }
+    //   }
+    // }
+    // Note: Direct access - no .entity nested object
+    
     // Handle subscription events
     switch (event.event) {
       case 'subscription.activated':
       case 'subscription.charged':
-        await handleSubscriptionSuccess(event.payload.subscription.entity)
+        await handleSubscriptionSuccess(event.payload.subscription)
         break
 
       case 'subscription.paused':
-        await handleSubscriptionPaused(event.payload.subscription.entity)
+        await handleSubscriptionPaused(event.payload.subscription)
         break
 
       case 'subscription.resumed':
-        await handleSubscriptionResumed(event.payload.subscription.entity)
+        await handleSubscriptionResumed(event.payload.subscription)
         break
 
       case 'subscription.cancelled':
       case 'subscription.expired':
-        await handleSubscriptionEnd(event.payload.subscription.entity)
+        await handleSubscriptionEnd(event.payload.subscription)
         break
 
       case 'subscription.updated':
-        await handleSubscriptionUpdated(event.payload.subscription.entity)
+        await handleSubscriptionUpdated(event.payload.subscription)
         break
 
       case 'payment.authorized':
       case 'payment.captured':
-        await handlePaymentSuccess(event.payload.payment.entity)
+        await handlePaymentSuccess(event.payload.payment)
         break
 
       case 'payment.failed':
-        await handlePaymentFailed(event.payload.payment.entity)
+        await handlePaymentFailed(event.payload.payment)
         break
 
       default:
