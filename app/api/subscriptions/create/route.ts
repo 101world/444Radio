@@ -95,6 +95,7 @@ export async function POST() {
         total_count: 12,
         quantity: 1,
         customer_notify: 1,
+        addons: [],
         notes: {
           clerk_user_id: userId,
           email: userEmail
