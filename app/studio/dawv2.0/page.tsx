@@ -1311,7 +1311,7 @@ export default function DAWProRebuild() {
                         const formData = new FormData()
                         formData.append('file', file)
                         formData.append('title', file.name.replace(/\.[^/.]+$/, ''))
-                        formData.append('type', 'audio')
+                        formData.append('type', 'music')
                         const response = await fetch('/api/profile/upload', {
                           method: 'POST',
                           body: formData
@@ -1450,15 +1450,15 @@ export default function DAWProRebuild() {
                         }`}
                         onClick={() => setSelectedTrackId(track.id)}
                       >
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors truncate mr-2">
                             {track.name}
                           </div>
                           {selectedTrackId === track.id && (
-                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse flex-shrink-0" />
                           )}
                         </div>
-                        <div className="flex gap-2 mb-3">
+                        <div className="flex gap-1.5 mb-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -1466,10 +1466,10 @@ export default function DAWProRebuild() {
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
+                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
                               track.muted
-                                ? 'bg-red-500 text-white shadow-red-500/30'
-                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:border-gray-600'
+                                ? 'bg-red-500 text-white'
+                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800'
                             }`}
                             title="Mute track"
                           >
@@ -1482,10 +1482,10 @@ export default function DAWProRebuild() {
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
+                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
                               track.solo
-                                ? 'bg-yellow-500 text-black shadow-yellow-500/30'
-                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:border-gray-600'
+                                ? 'bg-yellow-500 text-black'
+                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800'
                             }`}
                             title="Solo track"
                           >
@@ -1496,18 +1496,18 @@ export default function DAWProRebuild() {
                               e.stopPropagation()
                               setRecordingTrackId(recordingTrackId === track.id ? null : track.id)
                             }}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shadow-sm ${
+                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
                               recordingTrackId === track.id
-                                ? 'bg-red-500 text-white animate-pulse shadow-red-500/50'
-                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800 hover:border-gray-600'
+                                ? 'bg-red-500 text-white animate-pulse'
+                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800'
                             }`}
                             title="Arm for recording"
                           >
                             ●
                           </button>
                         </div>
-                        <div className="flex items-center gap-3 bg-[#0a0a0a] border border-gray-800/50 rounded-lg px-3 py-2">
-                          <Volume2 size={14} className="text-cyan-500 flex-shrink-0" />
+                        <div className="flex items-center gap-2 bg-[#0a0a0a] border border-gray-800/50 rounded-lg px-2 py-1.5">
+                          <Volume2 size={12} className="text-cyan-500 flex-shrink-0" />
                           <input
                             id={`volume-${track.id}`}
                             name={`volume-track-${idx + 1}`}
@@ -1521,10 +1521,10 @@ export default function DAWProRebuild() {
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className="flex-1 accent-cyan-500"
+                            className="flex-1 accent-cyan-500 min-w-0"
                             title={`Volume: ${Math.round(track.volume * 100)}%`}
                           />
-                          <div className="text-xs text-gray-400 font-mono w-10 text-right">
+                          <div className="text-xs text-gray-400 font-mono w-9 text-right flex-shrink-0">
                             {Math.round(track.volume * 100)}%
                           </div>
                         </div>
