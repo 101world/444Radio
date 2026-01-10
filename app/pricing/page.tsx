@@ -226,18 +226,26 @@ export default function Pricing() {
               <button
                 onClick={async () => {
                   try {
+                    console.log('Creating subscription...')
                     const response = await fetch('/api/subscriptions/create', {
                       method: 'POST'
                     })
+                    
+                    console.log('Response status:', response.status)
                     const data = await response.json()
+                    console.log('Response data:', data)
+                    
                     if (data.success && data.short_url) {
                       window.location.href = data.short_url
                     } else {
-                      alert('Failed to create subscription: ' + (data.error || 'Unknown error'))
+                      // Show detailed error
+                      const errorMsg = `Error: ${data.error}\nStatus: ${data.status || 'unknown'}\nDetails: ${data.details || 'none'}`
+                      console.error('Subscription failed:', errorMsg)
+                      alert(errorMsg)
                     }
                   } catch (error) {
                     console.error('Subscription error:', error)
-                    alert('Failed to create subscription. Please try again.')
+                    alert('Network error: ' + error.message)
                   }
                 }}
                 className="w-full py-4 px-4 bg-gradient-to-r from-cyan-600 to-cyan-400 text-white rounded-xl font-bold hover:from-cyan-700 hover:to-cyan-500 transition-all duration-300 shadow-lg shadow-cyan-500/40 group-hover:scale-105 text-sm"
