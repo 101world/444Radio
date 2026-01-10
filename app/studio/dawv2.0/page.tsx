@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW'
 import type { Track, TrackClip } from '@/lib/audio/TrackManager'
@@ -58,6 +58,15 @@ export default function DAWProRebuild() {
   const [dragPreview, setDragPreview] = useState<{ time: number; trackId: string | null } | null>(null)
   const [draggingLoopHandle, setDraggingLoopHandle] = useState<'start' | 'end' | null>(null)
   const [activeLoopHandle, setActiveLoopHandle] = useState<'start' | 'end' | null>(null)
+  const audioBufferCache = useRef<Map<string, Promise<AudioBuffer>>>(new Map())
+  const isHydratingRef = useRef(false)
+  const [dirtyCounter, setDirtyCounter] = useState(0)
+  const markProjectDirty = useCallback(() => {
+    if (isHydratingRef.current) return
+    setDirtyCounter((prev) => prev + 1)
+  }, [])
+  const [hydrationProgress, setHydrationProgress] = useState<{ current: number; total: number } | null>(null)
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 30 })
 
   // Advanced generation modal states
   const [showGenerateModal, setShowGenerateModal] = useState(false)
@@ -92,46 +101,97 @@ export default function DAWProRebuild() {
     loopRef.current = { enabled: loopEnabled, start: loopStart, end: loopEnd }
   }, [loopEnabled, loopStart, loopEnd])
 
+  useEffect(() => {
+    const timelineEl = timelineRef.current
+    if (!timelineEl) return
+
+    let frameId: number | null = null
+
+    const updateRange = () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
+      }
+      frameId = requestAnimationFrame(() => {
+        const scrollLeft = timelineEl.scrollLeft
+        const width = timelineEl.clientWidth || 1
+        const nextStart = Math.max(0, scrollLeft / zoom)
+        const nextEnd = Math.min(TIMELINE_SECONDS, (scrollLeft + width) / zoom)
+
+        setVisibleRange((prev) => {
+          if (
+            Math.abs(prev.start - nextStart) < 0.001 &&
+            Math.abs(prev.end - nextEnd) < 0.001
+          ) {
+            return prev
+          }
+          return { start: nextStart, end: nextEnd }
+        })
+      })
+    }
+
+    updateRange()
+    timelineEl.addEventListener('scroll', updateRange)
+
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => updateRange())
+      resizeObserver.observe(timelineEl)
+    }
+
+    return () => {
+      timelineEl.removeEventListener('scroll', updateRange)
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
+      }
+      resizeObserver?.disconnect()
+    }
+  }, [zoom, TIMELINE_SECONDS])
+
   // Initialize DAW
   useEffect(() => {
-    if (!user) return
+    if (!user?.id) return
+
+    let isMounted = true
+    let animationFrameId: number | null = null
+    let dawInstance: MultiTrackDAW | null = null
 
     const initDAW = async () => {
       try {
-        const dawInstance = new MultiTrackDAW({ userId: user.id })
+        const instance = new MultiTrackDAW({ userId: user.id })
+        dawInstance = instance
 
-        // Add 8 default tracks
         for (let i = 0; i < 8; i++) {
-          dawInstance.createTrack(`${i + 1} Audio`)
+          instance.createTrack(`${i + 1} Audio`)
         }
 
-        setDaw(dawInstance)
-        setTracks(dawInstance.getTracks())
+        if (!isMounted) {
+          instance.dispose()
+          return
+        }
+
+        setDaw(instance)
+        setTracks(instance.getTracks())
         setLoading(false)
 
-        // Playhead animation loop
         const animate = () => {
-          if (dawInstance) {
-            const state = dawInstance.getTransportState()
-            if (state.isPlaying) {
-              let currentTime = state.currentTime
-
-              // Loop enforcement
-              const loop = loopRef.current
-              if (loop.enabled && currentTime >= loop.end) {
-                dawInstance.seekTo(loop.start)
-                currentTime = loop.start
-              }
-
-              setPlayhead(currentTime)
-              setIsPlaying(true)
-            } else {
-              setIsPlaying(false)
+          if (!instance) return
+          const state = instance.getTransportState()
+          if (state.isPlaying) {
+            let currentTime = state.currentTime
+            const loop = loopRef.current
+            if (loop.enabled && currentTime >= loop.end) {
+              instance.seekTo(loop.start)
+              currentTime = loop.start
             }
+            setPlayhead(currentTime)
+            setIsPlaying(true)
+          } else {
+            setIsPlaying(false)
           }
-          requestAnimationFrame(animate)
+          animationFrameId = requestAnimationFrame(animate)
         }
-        animate()
+
+        animationFrameId = requestAnimationFrame(animate)
       } catch (error) {
         console.error('DAW init failed:', error)
         setLoading(false)
@@ -139,7 +199,19 @@ export default function DAWProRebuild() {
     }
 
     initDAW()
-  }, [user])
+
+    return () => {
+      isMounted = false
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId)
+      }
+      dawInstance?.dispose()
+      setDaw(null)
+      setTracks([])
+      audioBufferCache.current.clear()
+      isHydratingRef.current = false
+    }
+  }, [user?.id])
 
   // Load library
   useEffect(() => {
@@ -180,57 +252,115 @@ export default function DAWProRebuild() {
     [beatLength]
   )
 
+  const bufferedRange = useMemo(() => {
+    const bufferSeconds = 4
+    return {
+      start: Math.max(0, visibleRange.start - bufferSeconds),
+      end: Math.min(TIMELINE_SECONDS, visibleRange.end + bufferSeconds)
+    }
+  }, [visibleRange.start, visibleRange.end, TIMELINE_SECONDS])
+
+  const timeMarkerIndices = useMemo(() => {
+    const markers: number[] = []
+    const start = Math.floor(bufferedRange.start)
+    const end = Math.ceil(bufferedRange.end)
+    for (let i = start; i <= end; i++) {
+      markers.push(i)
+    }
+    return markers
+  }, [bufferedRange.start, bufferedRange.end])
+
+  const gridLineIndices = useMemo(() => {
+    const indices: number[] = []
+    const totalSteps = (TIMELINE_SECONDS + 1) * GRID_SUBDIVISION
+    const start = Math.max(0, Math.floor(bufferedRange.start * GRID_SUBDIVISION))
+    const end = Math.min(totalSteps, Math.ceil(bufferedRange.end * GRID_SUBDIVISION))
+    for (let i = start; i < end; i++) {
+      indices.push(i)
+    }
+    return indices
+  }, [bufferedRange.start, bufferedRange.end, GRID_SUBDIVISION, TIMELINE_SECONDS])
+
   // Simple toast helper
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 2500)
   }, [])
 
+  const getAudioBuffer = useCallback(
+    async (audioUrl: string) => {
+      if (!daw) throw new Error('DAW not ready')
+
+      if (!audioBufferCache.current.has(audioUrl)) {
+        const promise = (async () => {
+          const proxyUrl = `/api/r2/audio-proxy?url=${encodeURIComponent(audioUrl)}`
+          const response = await fetch(proxyUrl)
+          if (!response.ok) throw new Error('Fetch failed')
+
+          const arrayBuffer = await response.arrayBuffer()
+          const audioContext = daw.getAudioContext()
+          return audioContext.decodeAudioData(arrayBuffer.slice(0))
+        })()
+
+        audioBufferCache.current.set(audioUrl, promise)
+
+        try {
+          await promise
+        } catch (error) {
+          audioBufferCache.current.delete(audioUrl)
+          throw error
+        }
+      }
+
+      return audioBufferCache.current.get(audioUrl)!
+    },
+    [daw]
+  )
+
   const addClipFromUrl = useCallback(
     async (
       audioUrl: string,
       trackId: string,
-      options: Partial<TrackClip> & { respectSnap?: boolean } = {}
+      options: Partial<TrackClip> & { respectSnap?: boolean; skipStateUpdate?: boolean; skipDirtyFlag?: boolean } = {}
     ) => {
       if (!daw) return null
 
       try {
-        const proxyUrl = `/api/r2/audio-proxy?url=${encodeURIComponent(audioUrl)}`
-        const response = await fetch(proxyUrl)
-        if (!response.ok) throw new Error('Fetch failed')
-
-        const arrayBuffer = await response.arrayBuffer()
-        const audioContext = daw.getAudioContext()
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0))
-
-        const shouldSnap = options.respectSnap ?? snapEnabled
-        const start = options.startTime ?? 0
+        const audioBuffer = await getAudioBuffer(audioUrl)
+        const { respectSnap, skipStateUpdate, skipDirtyFlag, ...clipOptions } = options
+        const shouldSnap = respectSnap ?? snapEnabled
+        const start = clipOptions.startTime ?? 0
 
         const clip: TrackClip = {
-          id: options.id || `clip-${Date.now()}`,
+          id: clipOptions.id || `clip-${Date.now()}`,
           trackId,
           startTime: shouldSnap ? snapTime(start) : start,
-          duration: options.duration ?? audioBuffer.duration,
-          offset: options.offset ?? 0,
-          gain: options.gain ?? 1,
-          fadeIn: options.fadeIn || { duration: 0.01, curve: 'exponential' },
-          fadeOut: options.fadeOut || { duration: 0.01, curve: 'exponential' },
+          duration: clipOptions.duration ?? audioBuffer.duration,
+          offset: clipOptions.offset ?? 0,
+          gain: clipOptions.gain ?? 1,
+          fadeIn: clipOptions.fadeIn || { duration: 0.01, curve: 'exponential' },
+          fadeOut: clipOptions.fadeOut || { duration: 0.01, curve: 'exponential' },
           buffer: audioBuffer,
-          locked: options.locked ?? false,
+          locked: clipOptions.locked ?? false,
           sourceUrl: audioUrl,
-          name: options.name,
-          color: options.color
+          name: clipOptions.name,
+          color: clipOptions.color
         }
 
         daw.addClipToTrack(trackId, clip)
-        setTracks(daw.getTracks())
+        if (!skipStateUpdate) {
+          setTracks(daw.getTracks())
+        }
+        if (!skipDirtyFlag) {
+          markProjectDirty()
+        }
         return clip
       } catch (error) {
         console.error('Clip decode/add failed:', error)
         throw error
       }
     },
-    [daw, snapEnabled, GRID_SUBDIVISION]
+    [daw, getAudioBuffer, snapEnabled, snapTime, markProjectDirty]
   )
 
   const serializeTracks = useCallback((allTracks: Track[]) => {
@@ -313,15 +443,17 @@ export default function DAWProRebuild() {
 
       if (response.ok) {
         const data = await response.json()
-        if (data.id) {
+        const nextProjectId = data.id || currentProjectId
+        if (data.id && data.id !== currentProjectId) {
           setCurrentProjectId(data.id)
         }
-        await fetchProjects()
+        await fetchProjects({ autoLoad: false, activeId: nextProjectId || undefined })
         if (mode === 'manual') {
           showToast('Project saved', 'success')
         }
         setSaveTick(true)
         setTimeout(() => setSaveTick(false), 1000)
+        setDirtyCounter(0)
       } else {
         const error = await response.json()
         showToast(`Save failed: ${error.error || 'Unknown error'}`, 'error')
@@ -547,6 +679,14 @@ export default function DAWProRebuild() {
     }, 2000)
   }, [handleSave, currentProjectId])
 
+  useEffect(() => {
+    return () => {
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current)
+      }
+    }
+  }, [])
+
   const resetProject = useCallback(() => {
     if (!daw) return
     try {
@@ -561,6 +701,7 @@ export default function DAWProRebuild() {
       setBpm(120)
       daw.setBPM(120)
       setTracks(daw.getTracks())
+      setDirtyCounter(0)
     } catch (error) {
       console.error('Reset project failed:', error)
     }
@@ -571,27 +712,42 @@ export default function DAWProRebuild() {
     const newName = window.prompt('Rename project to:', projectName)
     if (!newName || !newName.trim()) return
     setProjectName(newName.trim())
+    markProjectDirty()
     await handleSave('manual')
     showToast('Project renamed', 'success')
-  }, [currentProjectId, handleSave, projectName, showToast])
+  }, [currentProjectId, handleSave, projectName, showToast, markProjectDirty])
 
   // Autosave hooks
   useEffect(() => {
-    if (daw) {
-      queueAutosave()
-    }
-  }, [tracks, bpm, queueAutosave, daw])
+    if (!daw) return
+    if (dirtyCounter === 0) return
+    queueAutosave()
+  }, [dirtyCounter, queueAutosave, daw])
 
   const hydrateProject = useCallback(
     async (project: any) => {
       if (!daw || !project?.tracks) return
 
       try {
+        isHydratingRef.current = true
         daw.stop()
         const trackManager = daw.getTrackManager()
 
         // Clear existing tracks
         trackManager.getTracks().forEach((t) => trackManager.deleteTrack(t.id))
+
+        const totalClips = project.tracks.reduce(
+          (sum: number, track: any) => sum + ((track?.clips as any[])?.length || 0),
+          0
+        )
+        setHydrationProgress(totalClips > 0 ? { current: 0, total: totalClips } : null)
+
+        const bumpProgress = () =>
+          setHydrationProgress((prev) =>
+            prev ? { current: Math.min(prev.current + 1, prev.total), total: prev.total } : prev
+          )
+
+        const clipTasks: Promise<void>[] = []
 
         for (const trackData of project.tracks as any[]) {
           const { clips = [], ...rest } = trackData || {}
@@ -599,15 +755,25 @@ export default function DAWProRebuild() {
 
           for (const clipData of clips) {
             if (!clipData?.sourceUrl) continue
-            try {
-              await addClipFromUrl(clipData.sourceUrl, newTrack.id, {
-                ...clipData,
-                respectSnap: false
+            const task = addClipFromUrl(clipData.sourceUrl, newTrack.id, {
+              ...clipData,
+              respectSnap: false,
+              skipStateUpdate: true,
+              skipDirtyFlag: true
+            })
+              .then(() => {
+                bumpProgress()
               })
-            } catch (err) {
-              console.error('Clip hydrate failed:', err)
-            }
+              .catch((err) => {
+                console.error('Clip hydrate failed:', err)
+                bumpProgress()
+              })
+            clipTasks.push(task)
           }
+        }
+
+        if (clipTasks.length) {
+          await Promise.all(clipTasks)
         }
 
         if (project.tempo) {
@@ -618,8 +784,12 @@ export default function DAWProRebuild() {
         setProjectName(project.title || 'Untitled Project')
         setCurrentProjectId(project.id || null)
         setTracks(daw.getTracks())
+        setDirtyCounter(0)
       } catch (error) {
         console.error('Project hydrate failed:', error)
+      } finally {
+        isHydratingRef.current = false
+        setHydrationProgress(null)
       }
     },
     [addClipFromUrl, daw]
@@ -636,14 +806,17 @@ export default function DAWProRebuild() {
     [projects, hydrateProject]
   )
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (options?: { autoLoad?: boolean; activeId?: string }) => {
     try {
       const response = await fetch('/api/studio/projects')
       if (!response.ok) return
       const data = await response.json()
       setProjects(data.projects || [])
 
-      if (!currentProjectId && data.projects && data.projects.length > 0 && data.projects[0].tracks) {
+      const activeId = options?.activeId ?? currentProjectId
+      const shouldAutoLoad = options?.autoLoad ?? !activeId
+
+      if (shouldAutoLoad && data.projects && data.projects.length > 0 && data.projects[0].tracks) {
         await hydrateProject(data.projects[0])
       }
     } catch (error) {
@@ -662,7 +835,7 @@ export default function DAWProRebuild() {
       if (response.ok) {
         showToast('Project deleted', 'success')
         setCurrentProjectId(null)
-        await fetchProjects()
+        await fetchProjects({ autoLoad: true })
         resetProject()
       } else {
         const err = await response.json()
@@ -691,7 +864,7 @@ export default function DAWProRebuild() {
       })
       if (response.ok) {
         showToast('Project duplicated', 'success')
-        await fetchProjects()
+        await fetchProjects({ autoLoad: false, activeId: currentProjectId || undefined })
       } else {
         const err = await response.json()
         showToast(`Duplicate failed: ${err.error || 'Unknown error'}`, 'error')
@@ -704,7 +877,7 @@ export default function DAWProRebuild() {
 
   useEffect(() => {
     if (user && daw && !loading) {
-      fetchProjects()
+      fetchProjects({ autoLoad: true })
     }
   }, [user, daw, loading, fetchProjects])
 
@@ -782,6 +955,11 @@ export default function DAWProRebuild() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
+      {hydrationProgress && (
+        <div className="fixed top-24 right-6 z-40 px-4 py-2 bg-[#111] border border-cyan-500/40 rounded-lg text-xs text-cyan-100 shadow-lg">
+          Loading project… {hydrationProgress.current}/{hydrationProgress.total}
+        </div>
+      )}
       {/* Top Bar */}
       <div className="h-14 bg-[#111] border-b border-gray-800 flex items-center justify-between px-6">
         <div className="flex items-center gap-6">
@@ -792,7 +970,10 @@ export default function DAWProRebuild() {
           <input
             type="text"
             value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
+            onChange={(e) => {
+              setProjectName(e.target.value)
+              markProjectDirty()
+            }}
             className="bg-[#1a1a1a] border border-gray-700 rounded px-4 py-1.5 text-sm text-white focus:border-cyan-500 focus:outline-none min-w-[240px]"
             placeholder="Project Name"
           />
@@ -858,7 +1039,12 @@ export default function DAWProRebuild() {
             <input
               type="number"
               value={bpm}
-              onChange={(e) => setBpm(Number(e.target.value))}
+              onChange={(e) => {
+                const next = Number(e.target.value)
+                setBpm(next)
+                daw?.setBPM(next)
+                markProjectDirty()
+              }}
               className="w-20 bg-[#1a1a1a] border border-gray-700 rounded px-3 py-1.5 text-sm text-center focus:border-cyan-500 focus:outline-none"
               min="60"
               max="200"
@@ -1088,6 +1274,7 @@ export default function DAWProRebuild() {
                         e.stopPropagation()
                         daw?.updateTrack(track.id, { muted: !track.muted })
                         setTracks(daw?.getTracks() || [])
+                        markProjectDirty()
                       }}
                       className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
                         track.muted
@@ -1102,6 +1289,7 @@ export default function DAWProRebuild() {
                         e.stopPropagation()
                         daw?.updateTrack(track.id, { solo: !track.solo })
                         setTracks(daw?.getTracks() || [])
+                        markProjectDirty()
                       }}
                       className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
                         track.solo
@@ -1136,6 +1324,7 @@ export default function DAWProRebuild() {
                         e.stopPropagation()
                         daw?.updateTrack(track.id, { volume: Number(e.target.value) / 100 })
                         setTracks(daw?.getTracks() || [])
+                        markProjectDirty()
                       }}
                       className="flex-1 accent-cyan-500"
                     />
@@ -1154,15 +1343,15 @@ export default function DAWProRebuild() {
                 className="sticky top-0 z-10 bg-[#0d0d0d] border-b border-gray-800 relative"
                 style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
               >
-                {Array.from({ length: TIMELINE_SECONDS + 1 }).map((_, i) => (
+                {timeMarkerIndices.map((second) => (
                   <div
-                    key={i}
+                    key={second}
                     className="absolute top-0 h-full"
-                    style={{ left: `${i * zoom}px` }}
+                    style={{ left: `${second * zoom}px` }}
                   >
                     <div className="h-full border-l border-gray-700 relative">
                       <span className="text-xs text-gray-500 ml-2 absolute top-2">
-                        {i}s
+                        {second}s
                       </span>
                     </div>
                   </div>
@@ -1244,13 +1433,13 @@ export default function DAWProRebuild() {
                   }}
                 >
                   {/* Grid Lines */}
-                  {Array.from({ length: (TIMELINE_SECONDS + 1) * GRID_SUBDIVISION }).map((_, i) => (
+                  {gridLineIndices.map((stepIndex) => (
                     <div
-                      key={i}
+                      key={stepIndex}
                       className="absolute top-0 bottom-0 border-l pointer-events-none"
                       style={{
-                        left: `${(i / GRID_SUBDIVISION) * zoom}px`,
-                        borderColor: i % GRID_SUBDIVISION === 0 ? '#333' : '#222'
+                        left: `${(stepIndex / GRID_SUBDIVISION) * zoom}px`,
+                        borderColor: stepIndex % GRID_SUBDIVISION === 0 ? '#333' : '#222'
                       }}
                     />
                   ))}

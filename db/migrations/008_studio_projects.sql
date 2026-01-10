@@ -13,21 +13,25 @@ CREATE TABLE IF NOT EXISTS studio_projects (
 ALTER TABLE studio_projects ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only see their own projects
+DROP POLICY IF EXISTS "Users can view own projects" ON studio_projects;
 CREATE POLICY "Users can view own projects"
   ON studio_projects FOR SELECT
   USING (auth.uid()::text = user_id);
 
 -- Policy: Users can insert their own projects
+DROP POLICY IF EXISTS "Users can create own projects" ON studio_projects;
 CREATE POLICY "Users can create own projects"
   ON studio_projects FOR INSERT
   WITH CHECK (auth.uid()::text = user_id);
 
 -- Policy: Users can update their own projects
+DROP POLICY IF EXISTS "Users can update own projects" ON studio_projects;
 CREATE POLICY "Users can update own projects"
   ON studio_projects FOR UPDATE
   USING (auth.uid()::text = user_id);
 
 -- Policy: Users can delete their own projects
+DROP POLICY IF EXISTS "Users can delete own projects" ON studio_projects;
 CREATE POLICY "Users can delete own projects"
   ON studio_projects FOR DELETE
   USING (auth.uid()::text = user_id);
@@ -40,6 +44,8 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS update_studio_projects_updated_at ON studio_projects;
 
 CREATE TRIGGER update_studio_projects_updated_at
   BEFORE UPDATE ON studio_projects
