@@ -20,7 +20,7 @@ interface Track {
   image_url?: string
 }
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [tracks, setTracks] = useState<Track[]>([])
@@ -393,5 +393,13 @@ export default function HomePage() {
       {/* Floating Menu */}
       <FloatingMenu />
     </>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <HomePageContent />
+    </Suspense>
   )
 }

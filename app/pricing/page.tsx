@@ -508,16 +508,9 @@ export default function Pricing() {
                   'Get Started'
                 )}
               </button>
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache'
-                      },
-                      body: JSON.stringify({
-                        plan: 'studio',
-                        billing: billingCycle
-                      })
-                    })
+            </div>
+          </div>
+        </div>
                     
                     const data = await response.json()
                     
