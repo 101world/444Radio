@@ -19,7 +19,7 @@ export async function GET() {
     
     // First, try to fetch the user
     const response = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated`,
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated,subscription_status`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -64,7 +64,7 @@ export async function GET() {
       } else {
         // User might have been created by webhook in the meantime, try fetching again
         const retryResponse = await fetch(
-          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated`,
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated,subscription_status`,
           {
             headers: {
               'apikey': supabaseKey,
@@ -82,7 +82,8 @@ export async function GET() {
 
     return corsResponse(NextResponse.json({ 
       credits: user?.credits || 0, // Default to 0 if still not found
-      totalGenerated: user?.total_generated || 0
+      totalGenerated: user?.total_generated || 0,
+      subscription_status: user?.subscription_status || 'none'
     }))
   } catch (error) {
     console.error('Error fetching credits:', error)
@@ -105,7 +106,7 @@ export async function POST() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
-    const response = await fetch(
+    const response = await fetch(,subscription_status
       `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,total_generated`,
       {
         method: 'GET',
@@ -125,7 +126,8 @@ export async function POST() {
 
     return corsResponse(NextResponse.json({ 
       credits: user?.credits || 0,
-      totalGenerated: user?.total_generated || 0
+      totalGenerated: user?.total_generated || 0,
+      subscription_status: user?.subscription_status || 'none'
     }))
   } catch (error) {
     console.error('Error fetching credits (POST):', error)
