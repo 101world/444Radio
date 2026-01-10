@@ -26,6 +26,7 @@ export async function POST() {
 
     const keyId = process.env.RAZORPAY_KEY_ID
     const keySecret = process.env.RAZORPAY_KEY_SECRET
+    const planId = 'plan_S2DGVK6J270rtt' // Creator 444 plan
 
     if (!keyId || !keySecret) {
       return corsResponse(
@@ -38,56 +39,72 @@ export async function POST() {
       ? `${user.firstName} ${user.lastName}`.trim()
       : user.firstName || user.username || userEmail.split('@')[0]
 
-    console.log('[Payment] Creating for:', customerName, userEmail)
+    console.log('[Subscription] Creating for:', customerName, userEmail)
 
-    // Create STANDALONE payment link - no customer, no subscription pre-creation
-    const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
+    // Step 1: Create NEW customer (fresh, no reuse)
+    const custRes = await fetch('https://api.razorpay.com/v1/customers', {
       method: 'POST',
       headers: {
         Authorization: `Basic ${authHeader}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        amount: 45000,
-        currency: 'INR',
-        description: `444Radio Creator - ${customerName}`,
-        customer: {
-          name: customerName,
-          email: userEmail
-        },
-        notify: {
-          email: true,
-          sms: false
-        },
-        notes: {
-          clerk_user_id: userId,
-          user_email: userEmail
-        },
-        callback_url: 'https://444radio.co.in/profile',
-        callback_method: 'get'
+        name: customerName,
+        email: userEmail,
+        fail_existing: '1' // Create new customer every time
       })
     })
 
-    if (!linkRes.ok) {
-      const error = await linkRes.text()
-      console.error('[Payment] Failed:', error)
+    if (!custRes.ok) {
+      const error = await custRes.text()
+      console.error('[Subscription] Customer creation failed:', error)
       return corsResponse(
-        NextResponse.json({ error: 'Payment link creation failed', details: error }, { status: 500 })
+        NextResponse.json({ error: 'Customer creation failed', details: error }, { status: 500 })
       )
     }
 
-    const link = await linkRes.json()
-    console.log('[Payment] Created:', link.id)
+    const customer = await custRes.json()
+    console.log('[Subscription] Customer created:', customer.id)
+
+    // Step 2: Create subscription
+    const subRes = await fetch('https://api.razorpay.com/v1/subscriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${authHeader}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        plan_id: planId,
+        customer_id: customer.id,
+        quantity: 1,
+        total_count: 12,
+        customer_notify: 1,
+        notes: {
+          clerk_user_id: userId
+        }
+      })
+    })
+
+    if (!subRes.ok) {
+      const error = await subRes.text()
+      console.error('[Subscription] Subscription creation failed:', error)
+      return corsResponse(
+        NextResponse.json({ error: 'Subscription creation failed', details: error }, { status: 500 })
+      )
+    }
+
+    const subscription = await subRes.json()
+    console.log('[Subscription] Created:', subscription.id)
 
     return corsResponse(
       NextResponse.json({
         success: true,
-        short_url: link.short_url
+        short_url: subscription.short_url
       })
     )
 
   } catch (error) {
-    console.error('[Payment] Error:', error)
+    console.error('[Subscription] Error:', error)
     return corsResponse(
       NextResponse.json({ 
         error: 'Internal error',
