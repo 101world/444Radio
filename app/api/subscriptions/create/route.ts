@@ -43,50 +43,38 @@ export async function POST() {
 
     const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString('base64')
 
-    // Step 4: Find or create customer
-    let customerId: string = ''
-
-    // Try to find existing customer
-    const searchUrl = `https://api.razorpay.com/v1/customers?email=${encodeURIComponent(userEmail)}`
-    const searchRes = await fetch(searchUrl, {
-      headers: { Authorization: `Basic ${authHeader}` }
+    // Step 4: Get or create Razorpay customer (required for subscriptions)
+    console.log('[Subscription] Getting Razorpay customer for:', userEmail)
+    const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${authHeader}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: userEmail,
+        fail_existing: '0' // Returns existing customer if found
+      })
     })
 
-    if (searchRes.ok) {
-      const searchData = await searchRes.json()
-      if (searchData.items?.length > 0) {
-        customerId = searchData.items[0].id
-        console.log('[Subscription] Found existing customer:', customerId)
-      }
+    console.log('[Subscription] Customer API status:', customerRes.status)
+
+    if (!customerRes.ok) {
+      const error = await customerRes.text()
+      console.error('[Subscription] Customer API error:', error)
+      console.error('[Subscription] Status:', customerRes.status)
+      return corsResponse(
+        NextResponse.json({ 
+          error: 'Failed to setup payment account',
+          status: customerRes.status,
+          details: error
+        }, { status: 500 })
+      )
     }
 
-    // Create customer if not found
-    if (!customerId) {
-      console.log('[Subscription] Creating new customer')
-      const createRes = await fetch('https://api.razorpay.com/v1/customers', {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${authHeader}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: userEmail,
-          fail_existing: '0'
-        })
-      })
-
-      if (!createRes.ok) {
-        const error = await createRes.text()
-        console.error('[Subscription] Customer creation failed:', error)
-        return corsResponse(
-          NextResponse.json({ error: 'Failed to create customer' }, { status: 500 })
-        )
-      }
-
-      const customer = await createRes.json()
-      customerId = customer.id
-      console.log('[Subscription] Created customer:', customerId)
-    }
+    const customer = await customerRes.json()
+    const customerId = customer.id
+    console.log('[Subscription] Customer ready:', customerId)
 
     // Step 5: Create subscription
     console.log('[Subscription] Creating subscription with plan:', planId)
@@ -109,11 +97,18 @@ export async function POST() {
       })
     })
 
+    console.log('[Subscription] Subscription API status:', subRes.status)
+
     if (!subRes.ok) {
       const error = await subRes.text()
-      console.error('[Subscription] Subscription creation failed:', error)
+      console.error('[Subscription] Subscription API error:', error)
+      console.error('[Subscription] Status:', subRes.status)
       return corsResponse(
-        NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 })
+        NextResponse.json({ 
+          error: 'Failed to create subscription',
+          status: subRes.status,
+          details: error
+        }, { status: 500 })
       )
     }
 
