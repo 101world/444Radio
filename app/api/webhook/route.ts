@@ -52,6 +52,9 @@ export async function POST(req: Request) {
   if (eventType === 'user.created') {
     const { id, email_addresses, username, image_url } = evt.data
     const emailAddress = email_addresses[0]?.email_address || ''
+    
+    // Validate image URL - reject invalid data URLs
+    const validImageUrl = (image_url && image_url.startsWith('http')) ? image_url : null
 
     try {
       // Check if user already exists from Razorpay subscription (temp_ user)
@@ -69,7 +72,7 @@ export async function POST(req: Request) {
           .update({
             clerk_user_id: id,
             username: username || existingUser.username,
-            profile_image_url: image_url || existingUser.profile_image_url,
+            profile_image_url: validImageUrl || existingUser.profile_image_url,
             updated_at: new Date().toISOString()
           })
           .eq('email', emailAddress)
@@ -84,7 +87,7 @@ export async function POST(req: Request) {
           clerk_user_id: id,
           email: emailAddress,
           username: username || null,
-          profile_image_url: image_url || null,
+          profile_image_url: validImageUrl,
           credits: 20, // Give 20 credits automatically on signup
         }, { onConflict: 'clerk_user_id' })
 
@@ -101,6 +104,9 @@ export async function POST(req: Request) {
 
   if (eventType === 'user.updated') {
     const { id, email_addresses, username, image_url } = evt.data
+    
+    // Validate image URL
+    const validImageUrl = (image_url && image_url.startsWith('http')) ? image_url : null
 
     // Update user in Supabase
     const { error } = await supabase
@@ -108,7 +114,7 @@ export async function POST(req: Request) {
       .update({
         email: email_addresses[0]?.email_address || '',
         username: username || null,
-        profile_image_url: image_url || null,
+        profile_image_url: validImageUrl,
       })
       .eq('clerk_user_id', id)
 
