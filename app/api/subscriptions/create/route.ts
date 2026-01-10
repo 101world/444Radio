@@ -34,6 +34,10 @@ export async function POST() {
     const keySecret = process.env.RAZORPAY_KEY_SECRET
     const planId = process.env.RAZORPAY_CREATOR_PLAN_ID || 'plan_S2DGVK6J270rtt'
 
+    console.log('[Subscription] Key ID (first 10 chars):', keyId?.substring(0, 10))
+    console.log('[Subscription] Key Secret exists:', !!keySecret)
+    console.log('[Subscription] Plan ID:', planId)
+
     if (!keyId || !keySecret) {
       console.error('[Subscription] Missing Razorpay credentials')
       return corsResponse(
@@ -42,6 +46,7 @@ export async function POST() {
     }
 
     const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString('base64')
+    console.log('[Subscription] Auth header (first 20 chars):', authHeader.substring(0, 20))
 
     // Step 4: Get or create Razorpay customer (required for subscriptions)
     console.log('[Subscription] Getting Razorpay customer for:', userEmail)
