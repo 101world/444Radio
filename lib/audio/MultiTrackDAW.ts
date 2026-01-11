@@ -17,6 +17,7 @@ import { KeyboardShortcutManager } from './KeyboardShortcutManager'
 import { SampleLibraryManager } from './SampleLibraryManager'
 import { SelectionManager } from './SelectionManager'
 import { PerformanceManager, getPerformanceManager } from './PerformanceManager'
+import { AudioScheduler } from './scheduler'
 
 export interface DAWConfig {
   sampleRate?: number
@@ -38,6 +39,7 @@ export class MultiTrackDAW {
   // Core systems
   private audioContext: AudioContext
   private audioEngine: AudioEngine
+  private audioScheduler: AudioScheduler
   private trackManager: TrackManager
   private timelineManager: TimelineManager
   private mixingConsole: MixingConsole
@@ -69,12 +71,21 @@ export class MultiTrackDAW {
   private listeners: Map<string, Set<Function>> = new Map()
 
   constructor(config: DAWConfig = {}) {
-    // Initialize audio context
-    this.audioContext = new AudioContext({ sampleRate: config.sampleRate || 48000 })
+    // Initialize audio context - SINGLE shared context for all systems
+    this.audioContext = new AudioContext({ 
+      sampleRate: config.sampleRate || 48000,
+      latencyHint: 'interactive'
+    })
 
-    // Initialize core systems
-    // AudioEngine creates its own context, don't pass ours
-    this.audioEngine = new AudioEngine({ sampleRate: config.sampleRate || 48000 })
+    // Initialize core systems - pass shared context to AudioEngine
+    this.audioEngine = new AudioEngine({ 
+      context: this.audioContext,
+      enableWorklets: true 
+    })
+    this.audioScheduler = new AudioScheduler(this.audioContext, {
+      lookaheadMs: 50,
+      scheduleAheadMs: 100
+    })
     this.trackManager = new TrackManager(this.audioContext)
     this.timelineManager = new TimelineManager(config.bpm || 120)
     this.mixingConsole = new MixingConsole(this.audioContext)

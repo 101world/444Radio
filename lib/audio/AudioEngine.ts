@@ -4,6 +4,7 @@
  */
 
 export interface AudioEngineConfig {
+  context?: AudioContext;
   sampleRate?: number;
   latencyHint?: AudioContextLatencyCategory;
   enableWorklets?: boolean;
@@ -19,12 +20,14 @@ export class AudioEngine {
 
   constructor(config: AudioEngineConfig = {}) {
     const {
+      context,
       sampleRate = 44100,
       latencyHint = 'interactive',
       enableWorklets = true
     } = config;
 
-    this.context = new AudioContext({
+    // Use provided context or create new one
+    this.context = context || new AudioContext({
       sampleRate,
       latencyHint
     });
