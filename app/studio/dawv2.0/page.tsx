@@ -639,8 +639,22 @@ export default function DAWProRebuild() {
       const result = await response.json()
 
       if (result.success && result.audioUrl) {
-        setGenerationProgress('Adding to library...')
-        showToast(`✓ Track generated: "${finalTitle}"`, 'success')
+        setGenerationProgress('Adding to timeline...')
+        
+        // Add generated track to first available empty track
+        const emptyTrack = tracks.find(t => t.clips.length === 0)
+        if (emptyTrack && daw) {
+          try {
+            await handleAddClip(result.audioUrl, emptyTrack.id, 0)
+            showToast(`✓ "${finalTitle}" added to timeline`, 'success')
+          } catch (error) {
+            console.error('Failed to add generated track to timeline:', error)
+            showToast(`✓ Track generated: "${finalTitle}" (check library)`, 'success')
+          }
+        } else {
+          showToast(`✓ Track generated: "${finalTitle}" (drag from library)`, 'success')
+        }
+        
         // Refresh library to show new track
         await loadLibrary()
         setShowGenerateModal(false)
@@ -692,7 +706,33 @@ export default function DAWProRebuild() {
 
       if (data.success && data.stems) {
         setStemResults(data.stems)
-        showToast('Stems separated successfully!', 'success')
+        showToast('Stems separated successfully! Adding to timeline...', 'success')
+        
+        // Automatically add stems to timeline on separate tracks
+        const stemEntries = Object.entries(data.stems) as [string, string][]
+        for (const [stemType, stemUrl] of stemEntries) {
+          // Find or create track for this stem type
+          let targetTrack = tracks.find(t => t.name.toLowerCase().includes(stemType.toLowerCase()))
+          
+          if (!targetTrack || targetTrack.clips.length > 0) {
+            // Create new track if doesn't exist or already has clips
+            const trackName = `${stemType.charAt(0).toUpperCase() + stemType.slice(1)} Stem`
+            targetTrack = daw?.getTrackManager()?.createTrack({ name: trackName })
+            if (targetTrack) {
+              setTracks(daw?.getTracks() || [])
+            }
+          }
+          
+          if (targetTrack && daw) {
+            try {
+              await handleAddClip(stemUrl, targetTrack.id, 0)
+            } catch (error) {
+              console.error(`Failed to add ${stemType} stem:`, error)
+            }
+          }
+        }
+        
+        showToast(`✓ ${stemEntries.length} stems added to timeline`, 'success')
       } else {
         throw new Error('No stems returned')
       }
@@ -2055,13 +2095,34 @@ export default function DAWProRebuild() {
                             <Music size={20} className="text-purple-400" />
                             <span className="text-white font-medium capitalize">{key}</span>
                           </div>
-                          <button
-                            onClick={() => window.open(url, '_blank')}
-                            className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                          >
-                            <Download size={16} />
-                            Download
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                // Add this stem to timeline
+                                const emptyTrack = tracks.find(t => t.clips.length === 0)
+                                if (emptyTrack && daw) {
+                                  try {
+                                    await handleAddClip(url, emptyTrack.id, 0)
+                                    showToast(`✓ ${key} added to timeline`, 'success')
+                                  } catch (error) {
+                                    showToast('Failed to add stem', 'error')
+                                  }
+                                } else {
+                                  showToast('No empty tracks available', 'error')
+                                }
+                              }}
+                              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                              Add to Timeline
+                            </button>
+                            <button
+                              onClick={() => window.open(url, '_blank')}
+                              className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                              <Download size={16} />
+                              Download
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
