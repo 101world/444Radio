@@ -241,126 +241,51 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${userCredits} credits. Music requires 2 credits.`)
 
-    // Choose model based on language
-    const isEnglish = typeof language === 'string' && (language.toLowerCase() === 'english' || language.toLowerCase() === 'en')
-
+    // Generate music with MiniMax Music-1.5 (all languages)
+    console.log('🎵 Using MiniMax Music-1.5 ...')
     let audioUrl: string
-    if (isEnglish) {
-      // Generate music with MiniMax Music-1.5 (English)
-      console.log('🎵 Using MiniMax Music-1.5 (English) ...')
-      let output
-      try {
-        output = await replicate.run(
-          "minimax/music-1.5",
-          {
-            input: {
-              prompt: prompt.trim(),
-              lyrics: formattedLyrics,
-              bitrate,
-              sample_rate,
-              audio_format
-            }
-          }
-        )
-        console.log('✅ MiniMax Music-1.5 API response received')
-      } catch (genError) {
-        console.error('❌ Music generation failed (MiniMax):', genError)
-        // NO credits deducted since generation failed
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: sanitizeError(genError),
-            creditsRefunded: false,
-            creditsRemaining: userCredits
-          },
-          { status: 500 }
-        )
-      }
-
-      console.log('✅ Generation succeeded, processing output...')
-      console.log('🎵 Output type:', typeof output)
-      console.log('🎵 Output:', output)
-
-      if (typeof output === 'string') {
-        audioUrl = output
-      } else if (output && typeof (output as { url?: () => string }).url === 'function') {
-        audioUrl = (output as { url: () => string }).url()
-      } else if (output && typeof output === 'object' && 'url' in output) {
-        audioUrl = (output as { url: string }).url
-      } else {
-        console.error('❌ Unexpected output format:', output)
-        throw new Error('Invalid output format from API')
-      }
-    } else {
-      // Generate music with ACE-Step for non-English
-      console.log('🎵 Using ACE-Step for non-English generation...')
-      try {
-        // Use ACE-Step with correct API schema
-        // Required: tags (text prompt describing style)
-        // Optional: lyrics, duration, number_of_steps, guidance_scale
-        
-        // Extract genre/style from prompt for tags
-        const genreTags = prompt.toLowerCase().match(/\b(rock|pop|jazz|blues|electronic|classical|hip hop|rap|country|metal|folk|reggae|indie|funk|soul|rnb|edm|house|techno|ambient|chill|lofi)\b/g) || ['music'];
-        const tags = genreTags.join(',') || 'instrumental,melodic';
-        
-        console.log('🎵 ACE-Step Parameters:', {
-          tags,
-          lyrics: formattedLyrics.substring(0, 300),
-          duration: audio_length_in_s || 60,
-          number_of_steps: num_inference_steps || 60,
-          guidance_scale: guidance_scale || 15
-        })
-
-        const prediction = await replicate.predictions.create({
-          version: "280fc4f9ee507577f880a167f639c02622421d8fecf492454320311217b688f1",
+    let output
+    try {
+      output = await replicate.run(
+        "minimax/music-1.5",
+        {
           input: {
-            tags: tags, // REQUIRED: genre/style tags
-            lyrics: formattedLyrics.substring(0, 600), // Optional lyrics
-            duration: audio_length_in_s || 60, // Duration in seconds (1-240)
-            number_of_steps: num_inference_steps || 60, // Inference steps (10-200)
-            guidance_scale: guidance_scale || 15, // Overall guidance (0-30)
-            scheduler: 'euler', // Scheduler type
-            guidance_type: 'apg', // Guidance type
-            seed: -1, // Random seed
+            prompt: prompt.trim(),
+            lyrics: formattedLyrics,
+            bitrate,
+            sample_rate,
+            audio_format
           }
-        })
-
-        console.log('🎵 ACE-Step prediction created:', prediction.id)
-
-        let finalPrediction = prediction
-        let attempts = 0
-        const maxAttempts = 40 // ~80 seconds max (reduced from 2 minutes)
-
-        while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 2000))
-          finalPrediction = await replicate.predictions.get(prediction.id)
-          console.log('🎵 Music generation status:', finalPrediction.status)
-          attempts++
         }
+      )
+      console.log('✅ MiniMax Music-1.5 API response received')
+    } catch (genError) {
+      console.error('❌ Music generation failed (MiniMax):', genError)
+      // NO credits deducted since generation failed
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: sanitizeError(genError),
+          creditsRefunded: false,
+          creditsRemaining: userCredits
+        },
+        { status: 500 }
+      )
+    }
 
-        if (finalPrediction.status !== 'succeeded') {
-          const err = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Music generation failed'
-          throw new Error(attempts >= maxAttempts ? 'Music generation timed out' : err)
-        }
+    console.log('✅ Generation succeeded, processing output...')
+    console.log('🎵 Output type:', typeof output)
+    console.log('🎵 Output:', output)
 
-        const output = finalPrediction.output
-        audioUrl = Array.isArray(output) ? output[0] : output
-        if (!audioUrl) {
-          throw new Error('No audio generated')
-        }
-      } catch (genError) {
-        console.error('❌ Music generation failed (ACE-Step):', genError)
-        // NO credits deducted since generation failed
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: sanitizeError(genError),
-            creditsRefunded: false,
-            creditsRemaining: userCredits
-          },
-          { status: 500 }
-        )
-      }
+    if (typeof output === 'string') {
+      audioUrl = output
+    } else if (output && typeof (output as { url?: () => string }).url === 'function') {
+      audioUrl = (output as { url: () => string }).url()
+    } else if (output && typeof output === 'object' && 'url' in output) {
+      audioUrl = (output as { url: string }).url
+    } else {
+      console.error('❌ Unexpected output format:', output)
+      throw new Error('Invalid output format from API')
     }
 
     console.log('🎵 Audio URL extracted:', audioUrl)
