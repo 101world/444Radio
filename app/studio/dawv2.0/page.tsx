@@ -22,7 +22,11 @@ import {
   Download,
   X,
   Loader2,
-  Mic
+  Mic,
+  Copy,
+  Trash2,
+  ClipboardPaste,
+  Clipboard
 } from 'lucide-react'
 
 // Extend Window interface for drag throttling and pending clip tracking
@@ -56,8 +60,15 @@ export default function DAWProRebuild() {
   const [metronomeInterval, setMetronomeInterval] = useState<NodeJS.Timeout | null>(null)
   const [masterVolume, setMasterVolume] = useState(100)
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [projectName, setProjectName] = useState('Untitled Project')
   const [saving, setSaving] = useState(false)
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null)
+  const [editingTrackName, setEditingTrackName] = useState('')
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; clipId: string; trackId: string } | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [copiedClip, setCopiedClip] = useState<{ clip: TrackClip; trackId: string } | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'autosaving'>('idle')
   const [saveTick, setSaveTick] = useState(false)
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
@@ -68,6 +79,7 @@ export default function DAWProRebuild() {
   const [draggingLoopHandle, setDraggingLoopHandle] = useState<'start' | 'end' | null>(null)
   const [activeLoopHandle, setActiveLoopHandle] = useState<'start' | 'end' | null>(null)
   const [draggingClip, setDraggingClip] = useState<{ clipId: string; trackId: string; offsetX: number } | null>(null)
+  const [draggingFade, setDraggingFade] = useState<{ clipId: string; trackId: string; type: 'in' | 'out' } | null>(null)
   const [loadingClips, setLoadingClips] = useState<Set<string>>(new Set())
   const audioBufferCache = useRef<Map<string, Promise<AudioBuffer>>>(new Map())
   const isHydratingRef = useRef(false)
@@ -521,17 +533,265 @@ export default function DAWProRebuild() {
     [daw, addClipFromUrl, showToast]
   )
 
+  const handleExport = useCallback(async () => {
+    if (!daw || isExporting) return
+    setIsExporting(true)
+    showToast('Exporting project...', 'info')
+    
+    try {
+      const allTracks = daw.getTracks()
+      const trackManager = daw.getTrackManager()
+      
+      // Find the last clip end time
+      let duration = loopEnabled ? loopEnd : 0
+      allTracks.forEach(track => {
+        track.clips.forEach(clip => {
+          const clipEnd = clip.startTime + clip.duration
+          if (clipEnd > duration) duration = clipEnd
+        })
+      })
+      
+      if (duration === 0) {
+        showToast('No audio to export', 'error')
+        setIsExporting(false)
+        return
+      }
+      
+      // Create offline context for rendering
+      const sampleRate = 44100
+      const offlineCtx = new OfflineAudioContext(2, duration * sampleRate, sampleRate)
+      
+      // Render each track's clips
+      for (const track of allTracks) {
+        const trackState = trackManager.getTrack(track.id)
+        if (!trackState || trackState.muted) continue
+        
+        for (const clip of track.clips) {
+          if (!clip.buffer) continue
+          
+          const source = offlineCtx.createBufferSource()
+          source.buffer = clip.buffer
+          
+          const gainNode = offlineCtx.createGain()
+          const panNode = offlineCtx.createStereoPanner()
+          
+          // Apply track gain and pan
+          gainNode.gain.value = (trackState.volume / 100) * clip.gain * (masterVolume / 100)
+          panNode.pan.value = trackState.pan
+          
+          // Apply fade in/out envelopes
+          if (clip.fadeIn && clip.fadeIn.duration > 0) {
+            gainNode.gain.setValueAtTime(0, clip.startTime)
+            gainNode.gain.linearRampToValueAtTime(
+              (trackState.volume / 100) * clip.gain * (masterVolume / 100),
+              clip.startTime + clip.fadeIn.duration
+            )
+          }
+          
+          if (clip.fadeOut && clip.fadeOut.duration > 0) {
+            const fadeStart = clip.startTime + clip.duration - clip.fadeOut.duration
+            gainNode.gain.setValueAtTime(
+              (trackState.volume / 100) * clip.gain * (masterVolume / 100),
+              fadeStart
+            )
+            gainNode.gain.linearRampToValueAtTime(0, clip.startTime + clip.duration)
+          }
+          
+          source.connect(gainNode)
+          gainNode.connect(panNode)
+          panNode.connect(offlineCtx.destination)
+          
+          source.start(clip.startTime, clip.offset, clip.duration)
+        }
+      }
+      
+      // Render to buffer
+      const renderedBuffer = await offlineCtx.startRendering()
+      
+      // Convert to WAV
+      const wav = audioBufferToWav(renderedBuffer)
+      const blob = new Blob([wav], { type: 'audio/wav' })
+      
+      // Download
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${projectName.replace(/[^a-z0-9]/gi, '_')}_export.wav`
+      a.click()
+      URL.revokeObjectURL(url)
+      
+      showToast('✓ Project exported', 'success')
+    } catch (error) {
+      console.error('Export failed:', error)
+      showToast('Export failed', 'error')
+    } finally {
+      setIsExporting(false)
+    }
+  }, [daw, isExporting, loopEnabled, loopEnd, masterVolume, projectName, showToast])
+
+  // Helper: Convert AudioBuffer to WAV
+  const audioBufferToWav = (buffer: AudioBuffer): ArrayBuffer => {
+    const length = buffer.length * buffer.numberOfChannels * 2 + 44
+    const arrayBuffer = new ArrayBuffer(length)
+    const view = new DataView(arrayBuffer)
+    const channels: Float32Array[] = []
+    let offset = 0
+    let pos = 0
+
+    // Write WAV header
+    const setUint16 = (data: number) => {
+      view.setUint16(pos, data, true)
+      pos += 2
+    }
+    const setUint32 = (data: number) => {
+      view.setUint32(pos, data, true)
+      pos += 4
+    }
+
+    // RIFF identifier
+    setUint32(0x46464952)
+    // file length minus RIFF identifier length and file description length
+    setUint32(length - 8)
+    // RIFF type & format
+    setUint32(0x45564157)
+    setUint32(0x20746d66)
+    // format chunk length
+    setUint32(16)
+    // sample format (raw)
+    setUint16(1)
+    // channel count
+    setUint16(buffer.numberOfChannels)
+    // sample rate
+    setUint32(buffer.sampleRate)
+    // byte rate (sample rate * block align)
+    setUint32(buffer.sampleRate * buffer.numberOfChannels * 2)
+    // block align (channel count * bytes per sample)
+    setUint16(buffer.numberOfChannels * 2)
+    // bits per sample
+    setUint16(16)
+    // data chunk identifier
+    setUint32(0x61746164)
+    // data chunk length
+    setUint32(length - pos - 4)
+
+    // write interleaved data
+    for (let i = 0; i < buffer.numberOfChannels; i++) {
+      channels.push(buffer.getChannelData(i))
+    }
+
+    while (pos < length) {
+      for (let i = 0; i < buffer.numberOfChannels; i++) {
+        let sample = Math.max(-1, Math.min(1, channels[i][offset]))
+        sample = sample < 0 ? sample * 0x8000 : sample * 0x7fff
+        view.setInt16(pos, sample, true)
+        pos += 2
+      }
+      offset++
+    }
+
+    return arrayBuffer
+  }
+
+  const handleDuplicateClip = useCallback((trackId: string, clipId: string) => {
+    if (!daw) return
+    const track = daw.getTracks().find(t => t.id === trackId)
+    const clip = track?.clips.find(c => c.id === clipId)
+    if (!clip || !clip.buffer) return
+    
+    const newClip: Partial<TrackClip> = {
+      startTime: clip.startTime + clip.duration + 0.1,
+      duration: clip.duration,
+      offset: clip.offset,
+      gain: clip.gain,
+      buffer: clip.buffer,
+      sourceUrl: clip.sourceUrl,
+      name: clip.name ? `${clip.name} (copy)` : undefined,
+      color: clip.color,
+      fadeIn: clip.fadeIn,
+      fadeOut: clip.fadeOut
+    }
+    daw.addClipToTrack(trackId, newClip)
+    setTracks(daw.getTracks())
+    markProjectDirty()
+    showToast('Clip duplicated', 'success')
+    setContextMenu(null)
+  }, [daw, markProjectDirty, showToast])
+
+  const handleStartRecording = useCallback(async () => {
+    if (!recordingTrackId || !daw) return
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      const chunks: Blob[] = []
+      
+      recorder.ondataavailable = (e) => chunks.push(e.data)
+      recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' })
+        const audioContext = daw.getAudioContext()
+        const arrayBuffer = await blob.arrayBuffer()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+        
+        // Add recorded clip at playhead position
+        const clip: Partial<TrackClip> = {
+          startTime: playhead,
+          duration: audioBuffer.duration,
+          offset: 0,
+          gain: 1,
+          buffer: audioBuffer,
+          name: 'Recorded Audio',
+          fadeIn: { duration: 0.01, curve: 'exponential' },
+          fadeOut: { duration: 0.01, curve: 'exponential' }
+        }
+        
+        daw.addClipToTrack(recordingTrackId, clip)
+        setTracks(daw.getTracks())
+        markProjectDirty()
+        showToast('✓ Recording added to timeline', 'success')
+        
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop())
+        setIsRecording(false)
+        setMediaRecorder(null)
+      }
+      
+      setMediaRecorder(recorder)
+      recorder.start()
+      setIsRecording(true)
+      showToast('🔴 Recording...', 'info')
+    } catch (error) {
+      console.error('Recording failed:', error)
+      showToast('Microphone access denied', 'error')
+    }
+  }, [recordingTrackId, daw, playhead, markProjectDirty, showToast])
+
+  const handleStopRecording = useCallback(() => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop()
+    }
+  }, [mediaRecorder, isRecording])
+
   const handleSave = async (mode: 'manual' | 'auto' = 'manual') => {
     if (!daw || saving) return
     setSaving(true)
     setSaveStatus(mode === 'auto' ? 'autosaving' : 'saving')
+    
+    console.log('💾 Saving project...', { mode, projectId: currentProjectId, projectName, trackCount: daw.getTracks().length })
+    
     try {
       const projectData = {
         id: currentProjectId || undefined,
-        title: projectName, // Using 'title' to match schema
+        title: projectName,
         tracks: serializeTracks(daw.getTracks()),
-        tempo: bpm // Using 'tempo' to match schema
+        tempo: bpm
       }
+
+      console.log('💾 Project data:', { 
+        hasId: !!projectData.id, 
+        title: projectData.title, 
+        trackCount: projectData.tracks.length,
+        tempo: projectData.tempo 
+      })
 
       const response = await fetch('/api/studio/projects', {
         method: 'POST',
@@ -539,26 +799,32 @@ export default function DAWProRebuild() {
         body: JSON.stringify(projectData)
       })
 
+      console.log('💾 API response:', response.status, response.statusText)
+
       if (response.ok) {
         const data = await response.json()
+        console.log('💾 Save success:', data)
+        
         const nextProjectId = data.id || currentProjectId
         if (data.id && data.id !== currentProjectId) {
+          console.log('💾 New project ID:', data.id)
           setCurrentProjectId(data.id)
         }
         await fetchProjects({ autoLoad: false, activeId: nextProjectId || undefined })
         if (mode === 'manual') {
-          showToast('Project saved', 'success')
+          showToast('✓ Project saved', 'success')
         }
         setSaveTick(true)
         setTimeout(() => setSaveTick(false), 1000)
         setDirtyCounter(0)
       } else {
         const error = await response.json()
+        console.error('💾 Save failed:', error)
         showToast(`Save failed: ${error.error || 'Unknown error'}`, 'error')
       }
-    } catch (error) {
-      console.error('Save error:', error)
-      showToast('Save failed. Please try again.', 'error')
+    } catch (error: any) {
+      console.error('💾 Save error:', error)
+      showToast(`Save failed: ${error.message || 'Network error'}`, 'error')
     } finally {
       setSaving(false)
       setTimeout(() => setSaveStatus('idle'), 600)
@@ -1146,6 +1412,37 @@ export default function DAWProRebuild() {
       } else if (e.key === 'b' || e.key === 'B') {
         e.preventDefault()
         setShowBrowser((prev) => !prev)
+      } else if (e.key === 'c' && e.ctrlKey && selectedClipId && selectedTrackId) {
+        // Copy selected clip
+        e.preventDefault()
+        const track = daw?.getTracks().find(t => t.id === selectedTrackId)
+        const clip = track?.clips.find(c => c.id === selectedClipId)
+        if (clip) {
+          setCopiedClip({ clip, trackId: selectedTrackId })
+          showToast('Clip copied', 'info')
+        }
+      } else if (e.key === 'v' && e.ctrlKey && copiedClip && daw) {
+        // Paste clip at playhead
+        e.preventDefault()
+        const track = daw.getTracks().find(t => t.id === (selectedTrackId || tracks[0]?.id))
+        if (track && copiedClip.clip.buffer) {
+          const newClip: Partial<TrackClip> = {
+            startTime: playhead,
+            duration: copiedClip.clip.duration,
+            offset: copiedClip.clip.offset,
+            gain: copiedClip.clip.gain,
+            buffer: copiedClip.clip.buffer,
+            sourceUrl: copiedClip.clip.sourceUrl,
+            name: copiedClip.clip.name,
+            color: copiedClip.clip.color,
+            fadeIn: copiedClip.clip.fadeIn,
+            fadeOut: copiedClip.clip.fadeOut
+          }
+          daw.addClipToTrack(track.id, newClip)
+          setTracks(daw.getTracks())
+          markProjectDirty()
+          showToast('Clip pasted', 'success')
+        }
       } else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && loopEnabled && activeLoopHandle) {
         e.preventDefault()
         const step = beatLength() / GRID_SUBDIVISION
@@ -1159,7 +1456,20 @@ export default function DAWProRebuild() {
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [isPlaying, handlePlay, handlePause, handleSave, loopEnabled, activeLoopHandle, beatLength, loopEnd, loopStart])
+  }, [isPlaying, handlePlay, handlePause, handleSave, loopEnabled, activeLoopHandle, beatLength, loopEnd, loopStart, selectedClipId, selectedTrackId, daw, tracks, copiedClip, playhead, markProjectDirty, showToast])
+
+  // Alt+Scroll to zoom timeline
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (e.altKey) {
+        e.preventDefault()
+        const delta = e.deltaY > 0 ? -10 : 10 // Zoom out/in
+        setZoom(prev => Math.max(20, Math.min(200, prev + delta)))
+      }
+    }
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    return () => window.removeEventListener('wheel', handleWheel)
+  }, [])
 
   if (loading) {
     return (
@@ -1306,14 +1616,8 @@ export default function DAWProRebuild() {
               onChange={(e) => {
                 const vol = Number(e.target.value)
                 setMasterVolume(vol)
-                if (daw) {
-                  const audioEngine = daw.getAudioContext()
-                  const masterGain = audioEngine.destination
-                  // Apply exponential scaling for perceived loudness
-                  if (masterGain && 'gain' in masterGain) {
-                    (masterGain as any).gain.value = Math.pow(vol / 100, 2)
-                  }
-                }
+                // Master volume is applied during export and per-track during playback
+                // We store the value and apply it in the export function
               }}
               className="w-24 accent-cyan-500"
               title={`Master Volume: ${masterVolume}%`}
@@ -1356,6 +1660,16 @@ export default function DAWProRebuild() {
             {saving ? 'Saving' : 'Save'}
           </button>
 
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+            title="Export project as WAV"
+          >
+            {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {isExporting ? 'Exporting...' : 'Export'}
+          </button>
+
           {(saveStatus !== 'idle' || saveTick) && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-medium">
               {saveStatus !== 'idle' ? (
@@ -1396,13 +1710,18 @@ export default function DAWProRebuild() {
             {isPlaying ? <Pause size={22} /> : <Play size={22} />}
           </button>
           <button
-            onClick={() => setRecordingTrackId(selectedTrackId)}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
-              recordingTrackId ? 'bg-red-500 text-white animate-pulse' : 'hover:bg-gray-800'
+            onClick={isRecording ? handleStopRecording : handleStartRecording}
+            disabled={!recordingTrackId}
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
+              isRecording 
+                ? 'bg-red-600 text-white animate-pulse' 
+                : recordingTrackId 
+                  ? 'bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white' 
+                  : 'bg-gray-800 text-gray-600 cursor-not-allowed'
             }`}
-            title="Record"
+            title={isRecording ? 'Stop recording' : recordingTrackId ? 'Start recording' : 'Arm a track first (click R)'}
           >
-            <div className="w-5 h-5 rounded-full bg-current" />
+            <div className={`rounded-full ${isRecording ? 'w-3 h-3 bg-current' : 'w-5 h-5 bg-current'}`} />
           </button>
         </div>
 
@@ -1529,24 +1848,32 @@ export default function DAWProRebuild() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0]
                       if (!file) return
+                      
+                      showToast('Uploading...', 'info')
+                      
                       try {
                         const formData = new FormData()
                         formData.append('file', file)
                         formData.append('title', file.name.replace(/\.[^/.]+$/, ''))
                         formData.append('type', 'music')
+                        
                         const response = await fetch('/api/profile/upload', {
                           method: 'POST',
                           body: formData
                         })
-                        if (response.ok) {
+                        
+                        const result = await response.json()
+                        
+                        if (response.ok && result.success) {
                           showToast('✓ Audio imported', 'success')
                           await loadLibrary()
                         } else {
-                          showToast('Import failed', 'error')
+                          console.error('Import failed:', result.error || 'Unknown error')
+                          showToast(`Import failed: ${result.error || 'Unknown error'}`, 'error')
                         }
-                      } catch (error) {
+                      } catch (error: any) {
                         console.error('Import error:', error)
-                        showToast('Import failed', 'error')
+                        showToast(`Import failed: ${error.message || 'Network error'}`, 'error')
                       }
                       e.target.value = ''
                     }}
@@ -1673,8 +2000,44 @@ export default function DAWProRebuild() {
                         onClick={() => setSelectedTrackId(track.id)}
                       >
                         {/* Track Name */}
-                        <div className="text-xs font-semibold text-gray-300 mb-2 truncate">
-                          {track.name}
+                        <div 
+                          className="text-xs font-semibold text-gray-300 mb-2 truncate cursor-text"
+                          onDoubleClick={(e) => {
+                            e.stopPropagation()
+                            setEditingTrackId(track.id)
+                            setEditingTrackName(track.name)
+                          }}
+                        >
+                          {editingTrackId === track.id ? (
+                            <input
+                              type="text"
+                              value={editingTrackName}
+                              onChange={(e) => setEditingTrackName(e.target.value)}
+                              onBlur={() => {
+                                if (editingTrackName.trim() && daw) {
+                                  const trackManager = daw.getTrackManager()
+                                  const trackState = trackManager.getTrack(track.id)
+                                  if (trackState) {
+                                    trackState.name = editingTrackName.trim()
+                                    setTracks(daw.getTracks())
+                                    markProjectDirty()
+                                  }
+                                }
+                                setEditingTrackId(null)
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur()
+                                } else if (e.key === 'Escape') {
+                                  setEditingTrackId(null)
+                                }
+                              }}
+                              autoFocus
+                              className="w-full bg-gray-800 border border-cyan-500 rounded px-1 py-0.5 text-xs text-white focus:outline-none"
+                            />
+                          ) : (
+                            track.name
+                          )}
                         </div>
                         
                         {/* M/S/R Buttons */}
@@ -1903,6 +2266,12 @@ export default function DAWProRebuild() {
                             setSelectedClipId(clip.id)
                             setSelectedTrackId(track.id)
                           }}
+                          onContextMenu={(e) => {
+                            e.preventDefault()
+                            setContextMenu({ x: e.clientX, y: e.clientY, clipId: clip.id, trackId: track.id })
+                            setSelectedClipId(clip.id)
+                            setSelectedTrackId(track.id)
+                          }}
                           onMouseDown={(e) => {
                             e.stopPropagation()
                             setSelectedClipId(clip.id)
@@ -1948,6 +2317,82 @@ export default function DAWProRebuild() {
                             }}
                             className="w-full h-full pointer-events-none"
                           />
+                          
+                          {/* Fade In Handle & Overlay */}
+                          {clip.fadeIn && clip.fadeIn.duration > 0 && (
+                            <>
+                              <div 
+                                className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-black/60 to-transparent pointer-events-none"
+                                style={{ width: `${(clip.fadeIn.duration / clip.duration) * 100}%` }}
+                              />
+                              <div
+                                className="absolute top-0 bottom-0 left-0 w-2 bg-cyan-500/50 hover:bg-cyan-400 cursor-ew-resize z-20"
+                                onMouseDown={(e) => {
+                                  e.stopPropagation()
+                                  setDraggingFade({ clipId: clip.id, trackId: track.id, type: 'in' })
+                                  
+                                  const handleMove = (moveE: MouseEvent) => {
+                                    if (!daw) return
+                                    const dx = moveE.clientX - e.clientX
+                                    const newFadeDuration = Math.max(0.01, Math.min(clip.duration / 2, clip.fadeIn!.duration + dx / zoom))
+                                    daw.updateClip(track.id, clip.id, {
+                                      fadeIn: { duration: newFadeDuration, curve: 'exponential' }
+                                    })
+                                    setTracks(daw.getTracks())
+                                  }
+                                  
+                                  const handleUp = () => {
+                                    setDraggingFade(null)
+                                    markProjectDirty()
+                                    window.removeEventListener('mousemove', handleMove)
+                                    window.removeEventListener('mouseup', handleUp)
+                                  }
+                                  
+                                  window.addEventListener('mousemove', handleMove)
+                                  window.addEventListener('mouseup', handleUp)
+                                }}
+                                title="Drag to adjust fade in"
+                              />
+                            </>
+                          )}
+                          
+                          {/* Fade Out Handle & Overlay */}
+                          {clip.fadeOut && clip.fadeOut.duration > 0 && (
+                            <>
+                              <div 
+                                className="absolute top-0 bottom-0 right-0 bg-gradient-to-l from-black/60 to-transparent pointer-events-none"
+                                style={{ width: `${(clip.fadeOut.duration / clip.duration) * 100}%` }}
+                              />
+                              <div
+                                className="absolute top-0 bottom-0 right-0 w-2 bg-cyan-500/50 hover:bg-cyan-400 cursor-ew-resize z-20"
+                                onMouseDown={(e) => {
+                                  e.stopPropagation()
+                                  setDraggingFade({ clipId: clip.id, trackId: track.id, type: 'out' })
+                                  
+                                  const handleMove = (moveE: MouseEvent) => {
+                                    if (!daw) return
+                                    const dx = e.clientX - moveE.clientX
+                                    const newFadeDuration = Math.max(0.01, Math.min(clip.duration / 2, clip.fadeOut!.duration + dx / zoom))
+                                    daw.updateClip(track.id, clip.id, {
+                                      fadeOut: { duration: newFadeDuration, curve: 'exponential' }
+                                    })
+                                    setTracks(daw.getTracks())
+                                  }
+                                  
+                                  const handleUp = () => {
+                                    setDraggingFade(null)
+                                    markProjectDirty()
+                                    window.removeEventListener('mousemove', handleMove)
+                                    window.removeEventListener('mouseup', handleUp)
+                                  }
+                                  
+                                  window.addEventListener('mousemove', handleMove)
+                                  window.addEventListener('mouseup', handleUp)
+                                }}
+                                title="Drag to adjust fade out"
+                              />
+                            </>
+                          )}
                         </div>
                       ))}
 
@@ -2295,6 +2740,120 @@ export default function DAWProRebuild() {
         </div>
       )}
 
+      {/* Context Menu */}
+      {contextMenu && (
+        <>
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setContextMenu(null)}
+          />
+          <div
+            className="fixed z-50 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-2xl py-2 min-w-[200px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button
+              onClick={() => {
+                setShowGenerateModal(true)
+                setContextMenu(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+            >
+              <Sparkles size={14} className="text-purple-400" />
+              Generate AI
+            </button>
+            <button
+              onClick={() => {
+                const track = daw?.getTracks().find(t => t.id === contextMenu.trackId)
+                const clip = track?.clips.find(c => c.id === contextMenu.clipId)
+                if (clip?.sourceUrl) {
+                  setSelectedAudioForStems(clip.sourceUrl)
+                  setShowStemSplitter(true)
+                }
+                setContextMenu(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+            >
+              <Scissors size={14} className="text-purple-400" />
+              Split Stems
+            </button>
+            <div className="border-t border-gray-800 my-1" />
+            <button
+              onClick={() => {
+                handleDuplicateClip(contextMenu.trackId, contextMenu.clipId)
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+            >
+              <Copy size={14} className="text-cyan-400" />
+              Duplicate
+            </button>
+            <button
+              onClick={() => {
+                const track = daw?.getTracks().find(t => t.id === contextMenu.trackId)
+                const clip = track?.clips.find(c => c.id === contextMenu.clipId)
+                if (clip) {
+                  setCopiedClip({ clip, trackId: contextMenu.trackId })
+                  showToast('Clip copied', 'info')
+                }
+                setContextMenu(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+            >
+              <Copy size={14} className="text-cyan-400" />
+              Copy
+            </button>
+            <button
+              onClick={() => {
+                if (copiedClip && daw) {
+                  const track = daw.getTracks().find(t => t.id === contextMenu.trackId)
+                  if (track && copiedClip.clip.buffer) {
+                    const targetClip = track.clips.find(c => c.id === contextMenu.clipId)
+                    const pasteTime = targetClip ? targetClip.startTime + targetClip.duration + 0.1 : playhead
+                    const newClip: Partial<TrackClip> = {
+                      startTime: pasteTime,
+                      duration: copiedClip.clip.duration,
+                      offset: copiedClip.clip.offset,
+                      gain: copiedClip.clip.gain,
+                      buffer: copiedClip.clip.buffer,
+                      sourceUrl: copiedClip.clip.sourceUrl,
+                      name: copiedClip.clip.name,
+                      color: copiedClip.clip.color,
+                      fadeIn: copiedClip.clip.fadeIn,
+                      fadeOut: copiedClip.clip.fadeOut
+                    }
+                    daw.addClipToTrack(contextMenu.trackId, newClip)
+                    setTracks(daw.getTracks())
+                    markProjectDirty()
+                    showToast('Clip pasted', 'success')
+                  }
+                }
+                setContextMenu(null)
+              }}
+              disabled={!copiedClip}
+              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Clipboard size={14} className="text-cyan-400" />
+              Paste
+            </button>
+            <div className="border-t border-gray-800 my-1" />
+            <button
+              onClick={() => {
+                if (daw) {
+                  daw.removeClipFromTrack(contextMenu.trackId, contextMenu.clipId)
+                  setTracks(daw.getTracks())
+                  markProjectDirty()
+                  showToast('Clip deleted', 'success')
+                }
+                setContextMenu(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-red-900/50 hover:text-red-400 transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={14} />
+              Delete
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Toast */}
       {toast && (
         <div
@@ -2308,6 +2867,72 @@ export default function DAWProRebuild() {
         >
           {toast.message}
         </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
+          <div
+            className="fixed z-50 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-2xl py-1 min-w-[180px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button
+              onClick={() => {
+                const clip = tracks.find(t => t.id === contextMenu.trackId)?.clips.find(c => c.id === contextMenu.clipId)
+                if (clip?.sourceUrl) {
+                  setSelectedAudioForStems(clip.sourceUrl)
+                  setShowStemSplitter(true)
+                }
+                setContextMenu(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-purple-500/20 text-purple-400 flex items-center gap-2"
+            >
+              <Scissors size={14} />
+              Split Stems
+            </button>
+            <button
+              onClick={() => {
+                handleDuplicateClip(contextMenu.trackId, contextMenu.clipId)
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-cyan-500/20 text-cyan-400 flex items-center gap-2"
+            >
+              <Copy size={14} />
+              Duplicate
+            </button>
+            <button
+              onClick={() => {
+                const track = daw?.getTracks().find(t => t.id === contextMenu.trackId)
+                const clip = track?.clips.find(c => c.id === contextMenu.clipId)
+                if (clip) {
+                  setCopiedClip({ clip, trackId: contextMenu.trackId })
+                  showToast('Clip copied', 'info')
+                }
+                setContextMenu(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-700 text-gray-300 flex items-center gap-2"
+            >
+              <Copy size={14} />
+              Copy
+            </button>
+            <div className="h-px bg-gray-700 my-1" />
+            <button
+              onClick={() => {
+                if (daw) {
+                  daw.removeClipFromTrack(contextMenu.trackId, contextMenu.clipId)
+                  setTracks(daw.getTracks())
+                  markProjectDirty()
+                  showToast('Clip deleted', 'success')
+                }
+                setContextMenu(null)
+              }}
+              className="w-full px-4 py-2 text-left text-sm hover:bg-red-500/20 text-red-400 flex items-center gap-2"
+            >
+              <Trash2 size={14} />
+              Delete
+            </button>
+          </div>
+        </>
       )}
     </div>
   )
