@@ -212,10 +212,27 @@ function StationContent() {
       
       localStreamRef.current = stream
       
+      // Set states FIRST so video element becomes visible
+      setIsLive(true)
+      setIsStreaming(true)
+      setShowSettings(false)
+      
+      // THEN attach stream to video element
       if (videoRef.current) {
+        console.log('📹 Attaching stream to video element', { 
+          videoTracks: stream.getVideoTracks().length, 
+          audioTracks: stream.getAudioTracks().length 
+        })
         videoRef.current.srcObject = stream
-        // Force video to play immediately
-        videoRef.current.play().catch(e => console.warn('Video autoplay blocked:', e))
+        // Force video to play immediately with multiple attempts
+        setTimeout(() => {
+          videoRef.current?.play().catch(e => {
+            console.warn('Video autoplay blocked, trying again:', e)
+            setTimeout(() => videoRef.current?.play(), 100)
+          })
+        }, 100)
+      } else {
+        console.error('❌ Video ref not attached!')
       }
       
       const videoTrack = stream.getVideoTracks()[0]
@@ -267,12 +284,15 @@ function StationContent() {
       
       const data = await response.json()
       if (data.success) {
-        setIsLive(true)
-        setIsStreaming(true)
-        setShowSettings(false)
+        // States already set at top, just set timer and notification
         streamStartTimeRef.current = Date.now()
         addNotification('Stream started!', 'join')
         setHostUsername(user.username || 'DJ')
+      } else {
+        // If API failed, rollback states
+        setIsLive(false)
+        setIsStreaming(false)
+        alert('Failed to update server. Try again.')
       }
     } catch (error: any) {
       console.error('Failed to start stream:', error)
