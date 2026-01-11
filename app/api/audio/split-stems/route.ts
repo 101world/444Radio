@@ -3,6 +3,9 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { createClient } from '@supabase/supabase-js'
 
+// Allow up to 5 minutes for stem splitting (Vercel Pro limit: 300s)
+export const maxDuration = 300
+
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!
 })
