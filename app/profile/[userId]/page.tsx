@@ -576,7 +576,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     </button>
                   )}
                   <button
-                    onClick={() => setActiveView('station')}
+                    onClick={() => router.push(`/station?dj=${profile.username || user?.username}`)}
                     className={`px-6 py-2 rounded-lg font-bold transition-all ${
                       profile.is_live
                         ? 'bg-gradient-to-r from-red-500 to-pink-500 animate-pulse'
@@ -584,7 +584,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     }`}
                   >
                     <Radio size={16} className="inline mr-2" />
-                    {profile.is_live ? 'LIVE NOW' : 'Station'}
+                    {profile.is_live ? 'LIVE NOW' : 'Go to Station'}
                   </button>
                 </div>
               </div>
@@ -742,147 +742,38 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           )}
         </div>
       ) : (
-        /* Station View */
+        /* Station View - Redirect to comprehensive station page */
         <div className="px-8 pb-32">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Video Call Area */}
-            <div className="lg:col-span-2">
-              <div className="bg-gradient-to-br from-cyan-900/20 to-black rounded-xl overflow-hidden aspect-video flex items-center justify-center border border-cyan-500/20">
-                {isLive ? (
-                  <div className="relative w-full h-full">
-                    <Video size={64} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-600" />
-                    <div className="absolute top-4 left-4 px-3 py-1 bg-red-500 rounded-full text-xs font-bold flex items-center gap-2">
-                      <Circle size={8} className="fill-current animate-pulse" />
-                      LIVE
-                    </div>
-                    <div className="absolute top-4 right-4 px-3 py-1 bg-black/60 backdrop-blur rounded-full text-xs">
-                      {viewerCount} viewers
-                    </div>
-                    {isOwnProfile && (
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                        <button
-                          onClick={async () => {
-                            try {
-                              const response = await fetch('/api/station', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  isLive: false,
-                                  username: profile?.username || user?.username || 'Anonymous'
-                                })
-                              })
-                              const data = await response.json()
-                              if (data.success) {
-                                setIsLive(false)
-                                console.log('\u2705 Ended stream successfully')
-                              }
-                            } catch (error) {
-                              console.error('\u274c End stream error:', error)
-                              alert('Failed to end stream')
-                            }
-                          }}
-                          className="px-6 py-2 bg-red-500 rounded-lg font-bold hover:bg-red-400 transition-all shadow-lg"
-                        >
-                          End Stream
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <Video size={64} className="mx-auto text-gray-600 mb-4" />
-                    <p className="text-gray-400">Stream offline</p>
-                    {isOwnProfile && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch('/api/station', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                isLive: true,
-                                username: profile?.username || user?.username || 'Anonymous'
-                              })
-                            })
-                            const data = await response.json()
-                            if (data.success) {
-                              setIsLive(true)
-                              console.log('\u2705 Went live successfully')
-                            }
-                          } catch (error) {
-                            console.error('\u274c Go live error:', error)
-                            alert('Failed to go live')
-                          }
-                        }}
-                        className="mt-4 px-6 py-2 bg-red-500 rounded-lg font-bold hover:bg-red-400 transition-all"
-                      >
-                        <Mic size={16} className="inline mr-2" />
-                        Go Live
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Now Playing */}
-              {currentTrack && (
-                <div className="mt-6 p-4 bg-white/5 rounded-lg flex items-center gap-4">
-                  <div className="relative w-16 h-16 flex-shrink-0">
-                    <Image
-                      src={currentTrack.imageUrl || '/default-cover.jpg'}
-                      alt="Now Playing"
-                      fill
-                      className="object-cover rounded"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold">Now Playing</h3>
-                    <p className="text-sm text-gray-400">{currentTrack.title}</p>
-                  </div>
-                </div>
-              )}
+          <div className="max-w-4xl mx-auto text-center py-20">
+            <div className="w-32 h-32 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center mb-8 mx-auto animate-pulse">
+              <Radio size={64} />
             </div>
-
-            {/* Live Chat */}
-            <div className="bg-black/60 backdrop-blur-md border border-cyan-500/20 rounded-xl overflow-hidden flex flex-col h-[600px]">
-              <div className="p-4 border-b border-white/10">
-                <h3 className="font-bold">Live Chat</h3>
+            <h2 className="text-4xl font-bold mb-4">Visit the Station Page</h2>
+            <p className="text-gray-400 mb-8 text-lg">
+              All streaming features are now on the dedicated station page with live chat, reactions, analytics, and more!
+            </p>
+            <button
+              onClick={() => router.push(`/station?dj=${profile.username || user?.username}`)}
+              className="px-12 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-xl font-bold text-lg hover:from-cyan-400 hover:to-blue-400 transition-all shadow-2xl shadow-cyan-500/50 inline-flex items-center gap-3"
+            >
+              <Radio size={24} />
+              Go to Station Page
+            </button>
+            <div className="mt-12 grid grid-cols-3 gap-6 max-w-2xl mx-auto">
+              <div className="p-6 bg-white/5 rounded-xl">
+                <div className="text-3xl mb-2">🎥</div>
+                <h3 className="font-bold mb-1">Live Streaming</h3>
+                <p className="text-sm text-gray-400">WebRTC video & audio</p>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {chatMessages.length === 0 ? (
-                  <p className="text-center text-gray-500 text-sm">No messages yet</p>
-                ) : (
-                  chatMessages.map((msg) => (
-                    <div key={msg.id} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 flex-shrink-0" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm">{msg.username}</span>
-                          <span className="text-xs text-gray-500">{msg.timestamp.toLocaleTimeString()}</span>
-                        </div>
-                        <p className="text-sm text-gray-300">{msg.message}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
+              <div className="p-6 bg-white/5 rounded-xl">
+                <div className="text-3xl mb-2">💬</div>
+                <h3 className="font-bold mb-1">Live Chat</h3>
+                <p className="text-sm text-gray-400">Real-time messages</p>
               </div>
-              <div className="p-4 border-t border-white/10">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Send a message..."
-                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500"
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center hover:bg-cyan-400 transition-all"
-                  >
-                    <Send size={16} className="text-black" />
-                  </button>
-                </div>
+              <div className="p-6 bg-white/5 rounded-xl">
+                <div className="text-3xl mb-2">❤️</div>
+                <h3 className="font-bold mb-1">Reactions</h3>
+                <p className="text-sm text-gray-400">Floating emojis</p>
               </div>
             </div>
           </div>
