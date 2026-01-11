@@ -144,8 +144,38 @@ export class TrackManager {
     const track = this.tracks.get(id)
     if (!track) return
 
+    // Store old values for solo/mute state changes
+    const oldSolo = track.solo
+    const oldMuted = track.muted
+
     Object.assign(track, updates)
-    this.updateRouting(track)
+    
+    // Update audio routing for volume/pan/mute changes
+    if (updates.volume !== undefined || updates.muted !== undefined) {
+      this.updateRoutingNode(id, { 
+        volume: track.volume, 
+        muted: track.muted 
+      })
+    }
+    if (updates.pan !== undefined) {
+      this.updateRoutingNode(id, { pan: track.pan })
+    }
+    
+    // Handle solo state changes
+    if (updates.solo !== undefined && updates.solo !== oldSolo) {
+      if (updates.solo) {
+        this.soloedTracks.add(id)
+      } else {
+        this.soloedTracks.delete(id)
+      }
+      this.updateSoloState()
+    }
+    
+    // Handle output routing changes
+    if (updates.outputDestination !== undefined) {
+      this.updateRouting(track)
+    }
+    
     this.emit('trackUpdated', track)
   }
 

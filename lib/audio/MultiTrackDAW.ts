@@ -212,6 +212,14 @@ export class MultiTrackDAW {
     this.emit('pause', { time: this.transportState.currentTime })
   }
 
+  // Get current playback time (live during playback)
+  getCurrentTime(): number {
+    if (this.transportState.isPlaying) {
+      return this.audioContext.currentTime - this.playbackStartTime + this.playbackOffset
+    }
+    return this.transportState.currentTime
+  }
+
   stop(): void {
     this.pause()
     this.transportState.currentTime = 0
@@ -286,9 +294,22 @@ export class MultiTrackDAW {
   }
 
   seekTo(time: number): void {
+    const wasPlaying = this.transportState.isPlaying
+    
+    if (wasPlaying) {
+      // Stop current playback
+      this.pause()
+    }
+    
+    // Update position
     this.transportState.currentTime = time
     this.playbackOffset = time
     this.emit('seeked', time)
+    
+    // Resume if was playing
+    if (wasPlaying) {
+      this.play()
+    }
   }
 
   // Track Management

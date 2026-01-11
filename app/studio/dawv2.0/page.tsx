@@ -189,13 +189,15 @@ export default function DAWProRebuild() {
           if (!instance) return
           const state = instance.getTransportState()
           if (state.isPlaying) {
-            let currentTime = state.currentTime
+            const currentTime = instance.getCurrentTime()
             const loop = loopRef.current
+            
+            // Handle looping - check if we've passed the loop end
             if (loop.enabled && currentTime >= loop.end) {
-              instance.seekTo(loop.start)
-              currentTime = loop.start
+              instance.seekTo(loop.start) // This will restart playback from loop start
+            } else {
+              setPlayhead(currentTime)
             }
-            setPlayhead(currentTime)
             setIsPlaying(true)
           } else {
             setIsPlaying(false)
@@ -1055,6 +1057,12 @@ export default function DAWProRebuild() {
                   setProjectName(e.target.value)
                   markProjectDirty()
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    e.currentTarget.blur() // Remove focus after Enter
+                  }
+                }}
                 className="bg-transparent border-none text-xs text-gray-500 focus:text-cyan-400 focus:outline-none w-48 -mt-0.5"
                 placeholder="Project Name"
               />
@@ -1128,6 +1136,12 @@ export default function DAWProRebuild() {
                       setMetronomeInterval(interval)
                     }
                   }
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.currentTarget.blur()
                 }
               }}
               className="w-16 bg-[#0a0a0a] border border-gray-800 rounded px-2 py-1 text-sm text-center focus:border-cyan-500 focus:outline-none text-white font-mono"
@@ -1481,7 +1495,9 @@ export default function DAWProRebuild() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              daw?.updateTrack(track.id, { muted: !track.muted })
+                              // Update mute state - this triggers audio routing update
+                              const newMuted = !track.muted
+                              daw?.updateTrack(track.id, { muted: newMuted })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
@@ -1497,7 +1513,9 @@ export default function DAWProRebuild() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              daw?.updateTrack(track.id, { solo: !track.solo })
+                              // Update solo state - this triggers audio routing update for all tracks
+                              const newSolo = !track.solo
+                              daw?.updateTrack(track.id, { solo: newSolo })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
@@ -1536,7 +1554,9 @@ export default function DAWProRebuild() {
                             value={track.volume * 100}
                             onChange={(e) => {
                               e.stopPropagation()
-                              daw?.updateTrack(track.id, { volume: Number(e.target.value) / 100 })
+                              const newVolume = Number(e.target.value) / 100
+                              // This updates both Track state AND audio routing node gain in real-time
+                              daw?.updateTrack(track.id, { volume: newVolume })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
