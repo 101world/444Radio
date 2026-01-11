@@ -1156,9 +1156,9 @@ function CreatePageContent() {
         msg.id === processingMessage.id
           ? {
               ...msg,
-              content: `✅ Stems separated successfully! Used ${data.creditsUsed} credits. ${data.creditsRemaining} credits remaining.`,
+              content: `✅ Stems separated successfully! Used ${data.creditsUsed || 0} credits. ${data.creditsRemaining || 0} credits remaining.`,
               isGenerating: false,
-              stems: data.stems
+              stems: data.stems || {}
             }
           : msg
       ))
@@ -1477,10 +1477,10 @@ function CreatePageContent() {
                 )}
 
                 {/* Stems Result - Dynamic Display for All Stems */}
-                {message.stems && (
+                {message.stems && Object.keys(message.stems).length > 0 && (
                   <div className="space-y-3 max-w-md mx-auto">
                     {Object.entries(message.stems)
-                      .filter(([key, url]) => url && typeof url === 'string')
+                      .filter(([key, url]) => url && typeof url === 'string' && url.length > 0)
                       .map(([key, url]) => {
                         // Dynamic stem type detection
                         const getStemDisplay = (stemKey: string) => {

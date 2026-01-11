@@ -394,7 +394,7 @@ export default function StationPage() {
                 <div className="flex items-center gap-4">
                   <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
                     <Image
-                      src={currentTrack.image_url}
+                      src={currentTrack.artworkUrl || '/default-artwork.jpg'}
                       alt={currentTrack.title}
                       fill
                       className="object-cover"
@@ -403,7 +403,7 @@ export default function StationPage() {
                   <div className="flex-1">
                     <p className="text-xs text-cyan-400 mb-1">NOW PLAYING</p>
                     <h3 className="text-lg font-bold">{currentTrack.title}</h3>
-                    <p className="text-sm text-gray-400">{currentTrack.genre}</p>
+                    <p className="text-sm text-gray-400">{currentTrack.artist || 'Unknown Artist'}</p>
                   </div>
                   <button
                     onClick={togglePlayPause}
