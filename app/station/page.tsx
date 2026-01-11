@@ -938,9 +938,9 @@ function StationContent() {
                     )}
                     
                     {!isHost && (
-                      <div className="flex flex-col items-center gap-4 px-4 w-full">
-                        <div className="px-6 md:px-8 py-4 md:py-5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-2 border-cyan-500/40 rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.3)] w-full md:w-auto">
-                          <p className="text-cyan-200 text-sm md:text-base font-semibold text-center">🔔 Check back soon or follow <span className="text-cyan-300 font-bold">{djUsername}</span> for updates</p>
+                      <div className="flex flex-col items-center gap-4 w-full">
+                        <div className="px-8 py-5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-2 border-cyan-500/40 rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.3)]">
+                          <p className="text-cyan-200 text-base font-semibold text-center">🔔 Check back soon or follow <span className="text-cyan-300 font-bold">{djUsername}</span> for updates</p>
                         </div>
                         
                         <button className="px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl hover:bg-cyan-500/20 transition-all backdrop-blur-sm flex items-center gap-2 text-cyan-300 font-semibold">
