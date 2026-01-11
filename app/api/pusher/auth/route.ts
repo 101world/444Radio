@@ -1,7 +1,9 @@
 /**
  * Pusher Auth API
- * Authenticates users for private channels
- * Required for private-user-{userId} channels
+ * Authenticates users for private/presence channels
+ * Supports:
+ * - private-user-{userId} channels (for notifications)
+ * - presence-station-{stationId} channels (for live streaming WebRTC)
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -30,15 +32,27 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify user can access this channel
-    const expectedChannel = `private-user-${userId}`
-    if (channelName !== expectedChannel) {
-      return NextResponse.json({ error: 'Unauthorized channel' }, { status: 403 })
+    // Allow private-user-{userId} channels AND presence-station-{stationId} channels
+    const isPrivateUserChannel = channelName === `private-user-${userId}`
+    const isPresenceStationChannel = channelName.startsWith('presence-station-')
+    
+    if (!isPrivateUserChannel && !isPresenceStationChannel) {
+      return NextResponse.json({ 
+        error: 'Unauthorized channel',
+        channelName,
+        userId 
+      }, { status: 403 })
     }
 
-    // Authenticate the channel
-    const authResponse = pusher.authorizeChannel(socketId, channelName, {
-      user_id: userId,
-    })
+    // Authenticate the channel (presence channels need user_id for member info)
+    const authResponse = isPresenceStationChannel
+      ? pusher.authorizeChannel(socketId, channelName, {
+          user_id: userId,
+          user_info: { userId }
+        })
+      : pusher.authorizeChannel(socketId, channelName, {
+          user_id: userId,
+        })
 
     return NextResponse.json(authResponse)
 
