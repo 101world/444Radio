@@ -57,6 +57,11 @@ function StationContent() {
   const streamStartTimeRef = useRef<number | null>(null)
   const webrtcRef = useRef<StationWebRTC | null>(null)
 
+  // Auto-scroll chat to bottom when new messages arrive
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [chatMessages])
+
   // Check if station is live on mount
   useEffect(() => {
     if (!isHost && djUsername) {
@@ -267,10 +272,66 @@ function StationContent() {
       
       const errorMessage = error.message || 'Unknown error'
       
+      // Try audio-only mode if camera fails
+      if (errorMessage.includes('not found') || error.name === 'NotFoundError') {
+        const tryAudioOnly = confirm('❌ Camera not found.\n\n✅ Want to go live with AUDIO ONLY?\n\nYou can still broadcast music and chat with viewers!')
+        
+        if (tryAudioOnly) {
+          try {
+            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            localStreamRef.current = audioStream
+            
+            // Initialize WebRTC for audio-only broadcasting
+            webrtcRef.current = new StationWebRTC(stationId, user.id, true)
+            await webrtcRef.current.init()
+            await webrtcRef.current.startBroadcast(audioStream, (viewerId) => {
+              setViewerCount(prev => prev + 1)
+            })
+            
+            webrtcRef.current.onMessage((data) => {
+              setChatMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                username: data.username,
+                message: data.message,
+                avatar: '/default-avatar.png',
+                timestamp: new Date(data.timestamp)
+              }])
+              setTotalMessages(prev => prev + 1)
+            })
+            
+            webrtcRef.current.onReaction((data) => {
+              addReaction(data.emoji)
+            })
+            
+            const response = await fetch('/api/station', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                isLive: true,
+                username: user.username || 'DJ',
+                title: streamTitle || `${user.username}'s Station (Audio Only)`
+              })
+            })
+            
+            const data = await response.json()
+            if (data.success) {
+              setIsLive(true)
+              setIsStreaming(true)
+              setIsVideoOn(false)
+              streamStartTimeRef.current = Date.now()
+              addNotification('🎙️ Audio-only stream started!', 'join')
+              setHostUsername(user.username || 'DJ')
+            }
+            return
+          } catch (audioError) {
+            alert('❌ Audio-only mode failed. Please check microphone permissions.')
+          }
+        }
+        return
+      }
+      
       if (errorMessage.includes('Permission denied') || error.name === 'NotAllowedError') {
         alert('❌ Camera/Microphone permission denied.\n\n1. Click the camera icon in your browser address bar\n2. Allow camera and microphone access\n3. Try again')
-      } else if (errorMessage.includes('not found') || error.name === 'NotFoundError') {
-        alert('❌ Camera or microphone not found.\n\nPlease:\n1. Connect a webcam/microphone\n2. Close other apps using the camera\n3. Refresh and try again\n\nNote: Audio-only streaming will work if you don\'t have a camera.')
       } else if (error.name === 'NotReadableError') {
         alert('❌ Camera/microphone already in use.\n\nPlease close other apps (Zoom, Teams, etc.) and try again.')
       } else {
@@ -489,15 +550,26 @@ function StationContent() {
             >
               {isStreaming ? (
                 <>
-                  {/* Host sees their own video */}
+                  {/* Host sees their own video or audio-only UI */}
                   {isHost && (
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
+                    isVideoOn ? (
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+                        <div className="w-32 h-32 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center mb-6 animate-pulse shadow-2xl shadow-cyan-500/50">
+                          <Mic size={64} className="text-black" />
+                        </div>
+                        <h3 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">🎙️ Audio Only</h3>
+                        <p className="text-gray-400 text-lg">Camera is off</p>
+                        <p className="text-sm text-gray-500 mt-4">Your audio is broadcasting to {viewerCount} listener{viewerCount !== 1 ? 's' : ''}</p>
+                      </div>
+                    )
                   )}
                   
                   {/* Viewers see remote video */}
@@ -720,38 +792,38 @@ function StationContent() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl h-[calc(100vh-450px)] flex flex-col">
-              <div className="p-4 border-b border-white/10">
+            <div className="bg-gradient-to-br from-gray-900/50 to-black/50 border border-cyan-500/20 rounded-2xl h-[calc(100vh-450px)] flex flex-col backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
+              <div className="p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
                 <h3 className="font-bold flex items-center gap-2">
                   <MessageCircle size={20} className="text-cyan-400" />
-                  Live Chat ({totalMessages})
+                  Live Chat <span className="text-cyan-400">({totalMessages})</span>
                 </h3>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 scroll-smooth">
                 {chatMessages.length === 0 ? (
                   <div className="text-center text-gray-500 py-12">
                     <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
-                    <p>Be the first to chat!</p>
+                    <p className="text-sm">Be the first to chat!</p>
                   </div>
                 ) : (
                   chatMessages.map((msg) => (
-                    <div key={msg.id} className="flex gap-3 animate-slide-in">
+                    <div key={msg.id} className="flex gap-3 animate-fade-in-up bg-white/5 hover:bg-white/10 p-3 rounded-xl transition-all duration-300">
                       <Image
                         src={msg.avatar}
                         alt={msg.username}
                         width={32}
                         height={32}
-                        className="rounded-full flex-shrink-0"
+                        className="rounded-full flex-shrink-0 ring-2 ring-cyan-500/30"
                       />
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-bold text-sm text-cyan-400">{msg.username}</span>
+                          <span className="font-bold text-sm bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">{msg.username}</span>
                           <span className="text-xs text-gray-500">
                             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-300">{msg.message}</p>
+                        <p className="text-sm text-gray-200 break-words">{msg.message}</p>
                       </div>
                     </div>
                   ))
@@ -759,27 +831,28 @@ function StationContent() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="p-4 border-t border-white/10">
-                <div className="flex gap-2">
+              <div className="p-4 border-t border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-blue-500/5">
+                <div className="flex gap-2 mb-2">
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     placeholder="Say something..."
-                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-sm"
+                    className="flex-1 px-4 py-3 bg-white/10 border border-cyan-500/30 rounded-xl focus:outline-none focus:border-cyan-500 focus:bg-white/15 text-sm placeholder-gray-500 transition-all"
                     maxLength={200}
                   />
                   <button
                     onClick={sendMessage}
                     disabled={!chatInput.trim()}
-                    className="w-10 h-10 rounded-lg bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-12 h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/30 disabled:shadow-none"
                   >
-                    <Send size={16} className="text-black" />
+                    <Send size={18} className="text-black" />
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {chatInput.length}/200 characters
+                <p className="text-xs text-gray-500 flex items-center justify-between px-1">
+                  <span>{chatInput.length}/200 characters</span>
+                  <span className="text-cyan-400">Press Enter to send</span>
                 </p>
               </div>
             </div>
