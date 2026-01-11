@@ -12,6 +12,7 @@ import {
 import Image from 'next/image'
 import { useAudioPlayer } from '@/app/contexts/AudioPlayerContext'
 import { getUserMedia, STREAM_QUALITIES, formatBandwidth } from '@/lib/webrtc'
+import { StationWebRTC } from '@/lib/station-webrtc'
 
 function StationContent() {
   const { user } = useUser()
@@ -21,9 +22,11 @@ function StationContent() {
   
   const djUsername = searchParams.get('dj')
   const isHost = !djUsername || djUsername === user?.username
+  const stationId = djUsername || user?.username || 'default'
   
   const [isLive, setIsLive] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
   const [viewerCount, setViewerCount] = useState(0)
   const [chatMessages, setChatMessages] = useState<any[]>([])
   const [chatInput, setChatInput] = useState('')
@@ -31,6 +34,7 @@ function StationContent() {
   const [isVideoOn, setIsVideoOn] = useState(true)
   const [streamQuality, setStreamQuality] = useState<'480p' | '720p' | '1080p'>('720p')
   const [streamTitle, setStreamTitle] = useState('')
+  const [hostUsername, setHostUsername] = useState(djUsername || user?.username || 'DJ')
   const [showSettings, setShowSettings] = useState(false)
   const [bandwidth, setBandwidth] = useState(0)
   const [viewers, setViewers] = useState<any[]>([])
@@ -45,11 +49,86 @@ function StationContent() {
   const [notifications, setNotifications] = useState<any[]>([])
   
   const videoRef = useRef<HTMLVideoElement>(null)
+  const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const streamContainerRef = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamStartTimeRef = useRef<number | null>(null)
+  const webrtcRef = useRef<StationWebRTC | null>(null)
+
+  // Check if station is live on mount
+  useEffect(() => {
+    if (!isHost && djUsername) {
+      checkIfLive()
+    }
+  }, [djUsername, isHost])
+
+  const checkIfLive = async () => {
+    try {
+      const response = await fetch(`/api/station?username=${djUsername}`)
+      const data = await response.json()
+      if (data.isLive) {
+        setIsLive(true)
+        setHostUsername(djUsername!)
+        setStreamTitle(data.title || `${djUsername}'s Station`)
+      }
+    } catch (error) {
+      console.error('Failed to check live status:', error)
+    }
+  }
+
+  // Join stream as viewer
+  useEffect(() => {
+    if (!isHost && isLive && !isStreaming && user) {
+      joinStream()
+    }
+  }, [isHost, isLive, isStreaming, user])
+
+  const joinStream = async () => {
+    if (!user || isStreaming) return
+    
+    setIsConnecting(true)
+    addNotification(`Connecting to ${hostUsername}'s station...`, 'join')
+    
+    try {
+      // Initialize WebRTC
+      webrtcRef.current = new StationWebRTC(stationId, user.id, false)
+      await webrtcRef.current.init()
+      
+      // Join the stream
+      await webrtcRef.current.joinStream((stream) => {
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = stream
+          setIsStreaming(true)
+          setIsConnecting(false)
+          addNotification(`Connected to ${hostUsername}'s station!`, 'join')
+        }
+      })
+      
+      // Setup message listener
+      webrtcRef.current.onMessage((data) => {
+        setChatMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          username: data.username,
+          message: data.message,
+          avatar: '/default-avatar.png',
+          timestamp: new Date(data.timestamp)
+        }])
+        setTotalMessages(prev => prev + 1)
+      })
+      
+      // Setup reaction listener
+      webrtcRef.current.onReaction((data) => {
+        addReaction(data.emoji)
+      })
+      
+    } catch (error) {
+      console.error('Failed to join stream:', error)
+      setIsConnecting(false)
+      alert('Failed to connect to stream. The host may have ended the broadcast.')
+    }
+  }
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -115,6 +194,8 @@ function StationContent() {
   }
 
   const startStream = async () => {
+    if (!user) return
+    
     try {
       const quality = STREAM_QUALITIES[streamQuality]
       const stream = await getUserMedia(quality)
@@ -134,13 +215,41 @@ function StationContent() {
         setBandwidth(estimatedBandwidth)
       }
       
+      // Initialize WebRTC for broadcasting
+      webrtcRef.current = new StationWebRTC(stationId, user.id, true)
+      await webrtcRef.current.init()
+      
+      // Start broadcasting
+      await webrtcRef.current.startBroadcast(stream, (viewerId) => {
+        console.log('New viewer connected:', viewerId)
+        setViewerCount(prev => prev + 1)
+      })
+      
+      // Setup message listener
+      webrtcRef.current.onMessage((data) => {
+        setChatMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          username: data.username,
+          message: data.message,
+          avatar: '/default-avatar.png',
+          timestamp: new Date(data.timestamp)
+        }])
+        setTotalMessages(prev => prev + 1)
+      })
+      
+      // Setup reaction listener
+      webrtcRef.current.onReaction((data) => {
+        addReaction(data.emoji)
+      })
+      
+      // Update server
       const response = await fetch('/api/station', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           isLive: true,
-          username: user?.username || 'DJ',
-          title: streamTitle || `${user?.username}'s Station`
+          username: user.username || 'DJ',
+          title: streamTitle || `${user.username}'s Station`
         })
       })
       
@@ -151,6 +260,7 @@ function StationContent() {
         setShowSettings(false)
         streamStartTimeRef.current = Date.now()
         addNotification('Stream started!', 'join')
+        setHostUsername(user.username || 'DJ')
       }
     } catch (error: any) {
       console.error('Failed to start stream:', error)
@@ -214,6 +324,10 @@ function StationContent() {
         setIsRecording(false)
       }
       
+      // Disconnect WebRTC
+      webrtcRef.current?.disconnect()
+      webrtcRef.current = null
+      
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop())
         localStreamRef.current = null
@@ -221,6 +335,10 @@ function StationContent() {
       
       if (videoRef.current) {
         videoRef.current.srcObject = null
+      }
+      
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null
       }
       
       const response = await fetch('/api/station', {
@@ -239,6 +357,11 @@ function StationContent() {
         streamStartTimeRef.current = null
         setStreamDuration(0)
         addNotification('Stream ended', 'leave')
+        
+        // If viewer, redirect back
+        if (!isHost) {
+          router.push('/explore')
+        }
       }
     } catch (error) {
       console.error('Failed to end stream:', error)
@@ -266,20 +389,31 @@ function StationContent() {
   }
 
   const sendMessage = async () => {
-    if (!chatInput.trim() || !user) return
+    if (!chatInput.trim() || !user || !webrtcRef.current) return
     
-    const message = {
+    const username = user.username || 'Anonymous'
+    const message = chatInput
+    
+    // Send via WebRTC
+    webrtcRef.current.sendMessage(message, username)
+    
+    // Add to local state
+    setChatMessages(prev => [...prev, {
       id: Date.now().toString(),
       user_id: user.id,
-      username: user.username || 'Anonymous',
+      username,
       avatar: user.imageUrl || '/default-avatar.png',
-      message: chatInput,
+      message,
       timestamp: new Date()
-    }
-    
-    setChatMessages(prev => [...prev, message])
+    }])
     setTotalMessages(prev => prev + 1)
     setChatInput('')
+  }
+  
+  const sendReaction = (emoji: string) => {
+    if (!webrtcRef.current) return
+    webrtcRef.current.sendReaction(emoji)
+    addReaction(emoji)
   }
 
   const reactionEmojis = ['❤️', '🔥', '👏', '🎵', '🎉', '💯']
@@ -294,13 +428,18 @@ function StationContent() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">
-                {streamTitle || (isHost ? '444 Radio Station' : `${djUsername}'s Station`)}
+                {streamTitle || `${hostUsername}'s Station`}
               </h1>
               <p className="text-sm text-gray-400">
                 {isLive ? (
                   <span className="flex items-center gap-2">
                     <Circle size={8} className="fill-red-500 text-red-500 animate-pulse" />
                     LIVE • {viewerCount} listeners
+                  </span>
+                ) : isConnecting ? (
+                  <span className="flex items-center gap-2">
+                    <Wifi size={12} className="animate-pulse" />
+                    Connecting...
                   </span>
                 ) : (
                   'Offline'
@@ -350,13 +489,26 @@ function StationContent() {
             >
               {isStreaming ? (
                 <>
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted={isHost}
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
+                  {/* Host sees their own video */}
+                  {isHost && (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  
+                  {/* Viewers see remote video */}
+                  {!isHost && (
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                   
                   <div className="absolute top-4 left-4 flex items-center gap-3">
                     <div className="px-3 py-1 bg-red-500 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg">
@@ -476,7 +628,7 @@ function StationContent() {
                       {reactionEmojis.map((emoji) => (
                         <button
                           key={emoji}
-                          onClick={() => addReaction(emoji)}
+                          onClick={() => sendReaction(emoji)}
                           className="w-12 h-12 rounded-full bg-black/60 backdrop-blur hover:bg-black/80 hover:scale-110 transition-all text-2xl flex items-center justify-center"
                         >
                           {emoji}

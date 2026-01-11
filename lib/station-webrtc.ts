@@ -1,0 +1,185 @@
+import Peer from 'simple-peer'
+import Pusher from 'pusher-js'
+
+interface SignalData {
+  signal: any
+  from: string
+  to?: string
+}
+
+export class StationWebRTC {
+  private pusher: Pusher | null = null
+  private channel: any = null
+  private peer: Peer | null = null
+  private localStream: MediaStream | null = null
+  private stationId: string
+  private userId: string
+  private isHost: boolean
+
+  constructor(stationId: string, userId: string, isHost: boolean = false) {
+    this.stationId = stationId
+    this.userId = userId
+    this.isHost = isHost
+  }
+
+  async init() {
+    // Initialize Pusher
+    this.pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap2',
+      authEndpoint: '/api/pusher/auth'
+    })
+
+    // Subscribe to station channel
+    this.channel = this.pusher.subscribe(`presence-station-${this.stationId}`)
+
+    this.channel.bind('pusher:subscription_succeeded', () => {
+      console.log('✅ Connected to station channel')
+    })
+
+    this.channel.bind('pusher:member_added', (member: any) => {
+      console.log('👋 New viewer:', member.id)
+    })
+
+    this.channel.bind('pusher:member_removed', (member: any) => {
+      console.log('👋 Viewer left:', member.id)
+    })
+  }
+
+  async startBroadcast(stream: MediaStream, onViewerJoin?: (viewerId: string) => void) {
+    this.localStream = stream
+    
+    // Listen for viewer signal requests
+    this.channel.bind('viewer-signal', (data: SignalData) => {
+      if (data.to !== this.userId) return
+      
+      console.log('📡 Viewer requesting connection:', data.from)
+      
+      // Create peer for this viewer
+      const peer = new Peer({
+        initiator: false,
+        trickle: false,
+        stream: this.localStream!
+      })
+
+      peer.on('signal', (signal) => {
+        // Send signal back to viewer
+        this.channel.trigger('client-host-signal', {
+          signal,
+          from: this.userId,
+          to: data.from
+        })
+      })
+
+      peer.on('connect', () => {
+        console.log('✅ Connected to viewer:', data.from)
+        onViewerJoin?.(data.from)
+      })
+
+      peer.on('error', (err) => {
+        console.error('❌ Peer error:', err)
+      })
+
+      // Process viewer's signal
+      peer.signal(data.signal)
+    })
+  }
+
+  async joinStream(onStream?: (stream: MediaStream) => void) {
+    // Get host user ID from channel members
+    const members = this.channel.members
+    const hostMember = Object.values(members.members).find((m: any) => m.info?.isHost)
+    
+    if (!hostMember) {
+      throw new Error('Host not found')
+    }
+
+    const hostId = (hostMember as any).id
+
+    // Create peer as viewer
+    this.peer = new Peer({
+      initiator: true,
+      trickle: false
+    })
+
+    this.peer.on('signal', (signal) => {
+      // Send signal to host
+      this.channel.trigger('client-viewer-signal', {
+        signal,
+        from: this.userId,
+        to: hostId
+      })
+    })
+
+    this.peer.on('stream', (stream) => {
+      console.log('✅ Received stream from host')
+      onStream?.(stream)
+    })
+
+    this.peer.on('connect', () => {
+      console.log('✅ Connected to host')
+    })
+
+    this.peer.on('error', (err) => {
+      console.error('❌ Peer connection error:', err)
+    })
+
+    // Listen for host's signal response
+    this.channel.bind('host-signal', (data: SignalData) => {
+      if (data.to !== this.userId) return
+      
+      console.log('📡 Received signal from host')
+      this.peer?.signal(data.signal)
+    })
+  }
+
+  sendMessage(message: string, username: string) {
+    this.channel.trigger('client-chat-message', {
+      message,
+      username,
+      userId: this.userId,
+      timestamp: new Date().toISOString()
+    })
+  }
+
+  onMessage(callback: (data: any) => void) {
+    this.channel.bind('chat-message', callback)
+  }
+
+  sendReaction(emoji: string) {
+    this.channel.trigger('client-reaction', {
+      emoji,
+      userId: this.userId,
+      timestamp: new Date().toISOString()
+    })
+  }
+
+  onReaction(callback: (data: any) => void) {
+    this.channel.bind('reaction', callback)
+  }
+
+  getViewerCount() {
+    return this.channel?.members?.count || 0
+  }
+
+  disconnect() {
+    if (this.peer) {
+      this.peer.destroy()
+      this.peer = null
+    }
+
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(track => track.stop())
+      this.localStream = null
+    }
+
+    if (this.channel) {
+      this.pusher?.unsubscribe(`presence-station-${this.stationId}`)
+      this.channel = null
+    }
+
+    if (this.pusher) {
+      this.pusher.disconnect()
+      this.pusher = null
+    }
+  }
+}

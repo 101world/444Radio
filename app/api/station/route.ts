@@ -7,6 +7,143 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// GET - Check if station is live or fetch stations
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const username = searchParams.get('username')
+    const userId = searchParams.get('userId')
+    const id = searchParams.get('id')
+
+    // Query by station ID
+    if (id) {
+      const { data: station, error } = await supabase
+        .from('stations')
+        .select(`
+          *,
+          users:user_id (
+            clerk_user_id,
+            username,
+            profile_image_url
+          )
+        `)
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        console.error('Failed to fetch station:', error)
+        return NextResponse.json({ error: 'Station not found' }, { status: 404 })
+      }
+
+      const formatted = {
+        id: station.id,
+        title: station.title,
+        description: station.description,
+        coverUrl: station.cover_url,
+        genre: station.genre,
+        isLive: station.is_live,
+        listenerCount: station.listener_count || 0,
+        lastLiveAt: station.last_live_at,
+        owner: {
+          userId: station.users?.clerk_user_id,
+          username: station.users?.username || 'Unknown',
+          profileImage: station.users?.profile_image_url
+        }
+      }
+
+      return NextResponse.json({ success: true, station: formatted })
+    }
+    
+    // Query by username (for station page)
+    if (username) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('clerk_user_id')
+        .eq('username', username)
+        .single()
+        
+      if (!userData) {
+        return NextResponse.json({ isLive: false })
+      }
+      
+      const { data: stationData } = await supabase
+        .from('live_stations')
+        .select('*')
+        .eq('user_id', userData.clerk_user_id)
+        .eq('is_live', true)
+        .single()
+        
+      return NextResponse.json({
+        isLive: !!stationData,
+        title: stationData?.title || `${username}'s Station`,
+        username
+      })
+    }
+
+    // Get specific user's station by userId
+    if (userId) {
+      const { data, error } = await supabase
+        .from('live_stations')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      if (error && error.code !== 'PGRST116') throw error
+      return NextResponse.json({ success: true, station: data || null })
+    }
+
+    // No params = Get all live stations
+    const { data: liveStationsData, error: stationsError } = await supabase
+      .from('live_stations')
+      .select('*')
+      .eq('is_live', true)
+      .order('started_at', { ascending: false })
+
+    if (stationsError) {
+      console.error('Error fetching live stations:', stationsError)
+      return NextResponse.json({ success: true, stations: [] })
+    }
+    
+    console.log('📻 Fetched live stations:', liveStationsData?.length || 0)
+    
+    if (!liveStationsData || liveStationsData.length === 0) {
+      return NextResponse.json({ success: true, stations: [] })
+    }
+
+    // Get user data for all live station owners
+    const userIds = liveStationsData.map(s => s.user_id)
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('clerk_user_id, username, avatar_url')
+      .in('clerk_user_id', userIds)
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError)
+    }
+
+    // Create a map of user data by clerk_user_id
+    const usersMap = new Map()
+    usersData?.forEach(user => {
+      usersMap.set(user.clerk_user_id, user)
+    })
+    
+    // Format the response to include profile image and correct username
+    const formattedStations = liveStationsData.map(station => {
+      const userData = usersMap.get(station.user_id)
+      return {
+        ...station,
+        username: userData?.username || station.username,
+        profile_image: userData?.avatar_url || null
+      }
+    })
+    
+    return NextResponse.json({ success: true, stations: formattedStations })
+  } catch (error) {
+    console.error('Station GET error:', error)
+    return NextResponse.json({ error: 'Failed to get station' }, { status: 500 })
+  }
+}
+
 // POST - Go live or update station
 export async function POST(request: NextRequest) {
   try {
@@ -185,123 +322,5 @@ export async function POST(request: NextRequest) {
       error: 'Failed to update station',
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
-  }
-}
-
-// GET - Get station status
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const id = searchParams.get('id')
-
-    if (id) {
-      // Get station by ID (from new stations table)
-      const { data: station, error } = await supabase
-        .from('stations')
-        .select(`
-          *,
-          users:user_id (
-            clerk_user_id,
-            username,
-            profile_image_url
-          )
-        `)
-        .eq('id', id)
-        .single()
-
-      if (error) {
-        console.error('Failed to fetch station:', error)
-        return NextResponse.json({ error: 'Station not found' }, { status: 404 })
-      }
-
-      const formatted = {
-        id: station.id,
-        title: station.title,
-        description: station.description,
-        coverUrl: station.cover_url,
-        genre: station.genre,
-        isLive: station.is_live,
-        listenerCount: station.listener_count || 0,
-        lastLiveAt: station.last_live_at,
-        owner: {
-          userId: station.users?.clerk_user_id,
-          username: station.users?.username || 'Unknown',
-          profileImage: station.users?.profile_image_url
-        }
-      }
-
-      return NextResponse.json({ success: true, station: formatted })
-    }
-
-    if (!userId) {
-      // Get all live stations
-      const { data: liveStationsData, error: stationsError } = await supabase
-        .from('live_stations')
-        .select('*')
-        .eq('is_live', true)
-        .order('started_at', { ascending: false })
-
-      if (stationsError) {
-        console.error('Error fetching live stations:', stationsError)
-        return NextResponse.json({ success: true, stations: [] })
-      }
-      
-      console.log('📻 Fetched live stations:', liveStationsData?.length || 0)
-      
-      if (!liveStationsData || liveStationsData.length === 0) {
-        return NextResponse.json({ success: true, stations: [] })
-      }
-
-      // Get user data for all live station owners
-      const userIds = liveStationsData.map(s => s.user_id)
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('clerk_user_id, username, avatar_url')
-        .in('clerk_user_id', userIds)
-
-      if (usersError) {
-        console.error('Error fetching users:', usersError)
-      }
-
-      // Create a map of user data by clerk_user_id
-      const usersMap = new Map()
-      usersData?.forEach(user => {
-        usersMap.set(user.clerk_user_id, user)
-      })
-      
-      // Format the response to include profile image and correct username
-      const formattedStations = liveStationsData.map(station => {
-        const userData = usersMap.get(station.user_id)
-        console.log('Station data:', {
-          id: station.id,
-          old_username: station.username,
-          user_id: station.user_id,
-          has_user_data: !!userData,
-          correct_username: userData?.username,
-          avatar: userData?.avatar_url
-        })
-        return {
-          ...station,
-          username: userData?.username || station.username, // Use fresh username from users table
-          profile_image: userData?.avatar_url || null
-        }
-      })
-      
-      return NextResponse.json({ success: true, stations: formattedStations })
-    }
-
-    // Get specific user's station
-    const { data, error } = await supabase
-      .from('live_stations')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-
-    if (error && error.code !== 'PGRST116') throw error
-    return NextResponse.json({ success: true, station: data || null })
-  } catch (error) {
-    console.error('Station GET error:', error)
-    return NextResponse.json({ error: 'Failed to get station' }, { status: 500 })
   }
 }
