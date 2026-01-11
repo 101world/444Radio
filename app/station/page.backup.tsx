@@ -583,8 +583,8 @@ function StationContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-cyan-900/20 to-blue-900/30 text-white pt-20 pb-24">
-      <div className="px-3 md:px-6 py-3 md:py-4 border-b border-cyan-500/20 backdrop-blur-xl bg-gradient-to-r from-cyan-900/30 to-blue-900/30 sticky top-16 z-40">
+    <div className="min-h-screen bg-black text-white pt-20 pb-24">
+      <div className="px-3 md:px-6 py-3 md:py-4 border-b border-white/10 backdrop-blur-xl bg-black/50 sticky top-16 z-40">
         <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
           <div className="flex items-center gap-2 md:gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center animate-pulse">
@@ -614,7 +614,7 @@ function StationContent() {
           <div className="flex items-center gap-2 md:gap-3">
             <button
               onClick={testDevices}
-              className="hidden md:flex px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-all items-center gap-2 hover:border-cyan-400/50"
+              className="hidden md:flex px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all items-center gap-2"
               title="Check Camera & Microphone"
             >
               <Camera size={16} />
@@ -622,7 +622,7 @@ function StationContent() {
             </button>
             <button
               onClick={() => setShowShortcuts(true)}
-              className="w-10 h-10 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-all flex items-center justify-center hover:border-cyan-400/50"
+              className="w-10 h-10 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center justify-center"
               title="Keyboard Shortcuts"
             >
               ?
@@ -633,7 +633,7 @@ function StationContent() {
                 navigator.clipboard.writeText(url)
                 alert('Station link copied!')
               }}
-              className="px-3 md:px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-all flex items-center gap-2 hover:border-cyan-400/50"
+              className="px-3 md:px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center gap-2"
             >
               <Share2 size={14} className="md:w-4 md:h-4" />
               <span className="hidden md:inline">Share</span>
@@ -665,7 +665,7 @@ function StationContent() {
           <div className="lg:col-span-3 space-y-4 md:space-y-6">
             <div 
               ref={streamContainerRef}
-              className="relative bg-gradient-to-br from-cyan-900/30 via-gray-900 to-blue-900/30 rounded-2xl overflow-hidden aspect-video border border-cyan-500/20 shadow-2xl shadow-cyan-500/10"
+              className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden aspect-video border border-white/10 shadow-2xl"
             >
               {/* Always render video elements so refs are ready BEFORE startStream */}
               <video
@@ -883,7 +883,7 @@ function StationContent() {
           </div>
 
           <div className="space-y-4">
-            <div className="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 border border-cyan-500/20 rounded-2xl p-4 backdrop-blur-xl">
+            <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl p-4">
               <h3 className="font-bold flex items-center gap-2 mb-3">
                 <Users size={20} className="text-cyan-400" />
                 Viewers ({viewerCount})
