@@ -399,6 +399,28 @@ export default function DAWProRebuild() {
     }))
   }, [])
 
+  // Metronome click sound function
+  const playMetronomeClick = useCallback(() => {
+    if (!daw) return
+    const audioContext = daw.getAudioContext()
+    const oscillator = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
+    
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+    
+    // 1000Hz beep
+    oscillator.frequency.value = 1000
+    oscillator.type = 'sine'
+    
+    // Quick envelope: instant attack, fast decay
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05)
+    
+    oscillator.start(audioContext.currentTime)
+    oscillator.stop(audioContext.currentTime + 0.05)
+  }, [daw])
+
   // Transport controls
   const handlePlay = useCallback(() => {
     if (!daw) return
@@ -407,16 +429,23 @@ export default function DAWProRebuild() {
       setIsPlaying(true)
 
       if (metronomeEnabled) {
+        // Play first click immediately
+        playMetronomeClick()
+        
         const interval = setInterval(() => {
+          // Visual flash
           setMetronomeFlash(true)
           setTimeout(() => setMetronomeFlash(false), 50)
+          
+          // Audio click
+          playMetronomeClick()
         }, (60 / bpm) * 1000)
         setMetronomeInterval(interval)
       }
     } catch (error) {
       console.error('Play error:', error)
     }
-  }, [daw, metronomeEnabled, bpm])
+  }, [daw, metronomeEnabled, bpm, playMetronomeClick])
 
   const handlePause = useCallback(() => {
     if (!daw) return
@@ -1306,7 +1335,25 @@ export default function DAWProRebuild() {
             Loop
           </button>
           <button
-            onClick={() => setMetronomeEnabled(!metronomeEnabled)}
+            onClick={() => {
+              const nextEnabled = !metronomeEnabled
+              setMetronomeEnabled(nextEnabled)
+              
+              // If turning on while already playing, start metronome immediately
+              if (nextEnabled && isPlaying && !metronomeInterval) {
+                playMetronomeClick()
+                const interval = setInterval(() => {
+                  setMetronomeFlash(true)
+                  setTimeout(() => setMetronomeFlash(false), 50)
+                  playMetronomeClick()
+                }, (60 / bpm) * 1000)
+                setMetronomeInterval(interval)
+              } else if (!nextEnabled && metronomeInterval) {
+                // Turn off
+                clearInterval(metronomeInterval)
+                setMetronomeInterval(null)
+              }
+            }}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
               metronomeEnabled
                 ? metronomeFlash
