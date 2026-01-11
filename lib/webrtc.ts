@@ -69,7 +69,7 @@ export class WebRTCManager {
 }
 
 export async function getUserMedia(quality: StreamQuality): Promise<MediaStream> {
-  // Try with ideal constraints first
+  // Try with flexible constraints (browser will pick best available device)
   try {
     const constraints: MediaStreamConstraints = {
       video: {
@@ -83,33 +83,22 @@ export async function getUserMedia(quality: StreamQuality): Promise<MediaStream>
         autoGainControl: true
       }
     }
+    console.log('🎥 Requesting media with quality:', quality.label, constraints)
     return await navigator.mediaDevices.getUserMedia(constraints)
   } catch (error) {
-    console.warn('Failed with ideal constraints, trying with basic video...', error)
+    console.warn('⚠️ Failed with ideal constraints, trying basic...', error)
     
-    // Fallback 1: Try with just basic video
+    // Fallback: Try with just basic true (let browser choose defaults)
     try {
-      return await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
+        audio: true
       })
+      console.log('✅ Got media with basic constraints')
+      return stream
     } catch (error2) {
-      console.warn('Failed with basic video, trying audio only...', error2)
-      
-      // Fallback 2: Try audio only
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          video: false,
-          audio: true
-        })
-      } catch (error3) {
-        console.error('All getUserMedia attempts failed:', error3)
-        throw new Error('Could not access camera or microphone. Please check your device permissions and ensure a camera/microphone is connected.')
-      }
+      console.error('❌ All getUserMedia attempts failed:', error2)
+      throw new Error('Could not access camera or microphone. Please check permissions and ensure devices are connected.')
     }
   }
 }

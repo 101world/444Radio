@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Pusher not configured' }, { status: 503 }))
     }
 
-    const { stationId, message, username, timestamp } = await req.json()
+    const { stationId, message, username, avatar, timestamp } = await req.json()
 
     if (!stationId || !message || !username) {
       return corsResponse(NextResponse.json({ 
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     await pusher.trigger(channelName, 'chat-message', {
       message,
       username,
+      avatar,
       userId,
       timestamp: timestamp || new Date().toISOString()
     })

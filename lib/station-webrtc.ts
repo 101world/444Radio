@@ -160,7 +160,7 @@ export class StationWebRTC {
     })
   }
 
-  async sendMessage(message: string, username: string) {
+  async sendMessage(message: string, username: string, avatar?: string) {
     try {
       await fetch('/api/station/message', {
         method: 'POST',
@@ -169,6 +169,7 @@ export class StationWebRTC {
           stationId: this.stationId,
           message,
           username,
+          avatar,
           userId: this.userId,
           timestamp: new Date().toISOString()
         })

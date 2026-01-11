@@ -295,7 +295,7 @@ function StationContent() {
           id: Date.now().toString(),
           username: data.username,
           message: data.message,
-          avatar: '/default-avatar.png',
+          avatar: data.avatar || user?.imageUrl || undefined,
           timestamp: new Date(data.timestamp)
         }])
         setTotalMessages(prev => prev + 1)
@@ -354,7 +354,7 @@ function StationContent() {
                 id: Date.now().toString(),
                 username: data.username,
                 message: data.message,
-                avatar: '/default-avatar.png',
+                avatar: data.avatar || user?.imageUrl || undefined,
                 timestamp: new Date(data.timestamp)
               }])
               setTotalMessages(prev => prev + 1)
@@ -517,15 +517,15 @@ function StationContent() {
       const username = user.username || 'Anonymous'
       const message = chatInput
       
-      // Send via WebRTC
-      webrtcRef.current.sendMessage(message, username)
+      // Send via WebRTC with avatar
+      webrtcRef.current.sendMessage(message, username, user.imageUrl || undefined)
       
       // Add to local state
       setChatMessages(prev => [...prev, {
         id: Date.now().toString(),
         user_id: user.id,
         username,
-        avatar: user.imageUrl || '/default-avatar.png',
+        avatar: user.imageUrl || undefined,
         message,
         timestamp: new Date()
       }])
@@ -538,7 +538,7 @@ function StationContent() {
         id: Date.now().toString(),
         user_id: user.id,
         username: user.username || 'Anonymous',
-        avatar: user.imageUrl || '/default-avatar.png',
+        avatar: user.imageUrl || undefined,
         message: chatInput,
         timestamp: new Date()
       }])
@@ -915,13 +915,19 @@ function StationContent() {
                 ) : (
                   chatMessages.map((msg) => (
                     <div key={msg.id} className="flex gap-3 animate-fade-in-up bg-white/5 hover:bg-white/10 p-3 rounded-xl transition-all duration-300">
-                      <Image
-                        src={msg.avatar}
-                        alt={msg.username}
-                        width={32}
-                        height={32}
-                        className="rounded-full flex-shrink-0 ring-2 ring-cyan-500/30"
-                      />
+                      {msg.avatar ? (
+                        <Image
+                          src={msg.avatar}
+                          alt={msg.username}
+                          width={32}
+                          height={32}
+                          className="rounded-full flex-shrink-0 ring-2 ring-cyan-500/30"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0 ring-2 ring-cyan-500/30 font-bold text-white text-sm">
+                          {msg.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-bold text-sm bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">{msg.username}</span>
