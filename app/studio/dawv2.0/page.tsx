@@ -1071,6 +1071,51 @@ export default function DAWProRebuild() {
       } else if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         handleSave()
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault()
+        // Delete selected clip
+        if (selectedClipId && selectedTrackId && daw) {
+          daw.removeClipFromTrack(selectedTrackId, selectedClipId)
+          setTracks(daw.getTracks())
+          setSelectedClipId(null)
+          markProjectDirty()
+          showToast('Clip deleted', 'success')
+        }
+      } else if (e.key === 'x' || e.key === 'X') {
+        e.preventDefault()
+        // Split selected clip at playhead
+        if (selectedClipId && selectedTrackId && daw) {
+          const track = daw.getTracks().find(t => t.id === selectedTrackId)
+          const clip = track?.clips.find(c => c.id === selectedClipId)
+          if (clip && playhead > clip.startTime && playhead < clip.startTime + clip.duration) {
+            // Split clip into two parts
+            const leftDuration = playhead - clip.startTime
+            const rightStartTime = playhead
+            const rightDuration = clip.duration - leftDuration
+            const rightOffset = clip.offset + leftDuration
+            
+            // Update left clip (original)
+            daw.updateClip(selectedTrackId, selectedClipId, { duration: leftDuration })
+            
+            // Create right clip
+            const rightClip: Partial<TrackClip> = {
+              startTime: rightStartTime,
+              duration: rightDuration,
+              offset: rightOffset,
+              gain: clip.gain,
+              buffer: clip.buffer,
+              sourceUrl: clip.sourceUrl,
+              name: clip.name ? `${clip.name} (split)` : undefined,
+              color: clip.color,
+              fadeIn: { duration: 0.01, curve: 'exponential' },
+              fadeOut: clip.fadeOut
+            }
+            daw.addClipToTrack(selectedTrackId, rightClip)
+            setTracks(daw.getTracks())
+            markProjectDirty()
+            showToast('Clip split at playhead', 'success')
+          }
+        }
       } else if (e.key === 'b' || e.key === 'B') {
         e.preventDefault()
         setShowBrowser((prev) => !prev)
@@ -1668,7 +1713,8 @@ export default function DAWProRebuild() {
                     style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect()
-                      const x = e.clientX - rect.left
+                      const scrollLeft = timelineRef.current?.scrollLeft || 0
+                      const x = e.clientX - rect.left + scrollLeft
                       const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
                       daw?.seekTo(time)
                       setPlayhead(time)
@@ -1800,10 +1846,14 @@ export default function DAWProRebuild() {
                             width: `${clip.duration * zoom}px`,
                             zIndex: selectedClipId === clip.id ? 10 : 2
                           }}
-                          onClick={() => setSelectedClipId(clip.id)}
+                          onClick={() => {
+                            setSelectedClipId(clip.id)
+                            setSelectedTrackId(track.id)
+                          }}
                           onMouseDown={(e) => {
                             e.stopPropagation()
                             setSelectedClipId(clip.id)
+                            setSelectedTrackId(track.id)
                             const rect = e.currentTarget.getBoundingClientRect()
                             const offsetX = e.clientX - rect.left
                             setDraggingClip({ clipId: clip.id, trackId: track.id, offsetX })
