@@ -869,87 +869,34 @@ function StationContent() {
                   )}
                 </>
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center p-8 bg-black overflow-hidden">
-                  {/* Animated gradient background */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/40 via-blue-950/30 to-purple-950/40 animate-gradient bg-[length:400%_400%]"></div>
-                  
-                  {/* Floating orbs */}
-                  <div className="absolute inset-0 overflow-hidden opacity-30">
-                    <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-cyan-500/60 rounded-full blur-[120px] animate-float" style={{ animationDuration: '8s' }}></div>
-                    <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-blue-500/50 rounded-full blur-[140px] animate-float" style={{ animationDuration: '12s', animationDelay: '2s' }}></div>
-                    <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-purple-500/40 rounded-full blur-[100px] animate-float" style={{ animationDuration: '10s', animationDelay: '4s' }}></div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-gradient-to-br from-gray-900 to-black">
+                  <div className="w-24 h-24 rounded-full bg-cyan-600 flex items-center justify-center mb-6">
+                    <Radio size={48} className="text-white" />
                   </div>
+                  <h2 className="text-3xl font-bold mb-4 text-gray-200 text-center">
+                    {isHost ? 'Start Your Station' : 'Station Offline'}
+                  </h2>
+                  <p className="text-gray-400 text-center mb-8 max-w-md">
+                    {isHost
+                      ? 'Go live and share your music with the 444 community'
+                      : `${djUsername} is not streaming right now`}
+                  </p>
                   
-                  {/* Grid pattern */}
-                  <div className="absolute inset-0 opacity-[0.03]" style={{
-                    backgroundImage: 'linear-gradient(cyan 1px, transparent 1px), linear-gradient(90deg, cyan 1px, transparent 1px)',
-                    backgroundSize: '50px 50px'
-                  }}></div>
+                  {isHost && (
+                    <button
+                      onClick={startStream}
+                      className="px-8 py-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold flex items-center gap-2 transition-all"
+                    >
+                      <Video size={20} />
+                      <span>Go Live</span>
+                    </button>
+                  )}
                   
-                  <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-2xl mx-auto">
-                    {/* Icon */}
-                    <div className="relative mb-8">
-                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full blur-2xl opacity-60 animate-pulse"></div>
-                      <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-500 flex items-center justify-center shadow-[0_0_80px_rgba(6,182,212,0.8)] border-4 border-cyan-400/40 animate-float">
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/20 to-transparent animate-spin" style={{ animationDuration: '3s' }}></div>
-                        <Radio size={56} className="text-white relative z-10" />
-                      </div>
+                  {!isHost && (
+                    <div className="px-6 py-3 bg-gray-800 border border-gray-700 rounded-lg">
+                      <p className="text-gray-400 text-sm">Check back soon for live streams</p>
                     </div>
-                    
-                    {/* Title */}
-                    <h2 className="text-5xl font-black mb-4 bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] text-center leading-tight">
-                      {isHost ? 'Start Your Station' : 'Station Offline'}
-                    </h2>
-                    
-                    {/* Subtitle */}
-                    <p className="text-gray-300 text-center mb-8 max-w-md text-lg leading-relaxed">
-                      {isHost
-                        ? 'Go live and share your vibe with the 444 community'
-                        : `${djUsername} is currently offline. Check back soon!`}
-                    </p>
-                    
-                    {isHost && (
-                      <div className="flex flex-col items-center gap-6 w-full">
-                        <button
-                          onClick={startStream}
-                          className="group relative px-12 py-5 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white rounded-2xl font-black text-xl hover:from-cyan-400 hover:via-blue-400 hover:to-purple-400 transition-all duration-300 shadow-[0_0_60px_rgba(6,182,212,0.6)] hover:shadow-[0_0_100px_rgba(6,182,212,0.9)] transform hover:scale-105 active:scale-95 flex items-center gap-3 border-2 border-cyan-300/50 overflow-hidden"
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-                          <Video size={28} className="group-hover:rotate-12 transition-transform relative z-10" />
-                          <span className="relative z-10">Go Live Now</span>
-                        </button>
-                        
-                        {/* Feature highlights */}
-                        <div className="grid grid-cols-3 gap-3 w-full max-w-lg">
-                          <div className="flex flex-col items-center p-4 bg-cyan-500/10 rounded-xl border border-cyan-500/30 backdrop-blur-sm hover:bg-cyan-500/20 transition-all">
-                            <Users size={24} className="text-cyan-400 mb-2" />
-                            <span className="text-xs text-cyan-300 font-semibold">Live Audience</span>
-                          </div>
-                          <div className="flex flex-col items-center p-4 bg-blue-500/10 rounded-xl border border-blue-500/30 backdrop-blur-sm hover:bg-blue-500/20 transition-all">
-                            <MessageCircle size={24} className="text-blue-400 mb-2" />
-                            <span className="text-xs text-blue-300 font-semibold">Real-time Chat</span>
-                          </div>
-                          <div className="flex flex-col items-center p-4 bg-purple-500/10 rounded-xl border border-purple-500/30 backdrop-blur-sm hover:bg-purple-500/20 transition-all">
-                            <Music size={24} className="text-purple-400 mb-2" />
-                            <span className="text-xs text-purple-300 font-semibold">HD Quality</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {!isHost && (
-                      <div className="flex flex-col items-center gap-4 w-full">
-                        <div className="px-8 py-5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-2 border-cyan-500/40 rounded-2xl backdrop-blur-md shadow-[0_0_30px_rgba(6,182,212,0.3)]">
-                          <p className="text-cyan-200 text-base font-semibold text-center">🔔 Check back soon or follow <span className="text-cyan-300 font-bold">{djUsername}</span> for updates</p>
-                        </div>
-                        
-                        <button className="px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl hover:bg-cyan-500/20 transition-all backdrop-blur-sm flex items-center gap-2 text-cyan-300 font-semibold">
-                          <Share2 size={18} />
-                          <span>Share Station</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               )}
             </div>
