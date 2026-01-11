@@ -104,8 +104,22 @@ function StationContent() {
       webrtcRef.current = new StationWebRTC(stationId, user.id, false)
       await webrtcRef.current.init()
       
-      // Join the stream
+      console.log('🔗 Attempting to join stream as viewer...')
+      
+      // Join the stream with timeout
+      const joinTimeout = setTimeout(() => {
+        console.error('⏱️ Join timeout - host may not be ready')
+        setIsConnecting(false)
+        alert('Connection timeout. Host may still be setting up. Try again in a few seconds.')
+      }, 15000) // 15 second timeout
+      
       await webrtcRef.current.joinStream((stream) => {
+        clearTimeout(joinTimeout)
+        console.log('✅ Stream received!', { 
+          videoTracks: stream.getVideoTracks().length, 
+          audioTracks: stream.getAudioTracks().length 
+        })
+        
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = stream
           // Force play immediately
@@ -133,10 +147,19 @@ function StationContent() {
         addReaction(data.emoji)
       })
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to join stream:', error)
       setIsConnecting(false)
-      alert('Failed to connect to stream. The host may have ended the broadcast.')
+      
+      const errorMsg = error.message || 'Unknown error'
+      
+      if (errorMsg.includes('Host not found')) {
+        alert('Host not found. The stream may have ended, or the host is still setting up. Please refresh and try again.')
+      } else if (errorMsg.includes('timeout')) {
+        alert('Connection timeout. Please check your internet connection and try again.')
+      } else {
+        alert(`Failed to connect: ${errorMsg}\\n\\nTry refreshing the page or check if the host is still live.`)
+      }
     }
   }
 
@@ -216,6 +239,7 @@ function StationContent() {
       setIsLive(true)
       setIsStreaming(true)
       setShowSettings(false)
+      streamStartTimeRef.current = Date.now() // Start timer immediately
       
       // THEN attach stream to video element
       if (videoRef.current) {
@@ -236,6 +260,17 @@ function StationContent() {
       }
       
       const videoTrack = stream.getVideoTracks()[0]
+      const audioTrack = stream.getAudioTracks()[0]
+      
+      console.log('📹 Stream tracks:', { 
+        video: videoTrack?.label || 'none', 
+        audio: audioTrack?.label || 'none' 
+      })
+      
+      if (!audioTrack) {
+        console.error('❌ No audio track! Mic may not work')
+      }
+      
       if (videoTrack) {
         const settings = videoTrack.getSettings()
         const estimatedBandwidth = Math.round(
@@ -284,8 +319,7 @@ function StationContent() {
       
       const data = await response.json()
       if (data.success) {
-        // States already set at top, just set timer and notification
-        streamStartTimeRef.current = Date.now()
+        // States already set at top, just add notification
         addNotification('Stream started!', 'join')
         setHostUsername(user.username || 'DJ')
       } else {
@@ -540,17 +574,17 @@ function StationContent() {
 
   return (
     <div className="min-h-screen bg-black text-white pt-20 pb-24">
-      <div className="px-6 py-4 border-b border-white/10 backdrop-blur-xl bg-black/50 sticky top-16 z-40">
+      <div className="px-3 md:px-6 py-3 md:py-4 border-b border-white/10 backdrop-blur-xl bg-black/50 sticky top-16 z-40">
         <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center animate-pulse">
               <Radio size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-lg md:text-2xl font-bold truncate max-w-[150px] md:max-w-none">
                 {streamTitle || `${hostUsername}'s Station`}
               </h1>
-              <p className="text-sm text-gray-400">
+              <p className="text-xs md:text-sm text-gray-400">
                 {isLive ? (
                   <span className="flex items-center gap-2">
                     <Circle size={8} className="fill-red-500 text-red-500 animate-pulse" />
@@ -567,10 +601,10 @@ function StationContent() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <button
               onClick={testDevices}
-              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center gap-2"
+              className="hidden md:flex px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all items-center gap-2"
               title="Check Camera & Microphone"
             >
               <Camera size={16} />
@@ -589,18 +623,19 @@ function StationContent() {
                 navigator.clipboard.writeText(url)
                 alert('Station link copied!')
               }}
-              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center gap-2"
+              className="px-3 md:px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center gap-2"
             >
-              <Share2 size={16} />
-              Share
+              <Share2 size={14} className="md:w-4 md:h-4" />
+              <span className="hidden md:inline">Share</span>
             </button>
             {isHost && !isLive && (
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className="px-4 py-2 bg-cyan-500 text-black rounded-lg hover:bg-cyan-400 transition-all flex items-center gap-2 font-bold"
+                className="px-3 md:px-4 py-2 bg-cyan-500 text-black rounded-lg hover:bg-cyan-400 transition-all flex items-center gap-2 font-bold text-sm md:text-base"
               >
-                <Settings size={16} />
-                Setup Stream
+                <Settings size={14} className="md:w-4 md:h-4" />
+                <span className="hidden md:inline">Setup Stream</span>
+                <span className="md:hidden">Go Live</span>
               </button>
             )}
             {isHost && isLive && (
@@ -615,9 +650,9 @@ function StationContent() {
         </div>
       </div>
 
-      <div className="max-w-screen-2xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3 space-y-6">
+      <div className="max-w-screen-2xl mx-auto px-3 md:px-6 py-4 md:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="lg:col-span-3 space-y-4 md:space-y-6">
             <div 
               ref={streamContainerRef}
               className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden aspect-video border border-white/10 shadow-2xl"
@@ -863,15 +898,15 @@ function StationContent() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-gray-900/50 to-black/50 border border-cyan-500/20 rounded-2xl h-[calc(100vh-450px)] flex flex-col backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
-              <div className="p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
-                <h3 className="font-bold flex items-center gap-2">
-                  <MessageCircle size={20} className="text-cyan-400" />
+            <div className="bg-gradient-to-br from-gray-900/50 to-black/50 border border-cyan-500/20 rounded-2xl h-[400px] md:h-[calc(100vh-450px)] flex flex-col backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
+              <div className="p-3 md:p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
+                <h3 className="font-bold flex items-center gap-2 text-sm md:text-base">
+                  <MessageCircle size={18} className="text-cyan-400 md:w-5 md:h-5" />
                   Live Chat <span className="text-cyan-400">({totalMessages})</span>
                 </h3>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 scroll-smooth">
+              <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 scroll-smooth">
                 {chatMessages.length === 0 ? (
                   <div className="text-center text-gray-500 py-12">
                     <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
@@ -902,7 +937,7 @@ function StationContent() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="p-4 border-t border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-blue-500/5">
+              <div className="p-3 md:p-4 border-t border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-blue-500/5">
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -910,20 +945,20 @@ function StationContent() {
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     placeholder="Say something..."
-                    className="flex-1 px-4 py-3 bg-white/10 border border-cyan-500/30 rounded-xl focus:outline-none focus:border-cyan-500 focus:bg-white/15 text-sm placeholder-gray-500 transition-all"
+                    className="flex-1 px-3 md:px-4 py-2 md:py-3 bg-white/10 border border-cyan-500/30 rounded-xl focus:outline-none focus:border-cyan-500 focus:bg-white/15 text-sm placeholder-gray-500 transition-all"
                     maxLength={200}
                   />
                   <button
                     onClick={sendMessage}
                     disabled={!chatInput.trim()}
-                    className="w-12 h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/30 disabled:shadow-none"
+                    className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/30 disabled:shadow-none"
                   >
-                    <Send size={18} className="text-black" />
+                    <Send size={16} className="text-black md:w-5 md:h-5" />
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 flex items-center justify-between px-1">
-                  <span>{chatInput.length}/200 characters</span>
-                  <span className="text-cyan-400">Press Enter to send</span>
+                  <span className="hidden md:inline">{chatInput.length}/200 characters</span>
+                  <span className="text-cyan-400 text-[10px] md:text-xs">Press Enter to send</span>
                 </p>
               </div>
             </div>
