@@ -206,7 +206,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         setProfile({
           userId: userData.clerk_user_id,
           username: userData.username || 'Anonymous',
-          fullName: userData.full_name || userData.username || 'User',
+          fullName: userData.username || 'User',
           bio: userData.bio || 'No bio yet',
           avatar_url: userData.avatar_url || '/default-avatar.png',
           banner_url: userData.banner_url || '/default-banner.jpg',
@@ -367,14 +367,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: editFullName,
-          bio: editBio,
-          location: editLocation,
-          website: editWebsite,
-          social_links: {
-            twitter: editTwitter,
-            instagram: editInstagram
-          }
+          username: editFullName,
+          bio: editBio
         })
       })
 
@@ -385,11 +379,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       // Update local state with server response
       setProfile(prev => prev ? {
         ...prev,
-        fullName: data.profile.full_name,
-        bio: data.profile.bio,
-        location: data.profile.location,
-        website: data.profile.website,
-        social_links: data.profile.social_links
+        username: data.user?.username || prev.username,
+        fullName: data.user?.username || prev.fullName,
+        bio: data.user?.bio || prev.bio
       } : null)
       
       setShowEditProfile(false)
@@ -560,7 +552,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 <div className="flex items-center gap-3">
                   {isOwnProfile ? (
                     <button
-                      onClick={() => setShowEditProfile(true)}
+                      onClick={() => {
+                        // Initialize form with current values
+                        setEditFullName(profile?.username || '')
+                        setEditBio(profile?.bio || '')
+                        setShowEditProfile(true)
+                      }}
                       className="px-6 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all"
                     >
                       <Edit2 size={16} className="inline mr-2" />
@@ -921,15 +918,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             </div>
 
             <div className="space-y-4">
-              {/* Full Name */}
+              {/* Username */}
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Full Name</label>
+                <label className="block text-sm text-gray-400 mb-2">Username</label>
                 <input
                   type="text"
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
-                  placeholder="Your full name"
+                  placeholder="Your username"
                 />
               </div>
 
@@ -943,54 +940,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white resize-none"
                   placeholder="Tell us about yourself..."
                 />
-              </div>
-
-              {/* Location */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Location</label>
-                <input
-                  type="text"
-                  value={editLocation}
-                  onChange={(e) => setEditLocation(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
-                  placeholder="City, Country"
-                />
-              </div>
-
-              {/* Website */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Website</label>
-                <input
-                  type="url"
-                  value={editWebsite}
-                  onChange={(e) => setEditWebsite(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
-                  placeholder="https://yourwebsite.com"
-                />
-              </div>
-
-              {/* Social Links */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Twitter</label>
-                  <input
-                    type="text"
-                    value={editTwitter}
-                    onChange={(e) => setEditTwitter(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
-                    placeholder="@username"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Instagram</label>
-                  <input
-                    type="text"
-                    value={editInstagram}
-                    onChange={(e) => setEditInstagram(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
-                    placeholder="@username"
-                  />
-                </div>
               </div>
             </div>
 
