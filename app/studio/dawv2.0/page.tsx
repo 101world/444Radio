@@ -81,6 +81,8 @@ export default function DAWProRebuild() {
   // Advanced generation modal states
   const [showGenerateModal, setShowGenerateModal] = useState(false)
   const [generatingTrack, setGeneratingTrack] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState<string>('')
+  const [generationStep, setGenerationStep] = useState<number>(0)
   const [genPrompt, setGenPrompt] = useState('')
   const [genTitle, setGenTitle] = useState('')
   const [genLyrics, setGenLyrics] = useState('')
@@ -513,6 +515,8 @@ export default function DAWProRebuild() {
     }
 
     setGeneratingTrack(true)
+    setGenerationStep(0)
+    setGenerationProgress('Preparing...')
 
     try {
       // Auto-fill missing fields
@@ -521,8 +525,10 @@ export default function DAWProRebuild() {
       let finalGenre = genGenre
       let finalBpm = genBpm
 
-      // Auto-generate title if missing
+      // Auto-generate title if missing (Step 1/5)
       if (!finalTitle.trim()) {
+        setGenerationStep(1)
+        setGenerationProgress('Generating title...')
         const titleResponse = await fetch('/api/generate/atom-title', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -537,11 +543,13 @@ export default function DAWProRebuild() {
         }
       }
 
-      // Handle instrumental mode or auto-generate lyrics
+      // Handle instrumental mode or auto-generate lyrics (Step 2/5)
       if (genIsInstrumental) {
         finalLyrics = '[Instrumental]'
         setGenLyrics(finalLyrics)
       } else if (!finalLyrics.trim()) {
+        setGenerationStep(2)
+        setGenerationProgress('Writing lyrics...')
         const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -554,8 +562,10 @@ export default function DAWProRebuild() {
         }
       }
 
-      // Auto-detect genre
+      // Auto-detect genre (Step 3/5)
       if (!finalGenre.trim()) {
+        setGenerationStep(3)
+        setGenerationProgress('Detecting genre...')
         const genreResponse = await fetch('/api/generate/atom-genre', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -570,8 +580,10 @@ export default function DAWProRebuild() {
         }
       }
 
-      // Auto-detect BPM
+      // Auto-detect BPM (Step 4/5)
       if (!finalBpm.trim()) {
+        setGenerationStep(4)
+        setGenerationProgress('Analyzing tempo...')
         const promptLower = genPrompt.toLowerCase()
         if (
           promptLower.includes('fast') ||
@@ -598,7 +610,9 @@ export default function DAWProRebuild() {
         setGenBpm(finalBpm)
       }
 
-      // Call music generation API
+      // Call music generation API (Step 5/5)
+      setGenerationStep(5)
+      setGenerationProgress(`Generating "${finalTitle}"... (60-90s)`)
       const songId = `song_${Date.now()}`
       const response = await fetch('/api/generate/music', {
         method: 'POST',
@@ -623,7 +637,8 @@ export default function DAWProRebuild() {
       const result = await response.json()
 
       if (result.success && result.audioUrl) {
-        showToast(`Track generated: "${finalTitle}"`, 'success')
+        setGenerationProgress('Adding to library...')
+        showToast(`✓ Track generated: "${finalTitle}"`, 'success')
         // Refresh library to show new track
         await loadLibrary()
         setShowGenerateModal(false)
@@ -634,6 +649,8 @@ export default function DAWProRebuild() {
         setGenGenre('')
         setGenBpm('')
         setGenIsInstrumental(false)
+        setGenerationProgress('')
+        setGenerationStep(0)
       } else {
         throw new Error(result.error || 'Generation failed')
       }
@@ -642,6 +659,8 @@ export default function DAWProRebuild() {
       showToast('Generation failed. Please try again.', 'error')
     } finally {
       setGeneratingTrack(false)
+      setGenerationProgress('')
+      setGenerationStep(0)
     }
   }
 
@@ -1897,30 +1916,48 @@ export default function DAWProRebuild() {
                 )}
 
                 {/* Generate Button */}
-                <div className="flex gap-4 pt-4">
-                  <button
-                    onClick={handleGenerate}
-                    disabled={generatingTrack || !genPrompt.trim()}
-                    className="flex-1 py-4 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg shadow-xl shadow-purple-500/30"
-                  >
-                    {generatingTrack ? (
-                      <>
-                        <Loader2 className="animate-spin" size={24} />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={24} />
-                        Generate Track
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setShowGenerateModal(false)}
-                    className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors"
-                  >
-                    Cancel
-                  </button>
+                <div className="flex flex-col gap-4 pt-4">
+                  {generatingTrack && generationProgress && (
+                    <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-cyan-300 font-medium">{generationProgress}</span>
+                        <span className="text-cyan-400 text-sm">Step {generationStep}/5</span>
+                      </div>
+                      <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full transition-all duration-500"
+                          style={{ width: `${(generationStep / 5) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-4">
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generatingTrack || !genPrompt.trim()}
+                      className="flex-1 py-4 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg shadow-xl shadow-purple-500/30"
+                    >
+                      {generatingTrack ? (
+                        <>
+                          <Loader2 className="animate-spin" size={24} />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={24} />
+                          Generate Track
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowGenerateModal(false)}
+                      disabled={generatingTrack}
+                      className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
