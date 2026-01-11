@@ -1608,55 +1608,51 @@ export default function DAWProRebuild() {
                       <div
                         key={track.id}
                         style={{ height: `${TRACK_HEIGHT}px` }}
-                        className={`border-b border-gray-800/50 p-4 cursor-pointer transition-all group ${
+                        className={`border-b border-gray-900 px-3 py-2 cursor-pointer transition-colors ${
                           selectedTrackId === track.id
-                            ? 'bg-gradient-to-r from-[#1a1a1a] to-[#151515] border-l-4 border-l-cyan-500 shadow-lg shadow-cyan-500/10'
-                            : 'hover:bg-[#151515] hover:border-l-4 hover:border-l-gray-700'
+                            ? 'bg-gray-900 border-l-2 border-l-cyan-500'
+                            : 'bg-[#0d0d0d] hover:bg-gray-900/50'
                         }`}
                         onClick={() => setSelectedTrackId(track.id)}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors truncate mr-2">
-                            {track.name}
-                          </div>
-                          {selectedTrackId === track.id && (
-                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse flex-shrink-0" />
-                          )}
+                        {/* Track Name */}
+                        <div className="text-xs font-semibold text-gray-300 mb-2 truncate">
+                          {track.name}
                         </div>
-                        <div className="flex gap-1.5 mb-2">
+                        
+                        {/* M/S/R Buttons */}
+                        <div className="flex gap-1 mb-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              // Update mute state - this triggers audio routing update
                               const newMuted = !track.muted
                               daw?.updateTrack(track.id, { muted: newMuted })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                            className={`w-7 h-6 text-[10px] font-bold rounded ${
                               track.muted
                                 ? 'bg-red-500 text-white'
-                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800'
+                                : 'bg-gray-800 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
                             }`}
-                            title="Mute track"
+                            title="Mute"
                           >
                             M
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              // Update solo state - this triggers audio routing update for all tracks
                               const newSolo = !track.solo
                               daw?.updateTrack(track.id, { solo: newSolo })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                            className={`w-7 h-6 text-[10px] font-bold rounded ${
                               track.solo
                                 ? 'bg-yellow-500 text-black'
-                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800'
+                                : 'bg-gray-800 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
                             }`}
-                            title="Solo track"
+                            title="Solo"
                           >
                             S
                           </button>
@@ -1665,18 +1661,20 @@ export default function DAWProRebuild() {
                               e.stopPropagation()
                               setRecordingTrackId(recordingTrackId === track.id ? null : track.id)
                             }}
-                            className={`px-2.5 py-1 text-xs font-bold rounded transition-all ${
+                            className={`w-7 h-6 text-[10px] font-bold rounded ${
                               recordingTrackId === track.id
-                                ? 'bg-red-500 text-white animate-pulse'
-                                : 'bg-[#1a1a1a] border border-gray-700/50 text-gray-400 hover:bg-gray-800'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-gray-800 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
                             }`}
-                            title="Arm for recording"
+                            title="Arm"
                           >
                             ●
                           </button>
                         </div>
-                        <div className="flex items-center gap-2 bg-[#0a0a0a] border border-gray-800/50 rounded-lg px-2 py-1.5">
-                          <Volume2 size={12} className="text-cyan-500 flex-shrink-0" />
+                        
+                        {/* Volume Control - Compact */}
+                        <div className="flex items-center gap-1.5">
+                          <Volume2 size={10} className="text-gray-600 flex-shrink-0" />
                           <input
                             id={`volume-${track.id}`}
                             name={`volume-track-${idx + 1}`}
@@ -1687,17 +1685,16 @@ export default function DAWProRebuild() {
                             onChange={(e) => {
                               e.stopPropagation()
                               const newVolume = Number(e.target.value) / 100
-                              // This updates both Track state AND audio routing node gain in real-time
                               daw?.updateTrack(track.id, { volume: newVolume })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className="flex-1 accent-cyan-500 min-w-0"
-                            title={`Volume: ${Math.round(track.volume * 100)}%`}
+                            className="flex-1 h-1 accent-cyan-500 min-w-0"
+                            title={`${Math.round(track.volume * 100)}%`}
                           />
-                          <div className="text-xs text-gray-400 font-mono w-9 text-right flex-shrink-0">
-                            {Math.round(track.volume * 100)}%
-                          </div>
+                          <span className="text-[9px] text-gray-600 font-mono w-7 text-right">
+                            {Math.round(track.volume * 100)}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -1778,12 +1775,11 @@ export default function DAWProRebuild() {
                   {tracks.map((track, idx) => (
                     <div
                       key={track.id}
-                      className="relative border-b border-gray-800/50"
+                      className="relative border-b border-gray-900"
                       style={{
                         height: `${TRACK_HEIGHT}px`,
                         width: `${timelineWidth}px`,
-                        backgroundColor: idx % 2 === 0 ? '#0a0a0a' : '#0d0d0d',
-                        zIndex: 1
+                        backgroundColor: idx % 2 === 0 ? '#080808' : '#0a0a0a'
                       }}
                       onDrop={async (e) => {
                         e.preventDefault()
