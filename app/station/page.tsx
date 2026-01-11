@@ -152,9 +152,20 @@ function StationContent() {
         streamStartTimeRef.current = Date.now()
         addNotification('Stream started!', 'join')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start stream:', error)
-      alert('Failed to access camera/microphone. Please check permissions.')
+      
+      const errorMessage = error.message || 'Unknown error'
+      
+      if (errorMessage.includes('Permission denied') || error.name === 'NotAllowedError') {
+        alert('❌ Camera/Microphone permission denied.\n\n1. Click the camera icon in your browser address bar\n2. Allow camera and microphone access\n3. Try again')
+      } else if (errorMessage.includes('not found') || error.name === 'NotFoundError') {
+        alert('❌ Camera or microphone not found.\n\nPlease:\n1. Connect a webcam/microphone\n2. Close other apps using the camera\n3. Refresh and try again\n\nNote: Audio-only streaming will work if you don\'t have a camera.')
+      } else if (error.name === 'NotReadableError') {
+        alert('❌ Camera/microphone already in use.\n\nPlease close other apps (Zoom, Teams, etc.) and try again.')
+      } else {
+        alert(`❌ Failed to start stream.\n\nError: ${errorMessage}\n\nPlease check your device permissions and try again.`)
+      }
     }
   }
 
@@ -729,6 +740,28 @@ function StationContent() {
                   <option value="1080p">1080p - High (4 Mbps)</option>
                 </select>
               </div>
+            </div>
+
+            <div className="mt-6 p-4 bg-white/5 rounded-lg border border-white/10">
+              <h4 className="text-sm font-bold mb-2 text-gray-300">⚙️ Troubleshooting</h4>
+              <button
+                onClick={async () => {
+                  try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                    const videoTracks = stream.getVideoTracks()
+                    const audioTracks = stream.getAudioTracks()
+                    
+                    alert(`✅ Permissions OK!\n\n📹 Video: ${videoTracks.length > 0 ? videoTracks[0].label : 'None'}\n🎤 Audio: ${audioTracks.length > 0 ? audioTracks[0].label : 'None'}`)
+                    
+                    stream.getTracks().forEach(track => track.stop())
+                  } catch (error: any) {
+                    alert(`❌ Permission test failed!\n\n${error.message}\n\nPlease check:\n1. Browser permissions\n2. Camera/mic are connected\n3. No other app is using them`)
+                  }
+                }}
+                className="w-full px-4 py-2 bg-white/10 text-sm rounded-lg hover:bg-white/20 transition-all"
+              >
+                🔍 Test Camera & Microphone
+              </button>
             </div>
 
             <div className="flex gap-3 mt-6">

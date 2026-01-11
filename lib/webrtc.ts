@@ -69,20 +69,49 @@ export class WebRTCManager {
 }
 
 export async function getUserMedia(quality: StreamQuality): Promise<MediaStream> {
-  const constraints: MediaStreamConstraints = {
-    video: {
-      width: { ideal: quality.width },
-      height: { ideal: quality.height },
-      frameRate: { ideal: quality.frameRate }
-    },
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
+  // Try with ideal constraints first
+  try {
+    const constraints: MediaStreamConstraints = {
+      video: {
+        width: { ideal: quality.width },
+        height: { ideal: quality.height },
+        frameRate: { ideal: quality.frameRate }
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    }
+    return await navigator.mediaDevices.getUserMedia(constraints)
+  } catch (error) {
+    console.warn('Failed with ideal constraints, trying with basic video...', error)
+    
+    // Fallback 1: Try with just basic video
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
+    } catch (error2) {
+      console.warn('Failed with basic video, trying audio only...', error2)
+      
+      // Fallback 2: Try audio only
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true
+        })
+      } catch (error3) {
+        console.error('All getUserMedia attempts failed:', error3)
+        throw new Error('Could not access camera or microphone. Please check your device permissions and ensure a camera/microphone is connected.')
+      }
     }
   }
-
-  return await navigator.mediaDevices.getUserMedia(constraints)
 }
 
 export function calculateBandwidth(stream: MediaStream): number {
