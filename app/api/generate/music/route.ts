@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 
+// Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
+export const maxDuration = 300
+
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 })

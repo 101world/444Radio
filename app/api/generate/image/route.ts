@@ -3,6 +3,9 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 
+// Allow up to 5 minutes for image generation (Vercel Pro limit: 300s)
+export const maxDuration = 300
+
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
 })

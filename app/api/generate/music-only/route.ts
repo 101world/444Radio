@@ -4,6 +4,9 @@ import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 
+// Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
+export const maxDuration = 300
+
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
 })
