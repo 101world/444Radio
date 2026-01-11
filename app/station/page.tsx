@@ -7,7 +7,7 @@ import {
   Radio, Video, Users, MessageCircle, Mic, MicOff, 
   VideoIcon, VideoOff, Settings, Share2,
   Send, Circle, Eye, Music, Play, Pause, 
-  PhoneOff, Maximize2, Clock, Wifi, WifiOff, Download
+  PhoneOff, Maximize2, Clock, Wifi, WifiOff, Download, Camera
 } from 'lucide-react'
 import Image from 'next/image'
 import { useAudioPlayer } from '@/app/contexts/AudioPlayerContext'
@@ -47,6 +47,8 @@ function StationContent() {
   const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor' | 'bad'>('excellent')
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showDeviceCheck, setShowDeviceCheck] = useState(false)
+  const [deviceCheckResult, setDeviceCheckResult] = useState<{ cameras: any[], microphones: any[], error?: string } | null>(null)
   const [notifications, setNotifications] = useState<any[]>([])
   
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -480,6 +482,24 @@ function StationContent() {
 
   const reactionEmojis = ['❤️', '🔥', '👏', '🎵', '🎉', '💯']
 
+  const testDevices = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const cameras = devices.filter(d => d.kind === 'videoinput')
+      const microphones = devices.filter(d => d.kind === 'audioinput')
+      
+      setDeviceCheckResult({ cameras, microphones })
+      setShowDeviceCheck(true)
+    } catch (error: any) {
+      setDeviceCheckResult({ 
+        cameras: [], 
+        microphones: [], 
+        error: error.message || 'Failed to check devices' 
+      })
+      setShowDeviceCheck(true)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-black text-white pt-20 pb-24">
       <div className="px-6 py-4 border-b border-white/10 backdrop-blur-xl bg-black/50 sticky top-16 z-40">
@@ -510,6 +530,14 @@ function StationContent() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={testDevices}
+              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center gap-2"
+              title="Check Camera & Microphone"
+            >
+              <Camera size={16} />
+              Test Devices
+            </button>
             <button
               onClick={() => setShowShortcuts(true)}
               className="w-10 h-10 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center justify-center"
@@ -1041,6 +1069,88 @@ function StationContent() {
               className="w-full mt-6 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-all font-bold"
             >
               Got it!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Device Check Modal */}
+      {showDeviceCheck && deviceCheckResult && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowDeviceCheck(false)}>
+          <div className="bg-gradient-to-br from-gray-900 to-black border border-cyan-500/30 rounded-2xl p-8 max-w-2xl w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-cyan-400">📹 Device Check Results</h3>
+              <button
+                onClick={() => setShowDeviceCheck(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {deviceCheckResult.error ? (
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-red-400">❌ {deviceCheckResult.error}</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                  <h4 className="text-sm font-bold mb-3 text-gray-300 flex items-center gap-2">
+                    <Camera size={16} className="text-cyan-400" />
+                    Cameras Detected: {deviceCheckResult.cameras.length}
+                  </h4>
+                  {deviceCheckResult.cameras.length === 0 ? (
+                    <p className="text-sm text-red-400">❌ No cameras found. Please connect a USB webcam or use a device with built-in camera.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {deviceCheckResult.cameras.map((cam, idx) => (
+                        <li key={idx} className="text-sm text-green-400">✅ {cam.label || `Camera ${idx + 1}`}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                  <h4 className="text-sm font-bold mb-3 text-gray-300 flex items-center gap-2">
+                    <Mic size={16} className="text-cyan-400" />
+                    Microphones Detected: {deviceCheckResult.microphones.length}
+                  </h4>
+                  {deviceCheckResult.microphones.length === 0 ? (
+                    <p className="text-sm text-red-400">❌ No microphones found. Please connect a USB microphone or headset.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {deviceCheckResult.microphones.map((mic, idx) => (
+                        <li key={idx} className="text-sm text-green-400">✅ {mic.label || `Microphone ${idx + 1}`}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                  <p className="text-xs text-cyan-400">
+                    💡 <strong>Tip:</strong> If devices show as "Camera 1" or "Microphone 1" without names, you need to grant browser permissions first. Click "Go Live" and allow access when prompted.
+                  </p>
+                </div>
+
+                {deviceCheckResult.cameras.length === 0 && deviceCheckResult.microphones.length === 0 && (
+                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <p className="text-sm text-yellow-400 mb-3">⚠️ <strong>Cannot stream without devices!</strong></p>
+                    <p className="text-xs text-gray-400">To stream on 444Radio, you need:</p>
+                    <ul className="text-xs text-gray-400 mt-2 space-y-1 ml-4">
+                      <li>• USB webcam OR built-in laptop camera</li>
+                      <li>• USB microphone OR headset with mic</li>
+                      <li>• OR phone with camera/mic (use mobile browser)</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowDeviceCheck(false)}
+              className="w-full mt-6 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-all font-bold"
+            >
+              Close
             </button>
           </div>
         </div>
