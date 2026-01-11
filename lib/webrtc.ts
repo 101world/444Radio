@@ -77,7 +77,8 @@ export async function getUserMedia(quality: StreamQuality): Promise<MediaStream>
     console.log('🔍 Available devices:', { 
       cameras: cameras.length, 
       microphones: mics.length,
-      details: { cameras: cameras.map(c => c.label), mics: mics.map(m => m.label) }
+      hasCamera: cameras.length > 0,
+      hasMic: mics.length > 0
     })
   } catch (e) {
     console.warn('Could not enumerate devices:', e)
@@ -97,7 +98,7 @@ export async function getUserMedia(quality: StreamQuality): Promise<MediaStream>
         autoGainControl: true
       }
     }
-    console.log('🎥 Requesting media with quality:', quality.label, constraints)
+    console.log('🎥 Requesting media with quality:', quality.label)
     return await navigator.mediaDevices.getUserMedia(constraints)
   } catch (error) {
     console.warn('⚠️ Failed with ideal constraints, trying basic...', error)
@@ -112,20 +113,24 @@ export async function getUserMedia(quality: StreamQuality): Promise<MediaStream>
       console.log('✅ Got media with basic constraints')
       return stream
     } catch (error2) {
-      console.error('❌ Basic constraints failed:', error2)
+      console.warn('⚠️ Video failed, trying audio only...', error2)
       
-      // Fallback 2: Try video only
+      // Fallback 2: Audio-only mode (for users without camera)
       try {
-        console.log('🎥 Trying video only...')
+        console.log('🎤 Trying audio-only mode...')
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
+          video: false,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
         })
-        console.warn('⚠️ Got video only (no audio)')
+        console.log('✅ Got audio-only stream (no camera available)')
         return stream
       } catch (error3) {
         console.error('❌ All getUserMedia attempts failed:', error3)
-        throw new Error('Could not access camera or microphone. Please check permissions and ensure devices are connected.')
+        throw new Error('Could not access microphone. Please check permissions and ensure a microphone is connected.')
       }
     }
   }
