@@ -237,10 +237,36 @@ export default function DAWProRebuild() {
 
   const loadLibrary = async () => {
     try {
-      const response = await fetch('/api/media')
-      if (response.ok) {
-        const data = await response.json()
-        setLibrary(data.filter((item: any) => item.type === 'audio'))
+      // Fetch from all sources like main library page: DB music + R2 audio files
+      const [musicRes, r2AudioRes] = await Promise.all([
+        fetch('/api/library/music'),
+        fetch('/api/r2/list-audio')
+      ])
+
+      const musicData = await musicRes.json()
+      const r2AudioData = await r2AudioRes.json()
+
+      // Merge database music with R2 files, deduplicate by audio_url
+      if (musicData.success && Array.isArray(musicData.music)) {
+        const dbMusic = musicData.music
+        const r2Music = r2AudioData.success && Array.isArray(r2AudioData.music) ? r2AudioData.music : []
+        
+        // Combine and deduplicate
+        const allMusic = [...dbMusic, ...r2Music]
+        const uniqueMusic = Array.from(
+          new Map(allMusic.map((item: any) => [item.audio_url, item])).values()
+        )
+        
+        // Normalize field names for compatibility (audio_url -> audioUrl if needed)
+        const normalizedMusic = uniqueMusic.map((item: any) => ({
+          ...item,
+          audioUrl: item.audio_url || item.audioUrl,
+          type: 'audio', // Ensure type field for filtering
+          title: item.title || 'Untitled'
+        }))
+        
+        setLibrary(normalizedMusic)
+        console.log('✅ DAW Browser loaded', normalizedMusic.length, 'tracks (DB:', dbMusic.length, '+ R2:', r2Music.length, ')')
       }
     } catch (error) {
       console.error('Library load failed:', error)
