@@ -65,13 +65,23 @@ export class StationWebRTC {
         stream: this.localStream!
       })
 
-      peer.on('signal', (signal) => {
-        // Send signal back to viewer
-        this.channel.trigger('client-host-signal', {
-          signal,
-          from: this.userId,
-          to: data.from
-        })
+      peer.on('signal', async (signal) => {
+        // Send signal back to viewer via server API (Pusher client events not enabled)
+        try {
+          await fetch('/api/station/signal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              stationId: this.stationId,
+              signal,
+              from: this.userId,
+              to: data.from,
+              type: 'host'
+            })
+          })
+        } catch (err) {
+          console.error('Failed to send host signal:', err)
+        }
       })
 
       peer.on('connect', () => {
@@ -109,13 +119,23 @@ export class StationWebRTC {
       trickle: false
     })
 
-    this.peer.on('signal', (signal) => {
-      // Send signal to host
-      this.channel.trigger('client-viewer-signal', {
-        signal,
-        from: this.userId,
-        to: hostId
-      })
+    this.peer.on('signal', async (signal) => {
+      // Send signal to host via server API (Pusher client events not enabled)
+      try {
+        await fetch('/api/station/signal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stationId: this.stationId,
+            signal,
+            from: this.userId,
+            to: hostId,
+            type: 'viewer'
+          })
+        })
+      } catch (err) {
+        console.error('Failed to send viewer signal:', err)
+      }
     })
 
     this.peer.on('stream', (stream) => {
@@ -140,25 +160,43 @@ export class StationWebRTC {
     })
   }
 
-  sendMessage(message: string, username: string) {
-    this.channel.trigger('client-chat-message', {
-      message,
-      username,
-      userId: this.userId,
-      timestamp: new Date().toISOString()
-    })
+  async sendMessage(message: string, username: string) {
+    try {
+      await fetch('/api/station/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stationId: this.stationId,
+          message,
+          username,
+          userId: this.userId,
+          timestamp: new Date().toISOString()
+        })
+      })
+    } catch (err) {
+      console.error('Failed to send message:', err)
+    }
   }
 
   onMessage(callback: (data: any) => void) {
     this.channel.bind('chat-message', callback)
   }
 
-  sendReaction(emoji: string) {
-    this.channel.trigger('client-reaction', {
-      emoji,
-      userId: this.userId,
-      timestamp: new Date().toISOString()
-    })
+  async sendReaction(emoji: string) {
+    try {
+      await fetch('/api/station/reaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stationId: this.stationId,
+          emoji,
+          userId: this.userId,
+          timestamp: new Date().toISOString()
+        })
+      })
+    } catch (err) {
+      console.error('Failed to send reaction:', err)
+    }
   }
 
   onReaction(callback: (data: any) => void) {

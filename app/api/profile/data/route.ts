@@ -103,13 +103,18 @@ export async function GET(req: NextRequest) {
     const totalLikes = (combinedMedia || []).reduce((sum, media) => sum + (media.likes || 0), 0)
     const totalPlays = (combinedMedia || []).reduce((sum, media) => sum + (media.plays || 0), 0)
 
+    // Sanitize banner URL to remove invalid characters
+    const sanitizedBannerUrl = userData.banner_url 
+      ? userData.banner_url.replace(/[\r\n\t]/g, '') 
+      : null
+
     const profileData = {
       username: userData.username,
       email: '', // Not exposed for privacy
       bio: userData.bio,
       tagline: userData.tagline,
       avatar: userData.avatar_url,
-      banner_url: userData.banner_url,
+      banner_url: sanitizedBannerUrl,
       banner_type: userData.banner_type,
       totalLikes,
       totalPlays,
