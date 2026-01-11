@@ -108,6 +108,8 @@ function StationContent() {
       await webrtcRef.current.joinStream((stream) => {
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = stream
+          // Force play immediately
+          remoteVideoRef.current.play().catch(e => console.warn('Remote video autoplay blocked:', e))
           setIsStreaming(true)
           setIsConnecting(false)
           addNotification(`Connected to ${hostUsername}'s station!`, 'join')
@@ -212,6 +214,8 @@ function StationContent() {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        // Force video to play immediately
+        videoRef.current.play().catch(e => console.warn('Video autoplay blocked:', e))
       }
       
       const videoTrack = stream.getVideoTracks()[0]
@@ -455,23 +459,37 @@ function StationContent() {
   const sendMessage = async () => {
     if (!chatInput.trim() || !user || !webrtcRef.current) return
     
-    const username = user.username || 'Anonymous'
-    const message = chatInput
-    
-    // Send via WebRTC
-    webrtcRef.current.sendMessage(message, username)
-    
-    // Add to local state
-    setChatMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      user_id: user.id,
-      username,
-      avatar: user.imageUrl || '/default-avatar.png',
-      message,
-      timestamp: new Date()
-    }])
-    setTotalMessages(prev => prev + 1)
-    setChatInput('')
+    try {
+      const username = user.username || 'Anonymous'
+      const message = chatInput
+      
+      // Send via WebRTC
+      webrtcRef.current.sendMessage(message, username)
+      
+      // Add to local state
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        user_id: user.id,
+        username,
+        avatar: user.imageUrl || '/default-avatar.png',
+        message,
+        timestamp: new Date()
+      }])
+      setTotalMessages(prev => prev + 1)
+      setChatInput('')
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      // Still clear input and show message locally
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        user_id: user.id,
+        username: user.username || 'Anonymous',
+        avatar: user.imageUrl || '/default-avatar.png',
+        message: chatInput,
+        timestamp: new Date()
+      }])
+      setChatInput('')
+    }
   }
   
   const sendReaction = (emoji: string) => {
