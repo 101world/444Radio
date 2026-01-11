@@ -43,7 +43,7 @@ export default function DAWProRebuild() {
   const [zoom, setZoom] = useState(200) // pixels per second - default 200 for clean view
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null)
-  const [showBrowser, setShowBrowser] = useState(true)
+  const [showBrowser, setShowBrowser] = useState(false)
   const [library, setLibrary] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [snapEnabled, setSnapEnabled] = useState(true)
@@ -54,6 +54,7 @@ export default function DAWProRebuild() {
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
   const [metronomeFlash, setMetronomeFlash] = useState(false)
   const [metronomeInterval, setMetronomeInterval] = useState<NodeJS.Timeout | null>(null)
+  const [masterVolume, setMasterVolume] = useState(100)
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null)
   const [projectName, setProjectName] = useState('Untitled Project')
   const [saving, setSaving] = useState(false)
@@ -1230,10 +1231,14 @@ export default function DAWProRebuild() {
             <input
               id="bpm-input"
               name="bpm"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={bpm}
               onChange={(e) => {
-                const next = Number(e.target.value)
+                const value = e.target.value.replace(/[^0-9]/g, '')
+                const next = Number(value)
+                if (value === '') return
                 if (next >= 60 && next <= 200 && daw) {
                   setBpm(next)
                   daw.setBPM(next)
@@ -1262,6 +1267,32 @@ export default function DAWProRebuild() {
               min="60"
               max="200"
             />
+          </div>
+
+          {/* Master Volume */}
+          <div className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-4 py-2">
+            <Volume2 size={16} className="text-gray-500" />
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={masterVolume}
+              onChange={(e) => {
+                const vol = Number(e.target.value)
+                setMasterVolume(vol)
+                if (daw) {
+                  const audioEngine = daw.getAudioContext()
+                  const masterGain = audioEngine.destination
+                  // Apply exponential scaling for perceived loudness
+                  if (masterGain && 'gain' in masterGain) {
+                    (masterGain as any).gain.value = Math.pow(vol / 100, 2)
+                  }
+                }
+              }}
+              className="w-24 accent-cyan-500"
+              title={`Master Volume: ${masterVolume}%`}
+            />
+            <span className="text-xs text-gray-400 w-8 text-right font-mono">{masterVolume}</span>
           </div>
         </div>
 
@@ -1409,7 +1440,7 @@ export default function DAWProRebuild() {
             title="Toggle metronome"
           >
             {metronomeFlash ? '🔊' : '🎵'}
-            <span>Click</span>
+            <span>Metronome</span>
           </button>
           <button
             onClick={() => setSnapEnabled(!snapEnabled)}

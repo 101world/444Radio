@@ -197,11 +197,12 @@ export class MultiTrackDAW {
     this.transportState.isPlaying = false
     this.transportState.currentTime = this.audioContext.currentTime - this.playbackStartTime + this.playbackOffset
 
-    // Stop all active audio source nodes
+    // Stop all active audio source nodes with proper cleanup
     if (this.activeSourceNodes) {
-      this.activeSourceNodes.forEach(source => {
+      this.activeSourceNodes.forEach((source, key) => {
         try {
           source.stop()
+          source.disconnect()
         } catch (e) {
           // Ignore if already stopped
         }
