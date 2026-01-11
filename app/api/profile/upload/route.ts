@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: data[0] })
 
     } else if (type === 'music') {
-      // Audio-only upload
+      // Audio-only upload - just upload to R2, no database insert
       const audioFile = (formData.get('audio') as File) || (formData.get('file') as File)
 
       if (!audioFile) {
@@ -98,6 +98,17 @@ export async function POST(req: NextRequest) {
 
       if (!audioUpload.success) {
         console.error('Audio upload error:', audioUpload.error)
+        return NextResponse.json({ success: false, error: 'Audio upload failed' }, { status: 500 })
+      }
+
+      console.log('✅ Audio uploaded to R2:', audioUpload.url)
+      
+      // Return success - file is now in R2 and will appear in library via /api/r2/list-audio
+      return NextResponse.json({ 
+        success: true, 
+        url: audioUpload.url,
+        message: 'Audio uploaded successfully'
+      })
         return NextResponse.json({ success: false, error: 'Audio upload failed' }, { status: 500 })
       }
 

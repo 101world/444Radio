@@ -1565,17 +1565,13 @@ export default function DAWProRebuild() {
           <div className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-4 py-2">
             <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider">BPM</span>
             <input
-              id="bpm-input"
-              name="bpm"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
+              type="range"
+              min="60"
+              max="200"
               value={bpm}
               onChange={(e) => {
-                const value = e.target.value.replace(/[^0-9]/g, '')
-                const next = Number(value)
-                if (value === '') return
-                if (next >= 60 && next <= 200 && daw) {
+                const next = Number(e.target.value)
+                if (daw) {
                   setBpm(next)
                   daw.setBPM(next)
                   markProjectDirty()
@@ -1593,16 +1589,10 @@ export default function DAWProRebuild() {
                   }
                 }
               }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  e.currentTarget.blur()
-                }
-              }}
-              className="w-16 bg-[#0a0a0a] border border-gray-800 rounded px-2 py-1 text-sm text-center focus:border-cyan-500 focus:outline-none text-white font-mono"
-              min="60"
-              max="200"
+              className="w-32 accent-cyan-500"
+              title={`BPM: ${bpm}`}
             />
+            <span className="text-sm text-white w-10 text-center font-mono font-bold">{bpm}</span>
           </div>
 
           {/* Master Volume */}

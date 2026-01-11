@@ -197,17 +197,22 @@ export class MultiTrackDAW {
     this.transportState.isPlaying = false
     this.transportState.currentTime = this.audioContext.currentTime - this.playbackStartTime + this.playbackOffset
 
-    // Stop all active audio source nodes with proper cleanup
+    // CRITICAL: Stop AND disconnect all active audio source nodes
     if (this.activeSourceNodes) {
-      this.activeSourceNodes.forEach((source, key) => {
+      this.activeSourceNodes.forEach((source) => {
         try {
+          // Stop the source first
           source.stop()
+          // Then disconnect it from the audio graph
           source.disconnect()
         } catch (e) {
-          // Ignore if already stopped
+          // Ignore errors if already stopped/disconnected
         }
       })
+      // Clear the map completely
       this.activeSourceNodes.clear()
+      // Set to null to ensure fresh start on next play
+      this.activeSourceNodes = new Map()
     }
 
     this.emit('pause', { time: this.transportState.currentTime })

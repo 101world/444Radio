@@ -66,17 +66,18 @@ export async function POST(req: NextRequest) {
 
       finalPrediction = prediction
       let attempts = 0
-      const maxAttempts = 60
+      const maxAttempts = 135 // 270 seconds total (135 * 2s intervals) to accommodate long generations
       
       while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000))
         finalPrediction = await replicate.predictions.get(prediction.id)
-        console.log('🎵 Music generation status:', finalPrediction.status)
+        console.log(`🎵 Music generation status: ${finalPrediction.status} (${attempts * 2}s elapsed)`)
         attempts++
       }
 
       if (attempts >= maxAttempts) {
-        throw new Error('Music generation timed out')
+        console.error(`⏰ Music generation timed out after ${attempts * 2} seconds`)
+        throw new Error('Music generation timed out after 270 seconds. The generation may still complete on Replicate.')
       }
     } else {
       // Use ACE-Step for non-English languages with retry logic
@@ -102,17 +103,18 @@ export async function POST(req: NextRequest) {
 
       finalPrediction = prediction
       let attempts = 0
-      const maxAttempts = 60
+      const maxAttempts = 135 // 270 seconds total (135 * 2s intervals) to accommodate long generations
       
       while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000))
         finalPrediction = await replicate.predictions.get(prediction.id)
-        console.log('🎵 ACE-Step generation status:', finalPrediction.status)
+        console.log(`🎵 ACE-Step generation status: ${finalPrediction.status} (${attempts * 2}s elapsed)`)
         attempts++
       }
 
       if (attempts >= maxAttempts) {
-        throw new Error('Music generation timed out')
+        console.error(`⏰ ACE-Step generation timed out after ${attempts * 2} seconds`)
+        throw new Error('Music generation timed out after 270 seconds. The generation may still complete on Replicate.')
       }
     }
 
