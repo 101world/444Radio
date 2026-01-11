@@ -204,8 +204,35 @@ export class StationWebRTC {
     this.channel.bind('reaction', callback)
   }
 
+  onKicked(callback: (data: any) => void) {
+    this.channel.bind('user-kicked', callback)
+  }
+
+  async kickUser(kickUserId: string) {
+    try {
+      await fetch('/api/station/kick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stationId: this.stationId,
+          kickUserId
+        })
+      })
+    } catch (err) {
+      console.error('Failed to kick user:', err)
+    }
+  }
+
   getViewerCount() {
     return this.channel?.members?.count || 0
+  }
+
+  getViewers() {
+    if (!this.channel?.members) return []
+    const members = this.channel.members.members
+    return Object.keys(members)
+      .filter(id => id !== this.userId)
+      .map(id => ({ userId: id, ...members[id] }))
   }
 
   disconnect() {

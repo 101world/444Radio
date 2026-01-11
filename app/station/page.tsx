@@ -7,7 +7,7 @@ import {
   Radio, Video, Users, MessageCircle, Mic, MicOff, 
   VideoIcon, VideoOff, Settings, Share2,
   Send, Circle, Eye, Music, Play, Pause, 
-  PhoneOff, Maximize2, Clock, Wifi, WifiOff, Download, Camera
+  PhoneOff, Maximize2, Clock, Wifi, WifiOff, Download, Camera, X
 } from 'lucide-react'
 import Image from 'next/image'
 import { useAudioPlayer } from '@/app/contexts/AudioPlayerContext'
@@ -146,6 +146,16 @@ function StationContent() {
       webrtcRef.current.onReaction((data) => {
         addReaction(data.emoji)
       })
+
+      // Setup kick listener (for viewers only)
+      if (!isHost) {
+        webrtcRef.current.onKicked((data) => {
+          if (data.kickedUserId === user.id) {
+            alert('You have been removed from this stream by the host.')
+            window.location.href = '/'
+          }
+        })
+      }
       
     } catch (error: any) {
       console.error('Failed to join stream:', error)
@@ -195,7 +205,7 @@ function StationContent() {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [isHost, isStreaming])
 
-  const addNotification = (message: string, type: 'join' | 'leave' | 'reaction') => {
+  const addNotification = (message: string, type: 'join' | 'leave' | 'reaction' | 'kick') => {
     const id = Date.now().toString()
     setNotifications(prev => [...prev, { id, message, type }])
     setTimeout(() => {
@@ -883,7 +893,7 @@ function StationContent() {
                   <p className="text-sm text-gray-500">No viewers yet</p>
                 ) : (
                   viewers.map((viewer) => (
-                    <div key={viewer.id} className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full text-sm">
+                    <div key={viewer.id} className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-full text-sm hover:bg-white/10 transition-all">
                       <Image
                         src={viewer.avatar}
                         alt={viewer.username}
@@ -892,6 +902,21 @@ function StationContent() {
                         className="rounded-full"
                       />
                       <span>{viewer.username}</span>
+                      {isHost && (
+                        <button
+                          onClick={async () => {
+                            if (confirm(`Remove ${viewer.username} from stream?`)) {
+                              await webrtcRef.current?.kickUser(viewer.userId)
+                              setViewers(prev => prev.filter(v => v.id !== viewer.id))
+                              addNotification(`${viewer.username} was removed`, 'kick')
+                            }
+                          }}
+                          className="ml-1 w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500 flex items-center justify-center transition-all"
+                          title="Remove viewer"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
                     </div>
                   ))
                 )}
