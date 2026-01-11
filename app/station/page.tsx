@@ -104,6 +104,18 @@ function StationContent() {
       webrtcRef.current = new StationWebRTC(stationId, user.id, false)
       await webrtcRef.current.init()
       
+      // Setup presence tracking
+      webrtcRef.current.onPresence((members) => {
+        const memberList = members.filter((m: any) => m.id !== user.id)
+        setViewers(memberList.map((m: any) => ({
+          id: m.id,
+          userId: m.id,
+          username: m.info?.username || 'Viewer',
+          avatar: m.info?.avatar || '/default-avatar.png'
+        })))
+        setViewerCount(memberList.length)
+      })
+      
       console.log('🔗 Attempting to join stream as viewer...')
       
       // Join the stream with timeout
@@ -122,8 +134,16 @@ function StationContent() {
         
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = stream
-          // Force play immediately
-          remoteVideoRef.current.play().catch(e => console.warn('Remote video autoplay blocked:', e))
+          remoteVideoRef.current.volume = 1.0 // Ensure full volume
+          // Force play immediately with sound
+          remoteVideoRef.current.play().catch(e => {
+            console.warn('Remote video autoplay blocked:', e)
+            // Try unmuting and playing
+            if (remoteVideoRef.current) {
+              remoteVideoRef.current.muted = false
+              remoteVideoRef.current.play()
+            }
+          })
           setIsStreaming(true)
           setIsConnecting(false)
           addNotification(`Connected to ${hostUsername}'s station!`, 'join')
@@ -293,10 +313,22 @@ function StationContent() {
       webrtcRef.current = new StationWebRTC(stationId, user.id, true)
       await webrtcRef.current.init()
       
+      // Setup presence tracking for viewer count
+      webrtcRef.current.onPresence((members) => {
+        console.log('👥 Presence update:', members)
+        const memberList = members.filter((m: any) => m.id !== user.id)
+        setViewers(memberList.map((m: any) => ({
+          id: m.id,
+          userId: m.id,
+          username: m.info?.username || 'Viewer',
+          avatar: m.info?.avatar || '/default-avatar.png'
+        })))
+        setViewerCount(memberList.length)
+      })
+      
       // Start broadcasting
       await webrtcRef.current.startBroadcast(stream, (viewerId) => {
         console.log('New viewer connected:', viewerId)
-        setViewerCount(prev => prev + 1)
       })
       
       // Setup message listener
@@ -583,8 +615,16 @@ function StationContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-cyan-900/20 to-blue-900/30 text-white pt-20 pb-24">
-      <div className="px-3 md:px-6 py-3 md:py-4 border-b border-cyan-500/20 backdrop-blur-xl bg-gradient-to-r from-cyan-900/30 to-blue-900/30 sticky top-16 z-40">
+    <div className="min-h-screen bg-black text-white pt-20 pb-24 relative overflow-hidden">
+      {/* Animated background */}
+      <div className="fixed inset-0 z-0 opacity-30">
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-blue-600/20 to-purple-600/20 animate-gradient"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.1),transparent_50%)] animate-pulse"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
+      </div>
+      
+      <div className="relative z-10 px-3 md:px-6 py-3 md:py-4 border-b border-cyan-500/20 backdrop-blur-xl bg-gradient-to-r from-cyan-900/30 to-blue-900/30 sticky top-16 z-40">
         <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
           <div className="flex items-center gap-2 md:gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center animate-pulse">
@@ -667,7 +707,7 @@ function StationContent() {
           <div className="flex-1 flex flex-col min-h-0">
             <div 
               ref={streamContainerRef}
-              className="relative bg-gradient-to-br from-cyan-900/30 via-gray-900 to-blue-900/30 lg:rounded-2xl overflow-hidden h-full lg:h-auto lg:aspect-video border-0 lg:border border-cyan-500/20 lg:shadow-2xl lg:shadow-cyan-500/10 transition-all duration-300"
+              className="relative bg-gradient-to-br from-black via-gray-900 to-black lg:rounded-3xl overflow-hidden h-full lg:h-auto lg:aspect-video border-2 lg:border-4 border-cyan-500/40 lg:shadow-[0_0_50px_rgba(6,182,212,0.3)] hover:border-cyan-400/60 hover:shadow-[0_0_80px_rgba(6,182,212,0.5)] transition-all duration-500 animate-border-glow"
             >
               {/* Always render video elements so refs are ready BEFORE startStream */}
               <video
@@ -681,6 +721,7 @@ function StationContent() {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
+                muted={false}
                 className={`w-full h-full object-cover absolute inset-0 ${isStreaming && !isHost ? 'block' : 'hidden'}`}
               />
               
@@ -700,14 +741,14 @@ function StationContent() {
                   
                   {/* Viewers see remote video - handled by always-rendered video element above */}
                   
-                  <div className="absolute top-4 left-4 flex items-center gap-3">
-                    <div className="px-3 py-1 bg-red-500 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg">
-                      <Circle size={8} className="fill-current animate-pulse" />
-                      LIVE
+                  <div className="absolute top-4 left-4 flex items-center gap-3 z-10">
+                    <div className="px-4 py-2 bg-red-500 rounded-full text-sm font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.6)] animate-pulse border-2 border-red-400">
+                      <Circle size={10} className="fill-current animate-ping" />
+                      <span className="text-white">LIVE</span>
                     </div>
-                    <div className="px-3 py-1 bg-black/60 backdrop-blur rounded-full text-xs flex items-center gap-2">
-                      <Eye size={12} />
-                      {viewerCount}
+                    <div className="px-4 py-2 bg-cyan-500/30 backdrop-blur-md rounded-full text-sm flex items-center gap-2 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                      <Eye size={14} className="animate-pulse" />
+                      <span className="font-bold text-cyan-200">{viewerCount}</span>
                     </div>
                   </div>
 
@@ -828,28 +869,44 @@ function StationContent() {
                   )}
                 </>
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center mb-6 animate-pulse">
-                    <Radio size={48} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-gradient-to-br from-black via-gray-900 to-black">
+                  {/* Animated background circles */}
+                  <div className="absolute inset-0 overflow-hidden opacity-20">
+                    <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-cyan-500 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }}></div>
+                    <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }}></div>
                   </div>
-                  <h2 className="text-3xl font-bold mb-2">
-                    {isHost ? 'Start Your Station' : 'Station Offline'}
-                  </h2>
-                  <p className="text-gray-400 text-center mb-8 max-w-md">
-                    {isHost
-                      ? 'Go live and share your music with the 444 community'
-                      : `${djUsername} is not streaming right now`}
-                  </p>
                   
-                  {isHost && (
-                    <button
-                      onClick={startStream}
-                      className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-xl font-bold text-lg hover:from-cyan-400 hover:to-blue-400 transition-all shadow-2xl shadow-cyan-500/50 flex items-center gap-3"
-                    >
-                      <Video size={24} />
-                      Go Live
-                    </button>
-                  )}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-32 h-32 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center mb-8 animate-pulse shadow-[0_0_60px_rgba(6,182,212,0.6)] border-4 border-cyan-400/50">
+                      <Radio size={64} className="text-white" />
+                    </div>
+                    <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+                      {isHost ? '🎵 Start Your Station' : '📡 Station Offline'}
+                    </h2>
+                    <p className="text-gray-400 text-center mb-12 max-w-md text-lg">
+                      {isHost
+                        ? 'Go live and share your vibe with the 444 community'
+                        : `${djUsername} is not streaming right now`}
+                    </p>
+                    
+                    {isHost && (
+                      <button
+                        onClick={startStream}
+                        className="group px-10 py-5 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-2xl font-bold text-xl hover:from-cyan-400 hover:to-blue-400 transition-all shadow-[0_0_40px_rgba(6,182,212,0.4)] hover:shadow-[0_0_60px_rgba(6,182,212,0.6)] transform hover:scale-105 flex items-center gap-3 border-2 border-cyan-400/50"
+                      >
+                        <Video size={28} className="group-hover:animate-pulse" />
+                        <span>Go Live Now</span>
+                      </button>
+                    )}
+                    
+                    {!isHost && (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl backdrop-blur-sm">
+                          <p className="text-cyan-300 text-sm">Check back soon or follow {djUsername} for updates</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1385,6 +1442,38 @@ function StationContent() {
             box-shadow: 0 0 40px rgba(6, 182, 212, 0.6);
           }
         }
+
+        @keyframes gradient {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            transform: translateY(-20px) scale(1.1);
+          }
+        }
+
+        @keyframes border-glow {
+          0%, 100% {
+            border-color: rgba(6, 182, 212, 0.4);
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.2);
+          }
+          50% {
+            border-color: rgba(6, 182, 212, 0.8);
+            box-shadow: 0 0 60px rgba(6, 182, 212, 0.4);
+          }
+        }
         
         .animate-float-up {
           animation: float-up 3s ease-out forwards;
@@ -1398,6 +1487,19 @@ function StationContent() {
           animation: fade-in-up 0.4s ease-out;
         }
 
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 8s ease infinite;
+        }
+
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+
+        .animate-border-glow {
+          animation: border-glow 3s ease-in-out infinite;
+        }
+
         /* Custom scrollbar styles */
         .scrollbar-thin::-webkit-scrollbar {
           width: 6px;
@@ -1408,12 +1510,12 @@ function StationContent() {
         }
 
         .scrollbar-thin::-webkit-scrollbar-thumb {
-          background: rgba(6, 182, 212, 0.2);
+          background: rgba(6, 182, 212, 0.3);
           border-radius: 3px;
         }
 
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-          background: rgba(6, 182, 212, 0.4);
+          background: rgba(6, 182, 212, 0.6);
         }
       `}</style>
     </div>

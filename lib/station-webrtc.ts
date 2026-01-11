@@ -15,6 +15,7 @@ export class StationWebRTC {
   private stationId: string
   private userId: string
   private isHost: boolean
+  private presenceCallback: ((members: any[]) => void) | null = null
 
   constructor(stationId: string, userId: string, isHost: boolean = false) {
     this.stationId = stationId
@@ -38,15 +39,37 @@ export class StationWebRTC {
 
     this.channel.bind('pusher:subscription_succeeded', () => {
       console.log('✅ Connected to station:', this.stationId, 'as', this.isHost ? 'HOST' : 'VIEWER')
+      // Send initial presence
+      if (this.presenceCallback && this.channel.members) {
+        const members = Object.values(this.channel.members.members)
+        this.presenceCallback(members)
+      }
     })
 
     this.channel.bind('pusher:member_added', (member: any) => {
       console.log('👋 New viewer:', member.id)
+      if (this.presenceCallback && this.channel.members) {
+        const members = Object.values(this.channel.members.members)
+        this.presenceCallback(members)
+      }
     })
 
     this.channel.bind('pusher:member_removed', (member: any) => {
       console.log('👋 Viewer left:', member.id)
+      if (this.presenceCallback && this.channel.members) {
+        const members = Object.values(this.channel.members.members)
+        this.presenceCallback(members)
+      }
     })
+  }
+
+  onPresence(callback: (members: any[]) => void) {
+    this.presenceCallback = callback
+    // Send current members if already connected
+    if (this.channel && this.channel.members) {
+      const members = Object.values(this.channel.members.members)
+      callback(members)
+    }
   }
 
   async startBroadcast(stream: MediaStream, onViewerJoin?: (viewerId: string) => void) {
