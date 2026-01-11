@@ -394,7 +394,7 @@ export default function StationPage() {
                 <div className="flex items-center gap-4">
                   <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
                     <Image
-                      src={currentTrack.artworkUrl || '/default-artwork.jpg'}
+                      src={currentTrack.imageUrl || '/default-artwork.jpg'}
                       alt={currentTrack.title}
                       fill
                       className="object-cover"
