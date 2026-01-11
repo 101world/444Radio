@@ -104,18 +104,6 @@ function StationContent() {
       webrtcRef.current = new StationWebRTC(stationId, user.id, false)
       await webrtcRef.current.init()
       
-      // Setup presence tracking
-      webrtcRef.current.onPresence((members) => {
-        const memberList = members.filter((m: any) => m.id !== user.id)
-        setViewers(memberList.map((m: any) => ({
-          id: m.id,
-          userId: m.id,
-          username: m.info?.username || 'Viewer',
-          avatar: m.info?.avatar || '/default-avatar.png'
-        })))
-        setViewerCount(memberList.length)
-      })
-      
       console.log('🔗 Attempting to join stream as viewer...')
       
       // Join the stream with timeout
@@ -134,16 +122,8 @@ function StationContent() {
         
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = stream
-          remoteVideoRef.current.volume = 1.0 // Ensure full volume
-          // Force play immediately with sound
-          remoteVideoRef.current.play().catch(e => {
-            console.warn('Remote video autoplay blocked:', e)
-            // Try unmuting and playing
-            if (remoteVideoRef.current) {
-              remoteVideoRef.current.muted = false
-              remoteVideoRef.current.play()
-            }
-          })
+          // Force play immediately
+          remoteVideoRef.current.play().catch(e => console.warn('Remote video autoplay blocked:', e))
           setIsStreaming(true)
           setIsConnecting(false)
           addNotification(`Connected to ${hostUsername}'s station!`, 'join')
@@ -313,22 +293,10 @@ function StationContent() {
       webrtcRef.current = new StationWebRTC(stationId, user.id, true)
       await webrtcRef.current.init()
       
-      // Setup presence tracking for viewer count
-      webrtcRef.current.onPresence((members) => {
-        console.log('👥 Presence update:', members)
-        const memberList = members.filter((m: any) => m.id !== user.id)
-        setViewers(memberList.map((m: any) => ({
-          id: m.id,
-          userId: m.id,
-          username: m.info?.username || 'Viewer',
-          avatar: m.info?.avatar || '/default-avatar.png'
-        })))
-        setViewerCount(memberList.length)
-      })
-      
       // Start broadcasting
       await webrtcRef.current.startBroadcast(stream, (viewerId) => {
         console.log('New viewer connected:', viewerId)
+        setViewerCount(prev => prev + 1)
       })
       
       // Setup message listener
@@ -615,16 +583,8 @@ function StationContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pt-20 pb-24 relative overflow-hidden">
-      {/* Animated background */}
-      <div className="fixed inset-0 z-0 opacity-30">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-blue-600/20 to-purple-600/20 animate-gradient"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.1),transparent_50%)] animate-pulse"></div>
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
-      </div>
-      
-      <div className="relative z-10 px-3 md:px-6 py-3 md:py-4 border-b border-cyan-500/20 backdrop-blur-xl bg-gradient-to-r from-cyan-900/30 to-blue-900/30 sticky top-16 z-40">
+    <div className="min-h-screen bg-black text-white pt-20 pb-24">
+      <div className="px-3 md:px-6 py-3 md:py-4 border-b border-white/10 backdrop-blur-xl bg-black/50 sticky top-16 z-40">
         <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
           <div className="flex items-center gap-2 md:gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center animate-pulse">
@@ -654,7 +614,7 @@ function StationContent() {
           <div className="flex items-center gap-2 md:gap-3">
             <button
               onClick={testDevices}
-              className="hidden md:flex px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-all items-center gap-2 hover:border-cyan-400/50"
+              className="hidden md:flex px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all items-center gap-2"
               title="Check Camera & Microphone"
             >
               <Camera size={16} />
@@ -662,7 +622,7 @@ function StationContent() {
             </button>
             <button
               onClick={() => setShowShortcuts(true)}
-              className="w-10 h-10 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-all flex items-center justify-center hover:border-cyan-400/50"
+              className="w-10 h-10 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center justify-center"
               title="Keyboard Shortcuts"
             >
               ?
@@ -673,7 +633,7 @@ function StationContent() {
                 navigator.clipboard.writeText(url)
                 alert('Station link copied!')
               }}
-              className="px-3 md:px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-all flex items-center gap-2 hover:border-cyan-400/50"
+              className="px-3 md:px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center gap-2"
             >
               <Share2 size={14} className="md:w-4 md:h-4" />
               <span className="hidden md:inline">Share</span>
@@ -700,14 +660,12 @@ function StationContent() {
         </div>
       </div>
 
-      {/* Mobile: Full-screen vertical layout | Desktop: Sidebar layout */}
-      <div className="max-w-screen-2xl mx-auto md:px-6 md:py-4">
-        <div className="flex flex-col lg:flex-row gap-0 lg:gap-6 h-[calc(100vh-80px)] md:h-auto">
-          {/* Main video area - 100% mobile, 70% desktop */}
-          <div className="flex-1 flex flex-col min-h-0">
+      <div className="max-w-screen-2xl mx-auto px-3 md:px-6 py-4 md:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="lg:col-span-3 space-y-4 md:space-y-6">
             <div 
               ref={streamContainerRef}
-              className="relative bg-gradient-to-br from-black via-gray-900 to-black lg:rounded-3xl overflow-hidden h-full lg:h-auto lg:aspect-video border-2 lg:border-4 border-cyan-500/40 lg:shadow-[0_0_50px_rgba(6,182,212,0.3)] hover:border-cyan-400/60 hover:shadow-[0_0_80px_rgba(6,182,212,0.5)] transition-all duration-500 animate-border-glow"
+              className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden aspect-video border border-white/10 shadow-2xl"
             >
               {/* Always render video elements so refs are ready BEFORE startStream */}
               <video
@@ -721,7 +679,6 @@ function StationContent() {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                muted={false}
                 className={`w-full h-full object-cover absolute inset-0 ${isStreaming && !isHost ? 'block' : 'hidden'}`}
               />
               
@@ -741,14 +698,14 @@ function StationContent() {
                   
                   {/* Viewers see remote video - handled by always-rendered video element above */}
                   
-                  <div className="absolute top-4 left-4 flex items-center gap-3 z-10">
-                    <div className="px-4 py-2 bg-red-500 rounded-full text-sm font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.6)] animate-pulse border-2 border-red-400">
-                      <Circle size={10} className="fill-current animate-ping" />
-                      <span className="text-white">LIVE</span>
+                  <div className="absolute top-4 left-4 flex items-center gap-3">
+                    <div className="px-3 py-1 bg-red-500 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg">
+                      <Circle size={8} className="fill-current animate-pulse" />
+                      LIVE
                     </div>
-                    <div className="px-4 py-2 bg-cyan-500/30 backdrop-blur-md rounded-full text-sm flex items-center gap-2 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
-                      <Eye size={14} className="animate-pulse" />
-                      <span className="font-bold text-cyan-200">{viewerCount}</span>
+                    <div className="px-3 py-1 bg-black/60 backdrop-blur rounded-full text-xs flex items-center gap-2">
+                      <Eye size={12} />
+                      {viewerCount}
                     </div>
                   </div>
 
@@ -784,18 +741,18 @@ function StationContent() {
 
                   {isHost && (
                     <>
-                      <div className="absolute top-4 lg:top-20 right-4 flex lg:flex-col gap-2">
+                      <div className="absolute top-20 right-4 flex flex-col gap-2">
                         <button
                           onClick={() => setShowAnalytics(!showAnalytics)}
-                          className="w-12 h-12 lg:w-10 lg:h-10 rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-500/30 flex items-center justify-center hover:bg-cyan-500/30 transition-all transform hover:scale-110 shadow-lg"
+                          className="w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:bg-black/80 transition-all"
                           title="Analytics"
                         >
                           📊
                         </button>
                         <button
                           onClick={toggleRecording}
-                          className={`w-12 h-12 lg:w-10 lg:h-10 rounded-full backdrop-blur-md border flex items-center justify-center transition-all transform hover:scale-110 shadow-lg ${
-                            isRecording ? 'bg-red-500 animate-pulse border-red-500' : 'bg-cyan-500/20 border-cyan-500/30 hover:bg-cyan-500/30'
+                          className={`w-10 h-10 rounded-full backdrop-blur flex items-center justify-center transition-all ${
+                            isRecording ? 'bg-red-500 animate-pulse' : 'bg-black/60 hover:bg-black/80'
                           }`}
                           title={isRecording ? 'Stop Recording (R)' : 'Start Recording (R)'}
                         >
@@ -803,34 +760,34 @@ function StationContent() {
                         </button>
                       </div>
                       
-                      <div className="absolute bottom-4 lg:bottom-0 left-0 right-0 lg:bg-gradient-to-t from-transparent lg:from-black/80 to-transparent px-4 lg:p-6">
-                        <div className="flex items-center justify-center gap-3 lg:gap-4">
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                        <div className="flex items-center justify-center gap-4">
                           <button
                             onClick={toggleMic}
-                            className={`w-14 h-14 lg:w-12 lg:h-12 rounded-full flex items-center justify-center transition-all transform hover:scale-110 backdrop-blur-md shadow-lg ${
-                              isMicOn ? 'bg-cyan-500/30 hover:bg-cyan-500/40 border-2 border-cyan-400/50' : 'bg-red-500 hover:bg-red-600'
+                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                              isMicOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
                             }`}
                             title={isMicOn ? 'Mute (M)' : 'Unmute (M)'}
                           >
-                            {isMicOn ? <Mic size={22} /> : <MicOff size={22} />}
+                            {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
                           </button>
                           
                           <button
                             onClick={toggleVideo}
-                            className={`w-14 h-14 lg:w-12 lg:h-12 rounded-full flex items-center justify-center transition-all transform hover:scale-110 backdrop-blur-md shadow-lg ${
-                              isVideoOn ? 'bg-cyan-500/30 hover:bg-cyan-500/40 border-2 border-cyan-400/50' : 'bg-red-500 hover:bg-red-600'
+                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                              isVideoOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
                             }`}
                             title={isVideoOn ? 'Hide Camera (V)' : 'Show Camera (V)'}
                           >
-                            {isVideoOn ? <VideoIcon size={22} /> : <VideoOff size={22} />}
+                            {isVideoOn ? <VideoIcon size={20} /> : <VideoOff size={20} />}
                           </button>
 
                           <button
                             onClick={endStream}
-                            className="w-16 h-16 lg:w-14 lg:h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all transform hover:scale-110 shadow-lg shadow-red-500/50"
+                            className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all shadow-lg"
                             title="End Stream (E)"
                           >
-                            <PhoneOff size={26} />
+                            <PhoneOff size={24} />
                           </button>
                         </div>
                         
@@ -855,12 +812,12 @@ function StationContent() {
                   )}
                   
                   {!isHost && isStreaming && (
-                    <div className="absolute bottom-20 lg:bottom-4 left-0 right-0 flex justify-center gap-3 lg:gap-2 px-4">
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4">
                       {reactionEmojis.map((emoji) => (
                         <button
                           key={emoji}
                           onClick={() => sendReaction(emoji)}
-                          className="w-14 h-14 lg:w-12 lg:h-12 rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-500/30 hover:bg-cyan-500/30 hover:scale-110 transition-all transform text-2xl flex items-center justify-center shadow-lg"
+                          className="w-12 h-12 rounded-full bg-black/60 backdrop-blur hover:bg-black/80 hover:scale-110 transition-all text-2xl flex items-center justify-center"
                         >
                           {emoji}
                         </button>
@@ -869,11 +826,11 @@ function StationContent() {
                   )}
                 </>
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-gradient-to-br from-gray-900 to-black">
-                  <div className="w-24 h-24 rounded-full bg-cyan-600 flex items-center justify-center mb-6">
-                    <Radio size={48} className="text-white" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center mb-6 animate-pulse">
+                    <Radio size={48} />
                   </div>
-                  <h2 className="text-3xl font-bold mb-4 text-gray-200 text-center">
+                  <h2 className="text-3xl font-bold mb-2">
                     {isHost ? 'Start Your Station' : 'Station Offline'}
                   </h2>
                   <p className="text-gray-400 text-center mb-8 max-w-md">
@@ -885,24 +842,17 @@ function StationContent() {
                   {isHost && (
                     <button
                       onClick={startStream}
-                      className="px-8 py-4 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold flex items-center gap-2 transition-all"
+                      className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-xl font-bold text-lg hover:from-cyan-400 hover:to-blue-400 transition-all shadow-2xl shadow-cyan-500/50 flex items-center gap-3"
                     >
-                      <Video size={20} />
-                      <span>Go Live</span>
+                      <Video size={24} />
+                      Go Live
                     </button>
-                  )}
-                  
-                  {!isHost && (
-                    <div className="px-6 py-3 bg-gray-800 border border-gray-700 rounded-lg">
-                      <p className="text-gray-400 text-sm">Check back soon for live streams</p>
-                    </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Now Playing - Hidden on mobile when streaming, visible on desktop */}
-            {currentTrack && !isStreaming && (
+            {currentTrack && (
               <div className="bg-gradient-to-br from-cyan-900/20 to-black border border-cyan-500/20 rounded-2xl p-6">
                 <div className="flex items-center gap-4">
                   <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
@@ -932,19 +882,18 @@ function StationContent() {
             )}
           </div>
 
-          {/* Sidebar - 30% width on desktop, slide-up overlay on mobile */}
-          <div className="lg:w-[400px] flex flex-col gap-4 lg:min-h-0 lg:h-[calc(100vh-120px)] lg:sticky lg:top-24">
-            <div className="hidden lg:block bg-gradient-to-br from-cyan-900/20 to-blue-900/20 border border-cyan-500/20 rounded-2xl p-4 backdrop-blur-xl transition-all duration-300 hover:border-cyan-400/30">
-              <h3 className="font-bold flex items-center gap-2 mb-3 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl p-4">
+              <h3 className="font-bold flex items-center gap-2 mb-3">
                 <Users size={20} className="text-cyan-400" />
                 Viewers ({viewerCount})
               </h3>
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
+              <div className="flex flex-wrap gap-2">
                 {viewers.length === 0 ? (
                   <p className="text-sm text-gray-500">No viewers yet</p>
                 ) : (
                   viewers.map((viewer) => (
-                    <div key={viewer.id} className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 px-3 py-2 rounded-full text-sm hover:bg-cyan-500/20 hover:border-cyan-400/40 transition-all duration-300 transform hover:scale-105 animate-fade-in-up">
+                    <div key={viewer.id} className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-full text-sm hover:bg-white/10 transition-all">
                       <Image
                         src={viewer.avatar}
                         alt={viewer.username}
@@ -974,23 +923,23 @@ function StationContent() {
               </div>
             </div>
 
-            <div className="flex-1 bg-gradient-to-br from-cyan-900/10 via-gray-900/50 to-blue-900/10 lg:border border-cyan-500/20 lg:rounded-2xl flex flex-col backdrop-blur-xl lg:shadow-2xl lg:shadow-cyan-500/10 transition-all duration-300 overflow-hidden">
-              <div className="p-3 lg:p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-sm">
-                <h3 className="font-bold flex items-center gap-2 text-sm lg:text-base text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
-                  <MessageCircle size={18} className="text-cyan-400 lg:w-5 lg:h-5" />
+            <div className="bg-gradient-to-br from-gray-900/50 to-black/50 border border-cyan-500/20 rounded-2xl h-[400px] md:h-[calc(100vh-450px)] flex flex-col backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
+              <div className="p-3 md:p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
+                <h3 className="font-bold flex items-center gap-2 text-sm md:text-base">
+                  <MessageCircle size={18} className="text-cyan-400 md:w-5 md:h-5" />
                   Live Chat <span className="text-cyan-400">({totalMessages})</span>
                 </h3>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-2 lg:space-y-3 scroll-smooth scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
+              <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 scroll-smooth">
                 {chatMessages.length === 0 ? (
                   <div className="text-center text-gray-500 py-12">
-                    <MessageCircle size={48} className="mx-auto mb-4 opacity-50 animate-pulse" />
+                    <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
                     <p className="text-sm">Be the first to chat!</p>
                   </div>
                 ) : (
                   chatMessages.map((msg) => (
-                    <div key={msg.id} className="flex gap-3 animate-slide-in bg-cyan-500/5 hover:bg-cyan-500/10 p-3 rounded-xl transition-all duration-300 border border-transparent hover:border-cyan-500/20 transform hover:scale-[1.02]">
+                    <div key={msg.id} className="flex gap-3 animate-fade-in-up bg-white/5 hover:bg-white/10 p-3 rounded-xl transition-all duration-300">
                       {msg.avatar ? (
                         <Image
                           src={msg.avatar}
@@ -1019,7 +968,7 @@ function StationContent() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="p-3 lg:p-4 border-t border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 backdrop-blur-sm">
+              <div className="p-3 md:p-4 border-t border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-blue-500/5">
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -1027,15 +976,15 @@ function StationContent() {
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     placeholder="Say something..."
-                    className="flex-1 px-3 lg:px-4 py-2 lg:py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:bg-cyan-500/15 text-sm placeholder-gray-500 transition-all duration-300"
+                    className="flex-1 px-3 md:px-4 py-2 md:py-3 bg-white/10 border border-cyan-500/30 rounded-xl focus:outline-none focus:border-cyan-500 focus:bg-white/15 text-sm placeholder-gray-500 transition-all"
                     maxLength={200}
                   />
                   <button
                     onClick={sendMessage}
                     disabled={!chatInput.trim()}
-                    className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 flex items-center justify-center transition-all duration-300 transform hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:transform-none shadow-lg shadow-cyan-500/30 disabled:shadow-none"
+                    className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/30 disabled:shadow-none"
                   >
-                    <Send size={16} className="text-black lg:w-5 lg:h-5" />
+                    <Send size={16} className="text-black md:w-5 md:h-5" />
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 flex items-center justify-between px-1">
@@ -1391,14 +1340,11 @@ function StationContent() {
         @keyframes float-up {
           0% {
             opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-          50% {
-            transform: translateY(-100px) scale(1.2);
+            transform: translateY(0);
           }
           100% {
             opacity: 0;
-            transform: translateY(-200px) scale(0.8);
+            transform: translateY(-200px);
           }
         }
         
@@ -1412,58 +1358,6 @@ function StationContent() {
             transform: translateX(0);
           }
         }
-
-        @keyframes fade-in-up {
-          0% {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes pulse-glow {
-          0%, 100% {
-            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
-          }
-          50% {
-            box-shadow: 0 0 40px rgba(6, 182, 212, 0.6);
-          }
-        }
-
-        @keyframes gradient {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0) scale(1);
-          }
-          50% {
-            transform: translateY(-20px) scale(1.1);
-          }
-        }
-
-        @keyframes border-glow {
-          0%, 100% {
-            border-color: rgba(6, 182, 212, 0.4);
-            box-shadow: 0 0 30px rgba(6, 182, 212, 0.2);
-          }
-          50% {
-            border-color: rgba(6, 182, 212, 0.8);
-            box-shadow: 0 0 60px rgba(6, 182, 212, 0.4);
-          }
-        }
         
         .animate-float-up {
           animation: float-up 3s ease-out forwards;
@@ -1471,41 +1365,6 @@ function StationContent() {
         
         .animate-slide-in {
           animation: slide-in 0.3s ease-out;
-        }
-
-        .animate-fade-in-up {
-          animation: fade-in-up 0.4s ease-out;
-        }
-
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient 8s ease infinite;
-        }
-
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-
-        .animate-border-glow {
-          animation: border-glow 3s ease-in-out infinite;
-        }
-
-        /* Custom scrollbar styles */
-        .scrollbar-thin::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-          background: rgba(6, 182, 212, 0.3);
-          border-radius: 3px;
-        }
-
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-          background: rgba(6, 182, 212, 0.6);
         }
       `}</style>
     </div>
