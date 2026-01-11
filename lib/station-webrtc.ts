@@ -26,14 +26,18 @@ export class StationWebRTC {
     // Initialize Pusher
     this.pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap2',
-      authEndpoint: '/api/pusher/auth'
+      authEndpoint: '/api/pusher/auth',
+      userAuthentication: {
+        endpoint: '/api/pusher/auth',
+        transport: 'ajax'
+      }
     })
 
     // Subscribe to station channel
     this.channel = this.pusher.subscribe(`presence-station-${this.stationId}`)
 
     this.channel.bind('pusher:subscription_succeeded', () => {
-      console.log('✅ Connected to station channel')
+      console.log('✅ Connected to station:', this.stationId, 'as', this.isHost ? 'HOST' : 'VIEWER')
     })
 
     this.channel.bind('pusher:member_added', (member: any) => {
@@ -87,13 +91,17 @@ export class StationWebRTC {
   async joinStream(onStream?: (stream: MediaStream) => void) {
     // Get host user ID from channel members
     const members = this.channel.members
-    const hostMember = Object.values(members.members).find((m: any) => m.info?.isHost)
+    console.log('🔍 Looking for host. Channel members:', Object.keys(members.members))
     
-    if (!hostMember) {
-      throw new Error('Host not found')
+    // Find any member that's not us (host joins first)
+    const allMemberIds = Object.keys(members.members).filter((id: string) => id !== this.userId)
+    
+    if (allMemberIds.length === 0) {
+      throw new Error('Host not found. Station may have ended.')
     }
 
-    const hostId = (hostMember as any).id
+    const hostId = allMemberIds[0]
+    console.log('🎯 Connecting to host:', hostId)
 
     // Create peer as viewer
     this.peer = new Peer({

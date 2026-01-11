@@ -46,6 +46,7 @@ function StationContent() {
   const [totalReactions, setTotalReactions] = useState(0)
   const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor' | 'bad'>('excellent')
   const [showAnalytics, setShowAnalytics] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -510,6 +511,13 @@ function StationContent() {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => setShowShortcuts(true)}
+              className="w-10 h-10 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all flex items-center justify-center"
+              title="Keyboard Shortcuts"
+            >
+              ?
+            </button>
+            <button
               onClick={() => {
                 const url = `${window.location.origin}/station?dj=${user?.username}`
                 navigator.clipboard.writeText(url)
@@ -924,6 +932,116 @@ function StationContent() {
                 }
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-gradient-to-br from-gray-900 to-black border border-cyan-500/30 rounded-2xl p-8 max-w-lg w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+                ⌨️ Keyboard Shortcuts
+              </h3>
+              <button
+                onClick={() => setShowShortcuts(false)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-gray-400 text-sm mb-4">Use these shortcuts while hosting a live stream:</p>
+              
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <span className="text-gray-300">Toggle Microphone</span>
+                  <kbd className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-cyan-400 font-mono text-sm">M</kbd>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <span className="text-gray-300">Toggle Camera</span>
+                  <kbd className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-cyan-400 font-mono text-sm">V</kbd>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <span className="text-gray-300">Toggle Recording</span>
+                  <kbd className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-cyan-400 font-mono text-sm">R</kbd>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <span className="text-gray-300">End Stream</span>
+                  <kbd className="px-3 py-1 bg-red-500/20 border border-red-500/30 rounded text-red-400 font-mono text-sm">E</kbd>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                <p className="text-xs text-cyan-400">💡 Tip: These shortcuts only work when you're the host and streaming is active.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowShortcuts(false)}
+              className="w-full mt-6 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-all font-bold"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-gradient-to-br from-gray-900 to-black border border-cyan-500/30 rounded-2xl p-8 max-w-lg w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+                ⌨️ Keyboard Shortcuts
+              </h3>
+              <button
+                onClick={() => setShowShortcuts(false)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-gray-400 text-sm mb-4">Use these shortcuts while hosting a live stream:</p>
+              
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <span className="text-gray-300">Toggle Microphone</span>
+                  <kbd className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-cyan-400 font-mono text-sm">M</kbd>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <span className="text-gray-300">Toggle Camera</span>
+                  <kbd className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-cyan-400 font-mono text-sm">V</kbd>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <span className="text-gray-300">Toggle Recording</span>
+                  <kbd className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-cyan-400 font-mono text-sm">R</kbd>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <span className="text-gray-300">End Stream</span>
+                  <kbd className="px-3 py-1 bg-red-500/20 border border-red-500/30 rounded text-red-400 font-mono text-sm">E</kbd>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                <p className="text-xs text-cyan-400">💡 Tip: These shortcuts only work when you're the host and streaming is active.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowShortcuts(false)}
+              className="w-full mt-6 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-all font-bold"
+            >
+              Got it!
+            </button>
           </div>
         </div>
       )}
