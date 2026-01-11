@@ -109,22 +109,6 @@ export async function POST(req: NextRequest) {
         url: audioUpload.url,
         message: 'Audio uploaded successfully'
       })
-        return NextResponse.json({ success: false, error: 'Audio upload failed' }, { status: 500 })
-      }
-
-      uploadData.audio_url = audioUpload.url
-
-      const { data, error } = await supabase
-        .from('combined_media')
-        .insert([uploadData])
-        .select()
-
-      if (error) {
-        console.error('Database error:', error)
-        return NextResponse.json({ success: false, error: 'Failed to save to database' }, { status: 500 })
-      }
-
-      return NextResponse.json({ success: true, data: data[0] })
 
     } else if (type === 'image') {
       const imageFile = formData.get('file') as File
