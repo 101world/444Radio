@@ -28,14 +28,14 @@ export const STREAM_QUALITIES: Record<string, StreamQuality> = {
 }
 
 export class WebRTCManager {
-  private peer: Peer.Instance | null = null
+  private peer: Peer | null = null
   private config: WebRTCConfig
 
   constructor(config: WebRTCConfig = DEFAULT_WEBRTC_CONFIG) {
     this.config = config
   }
 
-  createBroadcaster(stream: MediaStream): Peer.Instance {
+  createBroadcaster(stream: MediaStream): Peer {
     this.peer = new Peer({
       initiator: true,
       stream,
@@ -46,7 +46,7 @@ export class WebRTCManager {
     return this.peer
   }
 
-  createViewer(): Peer.Instance {
+  createViewer(): Peer {
     this.peer = new Peer({
       initiator: false,
       config: this.config,
@@ -63,7 +63,7 @@ export class WebRTCManager {
     }
   }
 
-  getPeer(): Peer.Instance | null {
+  getPeer(): Peer | null {
     return this.peer
   }
 }
