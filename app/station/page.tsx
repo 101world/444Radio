@@ -869,69 +869,69 @@ function StationContent() {
                   )}
                 </>
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center p-6 md:p-12 bg-black overflow-hidden">
+                <div className="absolute inset-0 flex items-center justify-center p-8 bg-black overflow-hidden">
                   {/* Animated gradient background */}
                   <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/40 via-blue-950/30 to-purple-950/40 animate-gradient bg-[length:400%_400%]"></div>
                   
-                  {/* Floating orbs with enhanced glow */}
+                  {/* Floating orbs */}
                   <div className="absolute inset-0 overflow-hidden opacity-30">
-                    <div className="absolute top-1/4 left-1/4 w-48 md:w-96 h-48 md:h-96 bg-cyan-500/60 rounded-full blur-[120px] animate-float" style={{ animationDuration: '8s' }}></div>
-                    <div className="absolute bottom-1/3 right-1/4 w-56 md:w-[32rem] h-56 md:h-[32rem] bg-blue-500/50 rounded-full blur-[140px] animate-float" style={{ animationDuration: '12s', animationDelay: '2s' }}></div>
-                    <div className="absolute top-1/2 right-1/3 w-40 md:w-80 h-40 md:h-80 bg-purple-500/40 rounded-full blur-[100px] animate-float" style={{ animationDuration: '10s', animationDelay: '4s' }}></div>
+                    <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-cyan-500/60 rounded-full blur-[120px] animate-float" style={{ animationDuration: '8s' }}></div>
+                    <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-blue-500/50 rounded-full blur-[140px] animate-float" style={{ animationDuration: '12s', animationDelay: '2s' }}></div>
+                    <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-purple-500/40 rounded-full blur-[100px] animate-float" style={{ animationDuration: '10s', animationDelay: '4s' }}></div>
                   </div>
                   
-                  {/* Grid pattern overlay */}
+                  {/* Grid pattern */}
                   <div className="absolute inset-0 opacity-[0.03]" style={{
                     backgroundImage: 'linear-gradient(cyan 1px, transparent 1px), linear-gradient(90deg, cyan 1px, transparent 1px)',
                     backgroundSize: '50px 50px'
                   }}></div>
                   
-                  <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-3xl mx-auto">
-                    {/* Icon with enhanced effects */}
-                    <div className="relative mb-6 md:mb-8">
+                  <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-2xl mx-auto">
+                    {/* Icon */}
+                    <div className="relative mb-8">
                       <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full blur-2xl opacity-60 animate-pulse"></div>
-                      <div className="relative w-20 h-20 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-500 flex items-center justify-center shadow-[0_0_80px_rgba(6,182,212,0.8)] border-4 border-cyan-400/40 animate-float">
+                      <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-500 flex items-center justify-center shadow-[0_0_80px_rgba(6,182,212,0.8)] border-4 border-cyan-400/40 animate-float">
                         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500/20 to-transparent animate-spin" style={{ animationDuration: '3s' }}></div>
-                        <Radio size={40} className="text-white md:w-16 md:h-16 relative z-10" />
+                        <Radio size={56} className="text-white relative z-10" />
                       </div>
                     </div>
                     
-                    {/* Title with enhanced gradient */}
-                    <h2 className="text-3xl md:text-5xl lg:text-6xl font-black mb-3 md:mb-5 bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] text-center leading-tight px-4">
+                    {/* Title */}
+                    <h2 className="text-5xl font-black mb-4 bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] text-center leading-tight">
                       {isHost ? 'Start Your Station' : 'Station Offline'}
                     </h2>
                     
-                    {/* Subtitle with better styling */}
-                    <p className="text-gray-300 text-center mb-6 md:mb-8 max-w-xl text-sm md:text-lg leading-relaxed px-6">
+                    {/* Subtitle */}
+                    <p className="text-gray-300 text-center mb-8 max-w-md text-lg leading-relaxed">
                       {isHost
-                        ? 'Go live and share your vibe with the 444 community. Broadcast your music, host live sessions, and connect with fans in real-time.'
-                        : `${djUsername} is currently offline. Check back soon for the next live session!`}
+                        ? 'Go live and share your vibe with the 444 community'
+                        : `${djUsername} is currently offline. Check back soon!`}
                     </p>
                     
                     {isHost && (
-                      <div className="flex flex-col items-center gap-4 md:gap-6 w-full px-6">
+                      <div className="flex flex-col items-center gap-6 w-full">
                         <button
                           onClick={startStream}
-                          className="group relative px-8 md:px-12 py-4 md:py-5 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white rounded-2xl font-black text-base md:text-xl hover:from-cyan-400 hover:via-blue-400 hover:to-purple-400 transition-all duration-300 shadow-[0_0_60px_rgba(6,182,212,0.6)] hover:shadow-[0_0_100px_rgba(6,182,212,0.9)] transform hover:scale-105 active:scale-95 flex items-center gap-3 border-2 border-cyan-300/50 w-full md:w-auto justify-center overflow-hidden max-w-md"
+                          className="group relative px-12 py-5 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white rounded-2xl font-black text-xl hover:from-cyan-400 hover:via-blue-400 hover:to-purple-400 transition-all duration-300 shadow-[0_0_60px_rgba(6,182,212,0.6)] hover:shadow-[0_0_100px_rgba(6,182,212,0.9)] transform hover:scale-105 active:scale-95 flex items-center gap-3 border-2 border-cyan-300/50 overflow-hidden"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-                          <Video size={24} className="md:w-7 md:h-7 group-hover:rotate-12 transition-transform relative z-10" />
+                          <Video size={28} className="group-hover:rotate-12 transition-transform relative z-10" />
                           <span className="relative z-10">Go Live Now</span>
                         </button>
                         
                         {/* Feature highlights */}
-                        <div className="grid grid-cols-3 gap-2 md:gap-3 w-full max-w-xl">
-                          <div className="flex flex-col items-center p-2.5 md:p-3 bg-cyan-500/10 rounded-lg md:rounded-xl border border-cyan-500/30 backdrop-blur-sm hover:bg-cyan-500/20 transition-all">
-                            <Users size={20} className="md:w-6 md:h-6 text-cyan-400 mb-1.5" />
-                            <span className="text-[10px] md:text-xs text-cyan-300 font-semibold text-center leading-tight">Live<br className="md:hidden" /> Audience</span>
+                        <div className="grid grid-cols-3 gap-3 w-full max-w-lg">
+                          <div className="flex flex-col items-center p-4 bg-cyan-500/10 rounded-xl border border-cyan-500/30 backdrop-blur-sm hover:bg-cyan-500/20 transition-all">
+                            <Users size={24} className="text-cyan-400 mb-2" />
+                            <span className="text-xs text-cyan-300 font-semibold">Live Audience</span>
                           </div>
-                          <div className="flex flex-col items-center p-2.5 md:p-3 bg-blue-500/10 rounded-lg md:rounded-xl border border-blue-500/30 backdrop-blur-sm hover:bg-blue-500/20 transition-all">
-                            <MessageCircle size={20} className="md:w-6 md:h-6 text-blue-400 mb-1.5" />
-                            <span className="text-[10px] md:text-xs text-blue-300 font-semibold text-center leading-tight">Real-time<br className="md:hidden" /> Chat</span>
+                          <div className="flex flex-col items-center p-4 bg-blue-500/10 rounded-xl border border-blue-500/30 backdrop-blur-sm hover:bg-blue-500/20 transition-all">
+                            <MessageCircle size={24} className="text-blue-400 mb-2" />
+                            <span className="text-xs text-blue-300 font-semibold">Real-time Chat</span>
                           </div>
-                          <div className="flex flex-col items-center p-2.5 md:p-3 bg-purple-500/10 rounded-lg md:rounded-xl border border-purple-500/30 backdrop-blur-sm hover:bg-purple-500/20 transition-all">
-                            <Music size={20} className="md:w-6 md:h-6 text-purple-400 mb-1.5" />
-                            <span className="text-[10px] md:text-xs text-purple-300 font-semibold text-center leading-tight">HD<br className="md:hidden" /> Quality</span>
+                          <div className="flex flex-col items-center p-4 bg-purple-500/10 rounded-xl border border-purple-500/30 backdrop-blur-sm hover:bg-purple-500/20 transition-all">
+                            <Music size={24} className="text-purple-400 mb-2" />
+                            <span className="text-xs text-purple-300 font-semibold">HD Quality</span>
                           </div>
                         </div>
                       </div>
