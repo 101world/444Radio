@@ -660,12 +660,14 @@ function StationContent() {
         </div>
       </div>
 
-      <div className="max-w-screen-2xl mx-auto px-3 md:px-6 py-4 md:py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
-          <div className="lg:col-span-3 space-y-4 md:space-y-6">
+      {/* Mobile: Full-screen vertical layout | Desktop: Sidebar layout */}
+      <div className="max-w-screen-2xl mx-auto md:px-6 md:py-4">
+        <div className="flex flex-col lg:flex-row gap-0 lg:gap-6 h-[calc(100vh-80px)] md:h-auto">
+          {/* Main video area - 100% mobile, 70% desktop */}
+          <div className="flex-1 flex flex-col min-h-0">
             <div 
               ref={streamContainerRef}
-              className="relative bg-gradient-to-br from-cyan-900/30 via-gray-900 to-blue-900/30 rounded-2xl overflow-hidden aspect-video border border-cyan-500/20 shadow-2xl shadow-cyan-500/10"
+              className="relative bg-gradient-to-br from-cyan-900/30 via-gray-900 to-blue-900/30 lg:rounded-2xl overflow-hidden h-full lg:h-auto lg:aspect-video border-0 lg:border border-cyan-500/20 lg:shadow-2xl lg:shadow-cyan-500/10 transition-all duration-300"
             >
               {/* Always render video elements so refs are ready BEFORE startStream */}
               <video
@@ -741,18 +743,18 @@ function StationContent() {
 
                   {isHost && (
                     <>
-                      <div className="absolute top-20 right-4 flex flex-col gap-2">
+                      <div className="absolute top-4 lg:top-20 right-4 flex lg:flex-col gap-2">
                         <button
                           onClick={() => setShowAnalytics(!showAnalytics)}
-                          className="w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:bg-black/80 transition-all"
+                          className="w-12 h-12 lg:w-10 lg:h-10 rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-500/30 flex items-center justify-center hover:bg-cyan-500/30 transition-all transform hover:scale-110 shadow-lg"
                           title="Analytics"
                         >
                           📊
                         </button>
                         <button
                           onClick={toggleRecording}
-                          className={`w-10 h-10 rounded-full backdrop-blur flex items-center justify-center transition-all ${
-                            isRecording ? 'bg-red-500 animate-pulse' : 'bg-black/60 hover:bg-black/80'
+                          className={`w-12 h-12 lg:w-10 lg:h-10 rounded-full backdrop-blur-md border flex items-center justify-center transition-all transform hover:scale-110 shadow-lg ${
+                            isRecording ? 'bg-red-500 animate-pulse border-red-500' : 'bg-cyan-500/20 border-cyan-500/30 hover:bg-cyan-500/30'
                           }`}
                           title={isRecording ? 'Stop Recording (R)' : 'Start Recording (R)'}
                         >
@@ -760,34 +762,34 @@ function StationContent() {
                         </button>
                       </div>
                       
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                        <div className="flex items-center justify-center gap-4">
+                      <div className="absolute bottom-4 lg:bottom-0 left-0 right-0 lg:bg-gradient-to-t from-transparent lg:from-black/80 to-transparent px-4 lg:p-6">
+                        <div className="flex items-center justify-center gap-3 lg:gap-4">
                           <button
                             onClick={toggleMic}
-                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                              isMicOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
+                            className={`w-14 h-14 lg:w-12 lg:h-12 rounded-full flex items-center justify-center transition-all transform hover:scale-110 backdrop-blur-md shadow-lg ${
+                              isMicOn ? 'bg-cyan-500/30 hover:bg-cyan-500/40 border-2 border-cyan-400/50' : 'bg-red-500 hover:bg-red-600'
                             }`}
                             title={isMicOn ? 'Mute (M)' : 'Unmute (M)'}
                           >
-                            {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
+                            {isMicOn ? <Mic size={22} /> : <MicOff size={22} />}
                           </button>
                           
                           <button
                             onClick={toggleVideo}
-                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                              isVideoOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
+                            className={`w-14 h-14 lg:w-12 lg:h-12 rounded-full flex items-center justify-center transition-all transform hover:scale-110 backdrop-blur-md shadow-lg ${
+                              isVideoOn ? 'bg-cyan-500/30 hover:bg-cyan-500/40 border-2 border-cyan-400/50' : 'bg-red-500 hover:bg-red-600'
                             }`}
                             title={isVideoOn ? 'Hide Camera (V)' : 'Show Camera (V)'}
                           >
-                            {isVideoOn ? <VideoIcon size={20} /> : <VideoOff size={20} />}
+                            {isVideoOn ? <VideoIcon size={22} /> : <VideoOff size={22} />}
                           </button>
 
                           <button
                             onClick={endStream}
-                            className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all shadow-lg"
+                            className="w-16 h-16 lg:w-14 lg:h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all transform hover:scale-110 shadow-lg shadow-red-500/50"
                             title="End Stream (E)"
                           >
-                            <PhoneOff size={24} />
+                            <PhoneOff size={26} />
                           </button>
                         </div>
                         
@@ -812,12 +814,12 @@ function StationContent() {
                   )}
                   
                   {!isHost && isStreaming && (
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4">
+                    <div className="absolute bottom-20 lg:bottom-4 left-0 right-0 flex justify-center gap-3 lg:gap-2 px-4">
                       {reactionEmojis.map((emoji) => (
                         <button
                           key={emoji}
                           onClick={() => sendReaction(emoji)}
-                          className="w-12 h-12 rounded-full bg-black/60 backdrop-blur hover:bg-black/80 hover:scale-110 transition-all text-2xl flex items-center justify-center"
+                          className="w-14 h-14 lg:w-12 lg:h-12 rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-500/30 hover:bg-cyan-500/30 hover:scale-110 transition-all transform text-2xl flex items-center justify-center shadow-lg"
                         >
                           {emoji}
                         </button>
@@ -852,7 +854,8 @@ function StationContent() {
               )}
             </div>
 
-            {currentTrack && (
+            {/* Now Playing - Hidden on mobile when streaming, visible on desktop */}
+            {currentTrack && !isStreaming && (
               <div className="bg-gradient-to-br from-cyan-900/20 to-black border border-cyan-500/20 rounded-2xl p-6">
                 <div className="flex items-center gap-4">
                   <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
@@ -882,18 +885,19 @@ function StationContent() {
             )}
           </div>
 
-          <div className="space-y-4">
-            <div className="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 border border-cyan-500/20 rounded-2xl p-4 backdrop-blur-xl">
-              <h3 className="font-bold flex items-center gap-2 mb-3">
+          {/* Sidebar - 30% width on desktop, slide-up overlay on mobile */}
+          <div className="lg:w-[400px] flex flex-col gap-4 lg:min-h-0 lg:h-[calc(100vh-120px)] lg:sticky lg:top-24">
+            <div className="hidden lg:block bg-gradient-to-br from-cyan-900/20 to-blue-900/20 border border-cyan-500/20 rounded-2xl p-4 backdrop-blur-xl transition-all duration-300 hover:border-cyan-400/30">
+              <h3 className="font-bold flex items-center gap-2 mb-3 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
                 <Users size={20} className="text-cyan-400" />
                 Viewers ({viewerCount})
               </h3>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
                 {viewers.length === 0 ? (
                   <p className="text-sm text-gray-500">No viewers yet</p>
                 ) : (
                   viewers.map((viewer) => (
-                    <div key={viewer.id} className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-full text-sm hover:bg-white/10 transition-all">
+                    <div key={viewer.id} className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/20 px-3 py-2 rounded-full text-sm hover:bg-cyan-500/20 hover:border-cyan-400/40 transition-all duration-300 transform hover:scale-105 animate-fade-in-up">
                       <Image
                         src={viewer.avatar}
                         alt={viewer.username}
@@ -923,23 +927,23 @@ function StationContent() {
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-gray-900/50 to-black/50 border border-cyan-500/20 rounded-2xl h-[400px] md:h-[calc(100vh-450px)] flex flex-col backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
-              <div className="p-3 md:p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
-                <h3 className="font-bold flex items-center gap-2 text-sm md:text-base">
-                  <MessageCircle size={18} className="text-cyan-400 md:w-5 md:h-5" />
+            <div className="flex-1 bg-gradient-to-br from-cyan-900/10 via-gray-900/50 to-blue-900/10 lg:border border-cyan-500/20 lg:rounded-2xl flex flex-col backdrop-blur-xl lg:shadow-2xl lg:shadow-cyan-500/10 transition-all duration-300 overflow-hidden">
+              <div className="p-3 lg:p-4 border-b border-cyan-500/20 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-sm">
+                <h3 className="font-bold flex items-center gap-2 text-sm lg:text-base text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
+                  <MessageCircle size={18} className="text-cyan-400 lg:w-5 lg:h-5" />
                   Live Chat <span className="text-cyan-400">({totalMessages})</span>
                 </h3>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 scroll-smooth">
+              <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-2 lg:space-y-3 scroll-smooth scrollbar-thin scrollbar-thumb-cyan-500/20 scrollbar-track-transparent">
                 {chatMessages.length === 0 ? (
                   <div className="text-center text-gray-500 py-12">
-                    <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
+                    <MessageCircle size={48} className="mx-auto mb-4 opacity-50 animate-pulse" />
                     <p className="text-sm">Be the first to chat!</p>
                   </div>
                 ) : (
                   chatMessages.map((msg) => (
-                    <div key={msg.id} className="flex gap-3 animate-fade-in-up bg-white/5 hover:bg-white/10 p-3 rounded-xl transition-all duration-300">
+                    <div key={msg.id} className="flex gap-3 animate-slide-in bg-cyan-500/5 hover:bg-cyan-500/10 p-3 rounded-xl transition-all duration-300 border border-transparent hover:border-cyan-500/20 transform hover:scale-[1.02]">
                       {msg.avatar ? (
                         <Image
                           src={msg.avatar}
@@ -968,7 +972,7 @@ function StationContent() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="p-3 md:p-4 border-t border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-blue-500/5">
+              <div className="p-3 lg:p-4 border-t border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 backdrop-blur-sm">
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -976,15 +980,15 @@ function StationContent() {
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     placeholder="Say something..."
-                    className="flex-1 px-3 md:px-4 py-2 md:py-3 bg-white/10 border border-cyan-500/30 rounded-xl focus:outline-none focus:border-cyan-500 focus:bg-white/15 text-sm placeholder-gray-500 transition-all"
+                    className="flex-1 px-3 lg:px-4 py-2 lg:py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:bg-cyan-500/15 text-sm placeholder-gray-500 transition-all duration-300"
                     maxLength={200}
                   />
                   <button
                     onClick={sendMessage}
                     disabled={!chatInput.trim()}
-                    className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/30 disabled:shadow-none"
+                    className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 flex items-center justify-center transition-all duration-300 transform hover:scale-110 disabled:opacity-30 disabled:cursor-not-allowed disabled:transform-none shadow-lg shadow-cyan-500/30 disabled:shadow-none"
                   >
-                    <Send size={16} className="text-black md:w-5 md:h-5" />
+                    <Send size={16} className="text-black lg:w-5 lg:h-5" />
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 flex items-center justify-between px-1">
@@ -1340,11 +1344,14 @@ function StationContent() {
         @keyframes float-up {
           0% {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            transform: translateY(-100px) scale(1.2);
           }
           100% {
             opacity: 0;
-            transform: translateY(-200px);
+            transform: translateY(-200px) scale(0.8);
           }
         }
         
@@ -1358,6 +1365,26 @@ function StationContent() {
             transform: translateX(0);
           }
         }
+
+        @keyframes fade-in-up {
+          0% {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 40px rgba(6, 182, 212, 0.6);
+          }
+        }
         
         .animate-float-up {
           animation: float-up 3s ease-out forwards;
@@ -1365,6 +1392,28 @@ function StationContent() {
         
         .animate-slide-in {
           animation: slide-in 0.3s ease-out;
+        }
+
+        .animate-fade-in-up {
+          animation: fade-in-up 0.4s ease-out;
+        }
+
+        /* Custom scrollbar styles */
+        .scrollbar-thin::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+          background: rgba(6, 182, 212, 0.2);
+          border-radius: 3px;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+          background: rgba(6, 182, 212, 0.4);
         }
       `}</style>
     </div>
