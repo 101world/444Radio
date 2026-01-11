@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         return corsResponse(NextResponse.json({ success: false, error: 'Missing file or kind' }, { status: 400 }))
       }
 
-      const key = `${userId}/banner-${Date.now()}-${file.name}`
+      const key = `${userId}/banner-${Date.now()}-${file.name.replace(/[^\w.-]/g, '_')}`
       const bucket = kind === 'image' ? 'images' : 'videos'
       const upload = await uploadToR2(file, bucket, key)
       if (!upload.success || !upload.url) {
@@ -65,6 +65,11 @@ export async function POST(req: NextRequest) {
       }
       bannerUrl = upload.url
       bannerType = kind
+    }
+
+    // Sanitize URL to remove invalid characters (like \a newlines)
+    if (bannerUrl) {
+      bannerUrl = bannerUrl.replace(/[\r\n\t]/g, '')
     }
 
     // Persist to users table
