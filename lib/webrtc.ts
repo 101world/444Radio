@@ -69,6 +69,20 @@ export class WebRTCManager {
 }
 
 export async function getUserMedia(quality: StreamQuality): Promise<MediaStream> {
+  // First, enumerate devices to debug
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const cameras = devices.filter(d => d.kind === 'videoinput')
+    const mics = devices.filter(d => d.kind === 'audioinput')
+    console.log('🔍 Available devices:', { 
+      cameras: cameras.length, 
+      microphones: mics.length,
+      details: { cameras: cameras.map(c => c.label), mics: mics.map(m => m.label) }
+    })
+  } catch (e) {
+    console.warn('Could not enumerate devices:', e)
+  }
+
   // Try with flexible constraints (browser will pick best available device)
   try {
     const constraints: MediaStreamConstraints = {
@@ -88,8 +102,9 @@ export async function getUserMedia(quality: StreamQuality): Promise<MediaStream>
   } catch (error) {
     console.warn('⚠️ Failed with ideal constraints, trying basic...', error)
     
-    // Fallback: Try with just basic true (let browser choose defaults)
+    // Fallback 1: Try with just basic true (let browser choose defaults)
     try {
+      console.log('🎥 Trying basic { video: true, audio: true }...')
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true
@@ -97,8 +112,21 @@ export async function getUserMedia(quality: StreamQuality): Promise<MediaStream>
       console.log('✅ Got media with basic constraints')
       return stream
     } catch (error2) {
-      console.error('❌ All getUserMedia attempts failed:', error2)
-      throw new Error('Could not access camera or microphone. Please check permissions and ensure devices are connected.')
+      console.error('❌ Basic constraints failed:', error2)
+      
+      // Fallback 2: Try video only
+      try {
+        console.log('🎥 Trying video only...')
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        })
+        console.warn('⚠️ Got video only (no audio)')
+        return stream
+      } catch (error3) {
+        console.error('❌ All getUserMedia attempts failed:', error3)
+        throw new Error('Could not access camera or microphone. Please check permissions and ensure devices are connected.')
+      }
     }
   }
 }
