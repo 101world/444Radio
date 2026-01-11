@@ -33,15 +33,86 @@ function StationContent() {
   const [streamTitle, setStreamTitle] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [bandwidth, setBandwidth] = useState(0)
+  const [viewers, setViewers] = useState<any[]>([])
+  const [reactions, setReactions] = useState<any[]>([])
+  const [isRecording, setIsRecording] = useState(false)
+  const [streamDuration, setStreamDuration] = useState(0)
+  const [peakViewers, setPeakViewers] = useState(0)
+  const [totalMessages, setTotalMessages] = useState(0)
+  const [totalReactions, setTotalReactions] = useState(0)
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor' | 'bad'>('excellent')
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [notifications, setNotifications] = useState<any[]>([])
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamContainerRef = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const streamStartTimeRef = useRef<number | null>(null)
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
+
+  useEffect(() => {
+    if (isStreaming && streamStartTimeRef.current) {
+      const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - streamStartTimeRef.current!) / 1000)
+        setStreamDuration(elapsed)
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [isStreaming])
+
+  useEffect(() => {
+    if (viewerCount > peakViewers) {
+      setPeakViewers(viewerCount)
+    }
+  }, [viewerCount, peakViewers])
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (!isHost || !isStreaming) return
+      if (e.key === 'm' || e.key === 'M') toggleMic()
+      if (e.key === 'v' || e.key === 'V') toggleVideo()
+      if (e.key === 'r' || e.key === 'R') toggleRecording()
+      if (e.key === 'e' || e.key === 'E') endStream()
+    }
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [isHost, isStreaming])
+
+  const addNotification = (message: string, type: 'join' | 'leave' | 'reaction') => {
+    const id = Date.now().toString()
+    setNotifications(prev => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id))
+    }, 3000)
+  }
+
+  const addReaction = (emoji: string) => {
+    const id = Date.now().toString()
+    const reaction = {
+      id,
+      emoji,
+      x: Math.random() * 80 + 10,
+      timestamp: Date.now()
+    }
+    setReactions(prev => [...prev, reaction])
+    setTotalReactions(prev => prev + 1)
+    setTimeout(() => {
+      setReactions(prev => prev.filter(r => r.id !== id))
+    }, 3000)
+  }
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   const startStream = async () => {
     try {
@@ -78,6 +149,8 @@ function StationContent() {
         setIsLive(true)
         setIsStreaming(true)
         setShowSettings(false)
+        streamStartTimeRef.current = Date.now()
+        addNotification('Stream started!', 'join')
       }
     } catch (error) {
       console.error('Failed to start stream:', error)
@@ -85,8 +158,51 @@ function StationContent() {
     }
   }
 
+  const toggleRecording = () => {
+    if (!localStreamRef.current) return
+    
+    if (isRecording) {
+      mediaRecorderRef.current?.stop()
+      setIsRecording(false)
+      addNotification('Recording stopped', 'reaction')
+    } else {
+      try {
+        const mediaRecorder = new MediaRecorder(localStreamRef.current, {
+          mimeType: 'video/webm;codecs=vp9'
+        })
+        const chunks: Blob[] = []
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data)
+        }
+        
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `stream-${Date.now()}.webm`
+          a.click()
+        }
+        
+        mediaRecorder.start()
+        mediaRecorderRef.current = mediaRecorder
+        setIsRecording(true)
+        addNotification('Recording started', 'reaction')
+      } catch (error) {
+        console.error('Recording failed:', error)
+        alert('Recording not supported in this browser')
+      }
+    }
+  }
+
   const endStream = async () => {
     try {
+      if (isRecording) {
+        mediaRecorderRef.current?.stop()
+        setIsRecording(false)
+      }
+      
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop())
         localStreamRef.current = null
@@ -109,6 +225,9 @@ function StationContent() {
       if (data.success) {
         setIsLive(false)
         setIsStreaming(false)
+        streamStartTimeRef.current = null
+        setStreamDuration(0)
+        addNotification('Stream ended', 'leave')
       }
     } catch (error) {
       console.error('Failed to end stream:', error)
@@ -148,8 +267,11 @@ function StationContent() {
     }
     
     setChatMessages(prev => [...prev, message])
+    setTotalMessages(prev => prev + 1)
     setChatInput('')
   }
+
+  const reactionEmojis = ['❤️', '🔥', '👏', '🎵', '🎉', '💯']
 
   return (
     <div className="min-h-screen bg-black text-white pt-20 pb-24">
@@ -196,6 +318,14 @@ function StationContent() {
                 Setup Stream
               </button>
             )}
+            {isHost && isLive && (
+              <div className="hidden md:flex items-center gap-2 text-xs text-gray-400">
+                <span className="px-2 py-1 bg-white/5 rounded">M</span> Mic
+                <span className="px-2 py-1 bg-white/5 rounded">V</span> Video
+                <span className="px-2 py-1 bg-white/5 rounded">R</span> Record
+                <span className="px-2 py-1 bg-white/5 rounded">E</span> End
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -228,40 +358,119 @@ function StationContent() {
                     </div>
                   </div>
 
-                  {isHost && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                      <div className="flex items-center justify-center gap-4">
-                        <button
-                          onClick={toggleMic}
-                          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                            isMicOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
-                          }`}
-                        >
-                          {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
-                        </button>
-                        
-                        <button
-                          onClick={toggleVideo}
-                          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                            isVideoOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
-                          }`}
-                        >
-                          {isVideoOn ? <VideoIcon size={20} /> : <VideoOff size={20} />}
-                        </button>
+                  <div className="absolute inset-0 pointer-events-none">
+                    {reactions.map((reaction) => (
+                      <div
+                        key={reaction.id}
+                        className="absolute bottom-0 animate-float-up text-4xl pointer-events-none"
+                        style={{
+                          left: `${reaction.x}%`,
+                          animation: 'float-up 3s ease-out forwards'
+                        }}
+                      >
+                        {reaction.emoji}
+                      </div>
+                    ))}
+                  </div>
 
+                  <div className="absolute top-4 right-4 space-y-2">
+                    {notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`px-3 py-2 rounded-lg backdrop-blur-sm text-sm animate-slide-in ${
+                          notif.type === 'join' ? 'bg-green-500/80' :
+                          notif.type === 'leave' ? 'bg-red-500/80' :
+                          'bg-cyan-500/80'
+                        }`}
+                      >
+                        {notif.message}
+                      </div>
+                    ))}
+                  </div>
+
+                  {isHost && (
+                    <>
+                      <div className="absolute top-20 right-4 flex flex-col gap-2">
                         <button
-                          onClick={endStream}
-                          className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all shadow-lg"
+                          onClick={() => setShowAnalytics(!showAnalytics)}
+                          className="w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center hover:bg-black/80 transition-all"
+                          title="Analytics"
                         >
-                          <PhoneOff size={24} />
+                          📊
+                        </button>
+                        <button
+                          onClick={toggleRecording}
+                          className={`w-10 h-10 rounded-full backdrop-blur flex items-center justify-center transition-all ${
+                            isRecording ? 'bg-red-500 animate-pulse' : 'bg-black/60 hover:bg-black/80'
+                          }`}
+                          title={isRecording ? 'Stop Recording (R)' : 'Start Recording (R)'}
+                        >
+                          <Circle size={isRecording ? 16 : 20} className={isRecording ? 'fill-current' : ''} />
                         </button>
                       </div>
                       
-                      <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-400">
-                        <span>{formatBandwidth(bandwidth)}</span>
-                        <span>•</span>
-                        <span>{STREAM_QUALITIES[streamQuality].label}</span>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                        <div className="flex items-center justify-center gap-4">
+                          <button
+                            onClick={toggleMic}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                              isMicOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
+                            }`}
+                            title={isMicOn ? 'Mute (M)' : 'Unmute (M)'}
+                          >
+                            {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
+                          </button>
+                          
+                          <button
+                            onClick={toggleVideo}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                              isVideoOn ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
+                            }`}
+                            title={isVideoOn ? 'Hide Camera (V)' : 'Show Camera (V)'}
+                          >
+                            {isVideoOn ? <VideoIcon size={20} /> : <VideoOff size={20} />}
+                          </button>
+
+                          <button
+                            onClick={endStream}
+                            className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all shadow-lg"
+                            title="End Stream (E)"
+                          >
+                            <PhoneOff size={24} />
+                          </button>
+                        </div>
+                        
+                        <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-400">
+                          <span>⏱️ {formatDuration(streamDuration)}</span>
+                          <span>•</span>
+                          <span>{formatBandwidth(bandwidth)}</span>
+                          <span>•</span>
+                          <span>{STREAM_QUALITIES[streamQuality].label}</span>
+                          <span>•</span>
+                          <span className={`${
+                            connectionQuality === 'excellent' ? 'text-green-400' :
+                            connectionQuality === 'good' ? 'text-yellow-400' :
+                            connectionQuality === 'poor' ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>
+                            {connectionQuality}
+                          </span>
+                        </div>
                       </div>
+                    </>
+                  )}
+                  
+                  {!isHost && isStreaming && (
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4">
+                      {reactionEmojis.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => addReaction(emoji)}
+                          className="w-12 h-12 rounded-full bg-black/60 backdrop-blur hover:bg-black/80 hover:scale-110 transition-all text-2xl flex items-center justify-center"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </>
@@ -322,12 +531,37 @@ function StationContent() {
             )}
           </div>
 
-          <div>
-            <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl h-[calc(100vh-300px)] flex flex-col">
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl p-4">
+              <h3 className="font-bold flex items-center gap-2 mb-3">
+                <Users size={20} className="text-cyan-400" />
+                Viewers ({viewerCount})
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {viewers.length === 0 ? (
+                  <p className="text-sm text-gray-500">No viewers yet</p>
+                ) : (
+                  viewers.map((viewer) => (
+                    <div key={viewer.id} className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full text-sm">
+                      <Image
+                        src={viewer.avatar}
+                        alt={viewer.username}
+                        width={24}
+                        height={24}
+                        className="rounded-full"
+                      />
+                      <span>{viewer.username}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-2xl h-[calc(100vh-450px)] flex flex-col">
               <div className="p-4 border-b border-white/10">
                 <h3 className="font-bold flex items-center gap-2">
                   <MessageCircle size={20} className="text-cyan-400" />
-                  Live Chat
+                  Live Chat ({totalMessages})
                 </h3>
               </div>
 
@@ -335,11 +569,11 @@ function StationContent() {
                 {chatMessages.length === 0 ? (
                   <div className="text-center text-gray-500 py-12">
                     <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
-                    <p>No messages yet</p>
+                    <p>Be the first to chat!</p>
                   </div>
                 ) : (
                   chatMessages.map((msg) => (
-                    <div key={msg.id} className="flex gap-3">
+                    <div key={msg.id} className="flex gap-3 animate-slide-in">
                       <Image
                         src={msg.avatar}
                         alt={msg.username}
@@ -349,7 +583,7 @@ function StationContent() {
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-bold text-sm">{msg.username}</span>
+                          <span className="font-bold text-sm text-cyan-400">{msg.username}</span>
                           <span className="text-xs text-gray-500">
                             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -371,20 +605,92 @@ function StationContent() {
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="Say something..."
                     className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-sm"
+                    maxLength={200}
                   />
                   <button
                     onClick={sendMessage}
                     disabled={!chatInput.trim()}
-                    className="w-10 h-10 rounded-lg bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center transition-all disabled:opacity-50"
+                    className="w-10 h-10 rounded-lg bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send size={16} className="text-black" />
                   </button>
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {chatInput.length}/200 characters
+                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {showAnalytics && isHost && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAnalytics(false)}>
+          <div className="bg-gradient-to-br from-gray-900 to-black border border-cyan-500/30 rounded-2xl p-8 max-w-4xl w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+                📊 Stream Analytics
+              </h3>
+              <button
+                onClick={() => setShowAnalytics(false)}
+                className="text-gray-400 hover:text-white transition-colors text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-gradient-to-br from-cyan-900/20 to-black border border-cyan-500/20 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Current Viewers</p>
+                <p className="text-3xl font-bold text-cyan-400">{viewerCount}</p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-900/20 to-black border border-blue-500/20 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Peak Viewers</p>
+                <p className="text-3xl font-bold text-blue-400">{peakViewers}</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-900/20 to-black border border-purple-500/20 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Messages</p>
+                <p className="text-3xl font-bold text-purple-400">{totalMessages}</p>
+              </div>
+              <div className="bg-gradient-to-br from-pink-900/20 to-black border border-pink-500/20 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Reactions</p>
+                <p className="text-3xl font-bold text-pink-400">{totalReactions}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-sm text-gray-400 mb-2">Stream Duration</p>
+                <p className="text-xl font-bold text-white">{formatDuration(streamDuration)}</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-sm text-gray-400 mb-2">Connection Quality</p>
+                <p className={`text-xl font-bold ${
+                  connectionQuality === 'excellent' ? 'text-green-400' :
+                  connectionQuality === 'good' ? 'text-yellow-400' :
+                  connectionQuality === 'poor' ? 'text-orange-400' :
+                  'text-red-400'
+                }`}>
+                  {connectionQuality.toUpperCase()}
+                </p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <p className="text-sm text-gray-400 mb-2">Stream Quality</p>
+                <p className="text-xl font-bold text-white">{STREAM_QUALITIES[streamQuality].label}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-500">
+                Recording: {isRecording ? 
+                  <span className="text-red-400 font-bold">● ACTIVE</span> : 
+                  <span className="text-gray-400">Inactive</span>
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSettings && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -442,6 +748,38 @@ function StationContent() {
           </div>
         </div>
       )}
+      
+      <style jsx>{`
+        @keyframes float-up {
+          0% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(-200px);
+          }
+        }
+        
+        @keyframes slide-in {
+          0% {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        .animate-float-up {
+          animation: float-up 3s ease-out forwards;
+        }
+        
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   )
 }
