@@ -622,39 +622,36 @@ function StationContent() {
               ref={streamContainerRef}
               className="relative bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden aspect-video border border-white/10 shadow-2xl"
             >
+              {/* Always render video elements so refs are ready BEFORE startStream */}
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className={`w-full h-full object-cover absolute inset-0 ${isStreaming && isHost && isVideoOn ? 'block' : 'hidden'}`}
+              />
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className={`w-full h-full object-cover absolute inset-0 ${isStreaming && !isHost ? 'block' : 'hidden'}`}
+              />
+              
               {isStreaming ? (
                 <>
-                  {/* Host sees their own video or audio-only UI */}
-                  {isHost && (
-                    isVideoOn ? (
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        muted
-                        playsInline
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-black">
-                        <div className="w-32 h-32 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center mb-6 animate-pulse shadow-2xl shadow-cyan-500/50">
-                          <Mic size={64} className="text-black" />
-                        </div>
-                        <h3 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">🎙️ Audio Only</h3>
-                        <p className="text-gray-400 text-lg">Camera is off</p>
-                        <p className="text-sm text-gray-500 mt-4">Your audio is broadcasting to {viewerCount} listener{viewerCount !== 1 ? 's' : ''}</p>
+                  {/* Host sees audio-only UI when camera off */}
+                  {isHost && !isVideoOn && (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-black absolute inset-0">
+                      <div className="w-32 h-32 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center mb-6 animate-pulse shadow-2xl shadow-cyan-500/50">
+                        <Mic size={64} className="text-black" />
                       </div>
-                    )
+                      <h3 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">🎙️ Audio Only</h3>
+                      <p className="text-gray-400 text-lg">Camera is off</p>
+                      <p className="text-sm text-gray-500 mt-4">Your audio is broadcasting to {viewerCount} listener{viewerCount !== 1 ? 's' : ''}</p>
+                    </div>
                   )}
                   
-                  {/* Viewers see remote video */}
-                  {!isHost && (
-                    <video
-                      ref={remoteVideoRef}
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                  )}
+                  {/* Viewers see remote video - handled by always-rendered video element above */}
                   
                   <div className="absolute top-4 left-4 flex items-center gap-3">
                     <div className="px-3 py-1 bg-red-500 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg">
