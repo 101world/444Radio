@@ -201,45 +201,55 @@ export async function POST(req: NextRequest) {
       console.log('  Trimmed length:', formattedLyrics.length)
     }
     
-    // Log for debugging
-  console.log('🎵 Music Generation Request:')
+    console.log('🎵 Music Generation Request:')
     console.log('  Prompt:', prompt)
     console.log('  Lyrics length:', formattedLyrics.length)
     console.log('  Lyrics preview:', formattedLyrics.substring(0, 100) + '...')
     console.log('  Bitrate:', bitrate)
     console.log('  Sample rate:', sample_rate)
     console.log('  Format:', audio_format)
-  console.log('  Language:', language)
+    console.log('  Language:', language)
 
-    // Check user credits (music costs 2 credits)
+    // ATOMIC credit deduction using Supabase RPC (prevents race conditions)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     
-    const userRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+    console.log(`💰 Attempting atomic credit deduction: 2 credits for music`)
+    
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
       {
+        method: 'POST',
         headers: {
           'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
-        }
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          p_clerk_user_id: userId,
+          p_amount: 2
+        })
       }
     )
     
-    const users = await userRes.json()
-    if (!users || users.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!deductRes.ok) {
+      console.error('❌ Credit deduction API call failed:', await deductRes.text())
+      return NextResponse.json({ error: 'Credit check failed' }, { status: 500 })
     }
-
-    const userCredits = users[0].credits || 0
-    if (userCredits < 2) {
+    
+    const deductResult = await deductRes.json()
+    console.log('💰 Credit deduction result:', deductResult)
+    
+    if (!deductResult.success) {
       return NextResponse.json({ 
-        error: 'Insufficient credits. Music generation requires 2 credits.',
+        error: deductResult.error_message || 'Insufficient credits',
         creditsNeeded: 2,
-        creditsAvailable: userCredits
+        creditsAvailable: deductResult.new_credits || 0
       }, { status: 402 })
     }
-
-    console.log(`💰 User has ${userCredits} credits. Music requires 2 credits.`)
+    
+    const userCredits = deductResult.new_credits + 2 // Original amount before deduction
+    console.log(`✅ Credits deducted atomically. New balance: ${deductResult.new_credits}`)
 
     // Generate music with MiniMax Music-1.5 (all languages)
     console.log('🎵 Using MiniMax Music-1.5 ...')
@@ -392,40 +402,25 @@ export async function POST(req: NextRequest) {
       console.log('✅ Saved to library:', savedMusic)
     }
 
-    // NOW deduct credits (-2 for music) since everything succeeded
-    console.log(`💰 Deducting 2 credits from user (${userCredits} → ${userCredits - 2})`)
-    
-    // Prepare update body
-    const updateBody: { credits: number; last_444_radio_date?: string } = {
-      credits: userCredits - 2
-    }
+    // Credits already deducted atomically at the start - no need to deduct again
     
     // If user used 444 Radio lyrics, record today's date
     if (used444Radio) {
       const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-      updateBody.last_444_radio_date = today
+      const updateRes = await fetch(
+        `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ last_444_radio_date: today })
+        }
+      )
       console.log('📅 Recording 444 Radio usage date:', today)
-    }
-    
-    const creditDeductRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify(updateBody)
-      }
-    )
-
-    if (!creditDeductRes.ok) {
-      console.error('⚠️ Failed to deduct credits, but generation succeeded')
-      // Continue anyway - better to give free generation than lose the work
-    } else {
-      console.log('✅ Credits deducted successfully')
     }
 
     console.log('✅ Music generated successfully:', audioUrl)
@@ -437,7 +432,7 @@ export async function POST(req: NextRequest) {
       title: title, // Use the actual title from request
       lyrics: formattedLyrics, // Return the formatted lyrics
       libraryId: savedMusic?.id || null,
-      creditsRemaining: userCredits - 2,
+      creditsRemaining: deductResult.new_credits, // Use the new balance from atomic deduction
       creditsDeducted: 2
     }
 
