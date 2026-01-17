@@ -123,6 +123,10 @@ export async function POST(request: Request) {
 
     // Step 4: Create payment link
     console.log('[Subscription] Step 4: Creating payment link...')
+    
+    // Use brand logo if available, otherwise use a default Razorpay logo to prevent EMPTY_WORDMARK error
+    const brandLogoUrl = process.env.NEXT_PUBLIC_BRAND_LOGO_URL || 'https://cdn.razorpay.com/logo.svg'
+    
     const paymentLinkBody: any = {
       amount: planConfig.price * 100, // Convert to paise
       currency: 'INR',
@@ -146,13 +150,9 @@ export async function POST(request: Request) {
         credits: planConfig.credits.toString()
       },
       callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/?payment=success`,
-      callback_method: 'get'
-    }
-
-    // Add options to prevent EMPTY_WORDMARK error
-    const brandLogoUrl = process.env.NEXT_PUBLIC_BRAND_LOGO_URL
-    if (brandLogoUrl) {
-      paymentLinkBody.options = {
+      callback_method: 'get',
+      // Always set checkout options to prevent EMPTY_WORDMARK error
+      options: {
         checkout: {
           name: '444Radio',
           image: brandLogoUrl
