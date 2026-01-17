@@ -2308,7 +2308,8 @@ export default function DAWProRebuild() {
                               // Final snap on drag end for consistency
                               if (daw && snapEnabled) {
                                 const trackManager = daw.getTrackManager()
-                                const currentClip = trackManager.getClip(track.id, clip.id)
+                                const clips = trackManager.getClips(track.id)
+                                const currentClip = clips.find(c => c.id === clip.id)
                                 if (currentClip) {
                                   const snappedTime = snapTime(currentClip.startTime)
                                   if (Math.abs(snappedTime - currentClip.startTime) > 0.001) {
