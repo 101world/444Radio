@@ -183,15 +183,26 @@ export async function POST(request: Request) {
       callback_method: 'get'
     }
     
-    // Add checkout options only (method config doesn't work with payment links)
-    paymentLinkBody.options = {
-      checkout: {
-        name: '444Radio',
-        image: brandLogoUrl,
-        theme: {
-          color: '#06b6d4'
-        }
+    // Configure checkout options based on currency
+    const checkoutConfig: any = {
+      name: '444Radio',
+      image: brandLogoUrl,
+      theme: {
+        color: '#06b6d4'
       }
+    }
+    
+    // For USD payments, explicitly configure payment methods to include PayPal
+    if (currency === 'USD') {
+      checkoutConfig.method = {
+        card: true,
+        wallet: ['paypal'] // Explicitly enable PayPal for USD
+      }
+      console.log('[Subscription] USD payment - PayPal enabled')
+    }
+    
+    paymentLinkBody.options = {
+      checkout: checkoutConfig
     }
 
     const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
