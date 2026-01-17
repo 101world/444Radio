@@ -399,7 +399,7 @@ export async function POST(req: NextRequest) {
         p_clerk_user_id: userId,
         p_amount: 2
       })
-      .single()
+      .single() as { data: { success: boolean; new_credits: number; error_message: string | null } | null; error: any }
 
     if (deductError || !deductResult?.success) {
       console.error('⚠️ Failed to deduct credits atomically:', deductError || deductResult?.error_message)

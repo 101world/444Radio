@@ -193,7 +193,7 @@ export async function POST(request: Request) {
         p_clerk_user_id: userId,
         p_amount: STEM_SPLIT_COST
       })
-      .single()
+      .single() as { data: { success: boolean; new_credits: number; error_message: string | null } | null; error: any }
 
     if (deductError || !deductResult?.success) {
       console.error('[Stem Split] Credit deduction error:', deductError || deductResult?.error_message)
