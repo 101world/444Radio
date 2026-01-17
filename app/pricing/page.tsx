@@ -140,7 +140,10 @@ export default function Pricing() {
         
         if (!data.success || !data.orderId) {
           setLoadingPlan(null)
-          alert(`Failed to create checkout: ${data.error || 'Unknown error'}`)
+          // Show detailed error with Razorpay info
+          const errorMsg = `Checkout Failed:\n${data.error || 'Unknown error'}\n${data.razorpay_error ? `Code: ${data.razorpay_error}` : ''}\n${data.details ? JSON.stringify(data.details, null, 2) : ''}`
+          console.error('Checkout error details:', data)
+          alert(errorMsg)
           return
         }
         
