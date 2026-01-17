@@ -69,11 +69,16 @@ export async function POST(request: Request) {
       ? `${user.firstName} ${user.lastName}`.trim()
       : user.firstName || user.username || userEmail.split('@')[0]
 
+    // Create short receipt (max 40 chars) - use last 8 chars of userId + timestamp
+    const shortUserId = userId.slice(-8)
+    const timestamp = Date.now().toString().slice(-8) // Last 8 digits
+    const shortReceipt = `ord_${shortUserId}_${timestamp}` // ~25 chars
+
     // Create Razorpay Order for checkout
     const orderPayload = {
       amount: planConfig.price * 100, // Convert to cents
       currency: 'USD',
-      receipt: `order_${userId}_${Date.now()}`,
+      receipt: shortReceipt,
       notes: {
         clerk_user_id: userId,
         customer_name: customerName,
