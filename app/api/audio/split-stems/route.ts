@@ -61,32 +61,44 @@ export async function POST(request: Request) {
     }
 
     // Check credits
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('credits')
-      .eq('clerk_user_id', userId)
-      .single()
-
-    if (userError || !userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    console.log(`[Stem Split] Attempting atomic credit deduction: ${STEM_SPLIT_COST} credits`)
+    
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          p_clerk_user_id: userId,
+          p_amount: STEM_SPLIT_COST
+        })
+      }
+    )
+    
+    if (!deductRes.ok) {
+      console.error('[Stem Split] Credit deduction API call failed:', await deductRes.text())
+      return NextResponse.json({ error: 'Credit check failed' }, { status: 500 })
     }
-
-    if (userData.credits < STEM_SPLIT_COST) {
+    
+    const deductResult = await deductRes.json()
+    console.log('[Stem Split] Credit deduction result:', deductResult)
+    
+    if (!deductResult.success) {
       return NextResponse.json({ 
-        error: `Insufficient credits. Need ${STEM_SPLIT_COST} credits but have ${userData.credits}` 
+        error: deductResult.error_message || `Insufficient credits. Need ${STEM_SPLIT_COST} credits.`,
+        creditsNeeded: STEM_SPLIT_COST,
+        creditsAvailable: deductResult.new_credits || 0
       }, { status: 402 })
     }
-
-    // Deduct credits first
-    const { error: deductError } = await supabase
-      .from('users')
-      .update({ credits: userData.credits - STEM_SPLIT_COST })
-      .eq('clerk_user_id', userId)
-
-    if (deductError) {
-      console.error('[Stem Split] Credit deduction error:', deductError)
-      return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 })
-    }
+    
+    console.log(`[Stem Split] ✅ Credits deducted atomically. New balance: ${deductResult.new_credits}`)
 
     console.log(`[Stem Split] Processing audio: ${audioUrl}`)
     console.log('[Stem Split] Calling Replicate API...')
@@ -191,11 +203,22 @@ export async function POST(request: Request) {
       console.error('[Stem Split] No audio stems found in Replicate output')
       console.error('[Stem Split] Raw output:', JSON.stringify(output, null, 2))
       
-      // Refund credits
-      await supabase
-        .from('users')
-        .update({ credits: userData.credits })
-        .eq('clerk_user_id', userId)
+      // Refund credits using atomic operation
+      await fetch(
+        `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            p_clerk_user_id: userId,
+            p_amount: -STEM_SPLIT_COST // Negative amount = refund
+          })
+        }
+      )
       
       return NextResponse.json({ 
         error: 'No audio stems could be extracted from the AI response. Your credits have been refunded. Please try with a different audio file.',
@@ -213,6 +236,7 @@ export async function POST(request: Request) {
       success: true,
       stems: allStems,
       creditsUsed: STEM_SPLIT_COST,
+      creditsRemaining: deductResult.new_credits
       creditsRemaining: userData.credits - STEM_SPLIT_COST,
       rawOutputKeys: Object.keys(output || {})
     })
