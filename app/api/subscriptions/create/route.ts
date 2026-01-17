@@ -151,25 +151,16 @@ export async function POST(request: Request) {
         credits: planConfig.credits.toString()
       },
       callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/?payment=success`,
-      callback_method: 'get',
-      // Checkout configuration with international payments support
-      options: {
-        checkout: {
-          name: '444Radio',
-          description: `Subscribe to ${planType} plan`,
-          image: brandLogoUrl,
-          theme: {
-            color: '#06b6d4' // Cyan-500 matching 444Radio branding
-          },
-          // Enable international payments and PayPal
-          method: {
-            netbanking: true,
-            card: true,
-            upi: true,
-            wallet: true,
-            paylater: true,
-            // PayPal will appear automatically if enabled in Razorpay dashboard
-          }
+      callback_method: 'get'
+    }
+    
+    // Add checkout options only (method config doesn't work with payment links)
+    paymentLinkBody.options = {
+      checkout: {
+        name: '444Radio',
+        image: brandLogoUrl,
+        theme: {
+          color: '#06b6d4'
         }
       }
     }
