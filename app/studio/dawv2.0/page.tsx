@@ -502,11 +502,12 @@ export default function DAWProRebuild() {
         
         setTrackLevels(newLevels)
         
-        // Update CPU usage (audioContext.baseLatency * sample rate gives buffer size)
-        const perfManager = daw.getPerformanceManager()
-        if (perfManager) {
-          const metrics = perfManager.getMetrics()
+        // Update CPU usage
+        try {
+          const metrics = daw.getPerformanceMetrics()
           setCpuUsage(metrics.cpuLoad || 0)
+        } catch (e) {
+          // Performance manager may not be initialized
         }
       }, 1000 / 60) // 60fps
 
