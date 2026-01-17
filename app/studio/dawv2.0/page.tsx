@@ -26,7 +26,8 @@ import {
   Copy,
   Trash2,
   ClipboardPaste,
-  Clipboard
+  Clipboard,
+  Folder
 } from 'lucide-react'
 
 // Extend Window interface for drag throttling and pending clip tracking
