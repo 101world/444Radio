@@ -90,6 +90,9 @@ export default function DAWProRebuild() {
   }, [])
   const [hydrationProgress, setHydrationProgress] = useState<{ current: number; total: number } | null>(null)
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 30 })
+  const [trackLevels, setTrackLevels] = useState<Map<string, number>>(new Map())
+  const [cpuUsage, setCpuUsage] = useState<number>(0)
+  const levelUpdateInterval = useRef<NodeJS.Timeout | null>(null)
 
   // Advanced generation modal states
   const [showGenerateModal, setShowGenerateModal] = useState(false)
@@ -474,6 +477,39 @@ export default function DAWProRebuild() {
       daw.play()
       setIsPlaying(true)
 
+      // Start level metering at 60fps
+      if (levelUpdateInterval.current) clearInterval(levelUpdateInterval.current)
+      levelUpdateInterval.current = setInterval(() => {
+        const trackManager = daw.getTrackManager()
+        const allTracks = trackManager.getTracks()
+        const newLevels = new Map<string, number>()
+        
+        allTracks.forEach(track => {
+          const node = trackManager.getRoutingNode(track.id)
+          if (node?.analyserNode) {
+            const dataArray = new Uint8Array(node.analyserNode.frequencyBinCount)
+            node.analyserNode.getByteTimeDomainData(dataArray)
+            // Calculate RMS level
+            let sum = 0
+            for (let i = 0; i < dataArray.length; i++) {
+              const normalized = (dataArray[i] - 128) / 128
+              sum += normalized * normalized
+            }
+            const rms = Math.sqrt(sum / dataArray.length)
+            newLevels.set(track.id, Math.min(1, rms * 2)) // Scale for visibility
+          }
+        })
+        
+        setTrackLevels(newLevels)
+        
+        // Update CPU usage (audioContext.baseLatency * sample rate gives buffer size)
+        const perfManager = daw.getPerformanceManager()
+        if (perfManager) {
+          const metrics = perfManager.getMetrics()
+          setCpuUsage(metrics.cpuLoad || 0)
+        }
+      }, 1000 / 60) // 60fps
+
       if (metronomeEnabled) {
         // Play first click immediately
         playMetronomeClick()
@@ -497,6 +533,14 @@ export default function DAWProRebuild() {
     if (!daw) return
     daw.pause()
     setIsPlaying(false)
+    
+    // Stop metering
+    if (levelUpdateInterval.current) {
+      clearInterval(levelUpdateInterval.current)
+      levelUpdateInterval.current = null
+    }
+    setTrackLevels(new Map())
+    
     if (metronomeInterval) {
       clearInterval(metronomeInterval)
       setMetronomeInterval(null)
@@ -1806,6 +1850,23 @@ export default function DAWProRebuild() {
             <Grid3x3 size={16} className="inline mr-2" />
             Snap
           </button>
+          {/* CPU Usage Indicator */}
+          {cpuUsage > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 border border-gray-800 rounded-lg" title={`Audio engine load: ${Math.round(cpuUsage * 100)}%`}>
+              <div className="text-xs text-gray-500 uppercase font-medium">CPU</div>
+              <div className="w-20 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-200 ${
+                    cpuUsage > 0.8 ? 'bg-red-500' : cpuUsage > 0.5 ? 'bg-yellow-500' : 'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.min(100, cpuUsage * 100)}%` }}
+                />
+              </div>
+              <div className="text-xs text-gray-400 font-mono w-8 text-right">
+                {Math.round(cpuUsage * 100)}%
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2 ml-4">
             <div className="text-xs text-gray-500 uppercase font-medium">Zoom</div>
             <button
@@ -2100,7 +2161,7 @@ export default function DAWProRebuild() {
                           </button>
                         </div>
                         
-                        {/* Volume Control - Compact */}
+                        {/* Volume Control + Level Meter */}
                         <div className="flex items-center gap-1.5">
                           <Volume2 size={10} className="text-gray-600 flex-shrink-0" />
                           <input
@@ -2118,11 +2179,15 @@ export default function DAWProRebuild() {
                               markProjectDirty()
                             }}
                             className="flex-1 h-1 accent-cyan-500 min-w-0"
-                            title={`${Math.round(track.volume * 100)}%`}
+                            title={`Volume: ${Math.round(track.volume * 100)}%`}
                           />
-                          <span className="text-[9px] text-gray-600 font-mono w-7 text-right">
-                            {Math.round(track.volume * 100)}
-                          </span>
+                          {/* Level Meter */}
+                          <div className="w-10 h-1.5 bg-gray-900 rounded-full overflow-hidden flex-shrink-0\" title="Audio level">
+                            <div 
+                              className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 transition-all duration-75"
+                              style={{ width: `${(trackLevels.get(track.id) || 0) * 100}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
