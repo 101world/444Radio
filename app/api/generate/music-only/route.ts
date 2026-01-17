@@ -391,39 +391,40 @@ export async function POST(req: NextRequest) {
       console.log('✅ Saved to library:', savedMusic)
     }
 
-    // NOW deduct credits (-2 for music) since everything succeeded
-    console.log(`💰 Deducting 2 credits from user (${userCredits} → ${userCredits - 2})`)
+    // NOW deduct credits (-2 for music) atomically to prevent race conditions
+    console.log(`💰 Deducting 2 credits from user atomically (${userCredits} → ${userCredits - 2})`)
     
-    const updateBody: { credits: number; last_444_radio_date?: string } = {
-      credits: userCredits - 2
-    }
-    
-    // If user used 444 Radio lyrics, record today's date
-    if (used444Radio) {
-      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-      updateBody.last_444_radio_date = today
-      console.log('📅 Recording 444 Radio usage date:', today)
-    }
-    
-    const creditDeductRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify(updateBody)
-      }
-    )
+    const { data: deductResult, error: deductError } = await supabase
+      .rpc('deduct_credits', {
+        p_clerk_user_id: userId,
+        p_amount: 2
+      })
+      .single()
 
-    if (!creditDeductRes.ok) {
-      console.error('⚠️ Failed to deduct credits, but generation succeeded')
+    if (deductError || !deductResult?.success) {
+      console.error('⚠️ Failed to deduct credits atomically:', deductError || deductResult?.error_message)
       // Continue anyway - better to give free generation than lose the work
     } else {
-      console.log('✅ Credits deducted successfully')
+      console.log('✅ Credits deducted successfully (atomic operation)')
+    }
+    
+    // If user used 444 Radio lyrics, record today's date (separate update)
+    if (used444Radio) {
+      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      await fetch(
+        `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ last_444_radio_date: today })
+        }
+      )
+      console.log('📅 Recording 444 Radio usage date:', today)
     }
 
     console.log('✅ Music generated successfully:', audioUrl)
@@ -435,7 +436,7 @@ export async function POST(req: NextRequest) {
       title: title, // Use the actual title from request
       lyrics: formattedLyrics, // Return the formatted lyrics
       libraryId: savedMusic?.id || null,
-      creditsRemaining: userCredits - 2,
+      creditsRemaining: deductResult?.new_credits || (userCredits - 2),
       creditsDeducted: 2
     }
 

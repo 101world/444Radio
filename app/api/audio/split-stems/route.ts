@@ -187,14 +187,18 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
-    // Deduct credits AFTER success
-    const { error: deductError } = await supabase
-      .from('users')
-      .update({ credits: userData.credits - STEM_SPLIT_COST })
-      .eq('clerk_user_id', userId)
+    // Deduct credits AFTER success (atomically to prevent race conditions)
+    const { data: deductResult, error: deductError } = await supabase
+      .rpc('deduct_credits', {
+        p_clerk_user_id: userId,
+        p_amount: STEM_SPLIT_COST
+      })
+      .single()
 
-    if (deductError) {
-      console.error('[Stem Split] Credit deduction error:', deductError)
+    if (deductError || !deductResult?.success) {
+      console.error('[Stem Split] Credit deduction error:', deductError || deductResult?.error_message)
+    } else {
+      console.log('[Stem Split] Credits deducted successfully (atomic operation)')
     }
 
     console.log(`[Stem Split] Success! Found ${Object.keys(allStems).length} stems:`, Object.keys(allStems))
@@ -203,7 +207,7 @@ export async function POST(request: Request) {
       success: true,
       stems: allStems,
       creditsUsed: STEM_SPLIT_COST,
-      creditsRemaining: userData.credits - STEM_SPLIT_COST,
+      creditsRemaining: deductResult?.new_credits || (userData.credits - STEM_SPLIT_COST),
       rawOutputKeys: Object.keys(output || {})
     })
   } catch (error) {
