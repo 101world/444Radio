@@ -130,11 +130,22 @@ export async function POST(request: Request) {
       console.log('[Stem Split] Replicate completed successfully')
     } catch (replicateError) {
       console.error('[Stem Split] Replicate API error:', replicateError)
-      // Refund credits
-      await supabase
-        .from('users')
-        .update({ credits: userData.credits })
-        .eq('clerk_user_id', userId)
+      // Refund credits using atomic operation
+      await fetch(
+        `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            p_clerk_user_id: userId,
+            p_amount: -STEM_SPLIT_COST // Negative amount = refund
+          })
+        }
+      )
       
       return NextResponse.json({ 
         error: `AI service failed: ${replicateError instanceof Error ? replicateError.message : 'Unknown error'}. Credits have been refunded.`,
