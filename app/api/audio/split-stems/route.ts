@@ -236,8 +236,7 @@ export async function POST(request: Request) {
       success: true,
       stems: allStems,
       creditsUsed: STEM_SPLIT_COST,
-      creditsRemaining: deductResult.new_credits
-      creditsRemaining: userData.credits - STEM_SPLIT_COST,
+      creditsRemaining: deductResult.new_credits,
       rawOutputKeys: Object.keys(output || {})
     })
   } catch (error) {
