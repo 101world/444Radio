@@ -7,6 +7,7 @@ export async function OPTIONS() {
 }
 
 // Plan configuration (USD only for Razorpay Checkout with PayPal)
+// NOTE: Razorpay may not support USD in test mode - check dashboard if orders fail
 const USD_PLANS = {
   creator: {
     monthly: { credits: 100, price: 5 },
@@ -69,33 +70,45 @@ export async function POST(request: Request) {
       : user.firstName || user.username || userEmail.split('@')[0]
 
     // Create Razorpay Order for checkout
+    const orderPayload = {
+      amount: planConfig.price * 100, // Convert to cents
+      currency: 'USD',
+      receipt: `order_${userId}_${Date.now()}`,
+      notes: {
+        clerk_user_id: userId,
+        customer_name: customerName,
+        plan_type: planType,
+        billing_cycle: billing,
+        credits: planConfig.credits.toString()
+      }
+    }
+
+    console.log('[Checkout] Creating order with payload:', orderPayload)
+
     const orderRes = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
       headers: {
         Authorization: `Basic ${authHeader}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        amount: planConfig.price * 100, // Convert to cents
-        currency: 'USD',
-        receipt: `order_${userId}_${Date.now()}`,
-        notes: {
-          clerk_user_id: userId,
-          customer_name: customerName,
-          plan_type: planType,
-          billing_cycle: billing,
-          credits: planConfig.credits.toString()
-        }
-      })
+      body: JSON.stringify(orderPayload)
     })
 
     const order = await orderRes.json()
+    
+    console.log('[Checkout] Razorpay response status:', orderRes.status)
+    console.log('[Checkout] Razorpay response:', order)
 
-    if (!order.id) {
-      console.error('[Checkout] Order creation failed:', order)
+    if (!orderRes.ok || !order.id) {
+      console.error('[Checkout] Order creation failed:', {
+        status: orderRes.status,
+        error: order.error || order,
+        description: order.error?.description
+      })
       return corsResponse(
         NextResponse.json({ 
-          error: 'Order creation failed', 
+          error: order.error?.description || 'Order creation failed',
+          razorpay_error: order.error?.code || 'UNKNOWN',
           details: order 
         }, { status: 500 })
       )
