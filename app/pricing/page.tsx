@@ -154,6 +154,9 @@ export default function Pricing() {
           return
         }
         
+        const customerName = data.customerName || ''
+        
+        // Simplified config - let Razorpay auto-show all available payment methods
         const options = {
           key: data.keyId,
           amount: data.amount,
@@ -192,26 +195,9 @@ export default function Pricing() {
             }
           },
           prefill: {
-            name: '',
-            email: '',
+            name: customerName || '',
+            email: data.customerEmail || '',
             contact: ''
-          },
-          config: {
-            display: {
-              blocks: {
-                banks: {
-                  name: 'Pay via Cards & More',
-                  instruments: [
-                    { method: 'card' },
-                    { method: 'wallet', wallets: ['paypal'] }
-                  ]
-                }
-              },
-              sequence: ['block.banks'],
-              preferences: {
-                show_default_blocks: true
-              }
-            }
           },
           theme: {
             color: '#06b6d4' // Cyan color matching site theme
