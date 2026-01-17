@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Youtube, Mail, Instagram, X, ArrowLeft, Shield } from 'lucide-react'
 import Link from 'next/link'
 import FloatingMenu from '../components/FloatingMenu'
+import Script from 'next/script'
 
 // Discord SVG icon component
 const DiscordIcon = ({ className }: { className?: string }) => (
@@ -12,6 +13,13 @@ const DiscordIcon = ({ className }: { className?: string }) => (
     <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
   </svg>
 )
+
+// Declare Razorpay interface for TypeScript
+declare global {
+  interface Window {
+    Razorpay: any
+  }
+}
 
 export default function Pricing() {
   const router = useRouter()
@@ -74,8 +82,168 @@ export default function Pricing() {
     return () => window.removeEventListener('keydown', handleEscKey)
   }, [router])
 
+  // Handle plan subscription - CONDITIONAL: INR uses Payment Links, USD uses Razorpay Checkout
+  const handleSubscribe = async (plan: string) => {
+    try {
+      setLoadingPlan(plan)
+      console.log(`Creating ${plan} subscription with currency: ${currency}`)
+      
+      // INR: Use existing Payment Link flow (untouched)
+      if (currency === 'INR') {
+        const response = await fetch('/api/subscriptions/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          body: JSON.stringify({
+            plan,
+            billing: billingCycle,
+            currency
+          })
+        })
+        
+        console.log('Payment Link response status:', response.status)
+        const data = await response.json()
+        console.log('Payment Link data:', data)
+        
+        if (data.success && data.short_url) {
+          window.location.href = data.short_url
+        } else {
+          setLoadingPlan(null)
+          const errorMsg = `Error: ${data.error}\nStatus: ${data.status || 'unknown'}\nDetails: ${data.details || 'none'}`
+          console.error('Payment Link failed:', errorMsg)
+          alert(errorMsg)
+        }
+        return
+      }
+      
+      // USD: Use NEW Razorpay Checkout with PayPal support
+      if (currency === 'USD') {
+        const response = await fetch('/api/subscriptions/checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          body: JSON.stringify({
+            plan,
+            billing: billingCycle
+          })
+        })
+        
+        console.log('Checkout response status:', response.status)
+        const data = await response.json()
+        console.log('Checkout data:', data)
+        
+        if (!data.success || !data.orderId) {
+          setLoadingPlan(null)
+          alert(`Failed to create checkout: ${data.error || 'Unknown error'}`)
+          return
+        }
+        
+        // Initialize Razorpay Checkout
+        if (!window.Razorpay) {
+          setLoadingPlan(null)
+          alert('Razorpay SDK not loaded. Please refresh and try again.')
+          return
+        }
+        
+        const options = {
+          key: data.keyId,
+          amount: data.amount,
+          currency: 'USD',
+          name: '444Radio',
+          description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan - ${billingCycle}`,
+          order_id: data.orderId,
+          handler: async function (response: any) {
+            // Payment successful - verify and credit user
+            console.log('Payment successful:', response)
+            
+            try {
+              const verifyResponse = await fetch('/api/subscriptions/verify', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                })
+              })
+              
+              const verifyData = await verifyResponse.json()
+              
+              if (verifyData.success) {
+                alert(`Payment successful! ${verifyData.creditsAdded} credits added.`)
+                window.location.href = '/create' // Redirect to creation page
+              } else {
+                alert(`Payment verification failed: ${verifyData.error}`)
+              }
+            } catch (err: any) {
+              console.error('Verification error:', err)
+              alert('Payment received but verification failed. Contact support.')
+            }
+          },
+          prefill: {
+            name: '',
+            email: '',
+            contact: ''
+          },
+          config: {
+            display: {
+              blocks: {
+                banks: {
+                  name: 'Pay via Cards & More',
+                  instruments: [
+                    { method: 'card' },
+                    { method: 'wallet', wallets: ['paypal'] }
+                  ]
+                }
+              },
+              sequence: ['block.banks'],
+              preferences: {
+                show_default_blocks: true
+              }
+            }
+          },
+          theme: {
+            color: '#06b6d4' // Cyan color matching site theme
+          },
+          modal: {
+            ondismiss: function() {
+              setLoadingPlan(null)
+              console.log('Checkout dismissed by user')
+            }
+          }
+        }
+        
+        const razorpay = new window.Razorpay(options)
+        razorpay.open()
+        
+        // Don't reset loading state - modal handles it via ondismiss
+        return
+      }
+      
+    } catch (error: any) {
+      setLoadingPlan(null)
+      console.error('Subscription error:', error)
+      alert('Network error: ' + error.message)
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-black text-white relative overflow-hidden">
+    <>
+      {/* Load Razorpay Checkout SDK only when needed */}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+      />
+      
+      <main className="min-h-screen bg-black text-white relative overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-black to-black pointer-events-none"></div>
 
@@ -289,42 +457,7 @@ export default function Pricing() {
               </ul>
 
               <button
-                onClick={async () => {
-                  try {
-                    setLoadingPlan('creator')
-                    console.log('Creating Creator subscription...')
-                    const response = await fetch('/api/subscriptions/create', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache'
-                      },
-                      body: JSON.stringify({
-                        plan: 'creator',
-                        billing: billingCycle,
-                        currency: currency
-                      })
-                    })
-                    
-                    console.log('Response status:', response.status)
-                    const data = await response.json()
-                    console.log('Response data:', data)
-                    
-                    if (data.success && data.short_url) {
-                      window.location.href = data.short_url
-                    } else {
-                      setLoadingPlan(null)
-                      const errorMsg = `Error: ${data.error}\nStatus: ${data.status || 'unknown'}\nDetails: ${data.details || 'none'}`
-                      console.error('Subscription failed:', errorMsg)
-                      alert(errorMsg)
-                    }
-                  } catch (error: any) {
-                    setLoadingPlan(null)
-                    console.error('Subscription error:', error)
-                    alert('Network error: ' + error.message)
-                  }
-                }}
+                onClick={() => handleSubscribe('creator')}
                 disabled={loadingPlan === 'creator' || (userSubscription?.plan === 'creator' && userSubscription?.status === 'active')}
                 className={`w-full py-4 px-4 rounded-xl font-bold transition-all duration-300 shadow-lg text-sm flex items-center justify-center gap-2 ${
                   userSubscription?.plan === 'creator' && userSubscription?.status === 'active'
@@ -340,7 +473,7 @@ export default function Pricing() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Creating payment link...</span>
+                    <span>{currency === 'USD' ? 'Opening checkout...' : 'Creating payment link...'}</span>
                   </>
                 ) : (
                   'Get Started'
@@ -427,37 +560,7 @@ export default function Pricing() {
               </ul>
 
               <button
-                onClick={async () => {
-                  try {
-                    setLoadingPlan('pro')
-                    console.log('Creating Pro subscription...')
-                    const response = await fetch('/api/subscriptions/create', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache'
-                      },
-                      body: JSON.stringify({
-                        plan: 'pro',
-                        billing: billingCycle,
-                        currency: currency
-                      })
-                    })
-                    
-                    const data = await response.json()
-                    
-                    if (data.success && data.short_url) {
-                      window.location.href = data.short_url
-                    } else {
-                      setLoadingPlan(null)
-                      alert(`Error: ${data.error || 'Unknown error'}`)
-                    }
-                  } catch (error: any) {
-                    setLoadingPlan(null)
-                    alert('Network error: ' + error.message)
-                  }
-                }}
+                onClick={() => handleSubscribe('pro')}
                 disabled={loadingPlan === 'pro' || (userSubscription?.plan === 'pro' && userSubscription?.status === 'active')}
                 className={`w-full py-4 px-4 rounded-xl font-bold transition-all duration-300 shadow-lg text-sm flex items-center justify-center gap-2 ${
                   userSubscription?.plan === 'pro' && userSubscription?.status === 'active'
@@ -473,7 +576,7 @@ export default function Pricing() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Creating payment link...</span>
+                    <span>{currency === 'USD' ? 'Opening checkout...' : 'Creating payment link...'}</span>
                   </>
                 ) : (
                   'Get Started'
@@ -555,37 +658,7 @@ export default function Pricing() {
               </ul>
 
               <button
-                onClick={async () => {
-                  try {
-                    setLoadingPlan('studio')
-                    console.log('Creating Studio subscription...')
-                    const response = await fetch('/api/subscriptions/create', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache'
-                      },
-                      body: JSON.stringify({
-                        plan: 'studio',
-                        billing: billingCycle,
-                        currency: currency
-                      })
-                    })
-                    
-                    const data = await response.json()
-                    
-                    if (data.success && data.short_url) {
-                      window.location.href = data.short_url
-                    } else {
-                      setLoadingPlan(null)
-                      alert(`Error: ${data.error || 'Unknown error'}`)
-                    }
-                  } catch (error: any) {
-                    setLoadingPlan(null)
-                    alert('Network error: ' + error.message)
-                  }
-                }}
+                onClick={() => handleSubscribe('studio')}
                 disabled={loadingPlan === 'studio' || (userSubscription?.plan === 'studio' && userSubscription?.status === 'active')}
                 className={`w-full py-4 px-4 rounded-xl font-bold transition-all duration-300 shadow-lg text-sm flex items-center justify-center gap-2 ${
                   userSubscription?.plan === 'studio' && userSubscription?.status === 'active'
@@ -595,6 +668,18 @@ export default function Pricing() {
               >
                 {userSubscription?.plan === 'studio' && userSubscription?.status === 'active' ? (
                   '✓ Current Plan'
+                ) : loadingPlan === 'studio' ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{currency === 'USD' ? 'Opening checkout...' : 'Creating payment link...'}</span>
+                  </>
+                ) : (
+                  'Get Started'
+                )}
+              </button>
                 ) : loadingPlan === 'studio' ? (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
