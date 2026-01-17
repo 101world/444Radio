@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { registerWebGLContext, cleanupContext } from '@/lib/webgl-manager';
 
 export default function HolographicBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +80,10 @@ export default function HolographicBackground() {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Crisp on retina displays
       renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better contrast
       renderer.toneMappingExposure = 1.2; // Brighter, more vibrant
+      
+      // Register WebGL context for tracking and cleanup
+      const gl = renderer.getContext()
+      registerWebGLContext(gl)
     
     // Make the canvas itself clickable and visible
     renderer.domElement.style.position = 'fixed';
@@ -806,8 +811,19 @@ export default function HolographicBackground() {
       if (sceneRef.current.animationId) {
         cancelAnimationFrame(sceneRef.current.animationId);
       }
+      
+      // Cleanup WebGL context first
+      if (renderer) {
+        const gl = renderer.getContext()
+        cleanupContext(gl)
+      }
+      
       if (containerRef.current && renderer.domElement) {
-        containerRef.current.removeChild(renderer.domElement);
+        try {
+          containerRef.current.removeChild(renderer.domElement);
+        } catch (e) {
+          console.warn('[WebGL] Canvas already removed')
+        }
       }
       
       // Dispose geometries and materials

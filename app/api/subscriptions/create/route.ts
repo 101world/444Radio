@@ -123,37 +123,50 @@ export async function POST(request: Request) {
 
     // Step 4: Create payment link
     console.log('[Subscription] Step 4: Creating payment link...')
+    const paymentLinkBody: any = {
+      amount: planConfig.price * 100, // Convert to paise
+      currency: 'INR',
+      description: `${planType.toUpperCase()} ${billing === 'annual' ? 'Annual' : 'Monthly'} Plan - ${planConfig.credits} credits`,
+      customer: {
+        name: customerName,
+        email: userEmail
+      },
+      notify: {
+        sms: false,
+        email: true
+      },
+      reminder_enable: true,
+      notes: {
+        clerk_user_id: userId,
+        customer_id: customer.id,
+        subscription_id: subscription.id,
+        customer_name: customerName,
+        plan_type: planType,
+        billing_cycle: billing,
+        credits: planConfig.credits.toString()
+      },
+      callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/?payment=success`,
+      callback_method: 'get'
+    }
+
+    // Add options to prevent EMPTY_WORDMARK error
+    const brandLogoUrl = process.env.NEXT_PUBLIC_BRAND_LOGO_URL
+    if (brandLogoUrl) {
+      paymentLinkBody.options = {
+        checkout: {
+          name: '444Radio',
+          image: brandLogoUrl
+        }
+      }
+    }
+
     const linkRes = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
       headers: {
         Authorization: `Basic ${authHeader}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        amount: planConfig.price * 100, // Convert to paise
-        currency: 'INR',
-        description: `${planType.toUpperCase()} ${billing === 'annual' ? 'Annual' : 'Monthly'} Plan - ${planConfig.credits} credits`,
-        customer: {
-          name: customerName,
-          email: userEmail
-        },
-        notify: {
-          sms: false,
-          email: true
-        },
-        reminder_enable: true,
-        notes: {
-          clerk_user_id: userId,
-          customer_id: customer.id,
-          subscription_id: subscription.id,
-          customer_name: customerName,
-          plan_type: planType,
-          billing_cycle: billing,
-          credits: planConfig.credits.toString()
-        },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://444radio.co.in'}/?payment=success`,
-        callback_method: 'get'
-      })
+      body: JSON.stringify(paymentLinkBody)
     })
 
     const link = await linkRes.json()

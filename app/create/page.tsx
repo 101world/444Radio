@@ -560,12 +560,27 @@ function CreatePageContent() {
     // Clear title error if validation passed
     setShowTitleError(false)
 
-    // Check credits before generation
+    // Check credits before generation AND prevent multiple simultaneous generations
     const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0
-    if (userCredits !== null && userCredits < creditsNeeded) {
-      alert(`⚡ Insufficient credits! You need ${creditsNeeded} credits but only have ${userCredits}. Visit the pricing page to get more.`)
+    
+    // Fetch fresh credits to prevent race conditions
+    const freshCreditsRes = await fetch('/api/credits')
+    const freshCreditsData = await freshCreditsRes.json()
+    const currentCredits = freshCreditsData.credits || 0
+    
+    // Also check if there are active generations that haven't deducted credits yet
+    const pendingCredits = activeGenerations.size * (selectedType === 'music' ? 2 : 1)
+    const availableCredits = currentCredits - pendingCredits
+    
+    console.log('[Credit Check]', { currentCredits, pendingCredits, availableCredits, creditsNeeded })
+    
+    if (availableCredits < creditsNeeded) {
+      alert(`⚡ Insufficient credits! You need ${creditsNeeded} credits but only have ${currentCredits} available (${pendingCredits} reserved for active generations). Visit the pricing page to get more.`)
       return
     }
+    
+    // Update local credits state
+    setUserCredits(currentCredits)
 
     // Close any open parameter modals
     closeAllModals()
@@ -826,7 +841,12 @@ function CreatePageContent() {
 
       // Update credits
       if (!result.error && result.creditsRemaining !== undefined) {
+        console.log('[Generation] Updating credits from', userCredits, 'to', result.creditsRemaining)
         setUserCredits(result.creditsRemaining)
+      } else {
+        // Refetch credits to ensure sync
+        console.log('[Generation] Refetching credits after generation')
+        fetchCredits()
       }
 
       // Update persistent generation queue with result
@@ -847,11 +867,11 @@ function CreatePageContent() {
         })
       }
 
-      // Update message with result
+      // Update message with result - mark as NOT generating
       setMessages(prev => {
         console.log('[Generation] Updating message', messageId, 'with result:', result)
         return prev.map(msg => 
-          msg.id === messageId
+          msg.id === messageId || msg.generationId === genId
             ? {
                 ...msg,
                 isGenerating: false,
@@ -884,17 +904,23 @@ function CreatePageContent() {
         error: error instanceof Error ? error.message : 'Unknown error'
       })
       
+      // Mark message as failed and NOT generating
       setMessages(prev => prev.map(msg => 
-        msg.id === messageId
+        msg.id === messageId || msg.generationId === genId
           ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' }
           : msg
       ))
+      
+      // Refetch credits in case of error
+      fetchCredits()
     } finally {
       // Remove from queue and active generations
+      console.log('[Generation] Cleaning up generation', messageId)
       setGenerationQueue(prev => prev.filter(id => id !== messageId))
       setActiveGenerations(prev => {
         const newSet = new Set(prev)
         newSet.delete(messageId)
+        console.log('[Generation] Active generations after cleanup:', newSet.size)
         return newSet
       })
     }
