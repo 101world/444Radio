@@ -394,15 +394,27 @@ export async function POST(req: NextRequest) {
     // NOW deduct credits (-2 for music) atomically to prevent race conditions
     console.log(`💰 Deducting 2 credits from user atomically (${userCredits} → ${userCredits - 2})`)
     
-    const { data: deductResult, error: deductError } = await supabase
-      .rpc('deduct_credits', {
-        p_clerk_user_id: userId,
-        p_amount: 2
-      })
-      .single() as { data: { success: boolean; new_credits: number; error_message: string | null } | null; error: any }
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          p_clerk_user_id: userId,
+          p_amount: 2
+        })
+      }
+    )
 
-    if (deductError || !deductResult?.success) {
-      console.error('⚠️ Failed to deduct credits atomically:', deductError || deductResult?.error_message)
+    const deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = 
+      deductRes.ok ? await deductRes.json() : null
+
+    if (!deductRes.ok || !deductResult?.success) {
+      console.error('⚠️ Failed to deduct credits atomically:', deductResult?.error_message || deductRes.statusText)
       // Continue anyway - better to give free generation than lose the work
     } else {
       console.log('✅ Credits deducted successfully (atomic operation)')
@@ -436,7 +448,7 @@ export async function POST(req: NextRequest) {
       title: title, // Use the actual title from request
       lyrics: formattedLyrics, // Return the formatted lyrics
       libraryId: savedMusic?.id || null,
-      creditsRemaining: deductResult?.new_credits || (userCredits - 2),
+      creditsRemaining: deductResult?.new_credits ?? (userCredits - 2),
       creditsDeducted: 2
     }
 

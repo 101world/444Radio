@@ -188,12 +188,14 @@ export async function POST(request: Request) {
     }
 
     // Deduct credits AFTER success (atomically to prevent race conditions)
-    const { data: deductResult, error: deductError } = await supabase
+    const { data: deductResultRaw, error: deductError } = await supabase
       .rpc('deduct_credits', {
         p_clerk_user_id: userId,
         p_amount: STEM_SPLIT_COST
       })
-      .single() as { data: { success: boolean; new_credits: number; error_message: string | null } | null; error: any }
+      .single()
+
+    const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message: string | null } | null
 
     if (deductError || !deductResult?.success) {
       console.error('[Stem Split] Credit deduction error:', deductError || deductResult?.error_message)
@@ -207,7 +209,7 @@ export async function POST(request: Request) {
       success: true,
       stems: allStems,
       creditsUsed: STEM_SPLIT_COST,
-      creditsRemaining: deductResult?.new_credits || (userData.credits - STEM_SPLIT_COST),
+      creditsRemaining: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST),
       rawOutputKeys: Object.keys(output || {})
     })
   } catch (error) {
