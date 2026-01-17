@@ -16,6 +16,7 @@ const DiscordIcon = ({ className }: { className?: string }) => (
 export default function Pricing() {
   const router = useRouter()
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
+  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR') // Currency selection
   const [creditAmount, setCreditAmount] = useState(5) // Default $5
   const [showPolicyModal, setShowPolicyModal] = useState(false)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null) // 'creator', 'pro', 'studio'
@@ -23,6 +24,22 @@ export default function Pricing() {
     status: string
     plan: string
   } | null>(null)
+  
+  // Pricing by currency
+  const prices = {
+    creator: {
+      monthly: { INR: 450, USD: 5 },
+      annual: { INR: 4420, USD: 50 }
+    },
+    pro: {
+      monthly: { INR: 1355, USD: 16 },
+      annual: { INR: 13090, USD: 155 }
+    },
+    studio: {
+      monthly: { INR: 3160, USD: 37 },
+      annual: { INR: 30330, USD: 359 }
+    }
+  }
   
   // Rates
   const buyRate = 0.04 // $0.04 per credit (on-demand)
@@ -87,8 +104,9 @@ export default function Pricing() {
           </p>
         </div>
 
-        {/* Billing Toggle */}
-        <div className="flex justify-center mb-16">
+        {/* Billing and Currency Toggles */}
+        <div className="flex flex-col md:flex-row justify-center items-center gap-6 mb-16">
+          {/* Billing Cycle Toggle */}
           <div className="inline-flex items-center gap-4 bg-black/50 backdrop-blur-xl border border-cyan-500/30 rounded-full p-2 shadow-xl shadow-cyan-500/10">
             <button
               onClick={() => setBillingCycle('monthly')}
@@ -114,6 +132,33 @@ export default function Pricing() {
                   -20%
                 </span>
               )}
+            </button>
+          </div>
+
+          {/* Currency Toggle */}
+          <div className="inline-flex items-center gap-4 bg-black/50 backdrop-blur-xl border border-cyan-500/30 rounded-full p-2 shadow-xl shadow-cyan-500/10">
+            <button
+              onClick={() => setCurrency('INR')}
+              className={`px-6 py-4 rounded-full font-bold transition-all duration-300 ${
+                currency === 'INR'
+                  ? 'bg-gradient-to-r from-purple-600 to-purple-400 text-white shadow-lg shadow-purple-500/40 scale-105'
+                  : 'text-purple-400/60 hover:text-purple-400'
+              }`}
+            >
+              🇮🇳 INR (₹)
+            </button>
+            <button
+              onClick={() => setCurrency('USD')}
+              className={`px-6 py-4 rounded-full font-bold transition-all duration-300 relative ${
+                currency === 'USD'
+                  ? 'bg-gradient-to-r from-purple-600 to-purple-400 text-white shadow-lg shadow-purple-500/40 scale-105'
+                  : 'text-purple-400/60 hover:text-purple-400'
+              }`}
+            >
+              🌍 USD ($)
+              <span className="absolute -top-2 -right-2 px-2 py-0.5 bg-green-500 text-white text-[10px] rounded-full font-bold">
+                PayPal
+              </span>
             </button>
           </div>
         </div>
@@ -195,7 +240,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-5xl font-black bg-gradient-to-br from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent">
-                    ₹{billingCycle === 'monthly' ? '450' : '4,420'}
+                    {currency === 'INR' ? '₹' : '$'}{prices.creator[billingCycle][currency].toLocaleString()}
                   </span>
                   <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
@@ -257,7 +302,8 @@ export default function Pricing() {
                       },
                       body: JSON.stringify({
                         plan: 'creator',
-                        billing: billingCycle
+                        billing: billingCycle,
+                        currency: currency
                       })
                     })
                     
@@ -332,7 +378,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-5xl font-black bg-gradient-to-br from-white via-cyan-200 to-purple-200 bg-clip-text text-transparent">
-                    ₹{billingCycle === 'monthly' ? '1,355' : '13,090'}
+                    {currency === 'INR' ? '₹' : '$'}{prices.pro[billingCycle][currency].toLocaleString()}
                   </span>
                   <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
@@ -394,7 +440,8 @@ export default function Pricing() {
                       },
                       body: JSON.stringify({
                         plan: 'pro',
-                        billing: billingCycle
+                        billing: billingCycle,
+                        currency: currency
                       })
                     })
                     
@@ -459,7 +506,7 @@ export default function Pricing() {
               <div className="mb-8">
                 <div className="flex items-baseline gap-1 mb-2">
                   <span className="text-5xl font-black bg-gradient-to-br from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">
-                    ₹{billingCycle === 'monthly' ? '3,160' : '30,330'}
+                    {currency === 'INR' ? '₹' : '$'}{prices.studio[billingCycle][currency].toLocaleString()}
                   </span>
                   <span className="text-cyan-400/40 text-xs">
                     /{billingCycle === 'monthly' ? 'mo' : 'yr'}
@@ -521,7 +568,8 @@ export default function Pricing() {
                       },
                       body: JSON.stringify({
                         plan: 'studio',
-                        billing: billingCycle
+                        billing: billingCycle,
+                        currency: currency
                       })
                     })
                     

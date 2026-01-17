@@ -6,19 +6,43 @@ export async function OPTIONS() {
   return handleOptions()
 }
 
-// Plan configuration
+// Plan configuration with multi-currency support
 const PLANS = {
   creator: {
-    monthly: { planId: 'plan_S2DGVK6J270rtt', credits: 100, price: 450 },
-    annual: { planId: 'plan_S2DJv0bFnWoNLS', credits: 1200, price: 4420 }
+    monthly: { 
+      planId: 'plan_S2DGVK6J270rtt', 
+      credits: 100, 
+      price: { INR: 450, USD: 5 } // ~$5 USD
+    },
+    annual: { 
+      planId: 'plan_S2DJv0bFnWoNLS', 
+      credits: 1200, 
+      price: { INR: 4420, USD: 50 } // ~$50 USD (save 17%)
+    }
   },
   pro: {
-    monthly: { planId: 'plan_S2DHUGo7n1m6iv', credits: 600, price: 1355 },
-    annual: { planId: 'plan_S2DNEvy1YzYWNh', credits: 7200, price: 13090 }
+    monthly: { 
+      planId: 'plan_S2DHUGo7n1m6iv', 
+      credits: 600, 
+      price: { INR: 1355, USD: 16 } // ~$16 USD
+    },
+    annual: { 
+      planId: 'plan_S2DNEvy1YzYWNh', 
+      credits: 7200, 
+      price: { INR: 13090, USD: 155 } // ~$155 USD (save 19%)
+    }
   },
   studio: {
-    monthly: { planId: 'plan_S2DIdCKNcV6TtA', credits: 1500, price: 3160 },
-    annual: { planId: 'plan_S2DOABOeGedJHk', credits: 18000, price: 30330 }
+    monthly: { 
+      planId: 'plan_S2DIdCKNcV6TtA', 
+      credits: 1500, 
+      price: { INR: 3160, USD: 37 } // ~$37 USD
+    },
+    annual: { 
+      planId: 'plan_S2DOABOeGedJHk', 
+      credits: 18000, 
+      price: { INR: 30330, USD: 359 } // ~$359 USD (save 19%)
+    }
   }
 } as const
 
@@ -40,10 +64,11 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get plan and billing from request
+    // Get plan, billing, and currency from request
     const body = await request.json()
     const planType = (body.plan || 'creator') as keyof typeof PLANS
     const billing = (body.billing || 'monthly') as 'monthly' | 'annual'
+    const currency = (body.currency || 'INR') as 'INR' | 'USD' // Default to INR
     
     const planConfig = PLANS[planType][billing]
     
@@ -53,8 +78,12 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log(`[Subscription] Creating ${planType} ${billing} for:`, userId, userEmail)
-    console.log('[Subscription] Plan:', planConfig)
+    // Get price for selected currency
+    const price = typeof planConfig.price === 'object' ? planConfig.price[currency] : planConfig.price
+    const priceInSmallestUnit = currency === 'INR' ? price * 100 : price * 100 // paise for INR, cents for USD
+
+    console.log(`[Subscription] Creating ${planType} ${billing} (${currency}) for:`, userId, userEmail)
+    console.log('[Subscription] Plan:', { ...planConfig, selectedPrice: price, currency })
 
     const keyId = process.env.RAZORPAY_KEY_ID
     const keySecret = process.env.RAZORPAY_KEY_SECRET
@@ -128,8 +157,8 @@ export async function POST(request: Request) {
     const brandLogoUrl = process.env.NEXT_PUBLIC_BRAND_LOGO_URL || 'https://cdn.razorpay.com/logo.svg'
     
     const paymentLinkBody: any = {
-      amount: planConfig.price * 100, // Convert to paise
-      currency: 'INR',
+      amount: priceInSmallestUnit,
+      currency: currency,
       accept_partial: false,
       description: `${planType.toUpperCase()} ${billing === 'annual' ? 'Annual' : 'Monthly'} Plan - ${planConfig.credits} credits`,
       customer: {
