@@ -438,7 +438,7 @@ export default function DAWProRebuild() {
     }))
   }, [])
 
-  // Metronome click sound function
+  // Metronome click sound function with downbeat detection
   const playMetronomeClick = useCallback(() => {
     if (!daw) return
     const audioContext = daw.getAudioContext()
@@ -448,17 +448,24 @@ export default function DAWProRebuild() {
     oscillator.connect(gainNode)
     gainNode.connect(audioContext.destination)
     
-    // 1000Hz beep
-    oscillator.frequency.value = 1000
+    // Detect downbeat (first beat of bar for professional feel)
+    const currentTime = daw.getTransportState().currentTime
+    const beatDuration = 60 / bpm
+    const beatsPerBar = 4 // 4/4 time signature
+    const beatInBar = Math.floor(currentTime / beatDuration) % beatsPerBar
+    const isDownbeat = beatInBar === 0
+    
+    // Downbeat: 1200Hz louder | Other beats: 800Hz softer
+    oscillator.frequency.value = isDownbeat ? 1200 : 800
     oscillator.type = 'sine'
     
     // Quick envelope: instant attack, fast decay
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+    gainNode.gain.setValueAtTime(isDownbeat ? 0.4 : 0.2, audioContext.currentTime)
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05)
     
     oscillator.start(audioContext.currentTime)
     oscillator.stop(audioContext.currentTime + 0.05)
-  }, [daw])
+  }, [daw, bpm])
 
   // Transport controls
   const handlePlay = useCallback(() => {
@@ -1091,14 +1098,15 @@ export default function DAWProRebuild() {
     }
   }, [draggingLoopHandle, loopEnd, loopStart, snapTime, zoom])
 
-  // Autosave: debounce 2s after playhead/track change
+  // Autosave: debounce 5s after changes (increased from 2s for better performance)
   const queueAutosave = useCallback(() => {
     if (!currentProjectId) return // avoid autosave before first explicit save
+    if (isPlaying) return // don't autosave during playback (causes lag)
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     autosaveTimer.current = setTimeout(() => {
       handleSave('auto')
-    }, 2000)
-  }, [handleSave, currentProjectId])
+    }, 5000) // Increased from 2000ms for better performance
+  }, [handleSave, currentProjectId, isPlaying])
 
   useEffect(() => {
     return () => {
@@ -1420,6 +1428,16 @@ export default function DAWProRebuild() {
         if (clip) {
           setCopiedClip({ clip, trackId: selectedTrackId })
           showToast('Clip copied', 'info')
+        }
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedClipId && selectedTrackId && !e.repeat) {
+        // Delete selected clip
+        e.preventDefault()
+        if (daw && (e.target as HTMLElement).tagName !== 'INPUT') {
+          daw.removeClipFromTrack(selectedTrackId, selectedClipId)
+          setTracks(daw.getTracks())
+          setSelectedClipId(null)
+          markProjectDirty()
+          showToast('✓ Clip deleted', 'success')
         }
       } else if (e.key === 'v' && e.ctrlKey && copiedClip && daw) {
         // Paste clip at playhead
@@ -2275,6 +2293,7 @@ export default function DAWProRebuild() {
                               const timelineRect = timelineRef.current.getBoundingClientRect()
                               const scrollLeft = timelineRef.current.scrollLeft
                               const x = moveE.clientX - timelineRect.left + scrollLeft - TRACK_HEADER_WIDTH - offsetX
+                              // Apply snap during drag for visual feedback
                               const newStartTime = snapTime(Math.max(0, x / zoom))
                               
                               if (daw) {
@@ -2286,6 +2305,18 @@ export default function DAWProRebuild() {
                             }
                             
                             const handleUp = () => {
+                              // Final snap on drag end for consistency
+                              if (daw && snapEnabled) {
+                                const trackManager = daw.getTrackManager()
+                                const currentClip = trackManager.getClip(track.id, clip.id)
+                                if (currentClip) {
+                                  const snappedTime = snapTime(currentClip.startTime)
+                                  if (Math.abs(snappedTime - currentClip.startTime) > 0.001) {
+                                    trackManager.updateClip(track.id, clip.id, { ...currentClip, startTime: snappedTime })
+                                    setTracks(daw.getTracks())
+                                  }
+                                }
+                              }
                               setDraggingClip(null)
                               markProjectDirty()
                               window.removeEventListener('mousemove', handleMove)
