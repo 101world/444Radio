@@ -6,7 +6,7 @@ import Replicate from 'replicate'
 export const maxDuration = 300
 
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN!,
+  auth: process.env.REPLICATE_API_KEY_LATEST!,
 })
 
 async function createPredictionWithRetry(replicateClient: Replicate, version: string, input: any, maxRetries = 4) {

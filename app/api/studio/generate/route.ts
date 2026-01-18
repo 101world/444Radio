@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Call Replicate with webhook
     const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN!
+      auth: process.env.REPLICATE_API_KEY_LATEST!
     })
 
     const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.444radio.co.in'}/api/studio/webhook`
