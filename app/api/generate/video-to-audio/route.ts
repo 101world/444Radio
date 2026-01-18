@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
     }
 
     const outputBuffer = Buffer.from(await downloadRes.arrayBuffer())
-    const outputFileName = `synced-${Date.now()}.mp4`
+    const outputFileName = `${userId}/synced-${Date.now()}.mp4`
     
     const outputR2Result = await uploadToR2(
       outputBuffer,

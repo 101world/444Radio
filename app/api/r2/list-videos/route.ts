@@ -62,14 +62,31 @@ export async function GET(request: Request) {
     console.log('🎥 Listing videos bucket:', bucketName, 'user:', userId, 'scope:', listAllParam ? 'ALL' : 'user files')
     const listed = await listAll(bucketName, undefined) // List all, filter later
     
+    console.log(`📊 Total objects in ${bucketName}:`, listed.length)
+    if (listed.length > 0) {
+      console.log('📁 Sample keys:', listed.slice(0, 10).map(f => f.Key).join(', '))
+    }
+    
     // Filter for video file extensions and map to library format
     const videos = (listed || [])
-      .filter(f => !!f.Key && /\.(mp4|webm|mov|avi)$/i.test(f.Key))
+      .filter(f => {
+        const key = f.Key as string
+        const isVideo = !!key && /\.(mp4|webm|mov|avi)$/i.test(key)
+        if (isVideo) {
+          console.log('🎬 Found video file:', key, `(${((f.Size || 0) / (1024 * 1024)).toFixed(2)} MB)`)
+        }
+        return isVideo
+      })
       // Filter by userId - files are stored with userId/ prefix or userId in path
       .filter(f => {
         if (listAllParam) return true; // Admin mode
         const key = f.Key as string;
-        return key.startsWith(`${userId}/`) || key.includes(`/${userId}/`) || key.startsWith(`users/${userId}/`);
+        // More flexible matching: check if userId appears anywhere in the path
+        const hasUserId = key.includes(userId)
+        if (!hasUserId) {
+          console.log('⚠️  Skipping (no userId in path):', key)
+        }
+        return hasUserId
       })
       .map((file, index) => {
         const key: string = file.Key

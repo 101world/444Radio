@@ -503,13 +503,17 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
       {/* Banner Section */}
       <div className="relative h-80 bg-gradient-to-br from-cyan-900/20 to-black overflow-hidden group">
-        <Image
-          src={profile.banner_url}
-          alt="Profile Banner"
-          fill
-          className="object-cover opacity-60"
-          priority
-        />
+        {profile.banner_url && profile.banner_url !== '/default-banner.jpg' ? (
+          <Image
+            src={profile.banner_url}
+            alt="Profile Banner"
+            fill
+            className="object-cover opacity-60"
+            priority
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-black" />
+        )}
         {isOwnProfile && (
           <button
             onClick={() => setShowBannerUpload(true)}
