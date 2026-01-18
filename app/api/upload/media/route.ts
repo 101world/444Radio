@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { uploadToR2 } from '@/lib/r2-upload'
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
-// Increase body size limit for file uploads
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb',
-    },
-  },
-}
-
-// Allow longer execution time for large uploads
+// No body size limit needed - we're generating presigned URLs, not receiving files
 export const maxDuration = 60
+
+const s3Client = new S3Client({
+  region: 'auto',
+  endpoint: process.env.R2_ENDPOINT!,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+})
 
 /**
  * POST /api/upload/media
- * Upload audio or video file directly to R2 from client
- * Returns the R2 URL for use in generation endpoints
+ * Generate a presigned URL for direct upload to R2 from client
+ * This bypasses Vercel's body size limits
  */
 export async function POST(req: NextRequest) {
   try {
@@ -27,17 +28,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const formData = await req.formData()
-    const file = formData.get('file') as File
-    const fileType = formData.get('type') as string // 'audio' or 'video'
+    const { fileName, fileType, fileSize } = await req.json()
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    if (!fileName || !fileType) {
+      return NextResponse.json({ error: 'Missing fileName or fileType' }, { status: 400 })
     }
 
     // Validate file type
-    const isAudio = file.type.startsWith('audio/')
-    const isVideo = file.type.startsWith('video/')
+    const isAudio = fileType.startsWith('audio/')
+    const isVideo = fileType.startsWith('video/')
     
     if (!isAudio && !isVideo) {
       return NextResponse.json({ error: 'File must be audio or video' }, { status: 400 })
@@ -45,47 +44,47 @@ export async function POST(req: NextRequest) {
 
     // Validate file size (100MB max)
     const MAX_SIZE = 100 * 1024 * 1024
-    if (file.size > MAX_SIZE) {
+    if (fileSize && fileSize > MAX_SIZE) {
       return NextResponse.json({ error: 'File size must be under 100MB' }, { status: 400 })
     }
 
-    console.log(`📤 Uploading ${fileType} file:`, file.name, `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`)
+    console.log(`🔑 Generating presigned URL for ${fileType}:`, fileName, `(${(fileSize / (1024 * 1024)).toFixed(2)} MB)`)
 
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
-    // Determine bucket and generate filename
+    // Determine bucket
     const bucket = isVideo ? 'videos' : 'audio-files'
     const timestamp = Date.now()
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '-')
-    const fileName = `upload-${timestamp}-${sanitizedName}`
+    const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '-')
+    const key = `upload-${timestamp}-${sanitizedName}`
 
-    // Upload to R2
-    const result = await uploadToR2(buffer, bucket, fileName)
+    // Generate presigned URL for upload (valid for 10 minutes)
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: fileType,
+    })
 
-    if (!result.success) {
-      console.error('❌ R2 upload failed:', result.error)
-      return NextResponse.json(
-        { error: 'Failed to upload file to storage' },
-        { status: 500 }
-      )
-    }
+    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 })
 
-    console.log('✅ File uploaded to R2:', result.url)
+    // Construct the public URL that will be accessible after upload
+    const publicUrlBase = isVideo 
+      ? process.env.NEXT_PUBLIC_R2_VIDEOS_URL 
+      : process.env.NEXT_PUBLIC_R2_AUDIO_URL
+    const publicUrl = `${publicUrlBase}/${key}`
+
+    console.log('✅ Presigned URL generated:', key)
 
     return NextResponse.json({
       success: true,
-      url: result.url,
-      fileName,
-      size: file.size,
-      type: isVideo ? 'video' : 'audio'
+      uploadUrl: presignedUrl,
+      publicUrl: publicUrl,
+      key: key,
+      bucket: bucket
     })
 
   } catch (error) {
-    console.error('❌ Media upload error:', error)
+    console.error('❌ Presigned URL generation error:', error)
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: 'Failed to generate upload URL' },
       { status: 500 }
     )
   }

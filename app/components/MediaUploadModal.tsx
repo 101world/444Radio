@@ -80,31 +80,52 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
 
     setIsUploading(true)
     setError('')
-    setUploadProgress('Uploading file...')
+    setUploadProgress('Preparing upload...')
 
     try {
-      // Step 1: Upload file to R2
-      console.log('📤 Step 1: Uploading file to R2...')
-      const uploadFormData = new FormData()
-      uploadFormData.append('file', selectedFile)
-      uploadFormData.append('type', fileType)
-
-      const uploadResponse = await fetch('/api/upload/media', {
+      // Step 1: Get presigned URL for direct R2 upload
+      console.log('🔑 Step 1: Getting presigned URL...')
+      const presignedResponse = await fetch('/api/upload/media', {
         method: 'POST',
-        body: uploadFormData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          fileName: selectedFile.name,
+          fileType: selectedFile.type,
+          fileSize: selectedFile.size
+        })
+      })
+
+      if (!presignedResponse.ok) {
+        const presignedError = await presignedResponse.json()
+        throw new Error(presignedError.error || 'Failed to get upload URL')
+      }
+
+      const { uploadUrl, publicUrl } = await presignedResponse.json()
+      console.log('✅ Step 1 complete: Got presigned URL')
+
+      // Step 2: Upload directly to R2 using presigned URL (bypasses Vercel limits)
+      setUploadProgress('Uploading file to storage...')
+      console.log('📤 Step 2: Uploading file to R2...')
+      
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: selectedFile,
+        headers: {
+          'Content-Type': selectedFile.type,
+        }
       })
 
       if (!uploadResponse.ok) {
-        const uploadError = await uploadResponse.json()
-        throw new Error(uploadError.error || 'Failed to upload file')
+        throw new Error('Failed to upload file to storage')
       }
 
-      const uploadResult = await uploadResponse.json()
-      console.log('✅ Step 1 complete: File uploaded to', uploadResult.url)
+      console.log('✅ Step 2 complete: File uploaded to', publicUrl)
 
-      // Step 2: Generate audio/remix using the uploaded file URL
+      // Step 3: Generate audio/remix using the uploaded file URL
       setUploadProgress('Generating audio...')
-      console.log('🎵 Step 2: Generating...')
+      console.log('🎵 Step 3: Generating...')
       const generateEndpoint = fileType === 'video' 
         ? '/api/generate/video-to-audio'
         : '/api/generate/audio-to-audio'
@@ -115,8 +136,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          videoUrl: uploadResult.url,
-          audioUrl: uploadResult.url,
+          videoUrl: publicUrl,
+          audioUrl: publicUrl,
           prompt: prompt
         })
       })
@@ -127,7 +148,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         throw new Error(result.error || 'Generation failed')
       }
 
-      console.log('✅ Step 2 complete:', result)
+      console.log('✅ Step 3 complete:', result)
       onSuccess?.(result)
       handleClose()
     } catch (err) {
