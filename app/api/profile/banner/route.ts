@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       }
 
       const key = `${userId}/banner-${Date.now()}-${file.name.replace(/[^\w.-]/g, '_')}`
-      const bucket = kind === 'image' ? 'images' : 'videos'
+      const bucket = '444radio-media' // Single bucket for all content
       const upload = await uploadToR2(file, bucket, key)
       if (!upload.success || !upload.url) {
         return corsResponse(NextResponse.json({ success: false, error: upload.error || 'Upload failed' }, { status: 500 }))
