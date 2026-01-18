@@ -2076,6 +2076,8 @@ function CreatePageContent() {
                 </div>
                 <div className="relative">
                   <textarea
+                    id="custom-lyrics"
+                    name="customLyrics"
                     value={customLyrics}
                     onChange={(e) => setCustomLyrics(e.target.value)}
                     placeholder="Enter custom lyrics (required)..."

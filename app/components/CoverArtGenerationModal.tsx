@@ -131,10 +131,12 @@ export default function CoverArtGenerationModal({ isOpen, onClose, userCredits, 
             <div>
               {/* Prompt Input */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-cyan-400 mb-2">
+                <label htmlFor="cover-art-prompt" className="block text-sm font-medium text-cyan-400 mb-2">
                   Image Description
                 </label>
                 <textarea
+                  id="cover-art-prompt"
+                  name="prompt"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="Professional album cover art, vibrant colors, artistic composition, studio lighting..."

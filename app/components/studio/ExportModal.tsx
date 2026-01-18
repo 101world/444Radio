@@ -198,8 +198,10 @@ export default function ExportModal({ isOpen, onClose, onStartExport, projectNam
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-cyan-400 mb-2">Sample rate</label>
+              <label htmlFor="sample-rate" className="block text-sm font-medium text-cyan-400 mb-2">Sample rate</label>
               <select
+                id="sample-rate"
+                name="sampleRate"
                 value={sampleRate}
                 onChange={(e) => setSampleRate(parseInt(e.target.value))}
                 className="w-full px-3 py-2 bg-black/50 border border-cyan-500/30 rounded-lg text-white focus:outline-none focus:border-cyan-500/60"
@@ -209,8 +211,15 @@ export default function ExportModal({ isOpen, onClose, onStartExport, projectNam
               </select>
             </div>
             <div className="col-span-2">
-              <label className="flex items-center gap-2 text-sm text-cyan-100">
-                <input type="checkbox" checked={normalize} onChange={(e) => setNormalize(e.target.checked)} className="accent-cyan-500" />
+              <label htmlFor="normalize-checkbox" className="flex items-center gap-2 text-sm text-cyan-100">
+                <input 
+                  type="checkbox" 
+                  id="normalize-checkbox"
+                  name="normalize"
+                  checked={normalize} 
+                  onChange={(e) => setNormalize(e.target.checked)} 
+                  className="accent-cyan-500" 
+                />
                 Normalize mixdown (prevent clipping)
               </label>
               <p className="text-xs text-gray-500 mt-1">MP3 uses in-browser encoding; WAV is lossless.</p>
