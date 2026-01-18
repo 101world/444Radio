@@ -100,12 +100,13 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, releasesRes, likedRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
         fetch('/api/r2/list-images'),
         fetch('/api/library/videos'),
+        fetch('/api/r2/list-videos'),
         fetch('/api/library/releases'),
         fetch('/api/library/liked')
       ])
@@ -115,6 +116,7 @@ export default function LibraryPage() {
       const imagesData = await imagesRes.json()
       const r2ImagesData = await r2ImagesRes.json()
       const videosData = await videosRes.json()
+      const r2VideosData = await r2VideosRes.json()
       const releasesData = await releasesRes.json()
       const likedData = await likedRes.json()
 
@@ -163,10 +165,19 @@ export default function LibraryPage() {
         console.log('✅ Loaded', uniqueImages.length, 'images (DB:', dbImages.length, '+ R2:', r2Images.length, ')')
       }
 
-      // Load videos
-      if (videosData.success && Array.isArray(videosData.videos)) {
-        setVideoItems(videosData.videos)
-        console.log('✅ Loaded', videosData.videos.length, 'videos')
+      // Merge database videos with R2 videos, deduplicate by URL
+      if (videosData.success || r2VideosData.success) {
+        const dbVideos = (videosData.success && Array.isArray(videosData.videos)) ? videosData.videos : []
+        const r2Videos = (r2VideosData.success && Array.isArray(r2VideosData.videos)) ? r2VideosData.videos : []
+        
+        // Combine and deduplicate by audioUrl/media_url
+        const allVideos = [...dbVideos, ...r2Videos]
+        const uniqueVideos = Array.from(
+          new Map(allVideos.map(item => [item.audioUrl || item.audio_url || item.media_url, item])).values()
+        )
+        
+        setVideoItems(uniqueVideos)
+        console.log('✅ Loaded', uniqueVideos.length, 'videos (DB:', dbVideos.length, '+ R2:', r2Videos.length, ')')
       }
 
       if (releasesData.success && Array.isArray(releasesData.releases)) {
