@@ -776,7 +776,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setPlaylist([...tracks])
+                          const audioPlayerTracks = tracks.map(t => ({
+                            id: t.id,
+                            title: t.title,
+                            audioUrl: t.audio_url,
+                            imageUrl: t.image_url,
+                            artist: profile?.username,
+                            userId: t.user_id
+                          }))
+                          setPlaylist(audioPlayerTracks)
                         }}
                         className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all"
                       >
@@ -833,7 +841,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        setPlaylist([...tracks])
+                        const audioPlayerTracks = tracks.map(t => ({
+                          id: t.id,
+                          title: t.title,
+                          audioUrl: t.audio_url,
+                          imageUrl: t.image_url,
+                          artist: profile?.username,
+                          userId: t.user_id
+                        }))
+                        setPlaylist(audioPlayerTracks)
                       }}
                       className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
                     >
