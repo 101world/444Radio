@@ -506,16 +506,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       {/* Banner Section */}
       <div className="relative h-80 bg-gradient-to-br from-cyan-900/20 to-black overflow-hidden group">
         {profile.banner_url && profile.banner_url.trim() && profile.banner_url !== '/default-banner.jpg' ? (
-          <Image
+          <img
             src={profile.banner_url}
             alt="Profile Banner"
-            fill
-            className="object-cover opacity-60"
-            priority
-            unoptimized
+            className="absolute inset-0 w-full h-full object-cover opacity-60"
+            crossOrigin="anonymous"
             onError={(e) => {
               console.error('Banner load error:', profile.banner_url)
-              // Hide broken image
+              // Hide broken image and show gradient fallback
               e.currentTarget.style.display = 'none'
             }}
           />
