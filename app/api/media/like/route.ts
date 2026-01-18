@@ -147,7 +147,15 @@ export async function POST(req: NextRequest) {
           headers: { 
             apikey: supabaseKey, 
             Authorization: `Bearer ${supabaseKey}`, 
-            'Content-Type': 'a from combined_media (use 'likes' column)
+            'Content-Type': 'application/json', 
+            'Prefer': 'return=minimal' 
+          },
+          body: JSON.stringify({ likes: newCount2 })
+        }
+      )
+    }
+
+    // Get updated likes count from combined_media (use 'likes' column)
     const countResponse = await fetch(
       `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}&select=likes`,
       {
@@ -159,15 +167,7 @@ export async function POST(req: NextRequest) {
     )
 
     const countData = await countResponse.json()
-    const likesCount = countData[0]?.likes
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        }
-      }
-    )
-
-    const countData = await countResponse.json()
-    const likesCount = countData[0]?.likes_count || 0
+    const likesCount = countData[0]?.likes || 0
 
     return corsResponse(NextResponse.json({
       success: true,
