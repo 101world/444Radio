@@ -1320,7 +1320,7 @@ function CreatePageContent() {
                 )}
 
                 {/* Music Result - Bigger and Cooler */}
-                {message.result?.audioUrl && (
+                {message.result?.audioUrl && message.generationType !== 'video' && (
                   <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
                     {/* Header with Smaller Play Button */}
                     <div className="flex items-center gap-3 p-4 border-b border-white/10">
@@ -1498,6 +1498,48 @@ function CreatePageContent() {
                         className="flex-1 px-3 py-2 hover:bg-white/10 text-xs font-medium text-cyan-400 flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <Layers size={14} />
+                        Library
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* Video Result - With Synced Audio */}
+                {message.generationType === 'video' && message.result?.url && (
+                  <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-purple-500/30 rounded-2xl overflow-hidden group hover:border-purple-400/50 transition-all max-w-md mx-auto">
+                    {/* Video Player */}
+                    <div className="relative aspect-video bg-black">
+                      <video
+                        src={message.result.url}
+                        controls
+                        className="w-full h-full object-contain"
+                        autoPlay
+                        playsInline
+                      />
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-4 border-t border-white/10">
+                      <h4 className="text-lg font-bold text-white mb-1">{message.result.title || 'Video with Synced Audio'}</h4>
+                      {message.result.prompt && (
+                        <p className="text-sm text-purple-300/70 italic">&quot;{message.result.prompt}&quot;</p>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex border-t border-white/10">
+                      <button
+                        onClick={() => handleDownload(message.result!.url!, `${message.result!.title || 'video'}.mp4`)}
+                        className="flex-1 px-4 py-3 hover:bg-white/10 text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-colors border-r border-white/10"
+                      >
+                        <Download size={16} />
+                        Download
+                      </button>
+                      <Link
+                        href="/library?tab=videos"
+                        className="flex-1 px-4 py-3 hover:bg-white/10 text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Layers size={16} />
                         Library
                       </Link>
                     </div>

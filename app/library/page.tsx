@@ -59,9 +59,10 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'releases' | 'liked'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
+  const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
   const [releaseItems, setReleaseItems] = useState<LibraryCombined[]>([])
   const [likedItems, setLikedItems] = useState<LibraryCombined[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -99,19 +100,21 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, releasesRes, likedRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, releasesRes, likedRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
         fetch('/api/r2/list-images'),
-        fetch('/api/library/releases')
-        ,fetch('/api/library/liked')
+        fetch('/api/library/videos'),
+        fetch('/api/library/releases'),
+        fetch('/api/library/liked')
       ])
 
       const musicData = await musicRes.json()
       const r2AudioData = await r2AudioRes.json()
       const imagesData = await imagesRes.json()
       const r2ImagesData = await r2ImagesRes.json()
+      const videosData = await videosRes.json()
       const releasesData = await releasesRes.json()
       const likedData = await likedRes.json()
 
@@ -158,6 +161,12 @@ export default function LibraryPage() {
         
         setImageItems(uniqueImages)
         console.log('✅ Loaded', uniqueImages.length, 'images (DB:', dbImages.length, '+ R2:', r2Images.length, ')')
+      }
+
+      // Load videos
+      if (videosData.success && Array.isArray(videosData.videos)) {
+        setVideoItems(videosData.videos)
+        console.log('✅ Loaded', videosData.videos.length, 'videos')
       }
 
       if (releasesData.success && Array.isArray(releasesData.releases)) {
@@ -503,6 +512,18 @@ export default function LibraryPage() {
               <span className="ml-1 text-xs opacity-60">({musicItems.length})</span>
             </button>
             <button
+              onClick={() => setActiveTab('videos')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'videos'
+                  ? 'bg-gradient-to-r from-purple-600 to-purple-400 text-white shadow-lg shadow-purple-500/30'
+                  : 'bg-white/5 text-purple-400/60 hover:bg-purple-500/10 hover:text-purple-400'
+              }`}
+            >
+              <ImageViewIcon size={18} />
+              <span>Videos</span>
+              <span className="ml-1 text-xs opacity-60">({videoItems.length})</span>
+            </button>
+            <button
               onClick={() => setActiveTab('releases')}
               className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                 activeTab === 'releases'
@@ -731,6 +752,67 @@ export default function LibraryPage() {
                         >
                           <Trash2 size={16} className="text-red-400" />
                         </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Videos Tab */}
+        {!isLoading && activeTab === 'videos' && (
+          <div>
+            {videoItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-400/10 border border-purple-500/30 flex items-center justify-center">
+                  <ImageViewIcon size={32} className="text-purple-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No videos yet</h3>
+                <p className="text-purple-400/50 mb-6 text-sm">Upload a video to generate synced audio</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-400 text-white rounded-xl font-bold hover:from-purple-700 hover:to-purple-500 transition-all shadow-lg shadow-purple-500/20">
+                  <ImageViewIcon size={18} />
+                  Create Video
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {videoItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="group relative aspect-video bg-black/60 backdrop-blur-xl border border-purple-500/20 rounded-xl overflow-hidden hover:border-purple-400/60 transition-all duration-300 cursor-pointer"
+                    onClick={() => {
+                      // Play video with generated audio
+                      const videoUrl = item.audioUrl || item.audio_url
+                      window.open(videoUrl, '_blank')
+                    }}
+                  >
+                    <video 
+                      src={item.audioUrl || item.audio_url}
+                      className="w-full h-full object-cover"
+                      muted
+                      playsInline
+                      onMouseEnter={(e) => e.currentTarget.play()}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.pause()
+                        e.currentTarget.currentTime = 0
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-3">
+                        <p className="text-white font-semibold text-xs truncate">
+                          {item.title || 'Video with Synced Audio'}
+                        </p>
+                        <p className="text-purple-400/70 text-[10px] mt-0.5 truncate">
+                          {item.prompt && `"${item.prompt.substring(0, 40)}${item.prompt.length > 40 ? '...' : ''}"`}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Play icon overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-16 h-16 rounded-full bg-purple-600/80 backdrop-blur-sm flex items-center justify-center">
+                        <Play size={24} className="text-white ml-1" />
                       </div>
                     </div>
                   </div>
