@@ -149,6 +149,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [userId])
 
+  // Sanitize URLs to remove control characters that break selectors
+  const sanitizeUrl = (url: string | null | undefined): string => {
+    if (!url) return ''
+    return url.replace(/[\r\n\t\a\b\f\v]/g, '')
+  }
+
   // Load Profile Data
   useEffect(() => {
     async function loadProfile() {
