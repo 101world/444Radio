@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       console.log(`🔑 Generating presigned URL for ${fileType}:`, fileName, `(${(fileSize / (1024 * 1024)).toFixed(2)} MB)`)
 
       // Determine bucket
-      const bucket = isVideo ? 'videos' : 'audio-files'
+      const bucket = isVideo ? '444radio-media' : 'audio-files'
       const timestamp = Date.now()
       const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '-')
       const key = `upload-${timestamp}-${sanitizedName}`
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
       console.log(`📤 Server-side upload: ${file.type}`, file.name, `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`)
 
-      const bucket = isVideo ? 'videos' : 'audio-files'
+      const bucket = isVideo ? '444radio-media' : 'audio-files'
       const timestamp = Date.now()
       const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '-')
       const key = `upload-${timestamp}-${sanitizedName}`
