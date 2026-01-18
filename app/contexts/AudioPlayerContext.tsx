@@ -200,18 +200,18 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     
     // Stop any existing playback completely
     audio.pause()
-    audio.src = ''
+    audio.removeAttribute('src')
     audio.load()
     
     // Wait for cleanup to complete
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise(resolve => setTimeout(resolve, 50))
     
     // Now set the new source and load it
     audio.src = finalUrl
     audio.load()
     
     // Wait for the new source to be ready
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise(resolve => setTimeout(resolve, 50))
     
     // Now play
       try {
