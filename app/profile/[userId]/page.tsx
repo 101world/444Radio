@@ -209,7 +209,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           fullName: userData.username || 'User',
           bio: userData.bio || 'No bio yet',
           avatar_url: userData.avatar_url || '/default-avatar.png',
-          banner_url: userData.banner_url || '/default-banner.jpg',
+          banner_url: sanitizeUrl(userData.banner_url) || '/default-banner.jpg',
           follower_count: userData.follower_count || 0,
           following_count: userData.following_count || 0,
           location: userData.location || '',
@@ -329,7 +329,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   // Handle Banner Upload Success
   const handleBannerSuccess = async (url: string, type?: 'image' | 'video') => {
     console.log('[Banner] Upload success:', url, type)
-    setProfile(prev => prev ? { ...prev, banner_url: url } : null)
+    const cleanUrl = sanitizeUrl(url)
+    setProfile(prev => prev ? { ...prev, banner_url: cleanUrl } : null)
     setShowBannerUpload(false)
     // Refresh profile data to confirm
     const { data } = await supabase
@@ -338,7 +339,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       .eq('clerk_user_id', userId)
       .single()
     if (data) {
-      setProfile(prev => prev ? { ...prev, banner_url: data.banner_url } : null)
+      setProfile(prev => prev ? { ...prev, banner_url: sanitizeUrl(data.banner_url) } : null)
     }
   }
 
