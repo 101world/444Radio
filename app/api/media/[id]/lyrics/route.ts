@@ -37,8 +37,9 @@ export async function GET(
       }, { status: 404 })
     }
 
-    // Only audio types have lyrics
-    if (data.type !== 'audio') {
+    // Only audio/music types have lyrics (type can be 'audio', 'music', or null for older tracks)
+    const hasLyrics = !data.type || data.type === 'audio' || data.type === 'music'
+    if (!hasLyrics) {
       return NextResponse.json({ 
         success: false, 
         error: 'This media type does not have lyrics' 

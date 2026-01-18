@@ -823,9 +823,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             <div className="space-y-4">
               {/* Username */}
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Username</label>
+                <label htmlFor="edit-username" className="block text-sm text-gray-400 mb-2">Username</label>
                 <input
                   type="text"
+                  id="edit-username"
+                  name="username"
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
@@ -835,8 +837,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
               {/* Bio */}
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Bio</label>
+                <label htmlFor="edit-bio" className="block text-sm text-gray-400 mb-2">Bio</label>
                 <textarea
+                  id="edit-bio"
+                  name="bio"
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value)}
                   rows={4}
