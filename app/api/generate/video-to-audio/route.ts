@@ -216,7 +216,8 @@ export async function POST(req: NextRequest) {
           type: 'video',
           title: `Video SFX: ${prompt.substring(0, 50)}`,
           prompt: prompt,
-          audio_url: outputR2Result.url, // Using audio_url for video storage (media_url column doesn't exist yet)
+          audio_url: outputR2Result.url, // Store in audio_url (existing column)
+          media_url: outputR2Result.url, // Also store in media_url (new column, if exists)
           is_public: true
         })
       }
