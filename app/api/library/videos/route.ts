@@ -26,8 +26,8 @@ export async function GET() {
     // Normalize field names for frontend compatibility
     const normalizedVideos = videos.map(video => ({
       ...video,
-      audio_url: video.media_url || video.audio_url, // media_url is the primary field
-      audioUrl: video.media_url || video.audio_url
+      audioUrl: video.audio_url, // audio_url is the primary field for video storage
+      media_url: video.audio_url // For backwards compatibility
     }))
 
     return NextResponse.json({ 
