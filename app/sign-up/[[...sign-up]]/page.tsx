@@ -159,37 +159,77 @@ function SignUpContent() {
   }
 
   return (
-    <SignUp 
-      forceRedirectUrl="/"
-      signInUrl="/sign-in"
-      appearance={{
-        elements: {
-          formButtonPrimary: 'bg-gradient-to-r from-cyan-400 via-cyan-500 to-teal-400 text-black font-bold hover:shadow-cyan-500/50 hover:scale-105 transition-all duration-200',
-          card: 'bg-gradient-to-br from-slate-900/90 via-slate-900/50 to-slate-900/90 backdrop-blur-xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/10',
-          headerTitle: 'text-cyan-400 font-bold text-2xl',
-          headerSubtitle: 'text-gray-400 text-sm',
-          socialButtonsBlockButton: 'border-cyan-500/20 bg-slate-950/60 text-gray-200 hover:bg-cyan-500/10 hover:border-cyan-400/40 transition-all',
-          socialButtonsBlockButtonText: 'text-gray-200 font-medium',
-          formFieldInput: 'bg-slate-950/80 border-slate-700 text-gray-100 placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all',
-          formFieldLabel: 'text-gray-400 text-sm font-medium',
-          footerActionLink: 'text-cyan-400 hover:text-cyan-300 transition-colors font-medium',
-          footerActionText: 'text-gray-400',
-          identityPreviewText: 'text-gray-300',
-          formFieldInputShowPasswordButton: 'text-gray-400 hover:text-cyan-400',
-          formFieldAction: 'text-cyan-400 hover:text-cyan-300',
-          dividerLine: 'bg-slate-700',
-          dividerText: 'text-gray-500',
-          footer: 'bg-slate-950/60 border-t border-slate-700',
-          footerPagesLink: 'text-gray-400 hover:text-cyan-300',
-          rootBox: 'w-full',
-          cardBox: 'w-full',
-        },
-        layout: {
-          socialButtonsPlacement: 'bottom',
-          socialButtonsVariant: 'blockButton',
-        }
-      }}
-    />
+    <div className="w-full">
+      {/* 444Radio Header - replaces Clerk branding */}
+      <div className="text-center mb-6 animate-fade-in">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="relative">
+            <Radio className="w-10 h-10 text-cyan-400 animate-pulse" />
+            <Sparkles className="w-4 h-4 text-cyan-300 absolute -top-1 -right-1 animate-spin-slow" />
+          </div>
+        </div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-400 bg-clip-text text-transparent mb-1">
+          444Radio
+        </h1>
+        <p className="text-gray-400 text-sm">Create your account</p>
+      </div>
+
+      <SignUp 
+        forceRedirectUrl="/"
+        signInUrl="/sign-in"
+        appearance={{
+          elements: {
+            formButtonPrimary: 'bg-gradient-to-r from-cyan-400 via-cyan-500 to-teal-400 text-black font-bold hover:shadow-cyan-500/50 hover:scale-105 transition-all duration-200',
+            card: 'bg-gradient-to-br from-slate-900/90 via-slate-900/50 to-slate-900/90 backdrop-blur-xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/10',
+            // Hide Clerk header (we have our own above)
+            headerTitle: 'hidden',
+            headerSubtitle: 'hidden',
+            header: 'hidden',
+            logoBox: 'hidden',
+            logoImage: 'hidden',
+            // Social buttons
+            socialButtonsBlockButton: 'border-cyan-500/20 bg-slate-950/60 text-gray-200 hover:bg-cyan-500/10 hover:border-cyan-400/40 transition-all',
+            socialButtonsBlockButtonText: 'text-gray-200 font-medium',
+            socialButtonsIconButton: 'border-cyan-500/20 bg-slate-950/60 hover:bg-cyan-500/10',
+            // Form fields
+            formFieldInput: 'bg-slate-950/80 border-slate-700 text-gray-100 placeholder:text-gray-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 transition-all',
+            formFieldLabel: 'text-gray-400 text-sm font-medium',
+            formFieldInputShowPasswordButton: 'text-gray-400 hover:text-cyan-400',
+            formFieldAction: 'text-cyan-400 hover:text-cyan-300',
+            // Links and text
+            footerActionLink: 'text-cyan-400 hover:text-cyan-300 transition-colors font-medium',
+            footerActionText: 'text-gray-400',
+            identityPreviewText: 'text-gray-300',
+            identityPreviewEditButton: 'text-cyan-400 hover:text-cyan-300',
+            // Dividers
+            dividerLine: 'bg-slate-700',
+            dividerText: 'text-gray-500',
+            // Footer (hide Clerk branding)
+            footer: 'hidden',
+            footerPages: 'hidden',
+            footerPagesLink: 'hidden',
+            // Layout
+            rootBox: 'w-full',
+            cardBox: 'w-full shadow-none',
+            main: 'gap-4',
+          },
+          layout: {
+            socialButtonsPlacement: 'bottom',
+            socialButtonsVariant: 'blockButton',
+            showOptionalFields: false,
+            termsPageUrl: '/terms',
+            privacyPageUrl: '/privacy',
+          }
+        }}
+      />
+
+      {/* 444Radio Footer */}
+      <div className="mt-6 text-center">
+        <p className="text-gray-500 text-xs">
+          © 2026 444Radio. All rights reserved.
+        </p>
+      </div>
+    </div>
   )
 }
 
