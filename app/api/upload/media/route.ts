@@ -3,8 +3,13 @@ import { auth } from '@clerk/nextjs/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
-// No body size limit needed - we're generating presigned URLs, not receiving files
-export const maxDuration = 60
+// Allow larger uploads through API (50MB max for Vercel Pro, but we'll proxy to R2)
+export const maxDuration = 300
+export const config = {
+  api: {
+    bodyParser: false, // Disable body parsing, handle stream directly
+  },
+}
 
 const s3Client = new S3Client({
   region: 'auto',
@@ -17,8 +22,9 @@ const s3Client = new S3Client({
 
 /**
  * POST /api/upload/media
- * Generate a presigned URL for direct upload to R2 from client
- * This bypasses Vercel's body size limits
+ * Two modes:
+ * 1. JSON body {fileName, fileType, fileSize} → returns presigned URL (for direct upload)
+ * 2. FormData with file → uploads via server (bypass CORS, but slower)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -28,72 +34,132 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse JSON with better error handling
-    let body
-    try {
-      body = await req.json()
-    } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError)
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    const contentType = req.headers.get('content-type') || ''
+
+    // MODE 1: Generate presigned URL for direct client upload (requires CORS)
+    if (contentType.includes('application/json')) {
+      // Parse JSON with better error handling
+      let body
+      try {
+        body = await req.json()
+      } catch (parseError) {
+        console.error('❌ JSON parse error:', parseError)
+        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+      }
+
+      const { fileName, fileType, fileSize } = body
+
+      if (!fileName || !fileType) {
+        return NextResponse.json({ error: 'Missing fileName or fileType' }, { status: 400 })
+      }
+
+      // Validate file type
+      const isAudio = fileType.startsWith('audio/')
+      const isVideo = fileType.startsWith('video/')
+      
+      if (!isAudio && !isVideo) {
+        return NextResponse.json({ error: 'File must be audio or video' }, { status: 400 })
+      }
+
+      // Validate file size (100MB max)
+      const MAX_SIZE = 100 * 1024 * 1024
+      if (fileSize && fileSize > MAX_SIZE) {
+        return NextResponse.json({ error: 'File size must be under 100MB' }, { status: 400 })
+      }
+
+      console.log(`🔑 Generating presigned URL for ${fileType}:`, fileName, `(${(fileSize / (1024 * 1024)).toFixed(2)} MB)`)
+
+      // Determine bucket
+      const bucket = isVideo ? 'videos' : 'audio-files'
+      const timestamp = Date.now()
+      const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '-')
+      const key = `upload-${timestamp}-${sanitizedName}`
+
+      // Generate presigned URL for upload (valid for 10 minutes)
+      const command = new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        ContentType: fileType,
+      })
+
+      const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 })
+
+      // Construct the public URL that will be accessible after upload
+      const publicUrlBase = isVideo 
+        ? process.env.NEXT_PUBLIC_R2_VIDEOS_URL 
+        : process.env.NEXT_PUBLIC_R2_AUDIO_URL
+      const publicUrl = `${publicUrlBase}/${key}`
+
+      console.log('✅ Presigned URL generated:', key)
+
+      return NextResponse.json({
+        success: true,
+        mode: 'presigned',
+        uploadUrl: presignedUrl,
+        publicUrl: publicUrl,
+        key: key,
+        bucket: bucket
+      })
     }
 
-    const { fileName, fileType, fileSize } = body
+    // MODE 2: Server-side upload via FormData (no CORS needed, but uses Vercel bandwidth)
+    else if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData()
+      const file = formData.get('file') as File
+      
+      if (!file) {
+        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+      }
 
-    if (!fileName || !fileType) {
-      return NextResponse.json({ error: 'Missing fileName or fileType' }, { status: 400 })
+      const isAudio = file.type.startsWith('audio/')
+      const isVideo = file.type.startsWith('video/')
+      
+      if (!isAudio && !isVideo) {
+        return NextResponse.json({ error: 'File must be audio or video' }, { status: 400 })
+      }
+
+      console.log(`📤 Server-side upload: ${file.type}`, file.name, `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`)
+
+      const bucket = isVideo ? 'videos' : 'audio-files'
+      const timestamp = Date.now()
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '-')
+      const key = `upload-${timestamp}-${sanitizedName}`
+
+      // Convert file to buffer
+      const buffer = Buffer.from(await file.arrayBuffer())
+
+      // Upload directly to R2
+      const command = new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: file.type,
+      })
+
+      await s3Client.send(command)
+
+      const publicUrlBase = isVideo 
+        ? process.env.NEXT_PUBLIC_R2_VIDEOS_URL 
+        : process.env.NEXT_PUBLIC_R2_AUDIO_URL
+      const publicUrl = `${publicUrlBase}/${key}`
+
+      console.log('✅ Server-side upload complete:', publicUrl)
+
+      return NextResponse.json({
+        success: true,
+        mode: 'server',
+        url: publicUrl,
+        key: key,
+        bucket: bucket
+      })
     }
 
-    // Validate file type
-    const isAudio = fileType.startsWith('audio/')
-    const isVideo = fileType.startsWith('video/')
-    
-    if (!isAudio && !isVideo) {
-      return NextResponse.json({ error: 'File must be audio or video' }, { status: 400 })
-    }
-
-    // Validate file size (100MB max)
-    const MAX_SIZE = 100 * 1024 * 1024
-    if (fileSize && fileSize > MAX_SIZE) {
-      return NextResponse.json({ error: 'File size must be under 100MB' }, { status: 400 })
-    }
-
-    console.log(`🔑 Generating presigned URL for ${fileType}:`, fileName, `(${(fileSize / (1024 * 1024)).toFixed(2)} MB)`)
-
-    // Determine bucket
-    const bucket = isVideo ? 'videos' : 'audio-files'
-    const timestamp = Date.now()
-    const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '-')
-    const key = `upload-${timestamp}-${sanitizedName}`
-
-    // Generate presigned URL for upload (valid for 10 minutes)
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      ContentType: fileType,
-    })
-
-    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 })
-
-    // Construct the public URL that will be accessible after upload
-    const publicUrlBase = isVideo 
-      ? process.env.NEXT_PUBLIC_R2_VIDEOS_URL 
-      : process.env.NEXT_PUBLIC_R2_AUDIO_URL
-    const publicUrl = `${publicUrlBase}/${key}`
-
-    console.log('✅ Presigned URL generated:', key)
-
-    return NextResponse.json({
-      success: true,
-      uploadUrl: presignedUrl,
-      publicUrl: publicUrl,
-      key: key,
-      bucket: bucket
-    })
+    return NextResponse.json({ error: 'Invalid content type' }, { status: 400 })
 
   } catch (error) {
-    console.error('❌ Presigned URL generation error:', error)
+    console.error('❌ Upload error:', error)
     return NextResponse.json(
-      { error: 'Failed to generate upload URL' },
+      { error: 'Upload failed' },
       { status: 500 }
     )
   }

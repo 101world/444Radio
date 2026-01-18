@@ -80,48 +80,72 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
 
     setIsUploading(true)
     setError('')
-    setUploadProgress('Preparing upload...')
 
     try {
-      // Step 1: Get presigned URL for direct R2 upload
-      console.log('🔑 Step 1: Getting presigned URL...')
-      const presignedResponse = await fetch('/api/upload/media', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          fileName: selectedFile.name,
-          fileType: selectedFile.type,
-          fileSize: selectedFile.size
+      let publicUrl: string
+
+      // Try presigned URL first (faster, but requires CORS)
+      // If that fails, fallback to server-side upload
+      try {
+        setUploadProgress('Preparing upload...')
+        console.log('🔑 Step 1: Getting presigned URL...')
+        
+        const presignedResponse = await fetch('/api/upload/media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: selectedFile.name,
+            fileType: selectedFile.type,
+            fileSize: selectedFile.size
+          })
         })
-      })
 
-      if (!presignedResponse.ok) {
-        const presignedError = await presignedResponse.json()
-        throw new Error(presignedError.error || 'Failed to get upload URL')
-      }
-
-      const { uploadUrl, publicUrl } = await presignedResponse.json()
-      console.log('✅ Step 1 complete: Got presigned URL')
-
-      // Step 2: Upload directly to R2 using presigned URL (bypasses Vercel limits)
-      setUploadProgress('Uploading file to storage...')
-      console.log('📤 Step 2: Uploading file to R2...')
-      
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: selectedFile,
-        headers: {
-          'Content-Type': selectedFile.type,
+        if (!presignedResponse.ok) {
+          throw new Error('Presigned URL failed')
         }
-      })
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file to storage')
+        const { uploadUrl, publicUrl: previewUrl } = await presignedResponse.json()
+        console.log('✅ Step 1 complete: Got presigned URL')
+
+        // Step 2: Upload directly to R2 using presigned URL
+        setUploadProgress('Uploading file to storage...')
+        console.log('📤 Step 2: Uploading file to R2...')
+        
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: selectedFile,
+          headers: { 'Content-Type': selectedFile.type }
+        })
+
+        if (!uploadResponse.ok) {
+          throw new Error('Direct R2 upload failed (CORS?)')
+        }
+
+        console.log('✅ Step 2 complete: File uploaded to', previewUrl)
+        publicUrl = previewUrl
+
+      } catch (corsError) {
+        // Fallback: Server-side upload (no CORS needed)
+        console.warn('⚠️ Presigned upload failed, trying server-side:', corsError)
+        setUploadProgress('Uploading via server (backup method)...')
+        
+        const formData = new FormData()
+        formData.append('file', selectedFile)
+
+        const serverResponse = await fetch('/api/upload/media', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!serverResponse.ok) {
+          const serverError = await serverResponse.json()
+          throw new Error(serverError.error || 'Server upload failed')
+        }
+
+        const result = await serverResponse.json()
+        publicUrl = result.url
+        console.log('✅ Server-side upload complete:', publicUrl)
       }
-
-      console.log('✅ Step 2 complete: File uploaded to', publicUrl)
 
       // Step 3: Generate audio/remix using the uploaded file URL
       setUploadProgress('Generating audio...')
@@ -132,9 +156,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
 
       const generateResponse = await fetch(generateEndpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           videoUrl: publicUrl,
           audioUrl: publicUrl,
