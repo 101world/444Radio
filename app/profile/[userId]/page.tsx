@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { use } from 'react'
-import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle } from 'lucide-react'
+import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
@@ -74,6 +74,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [loading, setLoading] = useState(true)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
+  const [likedTracks, setLikedTracks] = useState<Set<string>>(new Set())
 
   // View State
   const [activeView, setActiveView] = useState<'profile' | 'station'>('profile')
@@ -427,6 +428,66 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     playTrack(audioPlayerTrack)
   }
 
+  // Handle Like/Unlike Track
+  const handleLikeTrack = async (trackId: string) => {
+    if (!user) {
+      alert('Please sign in to like tracks')
+      return
+    }
+
+    try {
+      const isLiked = likedTracks.has(trackId)
+      const response = await fetch('/api/media/like', {
+        method: isLiked ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaId: trackId })
+      })
+
+      if (!response.ok) throw new Error('Failed to update like')
+
+      // Update local state
+      const newLikedTracks = new Set(likedTracks)
+      if (isLiked) {
+        newLikedTracks.delete(trackId)
+      } else {
+        newLikedTracks.add(trackId)
+      }
+      setLikedTracks(newLikedTracks)
+
+      // Update track like count
+      setTracks(tracks.map(t => 
+        t.id === trackId 
+          ? { ...t, likes: isLiked ? t.likes - 1 : t.likes + 1 }
+          : t
+      ))
+    } catch (error) {
+      console.error('Error toggling like:', error)
+    }
+  }
+
+  // Load liked tracks on mount
+  useEffect(() => {
+    async function loadLikedTracks() {
+      if (!user?.id) return
+
+      try {
+        const { data, error } = await supabase
+          .from('likes')
+          .select('media_id')
+          .eq('user_id', user.id)
+
+        if (error) throw error
+
+        const liked = new Set(data.map(l => l.media_id))
+        setLikedTracks(liked)
+      } catch (error) {
+        console.error('Error loading liked tracks:', error)
+      }
+    }
+
+    loadLikedTracks()
+  }, [user?.id])
+
   // Send Chat Message
   const handleSendMessage = async () => {
     if (!user) return
@@ -697,19 +758,40 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       fill
                       className="object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleLikeTrack(track.id)
+                        }}
+                        className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all"
+                      >
+                        <Heart size={20} className={likedTracks.has(track.id) ? 'text-red-500 fill-red-500' : 'text-white'} />
+                      </button>
                       {currentTrack?.id === track.id && isPlaying ? (
                         <Pause size={48} className="text-white" />
                       ) : (
                         <Play size={48} className="text-white" />
                       )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPlaylist([...tracks])
+                        }}
+                        className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all"
+                      >
+                        <Plus size={20} className="text-white" />
+                      </button>
                     </div>
                   </div>
                   <div className="p-3">
                     <h3 className="font-bold text-sm truncate">{track.title}</h3>
                     <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
                       <span>{track.plays} plays</span>
-                      <span>{track.likes} likes</span>
+                      <span className="flex items-center gap-1">
+                        <Heart size={12} className={likedTracks.has(track.id) ? 'text-red-500 fill-red-500' : ''} />
+                        {track.likes}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -738,19 +820,39 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                   </div>
                   <div className="text-sm text-gray-400">{Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}</div>
                   <div className="text-sm text-gray-400">{track.plays} plays</div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handlePlayTrack(track)
-                    }}
-                    className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    {currentTrack?.id === track.id && isPlaying ? (
-                      <Pause size={16} className="text-black" />
-                    ) : (
-                      <Play size={16} className="text-black ml-0.5" />
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleLikeTrack(track.id)
+                      }}
+                      className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                    >
+                      <Heart size={14} className={likedTracks.has(track.id) ? 'text-red-500 fill-red-500' : 'text-gray-400'} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPlaylist([...tracks])
+                      }}
+                      className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                    >
+                      <Plus size={14} className="text-gray-400" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handlePlayTrack(track)
+                      }}
+                      className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center transition-all"
+                    >
+                      {currentTrack?.id === track.id && isPlaying ? (
+                        <Pause size={16} className="text-black" />
+                      ) : (
+                        <Play size={16} className="text-black ml-0.5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
