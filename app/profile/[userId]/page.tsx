@@ -438,9 +438,9 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     try {
       const isLiked = likedTracks.has(trackId)
       const response = await fetch('/api/media/like', {
-        method: isLiked ? 'DELETE' : 'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mediaId: trackId })
+        body: JSON.stringify({ releaseId: trackId })
       })
 
       if (!response.ok) throw new Error('Failed to update like')
@@ -472,13 +472,13 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
       try {
         const { data, error } = await supabase
-          .from('likes')
-          .select('media_id')
+          .from('user_likes')
+          .select('release_id')
           .eq('user_id', user.id)
 
         if (error) throw error
 
-        const liked = new Set(data.map(l => l.media_id))
+        const liked = new Set(data.map(l => l.release_id))
         setLikedTracks(liked)
       } catch (error) {
         console.error('Error loading liked tracks:', error)
