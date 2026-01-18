@@ -437,15 +437,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
     try {
       const isLiked = likedTracks.has(trackId)
-      const response = await fetch('/api/media/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ releaseId: trackId })
-      })
-
-      if (!response.ok) throw new Error('Failed to update like')
-
-      // Update local state
+      
+      // Optimistically update UI
       const newLikedTracks = new Set(likedTracks)
       if (isLiked) {
         newLikedTracks.delete(trackId)
@@ -457,9 +450,27 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       // Update track like count
       setTracks(tracks.map(t => 
         t.id === trackId 
-          ? { ...t, likes: isLiked ? t.likes - 1 : t.likes + 1 }
+          ? { ...t, likes: isLiked ? Math.max(0, t.likes - 1) : t.likes + 1 }
           : t
       ))
+
+      // Call API in background
+      const response = await fetch('/api/media/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ releaseId: trackId })
+      })
+
+      if (!response.ok) {
+        // Revert on error
+        setLikedTracks(likedTracks)
+        setTracks(tracks.map(t => 
+          t.id === trackId 
+            ? { ...t, likes: isLiked ? t.likes + 1 : Math.max(0, t.likes - 1) }
+            : t
+        ))
+        console.error('Failed to update like')
+      }
     } catch (error) {
       console.error('Error toggling like:', error)
     }
@@ -471,17 +482,19 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       if (!user?.id) return
 
       try {
+        // Try to load from user_likes table
         const { data, error } = await supabase
           .from('user_likes')
           .select('release_id')
           .eq('user_id', user.id)
 
-        if (error) throw error
-
-        const liked = new Set(data.map(l => l.release_id))
-        setLikedTracks(liked)
+        if (!error && data) {
+          const liked = new Set(data.map(l => l.release_id))
+          setLikedTracks(liked)
+        }
       } catch (error) {
-        console.error('Error loading liked tracks:', error)
+        // Silently fail - likes table may not exist yet
+        console.log('Likes table not available')
       }
     }
 
