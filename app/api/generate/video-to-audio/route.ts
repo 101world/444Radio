@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
     
     const outputR2Result = await uploadToR2(
       outputBuffer,
-      'videos',
+      '444radio-media',
       outputFileName
     )
 
