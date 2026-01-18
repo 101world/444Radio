@@ -464,33 +464,42 @@ export async function POST(req: NextRequest) {
           // Generate image using Replicate
           const imagePrompt = `${prompt} music album cover art, ${genre || 'electronic'} style, professional music artwork`
           
-          const imagePrediction = await replicate.predictions.create({
-            version: "39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b", // FLUX.1-dev model
-            input: {
-              prompt: imagePrompt,
-              num_outputs: 1,
-              aspect_ratio: "1:1",
-              output_format: "webp",
-              output_quality: 80,
-              num_inference_steps: 20
+          try {
+            // Use FLUX.2 Klein 9B Base for faster, better cover art
+            const imagePrediction = await replicate.predictions.create({
+              model: "black-forest-labs/flux-2-klein-9b-base",
+              input: {
+                prompt: imagePrompt,
+                aspect_ratio: "1:1",
+                output_format: "jpg",
+                output_quality: 95,
+                output_megapixels: "1",
+                guidance: 4,
+                go_fast: true,
+                images: []
+              }
+            })
+
+            // Poll for completion
+            let imageResult = await replicate.predictions.get(imagePrediction.id)
+            let attempts = 0
+            while (imageResult.status !== 'succeeded' && imageResult.status !== 'failed' && attempts < 40) { // ~40 seconds max (reduced from 60s)
+              await new Promise(resolve => setTimeout(resolve, 1000))
+              imageResult = await replicate.predictions.get(imagePrediction.id)
+              attempts++
             }
-          })
 
-          // Poll for completion
-          let imageResult = await replicate.predictions.get(imagePrediction.id)
-          let attempts = 0
-          while (imageResult.status !== 'succeeded' && imageResult.status !== 'failed' && attempts < 40) { // ~40 seconds max (reduced from 60s)
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            imageResult = await replicate.predictions.get(imagePrediction.id)
-            attempts++
-          }
-
-          if (imageResult.status === 'succeeded' && imageResult.output) {
+            if (imageResult.status === 'succeeded' && imageResult.output) {
             const imageUrls = Array.isArray(imageResult.output) ? imageResult.output : [imageResult.output]
-            const imageUrl = imageUrls[0]
+            let imageUrl = imageUrls[0]
+            
+            // Handle FLUX.2 Klein output format with .url() method
+            if (typeof imageUrl === 'object' && 'url' in imageUrl && typeof imageUrl.url === 'function') {
+              imageUrl = imageUrl.url()
+            }
 
             // Upload image to R2
-            const imageFileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-cover-${Date.now()}.webp`
+            const imageFileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-cover-${Date.now()}.jpg`
             
             const imageR2Result = await downloadAndUploadToR2(
               imageUrl,
@@ -509,12 +518,22 @@ export async function POST(req: NextRequest) {
               // Continue without image
             }
           } else {
-            console.error('❌ Cover art generation failed:', imageResult.error)
+              console.error('❌ Cover art generation failed:', imageResult.error)
+              // Continue without image
+            }
+          } catch (innerImageError) {
+            console.error('❌ Cover art generation error:', innerImageError)
+            const errorMessage = innerImageError instanceof Error ? innerImageError.message : String(innerImageError)
+            const is502Error = errorMessage.includes('502') || errorMessage.includes('Bad Gateway')
+            
+            if (is502Error) {
+              console.warn('🔒 444 radio is lockin in - Replicate API temporarily unavailable')
+            }
             // Continue without image
           }
         }
       } catch (imageError) {
-        console.error('❌ Cover art generation error:', imageError)
+        console.error('❌ Cover art generation outer error:', imageError)
         // Continue without image
       }
     }

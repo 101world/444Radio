@@ -10,17 +10,20 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
 })
 
-async function createPredictionWithRetry(replicateClient: Replicate, version: string, input: any, maxRetries = 3) {
+async function createPredictionWithRetry(replicateClient: Replicate, version: string, input: any, maxRetries = 4) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const prediction = await replicateClient.predictions.create({ version, input })
       return prediction
     } catch (error: any) {
-      const is502or500 = error?.message?.includes('502') || error?.message?.includes('500') || error?.response?.status === 502 || error?.response?.status === 500
+      const errorMessage = error?.message || String(error)
+      const is502or500 = errorMessage.includes('502') || errorMessage.includes('500') || errorMessage.includes('Bad Gateway') || error?.response?.status === 502 || error?.response?.status === 500
       
       if (is502or500 && attempt < maxRetries) {
-        console.log(`⚠️ Replicate API error (attempt ${attempt}/${maxRetries}), retrying in ${attempt * 2}s...`)
-        await new Promise(resolve => setTimeout(resolve, attempt * 2000)) // Exponential backoff
+        const waitTime = attempt * 3 // 3s, 6s, 9s exponential backoff
+        console.log(`⚠️ Replicate API error (attempt ${attempt}/${maxRetries}), retrying in ${waitTime}s...`)
+        console.log(`   Error: ${errorMessage}`)
+        await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
         continue
       }
       throw error
@@ -50,44 +53,58 @@ export async function POST(req: NextRequest) {
     // Create a visual prompt for album cover
     const coverPrompt = `Album cover art for: ${prompt}. Professional music album artwork, vibrant colors, artistic, high quality, studio lighting`
     
-    // Create prediction with custom parameters and retry logic
-    const prediction = await createPredictionWithRetry(
-      replicate,
-      "black-forest-labs/flux-schnell",
-      {
-        prompt: coverPrompt,
-        num_outputs: params?.num_outputs ?? 1,
-        aspect_ratio: params?.aspect_ratio ?? "1:1",
-        output_format: params?.output_format ?? "webp",
-        output_quality: params?.output_quality ?? 80,
-        go_fast: params?.go_fast ?? true, // Use optimized fp8 quantization
-        num_inference_steps: params?.num_inference_steps ?? 4, // 1-4 steps for schnell
-        disable_safety_checker: false
+    // Create prediction with FLUX.2 Klein 9B Base (faster, better quality)
+    let prediction, finalPrediction
+    try {
+      prediction = await createPredictionWithRetry(
+        replicate,
+        "black-forest-labs/flux-2-klein-9b-base",
+        {
+          prompt: coverPrompt,
+          aspect_ratio: params?.aspect_ratio ?? "1:1",
+          output_format: params?.output_format ?? "jpg",
+          output_quality: params?.output_quality ?? 95,
+          output_megapixels: params?.output_megapixels ?? "1",
+          guidance: params?.guidance ?? 4,
+          go_fast: params?.go_fast ?? true,
+          images: []
+        }
+      )
+
+      console.log('🎨 Cover art prediction created:', prediction.id)
+
+      // Poll until completed
+      finalPrediction = prediction
+      while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed') {
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Poll every 1 second (fast model)
+        finalPrediction = await replicate.predictions.get(prediction.id)
+        console.log('🎨 Cover art generation status:', finalPrediction.status)
       }
-    )
 
-    console.log('🎨 Cover art prediction created:', prediction.id)
-
-    // Poll until completed
-    let finalPrediction = prediction
-    while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed') {
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Poll every 1 second (fast model)
-      finalPrediction = await replicate.predictions.get(prediction.id)
-      console.log('🎨 Cover art generation status:', finalPrediction.status)
+      if (finalPrediction.status === 'failed') {
+        const errorMsg = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Cover art generation failed'
+        throw new Error(errorMsg)
+      }
+    } catch (predictionError) {
+      console.error('❌ Cover art prediction error:', predictionError)
+      const errorMessage = predictionError instanceof Error ? predictionError.message : String(predictionError)
+      const is502Error = errorMessage.includes('502') || errorMessage.includes('Bad Gateway')
+      
+      throw new Error(
+        is502Error 
+          ? '444 radio is lockin in. Please refresh and retry again! Lock in.'
+          : errorMessage
+      )
     }
 
-    if (finalPrediction.status === 'failed') {
-      const errorMsg = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Cover art generation failed'
-      throw new Error(errorMsg)
-    }
-
-    // The output is an array of URLs from Flux Schnell
+    // The output is an array from FLUX.2 Klein
     const output = finalPrediction.output
     let imageUrl: string
     
-    // Handle different output formats:
+    // Handle FLUX.2 Klein output format:
     // - Array of URL strings: ["https://..."]
     // - Array of objects with url(): [{url: () => "https://..."}]
+    // - Direct string: "https://..."
     if (Array.isArray(output)) {
       const firstItem = output[0]
       // Check if it's an object with url() method

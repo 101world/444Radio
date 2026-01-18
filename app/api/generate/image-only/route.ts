@@ -52,38 +52,80 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Image requires 1 credit.`)
 
-    // Generate image directly with Flux Schnell
+    // Generate image directly with Flux Schnell (with retry logic for 502 errors)
     console.log('🎨 Generating standalone image with Flux Schnell')
     console.log('🎨 Prompt:', prompt)
     console.log('🎨 Parameters:', params)
     
     let output;
-    try {
-      output = await replicate.run(
-        "black-forest-labs/flux-schnell",
-        {
-          input: {
-            prompt,
-            num_outputs: params?.num_outputs ?? 1,
-            aspect_ratio: params?.aspect_ratio ?? "1:1",
-            output_format: params?.output_format ?? "webp",
-            output_quality: params?.output_quality ?? 80,
-            go_fast: params?.go_fast ?? true,
-            num_inference_steps: params?.num_inference_steps ?? 4,
-            disable_safety_checker: false
+    const maxRetries = 3
+    let lastError: any = null
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🎨 Generation attempt ${attempt}/${maxRetries} with FLUX.2 Klein 9B`)
+        output = await replicate.run(
+          "black-forest-labs/flux-2-klein-9b-base",
+          {
+            input: {
+              prompt,
+              aspect_ratio: params?.aspect_ratio ?? "1:1",
+              output_format: params?.output_format ?? "jpg",
+              output_quality: params?.output_quality ?? 95,
+              output_megapixels: params?.output_megapixels ?? "1",
+              guidance: params?.guidance ?? 4,
+              go_fast: params?.go_fast ?? true,
+              images: [] // For potential image-to-image in future
+            }
           }
+        )
+        console.log('✅ FLUX.2 Klein generation succeeded in ~2-3s')
+        break // Success, exit retry loop
+      } catch (genError) {
+        lastError = genError
+        const errorMessage = genError instanceof Error ? genError.message : String(genError)
+        const is502Error = errorMessage.includes('502') || errorMessage.includes('Bad Gateway')
+        
+        if (is502Error && attempt < maxRetries) {
+          const waitTime = attempt * 3 // 3s, 6s exponential backoff
+          console.log(`⚠️ 502 Bad Gateway (attempt ${attempt}/${maxRetries}), retrying in ${waitTime}s...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
+          continue
         }
-      )
-      console.log('✅ Flux generation succeeded')
-    } catch (genError) {
-      console.error('❌ Image generation failed:', genError)
-      // NO credits deducted since generation failed
+        
+        // Either not a 502 or we're out of retries
+        console.error(`❌ Image generation failed after ${attempt} attempts:`, genError)
+        
+        // NO credits deducted since generation failed
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: is502Error 
+              ? '444 radio is lockin in. Please refresh and retry again! Lock in.' 
+              : errorMessage || 'Image generation failed',
+            creditsRefunded: false,
+            creditsRemaining: user.credits,
+            retriesAttempted: attempt
+          },
+          { status: 500 }
+        )
+      }
+    }
+    
+    if (!output) {
+      // All retries failed
+      const errorMessage = lastError instanceof Error ? lastError.message : String(lastError)
+      const is502Error = errorMessage.includes('502') || errorMessage.includes('Bad Gateway')
+      
       return NextResponse.json(
         { 
           success: false, 
-          error: genError instanceof Error ? genError.message : 'Image generation failed',
+          error: is502Error 
+            ? '444 radio is lockin in. Please refresh and retry again! Lock in.' 
+            : 'Image generation failed after all retries',
           creditsRefunded: false,
-          creditsRemaining: user.credits
+          creditsRemaining: user.credits,
+          retriesAttempted: maxRetries
         },
         { status: 500 }
       )

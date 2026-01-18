@@ -9,17 +9,20 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN!,
 })
 
-async function createPredictionWithRetry(replicateClient: Replicate, version: string, input: any, maxRetries = 3) {
+async function createPredictionWithRetry(replicateClient: Replicate, version: string, input: any, maxRetries = 4) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const prediction = await replicateClient.predictions.create({ version, input })
       return prediction
     } catch (error: any) {
-      const is502or500 = error?.message?.includes('502') || error?.message?.includes('500') || error?.response?.status === 502 || error?.response?.status === 500
+      const errorMessage = error?.message || String(error)
+      const is502or500 = errorMessage.includes('502') || errorMessage.includes('500') || errorMessage.includes('Bad Gateway') || error?.response?.status === 502 || error?.response?.status === 500
       
       if (is502or500 && attempt < maxRetries) {
-        console.log(`⚠️ Replicate API error (attempt ${attempt}/${maxRetries}), retrying in ${attempt * 2}s...`)
-        await new Promise(resolve => setTimeout(resolve, attempt * 2000)) // Exponential backoff
+        const waitTime = attempt * 3 // 3s, 6s, 9s exponential backoff
+        console.log(`⚠️ Replicate API error (attempt ${attempt}/${maxRetries}), retrying in ${waitTime}s...`)
+        console.log(`   Error: ${errorMessage}`)
+        await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
         continue
       }
       throw error
