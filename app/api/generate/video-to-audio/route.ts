@@ -26,13 +26,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate videoUrl is a proper URI
+    let validatedUrl: string
     try {
-      new URL(videoUrl)
+      const urlObj = new URL(videoUrl)
+      validatedUrl = urlObj.href
+      
+      // Ensure it's http or https
+      if (!['http:', 'https:'].includes(urlObj.protocol)) {
+        throw new Error('URL must use HTTP or HTTPS protocol')
+      }
+      
+      console.log('✅ Valid video URL:', validatedUrl)
     } catch (e) {
-      console.error('❌ Invalid video URL format:', videoUrl)
+      console.error('❌ Invalid video URL format:', videoUrl, e)
       return NextResponse.json({ 
         error: 'Invalid video URL format. Must be a valid HTTP(S) URL.',
-        receivedUrl: videoUrl 
+        receivedUrl: videoUrl,
+        details: e instanceof Error ? e.message : String(e)
       }, { status: 400 })
     }
 
@@ -67,13 +77,13 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Video-to-audio requires 2 credits.`)
 
-    // Video is already uploaded to R2, use the provided URL directly
-    console.log('✅ Using uploaded video URL:', videoUrl)
+    // Video is already uploaded to R2, use the validated URL directly
+    console.log('✅ Using uploaded video URL:', validatedUrl)
 
     // Generate audio using MMAudio with retry logic
     console.log('🎵 Generating synced audio with MMAudio...')
     console.log('🎵 Prompt:', prompt)
-    console.log('🎵 Video URL:', videoUrl)
+    console.log('🎵 Video URL:', validatedUrl)
 
     let output: any
     const maxRetries = 3
@@ -87,7 +97,7 @@ export async function POST(req: NextRequest) {
           model: "zsxkib/mmaudio",
           version: "62871fb59889b2d7c13777f08deb3b36bdff88f7e1d53a50ad7694548a41b484",
           input: {
-            video: videoUrl,
+            video: validatedUrl, // Use validated URL
             prompt: prompt,
             duration: 8, // Will auto-truncate to video length
             num_steps: 25,
