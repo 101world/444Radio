@@ -14,6 +14,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
   const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
   const [prompt, setPrompt] = useState('')
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
   const [error, setError] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -79,28 +80,54 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
 
     setIsUploading(true)
     setError('')
+    setUploadProgress('Uploading file...')
 
     try {
-      const formData = new FormData()
-      formData.append('file', selectedFile)
-      formData.append('prompt', prompt)
-      formData.append('type', fileType)
+      // Step 1: Upload file to R2
+      console.log('📤 Step 1: Uploading file to R2...')
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', selectedFile)
+      uploadFormData.append('type', fileType)
 
-      const endpoint = fileType === 'video' 
+      const uploadResponse = await fetch('/api/upload/media', {
+        method: 'POST',
+        body: uploadFormData
+      })
+
+      if (!uploadResponse.ok) {
+        const uploadError = await uploadResponse.json()
+        throw new Error(uploadError.error || 'Failed to upload file')
+      }
+
+      const uploadResult = await uploadResponse.json()
+      console.log('✅ Step 1 complete: File uploaded to', uploadResult.url)
+
+      // Step 2: Generate audio/remix using the uploaded file URL
+      setUploadProgress('Generating audio...')
+      console.log('🎵 Step 2: Generating...')
+      const generateEndpoint = fileType === 'video' 
         ? '/api/generate/video-to-audio'
         : '/api/generate/audio-to-audio'
 
-      const response = await fetch(endpoint, {
+      const generateResponse = await fetch(generateEndpoint, {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          videoUrl: uploadResult.url,
+          audioUrl: uploadResult.url,
+          prompt: prompt
+        })
       })
 
-      const result = await response.json()
+      const result = await generateResponse.json()
 
-      if (!response.ok || result.error) {
+      if (!generateResponse.ok || result.error) {
         throw new Error(result.error || 'Generation failed')
       }
 
+      console.log('✅ Step 2 complete:', result)
       onSuccess?.(result)
       handleClose()
     } catch (err) {
@@ -108,6 +135,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setIsUploading(false)
+      setUploadProgress('')
     }
   }
 
@@ -325,6 +353,14 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
             <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
               <AlertCircle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-300">{error}</p>
+            </div>
+          )}
+
+          {/* Upload Progress */}
+          {isUploading && uploadProgress && (
+            <div className="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg flex items-center gap-2">
+              <Loader2 size={18} className="text-cyan-400 animate-spin flex-shrink-0" />
+              <p className="text-sm text-cyan-300">{uploadProgress}</p>
             </div>
           )}
 

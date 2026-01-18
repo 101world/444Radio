@@ -18,24 +18,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const formData = await req.formData()
-    const file = formData.get('file') as File
-    const prompt = formData.get('prompt') as string
+    const body = await req.json()
+    const { videoUrl, prompt } = body
 
-    if (!file || !prompt) {
-      return NextResponse.json({ error: 'Missing file or prompt' }, { status: 400 })
+    if (!videoUrl || !prompt) {
+      return NextResponse.json({ error: 'Missing videoUrl or prompt' }, { status: 400 })
     }
 
-    // Validate file type
-    if (!file.type.startsWith('video/')) {
-      return NextResponse.json({ error: 'File must be a video' }, { status: 400 })
-    }
-
-    // Validate file size (100MB max)
-    const MAX_SIZE = 100 * 1024 * 1024
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'File size must be under 100MB' }, { status: 400 })
-    }
+    console.log('🎬 Video-to-audio generation request')
+    console.log('📹 Video URL:', videoUrl)
+    console.log('💬 Prompt:', prompt)
 
     // Check user credits
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -64,30 +56,13 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Video-to-audio requires 2 credits.`)
 
-    // Upload video to R2 first
-    console.log('📤 Uploading video to R2...')
-    const videoFileName = `video-${Date.now()}-${file.name}`
-    const videoBuffer = Buffer.from(await file.arrayBuffer())
-    
-    const videoR2Result = await uploadToR2(
-      videoBuffer,
-      'videos',
-      videoFileName
-    )
-
-    if (!videoR2Result.success) {
-      return NextResponse.json({ 
-        error: 'Failed to upload video',
-        details: videoR2Result.error 
-      }, { status: 500 })
-    }
-
-    console.log('✅ Video uploaded to R2:', videoR2Result.url)
+    // Video is already uploaded to R2, use the provided URL directly
+    console.log('✅ Using uploaded video URL:', videoUrl)
 
     // Generate audio using MMAudio with retry logic
     console.log('🎵 Generating synced audio with MMAudio...')
     console.log('🎵 Prompt:', prompt)
-    console.log('🎵 Video URL:', videoR2Result.url)
+    console.log('🎵 Video URL:', videoUrl)
 
     let output: any
     const maxRetries = 3
@@ -101,7 +76,7 @@ export async function POST(req: NextRequest) {
           model: "zsxkib/mmaudio",
           version: "62871fb59889b2d7c13777f08deb3b36bdff88f7e1d53a50ad7694548a41b484",
           input: {
-            video: videoR2Result.url,
+            video: videoUrl,
             prompt: prompt,
             duration: 8, // Will auto-truncate to video length
             num_steps: 25,
