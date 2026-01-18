@@ -1,0 +1,290 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import Replicate from 'replicate'
+import { uploadToR2 } from '@/lib/r2-upload'
+
+// Allow up to 5 minutes for video-to-audio generation (Vercel Pro limit: 300s)
+export const maxDuration = 300
+
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN!,
+})
+
+// POST /api/generate/video-to-audio - Generate synced audio/SFX for video
+export async function POST(req: NextRequest) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const formData = await req.formData()
+    const file = formData.get('file') as File
+    const prompt = formData.get('prompt') as string
+
+    if (!file || !prompt) {
+      return NextResponse.json({ error: 'Missing file or prompt' }, { status: 400 })
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      return NextResponse.json({ error: 'File must be a video' }, { status: 400 })
+    }
+
+    // Validate file size (100MB max)
+    const MAX_SIZE = 100 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'File size must be under 100MB' }, { status: 400 })
+    }
+
+    // Check user credits
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    const userRes = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+    
+    const userData = await userRes.json()
+    const user = userData?.[0]
+    
+    if (!user || user.credits < 2) {
+      return NextResponse.json({ 
+        error: 'Insufficient credits. Video-to-audio generation requires 2 credits.',
+        creditsNeeded: 2,
+        creditsAvailable: user?.credits || 0
+      }, { status: 402 })
+    }
+
+    console.log(`💰 User has ${user.credits} credits. Video-to-audio requires 2 credits.`)
+
+    // Upload video to R2 first
+    console.log('📤 Uploading video to R2...')
+    const videoFileName = `video-${Date.now()}-${file.name}`
+    const videoBuffer = Buffer.from(await file.arrayBuffer())
+    
+    const videoR2Result = await uploadToR2(
+      videoBuffer,
+      'videos',
+      videoFileName
+    )
+
+    if (!videoR2Result.success) {
+      return NextResponse.json({ 
+        error: 'Failed to upload video',
+        details: videoR2Result.error 
+      }, { status: 500 })
+    }
+
+    console.log('✅ Video uploaded to R2:', videoR2Result.url)
+
+    // Generate audio using MMAudio with retry logic
+    console.log('🎵 Generating synced audio with MMAudio...')
+    console.log('🎵 Prompt:', prompt)
+    console.log('🎵 Video URL:', videoR2Result.url)
+
+    let output: any
+    const maxRetries = 3
+    let lastError: any = null
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🎵 Generation attempt ${attempt}/${maxRetries}`)
+        
+        const prediction = await replicate.predictions.create({
+          model: "zsxkib/mmaudio",
+          version: "62871fb59889b2d7c13777f08deb3b36bdff88f7e1d53a50ad7694548a41b484",
+          input: {
+            video: videoR2Result.url,
+            prompt: prompt,
+            duration: 8, // Will auto-truncate to video length
+            num_steps: 25,
+            cfg_strength: 4.5,
+            negative_prompt: "music", // Focus on SFX, not background music
+            seed: -1 // Random seed
+          }
+        })
+
+        console.log('🎵 Prediction created:', prediction.id)
+
+        // Poll until completed
+        let finalPrediction = prediction
+        let pollAttempts = 0
+        const maxPollAttempts = 60 // 60 seconds max (MMAudio is fast)
+        
+        while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && pollAttempts < maxPollAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          finalPrediction = await replicate.predictions.get(prediction.id)
+          console.log(`🎵 Status: ${finalPrediction.status}`)
+          pollAttempts++
+        }
+
+        if (finalPrediction.status === 'failed') {
+          throw new Error(typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Generation failed')
+        }
+
+        if (finalPrediction.status !== 'succeeded') {
+          throw new Error('Generation timed out')
+        }
+
+        output = finalPrediction.output
+        console.log('✅ MMAudio generation succeeded')
+        break // Success, exit retry loop
+
+      } catch (genError) {
+        lastError = genError
+        const errorMessage = genError instanceof Error ? genError.message : String(genError)
+        const is502Error = errorMessage.includes('502') || errorMessage.includes('Bad Gateway')
+        
+        if (is502Error && attempt < maxRetries) {
+          const waitTime = attempt * 3
+          console.log(`⚠️ 502 Bad Gateway (attempt ${attempt}/${maxRetries}), retrying in ${waitTime}s...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
+          continue
+        }
+        
+        console.error(`❌ Generation failed after ${attempt} attempts:`, genError)
+        
+        return NextResponse.json(
+          { 
+            error: is502Error 
+              ? '444 radio is lockin in. Please refresh and retry again! Lock in.' 
+              : errorMessage || 'Generation failed',
+            creditsRefunded: false,
+            creditsRemaining: user.credits,
+            retriesAttempted: attempt
+          },
+          { status: 500 }
+        )
+      }
+    }
+
+    if (!output) {
+      const errorMessage = lastError instanceof Error ? lastError.message : String(lastError)
+      const is502Error = errorMessage.includes('502') || errorMessage.includes('Bad Gateway')
+      
+      return NextResponse.json(
+        { 
+          error: is502Error 
+            ? '444 radio is lockin in. Please refresh and retry again! Lock in.' 
+            : 'Generation failed after all retries',
+          creditsRefunded: false,
+          creditsRemaining: user.credits,
+          retriesAttempted: maxRetries
+        },
+        { status: 500 }
+      )
+    }
+
+    // Output is a video URL with synced audio
+    const outputVideoUrl = typeof output === 'string' ? output : output.url || output[0]
+    
+    if (!outputVideoUrl) {
+      throw new Error('No output URL from MMAudio')
+    }
+
+    console.log('✅ Output video with audio:', outputVideoUrl)
+
+    // Download and re-upload to R2 for permanent storage
+    console.log('📥 Downloading generated video...')
+    const downloadRes = await fetch(outputVideoUrl)
+    if (!downloadRes.ok) {
+      throw new Error('Failed to download generated video')
+    }
+
+    const outputBuffer = Buffer.from(await downloadRes.arrayBuffer())
+    const outputFileName = `synced-${Date.now()}.mp4`
+    
+    const outputR2Result = await uploadToR2(
+      outputBuffer,
+      'videos',
+      outputFileName
+    )
+
+    if (!outputR2Result.success) {
+      throw new Error('Failed to upload result to R2')
+    }
+
+    console.log('✅ Result uploaded to R2:', outputR2Result.url)
+
+    // Save to combined_media table
+    console.log('💾 Saving to combined_media...')
+    const saveRes = await fetch(
+      `${supabaseUrl}/rest/v1/combined_media`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          type: 'video',
+          title: `Video SFX: ${prompt.substring(0, 50)}`,
+          prompt: prompt,
+          media_url: outputR2Result.url,
+          is_public: true
+        })
+      }
+    )
+
+    if (!saveRes.ok) {
+      console.error('⚠️ Failed to save to library')
+    } else {
+      const saved = await saveRes.json()
+      console.log('✅ Saved to library:', saved[0]?.id)
+    }
+
+    // NOW deduct credits (-2) since everything succeeded
+    console.log(`💰 Deducting 2 credits from user (${user.credits} → ${user.credits - 2})`)
+    const creditDeductRes = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          credits: user.credits - 2,
+          total_generated: (user.total_generated || 0) + 1
+        })
+      }
+    )
+
+    if (!creditDeductRes.ok) {
+      console.error('⚠️ Failed to deduct credits, but generation succeeded')
+    } else {
+      console.log('✅ Credits deducted successfully')
+    }
+
+    console.log('✅ Video-to-audio generation complete')
+
+    return NextResponse.json({ 
+      success: true, 
+      videoUrl: outputR2Result.url,
+      prompt,
+      creditsRemaining: user.credits - 2,
+      message: 'Synced audio generated successfully'
+    })
+
+  } catch (error) {
+    console.error('Video-to-audio generation error:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json(
+      { error: `Failed to generate video audio: ${errorMessage}` },
+      { status: 500 }
+    )
+  }
+}

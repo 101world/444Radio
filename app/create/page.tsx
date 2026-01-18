@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
+import MediaUploadModal from '../components/MediaUploadModal'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -76,6 +77,7 @@ function CreatePageContent() {
   const [showMusicModal, setShowMusicModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
   const [showReleaseModal, setShowReleaseModal] = useState(false)
+  const [showMediaUploadModal, setShowMediaUploadModal] = useState(false)
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
   const [preselectedImageId, setPreselectedImageId] = useState<string | undefined>()
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -1728,6 +1730,20 @@ function CreatePageContent() {
             </button>
             )}
 
+            {/* Upload Button - New for Audio/Video Processing */}
+            {showAdvancedButtons && (
+            <button
+              onClick={() => setShowMediaUploadModal(true)}
+              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
+              title="Upload Audio/Video"
+            >
+              <Upload 
+                size={18} 
+                className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]"
+              />
+            </button>
+            )}
+
             {/* Clear Chat Button - Hidden by default */}
             {showAdvancedButtons && (
             <button
@@ -2359,6 +2375,35 @@ function CreatePageContent() {
         }}
         preselectedMusic={preselectedMusicId}
         preselectedImage={preselectedImageId}
+      />
+
+      {/* Media Upload Modal - New for Audio/Video Processing */}
+      <MediaUploadModal
+        isOpen={showMediaUploadModal}
+        onClose={() => setShowMediaUploadModal(false)}
+        onSuccess={(result) => {
+          // Add result to messages
+          const resultMessage: Message = {
+            id: Date.now().toString(),
+            type: 'generation',
+            content: '✅ Processing complete!',
+            generationType: 'video',
+            result: {
+              url: result.videoUrl,
+              title: result.prompt,
+              prompt: result.prompt
+            },
+            timestamp: new Date()
+          }
+          setMessages(prev => [...prev, resultMessage])
+          
+          // Update credits
+          if (result.creditsRemaining !== undefined) {
+            setUserCredits(result.creditsRemaining)
+          } else {
+            fetchCredits()
+          }
+        }}
       />
 
       {/* Floating Navigation Button */}
