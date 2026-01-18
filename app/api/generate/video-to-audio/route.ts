@@ -25,6 +25,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing videoUrl or prompt' }, { status: 400 })
     }
 
+    // Validate videoUrl is a proper URI
+    try {
+      new URL(videoUrl)
+    } catch (e) {
+      console.error('❌ Invalid video URL format:', videoUrl)
+      return NextResponse.json({ 
+        error: 'Invalid video URL format. Must be a valid HTTP(S) URL.',
+        receivedUrl: videoUrl 
+      }, { status: 400 })
+    }
+
     console.log('🎬 Video-to-audio generation request')
     console.log('📹 Video URL:', videoUrl)
     console.log('💬 Prompt:', prompt)

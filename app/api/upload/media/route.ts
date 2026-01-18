@@ -91,6 +91,8 @@ export async function POST(req: NextRequest) {
       const publicUrl = `${publicUrlBase}/${key}`
 
       console.log('✅ Presigned URL generated:', key)
+      console.log('🌐 Public URL will be:', publicUrl)
+      console.log('🔗 Base URL:', publicUrlBase)
 
       return NextResponse.json({
         success: true,
