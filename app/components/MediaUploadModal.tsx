@@ -40,34 +40,29 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
       return
     }
 
-    // Validate duration (will be checked more thoroughly on server)
-    const media = document.createElement(isVideo ? 'video' : 'audio') as HTMLVideoElement | HTMLAudioElement
+    // Set file immediately for better UX
+    setSelectedFile(file)
+    setFileType(isVideo ? 'video' : 'audio')
     const objectUrl = URL.createObjectURL(file)
+    setPreviewUrl(objectUrl)
+
+    // Validate duration asynchronously (warning only, server will enforce)
+    const media = document.createElement(isVideo ? 'video' : 'audio') as HTMLVideoElement | HTMLAudioElement
     
     media.onloadedmetadata = () => {
       const duration = media.duration
       
-      if (isVideo && duration > 5) {
-        setError('Video must be 5 seconds or less')
-        URL.revokeObjectURL(objectUrl)
-        return
+      if (isVideo && duration > 5.5) {
+        setError(`⚠️ Video is ${duration.toFixed(1)}s. Recommended max is 5s. May be truncated.`)
       }
       
-      if (isAudio && duration > 30) {
-        setError('Audio must be 30 seconds or less')
-        URL.revokeObjectURL(objectUrl)
-        return
+      if (isAudio && duration > 30.5) {
+        setError(`⚠️ Audio is ${duration.toFixed(1)}s. Recommended max is 30s. May be truncated.`)
       }
-      
-      // File is valid
-      setSelectedFile(file)
-      setFileType(isVideo ? 'video' : 'audio')
-      setPreviewUrl(objectUrl)
     }
     
     media.onerror = () => {
-      setError('Failed to load media file')
-      URL.revokeObjectURL(objectUrl)
+      console.warn('Could not load media metadata, but file is selected')
     }
     
     media.src = objectUrl
@@ -158,6 +153,44 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         {/* Content */}
         <div className="p-6 space-y-4">
           
+          {/* Feature Cards - Show before file is selected */}
+          {!selectedFile && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              {/* Video to Audio Card */}
+              <div className="p-4 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Film size={24} className="text-cyan-400 flex-shrink-0 mt-1" />
+                  <div>
+                    <h4 className="text-sm font-bold text-white mb-1">Video to Audio</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Upload a video (up to 5s) and generate synced sound effects. Perfect for car engines, nature sounds, action scenes.
+                    </p>
+                    <div className="mt-2 flex items-center gap-1 text-xs text-cyan-400">
+                      <span className="font-semibold">2 credits</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Audio to Audio Card */}
+              <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Music size={24} className="text-purple-400 flex-shrink-0 mt-1" />
+                  <div>
+                    <h4 className="text-sm font-bold text-white mb-1">Audio Remix</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Upload audio (up to 30s) and create AI variations. Remix melodies, change genres, add instruments.
+                    </p>
+                    <div className="mt-2 flex items-center gap-1 text-xs text-purple-400">
+                      <span className="font-semibold">2 credits</span>
+                      <span className="text-gray-500">• Coming Soon</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* File Upload Area */}
           <div 
             className="border-2 border-dashed border-cyan-500/30 rounded-xl p-8 text-center cursor-pointer hover:border-cyan-400/50 hover:bg-cyan-500/5 transition-all"
@@ -238,18 +271,32 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
 
           {/* Feature Info */}
           {selectedFile && (
-            <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-              <p className="text-sm text-cyan-300">
+            <div className={`p-4 border rounded-lg ${
+              fileType === 'video' 
+                ? 'bg-cyan-500/10 border-cyan-500/30' 
+                : 'bg-purple-500/10 border-purple-500/30'
+            }`}>
+              <div className="flex items-start gap-3">
                 {fileType === 'video' ? (
-                  <>
-                    <strong>Video to Audio:</strong> Generate sync sound effects for your video
-                  </>
+                  <Film size={20} className="text-cyan-400 flex-shrink-0 mt-0.5" />
                 ) : (
-                  <>
-                    <strong>Audio Remix:</strong> Create variations of your audio
-                  </>
+                  <Music size={20} className="text-purple-400 flex-shrink-0 mt-0.5" />
                 )}
-              </p>
+                <div className="flex-1">
+                  <p className={`text-sm font-semibold mb-1 ${
+                    fileType === 'video' ? 'text-cyan-300' : 'text-purple-300'
+                  }`}>
+                    {fileType === 'video' ? '🎬 Video to Audio' : '🎵 Audio Remix'}
+                  </p>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    {fileType === 'video' ? (
+                      <>Generate synced sound effects and ambient audio for your video. Describe what sounds you want (e.g., "car engine roaring", "rain and thunder", "footsteps on gravel").</>
+                    ) : (
+                      <>Create AI variations of your audio. Describe the changes you want (e.g., "add drums", "make it jazzy", "speed up tempo", "change to orchestral").</>
+                    )}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
