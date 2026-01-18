@@ -510,6 +510,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             fill
             className="object-cover opacity-60"
             priority
+            unoptimized
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-black" />
