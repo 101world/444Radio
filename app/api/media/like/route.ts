@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { releaseId } = await req.json()
+    const body = await req.json()
+    const releaseId = body.releaseId || body.mediaId // Support both parameter names
     
     console.log('[Like API] releaseId:', releaseId)
 
@@ -52,6 +53,11 @@ export async function POST(req: NextRequest) {
       }
     )
 
+    if (!checkResponse.ok) {
+      console.error('[Like API] Check failed:', await checkResponse.text())
+      throw new Error('Failed to check like status')
+    }
+
     const existingLikes = await checkResponse.json()
     const alreadyLiked = Array.isArray(existingLikes) && existingLikes.length > 0
 
@@ -73,7 +79,8 @@ export async function POST(req: NextRequest) {
       }
 
       console.log(`💔 User ${userId} unliked release ${releaseId}`)
-      // Recompute likes_count and write to combined_media
+      
+      // Update likes count in combined_media
       const computeLikesRes = await fetch(
         `${supabaseUrl}/rest/v1/user_likes?release_id=eq.${releaseId}&select=id`,
         {
@@ -82,12 +89,19 @@ export async function POST(req: NextRequest) {
       )
       const likesArr = await computeLikesRes.json()
       const newCount = Array.isArray(likesArr) ? likesArr.length : 0
+      
+      // Update combined_media table - use 'likes' column
       await fetch(
         `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}`,
         {
           method: 'PATCH',
-          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ likes_count: newCount })
+          headers: { 
+            apikey: supabaseKey, 
+            Authorization: `Bearer ${supabaseKey}`, 
+            'Content-Type': 'application/json', 
+            'Prefer': 'return=minimal' 
+          },
+          body: JSON.stringify({ likes: newCount })
         }
       )
     } else {
@@ -114,30 +128,38 @@ export async function POST(req: NextRequest) {
       }
 
       console.log(`❤️ User ${userId} liked release ${releaseId}`)
-        // Recompute likes_count and write to combined_media
-        const computeLikesRes2 = await fetch(
-          `${supabaseUrl}/rest/v1/user_likes?release_id=eq.${releaseId}&select=id`,
-          {
-            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
-          }
-        )
-        const likesArr2 = await computeLikesRes2.json()
-        const newCount2 = Array.isArray(likesArr2) ? likesArr2.length : 0
-        await fetch(
-          `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}`,
-          {
-            method: 'PATCH',
-            headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-            body: JSON.stringify({ likes_count: newCount2 })
-          }
-        )
-    }
-
-    // Get updated likes count
+      
+      // Update likes count in combined_media
+      const computeLikesRes2 = await fetch(
+        `${supabaseUrl}/rest/v1/user_likes?release_id=eq.${releaseId}&select=id`,
+        {
+          headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` }
+        }
+      )
+      const likesArr2 = await computeLikesRes2.json()
+      const newCount2 = Array.isArray(likesArr2) ? likesArr2.length : 0
+      
+      // Update combined_media table - use 'likes' column
+      await fetch(
+        `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}`,
+        {
+          method: 'PATCH',
+          headers: { 
+            apikey: supabaseKey, 
+            Authorization: `Bearer ${supabaseKey}`, 
+            'Content-Type': 'a from combined_media (use 'likes' column)
     const countResponse = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}&select=likes_count`,
+      `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}&select=likes`,
       {
         headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+
+    const countData = await countResponse.json()
+    const likesCount = countData[0]?.likes
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
         }
@@ -219,9 +241,9 @@ export async function GET(req: NextRequest) {
     const likes = await likeResponse.json()
     const liked = Array.isArray(likes) && likes.length > 0
 
-    // Get total likes count
+    // Get total likes count from combined_media (use 'likes' column)
     const countResponse = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}&select=likes_count`,
+      `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}&select=likes`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -231,7 +253,7 @@ export async function GET(req: NextRequest) {
     )
 
     const countData = await countResponse.json()
-    const likesCount = countData[0]?.likes_count || 0
+    const likesCount = countData[0]?.likes || 0
 
     return corsResponse(NextResponse.json({
       success: true,
