@@ -225,6 +225,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           is_live: liveData?.is_live || false
         })
 
+        console.log('🖼️ Banner URL loaded:', userData.banner_url, '→ sanitized:', sanitizeUrl(userData.banner_url))
+
         // Update station state
         setIsLive(liveData?.is_live || false)
         setViewerCount(liveData?.listener_count || 0)
@@ -503,7 +505,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
       {/* Banner Section */}
       <div className="relative h-80 bg-gradient-to-br from-cyan-900/20 to-black overflow-hidden group">
-        {profile.banner_url && profile.banner_url !== '/default-banner.jpg' ? (
+        {profile.banner_url && profile.banner_url.trim() && profile.banner_url !== '/default-banner.jpg' ? (
           <Image
             src={profile.banner_url}
             alt="Profile Banner"
@@ -511,6 +513,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             className="object-cover opacity-60"
             priority
             unoptimized
+            onError={(e) => {
+              console.error('Banner load error:', profile.banner_url)
+              // Hide broken image
+              e.currentTarget.style.display = 'none'
+            }}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-black" />
