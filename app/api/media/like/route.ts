@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { supabase } from '@/lib/supabase'
 
 /**
  * Like API - Toggle like/unlike with user_likes table tracking
@@ -28,70 +29,50 @@ export async function POST(req: NextRequest) {
       ))
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    console.log('[Like API] User', userId, 'toggling like for', releaseId)
 
     // Check if user already liked this release
-    const checkResponse = await fetch(
-      `${supabaseUrl}/rest/v1/user_likes?user_id=eq.${userId}&release_id=eq.${releaseId}`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        }
-      }
-    )
+    const { data: existing, error: checkError } = await supabase
+      .from('user_likes')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('release_id', releaseId)
 
-    if (!checkResponse.ok) {
-      throw new Error('Failed to check like status')
+    if (checkError) {
+      console.error('[Like API] Check error:', checkError)
+      throw new Error(`Failed to check like status: ${checkError.message}`)
     }
 
-    const existing = await checkResponse.json()
-    const isCurrentlyLiked = existing.length > 0
+    const isCurrentlyLiked = existing && existing.length > 0
 
     if (isCurrentlyLiked) {
       // Unlike: Delete from user_likes
-      const deleteResponse = await fetch(
-        `${supabaseUrl}/rest/v1/user_likes?user_id=eq.${userId}&release_id=eq.${releaseId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          }
-        }
-      )
+      const { error: deleteError } = await supabase
+        .from('user_likes')
+        .delete()
+        .eq('user_id', userId)
+        .eq('release_id', releaseId)
 
-      if (!deleteResponse.ok) {
-        throw new Error('Failed to unlike')
+      if (deleteError) {
+        console.error('[Like API] Delete error:', deleteError)
+        throw new Error(`Failed to unlike: ${deleteError.message}`)
       }
 
+      console.log('[Like API] User unliked release')
+
       // Recount total likes for this release
-      const countResponse = await fetch(
-        `${supabaseUrl}/rest/v1/user_likes?release_id=eq.${releaseId}&select=id`,
-        {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          }
-        }
-      )
-      const allLikes = await countResponse.json()
-      const newCount = allLikes.length
+      const { data: allLikes, error: countError } = await supabase
+        .from('user_likes')
+        .select('id')
+        .eq('release_id', releaseId)
+
+      const newCount = allLikes ? allLikes.length : 0
 
       // Update combined_media likes count
-      await fetch(
-        `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ likes: newCount })
-        }
-      )
+      await supabase
+        .from('combined_media')
+        .update({ likes: newCount })
+        .eq('id', releaseId)
 
       return corsResponse(NextResponse.json({
         success: true,
@@ -100,52 +81,33 @@ export async function POST(req: NextRequest) {
       }))
     } else {
       // Like: Insert into user_likes
-      const insertResponse = await fetch(
-        `${supabaseUrl}/rest/v1/user_likes`,
-        {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user_id: userId,
-            release_id: releaseId
-          })
-        }
-      )
+      const { error: insertError } = await supabase
+        .from('user_likes')
+        .insert({
+          user_id: userId,
+          release_id: releaseId
+        })
 
-      if (!insertResponse.ok) {
-        throw new Error('Failed to like')
+      if (insertError) {
+        console.error('[Like API] Insert error:', insertError)
+        throw new Error(`Failed to like: ${insertError.message}`)
       }
 
+      console.log('[Like API] User liked release')
+
       // Recount total likes for this release
-      const countResponse = await fetch(
-        `${supabaseUrl}/rest/v1/user_likes?release_id=eq.${releaseId}&select=id`,
-        {
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-          }
-        }
-      )
-      const allLikes = await countResponse.json()
-      const newCount = allLikes.length
+      const { data: allLikes, error: countError } = await supabase
+        .from('user_likes')
+        .select('id')
+        .eq('release_id', releaseId)
+
+      const newCount = allLikes ? allLikes.length : 0
 
       // Update combined_media likes count
-      await fetch(
-        `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ likes: newCount })
-        }
-      )
+      await supabase
+        .from('combined_media')
+        .update({ likes: newCount })
+        .eq('id', releaseId)
 
       return corsResponse(NextResponse.json({
         success: true,
@@ -184,36 +146,23 @@ export async function GET(req: NextRequest) {
       ))
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
     // Check if user liked this release
-    const likeResponse = await fetch(
-      `${supabaseUrl}/rest/v1/user_likes?user_id=eq.${userId}&release_id=eq.${releaseId}`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        }
-      }
-    )
+    const { data: likes, error: likeError } = await supabase
+      .from('user_likes')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('release_id', releaseId)
 
-    const likes = await likeResponse.json()
-    const liked = likes.length > 0
+    const liked = likes && likes.length > 0
 
     // Get total likes count
-    const countResponse = await fetch(
-      `${supabaseUrl}/rest/v1/combined_media?id=eq.${releaseId}&select=likes`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        }
-      }
-    )
+    const { data: countData, error: countError } = await supabase
+      .from('combined_media')
+      .select('likes')
+      .eq('id', releaseId)
+      .single()
 
-    const countData = await countResponse.json()
-    const likesCount = countData[0]?.likes || 0
+    const likesCount = countData?.likes || 0
 
     return corsResponse(NextResponse.json({
       liked,
