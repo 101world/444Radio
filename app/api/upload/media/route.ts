@@ -28,7 +28,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { fileName, fileType, fileSize } = await req.json()
+    // Parse JSON with better error handling
+    let body
+    try {
+      body = await req.json()
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError)
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const { fileName, fileType, fileSize } = body
 
     if (!fileName || !fileType) {
       return NextResponse.json({ error: 'Missing fileName or fileType' }, { status: 400 })
