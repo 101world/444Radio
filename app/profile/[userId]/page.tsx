@@ -511,8 +511,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             alt="Profile Banner"
             className="absolute inset-0 w-full h-full object-cover opacity-60"
             onError={(e) => {
-              console.error('Banner load error:', profile.banner_url)
-              // Hide broken image and show gradient fallback
+              // Silently hide broken banner and show gradient fallback
               e.currentTarget.style.display = 'none'
             }}
           />
