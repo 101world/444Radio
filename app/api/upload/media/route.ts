@@ -16,6 +16,10 @@ export const config = {
 
 export const runtime = 'nodejs'
 
+export async function OPTIONS() {
+  return handleOptions()
+}
+
 const s3Client = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_ENDPOINT!,
@@ -31,10 +35,6 @@ const s3Client = new S3Client({
  * 1. JSON body {fileName, fileType, fileSize} → returns presigned URL (for direct upload)
  * 2. FormData with file → uploads via server (bypass CORS, but slower)
  */
-export async function OPTIONS() {
-  return handleOptions()
-}
-
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       const isVideo = fileType.startsWith('video/')
       
       if (!isAudio && !isVideo) {
-        return NextResponse.json({ error: 'File must be audio or video' }, { status: 400 })
+        return corsResponse(NextResponse.json({ error: 'File must be audio or video' }, { status: 400 }))
       }
 
       // Validate file size (100MB max)
@@ -99,18 +99,18 @@ export async function POST(req: NextRequest) {
         : process.env.NEXT_PUBLIC_R2_AUDIO_URL
       const publicUrl = `${publicUrlBase}/${key}`
 
-      consolecorsResponse(NextResponse.json({
+      console.log('✅ Presigned URL generated:', key)
+      console.log('🌐 Public URL will be:', publicUrl)
+      console.log('🔗 Base URL:', publicUrlBase)
+
+      return corsResponse(NextResponse.json({
         success: true,
         mode: 'presigned',
         uploadUrl: presignedUrl,
         publicUrl: publicUrl,
         key: key,
         bucket: bucket
-      }) uploadUrl: presignedUrl,
-        publicUrl: publicUrl,
-        key: key,
-        bucket: bucket
-      })
+      }))
     }
 
     // MODE 2: Server-side upload via FormData (no CORS needed, but uses Vercel bandwidth)
