@@ -595,9 +595,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
               src={profile.banner_url}
               alt="Profile Banner"
               className="absolute inset-0 w-full h-full object-cover opacity-60"
-              onLoad={() => console.log('[Profile] Banner loaded successfully')}
+              crossOrigin="anonymous"
+              onLoad={() => console.log('[Profile] ✅ Banner loaded successfully')}
               onError={(e) => {
-                console.error('[Profile] Banner failed to load:', profile.banner_url)
+                console.error('[Profile] ❌ Banner failed to load:', profile.banner_url)
+                console.error('[Profile] Trying to fetch directly...')
+                fetch(profile.banner_url, { mode: 'no-cors' })
+                  .then(() => console.log('[Profile] File exists but CORS is blocking it'))
+                  .catch((err) => console.error('[Profile] File does not exist:', err))
                 // Silently hide broken banner and show gradient fallback
                 e.currentTarget.style.display = 'none'
               }}
@@ -610,16 +615,37 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           </>
         )}
         {isOwnProfile && (
-          <button
-            onClick={() => {
-              console.log('[Profile] Opening banner modal, isOwnProfile:', isOwnProfile)
-              setShowBannerUpload(true)
-            }}
-            className="absolute top-4 right-4 px-4 py-2 bg-black/80 backdrop-blur-md border border-cyan-500/50 rounded-lg text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500 transition-all shadow-lg"
-          >
-            <Upload size={16} className="inline mr-2" />
-            Change Banner
-          </button>
+          <div className="absolute top-4 right-4 flex gap-2">
+            <button
+              onClick={() => {
+                console.log('[Profile] Opening banner modal, isOwnProfile:', isOwnProfile)
+                setShowBannerUpload(true)
+              }}
+              className="px-4 py-2 bg-black/80 backdrop-blur-md border border-cyan-500/50 rounded-lg text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500 transition-all shadow-lg"
+            >
+              <Upload size={16} className="inline mr-2" />
+              Change Banner
+            </button>
+            {profile?.banner_url && profile.banner_url !== '/default-banner.jpg' && (
+              <button
+                onClick={async () => {
+                  if (confirm('Remove current banner?')) {
+                    const { error } = await supabase
+                      .from('users')
+                      .update({ banner_url: null, banner_type: null })
+                      .eq('clerk_user_id', userId)
+                    if (!error) {
+                      setProfile(prev => prev ? { ...prev, banner_url: '/default-banner.jpg' } : null)
+                    }
+                  }
+                }}
+                className="px-4 py-2 bg-red-500/80 backdrop-blur-md border border-red-500/50 rounded-lg text-white hover:bg-red-500 hover:border-red-500 transition-all shadow-lg"
+                title="Remove broken banner"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         )}
       </div>
 
