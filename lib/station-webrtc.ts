@@ -122,12 +122,29 @@ export class StationWebRTC {
   }
 
   async joinStream(onStream?: (stream: MediaStream) => void) {
+    // Wait for subscription to complete
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Channel subscription timeout')), 10000)
+      
+      if (this.channel.subscribed) {
+        clearTimeout(timeout)
+        resolve()
+      } else {
+        this.channel.bind('pusher:subscription_succeeded', () => {
+          clearTimeout(timeout)
+          resolve()
+        })
+      }
+    })
+    
     // Get host user ID from channel members
     const members = this.channel.members
-    console.log('🔍 Looking for host. Channel members:', Object.keys(members.members))
+    console.log('🔍 Looking for host. Channel members:', members ? Object.keys(members.members) : 'No members object')
     
     // Find any member that's not us (host joins first)
-    const allMemberIds = Object.keys(members.members).filter((id: string) => id !== this.userId)
+    const allMemberIds = members ? Object.keys(members.members).filter((id: string) => id !== this.userId) : []
+    
+    console.log(`📊 Found ${allMemberIds.length} potential hosts (excluding self)`)
     
     if (allMemberIds.length === 0) {
       throw new Error('Host not found. Station may have ended.')
