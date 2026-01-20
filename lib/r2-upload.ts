@@ -47,8 +47,8 @@ export async function uploadToR2(
 
     await r2Client.send(command)
 
-    // Use R2_PUBLIC_URL which points to pub-e5b60d303c5547e891e88829c469ed6.r2.dev (corrected typo)
-    const baseUrl = process.env.R2_PUBLIC_URL || 'https://pub-e5b60d303c5547e891e88829c469ed6.r2.dev'
+    // Use R2_PUBLIC_URL which points to correct public dev URL
+    const baseUrl = process.env.R2_PUBLIC_URL || 'https://pub-a528583bbeb546fd9bca0a699f40b406.r2.dev'
     const publicUrl = `${baseUrl}/${key}`
 
     console.log(`✅ Uploaded to R2: ${actualBucket}/${key} -> ${publicUrl}`)
