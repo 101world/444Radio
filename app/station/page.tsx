@@ -111,7 +111,7 @@ function StationContent() {
         console.error('⏱️ Join timeout - host may not be ready')
         setIsConnecting(false)
         alert('Connection timeout. Host may still be setting up. Try again in a few seconds.')
-      }, 5000) // 5 second timeout
+      }, 15000) // 15 second timeout
       
       await webrtcRef.current.joinStream((stream) => {
         clearTimeout(joinTimeout)
@@ -239,30 +239,6 @@ function StationContent() {
       }
     }
   }, [isHost, isStreaming, stationId])
-
-  // Poll viewer count from database
-  useEffect(() => {
-    if (!isStreaming) return
-
-    const fetchViewerCount = async () => {
-      try {
-        const response = await fetch(`/api/station?username=${stationId}`)
-        const data = await response.json()
-        if (data.listenerCount !== undefined) {
-          setViewerCount(data.listenerCount)
-        }
-      } catch (error) {
-        console.warn('Failed to fetch viewer count:', error)
-      }
-    }
-
-    // Fetch immediately
-    fetchViewerCount()
-
-    // Poll every 3 seconds
-    const interval = setInterval(fetchViewerCount, 3000)
-    return () => clearInterval(interval)
-  }, [isStreaming, stationId])
 
   const addNotification = (message: string, type: 'join' | 'leave' | 'reaction' | 'kick') => {
     const id = Date.now().toString()

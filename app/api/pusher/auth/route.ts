@@ -12,13 +12,19 @@ import { getPusherServer } from '@/lib/pusher-server'
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('🔐 Pusher auth endpoint called')
+    
     const { userId } = await auth()
+    console.log('User ID from auth:', userId)
+    
     if (!userId) {
+      console.error('❌ No user ID')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const pusher = getPusherServer()
     if (!pusher) {
+      console.error('❌ Pusher not configured')
       return NextResponse.json({ error: 'Pusher not configured' }, { status: 503 })
     }
 
@@ -27,7 +33,10 @@ export async function POST(req: NextRequest) {
     const socketId = params.get('socket_id')
     const channelName = params.get('channel_name')
 
+    console.log('Auth request:', { socketId, channelName })
+
     if (!socketId || !channelName) {
+      console.error('❌ Missing socket_id or channel_name')
       return NextResponse.json({ error: 'Missing socket_id or channel_name' }, { status: 400 })
     }
 
@@ -36,7 +45,10 @@ export async function POST(req: NextRequest) {
     const isPrivateUserChannel = channelName === `private-user-${userId}`
     const isPresenceStationChannel = channelName.startsWith('presence-station-')
     
+    console.log('Channel check:', { isPrivateUserChannel, isPresenceStationChannel })
+    
     if (!isPrivateUserChannel && !isPresenceStationChannel) {
+      console.error('❌ Unauthorized channel:', channelName)
       return NextResponse.json({ 
         error: 'Unauthorized channel',
         channelName,
@@ -54,10 +66,15 @@ export async function POST(req: NextRequest) {
           user_id: userId,
         })
 
+    console.log('✅ Auth successful for channel:', channelName)
     return NextResponse.json(authResponse)
 
-  } catch (error) {
-    console.error('Pusher auth error:', error)
+  } catch (error: any) {
+    console.error('❌ Pusher auth error:', error)
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack
+    })
     return NextResponse.json({ error: 'Auth failed' }, { status: 500 })
   }
 }
