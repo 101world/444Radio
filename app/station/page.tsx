@@ -971,6 +971,8 @@ function StationContent() {
               <div className="p-3 md:p-4 border-t border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-blue-500/5">
                 <div className="flex gap-2 mb-2">
                   <input
+                    id="chat-message-input"
+                    name="chat-message"
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
@@ -1272,8 +1274,10 @@ function StationContent() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Stream Title</label>
+                <label htmlFor="stream-title" className="block text-sm text-gray-400 mb-2">Stream Title</label>
                 <input
+                  id="stream-title"
+                  name="stream-title"
                   type="text"
                   value={streamTitle}
                   onChange={(e) => setStreamTitle(e.target.value)}
