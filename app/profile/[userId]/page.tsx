@@ -292,23 +292,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }
 
-  // Handle Banner Upload Success
-  const handleBannerSuccess = async (url: string, type?: 'image' | 'video') => {
-    console.log('[Banner] Upload success:', url, type)
-    const cleanUrl = sanitizeUrl(url)
-    setProfile(prev => prev ? { ...prev, banner_url: cleanUrl } : null)
-    setShowBannerUpload(false)
-    // Refresh profile data to confirm
-    const { data } = await supabase
-      .from('users')
-      .select('banner_url')
-      .eq('clerk_user_id', userId)
-      .single()
-    if (data) {
-      setProfile(prev => prev ? { ...prev, banner_url: sanitizeUrl(data.banner_url) } : null)
-    }
-  }
-
   // Handle Avatar Upload Success  
   const handleAvatarSuccess = async (url?: string) => {
     console.log('[Avatar] Upload success:', url)
