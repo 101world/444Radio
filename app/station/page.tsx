@@ -158,14 +158,20 @@ function StationContent() {
       }
       
     } catch (error: any) {
+      const errorMsg = error.message || 'Unknown error'
+      
+      // Don't show error if host simply isn't streaming yet
+      if (errorMsg.includes('Host not found')) {
+        console.log('⏱️ Station not live yet - host may be setting up')
+        setIsConnecting(false)
+        setIsLive(false)
+        return
+      }
+      
       console.error('Failed to join stream:', error)
       setIsConnecting(false)
       
-      const errorMsg = error.message || 'Unknown error'
-      
-      if (errorMsg.includes('Host not found')) {
-        alert('Host not found. The stream may have ended, or the host is still setting up. Please refresh and try again.')
-      } else if (errorMsg.includes('timeout')) {
+      if (errorMsg.includes('timeout')) {
         alert('Connection timeout. Please check your internet connection and try again.')
       } else {
         alert(`Failed to connect: ${errorMsg}\\n\\nTry refreshing the page or check if the host is still live.`)
