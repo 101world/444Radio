@@ -18,6 +18,7 @@ export default function BannerUploadModal({ isOpen, onClose, onSuccess }: Banner
     if (!file) return
     setIsSubmitting(true)
     try {
+      console.log('[Banner] Uploading file:', file.name, file.type, file.size)
       const form = new FormData()
       form.append('file', file)
       form.append('kind', tab)
@@ -25,12 +26,22 @@ export default function BannerUploadModal({ isOpen, onClose, onSuccess }: Banner
         method: 'POST',
         body: form
       })
+      
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('[Banner] Upload failed:', res.status, text)
+        throw new Error(`Upload failed: ${res.status} ${text.substring(0, 100)}`)
+      }
+      
       const data = await res.json()
+      console.log('[Banner] Upload response:', data)
+      
       if (!data.success) throw new Error(data.error || 'Upload failed')
       if (onSuccess) onSuccess(data.banner_url, data.banner_type)
       onClose()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Upload failed')
+      console.error('[Banner] Error:', e)
+      alert(e instanceof Error ? e.message : 'Upload failed. Please check console for details.')
     } finally {
       setIsSubmitting(false)
     }
@@ -39,17 +50,28 @@ export default function BannerUploadModal({ isOpen, onClose, onSuccess }: Banner
   const useLatestCover = async () => {
     setIsSubmitting(true)
     try {
+      console.log('[Banner] Fetching latest cover art...')
       const res = await fetch('/api/profile/banner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ useLatestCover: true })
       })
+      
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('[Banner] Latest cover failed:', res.status, text)
+        throw new Error(`Failed: ${res.status} ${text.substring(0, 100)}`)
+      }
+      
       const data = await res.json()
+      console.log('[Banner] Latest cover response:', data)
+      
       if (!data.success) throw new Error(data.error || 'No cover found')
       if (onSuccess) onSuccess(data.banner_url, data.banner_type)
       onClose()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Failed to set banner')
+      console.error('[Banner] Error:', e)
+      alert(e instanceof Error ? e.message : 'Failed to set banner. Check console for details.')
     } finally {
       setIsSubmitting(false)
     }

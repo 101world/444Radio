@@ -2,14 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { corsResponse, handleOptions } from '@/lib/cors'
 
-// Allow larger uploads through API (50MB max for Vercel Pro, but we'll proxy to R2)
+// Allow larger uploads through API (100MB max for Vercel Pro)
 export const maxDuration = 300
 export const config = {
   api: {
-    bodyParser: false, // Disable body parsing, handle stream directly
+    bodyParser: {
+      sizeLimit: '100mb',
+    },
   },
 }
+
+export const runtime = 'nodejs'
 
 const s3Client = new S3Client({
   region: 'auto',
@@ -26,12 +31,16 @@ const s3Client = new S3Client({
  * 1. JSON body {fileName, fileType, fileSize} → returns presigned URL (for direct upload)
  * 2. FormData with file → uploads via server (bypass CORS, but slower)
  */
+export async function OPTIONS() {
+  return handleOptions()
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth()
     
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
     const contentType = req.headers.get('content-type') || ''
@@ -44,13 +53,13 @@ export async function POST(req: NextRequest) {
         body = await req.json()
       } catch (parseError) {
         console.error('❌ JSON parse error:', parseError)
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+        return corsResponse(NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }))
       }
 
       const { fileName, fileType, fileSize } = body
 
       if (!fileName || !fileType) {
-        return NextResponse.json({ error: 'Missing fileName or fileType' }, { status: 400 })
+        return corsResponse(NextResponse.json({ error: 'Missing fileName or fileType' }, { status: 400 }))
       }
 
       // Validate file type
@@ -64,7 +73,7 @@ export async function POST(req: NextRequest) {
       // Validate file size (100MB max)
       const MAX_SIZE = 100 * 1024 * 1024
       if (fileSize && fileSize > MAX_SIZE) {
-        return NextResponse.json({ error: 'File size must be under 100MB' }, { status: 400 })
+        return corsResponse(NextResponse.json({ error: 'File size must be under 100MB' }, { status: 400 }))
       }
 
       console.log(`🔑 Generating presigned URL for ${fileType}:`, fileName, `(${(fileSize / (1024 * 1024)).toFixed(2)} MB)`)
@@ -90,14 +99,14 @@ export async function POST(req: NextRequest) {
         : process.env.NEXT_PUBLIC_R2_AUDIO_URL
       const publicUrl = `${publicUrlBase}/${key}`
 
-      console.log('✅ Presigned URL generated:', key)
-      console.log('🌐 Public URL will be:', publicUrl)
-      console.log('🔗 Base URL:', publicUrlBase)
-
-      return NextResponse.json({
+      consolecorsResponse(NextResponse.json({
         success: true,
         mode: 'presigned',
         uploadUrl: presignedUrl,
+        publicUrl: publicUrl,
+        key: key,
+        bucket: bucket
+      }) uploadUrl: presignedUrl,
         publicUrl: publicUrl,
         key: key,
         bucket: bucket
@@ -110,14 +119,14 @@ export async function POST(req: NextRequest) {
       const file = formData.get('file') as File
       
       if (!file) {
-        return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+        return corsResponse(NextResponse.json({ error: 'No file provided' }, { status: 400 }))
       }
 
       const isAudio = file.type.startsWith('audio/')
       const isVideo = file.type.startsWith('video/')
       
       if (!isAudio && !isVideo) {
-        return NextResponse.json({ error: 'File must be audio or video' }, { status: 400 })
+        return corsResponse(NextResponse.json({ error: 'File must be audio or video' }, { status: 400 }))
       }
 
       console.log(`📤 Server-side upload: ${file.type}`, file.name, `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`)
@@ -147,22 +156,22 @@ export async function POST(req: NextRequest) {
 
       console.log('✅ Server-side upload complete:', publicUrl)
 
-      return NextResponse.json({
+      return corsResponse(NextResponse.json({
         success: true,
         mode: 'server',
         url: publicUrl,
         key: key,
         bucket: bucket
-      })
+      }))
     }
 
-    return NextResponse.json({ error: 'Invalid content type' }, { status: 400 })
+    return corsResponse(NextResponse.json({ error: 'Invalid content type' }, { status: 400 }))
 
   } catch (error) {
     console.error('❌ Upload error:', error)
-    return NextResponse.json(
+    return corsResponse(NextResponse.json(
       { error: 'Upload failed' },
       { status: 500 }
-    )
+    ))
   }
 }
