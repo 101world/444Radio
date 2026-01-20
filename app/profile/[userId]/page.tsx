@@ -517,67 +517,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     <div className="min-h-screen bg-black text-white">
       <FloatingMenu />
 
-      {/* Banner Section */}
-      <div className="relative h-80 bg-gradient-to-br from-cyan-900/20 to-black overflow-hidden group">
-        {profile.banner_url && profile.banner_url.trim() && profile.banner_url !== '/default-banner.jpg' ? (
-          <>
-            {console.log('[Profile] Rendering banner:', profile.banner_url)}
-            <img
-              src={profile.banner_url}
-              alt="Profile Banner"
-              className="absolute inset-0 w-full h-full object-cover opacity-60"
-              crossOrigin="anonymous"
-              onLoad={() => console.log('[Profile] ✅ Banner loaded successfully')}
-              onError={(e) => {
-                console.error('[Profile] ❌ Banner failed to load:', profile.banner_url)
-                console.error('[Profile] Trying to fetch directly...')
-                fetch(profile.banner_url, { mode: 'no-cors' })
-                  .then(() => console.log('[Profile] File exists but CORS is blocking it'))
-                  .catch((err) => console.error('[Profile] File does not exist:', err))
-                // Silently hide broken banner and show gradient fallback
-                e.currentTarget.style.display = 'none'
-              }}
-            />
-          </>
-        ) : (
-          <>
-            {console.log('[Profile] No banner, showing gradient. banner_url:', profile.banner_url)}
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-black" />
-          </>
-        )}
-        {isOwnProfile && (
-          <div className="absolute top-4 right-4 flex gap-2">
-            <button
-              onClick={() => {
-                console.log('[Profile] Opening banner modal, isOwnProfile:', isOwnProfile)
-                setShowBannerUpload(true)
-              }}
-              className="px-4 py-2 bg-black/80 backdrop-blur-md border border-cyan-500/50 rounded-lg text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500 transition-all shadow-lg"
-            >
-              <Upload size={16} className="inline mr-2" />
-              Change Banner
-            </button>
-            {profile?.banner_url && profile.banner_url !== '/default-banner.jpg' && (
-              <button
-                onClick={async () => {
-                  if (confirm('Remove current banner?')) {
-                    const { error } = await supabase
-                      .from('users')
-                      .update({ banner_url: null, banner_type: null })
-                      .eq('clerk_user_id', userId)
-                    if (!error) {
-                      setProfile(prev => prev ? { ...prev, banner_url: '/default-banner.jpg' } : null)
-                    }
-                  }
-                }}
-                className="px-4 py-2 bg-red-500/80 backdrop-blur-md border border-red-500/50 rounded-lg text-white hover:bg-red-500 hover:border-red-500 transition-all shadow-lg"
-                title="Remove broken banner"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        )}
+      {/* Banner - Gradient only (upload feature removed) */}
+      <div className="relative h-64 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-black overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/30 via-purple-900/20 to-black" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.1),transparent_50%)]" />
       </div>
 
       {/* Profile Status Bar */}
