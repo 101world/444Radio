@@ -10,7 +10,6 @@ import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Uploa
 import { supabase } from '@/lib/supabase'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
-import BannerUploadModal from '../../components/BannerUploadModal'
 import ProfileUploadModal from '../../components/ProfileUploadModal'
 import { ProfileHeaderSkeleton, TrackListSkeleton, LoadingPage } from '../../components/LoadingComponents'
 import { getPusherClient } from '@/lib/pusher-client'
@@ -86,8 +85,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [chatInput, setChatInput] = useState('')
   const [viewerCount, setViewerCount] = useState(0)
 
-  // Modals
-  const [showBannerUpload, setShowBannerUpload] = useState(false)
+  // Modals (banner removed)
   const [showAvatarUpload, setShowAvatarUpload] = useState(false)
   const [showEditProfile, setShowEditProfile] = useState(false)
   
@@ -101,11 +99,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
   const [chatError, setChatError] = useState<string>('')
-
-  // Debug modal state
-  useEffect(() => {
-    console.log('[Profile] Modal states:', { showBannerUpload, showAvatarUpload, isOwnProfile, userId, clerkUserId: user?.id })
-  }, [showBannerUpload, showAvatarUpload, isOwnProfile, userId, user?.id])
 
   // Check URL params for tab
   useEffect(() => {
@@ -207,39 +200,26 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
         if (tracksError) throw tracksError
 
-        // Check live status from live_stations table
-        const { data: liveData } = await supabase
-          .from('live_stations')
-          .select('is_live, listener_count')
-          .eq('user_id', userId)
-          .single()
-
-        // Set profile data
-        console.log('[Profile] Raw banner_url from DB:', userData.banner_url)
-        const sanitizedBanner = sanitizeUrl(userData.banner_url)
-        console.log('[Profile] Sanitized banner:', sanitizedBanner)
-        
+        // Set profile data (banner system removed)
         setProfile({
           userId: userData.clerk_user_id,
           username: userData.username || 'Anonymous',
           fullName: userData.username || 'User',
           bio: userData.bio || 'No bio yet',
           avatar_url: userData.avatar_url || '/default-avatar.png',
-          banner_url: sanitizedBanner || '/default-banner.jpg',
+          banner_url: '/default-banner.jpg',
           follower_count: userData.follower_count || 0,
           following_count: userData.following_count || 0,
           location: userData.location || '',
           joined_date: userData.created_at,
           website: userData.website || '',
           social_links: userData.social_links || {},
-          is_live: liveData?.is_live || false
+          is_live: false
         })
 
-        console.log('🖼️ Banner URL loaded:', userData.banner_url, '→ sanitized:', sanitizeUrl(userData.banner_url))
-
-        // Update station state
-        setIsLive(liveData?.is_live || false)
-        setViewerCount(liveData?.listener_count || 0)
+        // Station features disabled
+        setIsLive(false)
+        setViewerCount(0)
 
         setTracks(tracksData.map((t: any) => ({
           id: t.id,
@@ -266,42 +246,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }, [userId, user?.id])
 
-  // Load chat messages when viewing station tab
-  useEffect(() => {
-    async function loadChatMessages() {
-      if (activeView !== 'station') return
-
-      try {
-        const { data: stationData } = await supabase
-          .from('live_stations')
-          .select('id')
-          .eq('user_id', userId)
-          .single()
-
-        if (!stationData) return
-
-        const response = await fetch(`/api/station/messages?stationId=${stationData.id}&limit=50`)
-        const data = await response.json()
-
-        if (data.success && data.messages) {
-          const messages: ChatMessage[] = data.messages.map((m: any) => ({
-            id: m.id,
-            user_id: m.user_id,
-            username: m.username,
-            avatar: '/default-avatar.png',
-            message: m.message,
-            timestamp: new Date(m.created_at)
-          }))
-          setChatMessages(messages)
-          console.log(`✅ Loaded ${messages.length} chat messages`)
-        }
-      } catch (error) {
-        console.error('❌ Load chat messages error:', error)
-      }
-    }
-
-    loadChatMessages()
-  }, [activeView, userId])
+  // Chat/station features temporarily disabled
+  // useEffect(() => {
+  //   // Station functionality will be re-implemented later
+  // }, [activeView, userId])
 
   // Populate edit form when modal opens
   useEffect(() => {
@@ -1042,18 +990,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
             </div>
           </div>
         </div>
-      )}
-
-      {/* Banner Upload Modal */}
-      {showBannerUpload && (
-        <BannerUploadModal
-          isOpen={showBannerUpload}
-          onClose={() => {
-            console.log('[Profile] Closing banner modal')
-            setShowBannerUpload(false)
-          }}
-          onSuccess={handleBannerSuccess}
-        />
       )}
 
       {/* Avatar Upload Modal */}
