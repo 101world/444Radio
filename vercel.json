@@ -9,6 +9,10 @@
     "app/api/upload/media/route.ts": {
       "memory": 3008,
       "maxDuration": 300
+    },
+    "app/api/profile/banner/route.ts": {
+      "memory": 3008,
+      "maxDuration": 60
     }
   },
   "headers": [
