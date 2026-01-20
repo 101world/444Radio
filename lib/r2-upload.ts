@@ -48,7 +48,7 @@ export async function uploadToR2(
     await r2Client.send(command)
 
     // Use R2_PUBLIC_URL for 444radio-media bucket
-    const baseUrl = process.env.R2_PUBLIC_URL || 'https://pub-e5b60d303c5547e891ae88829c469ed6.r2.dev'
+    const baseUrl = process.env.R2_PUBLIC_URL || 'https://media.444radio.co.in'
     const publicUrl = `${baseUrl}/${key}`
 
     console.log(`✅ Uploaded to R2: ${actualBucket}/${key} -> ${publicUrl}`)
