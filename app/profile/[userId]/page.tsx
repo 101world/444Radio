@@ -102,6 +102,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({})
   const [chatError, setChatError] = useState<string>('')
 
+  // Debug modal state
+  useEffect(() => {
+    console.log('[Profile] Modal states:', { showBannerUpload, showAvatarUpload, isOwnProfile, userId, clerkUserId: user?.id })
+  }, [showBannerUpload, showAvatarUpload, isOwnProfile, userId, user?.id])
+
   // Check URL params for tab
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -594,8 +599,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         )}
         {isOwnProfile && (
           <button
-            onClick={() => setShowBannerUpload(true)}
-            className="absolute top-4 right-4 px-4 py-2 bg-black/60 backdrop-blur-md border border-cyan-500/30 rounded-lg text-cyan-400 hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100"
+            onClick={() => {
+              console.log('[Profile] Opening banner modal, isOwnProfile:', isOwnProfile)
+              setShowBannerUpload(true)
+            }}
+            className="absolute top-4 right-4 px-4 py-2 bg-black/80 backdrop-blur-md border border-cyan-500/50 rounded-lg text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-500 transition-all shadow-lg"
           >
             <Upload size={16} className="inline mr-2" />
             Change Banner
@@ -1002,7 +1010,10 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       {showBannerUpload && (
         <BannerUploadModal
           isOpen={showBannerUpload}
-          onClose={() => setShowBannerUpload(false)}
+          onClose={() => {
+            console.log('[Profile] Closing banner modal')
+            setShowBannerUpload(false)
+          }}
           onSuccess={handleBannerSuccess}
         />
       )}
