@@ -215,13 +215,17 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           .single()
 
         // Set profile data
+        console.log('[Profile] Raw banner_url from DB:', userData.banner_url)
+        const sanitizedBanner = sanitizeUrl(userData.banner_url)
+        console.log('[Profile] Sanitized banner:', sanitizedBanner)
+        
         setProfile({
           userId: userData.clerk_user_id,
           username: userData.username || 'Anonymous',
           fullName: userData.username || 'User',
           bio: userData.bio || 'No bio yet',
           avatar_url: userData.avatar_url || '/default-avatar.png',
-          banner_url: sanitizeUrl(userData.banner_url) || '/default-banner.jpg',
+          banner_url: sanitizedBanner || '/default-banner.jpg',
           follower_count: userData.follower_count || 0,
           following_count: userData.following_count || 0,
           location: userData.location || '',
@@ -585,17 +589,25 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       {/* Banner Section */}
       <div className="relative h-80 bg-gradient-to-br from-cyan-900/20 to-black overflow-hidden group">
         {profile.banner_url && profile.banner_url.trim() && profile.banner_url !== '/default-banner.jpg' ? (
-          <img
-            src={profile.banner_url}
-            alt="Profile Banner"
-            className="absolute inset-0 w-full h-full object-cover opacity-60"
-            onError={(e) => {
-              // Silently hide broken banner and show gradient fallback
-              e.currentTarget.style.display = 'none'
-            }}
-          />
+          <>
+            {console.log('[Profile] Rendering banner:', profile.banner_url)}
+            <img
+              src={profile.banner_url}
+              alt="Profile Banner"
+              className="absolute inset-0 w-full h-full object-cover opacity-60"
+              onLoad={() => console.log('[Profile] Banner loaded successfully')}
+              onError={(e) => {
+                console.error('[Profile] Banner failed to load:', profile.banner_url)
+                // Silently hide broken banner and show gradient fallback
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-black" />
+          <>
+            {console.log('[Profile] No banner, showing gradient. banner_url:', profile.banner_url)}
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-black" />
+          </>
         )}
         {isOwnProfile && (
           <button
