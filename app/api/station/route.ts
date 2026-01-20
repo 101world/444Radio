@@ -76,7 +76,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         isLive: !!stationData,
         title: stationData?.title || `${username}'s Station`,
-        username
+        username,
+        listenerCount: stationData?.listener_count || 0
       })
     }
 

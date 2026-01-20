@@ -22,11 +22,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Station ID required' }, { status: 400 })
     }
 
+    // stationId might be a username, so we need to find the actual station UUID
+    // First try to find by username in live_stations
+    const { data: stationData, error: stationError } = await supabase
+      .from('live_stations')
+      .select('id')
+      .eq('username', stationId)
+      .eq('is_live', true)
+      .single()
+
+    if (stationError || !stationData) {
+      console.error('Station not found:', stationError)
+      return NextResponse.json({ error: 'Station not found or not live' }, { status: 404 })
+    }
+
+    const actualStationId = stationData.id
+
     // Upsert listener (update last_seen if already exists)
     const { data, error } = await supabase
       .from('station_listeners')
       .upsert({
-        station_id: stationId,
+        station_id: actualStationId,
         user_id: userId,
         username: username,
         last_seen: new Date().toISOString()
@@ -59,10 +75,19 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Station ID required' }, { status: 400 })
     }
 
+    // stationId might be a username, so find the actual station UUID
+    const { data: stationData, error: stationError } = await supabase
+      .from('live_stations')
+      .select('id')
+      .eq('username', stationId)
+      .single()
+
+    const actualStationId = stationData?.id || stationId // fallback to provided id if not found
+
     const { error } = await supabase
       .from('station_listeners')
       .delete()
-      .eq('station_id', stationId)
+      .eq('station_id', actualStationId)
       .eq('user_id', userId)
 
     if (error) throw error

@@ -111,7 +111,7 @@ function StationContent() {
         console.error('⏱️ Join timeout - host may not be ready')
         setIsConnecting(false)
         alert('Connection timeout. Host may still be setting up. Try again in a few seconds.')
-      }, 15000) // 15 second timeout
+      }, 5000) // 5 second timeout
       
       await webrtcRef.current.joinStream((stream) => {
         clearTimeout(joinTimeout)
@@ -127,6 +127,16 @@ function StationContent() {
           setIsStreaming(true)
           setIsConnecting(false)
           addNotification(`Connected to ${hostUsername}'s station!`, 'join')
+          
+          // Track listener in database
+          fetch('/api/station/listeners', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              stationId: stationId,
+              username: user.username || user.firstName || 'Anonymous'
+            })
+          }).catch(e => console.warn('Failed to track listener:', e))
         }
       })
       
@@ -210,6 +220,49 @@ function StationContent() {
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [isHost, isStreaming])
+
+  // Cleanup listener when viewer leaves page
+  useEffect(() => {
+    if (!isHost && isStreaming) {
+      const handleBeforeUnload = () => {
+        // Use sendBeacon for reliable cleanup on page unload
+        navigator.sendBeacon(`/api/station/listeners?stationId=${stationId}`, JSON.stringify({ method: 'DELETE' }))
+      }
+      
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+        // Also cleanup on component unmount
+        fetch(`/api/station/listeners?stationId=${stationId}`, {
+          method: 'DELETE'
+        }).catch(() => {/* ignore errors on cleanup */})
+      }
+    }
+  }, [isHost, isStreaming, stationId])
+
+  // Poll viewer count from database
+  useEffect(() => {
+    if (!isStreaming) return
+
+    const fetchViewerCount = async () => {
+      try {
+        const response = await fetch(`/api/station?username=${stationId}`)
+        const data = await response.json()
+        if (data.listenerCount !== undefined) {
+          setViewerCount(data.listenerCount)
+        }
+      } catch (error) {
+        console.warn('Failed to fetch viewer count:', error)
+      }
+    }
+
+    // Fetch immediately
+    fetchViewerCount()
+
+    // Poll every 3 seconds
+    const interval = setInterval(fetchViewerCount, 3000)
+    return () => clearInterval(interval)
+  }, [isStreaming, stationId])
 
   const addNotification = (message: string, type: 'join' | 'leave' | 'reaction' | 'kick') => {
     const id = Date.now().toString()
@@ -478,6 +531,17 @@ function StationContent() {
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = null
       }
+
+      // Remove listener from database if viewer
+      if (!isHost) {
+        try {
+          await fetch(`/api/station/listeners?stationId=${stationId}`, {
+            method: 'DELETE'
+          })
+        } catch (error) {
+          console.warn('Failed to remove listener:', error)
+        }
+      }
       
       const response = await fetch('/api/station', {
         method: 'POST',
@@ -526,8 +590,12 @@ function StationContent() {
     }
   }
 
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
+
   const sendMessage = async () => {
-    if (!chatInput.trim() || !user || !webrtcRef.current) return
+    if (!chatInput.trim() || !user || !webrtcRef.current || isSendingMessage) return
+    
+    setIsSendingMessage(true)
     
     try {
       const username = user.username || 'Anonymous'
@@ -541,7 +609,7 @@ function StationContent() {
         id: Date.now().toString(),
         user_id: user.id,
         username,
-        avatar: user.imageUrl || undefined,
+        avatar: user.imageUrl || '/default-avatar.png',
         message,
         timestamp: new Date()
       }])
@@ -554,11 +622,14 @@ function StationContent() {
         id: Date.now().toString(),
         user_id: user.id,
         username: user.username || 'Anonymous',
-        avatar: user.imageUrl || undefined,
+        avatar: user.imageUrl || '/default-avatar.png',
         message: chatInput,
         timestamp: new Date()
       }])
       setChatInput('')
+    } finally {
+      // 500ms cooldown to prevent duplicate sends
+      setTimeout(() => setIsSendingMessage(false), 500)
     }
   }
   
