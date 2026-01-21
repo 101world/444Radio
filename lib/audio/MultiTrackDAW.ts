@@ -142,11 +142,14 @@ export class MultiTrackDAW {
       this.activeSourceNodes = new Map()
     }
 
+    // Get master gain for volume control
+    const masterGain = this.audioEngine.getMasterGain()
+
     // Schedule all clips
     const tracks = this.trackManager.getTracks()
     tracks.forEach(track => {
       const routingNode = this.trackManager.getRoutingNode(track.id)
-      if (!routingNode || track.muted || !track.clips.length) return
+      if (!routingNode || track.muted || track.solo || !track.clips.length) return
 
       track.clips.forEach(clip => {
         if (!clip.buffer) return // Skip clips without audio buffer
@@ -159,18 +162,62 @@ export class MultiTrackDAW {
         const source = this.audioContext.createBufferSource()
         source.buffer = clip.buffer
 
-        // Apply clip gain
+        // FIX #2: Create clip gain node with fade envelopes
         const clipGain = this.audioContext.createGain()
-        clipGain.gain.value = clip.gain
-
-        // Connect: source → clipGain → track routing → master
-        source.connect(clipGain)
-        clipGain.connect(routingNode.gainNode)
-
+        
         // Calculate start time in AudioContext time
         const startTime = this.audioContext.currentTime + Math.max(0, clipStartTime)
         const offset = Math.max(0, -clipStartTime) + clip.offset
         const duration = clip.duration - offset
+
+        // FIX #2: Apply fade in envelope
+        if (clip.fadeIn && clip.fadeIn.duration > 0 && clip.fadeIn.duration < duration) {
+          clipGain.gain.setValueAtTime(0, startTime)
+          
+          // Apply fade curve
+          if (clip.fadeIn.curve === 'exponential') {
+            clipGain.gain.exponentialRampToValueAtTime(clip.gain, startTime + clip.fadeIn.duration)
+          } else {
+            clipGain.gain.linearRampToValueAtTime(clip.gain, startTime + clip.fadeIn.duration)
+          }
+        } else {
+          clipGain.gain.setValueAtTime(clip.gain, startTime)
+        }
+
+        // FIX #2: Apply fade out envelope
+        if (clip.fadeOut && clip.fadeOut.duration > 0 && clip.fadeOut.duration < duration) {
+          const fadeOutStart = startTime + duration - clip.fadeOut.duration
+          
+          // Apply fade curve
+          if (clip.fadeOut.curve === 'exponential') {
+            clipGain.gain.linearRampToValueAtTime(clip.gain, fadeOutStart)
+            clipGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration) // Use 0.001 to avoid -Infinity
+          } else {
+            clipGain.gain.linearRampToValueAtTime(clip.gain, fadeOutStart)
+            clipGain.gain.linearRampToValueAtTime(0, startTime + duration)
+          }
+        }
+
+        // FIX #3: Handle looping with proper source.loop
+        const loopState = this.timelineManager.getActiveLoopRegion()
+        if (this.transportState.loopEnabled && loopState) {
+          // Check if clip intersects with loop region
+          const clipEnd = clip.startTime + clip.duration
+          if (clip.startTime < loopState.endTime && clipEnd > loopState.startTime) {
+            source.loop = true
+            const loopStart = Math.max(loopState.startTime, clip.startTime)
+            const loopEnd = Math.min(loopState.endTime, clipEnd)
+            source.loopStart = loopStart
+            source.loopEnd = loopEnd
+          }
+        }
+
+        // FIX #1: Connect through master gain for volume control
+        // source → clipGain → track routing → master gain → destination
+        source.connect(clipGain)
+        clipGain.connect(routingNode.gainNode)
+        routingNode.gainNode.connect(masterGain)
+        masterGain.connect(this.audioContext.destination)
 
         // Start playback
         source.start(startTime, offset, duration)

@@ -3,11 +3,12 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
 import MediaUploadModal from '../components/MediaUploadModal'
+import DeletedChatsModal from '../components/DeletedChatsModal'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -120,6 +121,7 @@ function CreatePageContent() {
   const [showBpmModal, setShowBpmModal] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showAdvancedButtons, setShowAdvancedButtons] = useState(false)
+  const [showDeletedChatsModal, setShowDeletedChatsModal] = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState('English')
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -1790,7 +1792,35 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => {
-                if (confirm('Clear all chat messages? This cannot be undone.')) {
+                if (confirm('Clear all chat messages? They will be saved to your deleted chats archive.')) {
+                  // Archive current chat with unique ID and timestamp
+                  try {
+                    const archives = localStorage.getItem('444radio-chat-archives')
+                    const archiveList = archives ? JSON.parse(archives) : []
+                    
+                    // Create new archive entry
+                    const newArchive = {
+                      id: `chat-${Date.now()}`,
+                      messages: messages,
+                      archivedAt: new Date(),
+                      messageCount: messages.length
+                    }
+                    
+                    // Add to beginning of list (most recent first)
+                    archiveList.unshift(newArchive)
+                    
+                    // Keep only last 20 archived chats to prevent storage overflow
+                    const limitedArchives = archiveList.slice(0, 20)
+                    
+                    localStorage.setItem('444radio-chat-archives', JSON.stringify(limitedArchives))
+                    
+                    // Remove old single backup if it exists
+                    localStorage.removeItem('444radio-chat-backup')
+                  } catch (error) {
+                    console.error('Failed to archive chat:', error)
+                  }
+                  
+                  // Clear current chat
                   setMessages([{
                     id: '1',
                     type: 'assistant',
@@ -1806,6 +1836,20 @@ function CreatePageContent() {
               <X 
                 size={18} 
                 className="text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.9)] md:w-[20px] md:h-[20px]"
+              />
+            </button>
+            )}
+
+            {/* Restore Chat Button - Opens archived chats modal */}
+            {showAdvancedButtons && (
+            <button
+              onClick={() => setShowDeletedChatsModal(true)}
+              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
+              title="View Deleted Chats"
+            >
+              <RotateCcw 
+                size={18} 
+                className="text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.9)] md:w-[20px] md:h-[20px]"
               />
             </button>
             )}
@@ -2447,6 +2491,43 @@ function CreatePageContent() {
           } else {
             fetchCredits()
           }
+        }}
+      />
+
+      {/* Deleted Chats Modal */}
+      <DeletedChatsModal
+        isOpen={showDeletedChatsModal}
+        onClose={() => setShowDeletedChatsModal(false)}
+        onRestore={(chat) => {
+          // Archive current chat first
+          try {
+            const archives = localStorage.getItem('444radio-chat-archives')
+            const archiveList = archives ? JSON.parse(archives) : []
+            
+            // Only archive if current chat has more than just the welcome message
+            if (messages.length > 1) {
+              const currentArchive = {
+                id: `chat-${Date.now()}`,
+                messages: messages,
+                archivedAt: new Date(),
+                messageCount: messages.length
+              }
+              archiveList.unshift(currentArchive)
+              const limitedArchives = archiveList.slice(0, 20)
+              localStorage.setItem('444radio-chat-archives', JSON.stringify(limitedArchives))
+            }
+          } catch (error) {
+            console.error('Failed to archive current chat:', error)
+          }
+          
+          // Restore selected chat
+          setMessages(chat.messages)
+          localStorage.setItem('444radio-chat-messages', JSON.stringify(chat.messages))
+          setShowDeletedChatsModal(false)
+        }}
+        onDelete={(chatId) => {
+          // Deletion is handled within the modal
+          console.log('Chat deleted:', chatId)
         }}
       />
 

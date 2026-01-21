@@ -59,6 +59,8 @@ export default function DAWProRebuild() {
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
   const [metronomeFlash, setMetronomeFlash] = useState(false)
   const [metronomeInterval, setMetronomeInterval] = useState<NodeJS.Timeout | null>(null)
+  const scheduledMetronomeClicks = useRef<AudioBufferSourceNode[] | null>(null)
+  const metronomeTimeout = useRef<NodeJS.Timeout | null>(null)
   const [masterVolume, setMasterVolume] = useState(100)
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
@@ -2608,7 +2610,7 @@ export default function DAWProRebuild() {
                       )}
                       
                       {/* Loading indicator for clips being added to this track */}
-                      {Array.from(loadingClips).some(key => key.startsWith(`${track.id}-`)) && (
+                      {Array.from(loadingClips).some((key) => key.startsWith(`${track.id}-`)) && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none z-30">
                           <div className="flex items-center gap-3 px-4 py-2 bg-gray-900/90 rounded-lg border border-cyan-500/30">
                             <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
