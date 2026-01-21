@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW'
 import type { Track, TrackClip } from '@/lib/audio/TrackManager'
@@ -38,6 +38,11 @@ declare global {
   }
 }
 
+// Import modal components
+import GenerateModal from '@/app/components/studio/GenerationModal'
+import StemSplitterModal from '@/app/components/studio/StemSplitterModal'
+import KeyboardHelpModal from '@/app/components/studio/KeyboardHelpModal'
+
 export default function DAWProRebuild() {
   const { user } = useUser()
   const [daw, setDaw] = useState<MultiTrackDAW | null>(null)
@@ -59,8 +64,6 @@ export default function DAWProRebuild() {
   const [metronomeEnabled, setMetronomeEnabled] = useState(false)
   const [metronomeFlash, setMetronomeFlash] = useState(false)
   const [metronomeInterval, setMetronomeInterval] = useState<NodeJS.Timeout | null>(null)
-  const scheduledMetronomeClicks = useRef<AudioBufferSourceNode[] | null>(null)
-  const metronomeTimeout = useRef<NodeJS.Timeout | null>(null)
   const [masterVolume, setMasterVolume] = useState(100)
   const [recordingTrackId, setRecordingTrackId] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
@@ -2610,7 +2613,7 @@ export default function DAWProRebuild() {
                       )}
                       
                       {/* Loading indicator for clips being added to this track */}
-                      {Array.from(loadingClips).some((key) => key.startsWith(`${track.id}-`)) && (
+                      {Array.from(loadingClips).some(key => key.startsWith(`${track.id}-`)) && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none z-30">
                           <div className="flex items-center gap-3 px-4 py-2 bg-gray-900/90 rounded-lg border border-cyan-500/30">
                             <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
@@ -2669,279 +2672,40 @@ export default function DAWProRebuild() {
       </div>
 
       {/* Advanced AI Generation Modal */}
-      {showGenerateModal && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#111] to-[#0d0d0d] border border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
-                  AI Music Generation
-                </h2>
-                <button
-                  onClick={() => setShowGenerateModal(false)}
-                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* Prompt */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Describe your track *
-                  </label>
-                  <textarea
-                    value={genPrompt}
-                    onChange={(e) => setGenPrompt(e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg p-4 text-white resize-none focus:border-cyan-500 focus:outline-none"
-                    rows={4}
-                    placeholder="e.g., Uplifting electronic dance track with synths and heavy bass..."
-                  />
-                </div>
-
-                {/* Instrumental Toggle */}
-                <div className="flex items-center gap-3 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                  <input
-                    type="checkbox"
-                    id="instrumental"
-                    checked={genIsInstrumental}
-                    onChange={(e) => setGenIsInstrumental(e.target.checked)}
-                    className="w-5 h-5 accent-purple-500"
-                  />
-                  <label htmlFor="instrumental" className="text-sm font-medium text-purple-400">
-                    <Music size={16} className="inline mr-2" />
-                    Instrumental Mode (no lyrics)
-                  </label>
-                </div>
-
-                {/* Advanced Parameters */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Title (auto-generated if empty)
-                    </label>
-                    <input
-                      type="text"
-                      value={genTitle}
-                      onChange={(e) => setGenTitle(e.target.value)}
-                      className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 focus:outline-none"
-                      placeholder="e.g., Neon Dreams"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Genre (auto-detected if empty)
-                    </label>
-                    <input
-                      type="text"
-                      value={genGenre}
-                      onChange={(e) => setGenGenre(e.target.value)}
-                      className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 focus:outline-none"
-                      placeholder="e.g., Electronic"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    BPM (auto-detected if empty)
-                  </label>
-                  <input
-                    type="number"
-                    value={genBpm}
-                    onChange={(e) => setGenBpm(e.target.value)}
-                    className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-cyan-500 focus:outline-none"
-                    placeholder="e.g., 128"
-                    min="60"
-                    max="200"
-                  />
-                </div>
-
-                {!genIsInstrumental && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Lyrics (auto-generated if empty)
-                    </label>
-                    <textarea
-                      value={genLyrics}
-                      onChange={(e) => setGenLyrics(e.target.value)}
-                      className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg p-4 text-white resize-none focus:border-cyan-500 focus:outline-none font-mono text-sm"
-                      rows={8}
-                      placeholder="Leave empty for AI-generated lyrics or paste your own..."
-                    />
-                  </div>
-                )}
-
-                {/* Generate Button */}
-                <div className="flex flex-col gap-4 pt-4">
-                  {generatingTrack && generationProgress && (
-                    <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-cyan-300 font-medium">{generationProgress}</span>
-                        <span className="text-cyan-400 text-sm">Step {generationStep}/5</span>
-                      </div>
-                      <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                        <div 
-                          className="bg-gradient-to-r from-cyan-500 to-purple-500 h-full transition-all duration-500"
-                          style={{ width: `${(generationStep / 5) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex gap-4">
-                    <button
-                      onClick={handleGenerate}
-                      disabled={generatingTrack || !genPrompt.trim()}
-                      className="flex-1 py-4 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg shadow-xl shadow-purple-500/30"
-                    >
-                      {generatingTrack ? (
-                        <>
-                          <Loader2 className="animate-spin" size={24} />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={24} />
-                          Generate Track
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setShowGenerateModal(false)}
-                      disabled={generatingTrack}
-                      className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <GenerateModal
+        isOpen={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        onGenerate={handleGenerate}
+        generating={generatingTrack}
+        progress={generationProgress}
+        step={generationStep}
+        prompt={genPrompt}
+        setPrompt={setGenPrompt}
+        title={genTitle}
+        setTitle={setGenTitle}
+        genre={genGenre}
+        setGenre={setGenGenre}
+        bpm={genBpm}
+        setBpm={setGenBpm}
+        isInstrumental={genIsInstrumental}
+        setIsInstrumental={setGenIsInstrumental}
+        lyrics={genLyrics}
+        setLyrics={setGenLyrics}
+      />
 
       {/* Stem Splitter Modal */}
-      {showStemSplitter && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#111] to-[#0d0d0d] border border-purple-500/30 rounded-2xl shadow-2xl shadow-purple-500/20 max-w-2xl w-full">
-            <div className="p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-                  Stem Splitter
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowStemSplitter(false)
-                    setStemResults(null)
-                  }}
-                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <p className="text-gray-400 text-sm">
-                  Separate audio into individual stems: vocals, instrumental, drums, bass, and
-                  more.
-                </p>
-
-                {!stemResults ? (
-                  <>
-                    <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                      <div className="text-sm font-medium text-purple-400 mb-2">
-                        Selected Track:
-                      </div>
-                      <div className="text-white">
-                        {selectedAudioForStems ? 'Audio track selected' : 'No track selected'}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleSplitStems}
-                      disabled={isSplittingStems || !selectedAudioForStems}
-                      className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg shadow-xl shadow-purple-500/30"
-                    >
-                      {isSplittingStems ? (
-                        <>
-                          <Loader2 className="animate-spin" size={24} />
-                          Splitting Stems (1-2 min)...
-                        </>
-                      ) : (
-                        <>
-                          <Scissors size={24} />
-                          Split Stems
-                        </>
-                      )}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="space-y-3">
-                      <div className="text-sm font-medium text-green-400 mb-4">
-                        ✅ Stems separated successfully!
-                      </div>
-                      {Object.entries(stemResults).map(([key, url]: [string, any]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-lg"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Music size={20} className="text-purple-400" />
-                            <span className="text-white font-medium capitalize">{key}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={async () => {
-                                // Add this stem to timeline
-                                const emptyTrack = tracks.find(t => t.clips.length === 0)
-                                if (emptyTrack && daw) {
-                                  try {
-                                    await handleAddClip(url, emptyTrack.id, 0)
-                                    showToast(`✓ ${key} added to timeline`, 'success')
-                                  } catch (error) {
-                                    showToast('Failed to add stem', 'error')
-                                  }
-                                } else {
-                                  showToast('No empty tracks available', 'error')
-                                }
-                              }}
-                              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                            >
-                              Add to Timeline
-                            </button>
-                            <button
-                              onClick={() => window.open(url, '_blank')}
-                              className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                            >
-                              <Download size={16} />
-                              Download
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        setShowStemSplitter(false)
-                        setStemResults(null)
-                        setSelectedAudioForStems(null)
-                      }}
-                      className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors"
-                    >
-                      Done
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <StemSplitterModal
+        isOpen={showStemSplitter}
+        onClose={() => {
+          setShowStemSplitter(false)
+          setStemResults(null)
+          setSelectedAudioForStems(null)
+        }}
+        isSplitting={isSplittingStems}
+        selectedAudio={selectedAudioForStems}
+        stemResults={stemResults}
+        onSplit={handleSplitStems}
+      />
 
       {/* Context Menu */}
       {contextMenu && (
@@ -3058,148 +2822,10 @@ export default function DAWProRebuild() {
       )}
 
       {/* Keyboard Shortcuts Help Modal */}
-      {showKeyboardHelp && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => setShowKeyboardHelp(false)}>
-          <div className="bg-gradient-to-br from-gray-900 to-gray-950 border border-cyan-500/30 rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl shadow-cyan-500/10" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                <span className="text-3xl">⌨️</span>
-                Keyboard Shortcuts
-              </h2>
-              <button
-                onClick={() => setShowKeyboardHelp(false)}
-                className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors text-gray-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Transport Controls */}
-              <div>
-                <h3 className="text-sm font-bold text-cyan-400 uppercase mb-3 flex items-center gap-2">
-                  <Play size={14} />
-                  Transport
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Play/Pause</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">Space</kbd>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Stop</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">Click Stop</kbd>
-                  </div>
-                </div>
-              </div>
-
-              {/* Editing */}
-              <div>
-                <h3 className="text-sm font-bold text-cyan-400 uppercase mb-3 flex items-center gap-2">
-                  <Scissors size={14} />
-                  Editing
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Split clip at playhead</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">X</kbd>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Delete clip</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">Del / Backspace</kbd>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Copy clip</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">Ctrl+C</kbd>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Paste clip</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">Ctrl+V</kbd>
-                  </div>
-                </div>
-              </div>
-
-              {/* History */}
-              <div>
-                <h3 className="text-sm font-bold text-cyan-400 uppercase mb-3 flex items-center gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                    <path d="M3 3v5h5" />
-                  </svg>
-                  History
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Undo</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">Ctrl+Z</kbd>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Redo</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">Ctrl+Y</kbd>
-                  </div>
-                </div>
-              </div>
-
-              {/* View */}
-              <div>
-                <h3 className="text-sm font-bold text-cyan-400 uppercase mb-3 flex items-center gap-2">
-                  <Folder size={14} />
-                  View
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Toggle browser</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">B</kbd>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Save project</span>
-                    <kbd className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono text-gray-300">Ctrl+S</kbd>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mouse Actions */}
-            <div className="mt-6 pt-6 border-t border-gray-800">
-              <h3 className="text-sm font-bold text-cyan-400 uppercase mb-3">Mouse Actions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div className="flex items-start gap-2">
-                  <span className="text-purple-400 font-bold">●</span>
-                  <div>
-                    <span className="text-gray-300 font-medium">Purple handles:</span>
-                    <span className="text-gray-500 block">Drag clip edges to trim</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-bold">●</span>
-                  <div>
-                    <span className="text-gray-300 font-medium">Cyan handles:</span>
-                    <span className="text-gray-500 block">Adjust fade in/out</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-400 font-bold">⊕</span>
-                  <div>
-                    <span className="text-gray-300 font-medium">Right-click clip:</span>
-                    <span className="text-gray-500 block">Context menu</span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-400 font-bold">↔</span>
-                  <div>
-                    <span className="text-gray-300 font-medium">Drag clip:</span>
-                    <span className="text-gray-500 block">Move in timeline</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 text-center text-xs text-gray-500">
-              Press <kbd className="px-1.5 py-0.5 bg-gray-800 border border-gray-700 rounded font-mono text-gray-400">?</kbd> anytime to toggle this help
-            </div>
-          </div>
-        </div>
-      )}
+      <KeyboardHelpModal
+        isOpen={showKeyboardHelp}
+        onClose={() => setShowKeyboardHelp(false)}
+      />
 
       {/* Toast */}
       {toast && (
