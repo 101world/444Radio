@@ -79,6 +79,10 @@ function HomePageContent() {
   const fetchAllTracks = async () => {
     try {
       const res = await fetch('/api/media/explore')
+      if (!res.ok) {
+        console.error('❌ Explore API failed:', res.status, res.statusText)
+        return
+      }
       const data = await res.json()
       if (data.success && data.combinedMedia) {
         interface MediaItem {
