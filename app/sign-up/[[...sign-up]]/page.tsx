@@ -175,8 +175,11 @@ function SignUpContent() {
       </div>
 
       <SignUp 
-        forceRedirectUrl="/"
+        forceRedirectUrl="https://444radio.co.in"
+        fallbackRedirectUrl="https://444radio.co.in"
         signInUrl="/sign-in"
+        afterSignUpUrl="https://444radio.co.in"
+        afterSignInUrl="https://444radio.co.in"
         appearance={{
           elements: {
             formButtonPrimary: 'bg-gradient-to-r from-cyan-400 via-cyan-500 to-teal-400 text-black font-bold hover:shadow-cyan-500/50 hover:scale-105 transition-all duration-200',
