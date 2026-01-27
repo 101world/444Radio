@@ -76,7 +76,7 @@ export async function GET() {
           body: JSON.stringify({
             clerk_user_id: userId,
             email: '', // Will be updated by webhook
-            credits: 20, // Give 20 credits automatically on signup
+            credits: 0, // Users start with 0 credits - must visit /decrypt to get 20
             total_generated: 0
           })
         }
