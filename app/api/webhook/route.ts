@@ -328,7 +328,7 @@ async function handleClerkWebhook(req: Request) {
           email: emailAddress,
           username: username || null,
           profile_image_url: validImageUrl,
-          credits: 20, // Give 20 credits automatically on signup
+          credits: 0, // Users start with 0 credits - must visit /decrypt to get 20
         }, { onConflict: 'clerk_user_id' })
 
         if (error) {
