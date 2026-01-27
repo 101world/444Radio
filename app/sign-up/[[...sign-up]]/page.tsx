@@ -25,7 +25,7 @@ function SignUpContent() {
 
   if (!ageVerified || !agreeToTerms) {
     return (
-      <div className="w-full max-w-md mx-auto">
+      <div className="w-full max-w-md mx-auto z-50 relative">
         {/* Logo/Header */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -41,7 +41,7 @@ function SignUpContent() {
         </div>
 
         {/* Age Verification Card */}
-        <div className="bg-gradient-to-br from-slate-900/90 via-slate-900/50 to-slate-900/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/10 p-8">
+        <div className="bg-gradient-to-br from-slate-900/90 via-slate-900/50 to-slate-900/90 backdrop-blur-xl border border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/10 p-8 relative z-50">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-white mb-2">Welcome to 444Radio</h2>
             <p className="text-gray-400 text-sm">Before we begin, please confirm the following</p>
@@ -181,10 +181,10 @@ function SignUpContent() {
           elements: {
             formButtonPrimary: 'bg-gradient-to-r from-cyan-400 via-cyan-500 to-teal-400 text-black font-bold hover:shadow-cyan-500/50 hover:scale-105 transition-all duration-200',
             card: 'bg-gradient-to-br from-slate-900/90 via-slate-900/50 to-slate-900/90 backdrop-blur-xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/10',
-            // Hide Clerk header (we have our own above)
-            headerTitle: 'hidden',
-            headerSubtitle: 'hidden',
-            header: 'hidden',
+            // Show header for verification steps (email verification needs instructions)
+            headerTitle: 'text-white text-xl font-bold',
+            headerSubtitle: 'text-gray-400 text-sm mt-2',
+            header: 'mb-6',
             logoBox: 'hidden',
             logoImage: 'hidden',
             // Social buttons
