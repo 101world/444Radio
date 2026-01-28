@@ -2485,15 +2485,27 @@ function CreatePageContent() {
         userCredits={userCredits || 0}
         initialPrompt={input}
         onGenerationStart={(prompt: string) => {
-          // Similar to music generation start
-          const generationId = Date.now().toString()
+          // Add user message and generating message
+          const userMsgId = Date.now().toString()
+          const genMsgId = (Date.now() + 1).toString()
+          
           const userMessage: Message = {
-            id: generationId,
+            id: userMsgId,
             type: 'user',
             content: `🎨 Generate sound effects: "${prompt}"`,
             timestamp: new Date()
           }
-          setMessages(prev => [...prev, userMessage])
+          
+          const generatingMessage: Message = {
+            id: genMsgId,
+            type: 'generation',
+            content: '🎨 Generating sound effects...',
+            generationType: 'effects',
+            isGenerating: true,
+            timestamp: new Date()
+          }
+          
+          setMessages(prev => [...prev, userMessage, generatingMessage])
           setInput('')
         }}
         onSuccess={(audioUrl: string, prompt: string) => {

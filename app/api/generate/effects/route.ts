@@ -162,7 +162,8 @@ export async function POST(req: NextRequest) {
             user_id: userId,
             type: 'audio',
             title: `SFX: ${prompt.substring(0, 50)}`,
-            prompt: prompt,
+            audio_prompt: prompt, // Use audio_prompt for library compatibility
+            prompt: prompt, // Keep prompt for backward compat
             audio_url: outputR2Result.url,
             is_public: true,
             genre: 'effects' // Tag as effects for filtering

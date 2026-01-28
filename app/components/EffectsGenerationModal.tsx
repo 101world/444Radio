@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Sparkles, Loader2 } from 'lucide-react'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
 import { validateGenerationPrompt } from '@/lib/validation'
@@ -24,6 +24,13 @@ export default function EffectsGenerationModal({
 }: EffectsModalProps) {
   const { addGeneration, updateGeneration } = useGenerationQueue()
   const [prompt, setPrompt] = useState(initialPrompt)
+  
+  // Update prompt when initialPrompt changes
+  useEffect(() => {
+    if (initialPrompt) {
+      setPrompt(initialPrompt)
+    }
+  }, [initialPrompt])
   const [duration, setDuration] = useState(5)
   const [top_k, setTopK] = useState(250)
   const [top_p, setTopP] = useState(0)
