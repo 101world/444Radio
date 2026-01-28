@@ -2004,6 +2004,8 @@ function CreatePageContent() {
                       ? 'Describe your sound...'
                       : selectedType === 'image'
                       ? 'Describe your cover art...'
+                      : selectedType === 'effects'
+                      ? 'Describe sound effects...'
                       : 'Coming soon...'
                   }
                   disabled={selectedType === 'video'}

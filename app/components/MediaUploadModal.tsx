@@ -394,24 +394,22 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
                 required={fileType === 'video'}
               />
               
-              {/* HQ Quality Toggle (only for video) */}
+              {/* HQ Quality Toggle (only for video) - Sleeker */}
               {fileType === 'video' && (
-                <div className="mt-3 p-3 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg">
-                  <label className="flex items-start gap-3 cursor-pointer">
+                <div className="mt-2 p-2.5 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 border border-yellow-500/20 rounded-lg">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={useHQ}
                       onChange={(e) => setUseHQ(e.target.checked)}
-                      className="mt-0.5 w-4 h-4 rounded border-yellow-500/50 bg-white/5 text-yellow-500 focus:ring-yellow-500/50 focus:ring-offset-0"
+                      className="w-3.5 h-3.5 rounded border-yellow-500/50 bg-white/5 text-yellow-500 focus:ring-yellow-500/50 focus:ring-offset-0"
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-yellow-300">✨ Enable HQ Quality</span>
-                        <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded">+8 credits</span>
+                    <div className="flex-1 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-yellow-300">✨ HQ Quality</span>
+                        <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-300 text-[10px] font-bold rounded">+8</span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                        Premium model with higher fidelity audio, better sync accuracy, and professional-grade sound design. Uses HunyuanVideo-Foley.
-                      </p>
+                      <span className="text-[10px] text-gray-500">HunyuanVideo-Foley</span>
                     </div>
                   </label>
                 </div>
