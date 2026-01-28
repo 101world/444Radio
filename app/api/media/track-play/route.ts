@@ -9,43 +9,64 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: Request) {
-  const { userId } = await auth()
-  if (!userId) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return corsResponse(
+        NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      )
+    }
+
+    const { mediaId } = await request.json()
+
+    if (!mediaId) {
+      return corsResponse(
+        NextResponse.json({ error: 'Media ID is required' }, { status: 400 })
+      )
+    }
+
+    // Check if user is the artist (per copilot instructions: "Artist plays don't count")
+    const { data: media, error: fetchError } = await supabase
+      .from('combined_media')
+      .select('user_id, plays')
+      .eq('id', mediaId)
+      .single()
+
+    if (fetchError) {
+      console.error('Fetch media error:', fetchError)
+      return corsResponse(
+        NextResponse.json({ error: 'Media not found', details: fetchError.message }, { status: 404 })
+      )
+    }
+
+    if (media && media.user_id === userId) {
+      return corsResponse(
+        NextResponse.json({ success: true, message: "Artist plays don't count" })
+      )
+    }
+
+    // Increment play count directly with UPDATE
+    const currentPlays = media?.plays || 0
+    const { error: updateError } = await supabase
+      .from('combined_media')
+      .update({ plays: currentPlays + 1 })
+      .eq('id', mediaId)
+
+    if (updateError) {
+      console.error('Track play error:', updateError)
+      return corsResponse(
+        NextResponse.json({ error: 'Failed to update play count', details: updateError.message }, { status: 500 })
+      )
+    }
+
+    return corsResponse(NextResponse.json({ success: true, plays: currentPlays + 1 }))
+  } catch (error) {
+    console.error('Track play exception:', error)
     return corsResponse(
-      NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      NextResponse.json({ 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      }, { status: 500 })
     )
   }
-
-  const { mediaId } = await request.json()
-
-  if (!mediaId) {
-    return corsResponse(
-      NextResponse.json({ error: 'Media ID is required' }, { status: 400 })
-    )
-  }
-
-  // Check if user is the artist (per copilot instructions: "Artist plays don't count")
-  const { data: media } = await supabase
-    .from('combined_media')
-    .select('user_id')
-    .eq('id', mediaId)
-    .single()
-
-  if (media && media.user_id === userId) {
-    return corsResponse(
-      NextResponse.json({ success: true, message: "Artist plays don't count" })
-    )
-  }
-
-  // Increment play count using RPC function
-  const { error } = await supabase.rpc('increment_plays', { media_id: mediaId })
-
-  if (error) {
-    console.error('Track play error:', error)
-    return corsResponse(
-      NextResponse.json({ error: 'Failed to update play count' }, { status: 500 })
-    )
-  }
-
-  return corsResponse(NextResponse.json({ success: true }))
 }
