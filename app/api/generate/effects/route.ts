@@ -4,8 +4,8 @@ import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
-// Allow up to 2 minutes for effects generation
-export const maxDuration = 120
+// Allow up to 2.5 minutes for effects generation (AudioGen can take 60-90s)
+export const maxDuration = 150
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
@@ -95,10 +95,10 @@ export async function POST(req: NextRequest) {
 
       console.log('🎨 Prediction created:', prediction.id)
 
-      // Poll until completed
+      // Poll until completed (effects can take 60-90s)
       let finalPrediction = prediction
       let pollAttempts = 0
-      const maxPollAttempts = 60 // 60 seconds max
+      const maxPollAttempts = 90 // 90 seconds max for AudioGen
       
       while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && pollAttempts < maxPollAttempts) {
         await new Promise(resolve => setTimeout(resolve, 1000))
@@ -148,34 +148,45 @@ export async function POST(req: NextRequest) {
 
       // Save to combined_media table
       console.log('💾 Saving to combined_media...')
-      const saveRes = await fetch(
-        `${supabaseUrl}/rest/v1/combined_media`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Prefer': 'return=representation'
-          },
-          body: JSON.stringify({
-            user_id: userId,
-            type: 'audio',
-            title: `SFX: ${prompt.substring(0, 50)}`,
-            audio_prompt: prompt, // Use audio_prompt for library compatibility
-            prompt: prompt, // Keep prompt for backward compat
-            audio_url: outputR2Result.url,
-            is_public: true,
-            genre: 'effects' // Tag as effects for filtering
-          })
-        }
-      )
+      let libraryId = null
+      let librarySaveError = null
+      
+      try {
+        const saveRes = await fetch(
+          `${supabaseUrl}/rest/v1/combined_media`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              type: 'audio',
+              title: `SFX: ${prompt.substring(0, 50)}`,
+              audio_prompt: prompt, // Use audio_prompt for library compatibility
+              prompt: prompt, // Keep prompt for backward compat
+              audio_url: outputR2Result.url,
+              is_public: true,
+              genre: 'effects' // Tag as effects for filtering
+            })
+          }
+        )
 
-      if (!saveRes.ok) {
-        console.error('⚠️ Failed to save to library')
-      } else {
-        const saved = await saveRes.json()
-        console.log('✅ Saved to library:', saved[0]?.id)
+        if (!saveRes.ok) {
+          const errorText = await saveRes.text()
+          librarySaveError = `Library save failed: ${saveRes.status} - ${errorText}`
+          console.error('⚠️', librarySaveError)
+        } else {
+          const saved = await saveRes.json()
+          libraryId = saved[0]?.id
+          console.log('✅ Saved to library:', libraryId)
+        }
+      } catch (saveError) {
+        librarySaveError = saveError instanceof Error ? saveError.message : 'Unknown save error'
+        console.error('⚠️ Library save exception:', librarySaveError)
       }
 
       // Deduct credits (-2) since everything succeeded
@@ -211,7 +222,11 @@ export async function POST(req: NextRequest) {
         prompt,
         duration,
         creditsRemaining: user.credits - 2,
-        message: 'Sound effects generated successfully'
+        libraryId, // Include library ID if saved successfully
+        librarySaveError, // Include error if save failed
+        message: libraryId 
+          ? 'Sound effects generated and saved successfully'
+          : 'Sound effects generated but not saved to library'
       }))
 
     } catch (genError) {
