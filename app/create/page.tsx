@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
+import EffectsGenerationModal from '../components/EffectsGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
 import MediaUploadModal from '../components/MediaUploadModal'
@@ -23,7 +24,7 @@ const HolographicBackground = lazy(() => import('../components/HolographicBackgr
 // Metadata is set in parent layout
 
 type MessageType = 'user' | 'assistant' | 'generation'
-type GenerationType = 'music' | 'image' | 'video'
+type GenerationType = 'music' | 'image' | 'video' | 'effects' | 'effects'
 
 interface Message {
   id: string
@@ -76,6 +77,7 @@ function CreatePageContent() {
   const [selectedType, setSelectedType] = useState<GenerationType>('music')
   const [isGenerating, setIsGenerating] = useState(false)
   const [showMusicModal, setShowMusicModal] = useState(false)
+  const [showEffectsModal, setShowEffectsModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false)
@@ -565,7 +567,7 @@ function CreatePageContent() {
     setShowTitleError(false)
 
     // Check credits before generation AND prevent multiple simultaneous generations
-    const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : 0
+    const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : 0
     
     // Fetch fresh credits to prevent race conditions
     const freshCreditsRes = await fetch('/api/credits')
@@ -573,7 +575,7 @@ function CreatePageContent() {
     const currentCredits = freshCreditsData.credits || 0
     
     // Also check if there are active generations that haven't deducted credits yet
-    const pendingCredits = activeGenerations.size * (selectedType === 'music' ? 2 : 1)
+    const pendingCredits = activeGenerations.size * (selectedType === 'music' ? 2 : selectedType === 'effects' ? 2 : 1)
     const availableCredits = currentCredits - pendingCredits
     
     console.log('[Credit Check]', { currentCredits, pendingCredits, availableCredits, creditsNeeded })
@@ -749,6 +751,12 @@ function CreatePageContent() {
       return
     }
 
+    // For sound effects generation
+    if (selectedType === 'effects') {
+      setShowEffectsModal(true)
+      return
+    }
+
     // For cover art/image generation
     if (selectedType === 'image') {
       const userMessage: Message = {
@@ -780,7 +788,7 @@ function CreatePageContent() {
   // Queue processing function
   const processQueue = async (
     messageId: string,
-    type: 'music' | 'image',
+    type: 'music' | 'image' | 'effects',
     params: {
       prompt: string
       genre?: string
@@ -1714,6 +1722,29 @@ function CreatePageContent() {
             </button>
             )}
 
+            {/* Effects Type Button - Hidden by default */}
+            {showAdvancedButtons && (
+            <button
+              onClick={() => setSelectedType('effects')}
+              className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
+                selectedType === 'effects'
+                  ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-purple-400 shadow-lg shadow-purple-500/50 scale-110'
+                  : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105'
+              }`}
+              title="Generate Sound Effects"
+            >
+              <Sparkles 
+                size={18} 
+                className={`${
+                  selectedType === 'effects' ? 'text-black' : 'text-purple-400'
+                } drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]`}
+              />
+              {selectedType === 'effects' && (
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
+              )}
+            </button>
+            )}
+
             {/* Image Type Button - Hidden by default */}
             {showAdvancedButtons && (
             <button
@@ -2444,6 +2475,30 @@ function CreatePageContent() {
           // Extract title and lyrics from the generated music
           // This will be called after successful generation
           handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
+        }}
+      />
+
+      {/* Effects Generation Modal */}
+      <EffectsGenerationModal
+        isOpen={showEffectsModal}
+        onClose={() => setShowEffectsModal(false)}
+        userCredits={userCredits || 0}
+        initialPrompt={input}
+        onGenerationStart={(prompt: string) => {
+          // Similar to music generation start
+          const generationId = Date.now().toString()
+          const userMessage: Message = {
+            id: generationId,
+            type: 'user',
+            content: `🎨 Generate sound effects: "${prompt}"`,
+            timestamp: new Date()
+          }
+          setMessages(prev => [...prev, userMessage])
+          setInput('')
+        }}
+        onSuccess={(audioUrl: string, prompt: string) => {
+          // Handle successful effects generation
+          // The GenerationQueue will update the message automatically
         }}
       />
 

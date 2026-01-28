@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 export interface GenerationItem {
   id: string
-  type: 'music' | 'image' | 'video'
+  type: 'music' | 'image' | 'video' | 'effects'
   prompt: string
   title?: string
   status: 'queued' | 'generating' | 'completed' | 'failed'
@@ -15,6 +15,7 @@ export interface GenerationItem {
     videoUrl?: string
     title?: string
     lyrics?: string
+    prompt?: string
   }
   error?: string
   startedAt: number
