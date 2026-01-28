@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from 'react'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import { useUser } from '@clerk/nextjs'
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW'
 import type { Track, TrackClip } from '@/lib/audio/TrackManager'
@@ -209,6 +210,19 @@ export default function DAWProRebuild() {
         setTracks(instance.getTracks())
         setLoading(false)
 
+        // Handle audio context suspension (mobile browsers)
+        const audioContext = instance.getAudioContext()
+        if (audioContext) {
+          const resumeAudio = () => {
+            if (audioContext.state === 'suspended') {
+              audioContext.resume().catch(console.error)
+            }
+          }
+          audioContext.addEventListener('statechange', resumeAudio)
+          window.addEventListener('click', resumeAudio, { once: true })
+          window.addEventListener('touchstart', resumeAudio, { once: true })
+        }
+
         const animate = () => {
           if (!instance) return
           const state = instance.getTransportState()
@@ -265,6 +279,13 @@ export default function DAWProRebuild() {
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio')
       ])
+
+      if (!musicRes.ok) {
+        throw new Error(`Music API failed: ${musicRes.status}`)
+      }
+      if (!r2AudioRes.ok) {
+        throw new Error(`R2 Audio API failed: ${r2AudioRes.status}`)
+      }
 
       const musicData = await musicRes.json()
       const r2AudioData = await r2AudioRes.json()
@@ -367,6 +388,13 @@ export default function DAWProRebuild() {
         })()
 
         audioBufferCache.current.set(audioUrl, promise)
+
+        // Limit cache size to prevent memory buildup
+        const MAX_CACHE_SIZE = 50
+        if (audioBufferCache.current.size > MAX_CACHE_SIZE) {
+          const firstKey = audioBufferCache.current.keys().next().value
+          if (firstKey) audioBufferCache.current.delete(firstKey)
+        }
 
         try {
           await promise
@@ -901,59 +929,59 @@ export default function DAWProRebuild() {
       let finalGenre = genGenre
       let finalBpm = genBpm
 
-      // Auto-generate title if missing (Step 1/5)
-      if (!finalTitle.trim()) {
-        setGenerationStep(1)
-        setGenerationProgress('Generating title...')
-        const titleResponse = await fetch('/api/generate/atom-title', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: genPrompt })
-        })
-        const titleData = await titleResponse.json()
-        if (titleData.success && titleData.title) {
-          finalTitle = titleData.title
-          setGenTitle(finalTitle)
-        } else {
-          finalTitle = genPrompt.split(' ').slice(0, 2).join(' ')
-        }
+      // Parallelize AI generation calls for title, lyrics, genre (Steps 1-3)
+      setGenerationStep(1)
+      setGenerationProgress('Generating metadata...')
+      
+      const [titleResult, lyricsResult, genreResult] = await Promise.all([
+        // Title generation
+        !finalTitle.trim() 
+          ? fetch('/api/generate/atom-title', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: genPrompt })
+            }).then(r => r.json()).catch(() => ({ success: false }))
+          : Promise.resolve({ success: true, title: finalTitle }),
+        
+        // Lyrics generation
+        genIsInstrumental
+          ? Promise.resolve({ success: true, lyrics: '[Instrumental]' })
+          : !finalLyrics.trim()
+            ? fetch('/api/generate/atom-lyrics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: genPrompt })
+              }).then(r => r.json()).catch(() => ({ success: false }))
+            : Promise.resolve({ success: true, lyrics: finalLyrics }),
+        
+        // Genre detection
+        !finalGenre.trim()
+          ? fetch('/api/generate/atom-genre', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: genPrompt })
+            }).then(r => r.json()).catch(() => ({ success: false }))
+          : Promise.resolve({ success: true, genre: finalGenre })
+      ])
+
+      // Update with results
+      if (titleResult.success && titleResult.title) {
+        finalTitle = titleResult.title
+        setGenTitle(finalTitle)
+      } else if (!finalTitle.trim()) {
+        finalTitle = genPrompt.split(' ').slice(0, 2).join(' ')
       }
 
-      // Handle instrumental mode or auto-generate lyrics (Step 2/5)
-      if (genIsInstrumental) {
-        finalLyrics = '[Instrumental]'
+      if (lyricsResult.success && lyricsResult.lyrics) {
+        finalLyrics = lyricsResult.lyrics
         setGenLyrics(finalLyrics)
-      } else if (!finalLyrics.trim()) {
-        setGenerationStep(2)
-        setGenerationProgress('Writing lyrics...')
-        const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: genPrompt })
-        })
-        const lyricsData = await lyricsResponse.json()
-        if (lyricsData.success && lyricsData.lyrics) {
-          finalLyrics = lyricsData.lyrics
-          setGenLyrics(finalLyrics)
-        }
       }
 
-      // Auto-detect genre (Step 3/5)
-      if (!finalGenre.trim()) {
-        setGenerationStep(3)
-        setGenerationProgress('Detecting genre...')
-        const genreResponse = await fetch('/api/generate/atom-genre', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: genPrompt })
-        })
-        const genreData = await genreResponse.json()
-        if (genreData.success && genreData.genre) {
-          finalGenre = genreData.genre
-          setGenGenre(finalGenre)
-        } else {
-          finalGenre = 'pop'
-        }
+      if (genreResult.success && genreResult.genre) {
+        finalGenre = genreResult.genre
+        setGenGenre(finalGenre)
+      } else if (!finalGenre.trim()) {
+        finalGenre = 'pop'
       }
 
       // Auto-detect BPM (Step 4/5)
@@ -1563,7 +1591,8 @@ export default function DAWProRebuild() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
       {hydrationProgress && (
         <div className="fixed top-24 right-6 z-40 px-4 py-2 bg-[#111] border border-cyan-500/40 rounded-lg text-xs text-cyan-100 shadow-lg">
           Loading project… {hydrationProgress.current}/{hydrationProgress.total}
@@ -2842,5 +2871,6 @@ export default function DAWProRebuild() {
         </div>
       )}
     </div>
+    </ErrorBoundary>
   )
 }
