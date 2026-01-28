@@ -60,7 +60,7 @@ export async function GET() {
       clerk_user_id: item.user_id,
       user_id: item.user_id,
       title: item.title || 'Untitled',
-      prompt: item.audio_prompt || item.music_prompt || 'Generated music',
+      prompt: item.prompt || item.audio_prompt || item.music_prompt || 'Generated audio',
       lyrics: item.lyrics,
       audioUrl: item.audio_url || item.audioUrl, // Normalize to audioUrl
       audio_url: item.audio_url, // Keep for backward compat
