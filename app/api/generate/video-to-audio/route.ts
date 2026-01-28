@@ -11,7 +11,7 @@ const replicateStandard = new Replicate({
 })
 
 const replicateHQ = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN_LATEST!,
+  auth: process.env.REPLICATE_API_TOKEN!,
 })
 
 // POST /api/generate/video-to-audio - Generate synced audio/SFX for video
