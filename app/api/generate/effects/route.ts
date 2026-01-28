@@ -152,6 +152,20 @@ export async function POST(req: NextRequest) {
       let librarySaveError = null
       
       try {
+        const savePayload = {
+          user_id: userId,
+          type: 'audio',
+          title: `SFX: ${prompt.substring(0, 50)}`,
+          audio_prompt: prompt,
+          prompt: prompt,
+          audio_url: outputR2Result.url,
+          image_url: null, // Explicitly set to null for audio-only content
+          is_public: true,
+          genre: 'effects'
+        }
+        
+        console.log('💾 Save payload:', JSON.stringify(savePayload, null, 2))
+        
         const saveRes = await fetch(
           `${supabaseUrl}/rest/v1/combined_media`,
           {
@@ -162,31 +176,24 @@ export async function POST(req: NextRequest) {
               'Authorization': `Bearer ${supabaseKey}`,
               'Prefer': 'return=representation'
             },
-            body: JSON.stringify({
-              user_id: userId,
-              type: 'audio',
-              title: `SFX: ${prompt.substring(0, 50)}`,
-              audio_prompt: prompt, // Use audio_prompt for library compatibility
-              prompt: prompt, // Keep prompt for backward compat
-              audio_url: outputR2Result.url,
-              is_public: true,
-              genre: 'effects' // Tag as effects for filtering
-            })
+            body: JSON.stringify(savePayload)
           }
         )
 
         if (!saveRes.ok) {
           const errorText = await saveRes.text()
-          librarySaveError = `Library save failed: ${saveRes.status} - ${errorText}`
-          console.error('⚠️', librarySaveError)
+          librarySaveError = `HTTP ${saveRes.status}: ${errorText}`
+          console.error('❌ Library save failed:', librarySaveError)
+          console.error('Response headers:', Object.fromEntries(saveRes.headers.entries()))
         } else {
           const saved = await saveRes.json()
-          libraryId = saved[0]?.id
+          libraryId = saved[0]?.id || saved?.id
           console.log('✅ Saved to library:', libraryId)
+          console.log('✅ Full response:', JSON.stringify(saved, null, 2))
         }
       } catch (saveError) {
         librarySaveError = saveError instanceof Error ? saveError.message : 'Unknown save error'
-        console.error('⚠️ Library save exception:', librarySaveError)
+        console.error('❌ Library save exception:', librarySaveError)
       }
 
       // Deduct credits (-2) since everything succeeded
