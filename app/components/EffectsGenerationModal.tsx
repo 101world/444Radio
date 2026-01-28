@@ -10,7 +10,7 @@ interface EffectsModalProps {
   onClose: () => void
   userCredits?: number
   onSuccess?: (url: string, prompt: string) => void
-  onGenerationStart?: (prompt: string) => void
+  onGenerationStart?: (prompt: string, generationId: string) => void
   initialPrompt?: string
 }
 
@@ -70,7 +70,7 @@ export default function EffectsGenerationModal({
     
     // Call onGenerationStart to close modal and show chat immediately
     if (onGenerationStart) {
-      onGenerationStart(prompt)
+      onGenerationStart(prompt, generationId)
       onClose()
     }
     

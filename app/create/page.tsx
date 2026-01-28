@@ -2486,7 +2486,7 @@ function CreatePageContent() {
         onClose={() => setShowEffectsModal(false)}
         userCredits={userCredits || 0}
         initialPrompt={input}
-        onGenerationStart={(prompt: string) => {
+        onGenerationStart={(prompt: string, generationId: string) => {
           // Add user message and generating message
           const userMsgId = Date.now().toString()
           const genMsgId = (Date.now() + 1).toString()
@@ -2503,6 +2503,7 @@ function CreatePageContent() {
             type: 'generation',
             content: '🎨 Generating sound effects...',
             generationType: 'effects',
+            generationId: generationId, // Link to generation queue
             isGenerating: true,
             timestamp: new Date()
           }
