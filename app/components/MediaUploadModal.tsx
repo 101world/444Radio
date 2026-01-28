@@ -13,6 +13,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
   const [prompt, setPrompt] = useState('')
+  const [useHQ, setUseHQ] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
   const [error, setError] = useState('')
@@ -160,7 +161,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         body: JSON.stringify({
           videoUrl: publicUrl,
           audioUrl: publicUrl,
-          prompt: prompt
+          prompt: prompt,
+          quality: fileType === 'video' && useHQ ? 'hq' : 'standard'
         })
       })
 
@@ -186,6 +188,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
     setSelectedFile(null)
     setFileType(null)
     setPrompt('')
+    setUseHQ(false)
     setError('')
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
@@ -238,6 +241,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
                     </p>
                     <div className="mt-2 flex items-center gap-1 text-xs text-cyan-400">
                       <span className="font-semibold">2 credits</span>
+                      <span className="text-gray-500">•</span>
+                      <span className="font-semibold text-yellow-400">10 credits (HQ)</span>
                     </div>
                   </div>
                 </div>
@@ -388,6 +393,29 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
                 rows={3}
                 required={fileType === 'video'}
               />
+              
+              {/* HQ Quality Toggle (only for video) */}
+              {fileType === 'video' && (
+                <div className="mt-3 p-3 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useHQ}
+                      onChange={(e) => setUseHQ(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded border-yellow-500/50 bg-white/5 text-yellow-500 focus:ring-yellow-500/50 focus:ring-offset-0"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-yellow-300">✨ Enable HQ Quality</span>
+                        <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded">+8 credits</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        Premium model with higher fidelity audio, better sync accuracy, and professional-grade sound design. Uses HunyuanVideo-Foley.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
             </div>
           )}
 
@@ -409,9 +437,17 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
 
           {/* Credit Cost */}
           {selectedFile && (
-            <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-              <p className="text-sm text-purple-300 text-center">
-                💰 <span className="font-bold">2 credits</span>
+            <div className={`p-3 rounded-lg ${
+              fileType === 'video' && useHQ
+                ? 'bg-yellow-500/10 border border-yellow-500/30'
+                : 'bg-purple-500/10 border border-purple-500/30'
+            }`}>
+              <p className={`text-sm text-center ${
+                fileType === 'video' && useHQ ? 'text-yellow-300' : 'text-purple-300'
+              }`}>
+                💰 <span className="font-bold">
+                  {fileType === 'video' && useHQ ? '10 credits (HQ)' : '2 credits'}
+                </span>
               </p>
             </div>
           )}

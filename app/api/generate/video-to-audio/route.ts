@@ -6,8 +6,12 @@ import { uploadToR2 } from '@/lib/r2-upload'
 // Allow up to 5 minutes for video-to-audio generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
 
-const replicate = new Replicate({
+const replicateStandard = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST!,
+})
+
+const replicateHQ = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN_LATEST!,
 })
 
 // POST /api/generate/video-to-audio - Generate synced audio/SFX for video
@@ -19,11 +23,19 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { videoUrl, prompt } = body
+    const { videoUrl, prompt, quality = 'standard' } = body
 
     if (!videoUrl || !prompt) {
       return NextResponse.json({ error: 'Missing videoUrl or prompt' }, { status: 400 })
     }
+
+    // Validate quality parameter
+    if (!['standard', 'hq'].includes(quality)) {
+      return NextResponse.json({ error: 'Invalid quality. Must be "standard" or "hq"' }, { status: 400 })
+    }
+
+    const isHQ = quality === 'hq'
+    const creditsRequired = isHQ ? 10 : 2
 
     // Validate videoUrl is a proper URI
     let validatedUrl: string
@@ -46,9 +58,10 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    console.log('🎬 Video-to-audio generation request')
+    console.log(`🎬 Video-to-audio generation request (${quality.toUpperCase()})`)
     console.log('📹 Video URL:', videoUrl)
     console.log('💬 Prompt:', prompt)
+    console.log(`💰 Credits required: ${creditsRequired}`)
 
     // Check user credits
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -67,21 +80,22 @@ export async function POST(req: NextRequest) {
     const userData = await userRes.json()
     const user = userData?.[0]
     
-    if (!user || user.credits < 2) {
+    if (!user || user.credits < creditsRequired) {
       return NextResponse.json({ 
-        error: 'Insufficient credits. Video-to-audio generation requires 2 credits.',
-        creditsNeeded: 2,
+        error: `Insufficient credits. ${isHQ ? 'HQ' : 'Standard'} video-to-audio generation requires ${creditsRequired} credits.`,
+        creditsNeeded: creditsRequired,
         creditsAvailable: user?.credits || 0
       }, { status: 402 })
     }
 
-    console.log(`💰 User has ${user.credits} credits. Video-to-audio requires 2 credits.`)
+    console.log(`💰 User has ${user.credits} credits. ${isHQ ? 'HQ' : 'Standard'} generation requires ${creditsRequired} credits.`)
 
     // Video is already uploaded to R2, use the validated URL directly
     console.log('✅ Using uploaded video URL:', validatedUrl)
 
-    // Generate audio using MMAudio with retry logic
-    console.log('🎵 Generating synced audio with MMAudio...')
+    // Generate audio using appropriate model based on quality
+    const modelName = isHQ ? 'HunyuanVideo-Foley (HQ)' : 'MMAudio (Standard)'
+    console.log(`🎵 Generating synced audio with ${modelName}...`)
     console.log('🎵 Prompt:', prompt)
     console.log('🎵 Video URL:', validatedUrl)
 
@@ -93,30 +107,49 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`🎵 Generation attempt ${attempt}/${maxRetries}`)
         
-        const prediction = await replicate.predictions.create({
-          model: "zsxkib/mmaudio",
-          version: "62871fb59889b2d7c13777f08deb3b36bdff88f7e1d53a50ad7694548a41b484",
-          input: {
-            video: validatedUrl, // Use validated URL
-            prompt: prompt,
-            duration: 8, // Will auto-truncate to video length
-            num_steps: 25,
-            cfg_strength: 4.5,
-            negative_prompt: "music", // Focus on SFX, not background music
-            seed: -1 // Random seed
-          }
-        })
+        let prediction: any
+        
+        if (isHQ) {
+          // HQ: HunyuanVideo-Foley model
+          prediction = await replicateHQ.predictions.create({
+            model: "tencent/hunyuanvideo-foley",
+            version: "88045928bb97971cffefabfc05a4e55e5bb1c96d475ad4ecc3d229d9169758ae",
+            input: {
+              video: validatedUrl,
+              prompt: prompt,
+              return_audio: false, // Return video with audio
+              guidance_scale: 4.5,
+              num_inference_steps: 50
+            }
+          })
+        } else {
+          // Standard: MMAudio model
+          prediction = await replicateStandard.predictions.create({
+            model: "zsxkib/mmaudio",
+            version: "62871fb59889b2d7c13777f08deb3b36bdff88f7e1d53a50ad7694548a41b484",
+            input: {
+              video: validatedUrl,
+              prompt: prompt,
+              duration: 8,
+              num_steps: 25,
+              cfg_strength: 4.5,
+              negative_prompt: "music",
+              seed: -1
+            }
+          })
+        }
 
         console.log('🎵 Prediction created:', prediction.id)
 
-        // Poll until completed
+        // Poll until completed (HQ takes longer)
         let finalPrediction = prediction
         let pollAttempts = 0
-        const maxPollAttempts = 60 // 60 seconds max (MMAudio is fast)
+        const maxPollAttempts = isHQ ? 120 : 60 // HQ: 2 min, Standard: 1 min
+        const replicateInstance = isHQ ? replicateHQ : replicateStandard
         
         while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && pollAttempts < maxPollAttempts) {
           await new Promise(resolve => setTimeout(resolve, 1000))
-          finalPrediction = await replicate.predictions.get(prediction.id)
+          finalPrediction = await replicateInstance.predictions.get(prediction.id)
           console.log(`🎵 Status: ${finalPrediction.status}`)
           pollAttempts++
         }
@@ -130,7 +163,7 @@ export async function POST(req: NextRequest) {
         }
 
         output = finalPrediction.output
-        console.log('✅ MMAudio generation succeeded')
+        console.log(`✅ ${modelName} generation succeeded`)
         break // Success, exit retry loop
 
       } catch (genError) {
@@ -224,7 +257,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           user_id: userId,
           type: 'video',
-          title: `Video SFX: ${prompt.substring(0, 50)}`,
+          title: `${isHQ ? '[HQ] ' : ''}Video SFX: ${prompt.substring(0, 50)}`,
           prompt: prompt,
           audio_url: outputR2Result.url, // Store in audio_url (existing column)
           media_url: outputR2Result.url, // Also store in media_url (new column, if exists)
@@ -240,8 +273,8 @@ export async function POST(req: NextRequest) {
       console.log('✅ Saved to library:', saved[0]?.id)
     }
 
-    // NOW deduct credits (-2) since everything succeeded
-    console.log(`💰 Deducting 2 credits from user (${user.credits} → ${user.credits - 2})`)
+    // NOW deduct credits since everything succeeded
+    console.log(`💰 Deducting ${creditsRequired} credits from user (${user.credits} → ${user.credits - creditsRequired})`)
     const creditDeductRes = await fetch(
       `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
       {
@@ -253,7 +286,7 @@ export async function POST(req: NextRequest) {
           'Prefer': 'return=minimal'
         },
         body: JSON.stringify({
-          credits: user.credits - 2,
+          credits: user.credits - creditsRequired,
           total_generated: (user.total_generated || 0) + 1
         })
       }
@@ -271,8 +304,9 @@ export async function POST(req: NextRequest) {
       success: true, 
       videoUrl: outputR2Result.url,
       prompt,
-      creditsRemaining: user.credits - 2,
-      message: 'Synced audio generated successfully'
+      quality,
+      creditsRemaining: user.credits - creditsRequired,
+      message: `${isHQ ? 'HQ' : 'Standard'} synced audio generated successfully`
     })
 
   } catch (error) {
