@@ -153,7 +153,7 @@ export function generateMetadata(page: {
     appleWebApp: {
       capable: true,
       title: siteConfig.name,
-      statusBarStyle: 'black-translucent',
+      statusBarStyle: 'black-translucent' as const,
     },
     
     // Verification codes (add your verification codes here)
