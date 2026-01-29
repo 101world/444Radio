@@ -1,4 +1,5 @@
 // app/api/media/track-play/route.ts
+// Tracks play counts for combined_media after 3s of playback
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { supabase } from '@/lib/supabase'
