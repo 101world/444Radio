@@ -203,29 +203,29 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/95 backdrop-blur-xl"
         onClick={handleClose}
       />
       
-      {/* Modal */}
-      <div className="relative w-full max-w-lg bg-gradient-to-br from-gray-900 via-black to-gray-900 border-2 border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden">
+      {/* Modal - Sleek */}
+      <div className="relative w-full max-w-[480px] bg-gradient-to-b from-gray-900/90 to-black/90 border border-cyan-500/[0.08] rounded-xl shadow-2xl overflow-hidden backdrop-blur-2xl">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Upload size={20} className="text-cyan-400" />
-            Upload Media
-          </h3>
+        <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.03]">
+          <div className="flex items-center gap-1.5">
+            <Upload size={12} className="text-cyan-400/80" />
+            <h3 className="text-[13px] font-medium text-white/80">Upload Media</h3>
+          </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            className="p-0.5 rounded hover:bg-white/5 transition-colors"
           >
-            <X size={18} className="text-gray-400" />
+            <X size={13} className="text-gray-600" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-3 space-y-2.5">
           
           {/* Feature Cards - Show before file is selected */}
           {!selectedFile && (
@@ -376,43 +376,38 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
             </div>
           )}
 
-          {/* Prompt Input (required for video) */}
+          {/* Prompt (required for video) */}
           {selectedFile && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">
-                {fileType === 'video' ? 'Describe the sound *' : 'Describe variation (optional)'}
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-gray-600">
+                {fileType === 'video' ? 'Sound description *' : 'Variation (optional)'}
               </label>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder={fileType === 'video' 
-                  ? 'e.g., car engine roaring, birds chirping, thunder storm...'
-                  : 'e.g., add drums, make it jazzy, speed it up...'
+                  ? 'car engine, birds, thunder...'
+                  : 'add drums, jazzy, faster...'
                 }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
-                rows={3}
+                className="w-full px-2.5 py-1.5 bg-white/[0.02] border border-white/[0.04] rounded-lg text-white text-[13px] placeholder-gray-700 focus:outline-none focus:border-cyan-500/20 focus:bg-white/[0.03] transition-all resize-none"
+                rows={1}
                 required={fileType === 'video'}
               />
               
-              {/* HQ Quality Toggle (only for video) - Sleeker */}
+              {/* HQ Toggle (video only) */}
               {fileType === 'video' && (
-                <div className="mt-2 p-2.5 bg-gradient-to-r from-yellow-500/5 to-orange-500/5 border border-yellow-500/20 rounded-lg">
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={useHQ}
-                      onChange={(e) => setUseHQ(e.target.checked)}
-                      className="w-3.5 h-3.5 rounded border-yellow-500/50 bg-white/5 text-yellow-500 focus:ring-yellow-500/50 focus:ring-offset-0"
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-yellow-300">✨ HQ Quality</span>
-                        <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-300 text-[10px] font-bold rounded">+8</span>
-                      </div>
-                      <span className="text-[10px] text-gray-500">HunyuanVideo-Foley</span>
-                    </div>
-                  </label>
-                </div>
+                <label className="flex items-center gap-1.5 px-2 py-1 bg-yellow-500/[0.04] border border-yellow-500/10 rounded cursor-pointer hover:bg-yellow-500/[0.06] transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={useHQ}
+                    onChange={(e) => setUseHQ(e.target.checked)}
+                    className="w-3 h-3 rounded border-yellow-500/30 bg-white/5 text-yellow-500 focus:ring-0"
+                  />
+                  <div className="flex-1 flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-yellow-300">✨ HQ</span>
+                    <span className="px-1 py-0.5 bg-yellow-500/20 text-yellow-300 text-[8px] font-bold rounded">+8</span>
+                  </div>
+                </label>
               )}
             </div>
           )}
@@ -433,47 +428,37 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
             </div>
           )}
 
-          {/* Credit Cost */}
-          {selectedFile && (
-            <div className={`p-3 rounded-lg ${
-              fileType === 'video' && useHQ
-                ? 'bg-yellow-500/10 border border-yellow-500/30'
-                : 'bg-purple-500/10 border border-purple-500/30'
-            }`}>
-              <p className={`text-sm text-center ${
-                fileType === 'video' && useHQ ? 'text-yellow-300' : 'text-purple-300'
-              }`}>
-                💰 <span className="font-bold">
-                  {fileType === 'video' && useHQ ? '10 credits (HQ)' : '2 credits'}
-                </span>
-              </p>
-            </div>
-          )}
+
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-white/10 flex gap-3">
-          <button
-            onClick={handleClose}
-            disabled={isUploading}
-            className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-sm font-semibold text-white disabled:opacity-50"
-          >
-            Cancel
-          </button>
+        <div className="px-3 py-2 border-t border-white/[0.03] flex items-center gap-2 bg-black/30">
+          <div className="flex-1 flex items-center gap-1 text-[9px]">
+            <span className={fileType === 'video' && useHQ ? 'text-yellow-400/60' : 'text-cyan-400/60'}>💰</span>
+            <span className={fileType === 'video' && useHQ ? 'text-yellow-400/50' : 'text-cyan-400/50'}>
+              {selectedFile && fileType === 'video' && useHQ ? '10' : '2'}
+            </span>
+            {selectedFile && (
+              <>
+                <span className="text-gray-800">•</span>
+                <span className="text-gray-700">{fileType === 'video' ? '≤5s' : '≤30s'}</span>
+              </>
+            )}
+          </div>
           <button
             onClick={handleUpload}
             disabled={!selectedFile || isUploading || (fileType === 'video' && !prompt.trim())}
-            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded transition-all flex items-center justify-center gap-1 text-[10px] font-medium text-white shadow-lg shadow-cyan-500/15 disabled:opacity-30 disabled:cursor-not-allowed min-w-[85px]"
           >
             {isUploading ? (
               <>
-                <Loader2 size={16} className="animate-spin" />
-                Processing...
+                <Loader2 size={11} className="animate-spin" />
+                <span>Processing</span>
               </>
             ) : (
               <>
-                <Upload size={16} />
-                Generate
+                <Upload size={11} />
+                <span>Generate</span>
               </>
             )}
           </button>

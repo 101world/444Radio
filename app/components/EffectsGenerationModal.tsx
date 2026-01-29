@@ -148,103 +148,100 @@ export default function EffectsGenerationModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/90 backdrop-blur-md"
+        className="absolute inset-0 bg-black/95 backdrop-blur-xl"
         onClick={handleClose}
       />
       
-      {/* Modal */}
-      <div className="relative w-full max-w-md bg-black/95 border border-purple-500/20 rounded-xl shadow-2xl overflow-hidden">
+      {/* Modal - Ultra Minimal */}
+      <div className="relative w-full max-w-[420px] bg-gradient-to-b from-gray-900/90 to-black/90 border border-purple-500/[0.08] rounded-xl shadow-2xl overflow-hidden backdrop-blur-2xl">
         
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
-            <Sparkles size={16} className="text-purple-400" />
-            Sound Effects
-          </h3>
+        {/* Header - Minimal */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.03]">
+          <div className="flex items-center gap-1.5">
+            <Sparkles size={12} className="text-purple-400/80" />
+            <h3 className="text-[13px] font-medium text-white/80">Sound Effects</h3>
+          </div>
           <button
             onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+            className="p-0.5 rounded hover:bg-white/5 transition-colors"
             disabled={isGenerating}
           >
-            <X size={16} className="text-gray-400" />
+            <X size={13} className="text-gray-600" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-5 space-y-4">
+        {/* Content - Ultra Tight */}
+        <div className="p-3 space-y-2.5">
           
-          {/* Prompt Input */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-gray-400">Describe the sound</label>
-              <span className={`text-xs font-mono ${
-                !isPromptValid ? 'text-red-400' : promptLength > 270 ? 'text-yellow-400' : 'text-gray-600'
-              }`}>
-                {promptLength}/300
-              </span>
-            </div>
+          {/* Prompt - Minimal */}
+          <div>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g., Formula F1 cars driving by, ocean waves, thunder..."
-              className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500/50 transition-all resize-none"
-              rows={2}
+              placeholder="thunder, car engine, birds chirping..."
+              className="w-full px-2.5 py-1.5 bg-white/[0.02] border border-white/[0.04] rounded-lg text-white text-[13px] placeholder-gray-700 focus:outline-none focus:border-purple-500/20 focus:bg-white/[0.03] transition-all resize-none"
+              rows={1}
               disabled={isGenerating}
             />
+            <div className="flex items-center justify-between px-0.5 mt-1">
+              <span className="text-[9px] text-gray-700">up to 300 chars</span>
+              <span className={`text-[9px] font-mono ${
+                !isPromptValid ? 'text-red-400' : promptLength > 270 ? 'text-yellow-400' : 'text-gray-700'
+              }`}>
+                {promptLength}
+              </span>
+            </div>
           </div>
 
-          {/* Duration Slider - Compact */}
+          {/* Duration - Minimal */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-gray-400">Duration</label>
-              <span className="text-xs font-mono text-purple-400">{duration}s</span>
+              <span className="text-[10px] text-gray-600">Duration</span>
+              <span className="text-[11px] font-medium text-purple-400">{duration}s</span>
             </div>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={duration}
-              onChange={(e) => setDuration(parseInt(e.target.value))}
-              className="w-full h-1.5 accent-purple-500 rounded-full"
-              disabled={isGenerating}
-            />
-            <div className="flex justify-between text-[10px] text-gray-600">
-              <span>1s</span>
-              <span>10s</span>
+            <div className="relative">
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={duration}
+                onChange={(e) => setDuration(parseInt(e.target.value))}
+                className="w-full h-0.5 bg-white/[0.06] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-purple-500/40 [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:border-0"
+                disabled={isGenerating}
+              />
+              <div className="absolute -bottom-2.5 left-0 right-0 flex justify-between">
+                <span className="text-[8px] text-gray-700">1</span>
+                <span className="text-[8px] text-gray-700">10</span>
+              </div>
             </div>
           </div>
 
-          {/* Advanced Parameters Toggle */}
+          {/* Advanced */}
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
+            className="text-[10px] text-purple-400/40 hover:text-purple-400/70 transition-colors flex items-center gap-0.5"
             disabled={isGenerating}
           >
-            <span>{showAdvanced ? '▼' : '▶'}</span>
+            <span className="text-[8px]">{showAdvanced ? '▼' : '▶'}</span>
             Advanced
           </button>
 
-          {/* Advanced Parameters - Compact Grid */}
           {showAdvanced && (
-            <div className="grid grid-cols-2 gap-3 p-3 bg-white/5 border border-white/5 rounded-lg">
-              
-              {/* Top K */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Top K</label>
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <div>
+                <label className="text-[8px] text-gray-700 uppercase tracking-wider mb-0.5 block">Top K</label>
                 <input
                   type="number"
                   min="1"
                   max="500"
                   value={top_k}
                   onChange={(e) => setTopK(parseInt(e.target.value))}
-                  className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs"
+                  className="w-full px-1.5 py-0.5 bg-white/[0.02] border border-white/[0.04] rounded text-white text-[11px] focus:outline-none focus:border-purple-500/20"
                   disabled={isGenerating}
                 />
               </div>
-
-              {/* Top P */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Top P</label>
+              <div>
+                <label className="text-[8px] text-gray-700 uppercase tracking-wider mb-0.5 block">Top P</label>
                 <input
                   type="number"
                   min="0"
@@ -252,14 +249,12 @@ export default function EffectsGenerationModal({
                   step="0.1"
                   value={top_p}
                   onChange={(e) => setTopP(parseFloat(e.target.value))}
-                  className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs"
+                  className="w-full px-1.5 py-0.5 bg-white/[0.02] border border-white/[0.04] rounded text-white text-[11px] focus:outline-none focus:border-purple-500/20"
                   disabled={isGenerating}
                 />
               </div>
-
-              {/* Temperature */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Temp</label>
+              <div>
+                <label className="text-[8px] text-gray-700 uppercase tracking-wider mb-0.5 block">Temp</label>
                 <input
                   type="number"
                   min="0.1"
@@ -267,81 +262,69 @@ export default function EffectsGenerationModal({
                   step="0.1"
                   value={temperature}
                   onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs"
+                  className="w-full px-1.5 py-0.5 bg-white/[0.02] border border-white/[0.04] rounded text-white text-[11px] focus:outline-none focus:border-purple-500/20"
                   disabled={isGenerating}
                 />
               </div>
-
-              {/* Guidance */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Guidance</label>
+              <div>
+                <label className="text-[8px] text-gray-700 uppercase tracking-wider mb-0.5 block">Guide</label>
                 <input
                   type="number"
                   min="1"
                   max="10"
                   value={classifier_free_guidance}
                   onChange={(e) => setClassifierFreeGuidance(parseInt(e.target.value))}
-                  className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs"
+                  className="w-full px-1.5 py-0.5 bg-white/[0.02] border border-white/[0.04] rounded text-white text-[11px] focus:outline-none focus:border-purple-500/20"
                   disabled={isGenerating}
                 />
               </div>
-
-              {/* Output Format */}
-              <div className="space-y-1 col-span-2">
-                <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Format</label>
+              <div className="col-span-2">
+                <label className="text-[8px] text-gray-700 uppercase tracking-wider mb-0.5 block">Format</label>
                 <select
                   value={output_format}
                   onChange={(e) => setOutputFormat(e.target.value)}
-                  className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-white text-xs"
+                  className="w-full px-1.5 py-0.5 bg-white/[0.02] border border-white/[0.04] rounded text-white text-[11px] focus:outline-none focus:border-purple-500/20"
                   disabled={isGenerating}
                 >
                   <option value="mp3">MP3</option>
                   <option value="wav">WAV</option>
                 </select>
               </div>
-
             </div>
           )}
 
-          {/* Info Box - Compact */}
-          <div className="flex items-center justify-between px-3 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-            <span className="text-xs text-purple-300">💰 2 credits</span>
-            <span className="text-[10px] text-purple-400/60">Up to 10 seconds</span>
-          </div>
-
-          {/* Generated Audio Preview */}
+          {/* Generated */}
           {generatedAudioUrl && (
-            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <p className="text-xs text-green-300 mb-2">✅ Generated!</p>
-              <audio src={generatedAudioUrl} controls className="w-full h-8" />
+            <div className="p-1.5 bg-green-500/[0.04] border border-green-500/10 rounded">
+              <p className="text-[9px] text-green-400/70 mb-1">✓ Done</p>
+              <audio src={generatedAudioUrl} controls className="w-full h-6" />
             </div>
           )}
 
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-white/5 flex gap-2">
-          <button
-            onClick={handleClose}
-            disabled={isGenerating}
-            className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all text-xs font-medium text-white disabled:opacity-50"
-          >
-            Cancel
-          </button>
+        <div className="px-3 py-2 border-t border-white/[0.03] flex items-center gap-2 bg-black/30">
+          <div className="flex-1 flex items-center gap-1 text-[9px]">
+            <span className="text-purple-400/60">💰</span>
+            <span className="text-purple-400/50">2</span>
+            <span className="text-gray-800">•</span>
+            <span className="text-gray-700">≤10s</span>
+          </div>
           <button
             onClick={handleGenerate}
             disabled={!isPromptValid || isGenerating}
-            className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-lg transition-all flex items-center justify-center gap-2 text-xs font-medium text-white shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded transition-all flex items-center justify-center gap-1 text-[10px] font-medium text-white shadow-lg shadow-purple-500/15 disabled:opacity-30 disabled:cursor-not-allowed min-w-[85px]"
           >
             {isGenerating ? (
               <>
-                <Loader2 size={14} className="animate-spin" />
-                Generating...
+                <Loader2 size={11} className="animate-spin" />
+                <span>Gen...</span>
               </>
             ) : (
               <>
-                <Sparkles size={14} />
-                Generate
+                <Sparkles size={11} />
+                <span>Generate</span>
               </>
             )}
           </button>
