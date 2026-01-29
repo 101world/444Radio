@@ -207,8 +207,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         onClick={handleClose}
       />
       
-      {/* Modal - Clean & Readable */}
-      <div className="relative w-full max-w-2xl bg-gradient-to-b from-gray-900/95 to-black/95 border border-cyan-500/20 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-2xl">
+      {/* Modal - Clean & Simple */}
+      <div className="relative w-full max-w-lg bg-gradient-to-b from-gray-900/95 to-black/95 border border-cyan-500/20 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-2xl">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
@@ -227,51 +227,11 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-4">
           
-          {/* Feature Cards - Show before file is selected */}
-          {!selectedFile && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              {/* Video to Audio Card */}
-              <div className="p-4 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Film size={24} className="text-cyan-400 flex-shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-sm font-bold text-white mb-1">Video to Audio</h4>
-                    <p className="text-xs text-gray-400 leading-relaxed">
-                      Upload a video (up to 5s) and generate synced sound effects. Perfect for car engines, nature sounds, action scenes.
-                    </p>
-                    <div className="mt-2 flex items-center gap-1 text-xs text-cyan-400">
-                      <span className="font-semibold">2 credits</span>
-                      <span className="text-gray-500">•</span>
-                      <span className="font-semibold text-yellow-400">10 credits (HQ)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Audio to Audio Card */}
-              <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Music size={24} className="text-purple-400 flex-shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-sm font-bold text-white mb-1">Audio Remix</h4>
-                    <p className="text-xs text-gray-400 leading-relaxed">
-                      Upload audio (up to 30s) and create AI variations. Remix melodies, change genres, add instruments.
-                    </p>
-                    <div className="mt-2 flex items-center gap-1 text-xs text-purple-400">
-                      <span className="font-semibold">2 credits</span>
-                      <span className="text-gray-500">• Coming Soon</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* File Upload Area */}
+          {/* File Upload Area - Simple */}
           <div 
-            className="border-2 border-dashed border-cyan-500/30 rounded-xl p-8 text-center cursor-pointer hover:border-cyan-400/50 hover:bg-cyan-500/5 transition-all"
+            className="border-2 border-dashed border-cyan-500/30 rounded-xl p-12 text-center cursor-pointer hover:border-cyan-400/50 hover:bg-cyan-500/5 transition-all"
             onClick={() => fileInputRef.current?.click()}
           >
             <input
@@ -284,13 +244,15 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
             
             {selectedFile ? (
               <div className="space-y-3">
-                {fileType === 'video' ? (
-                  <Film size={40} className="mx-auto text-cyan-400" />
-                ) : (
-                  <Music size={40} className="mx-auto text-purple-400" />
-                )}
+                <div className="mx-auto w-16 h-16 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                  {fileType === 'video' ? (
+                    <Film size={32} className="text-cyan-400" />
+                  ) : (
+                    <Music size={32} className="text-purple-400" />
+                  )}
+                </div>
                 <div>
-                  <p className="text-white font-medium">{selectedFile.name}</p>
+                  <p className="text-white font-semibold text-lg">{selectedFile.name}</p>
                   <p className="text-sm text-gray-400 mt-1">
                     {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                   </p>
@@ -299,28 +261,41 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
                       e.stopPropagation()
                       setSelectedFile(null)
                       setFileType(null)
+                      setPrompt('')
+                      setUseHQ(false)
                       if (previewUrl) {
                         URL.revokeObjectURL(previewUrl)
                         setPreviewUrl(null)
                       }
                     }}
-                    className="mt-2 text-sm text-red-400 hover:text-red-300"
+                    className="mt-3 px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-colors"
                   >
-                    Remove
+                    Remove File
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                <Upload size={40} className="mx-auto text-cyan-400" />
+              <div className="space-y-4">
+                <div className="mx-auto w-16 h-16 rounded-full bg-cyan-500/10 flex items-center justify-center">
+                  <Upload size={32} className="text-cyan-400" />
+                </div>
                 <div>
-                  <p className="text-white font-medium">Click to upload</p>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Audio (max 30s) or Video (max 5s)
+                  <p className="text-white font-semibold text-lg mb-2">Upload your media</p>
+                  <p className="text-sm text-gray-400">
+                    Video up to 5s • Audio up to 30s • Max 100MB
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Up to 100MB
-                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-6 pt-2">
+                  <div className="text-center">
+                    <Film size={24} className="mx-auto text-cyan-400 mb-1" />
+                    <p className="text-xs text-gray-400">Video → Audio</p>
+                    <p className="text-xs text-cyan-400 font-semibold mt-0.5">2-10 credits</p>
+                  </div>
+                  <div className="text-center">
+                    <Music size={24} className="mx-auto text-purple-400 mb-1" />
+                    <p className="text-xs text-gray-400">Audio Remix</p>
+                    <p className="text-xs text-purple-400 font-semibold mt-0.5">2 credits</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -328,17 +303,17 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
 
           {/* Preview */}
           {previewUrl && fileType === 'video' && (
-            <div className="rounded-lg overflow-hidden">
+            <div className="rounded-xl overflow-hidden bg-black border border-white/10">
               <video 
                 src={previewUrl} 
                 controls 
-                className="w-full max-h-64 bg-black"
+                className="w-full h-48 object-contain bg-black"
               />
             </div>
           )}
 
           {previewUrl && fileType === 'audio' && (
-            <div className="p-4 bg-black/40 rounded-lg">
+            <div className="p-4 bg-black/40 border border-white/10 rounded-xl">
               <audio 
                 src={previewUrl} 
                 controls 
@@ -347,51 +322,31 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
             </div>
           )}
 
-          {/* Feature Info */}
+          {/* Prompt (only show after file selected) */}
           {selectedFile && (
-            <div className={`p-4 border rounded-lg ${
-              fileType === 'video' 
-                ? 'bg-cyan-500/10 border-cyan-500/30' 
-                : 'bg-purple-500/10 border-purple-500/30'
-            }`}>
-              <div className="flex items-start gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
                 {fileType === 'video' ? (
-                  <Film size={20} className="text-cyan-400 flex-shrink-0 mt-0.5" />
+                  <>
+                    <Film size={16} className="text-cyan-400" />
+                    <span>Describe the sounds you want</span>
+                    <span className="text-red-400">*</span>
+                  </>
                 ) : (
-                  <Music size={20} className="text-purple-400 flex-shrink-0 mt-0.5" />
+                  <>
+                    <Music size={16} className="text-purple-400" />
+                    <span>Describe changes (optional)</span>
+                  </>
                 )}
-                <div className="flex-1">
-                  <p className={`text-sm font-semibold mb-1 ${
-                    fileType === 'video' ? 'text-cyan-300' : 'text-purple-300'
-                  }`}>
-                    {fileType === 'video' ? '🎬 Video to Audio' : '🎵 Audio Remix'}
-                  </p>
-                  <p className="text-xs text-gray-400 leading-relaxed">
-                    {fileType === 'video' ? (
-                      <>Generate synced sound effects and ambient audio for your video. Describe what sounds you want (e.g., "car engine roaring", "rain and thunder", "footsteps on gravel").</>
-                    ) : (
-                      <>Create AI variations of your audio. Describe the changes you want (e.g., "add drums", "make it jazzy", "speed up tempo", "change to orchestral").</>
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Prompt (required for video) */}
-          {selectedFile && (
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-gray-300 block">
-                {fileType === 'video' ? '🎬 Sound description (required)' : '🎵 Describe variation (optional)'}
               </label>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder={fileType === 'video' 
-                  ? 'car engine roaring, birds chirping, thunder and rain...'
-                  : 'add drums, make it jazzy, speed up tempo, change to orchestral...'
+                  ? 'e.g., water splashing, ocean waves, rain...'
+                  : 'e.g., add drums, make it jazzy, faster tempo...'
                 }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-transparent transition-all resize-none"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-transparent transition-all resize-none"
                 rows={2}
                 required={fileType === 'video'}
               />
@@ -403,14 +358,14 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
                     type="checkbox"
                     checked={useHQ}
                     onChange={(e) => setUseHQ(e.target.checked)}
-                    className="w-5 h-5 rounded border-yellow-500/30 bg-white/5 text-yellow-500 focus:ring-2 focus:ring-yellow-500/50"
+                    className="w-4 h-4 rounded border-yellow-500/30 bg-white/5 text-yellow-500 focus:ring-2 focus:ring-yellow-500/50"
                   />
-                  <div className="flex-1 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-yellow-300">✨ High Quality</span>
-                      <span className="text-xs text-gray-400">(Better audio, longer processing)</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-yellow-300">✨ High Quality Mode</span>
+                      <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded">+8 credits</span>
                     </div>
-                    <span className="px-2.5 py-1 bg-yellow-500/20 text-yellow-300 text-sm font-bold rounded-lg">+8 credits</span>
+                    <p className="text-xs text-gray-400 mt-0.5">Better audio quality, takes longer to process</p>
                   </div>
                 </label>
               )}
