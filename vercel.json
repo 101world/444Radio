@@ -6,6 +6,10 @@
       "memory": 1024,
       "maxDuration": 10
     },
+    "app/api/media/track-play/route.ts": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
     "app/api/upload/media/route.ts": {
       "memory": 3008,
       "maxDuration": 300
