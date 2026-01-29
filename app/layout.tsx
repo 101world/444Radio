@@ -7,6 +7,7 @@ import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
 import SkipToContent from './components/SkipToContent';
+import StructuredData from './components/StructuredData';
 import { Toaster } from 'sonner';
 import { defaultMetadata } from '@/lib/metadata';
 import "./globals.css";
@@ -32,6 +33,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <StructuredData />
+      </head>
       <body
         className={`${poppins.className} antialiased bg-gray-900 text-white`}
       >
@@ -48,6 +52,10 @@ export default function RootLayout({
             </GenerationQueueProvider>
           </AudioPlayerProvider>
         </ClerkProvider>
+      </body>
+    </html>
+  );
+}
       </body>
     </html>
   );

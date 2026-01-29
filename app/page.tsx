@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward, X } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
+import SEOHeroSection from './components/SEOHeroSection'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
 import CreditIndicator from './components/CreditIndicator'
@@ -167,13 +168,16 @@ function HomePageContent() {
       </div>
 
       <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10">
+        {/* SEO Hero Section - Above the fold */}
+        <SEOHeroSection />
+        
         {/* Landing View - Centered Hero */}
         <div className="max-w-4xl w-full">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
             
             {/* 444 RADIO Header */}
             <div className="relative mb-3">
-              <h1 
+              <h2 
                 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent leading-tight tracking-tight"
                 style={{
                   fontFamily: 'Anton, Impact, Arial Black, sans-serif',
@@ -181,7 +185,7 @@ function HomePageContent() {
                 }}
               >
                 444 RADIO
-              </h1>
+              </h2>
               <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 blur-lg -z-10" />
             </div>
 

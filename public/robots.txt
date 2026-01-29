@@ -1,0 +1,57 @@
+# 444Radio - India's First AI Music Generator
+# Robots.txt - Optimized for aggressive crawling and indexing
+
+User-agent: *
+Allow: /
+
+# Priority pages for AI music generation
+Allow: /create
+Allow: /explore
+Allow: /studio
+Allow: /decrypt
+
+# Allow all media
+Allow: /api/media
+Allow: /*.mp3$
+Allow: /*.wav$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.webp$
+
+# Block admin/internal endpoints
+Disallow: /api/webhook
+Disallow: /api/credits/award
+Disallow: /api/profile/upload
+
+# Sitemap location
+Sitemap: https://444radio.co.in/sitemap.xml
+
+# Crawl rate - Aggressive for new site
+Crawl-delay: 0
+
+# Google-specific directives
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Googlebot-Image
+Allow: /
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 0
+
+# Other major search engines
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
