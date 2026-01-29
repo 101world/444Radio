@@ -207,25 +207,27 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         onClick={handleClose}
       />
       
-      {/* Modal - Sleek */}
-      <div className="relative w-full max-w-[480px] bg-gradient-to-b from-gray-900/90 to-black/90 border border-cyan-500/[0.08] rounded-xl shadow-2xl overflow-hidden backdrop-blur-2xl">
+      {/* Modal - Clean & Readable */}
+      <div className="relative w-full max-w-2xl bg-gradient-to-b from-gray-900/95 to-black/95 border border-cyan-500/20 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-2xl">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.03]">
-          <div className="flex items-center gap-1.5">
-            <Upload size={12} className="text-cyan-400/80" />
-            <h3 className="text-[13px] font-medium text-white/80">Upload Media</h3>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-cyan-500/10 rounded-lg">
+              <Upload size={20} className="text-cyan-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-white">Upload Media</h3>
           </div>
           <button
             onClick={handleClose}
-            className="p-0.5 rounded hover:bg-white/5 transition-colors"
+            className="p-2 rounded-lg hover:bg-white/5 transition-colors"
           >
-            <X size={13} className="text-gray-600" />
+            <X size={20} className="text-gray-400 hover:text-white transition-colors" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-3 space-y-2.5">
+        <div className="p-6 space-y-6">
           
           {/* Feature Cards - Show before file is selected */}
           {!selectedFile && (
@@ -378,34 +380,37 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
 
           {/* Prompt (required for video) */}
           {selectedFile && (
-            <div className="space-y-1">
-              <label className="text-[10px] font-medium text-gray-600">
-                {fileType === 'video' ? 'Sound description *' : 'Variation (optional)'}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-300 block">
+                {fileType === 'video' ? '🎬 Sound description (required)' : '🎵 Describe variation (optional)'}
               </label>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder={fileType === 'video' 
-                  ? 'car engine, birds, thunder...'
-                  : 'add drums, jazzy, faster...'
+                  ? 'car engine roaring, birds chirping, thunder and rain...'
+                  : 'add drums, make it jazzy, speed up tempo, change to orchestral...'
                 }
-                className="w-full px-2.5 py-1.5 bg-white/[0.02] border border-white/[0.04] rounded-lg text-white text-[13px] placeholder-gray-700 focus:outline-none focus:border-cyan-500/20 focus:bg-white/[0.03] transition-all resize-none"
-                rows={1}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-base placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-transparent transition-all resize-none"
+                rows={2}
                 required={fileType === 'video'}
               />
               
               {/* HQ Toggle (video only) */}
               {fileType === 'video' && (
-                <label className="flex items-center gap-1.5 px-2 py-1 bg-yellow-500/[0.04] border border-yellow-500/10 rounded cursor-pointer hover:bg-yellow-500/[0.06] transition-colors">
+                <label className="flex items-center gap-3 px-4 py-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl cursor-pointer hover:bg-yellow-500/15 transition-colors">
                   <input
                     type="checkbox"
                     checked={useHQ}
                     onChange={(e) => setUseHQ(e.target.checked)}
-                    className="w-3 h-3 rounded border-yellow-500/30 bg-white/5 text-yellow-500 focus:ring-0"
+                    className="w-5 h-5 rounded border-yellow-500/30 bg-white/5 text-yellow-500 focus:ring-2 focus:ring-yellow-500/50"
                   />
                   <div className="flex-1 flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-yellow-300">✨ HQ</span>
-                    <span className="px-1 py-0.5 bg-yellow-500/20 text-yellow-300 text-[8px] font-bold rounded">+8</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-yellow-300">✨ High Quality</span>
+                      <span className="text-xs text-gray-400">(Better audio, longer processing)</span>
+                    </div>
+                    <span className="px-2.5 py-1 bg-yellow-500/20 text-yellow-300 text-sm font-bold rounded-lg">+8 credits</span>
                   </div>
                 </label>
               )}
@@ -432,32 +437,32 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         </div>
 
         {/* Footer */}
-        <div className="px-3 py-2 border-t border-white/[0.03] flex items-center gap-2 bg-black/30">
-          <div className="flex-1 flex items-center gap-1 text-[9px]">
-            <span className={fileType === 'video' && useHQ ? 'text-yellow-400/60' : 'text-cyan-400/60'}>💰</span>
-            <span className={fileType === 'video' && useHQ ? 'text-yellow-400/50' : 'text-cyan-400/50'}>
-              {selectedFile && fileType === 'video' && useHQ ? '10' : '2'}
+        <div className="px-6 py-4 border-t border-white/10 flex items-center gap-3 bg-black/40">
+          <div className="flex-1 flex items-center gap-2 text-sm">
+            <span className={fileType === 'video' && useHQ ? 'text-yellow-400' : 'text-cyan-400'}>💰</span>
+            <span className={`font-semibold ${fileType === 'video' && useHQ ? 'text-yellow-400' : 'text-cyan-400'}`}>
+              {selectedFile && fileType === 'video' && useHQ ? '10 credits' : '2 credits'}
             </span>
             {selectedFile && (
               <>
-                <span className="text-gray-800">•</span>
-                <span className="text-gray-700">{fileType === 'video' ? '≤5s' : '≤30s'}</span>
+                <span className="text-gray-600">•</span>
+                <span className="text-gray-400">{fileType === 'video' ? 'Max 5 seconds' : 'Max 30 seconds'}</span>
               </>
             )}
           </div>
           <button
             onClick={handleUpload}
             disabled={!selectedFile || isUploading || (fileType === 'video' && !prompt.trim())}
-            className="px-3 py-1 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded transition-all flex items-center justify-center gap-1 text-[10px] font-medium text-white shadow-lg shadow-cyan-500/15 disabled:opacity-30 disabled:cursor-not-allowed min-w-[85px]"
+            className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30 disabled:opacity-40 disabled:cursor-not-allowed min-w-[140px]"
           >
             {isUploading ? (
               <>
-                <Loader2 size={11} className="animate-spin" />
-                <span>Processing</span>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Processing...</span>
               </>
             ) : (
               <>
-                <Upload size={11} />
+                <Upload size={16} />
                 <span>Generate</span>
               </>
             )}
