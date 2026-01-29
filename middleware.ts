@@ -11,6 +11,9 @@ const isPublicRoute = createRouteMatcher([
   '/api/media/explore(.*)',
   '/api/explore/genre-summary(.*)',
   '/manifest.json',
+  '/explore',
+  '/sitemap.xml',
+  '/robots.txt',
 ])
 
 export default clerkMiddleware(async (auth, request) => {
