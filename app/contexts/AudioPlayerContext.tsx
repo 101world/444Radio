@@ -63,6 +63,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const playTimeRef = useRef<number>(0)
   const hasTrackedPlayRef = useRef<boolean>(false)
+  const isLoadingRef = useRef<boolean>(false)
 
   // Define pause first so it can be used in useEffect
   const pause = useCallback(() => {
@@ -122,6 +123,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const playTrack = useCallback(async (track: Track) => {
+    // Prevent multiple simultaneous play attempts
+    if (isLoadingRef.current) {
+      console.log('⏳ Play already in progress, ignoring duplicate request');
+      return;
+    }
+
     if (!track) {
       console.error('❌ Cannot play: track is null/undefined');
       return;
@@ -149,6 +156,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       console.error('❌ Audio ref not initialized');
       return;
     }
+
+    // Set loading lock
+    isLoadingRef.current = true;
 
     console.log('🎵 Playing track:', track.title, 'URL:', track.audioUrl);
 
@@ -198,23 +208,23 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     
     const audio = audioRef.current
     
-    // Stop any existing playback completely
-    audio.pause()
-    audio.removeAttribute('src')
-    audio.load()
-    
-    // Wait for cleanup to complete
-    await new Promise(resolve => setTimeout(resolve, 50))
-    
-    // Now set the new source and load it
-    audio.src = finalUrl
-    audio.load()
-    
-    // Wait for the new source to be ready
-    await new Promise(resolve => setTimeout(resolve, 50))
-    
-    // Now play
-      try {
+    try {
+      // Stop any existing playback completely
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
+      
+      // Wait for cleanup to complete
+      await new Promise(resolve => setTimeout(resolve, 50))
+      
+      // Now set the new source and load it
+      audio.src = finalUrl
+      audio.load()
+      
+      // Wait for the new source to be ready
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Now play
       await audio.play()
       setIsPlaying(true)
       console.log('✅ Playback started successfully for', track.title)
@@ -228,6 +238,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       console.error('Audio element src:', audio.src)
       console.error('Audio element error:', audio.error)
       setIsPlaying(false)
+    } finally {
+      // Always release lock
+      isLoadingRef.current = false;
     }
 
     // Find track in playlist and update index
