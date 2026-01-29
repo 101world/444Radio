@@ -168,8 +168,10 @@ function HomePageContent() {
       </div>
 
       <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10">
-        {/* SEO Hero Section - Above the fold */}
-        <SEOHeroSection />
+        {/* SEO Hero Section - Hidden but crawlable */}
+        <div className="sr-only">
+          <SEOHeroSection />
+        </div>
         
         {/* Landing View - Centered Hero */}
         <div className="max-w-4xl w-full">
