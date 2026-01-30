@@ -127,18 +127,19 @@ function ExplorePageContent() {
   }, [])
 
   // Subscribe to combined_media updates to update likes count in realtime
-  useEffect(() => {
-    const supabaseClient = supabase
-    const channel = supabaseClient
-      .channel('combined_media')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'combined_media' }, (payload) => {
-        const updated = payload.new as any
-        setCombinedMedia(prev => prev.map(m => m.id === updated.id ? { ...m, likes: updated.likes_count || updated.likes || m.likes, plays: updated.plays || m.plays } : m))
-      })
-      .subscribe()
+  // Disabled temporarily to avoid WebSocket spam - likes still work, just not live
+  // useEffect(() => {
+  //   const supabaseClient = supabase
+  //   const channel = supabaseClient
+  //     .channel('combined_media')
+  //     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'combined_media' }, (payload) => {
+  //       const updated = payload.new as any
+  //       setCombinedMedia(prev => prev.map(m => m.id === updated.id ? { ...m, likes: updated.likes_count || updated.likes || m.likes, plays: updated.plays || m.plays } : m))
+  //     })
+  //     .subscribe()
 
-    return () => { channel.unsubscribe() }
-  }, [])
+  //   return () => { channel.unsubscribe() }
+  // }, [])
 
   const fetchLiveStations = async () => {
     try {
