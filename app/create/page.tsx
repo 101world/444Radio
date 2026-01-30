@@ -596,8 +596,10 @@ function CreatePageContent() {
             body: JSON.stringify({ prompt: originalPrompt })
           })
           const titleData = await titleResponse.json()
+          console.log('🔍 [TITLE DEBUG] Raw atom-title API response:', titleData)
           if (titleData.success && titleData.title) {
             finalTitle = titleData.title
+            console.log('🔍 [TITLE DEBUG] finalTitle set to:', finalTitle)
             setCustomTitle(finalTitle)
             console.log('✅ Auto-generated title:', finalTitle)
           }
@@ -805,6 +807,7 @@ function CreatePageContent() {
           genreToUse,
           bpmToUse
         })
+        console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
         result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse)
         console.log('[Generation] Music generation result:', result)
       } else {
@@ -982,6 +985,8 @@ function CreatePageContent() {
     genreParam?: string,
     bpmParam?: string
   ) => {
+    console.log('🔍 [TITLE DEBUG] generateMusic called with title:', title)
+    
     // Build full prompt with genre/BPM if provided
     let fullPrompt = prompt
     if (genreParam) fullPrompt += ` [${genreParam}]`
@@ -997,6 +1002,8 @@ function CreatePageContent() {
       bpm: bpmParam ? parseInt(bpmParam) : undefined,
       generateCoverArt
     }
+
+    console.log('🔍 [TITLE DEBUG] Request body being sent to music-only API:', JSON.stringify(requestBody, null, 2))
 
     // Add ACE-Step parameters for non-English languages
     if (selectedLanguage.toLowerCase() !== 'english') {
