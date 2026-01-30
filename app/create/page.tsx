@@ -40,16 +40,7 @@ interface Message {
     prompt?: string
     lyrics?: string
   }
-  stems?: {
-    vocals: string
-    instrumental: string
-    drums?: string
-    bass?: string
-    other?: string
-    guitar?: string
-    piano?: string
-    [key: string]: string | undefined
-  }
+  stems?: Record<string, string>
   timestamp: Date
   isGenerating?: boolean
 }
