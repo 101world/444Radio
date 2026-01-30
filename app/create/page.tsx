@@ -292,12 +292,39 @@ function CreatePageContent() {
                     isGenerating: false,
                     content: gen.status === 'failed' 
                       ? `❌ ${gen.error || 'Generation failed'}` 
-                      : (gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
+                      : (gen.type === 'music' ? '✅ Track generated!' : 
+                         gen.type === 'effects' ? '✅ Effects generated!' : 
+                         gen.type === 'image' ? '✅ Image generated!' : 
+                         '✅ Generation complete!'),
                     result: gen.status === 'completed' ? gen.result : undefined
                   }
                 : msg
             )
           }
+          
+          // If no message found but generation completed, create a new message
+          // This handles cases where user switched tabs before message was created
+          if (gen.status === 'completed' && !messageByGenId) {
+            console.log('[Sync] Creating new message for completed generation:', gen.id)
+            const newMessage: Message = {
+              id: `restored-${gen.id}`,
+              type: 'assistant',
+              generationId: gen.id,
+              content: gen.type === 'music' ? '✅ Track generated!' : 
+                       gen.type === 'effects' ? '✅ Effects generated!' : 
+                       gen.type === 'image' ? '✅ Image generated!' : 
+                       '✅ Generation complete!',
+              timestamp: new Date(gen.completedAt || gen.startedAt),
+              isGenerating: false,
+              result: gen.result
+            }
+            return [...prev, newMessage]
+          }
+          
+          return prev
+        })
+      }
+    })
           
           // Fallback: Check if result already exists by URL
           if (gen.status === 'completed') {
@@ -1260,6 +1287,7 @@ function CreatePageContent() {
               stems: data.stems || {}
             }
           : msg
+      ))
     } catch (error) {
       console.error('Stem splitting error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to split stems. Please try again.'
