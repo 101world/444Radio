@@ -220,8 +220,6 @@ export async function POST(req: NextRequest) {
       } else {
         console.log('✅ Credits deducted successfully')
       }
-        console.log('✅ Credits deducted successfully')
-      }
 
       console.log('✅ Effects generation complete')
 
