@@ -50,7 +50,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('studio_projects')
       .select('id, title, updated_at, tracks, tempo')
-      .eq('user_id', userId)
+      .eq('clerk_user_id', userId)
       .order('updated_at', { ascending: false })
 
     if (error) {
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
           tempo: body.tempo || 120
         })
         .eq('id', body.id)
-        .eq('user_id', userId)
+        .eq('clerk_user_id', userId)
 
       if (error) {
         console.error('POST update /api/studio/projects error:', JSON.stringify(error, null, 2))
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
           title: body.title,
           tracks: body.tracks,
           tempo: body.tempo || 120,
-          user_id: userId
+          clerk_user_id: userId
         })
         .select('id')
         .single()
@@ -279,7 +279,7 @@ export async function DELETE(request: Request) {
     .from('studio_projects')
     .delete()
     .eq('id', id)
-    .eq('user_id', userId)
+    .eq('clerk_user_id', userId)
 
   if (error) {
     console.error('DELETE /api/studio/projects error', error)

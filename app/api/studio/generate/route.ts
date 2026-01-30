@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       .from('studio_jobs')
       .insert({
         id: jobId,
-        user_id: userId,
+        clerk_user_id: userId,
         type: generationType,
         status: 'queued',
         params,

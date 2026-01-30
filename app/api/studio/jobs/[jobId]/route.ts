@@ -34,7 +34,7 @@ export async function GET(
       .from('studio_jobs')
       .select('*')
       .eq('id', jobId)
-      .eq('user_id', userId) // Security: only owner can view
+      .eq('clerk_user_id', userId) // Security: only owner can view
       .single()
 
     if (error || !job) {

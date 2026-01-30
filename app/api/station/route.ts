@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       const { data: stationData } = await supabase
         .from('live_stations')
         .select('*')
-        .eq('user_id', userData.clerk_user_id)
+        .eq('clerk_user_id', userData.clerk_user_id)
         .eq('is_live', true)
         .single()
         
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       const { data, error } = await supabase
         .from('live_stations')
         .select('*')
-        .eq('user_id', userId)
+        .eq('clerk_user_id', userId)
         .single()
 
       if (error && error.code !== 'PGRST116') throw error
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user data for all live station owners
-    const userIds = liveStationsData.map(s => s.user_id)
+    const userIds = liveStationsData.map(s => s.clerk_user_id)
     const { data: usersData, error: usersError } = await supabase
       .from('users')
       .select('clerk_user_id, username, avatar_url')
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
     
     // Format the response to include profile image and correct username
     const formattedStations = liveStationsData.map(station => {
-      const userData = usersMap.get(station.user_id)
+      const userData = usersMap.get(station.clerk_user_id)
       return {
         ...station,
         username: userData?.username || station.username,
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     const { data: existingStation } = await supabase
       .from('live_stations')
       .select('*')
-      .eq('user_id', userId)
+      .eq('clerk_user_id', userId)
       .single()
 
     if (existingStation) {
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase
         .from('live_stations')
         .update(updateData)
-        .eq('user_id', userId)
+        .eq('clerk_user_id', userId)
         .select()
         .single()
 
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
           const { data: retryData, error: retryError } = await supabase
             .from('live_stations')
             .update(updateData)
-            .eq('user_id', userId)
+            .eq('clerk_user_id', userId)
             .select()
             .single()
           
@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
       console.log('🆕 Creating new station for user:', userId)
       // Create new station
       const insertData: any = {
-        user_id: userId,
+        clerk_user_id: userId,
         username: finalUsername,
         is_live: isLive,
         current_track_id: currentTrack?.id || null,

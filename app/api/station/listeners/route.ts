@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
       .from('station_listeners')
       .upsert({
         station_id: actualStationId,
-        user_id: userId,
+        clerk_user_id: userId,
         username: username,
         last_seen: new Date().toISOString()
       }, {
-        onConflict: 'station_id,user_id'
+        onConflict: 'station_id,clerk_user_id'
       })
       .select()
       .single()
@@ -88,7 +88,7 @@ export async function DELETE(request: NextRequest) {
       .from('station_listeners')
       .delete()
       .eq('station_id', actualStationId)
-      .eq('user_id', userId)
+      .eq('clerk_user_id', userId)
 
     if (error) throw error
     return NextResponse.json({ success: true })

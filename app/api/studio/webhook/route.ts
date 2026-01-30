@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
         .eq('id', job.id)
       
       // Broadcast failure to client
-      await broadcastJobFailed(job.user_id, {
+      await broadcastJobFailed(job.clerk_user_id, {
         jobId: job.id,
         error: errorMsg
       })
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
     console.log(`✅ Job completed: ${job.id}`)
 
     // Broadcast to client via Pusher (real-time WebSocket alternative)
-    await broadcastJobCompleted(job.user_id, {
+    await broadcastJobCompleted(job.clerk_user_id, {
       jobId: job.id,
       type: job.type,
       output: uploadedUrls

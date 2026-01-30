@@ -23,10 +23,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Get station to find the owner's user_id for channel
+    // Get station to find the owner's clerk_user_id for channel
     const { data: stationData } = await supabase
       .from('live_stations')
-      .select('user_id')
+      .select('clerk_user_id')
       .eq('id', stationId)
       .single()
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       .from('station_messages')
       .insert({
         station_id: stationId,
-        user_id: userId,
+        clerk_user_id: userId,
         username: username || 'Anonymous',
         message: message,
         message_type: messageType || 'chat'
@@ -51,14 +51,14 @@ export async function POST(request: NextRequest) {
     // Broadcast message to all listeners via Pusher
     const pusher = getPusherServer()
     if (pusher) {
-      await pusher.trigger(`station-${stationData.user_id}`, 'new-message', {
+      await pusher.trigger(`station-${stationData.clerk_user_id}`, 'new-message', {
         id: data.id,
-        user_id: userId,
+        clerk_user_id: userId,
         username: username || 'Anonymous',
         message: message,
         timestamp: data.created_at
       })
-      console.log(`📡 Broadcast message to station-${stationData.user_id}`)
+      console.log(`📡 Broadcast message to station-${stationData.clerk_user_id}`)
     }
 
     return NextResponse.json({ success: true, message: data })
