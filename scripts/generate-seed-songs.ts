@@ -21,16 +21,21 @@ async function generateSong(song: SeedSong, apiUrl: string, userId: string) {
   try {
     console.log(`🎵 Generating: ${song.title} (${song.genre})...`)
     
-    const response = await fetch(`${apiUrl}/api/generate/music`, {
+    // Use the music-only endpoint which doesn't require a song record
+    const response = await fetch(`${apiUrl}/api/generate/music-only`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`, // Add auth if needed
       },
       body: JSON.stringify({
-        prompt: song.lyrics,
-        title: song.title,
+        title: song.title,  // REQUIRED: 3-100 characters
+        prompt: song.lyrics, // REQUIRED: 10-300 characters  
+        lyrics: song.lyrics,
         genre: song.genre,
-        userId: userId,
+        duration: 'medium',
+        language: 'English',
+        generateCoverArt: true,
       }),
     })
 

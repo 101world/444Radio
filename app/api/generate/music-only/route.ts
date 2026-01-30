@@ -346,6 +346,8 @@ export async function POST(req: NextRequest) {
 
     // Save to music_library table first
     console.log('💾 Saving to music library...')
+    console.log('💾 Title being saved:', title)
+    console.log('💾 Audio URL being saved:', audioUrl)
     const libraryEntry = {
       clerk_user_id: userId,
       title: title, // Use the actual title from request

@@ -140,6 +140,7 @@ Generated with AI`
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
+          title: prompt.substring(0, 50), // Use first 50 chars of prompt as title
           prompt,
           lyrics: defaultLyrics, // Required by API
           bitrate: 256000,

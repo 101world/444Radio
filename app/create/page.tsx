@@ -790,7 +790,8 @@ function CreatePageContent() {
       let result
       
       if (type === 'music') {
-        const titleToUse = params.customTitle || undefined
+        // ALWAYS provide a title - use custom title or first 50 chars of prompt
+        const titleToUse = params.customTitle || params.prompt.substring(0, 50)
         const lyricsToUse = params.customLyrics || undefined
         const durationToUse = params.songDuration || 'medium'
         const genreToUse = params.genre || undefined
