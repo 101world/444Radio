@@ -702,11 +702,23 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       >
                         <Heart size={20} className={likedTracks.has(track.id) ? 'text-red-500 fill-red-500' : 'text-white'} />
                       </button>
-                      {currentTrack?.id === track.id && isPlaying ? (
-                        <Pause size={48} className="text-white" />
-                      ) : (
-                        <Play size={48} className="text-white" />
-                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (currentTrack?.id === track.id) {
+                            togglePlayPause()
+                          } else {
+                            handlePlayTrack(track)
+                          }
+                        }}
+                        className="w-14 h-14 rounded-full bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center transition-all"
+                      >
+                        {currentTrack?.id === track.id && isPlaying ? (
+                          <Pause size={24} className="text-black" />
+                        ) : (
+                          <Play size={24} className="text-black ml-1" />
+                        )}
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
