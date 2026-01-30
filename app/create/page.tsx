@@ -325,67 +325,6 @@ function CreatePageContent() {
         })
       }
     })
-          
-          // Fallback: Check if result already exists by URL
-          if (gen.status === 'completed') {
-            const messageExists = prev.some(msg => 
-              msg.result?.audioUrl === gen.result?.audioUrl || 
-              msg.result?.imageUrl === gen.result?.imageUrl
-            )
-            
-            if (messageExists) {
-              console.log('[Sync] Message already exists for generation:', gen.id)
-              return prev
-            }
-          }
-          
-          // Fallback: Find ANY generating message of the same type (music/image)
-          const hasGeneratingMessage = prev.some(msg => 
-            msg.isGenerating && msg.generationType === gen.type
-          )
-          
-          if (hasGeneratingMessage && gen.status === 'completed') {
-            console.log('[Sync] Updating first generating message with completed result:', gen.id)
-            // Update the FIRST generating message of this type
-            let updated = false
-            return prev.map(msg => {
-              if (!updated && msg.isGenerating && msg.generationType === gen.type) {
-                updated = true
-                return {
-                  ...msg,
-                  isGenerating: false,
-                  generationId: gen.id,
-                  content: gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!',
-                  result: gen.result
-                }
-              }
-              return msg
-            })
-          }
-          
-          // Only add as new message if status is completed and not failed
-          if (gen.status === 'completed' && gen.result && !hasGeneratingMessage) {
-            console.log('[Sync] No generating message found, adding completed generation as new message:', gen.id)
-            return [
-              ...prev,
-              {
-                id: `sync_${gen.id}`,
-                type: 'generation' as const,
-                content: gen.type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!',
-                generationType: gen.type,
-                generationId: gen.id,
-                isGenerating: false,
-                result: gen.result,
-                timestamp: new Date(gen.completedAt || Date.now())
-              }
-            ]
-          }
-          
-          // Return unchanged if no conditions met
-          return prev
-        })
-      }
-    })
   }, [generations])
 
   // Restore stem split results from localStorage on mount
