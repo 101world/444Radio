@@ -348,9 +348,10 @@ export async function POST(req: NextRequest) {
     console.log('💾 Saving to music library...')
     console.log('💾 Title being saved:', title)
     console.log('💾 Audio URL being saved:', audioUrl)
+    console.log('💾 R2 key from upload:', r2Result.key)
     const libraryEntry = {
       clerk_user_id: userId,
-      title: title, // Use the actual title from request
+      title: title, // Use the actual title from request - NOT the filename
       prompt: prompt,
       lyrics: formattedLyrics,
       audio_url: audioUrl,
@@ -365,6 +366,7 @@ export async function POST(req: NextRequest) {
       },
       status: 'ready'
     }
+    console.log('💾 Full library entry being saved:', JSON.stringify(libraryEntry, null, 2))
 
     const saveResponse = await fetch(
       `${supabaseUrl}/rest/v1/music_library`,
@@ -391,6 +393,7 @@ export async function POST(req: NextRequest) {
       const saveData = await saveResponse.json()
       savedMusic = Array.isArray(saveData) ? saveData[0] : saveData
       console.log('✅ Saved to library:', savedMusic)
+      console.log('✅ Confirmed title in DB:', savedMusic?.title)
     }
 
     // NOW deduct credits (-2 for music) atomically to prevent race conditions
