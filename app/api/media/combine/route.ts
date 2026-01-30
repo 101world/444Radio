@@ -27,6 +27,9 @@ export async function POST(req: NextRequest) {
       metadata
     } = await req.json()
 
+    console.log('🔍 [COMBINE DEBUG] Title received:', title)
+    console.log('🔍 [COMBINE DEBUG] Full request body:', JSON.stringify({ audioUrl, imageUrl, title, audioPrompt, imagePrompt, isPublic, metadata }, null, 2))
+
     if (!audioUrl || !imageUrl) {
       return NextResponse.json(
         { error: 'Audio URL and Image URL are required' },
