@@ -235,23 +235,21 @@ function ExplorePageContent() {
       togglePlayPause()
       setShowSearchBox(true) // Show search bar when paused
     } else {
-      // Set the playlist with all combined media
-      setPlaylist(combinedMedia.map(m => ({
+      // Create playlist from all tracks
+      const playlistTracks = combinedMedia.map(m => ({
         id: m.id,
         title: m.title,
-        audioUrl: m.audioUrl || m.audio_url, // Use normalized field with fallback
-        imageUrl: m.imageUrl || m.image_url, // Use normalized field with fallback
+        audioUrl: m.audioUrl || m.audio_url,
+        imageUrl: m.imageUrl || m.image_url,
         artist: m.users?.username || m.username || 'Unknown Artist'
-      })))
+      }))
       
-      // Play the selected track
-      playTrack({
-        id: media.id,
-        title: media.title,
-        audioUrl: media.audioUrl || media.audio_url, // Use normalized field with fallback
-        imageUrl: media.imageUrl || media.image_url, // Use normalized field with fallback
-        artist: media.users?.username || media.username || 'Unknown Artist'
-      })
+      // Find index of the track to play
+      const startIndex = combinedMedia.findIndex(m => m.id === media.id)
+      
+      // Set playlist with correct start index - this will auto-play the track
+      setPlaylist(playlistTracks, startIndex >= 0 ? startIndex : 0)
+      
       setShowSearchBox(false) // Hide search bar when playing
     }
   }
