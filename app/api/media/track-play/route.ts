@@ -46,21 +46,30 @@ export async function POST(request: Request) {
       )
     }
 
-    // Increment play count directly with UPDATE
-    const currentPlays = media?.plays || 0
-    const { error: updateError } = await supabase
-      .from('combined_media')
-      .update({ plays: currentPlays + 1 })
-      .eq('id', mediaId)
+    // Use RPC to atomically increment play count
+    const { data: result, error: rpcError } = await supabase.rpc('increment_play_count', {
+      media_id: mediaId
+    })
 
-    if (updateError) {
-      console.error('Track play error:', updateError)
-      return corsResponse(
-        NextResponse.json({ error: 'Failed to update play count', details: updateError.message }, { status: 500 })
-      )
+    if (rpcError) {
+      console.error('RPC increment error:', rpcError)
+      // Fallback to manual increment if RPC doesn't exist
+      const { error: updateError } = await supabase
+        .from('combined_media')
+        .update({ plays: (media?.plays || 0) + 1 })
+        .eq('id', mediaId)
+
+      if (updateError) {
+        console.error('Track play error:', updateError)
+        return corsResponse(
+          NextResponse.json({ error: 'Failed to update play count', details: updateError.message }, { status: 500 })
+        )
+      }
+      
+      return corsResponse(NextResponse.json({ success: true, plays: (media?.plays || 0) + 1 }))
     }
 
-    return corsResponse(NextResponse.json({ success: true, plays: currentPlays + 1 }))
+    return corsResponse(NextResponse.json({ success: true, plays: result }))
   } catch (error) {
     console.error('Track play exception:', error)
     return corsResponse(
