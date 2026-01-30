@@ -196,28 +196,30 @@ export async function POST(req: NextRequest) {
         console.error('❌ Library save exception:', librarySaveError)
       }
 
-      // Deduct credits (-2) since everything succeeded
-      console.log(`💰 Deducting 2 credits from user (${user.credits} → ${user.credits - 2})`)
+      // Deduct credits (-2) using atomic function
+      console.log(`💰 Deducting 2 credits from user atomically (${user.credits} → ${user.credits - 2})`)
       const creditDeductRes = await fetch(
-        `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+        `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Prefer': 'return=minimal'
+            'Authorization': `Bearer ${supabaseKey}`
           },
           body: JSON.stringify({
-            credits: user.credits - 2,
-            total_generated: (user.total_generated || 0) + 1
+            p_clerk_user_id: userId,
+            p_amount: 2
           })
         }
       )
 
-      if (!creditDeductRes.ok) {
-        console.error('⚠️ Failed to deduct credits, but generation succeeded')
+      const deductResult = creditDeductRes.ok ? await creditDeductRes.json() : null
+      if (!creditDeductRes.ok || !deductResult?.success) {
+        console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || creditDeductRes.statusText)
       } else {
+        console.log('✅ Credits deducted successfully')
+      }
         console.log('✅ Credits deducted successfully')
       }
 
