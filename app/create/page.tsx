@@ -361,6 +361,50 @@ function CreatePageContent() {
     })
   }, [generations])
 
+  // Restore stem split results from localStorage on mount
+  useEffect(() => {
+    const checkPendingStemSplits = () => {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('stem-split-'))
+      
+      keys.forEach(key => {
+        try {
+          const data = JSON.parse(localStorage.getItem(key) || '{}')
+          
+          // If completed, restore the result
+          if (data.status === 'success' && data.stems) {
+            setMessages(prev => {
+              // Check if message already exists
+              const exists = prev.find(m => m.id === data.messageId)
+              if (!exists) {
+                // Add success message
+                return [...prev, {
+                  id: data.messageId,
+                  type: 'assistant' as const,
+                  content: `✅ Stems separated successfully! Used ${data.creditsUsed || 0} credits. ${data.creditsRemaining || 0} credits remaining.`,
+                  timestamp: new Date(data.completedTime || Date.now()),
+                  isGenerating: false,
+                  stems: data.stems
+                }]
+              }
+              return prev
+            })
+            
+            // Update credits if available
+            if (data.creditsRemaining !== undefined) {
+              setUserCredits(data.creditsRemaining)
+            }
+            
+            console.log('✅ Restored stem split results from localStorage:', key)
+          }
+        } catch (error) {
+          console.error('Failed to restore stem split:', error)
+        }
+      })
+    }
+    
+    checkPendingStemSplits()
+  }, [])
+
   // Fetch user credits function
   const fetchCredits = async () => {
     try {
@@ -1169,6 +1213,15 @@ function CreatePageContent() {
       isGenerating: true
     }
     setMessages(prev => [...prev, processingMessage])
+    
+    // Save to localStorage so results persist across tab switches
+    const operationKey = `stem-split-${processingMessage.id}`
+    localStorage.setItem(operationKey, JSON.stringify({
+      status: 'processing',
+      audioUrl,
+      messageId: processingMessage.id,
+      startTime: Date.now()
+    }))
 
     try {
       const response = await fetch('/api/audio/split-stems', {
@@ -1180,16 +1233,24 @@ function CreatePageContent() {
       const data = await response.json()
 
       if (!response.ok) {
-        // Show specific error message from API
         throw new Error(data.error || 'Stem splitting failed')
       }
 
-      // Update user credits with remaining amount
+      // Update credits
       if (data.creditsRemaining !== undefined) {
         setUserCredits(data.creditsRemaining)
       }
 
-      // Replace processing message with unified stems result
+      // Save success to localStorage
+      localStorage.setItem(operationKey, JSON.stringify({
+        status: 'success',
+        stems: data.stems,
+        creditsUsed: data.creditsUsed,
+        creditsRemaining: data.creditsRemaining,
+        completedTime: Date.now()
+      }))
+
+      // Update UI
       setMessages(prev => prev.map(msg =>
         msg.id === processingMessage.id
           ? {
@@ -1199,10 +1260,17 @@ function CreatePageContent() {
               stems: data.stems || {}
             }
           : msg
-      ))
     } catch (error) {
       console.error('Stem splitting error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to split stems. Please try again.'
+      
+      // Save error to localStorage
+      localStorage.setItem(operationKey, JSON.stringify({
+        status: 'error',
+        error: errorMessage,
+        completedTime: Date.now()
+      }))
+      
       setMessages(prev => prev.map(msg =>
         msg.id === processingMessage.id
           ? { ...msg, content: `❌ ${errorMessage}`, isGenerating: false }
@@ -1211,6 +1279,11 @@ function CreatePageContent() {
     } finally {
       setIsSplittingStems(false)
       setSplitStemsMessageId(null)
+      
+      // Clean up localStorage after 5 minutes
+      setTimeout(() => {
+        localStorage.removeItem(operationKey)
+      }, 5 * 60 * 1000)
     }
   }
 
