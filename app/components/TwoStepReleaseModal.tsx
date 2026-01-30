@@ -97,8 +97,12 @@ export default function TwoStepReleaseModal({
 
     // Auto-fill title from music if available
     const music = musicItems.find(m => m.id === selectedMusic)
+    console.log('🔍 [RELEASE DEBUG] Music item found:', music)
+    console.log('🔍 [RELEASE DEBUG] music.title:', music?.title)
     if (music && !title) {
-      setTitle(music.title || music.prompt.substring(0, 50))
+      const autoFilledTitle = music.title || music.prompt.substring(0, 50)
+      console.log('🔍 [RELEASE DEBUG] Auto-filling title with:', autoFilledTitle)
+      setTitle(autoFilledTitle)
     }
 
     setStep(2)
