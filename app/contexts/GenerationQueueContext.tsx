@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 export interface GenerationItem {
   id: string
-  type: 'music' | 'image' | 'video' | 'effects'
+  type: 'music' | 'image' | 'video' | 'effects' | 'stem-split'
   prompt: string
   title?: string
   status: 'queued' | 'generating' | 'completed' | 'failed'
@@ -16,6 +16,9 @@ export interface GenerationItem {
     title?: string
     lyrics?: string
     prompt?: string
+    stems?: Record<string, string>
+    creditsUsed?: number
+    creditsRemaining?: number
   }
   error?: string
   startedAt: number

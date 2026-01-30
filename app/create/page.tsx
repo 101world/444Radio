@@ -295,8 +295,10 @@ function CreatePageContent() {
                       : (gen.type === 'music' ? '✅ Track generated!' : 
                          gen.type === 'effects' ? '✅ Effects generated!' : 
                          gen.type === 'image' ? '✅ Image generated!' : 
+                         gen.type === 'stem-split' ? `✅ Stems separated successfully! Used ${gen.result?.creditsUsed || 0} credits.` :
                          '✅ Generation complete!'),
-                    result: gen.status === 'completed' ? gen.result : undefined
+                    result: gen.status === 'completed' ? gen.result : undefined,
+                    stems: gen.type === 'stem-split' && gen.result?.stems ? gen.result.stems : undefined
                   }
                 : msg
             )
@@ -313,10 +315,12 @@ function CreatePageContent() {
               content: gen.type === 'music' ? '✅ Track generated!' : 
                        gen.type === 'effects' ? '✅ Effects generated!' : 
                        gen.type === 'image' ? '✅ Image generated!' : 
+                       gen.type === 'stem-split' ? `✅ Stems separated successfully! Used ${gen.result?.creditsUsed || 0} credits.` :
                        '✅ Generation complete!',
               timestamp: new Date(gen.completedAt || gen.startedAt),
               isGenerating: false,
-              result: gen.result
+              result: gen.result,
+              stems: gen.type === 'stem-split' && gen.result?.stems ? gen.result.stems : undefined
             }
             return [...prev, newMessage]
           }
@@ -326,50 +330,6 @@ function CreatePageContent() {
       }
     })
   }, [generations])
-
-  // Restore stem split results from localStorage on mount
-  useEffect(() => {
-    const checkPendingStemSplits = () => {
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('stem-split-'))
-      
-      keys.forEach(key => {
-        try {
-          const data = JSON.parse(localStorage.getItem(key) || '{}')
-          
-          // If completed, restore the result
-          if (data.status === 'success' && data.stems) {
-            setMessages(prev => {
-              // Check if message already exists
-              const exists = prev.find(m => m.id === data.messageId)
-              if (!exists) {
-                // Add success message
-                return [...prev, {
-                  id: data.messageId,
-                  type: 'assistant' as const,
-                  content: `✅ Stems separated successfully! Used ${data.creditsUsed || 0} credits. ${data.creditsRemaining || 0} credits remaining.`,
-                  timestamp: new Date(data.completedTime || Date.now()),
-                  isGenerating: false,
-                  stems: data.stems
-                }]
-              }
-              return prev
-            })
-            
-            // Update credits if available
-            if (data.creditsRemaining !== undefined) {
-              setUserCredits(data.creditsRemaining)
-            }
-            
-            console.log('✅ Restored stem split results from localStorage:', key)
-          }
-        } catch (error) {
-          console.error('Failed to restore stem split:', error)
-        }
-      })
-    }
-    
-    checkPendingStemSplits()
-  }, [])
 
   // Fetch user credits function
   const fetchCredits = async () => {
@@ -1170,24 +1130,26 @@ function CreatePageContent() {
     setIsSplittingStems(true)
     setSplitStemsMessageId(messageId)
 
-    // Add "processing" message
+    // Add to GenerationQueue instead of localStorage
+    const genId = addGeneration({
+      type: 'stem-split',
+      prompt: `Stem split: ${audioUrl}`,
+      title: 'Stem Separation'
+    })
+
+    // Update to generating
+    updateGeneration(genId, { status: 'generating' })
+
+    // Add "processing" message linked to generation
     const processingMessage: Message = {
       id: `${messageId}-stems-processing`,
       type: 'assistant',
       content: '🎵 Splitting stems... This may take 1-2 minutes.',
       timestamp: new Date(),
-      isGenerating: true
+      isGenerating: true,
+      generationId: genId
     }
     setMessages(prev => [...prev, processingMessage])
-    
-    // Save to localStorage so results persist across tab switches
-    const operationKey = `stem-split-${processingMessage.id}`
-    localStorage.setItem(operationKey, JSON.stringify({
-      status: 'processing',
-      audioUrl,
-      messageId: processingMessage.id,
-      startTime: Date.now()
-    }))
 
     try {
       const response = await fetch('/api/audio/split-stems', {
@@ -1207,16 +1169,17 @@ function CreatePageContent() {
         setUserCredits(data.creditsRemaining)
       }
 
-      // Save success to localStorage
-      localStorage.setItem(operationKey, JSON.stringify({
-        status: 'success',
-        stems: data.stems,
-        creditsUsed: data.creditsUsed,
-        creditsRemaining: data.creditsRemaining,
-        completedTime: Date.now()
-      }))
+      // Update GenerationQueue with success
+      updateGeneration(genId, {
+        status: 'completed',
+        result: {
+          stems: data.stems,
+          creditsUsed: data.creditsUsed,
+          creditsRemaining: data.creditsRemaining
+        }
+      })
 
-      // Update UI
+      // Update UI message
       setMessages(prev => prev.map(msg =>
         msg.id === processingMessage.id
           ? {
@@ -1231,12 +1194,11 @@ function CreatePageContent() {
       console.error('Stem splitting error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to split stems. Please try again.'
       
-      // Save error to localStorage
-      localStorage.setItem(operationKey, JSON.stringify({
-        status: 'error',
-        error: errorMessage,
-        completedTime: Date.now()
-      }))
+      // Update GenerationQueue with error
+      updateGeneration(genId, {
+        status: 'failed',
+        error: errorMessage
+      })
       
       setMessages(prev => prev.map(msg =>
         msg.id === processingMessage.id
@@ -1246,11 +1208,6 @@ function CreatePageContent() {
     } finally {
       setIsSplittingStems(false)
       setSplitStemsMessageId(null)
-      
-      // Clean up localStorage after 5 minutes
-      setTimeout(() => {
-        localStorage.removeItem(operationKey)
-      }, 5 * 60 * 1000)
     }
   }
 
