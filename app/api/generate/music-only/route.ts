@@ -348,7 +348,6 @@ export async function POST(req: NextRequest) {
     console.log('💾 Saving to music library...')
     console.log('💾 Title being saved:', title)
     console.log('💾 Audio URL being saved:', audioUrl)
-    console.log('💾 R2 key from upload:', r2Result.key)
     const libraryEntry = {
       clerk_user_id: userId,
       title: title, // Use the actual title from request - NOT the filename
