@@ -18,6 +18,7 @@ import { SampleLibraryManager } from './SampleLibraryManager'
 import { SelectionManager } from './SelectionManager'
 import { PerformanceManager, getPerformanceManager } from './PerformanceManager'
 import { AudioScheduler } from './scheduler'
+import { TimeEngine } from './TimeEngine'
 
 export interface DAWConfig {
   sampleRate?: number
@@ -40,6 +41,7 @@ export class MultiTrackDAW {
   private audioContext: AudioContext
   private audioEngine: AudioEngine
   private audioScheduler: AudioScheduler
+  private timeEngine: TimeEngine // SINGLE SOURCE OF TRUTH FOR TIME
   private trackManager: TrackManager
   private timelineManager: TimelineManager
   private mixingConsole: MixingConsole
@@ -77,6 +79,9 @@ export class MultiTrackDAW {
       latencyHint: 'interactive'
     })
 
+    // Initialize TimeEngine FIRST - single source of truth for all timing
+    this.timeEngine = new TimeEngine(this.audioContext.sampleRate, config.bpm || 120)
+
     // Initialize core systems - pass shared context to AudioEngine
     this.audioEngine = new AudioEngine({ 
       context: this.audioContext,
@@ -104,6 +109,11 @@ export class MultiTrackDAW {
     // Set initial state
     this.transportState.bpm = config.bpm || 120
     if (config.timeSignature) {
+      this.timeEngine.setTimeSignature(
+        config.timeSignature.numerator,
+        config.timeSignature.denominator,
+        0
+      )
       this.timelineManager.setTimeSignature(0, config.timeSignature.numerator, config.timeSignature.denominator)
     }
 
@@ -899,6 +909,10 @@ export class MultiTrackDAW {
     return this.audioContext
   }
 
+  getTimeEngine(): TimeEngine {
+    return this.timeEngine
+  }
+
   getTransportState(): TransportState {
     return { ...this.transportState }
   }
@@ -959,6 +973,7 @@ export class MultiTrackDAW {
 
     this.stop()
     this.audioEngine.dispose()
+    this.timeEngine.dispose()
     this.trackManager.dispose()
     this.timelineManager.dispose()
     this.mixingConsole.dispose()

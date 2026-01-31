@@ -226,7 +226,11 @@ export default function DAWProRebuild() {
         const animate = () => {
           if (!instance) return
           const state = instance.getTransportState()
-          if (state.isPlaying) {
+          
+          // CRITICAL: Use Web Audio clock as single source of truth
+          // This ensures deterministic, glitch-free timing
+          const audioContext = instance.getAudioContext()
+          if (state.isPlaying && audioContext) {
             const currentTime = instance.getCurrentTime()
             const loop = loopRef.current
             
@@ -234,6 +238,7 @@ export default function DAWProRebuild() {
             if (loop.enabled && currentTime >= loop.end) {
               instance.seekTo(loop.start) // This will restart playback from loop start
             } else {
+              // Use requestAnimationFrame batching to prevent UI jank
               setPlayhead(currentTime)
             }
             setIsPlaying(true)
@@ -318,23 +323,32 @@ export default function DAWProRebuild() {
   }
 
   const snapTime = useCallback(
-    (time: number) =>
-      snapEnabled ? Math.round(time * GRID_SUBDIVISION) / GRID_SUBDIVISION : time,
-    [snapEnabled]
+    (time: number) => {
+      if (!snapEnabled || !daw) return time
+      const timeEngine = daw.getTimeEngine()
+      return timeEngine.snapToSubdivision(time) // Snap to 16th notes
+    },
+    [snapEnabled, daw]
   )
 
   const beatLength = useCallback(() => 60 / bpm, [bpm])
 
   const formatBarsBeats = useCallback(
     (time: number) => {
-      const bl = beatLength()
-      const totalBeats = time / bl
-      const bar = Math.floor(totalBeats / 4) + 1
-      const beatInBar = Math.floor(totalBeats % 4) + 1
-      const sub = Math.floor(((totalBeats - Math.floor(totalBeats)) * GRID_SUBDIVISION)) + 1
-      return `${bar}:${beatInBar}.${sub}`
+      if (!daw) {
+        // Fallback if DAW not ready
+        const bl = beatLength()
+        const totalBeats = time / bl
+        const bar = Math.floor(totalBeats / 4) + 1
+        const beatInBar = Math.floor(totalBeats % 4) + 1
+        const sub = Math.floor(((totalBeats - Math.floor(totalBeats)) * GRID_SUBDIVISION)) + 1
+        return `${bar}:${beatInBar}.${sub}`
+      }
+      // Use TimeEngine for accurate musical time formatting
+      const timeEngine = daw.getTimeEngine()
+      return timeEngine.formatMusical(time)
     },
-    [beatLength]
+    [daw, beatLength]
   )
 
   const bufferedRange = useMemo(() => {
@@ -1405,30 +1419,62 @@ export default function DAWProRebuild() {
       const step = Math.ceil(data.length / width)
       const amp = height / 2
 
-      ctx.fillStyle = '#0a0a0a'
+      // Professional gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 0, height)
+      gradient.addColorStop(0, '#0f0f0f')
+      gradient.addColorStop(1, '#0a0a0a')
+      ctx.fillStyle = gradient
       ctx.fillRect(0, 0, width, height)
 
-      ctx.strokeStyle = '#06b6d4'
+      // Draw waveform with gradient
+      const waveGradient = ctx.createLinearGradient(0, 0, 0, height)
+      waveGradient.addColorStop(0, '#22d3ee') // Cyan 400
+      waveGradient.addColorStop(0.5, '#06b6d4') // Cyan 500
+      waveGradient.addColorStop(1, '#0891b2') // Cyan 600
+      
+      ctx.strokeStyle = waveGradient
       ctx.lineWidth = 1.5
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
       ctx.beginPath()
 
       // Optimized: access data directly instead of creating arrays
+      // Use RMS for more accurate visual representation
       for (let i = 0; i < width; i++) {
         let min = 1
         let max = -1
+        let sum = 0
         const offset = i * step
         
-        // Direct access is much faster than Array.from + spread
+        // Calculate both min/max and RMS
         for (let j = 0; j < step && offset + j < data.length; j++) {
           const sample = data[offset + j]
           if (sample < min) min = sample
           if (sample > max) max = sample
+          sum += sample * sample
         }
         
-        ctx.moveTo(i, (1 + min) * amp)
-        ctx.lineTo(i, (1 + max) * amp)
+        // Use RMS for better perceived loudness
+        const rms = Math.sqrt(sum / step)
+        
+        // Draw centered waveform
+        const centerY = amp
+        const minY = centerY + (min * amp * 0.9) // 0.9 for headroom
+        const maxY = centerY + (max * amp * 0.9)
+        
+        ctx.moveTo(i, minY)
+        ctx.lineTo(i, maxY)
       }
 
+      ctx.stroke()
+      
+      // Add subtle grid overlay for professional look
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'
+      ctx.lineWidth = 0.5
+      ctx.beginPath()
+      // Center line
+      ctx.moveTo(0, height / 2)
+      ctx.lineTo(width, height / 2)
       ctx.stroke()
     })
   }, [])
@@ -1683,6 +1729,9 @@ export default function DAWProRebuild() {
                 if (daw) {
                   setBpm(next)
                   daw.setBPM(next)
+                  // Update TimeEngine with new BPM
+                  const timeEngine = daw.getTimeEngine()
+                  timeEngine.setTempo(next, 0)
                   markProjectDirty()
                   // Clear and reset metronome if active
                   if (metronomeInterval) {
