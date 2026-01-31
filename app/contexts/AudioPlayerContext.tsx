@@ -368,6 +368,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   // Track play count after 3 seconds
   useEffect(() => {
+    console.error('!!!!! useEffect RAN - isPlaying:', isPlaying, 'currentTrack:', currentTrack?.title)
     console.log('🎯 Play tracking useEffect triggered:', { 
       isPlaying, 
       hasCurrentTrack: !!currentTrack,
@@ -382,6 +383,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
 
     console.log('🎯 Starting play tracking interval for:', currentTrack.title)
+    console.error('!!!!! STARTING INTERVAL for', currentTrack.title)
     const interval = setInterval(() => {
       playTimeRef.current += 1
       console.log(`🎯 Play time: ${playTimeRef.current}s for "${currentTrack.title}"`)
@@ -398,7 +400,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       console.log('🎯 Clearing play tracking interval')
       clearInterval(interval)
     }
-  }, [isPlaying, currentTrack])
+  }, [isPlaying, currentTrack, currentTrack?.id])
 
   // Track play count API call
   const trackPlay = async (trackId: string) => {
