@@ -140,7 +140,7 @@ export default function LibraryPage() {
         }
         
         setMusicItems(uniqueMusic)
-        console.log('✅ Loaded', uniqueMusic.length, 'music tracks (DB:', dbMusic.length, '+ R2:', r2Music.length, ')')
+        console.log('✅ Loaded', uniqueMusic.length, 'music tracks from database')
       }
 
       // Merge database images with R2 images, deduplicate by image_url
