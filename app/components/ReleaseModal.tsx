@@ -41,17 +41,23 @@ export default function ReleaseModal({ isOpen, onClose, musicItem, imageItems, o
       return
     }
 
+    console.log('🔍 [RELEASE DEBUG] musicItem:', musicItem)
+    console.log('🔍 [RELEASE DEBUG] musicItem.title:', musicItem.title)
+
     setIsReleasing(true)
     setError(null)
 
     try {
+      const titleToSend = musicItem.title || 'Untitled Track'
+      console.log('🔍 [RELEASE DEBUG] Title being sent to API:', titleToSend)
+      
       const response = await fetch('/api/media/combine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           audioUrl: musicItem.audio_url,
           imageUrl: selectedImage.image_url,
-          title: musicItem.title || 'Untitled Track',
+          title: titleToSend,
           audioPrompt: musicItem.prompt,
           imagePrompt: selectedImage.prompt,
           isPublic: true,
