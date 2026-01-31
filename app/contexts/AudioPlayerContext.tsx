@@ -48,6 +48,7 @@ interface AudioPlayerContextType {
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined)
 
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
+  console.log('🎵 AudioPlayerProvider mounted')
   const { user } = useUser()
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -489,6 +490,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   const setPlaylistAndPlay = async (tracks: Track[], startIndex: number = 0) => {
+    console.log('🎵🎵 setPlaylistAndPlay called with', tracks.length, 'tracks, startIndex:', startIndex)
     // Normalize audio_url to audioUrl and filter out invalid tracks
     const normalizedTracks = tracks.map(t => ({
       ...t,
