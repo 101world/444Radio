@@ -490,7 +490,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   const setPlaylistAndPlay = async (tracks: Track[], startIndex: number = 0) => {
-    console.log('🎵🎵 setPlaylistAndPlay called with', tracks.length, 'tracks, startIndex:', startIndex)
+    console.error('!!!!! setPlaylistAndPlay CALLED !!!!!', tracks.length, 'tracks')
     // Normalize audio_url to audioUrl and filter out invalid tracks
     const normalizedTracks = tracks.map(t => ({
       ...t,
