@@ -412,6 +412,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     try {
       const userId = user?.id || null
       
+      console.error('!!!!! trackPlay API CALLED - trackId:', trackId, 'userId:', userId)
+      
       // Try combined_media first, then fall back to songs
       const mediaResponse = await fetch('/api/media/track-play', {
         method: 'POST',
@@ -419,20 +421,29 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ mediaId: trackId, userId })
       })
       
+      console.error('!!!!! API Response status:', mediaResponse.status)
+      
       if (mediaResponse.ok) {
         const data = await mediaResponse.json()
         console.log('✅ Play tracked successfully, new count:', data.plays)
+        console.error('!!!!! API SUCCESS - new play count:', data.plays)
+      } else {
+        const errorText = await mediaResponse.text()
+        console.error('!!!!! API FAILED - status:', mediaResponse.status, 'response:', errorText)
       }
       
       // If media tracking fails (non-404), try songs table with compatible payload keys
       if (!mediaResponse.ok && mediaResponse.status !== 404) {
-        await fetch('/api/songs/track-play', {
+        console.error('!!!!! Trying fallback /api/songs/track-play')
+        const fallbackResponse = await fetch('/api/songs/track-play', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mediaId: trackId, songId: trackId, userId })
         })
+        console.error('!!!!! Fallback response status:', fallbackResponse.status)
       }
     } catch (error) {
+      console.error('!!!!! trackPlay EXCEPTION:', error)
       console.error('Failed to track play:', error)
     }
   }
