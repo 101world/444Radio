@@ -125,8 +125,8 @@ export default function LibraryPage() {
         const dbMusic = musicData.music
         const r2Music = r2AudioData.success && Array.isArray(r2AudioData.music) ? r2AudioData.music : []
         
-        // Combine and deduplicate
-        const allMusic = [...dbMusic, ...r2Music]
+        // Combine and deduplicate - DATABASE LAST so it overwrites R2 filenames with correct titles
+        const allMusic = [...r2Music, ...dbMusic]
         const uniqueMusic = Array.from(
           new Map(allMusic.map(item => [item.audio_url, item])).values()
         )
