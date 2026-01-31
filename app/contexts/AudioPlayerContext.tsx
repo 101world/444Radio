@@ -379,6 +379,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const trackPlay = async (trackId: string) => {
     try {
       const userId = user?.id || null
+      console.log('🎯 trackPlay called:', { trackId, userId, currentTrack: currentTrack?.title })
       
       // Try combined_media first, then fall back to songs
       const mediaResponse = await fetch('/api/media/track-play', {
@@ -387,16 +388,23 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ mediaId: trackId, userId })
       })
       
+      console.log('🎯 API response:', mediaResponse.status, mediaResponse.ok)
+      const responseData = await mediaResponse.json()
+      console.log('🎯 API response data:', responseData)
+      
       // If media tracking fails (non-404), try songs table with compatible payload keys
       if (!mediaResponse.ok && mediaResponse.status !== 404) {
-        await fetch('/api/songs/track-play', {
+        console.log('🎯 Trying fallback to songs API')
+        const songResponse = await fetch('/api/songs/track-play', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mediaId: trackId, songId: trackId, userId })
         })
+        const songData = await songResponse.json()
+        console.log('🎯 Songs API response:', songResponse.status, songData)
       }
     } catch (error) {
-      console.error('Failed to track play:', error)
+      console.error('❌ Failed to track play:', error)
     }
   }
 
