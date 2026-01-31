@@ -123,6 +123,13 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const playTrack = useCallback(async (track: Track) => {
+    console.log('🎵🎵🎵 playTrack CALLED with:', { 
+      title: track?.title, 
+      id: track?.id,
+      audioUrl: track?.audioUrl,
+      userId: track?.userId 
+    })
+    
     // Prevent multiple simultaneous play attempts
     if (isLoadingRef.current) {
       console.log('⏳ Play already in progress, ignoring duplicate request');
@@ -228,6 +235,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       await audio.play()
       setIsPlaying(true)
       console.log('✅ Playback started successfully for', track.title)
+      console.log('🎵 isPlaying state set to TRUE, currentTrack set to:', track.title)
+      console.log('🎵 Play tracking should now start...')
       // Notify Studio to stop playback to prevent overlapping audio
       try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}
     } catch (error) {
@@ -393,7 +402,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const trackPlay = async (trackId: string) => {
     try {
       const userId = user?.id || null
-      console.log('🎯 trackPlay called:', { trackId, userId, currentTrack: currentTrack?.title })
       
       // Try combined_media first, then fall back to songs
       const mediaResponse = await fetch('/api/media/track-play', {
@@ -402,23 +410,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ mediaId: trackId, userId })
       })
       
-      console.log('🎯 API response:', mediaResponse.status, mediaResponse.ok)
-      const responseData = await mediaResponse.json()
-      console.log('🎯 API response data:', responseData)
+      if (mediaResponse.ok) {
+        const data = await mediaResponse.json()
+        console.log('✅ Play tracked successfully, new count:', data.plays)
+      }
       
       // If media tracking fails (non-404), try songs table with compatible payload keys
       if (!mediaResponse.ok && mediaResponse.status !== 404) {
-        console.log('🎯 Trying fallback to songs API')
-        const songResponse = await fetch('/api/songs/track-play', {
+        await fetch('/api/songs/track-play', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mediaId: trackId, songId: trackId, userId })
         })
-        const songData = await songResponse.json()
-        console.log('🎯 Songs API response:', songResponse.status, songData)
       }
     } catch (error) {
-      console.error('❌ Failed to track play:', error)
+      console.error('Failed to track play:', error)
     }
   }
 
