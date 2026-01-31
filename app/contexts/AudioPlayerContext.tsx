@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { useUser } from '@clerk/nextjs'
 
 interface Track {
@@ -235,10 +236,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       
       // Now play
       await audio.play()
-      // Set BOTH states together so useEffect triggers correctly
-      setCurrentTrack(track)
-      setIsPlaying(true)
-      console.error('!!!!! setIsPlaying(true) AND setCurrentTrack() called together !!!!!')
+      // Use flushSync to force synchronous state updates (prevents React batching issues)
+      flushSync(() => {
+        setCurrentTrack(track)
+        setIsPlaying(true)
+      })
+      console.error('!!!!! setIsPlaying(true) AND setCurrentTrack() called together with flushSync !!!!!')
       console.log('✅ Playback started successfully for', track.title)
       console.log('🎵 isPlaying state set to TRUE, currentTrack set to:', track.title)
       console.log('🎵 Play tracking should now start...')
