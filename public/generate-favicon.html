@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>444Radio Favicon Generator</title>
+  <style>
+    body { margin: 0; padding: 20px; font-family: Arial; background: #000; color: #fff; }
+    canvas { border: 1px solid #333; margin: 10px; }
+  </style>
+</head>
+<body>
+  <h1>444Radio Favicon Generator</h1>
+  <div id="canvases"></div>
+  
+  <script>
+    // Create favicons in multiple sizes
+    const sizes = [16, 32, 48, 64, 128, 256];
+    const container = document.getElementById('canvases');
+    
+    sizes.forEach(size => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      // Background gradient (cyan to blue)
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#06b6d4'); // cyan-500
+      gradient.addColorStop(1, '#0284c7'); // sky-600
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Draw "444" text
+      ctx.fillStyle = '#000000';
+      ctx.font = `bold ${size * 0.5}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('444', size / 2, size / 2);
+      
+      // Add to page
+      const label = document.createElement('div');
+      label.innerHTML = `<strong>${size}x${size}</strong>`;
+      container.appendChild(label);
+      container.appendChild(canvas);
+      container.appendChild(document.createElement('br'));
+      
+      // Download link
+      if (size === 32) {
+        setTimeout(() => {
+          canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'favicon.ico';
+            a.textContent = 'Download favicon.ico (32x32)';
+            a.style.display = 'block';
+            a.style.marginTop = '20px';
+            a.style.color = '#06b6d4';
+            container.insertBefore(a, container.firstChild);
+          });
+        }, 100);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -11,6 +11,12 @@
   "categories": ["music", "entertainment", "social"],
   "icons": [
     {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
       "src": "/studio/icon.png",
       "sizes": "144x144",
       "type": "image/png"

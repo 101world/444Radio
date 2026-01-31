@@ -1,4 +1,5 @@
 import '../lib/sentry'
+import '../lib/console-suppressor'
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
@@ -8,6 +9,7 @@ import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
 import SkipToContent from './components/SkipToContent';
 import StructuredData from './components/StructuredData';
+import ConsoleBlocker from './components/ConsoleBlocker';
 import { Toaster } from 'sonner';
 import { defaultMetadata } from '@/lib/metadata';
 import "./globals.css";
@@ -35,10 +37,15 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <StructuredData />
+        {/* Suppress console logs in production - loads before React */}
+        {process.env.NODE_ENV === 'production' && (
+          <script src="/suppress-console.js" />
+        )}
       </head>
       <body
         className={`${poppins.className} antialiased bg-gray-900 text-white`}
       >
+        <ConsoleBlocker />
         <ClerkProvider>
           <AudioPlayerProvider>
             <GenerationQueueProvider>

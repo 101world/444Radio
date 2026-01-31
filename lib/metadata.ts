@@ -179,9 +179,12 @@ export function generateMetadata(page: {
     
     // Icons
     icons: {
-      icon: '/favicon.ico',
-      apple: '/apple-touch-icon.png',
-      shortcut: '/favicon.ico',
+      icon: [
+        { url: '/icon.svg', type: 'image/svg+xml' },
+        { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      ],
+      apple: '/icon.svg',
+      shortcut: '/icon.svg',
     },
     
     // Manifest
