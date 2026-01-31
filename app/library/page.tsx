@@ -126,7 +126,7 @@ export default function LibraryPage() {
         
         // Check for potentially expired Replicate URLs (older than 48 hours)
         const now = Date.now()
-        const expiredWarningCount = uniqueMusic.filter(track => {
+        const expiredWarningCount = uniqueMusic.filter((track: any) => {
           if (track.audio_url?.includes('replicate.delivery')) {
             const createdAt = new Date(track.created_at).getTime()
             const ageHours = (now - createdAt) / (1000 * 60 * 60)
