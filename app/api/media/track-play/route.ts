@@ -2,7 +2,8 @@
 // Tracks play counts for combined_media after 3s of playback
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
 export async function OPTIONS() {
