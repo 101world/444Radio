@@ -120,25 +120,9 @@ export default function LibraryPage() {
       const releasesData = await releasesRes.json()
       const likedData = await likedRes.json()
 
-      // Merge database music with R2 files, deduplicate by audio_url
+      // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
-        const dbMusic = musicData.music
-        const r2Music = r2AudioData.success && Array.isArray(r2AudioData.music) ? r2AudioData.music : []
-        
-        // Create a Map with R2 items first, then override with database items (which have correct titles)
-        const musicMap = new Map()
-        
-        // Add R2 items first
-        r2Music.forEach(item => {
-          if (item.audio_url) musicMap.set(item.audio_url, item)
-        })
-        
-        // Override with database items (correct titles)
-        dbMusic.forEach(item => {
-          if (item.audio_url) musicMap.set(item.audio_url, item)
-        })
-        
-        const uniqueMusic = Array.from(musicMap.values())
+        const uniqueMusic = musicData.music
         
         // Check for potentially expired Replicate URLs (older than 48 hours)
         const now = Date.now()
