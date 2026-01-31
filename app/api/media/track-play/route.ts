@@ -2,7 +2,7 @@
 // Tracks play counts for combined_media after 3s of playback
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
 export async function OPTIONS() {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     // Check if user is the artist (per copilot instructions: "Artist plays don't count")
     const { data: media, error: fetchError } = await supabase
       .from('combined_media')
-      .select('user_id, plays')
+      .select('user_id')
       .eq('id', mediaId)
       .single()
 
@@ -53,22 +53,21 @@ export async function POST(request: Request) {
     console.log('   Track user_id:', media.user_id)
     console.log('   Logged in userId:', userId)
 
-    // Increment play count directly with UPDATE
-    const currentPlays = media?.plays || 0
-    const { error: updateError } = await supabase
-      .from('combined_media')
-      .update({ plays: currentPlays + 1 })
-      .eq('id', mediaId)
+    // Use atomic SQL function with ADMIN client to increment play count
+    // (Admin client bypasses RLS restrictions)
+    const { data, error: rpcError } = await supabaseAdmin
+      .rpc('increment_play_count', { media_id: mediaId })
 
-    if (updateError) {
-      console.error('Track play error:', updateError)
+    if (rpcError) {
+      console.error('Track play RPC error:', rpcError)
       return corsResponse(
-        NextResponse.json({ error: 'Failed to update play count', details: updateError.message }, { status: 500 })
+        NextResponse.json({ error: 'Failed to update play count', details: rpcError.message }, { status: 500 })
       )
     }
 
-    console.log('Play count incremented for', mediaId, '- new count:', currentPlays + 1)
-    return corsResponse(NextResponse.json({ success: true, plays: currentPlays + 1 }))
+    const newPlayCount = data || 0
+    console.log('Play count incremented for', mediaId, '- new count:', newPlayCount)
+    return corsResponse(NextResponse.json({ success: true, plays: newPlayCount }))
   } catch (error) {
     console.error('Track play exception:', error)
     return corsResponse(

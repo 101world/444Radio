@@ -1,10 +1,12 @@
--- Migration 110: Add atomic play count increment function
--- This prevents race conditions when multiple users play the same track
+-- HOTFIX: Add SECURITY DEFINER to increment_play_count function
+-- This allows the function to bypass RLS policies and update plays column
+-- Without this, users cannot increment play counts due to RLS restrictions
 
 CREATE OR REPLACE FUNCTION increment_play_count(media_id UUID)
 RETURNS INTEGER
 LANGUAGE plpgsql
-SECURITY DEFINER  -- CRITICAL: Bypass RLS policies
+SECURITY DEFINER  -- CRITICAL: This bypasses RLS and allows the function to update
+SET search_path = public
 AS $$
 DECLARE
   new_play_count INTEGER;
@@ -21,3 +23,4 @@ $$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION increment_play_count(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION increment_play_count(uuid) TO anon;
