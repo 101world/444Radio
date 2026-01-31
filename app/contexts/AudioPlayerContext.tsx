@@ -174,7 +174,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     playTimeRef.current = 0
     hasTrackedPlayRef.current = false
 
-    setCurrentTrack(track)
+    // DON'T set currentTrack here - wait until audio actually plays
+    // setCurrentTrack(track)
     
     // Always use proxy for R2 and Replicate URLs to avoid CORS issues
     const computeUrl = (u: string) => {
@@ -233,8 +234,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Now play
-      await audio.play()
+      // Set BOTH states together so useEffect triggers correctly
+      setCurrentTrack(track)
       setIsPlaying(true)
+      console.error('!!!!! setIsPlaying(true) AND setCurrentTrack() called together
       console.error('!!!!! setIsPlaying(true) called - play tracking should start now !!!!!')
       console.log('✅ Playback started successfully for', track.title)
       console.log('🎵 isPlaying state set to TRUE, currentTrack set to:', track.title)
