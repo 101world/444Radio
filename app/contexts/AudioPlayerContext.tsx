@@ -235,6 +235,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       // Now play
       await audio.play()
       setIsPlaying(true)
+      console.error('!!!!! setIsPlaying(true) called - play tracking should start now !!!!!')
       console.log('✅ Playback started successfully for', track.title)
       console.log('🎵 isPlaying state set to TRUE, currentTrack set to:', track.title)
       console.log('🎵 Play tracking should now start...')
@@ -509,6 +510,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     
     setPlaylist(validTracks);
     setCurrentIndex(startIndex);
+    console.error('!!!!! About to call playTrack for track at index', startIndex, ':', validTracks[startIndex]?.title)
     if (validTracks.length > 0 && validTracks[startIndex]) {
       await playTrack(validTracks[startIndex]);
     }
