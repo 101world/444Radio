@@ -240,10 +240,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       await audio.play()
       // Now that audio is successfully playing, set isPlaying to trigger useEffect
       setIsPlaying(true)
-      console.error('!!!!! audio.play() succeeded - setIsPlaying(true) called !!!!!')
-      console.log('✅ Playback started successfully for', track.title)
-      console.log('🎵 isPlaying state set to TRUE, currentTrack set to:', track.title)
-      console.log('🎵 Play tracking should now start...')
       // Notify Studio to stop playback to prevent overlapping audio
       try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}
     } catch (error) {
@@ -373,29 +369,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   // Track play count after 3 seconds
   useEffect(() => {
-    console.error('!!!!! useEffect RAN - isPlaying:', isPlaying, 'currentTrack:', currentTrack?.title)
-    console.log('🎯 Play tracking useEffect triggered:', { 
-      isPlaying, 
-      hasCurrentTrack: !!currentTrack,
-      trackId: currentTrack?.id,
-      trackTitle: currentTrack?.title 
-    })
-    
     if (!isPlaying || !currentTrack) {
-      console.log('🎯 Resetting play timer - not playing or no track')
       playTimeRef.current = 0
       return
     }
 
-    console.log('🎯 Starting play tracking interval for:', currentTrack.title)
-    console.error('!!!!! STARTING INTERVAL for', currentTrack.title)
     const interval = setInterval(() => {
       playTimeRef.current += 1
-      console.log(`🎯 Play time: ${playTimeRef.current}s for "${currentTrack.title}"`)
 
       // Track play after 3 seconds
       if (playTimeRef.current >= 3 && !hasTrackedPlayRef.current) {
-        console.log('🎯 3 seconds reached! Calling trackPlay...')
         hasTrackedPlayRef.current = true
         trackPlay(currentTrack.id)
       }
@@ -493,7 +476,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   const setPlaylistAndPlay = async (tracks: Track[], startIndex: number = 0) => {
-    console.error('!!!!! setPlaylistAndPlay CALLED !!!!!', tracks.length, 'tracks')
     // Normalize audio_url to audioUrl and filter out invalid tracks
     const normalizedTracks = tracks.map(t => ({
       ...t,
@@ -508,11 +490,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    console.log('[Playlist] Normalized and filtered:', validTracks.length, 'valid tracks out of', tracks.length, 'total');
-    
     setPlaylist(validTracks);
     setCurrentIndex(startIndex);
-    console.error('!!!!! About to call playTrack for track at index', startIndex, ':', validTracks[startIndex]?.title)
     if (validTracks.length > 0 && validTracks[startIndex]) {
       await playTrack(validTracks[startIndex]);
     }
