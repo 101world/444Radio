@@ -234,11 +234,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Now play
+      await audio.play()
       // Set BOTH states together so useEffect triggers correctly
       setCurrentTrack(track)
       setIsPlaying(true)
-      console.error('!!!!! setIsPlaying(true) AND setCurrentTrack() called together
-      console.error('!!!!! setIsPlaying(true) called - play tracking should start now !!!!!')
+      console.error('!!!!! setIsPlaying(true) AND setCurrentTrack() called together !!!!!')
       console.log('✅ Playback started successfully for', track.title)
       console.log('🎵 isPlaying state set to TRUE, currentTrack set to:', track.title)
       console.log('🎵 Play tracking should now start...')
