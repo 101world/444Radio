@@ -235,13 +235,14 @@ function ExplorePageContent() {
       togglePlayPause()
       setShowSearchBox(true) // Show search bar when paused
     } else {
-      // Create playlist from all tracks
+      // Create playlist from all tracks with userId for play tracking
       const playlistTracks = combinedMedia.map(m => ({
         id: m.id,
         title: m.title,
         audioUrl: m.audioUrl || m.audio_url,
         imageUrl: m.imageUrl || m.image_url,
-        artist: m.users?.username || m.username || 'Unknown Artist'
+        artist: m.users?.username || m.username || 'Unknown Artist',
+        userId: m.user_id // Include userId for play tracking
       }))
       
       // Find index of the track to play
@@ -786,22 +787,24 @@ function ExplorePageContent() {
 
                         const handleGenreClick = () => {
                           if (genreTracks.length > 0) {
-                            // Set playlist to all tracks in this genre
+                            // Set playlist to all tracks in this genre with userId for play tracking
                             setPlaylist(genreTracks.map(m => ({
                               id: m.id,
                               title: m.title,
                               audioUrl: m.audioUrl || m.audio_url,
                               imageUrl: m.imageUrl || m.image_url,
-                              artist: m.users?.username || m.username || 'Unknown Artist'
+                              artist: m.users?.username || m.username || 'Unknown Artist',
+                              userId: m.user_id // Include userId for play tracking
                             })))
                             
-                            // Auto-play the first track
+                            // Auto-play the first track with userId
                             playTrack({
                               id: genreTracks[0].id,
                               title: genreTracks[0].title,
                               audioUrl: genreTracks[0].audioUrl || genreTracks[0].audio_url,
                               imageUrl: genreTracks[0].imageUrl || genreTracks[0].image_url,
-                              artist: genreTracks[0].users?.username || genreTracks[0].username || 'Unknown Artist'
+                              artist: genreTracks[0].users?.username || genreTracks[0].username || 'Unknown Artist',
+                              userId: genreTracks[0].user_id // Include userId for play tracking
                             })
                             setShowSearchBox(false)
                           }

@@ -19,6 +19,7 @@ interface Track {
   artist: string
   audio_url: string
   image_url?: string
+  user_id?: string
 }
 
 function HomePageContent() {
@@ -92,6 +93,7 @@ function HomePageContent() {
           artist?: string
           audio_url?: string
           image_url?: string
+          user_id?: string
         }
         
         const audioTracks: Track[] = data.combinedMedia
@@ -101,7 +103,8 @@ function HomePageContent() {
             title: item.title || 'Untitled',
             artist: item.artist || 'Unknown Artist',
             audio_url: item.audio_url!,
-            image_url: item.image_url
+            image_url: item.image_url,
+            user_id: item.user_id
           }))
         setTracks(audioTracks)
       }
@@ -125,7 +128,8 @@ function HomePageContent() {
       audioUrl: t.audio_url,
       title: t.title,
       artist: t.artist,
-      imageUrl: t.image_url
+      imageUrl: t.image_url,
+      userId: t.user_id // Include userId for play tracking
     }))
     
     setPlaylist(playerTracks)

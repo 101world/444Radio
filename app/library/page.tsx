@@ -692,7 +692,8 @@ export default function LibraryPage() {
                                 id: i.id,
                                 audioUrl: i.audioUrl || i.audio_url, // Use normalized field with fallback
                                 title: i.title || 'Untitled',
-                                artist: user?.firstName || 'You'
+                                artist: user?.firstName || 'You',
+                                userId: user?.id // Include userId for play tracking
                               }))
                               await setPlaylist(allTracks, musicItems.findIndex(i => i.id === item.id))
                             }
@@ -880,7 +881,8 @@ export default function LibraryPage() {
                               title: item.title || 'Untitled',
                               artist: 'Unknown Artist',
                               audioUrl: item.audioUrl || item.audio_url,
-                              imageUrl: item.imageUrl || item.image_url
+                              imageUrl: item.imageUrl || item.image_url,
+                              userId: user?.id // Include userId for play tracking
                             }
                             setPlaylist([track])
                             playTrack(track)
@@ -938,7 +940,7 @@ export default function LibraryPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button onClick={async () => {
-                            const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audioUrl || item.audio_url, imageUrl: item.imageUrl || item.image_url }
+                            const track = { id: item.id, title: item.title || 'Untitled', artist: 'Unknown Artist', audioUrl: item.audioUrl || item.audio_url, imageUrl: item.imageUrl || item.image_url, userId: user?.id }
                             await setPlaylist([track])
                             await playTrack(track)
                           }}
