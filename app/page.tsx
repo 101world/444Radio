@@ -1,13 +1,14 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward, X } from 'lucide-react'
+import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward, X, Gift } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
 import SEOHeroSection from './components/SEOHeroSection'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
 import CreditIndicator from './components/CreditIndicator'
 import FloatingNavButton from './components/FloatingNavButton'
+import Link from 'next/link'
 
 // Lazy load heavy 3D components for better performance
 const HolographicBackgroundClient = lazy(() => import('./components/HolographicBackgroundClient'))
@@ -397,6 +398,22 @@ function HomePageContent() {
           </div>
         </div>
       )}
+
+      {/* Claim Free Credits Button - Bottom Left */}
+      <Link href="/decrypt">
+        <div className="fixed bottom-6 left-6 z-40 group cursor-pointer">
+          {/* Glowing background effect */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 rounded-full blur-md opacity-60 group-hover:opacity-90 transition-all duration-300 animate-pulse"></div>
+          
+          {/* Button content */}
+          <div className="relative bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 rounded-full px-5 py-3 shadow-lg shadow-cyan-500/30 transition-all duration-300 group-hover:scale-110 flex items-center gap-2">
+            <Gift className="w-5 h-5 text-white" />
+            <span className="text-white font-bold text-sm whitespace-nowrap">
+              Claim Free Credits
+            </span>
+          </div>
+        </div>
+      </Link>
 
       {/* Floating Navigation Button */}
       <FloatingNavButton 
