@@ -14,10 +14,11 @@ const DiscordIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-// Declare Razorpay interface for TypeScript
+// Declare Razorpay and PayPal interfaces for TypeScript
 declare global {
   interface Window {
     Razorpay: any
+    paypal: any
   }
 }
 
@@ -27,6 +28,7 @@ export default function Pricing() {
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR') // Currency selection
   const [creditAmount, setCreditAmount] = useState(5) // Default $5
   const [showPolicyModal, setShowPolicyModal] = useState(false)
+  const [showPayPalModal, setShowPayPalModal] = useState(false) // PayPal payment modal
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null) // 'creator', 'pro', 'studio'
   const [userSubscription, setUserSubscription] = useState<{
     status: string
@@ -82,11 +84,73 @@ export default function Pricing() {
     return () => window.removeEventListener('keydown', handleEscKey)
   }, [router])
 
-  // Handle plan subscription - CONDITIONAL: INR uses Payment Links, USD uses Razorpay Checkout
+  // Initialize PayPal button when modal opens
+  useEffect(() => {
+    if (!showPayPalModal || !window.paypal) return
+
+    // Clear existing button if any
+    const container = document.getElementById('paypal-button-container-P-0CB99005AU3792201NGA5UHY')
+    if (!container) return
+    container.innerHTML = ''
+
+    // Render PayPal button
+    window.paypal.Buttons({
+      style: {
+        shape: 'pill',
+        color: 'blue',
+        layout: 'horizontal',
+        label: 'subscribe',
+        height: 48
+      },
+      createSubscription: function(data: any, actions: any) {
+        return actions.subscription.create({
+          plan_id: 'P-0CB99005AU3792201NGA5UHY'
+        })
+      },
+      onApprove: async function(data: any, actions: any) {
+        try {
+          const response = await fetch('/api/subscriptions/paypal-success', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscriptionId: data.subscriptionID,
+              planId: 'P-0CB99005AU3792201NGA5UHY'
+            })
+          })
+          
+          const result = await response.json()
+          
+          if (result.success) {
+            alert('✅ Subscription activated! Credits will be added within 1-2 minutes. Redirecting to creation page...')
+            window.location.href = '/create'
+          } else {
+            alert('⚠️  Payment received but there was an issue. Please contact support.')
+          }
+        } catch (error) {
+          console.error('PayPal approval error:', error)
+          alert('✅ Payment received! Credits will be added shortly.')
+          window.location.href = '/create'
+        }
+      },
+      onError: function(err: any) {
+        console.error('PayPal error:', err)
+        alert('Payment failed. Please try again or contact support.')
+      }
+    }).render('#paypal-button-container-P-0CB99005AU3792201NGA5UHY')
+  }, [showPayPalModal])
+
+  // Handle plan subscription - CONDITIONAL: INR uses Payment Links, USD shows payment options (Razorpay/PayPal)
   const handleSubscribe = async (plan: string) => {
     try {
       setLoadingPlan(plan)
       console.log(`Creating ${plan} subscription with currency: ${currency}`)
+      
+      // USD + Creator: Show PayPal modal (PayPal is primary for Creator plan)
+      if (currency === 'USD' && plan === 'creator') {
+        setShowPayPalModal(true)
+        setLoadingPlan(null)
+        return
+      }
       
       // INR: Use existing Payment Link flow (untouched)
       if (currency === 'INR') {
@@ -230,6 +294,13 @@ export default function Pricing() {
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="lazyOnload"
+      />
+      
+      {/* Load PayPal SDK for subscriptions */}
+      <Script
+        src="https://www.paypal.com/sdk/js?client-id=AfI_Nw0tWj84Bv6-ec0Zttw8ffahp22cbFLKSVpBTuPn896wFF_BXq33h5wofIucj1cdk6L-zXgAWNK4&vault=true&intent=subscription"
+        strategy="lazyOnload"
+        data-sdk-integration-source="button-factory"
       />
       
       <main className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -973,6 +1044,66 @@ export default function Pricing() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PayPal Payment Modal */}
+      {showPayPalModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[999] p-6">
+          <div className="relative bg-gradient-to-br from-gray-900 via-black to-gray-900 border border-cyan-500/40 rounded-3xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/20">
+            {/* Close button */}
+            <button
+              onClick={() => setShowPayPalModal(false)}
+              className="absolute top-4 right-4 text-cyan-400/60 hover:text-cyan-400 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="inline-block px-4 py-2 bg-cyan-500/20 border border-cyan-400/50 rounded-full mb-4">
+                <span className="text-cyan-200 text-xs font-bold uppercase tracking-wider">Creator Plan</span>
+              </div>
+              <h2 className="text-3xl font-black bg-gradient-to-br from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent mb-2">
+                Subscribe with PayPal
+              </h2>
+              <p className="text-cyan-400/60 text-sm">
+                ${billingCycle === 'monthly' ? '5/month' : '$50/year (save 18%)'} • 100 credits per month
+              </p>
+            </div>
+
+            {/* Benefits */}
+            <div className="bg-black/40 border border-cyan-500/20 rounded-xl p-4 mb-6">
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2 text-gray-300">
+                  <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  100 credits monthly (~50 songs)
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Commercial license included
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Cancel anytime, no questions asked
+                </li>
+              </ul>
+            </div>
+
+            {/* PayPal Button Container */}
+            <div id="paypal-button-container-P-0CB99005AU3792201NGA5UHY" className="mb-4"></div>
+
+            {/* Info */}
+            <p className="text-cyan-400/40 text-xs text-center">
+              Secure payment powered by PayPal. Credits added within 1-2 minutes after payment confirmation.
+            </p>
           </div>
         </div>
       )}

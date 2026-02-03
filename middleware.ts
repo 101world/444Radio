@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhook(.*)',
+  '/api/webhooks/paypal(.*)', // PayPal subscription webhooks
   '/api/cron/(.*)',
   '/api/media/track-play',
   '/api/songs/track-play',
