@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
-        // Fetch current credits first
+        // Fetch current user data
         const { data: currentUser, error: fetchError } = await supabase
           .from('users')
           .select('credits')
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
 
         const newCredits = (currentUser.credits || 0) + creditsToAdd
 
-        // Update user: add credits + set subscription status
+        // Update user: add credits + set subscription status (same pattern as Razorpay)
         const { error: updateError } = await supabase
           .from('users')
           .update({
@@ -173,6 +173,7 @@ export async function POST(req: NextRequest) {
             subscription_status: 'active',
             subscription_plan: 'creator',
             paypal_subscription_id: subscriptionId,
+            subscription_id: subscriptionId, // Store in same field as Razorpay for consistency
             updated_at: new Date().toISOString()
           })
           .eq('clerk_user_id', userId)
@@ -182,7 +183,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
         }
 
-        console.log(`✅ Granted ${creditsToAdd} credits to user ${userId} (total: ${newCredits})`)
+        console.log(`✅ Successfully added ${creditsToAdd} credits to user ${userId} (total: ${newCredits})`)
         break
 
       case 'BILLING.SUBSCRIPTION.CANCELLED':
