@@ -21,8 +21,8 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch from BOTH tables using both user_id and clerk_user_id
-    const [imagesLibraryResponse, combinedMediaResponse] = await Promise.all([
+    // Fetch from BOTH database tables + R2 direct listing (for old files without DB entries)
+    const [imagesLibraryResponse, combinedMediaResponse, r2Response] = await Promise.all([
       // images_library - uses clerk_user_id
       fetch(
         `${supabaseUrl}/rest/v1/images_library?clerk_user_id=eq.${userId}&order=created_at.desc&limit=1000`,
@@ -42,11 +42,24 @@ export async function GET() {
             'Authorization': `Bearer ${supabaseKey}`,
           }
         }
-      )
+      ),
+      // R2 direct listing - catches old files that were uploaded but not saved to DB
+      fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/r2/list-images`,
+        {
+          headers: {
+            'Cookie': `__session=${userId}` // Pass auth context
+          }
+        }
+      ).catch(err => {
+        console.warn('⚠️ R2 listing failed, continuing without R2 files:', err.message)
+        return { ok: false, json: async () => ({ images: [] }) }
+      })
     ])
 
     const imagesLibraryData = await imagesLibraryResponse.json()
     const combinedMediaData = await combinedMediaResponse.json()
+    const r2Data = r2Response.ok ? await r2Response.json() : { images: [] }
 
     // Transform images_library format
     const libraryImages = Array.isArray(imagesLibraryData) ? imagesLibraryData : []
@@ -62,13 +75,25 @@ export async function GET() {
       updated_at: item.updated_at
     })) : []
 
-    // Combine and deduplicate by image_url
-    const allImages = [...libraryImages, ...combinedImages]
+    // Transform R2 images (old files without DB entries - will have UUID/number filenames as titles)
+    const r2Images = Array.isArray(r2Data.images) ? r2Data.images.map((item: any) => ({
+      id: item.id, // Already prefixed with r2_ from list-images endpoint
+      clerk_user_id: userId,
+      title: item.title || 'Untitled R2 Image', // Will be UUID filename for old files
+      prompt: item.prompt || 'Legacy R2 file',
+      image_url: item.image_url,
+      created_at: item.created_at,
+      updated_at: item.created_at,
+      source: 'r2' // Mark as R2-only file
+    })) : []
+
+    // Combine ALL THREE sources and deduplicate by image_url (DB entries take precedence over R2)
+    const allImages = [...libraryImages, ...combinedImages, ...r2Images]
     const uniqueImages = Array.from(
       new Map(allImages.map(item => [item.image_url, item])).values()
     )
 
-    console.log(`📸 Images Library: Fetched ${uniqueImages.length} unique images (${libraryImages.length} from library + ${combinedImages.length} from combined_media)`)
+    console.log(`📸 Images Library: ${uniqueImages.length} images (DB: ${libraryImages.length + combinedImages.length}, R2-only: ${r2Images.length})`)
 
     return corsResponse(NextResponse.json({
       success: true,

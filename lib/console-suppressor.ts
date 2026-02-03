@@ -23,6 +23,19 @@ export function suppressConsole() {
     console.info = () => {}
     console.debug = () => {}
   }
+  
+  // In development, suppress SES warnings only
+  if (process.env.NODE_ENV === 'development') {
+    const originalWarn = console.warn
+    console.warn = (...args: any[]) => {
+      const message = args[0]?.toString() || ''
+      // Suppress SES lockdown warnings
+      if (message.includes('SES') || message.includes('lockdown-install') || message.includes('Removing unpermitted intrinsics')) {
+        return
+      }
+      originalWarn.apply(console, args)
+    }
+  }
 }
 
 export function restoreConsole() {
