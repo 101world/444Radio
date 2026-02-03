@@ -169,11 +169,17 @@ export async function GET() {
 
     // Combine ALL FOUR sources and deduplicate by audio_url (DB entries take precedence over R2)
     const allMusic = [...combinedMediaMusic, ...combinedLibraryMusic, ...musicLibraryMusic, ...r2Music]
+    
+    console.log(`🎵 Music sources before dedup: combined_media=${combinedMediaMusic.length}, combined_library=${combinedLibraryMusic.length}, music_library=${musicLibraryMusic.length}, r2=${r2Music.length}, total=${allMusic.length}`)
+    
     const uniqueMusic = Array.from(
       new Map(allMusic.map(item => [item.audio_url, item])).values()
     )
 
-    console.log(`🎵 Music Library: ${uniqueMusic.length} tracks (DB: ${allMusic.length - r2Music.length}, R2-only: ${r2Music.length})`)
+    const dbCount = combinedMediaMusic.length + combinedLibraryMusic.length + musicLibraryMusic.length
+    const r2OnlyCount = uniqueMusic.filter(item => item.source === 'r2').length
+    
+    console.log(`🎵 Music Library after dedup: ${uniqueMusic.length} tracks (DB: ${dbCount} → ${uniqueMusic.length - r2OnlyCount}, R2-only: ${r2OnlyCount})`)
 
     // Sort by created_at descending (newest first) after deduplication
     uniqueMusic.sort((a, b) => {
@@ -181,6 +187,14 @@ export async function GET() {
       const dateB = new Date(b.created_at || 0).getTime()
       return dateB - dateA // Descending: newest first
     })
+
+    // Log sample of what we're returning
+    if (uniqueMusic.length > 0) {
+      console.log(`🎵 Sample tracks:`)
+      uniqueMusic.slice(0, 3).forEach((track, i) => {
+        console.log(`  ${i+1}. "${track.title}" (source: ${track.source || 'db'}, url: ${track.audio_url?.substring(0, 80)}...)`)
+      })
+    }
 
     return NextResponse.json({
       success: true,
