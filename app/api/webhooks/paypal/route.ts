@@ -151,11 +151,25 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
+        // Fetch current credits first
+        const { data: currentUser, error: fetchError } = await supabase
+          .from('users')
+          .select('credits')
+          .eq('clerk_user_id', userId)
+          .single()
+
+        if (fetchError || !currentUser) {
+          console.error('❌ Failed to fetch user:', fetchError)
+          return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        }
+
+        const newCredits = (currentUser.credits || 0) + creditsToAdd
+
         // Update user: add credits + set subscription status
         const { error: updateError } = await supabase
           .from('users')
           .update({
-            credits: supabase.rpc('increment_credits', { amount: creditsToAdd }),
+            credits: newCredits,
             subscription_status: 'active',
             subscription_plan: 'creator',
             paypal_subscription_id: subscriptionId,
@@ -168,7 +182,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
         }
 
-        console.log(`✅ Granted ${creditsToAdd} credits to user ${userId}`)
+        console.log(`✅ Granted ${creditsToAdd} credits to user ${userId} (total: ${newCredits})`)
         break
 
       case 'BILLING.SUBSCRIPTION.CANCELLED':
