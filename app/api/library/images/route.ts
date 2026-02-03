@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -21,8 +22,8 @@ export async function GET() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch from BOTH database tables + R2 direct listing (for old files without DB entries)
-    const [imagesLibraryResponse, combinedMediaResponse, r2Response] = await Promise.all([
+    // Fetch from BOTH database tables
+    const [imagesLibraryResponse, combinedMediaResponse] = await Promise.all([
       // images_library - uses clerk_user_id
       fetch(
         `${supabaseUrl}/rest/v1/images_library?clerk_user_id=eq.${userId}&order=created_at.desc&limit=1000`,
@@ -42,27 +43,63 @@ export async function GET() {
             'Authorization': `Bearer ${supabaseKey}`,
           }
         }
-      ),
-      // R2 direct listing - catches old files that were uploaded but not saved to DB
-      fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/r2/list-images`,
-        {
-          headers: {
-            'Cookie': `__session=${userId}` // Pass auth context
-          }
-        }
-      ).catch(err => {
-        console.warn('⚠️ R2 listing failed, continuing without R2 files:', err.message)
-        return { ok: false, json: async () => ({ images: [] }) }
-      })
+      )
     ])
 
     const imagesLibraryData = await imagesLibraryResponse.json()
     const combinedMediaData = await combinedMediaResponse.json()
-    const r2Data = r2Response.ok ? await r2Response.json() : { images: [] }
 
     // Transform images_library format
     const libraryImages = Array.isArray(imagesLibraryData) ? imagesLibraryData : []
+
+    // ALSO list R2 files directly (for old files without DB entries)
+    let r2Images: any[] = []
+    try {
+      if (process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) {
+        const s3Client = new S3Client({
+          region: 'auto',
+          endpoint: process.env.R2_ENDPOINT,
+          credentials: {
+            accessKeyId: process.env.R2_ACCESS_KEY_ID,
+            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
+          }
+        })
+
+        const bucketName = 'images'
+        const imagesBaseUrl = process.env.NEXT_PUBLIC_R2_IMAGES_URL!
+
+        // List all image files in bucket
+        const command = new ListObjectsV2Command({ Bucket: bucketName })
+        const response = await s3Client.send(command)
+        
+        r2Images = (response.Contents || [])
+          .filter(f => {
+            const key = f.Key || ''
+            // Match image files for this user
+            return /\.(jpg|jpeg|png|webp|gif)$/i.test(key) && 
+                   (key.startsWith(`${userId}/`) || key.includes(`/${userId}/`))
+          })
+          .map((file, index) => {
+            const key = file.Key || ''
+            const baseName = key.split('/').pop() || key
+            const title = baseName.replace(/\.(jpg|jpeg|png|webp|gif)$/i, '')
+            return {
+              id: `r2_${key.replace(/[^a-zA-Z0-9]/g, '_')}`,
+              clerk_user_id: userId,
+              title: title || `Image ${index + 1}`,
+              prompt: 'Legacy R2 file',
+              image_url: `${imagesBaseUrl}/${key}`,
+              created_at: file.LastModified?.toISOString() || new Date().toISOString(),
+              updated_at: file.LastModified?.toISOString() || new Date().toISOString(),
+              source: 'r2'
+            }
+          })
+        
+        console.log(`📦 Found ${r2Images.length} R2 image files for user ${userId}`)
+      }
+    } catch (r2Error) {
+      console.warn('⚠️ R2 listing failed, continuing without R2 files:', r2Error)
+    }
 
     // Transform combined_media format to match images_library
     const combinedImages = Array.isArray(combinedMediaData) ? combinedMediaData.map(item => ({
@@ -75,17 +112,7 @@ export async function GET() {
       updated_at: item.updated_at
     })) : []
 
-    // Transform R2 images (old files without DB entries - will have UUID/number filenames as titles)
-    const r2Images = Array.isArray(r2Data.images) ? r2Data.images.map((item: any) => ({
-      id: item.id, // Already prefixed with r2_ from list-images endpoint
-      clerk_user_id: userId,
-      title: item.title || 'Untitled R2 Image', // Will be UUID filename for old files
-      prompt: item.prompt || 'Legacy R2 file',
-      image_url: item.image_url,
-      created_at: item.created_at,
-      updated_at: item.created_at,
-      source: 'r2' // Mark as R2-only file
-    })) : []
+    // R2 files are already transformed above (r2Images array)
 
     // Combine ALL THREE sources and deduplicate by image_url (DB entries take precedence over R2)
     const allImages = [...libraryImages, ...combinedImages, ...r2Images]
