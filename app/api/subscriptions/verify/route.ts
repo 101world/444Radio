@@ -62,7 +62,25 @@ export async function POST(request: Request) {
       throw new Error('Supabase configuration missing')
     }
 
-    // Add credits to user
+    // First, fetch current user credits
+    const fetchRes = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      }
+    )
+
+    const users = await fetchRes.json()
+    const currentCredits = users?.[0]?.credits || 0
+
+    console.log('[Payment Verify] Current credits:', currentCredits, '+ Adding:', credits)
+
+    // Add credits to existing balance
+    const newCredits = currentCredits + credits
+    
     const updateRes = await fetch(
       `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
       {
@@ -74,7 +92,7 @@ export async function POST(request: Request) {
           'Prefer': 'return=minimal'
         },
         body: JSON.stringify({
-          credits: credits,
+          credits: newCredits,
           subscription_status: 'active',
           subscription_plan: plan,
           subscription_updated_at: new Date().toISOString()
@@ -87,13 +105,14 @@ export async function POST(request: Request) {
       throw new Error('Failed to update credits')
     }
 
-    console.log('[Payment Verify] ✅ Credits updated:', credits)
+    console.log('[Payment Verify] ✅ Credits updated:', currentCredits, '→', newCredits)
 
     return corsResponse(
       NextResponse.json({
         success: true,
         message: 'Payment verified and credits added',
-        credits: credits
+        creditsAdded: credits,
+        totalCredits: newCredits
       })
     )
 
