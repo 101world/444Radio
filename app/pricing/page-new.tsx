@@ -198,7 +198,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Commercial license</span>
+                  <span className="text-gray-300 text-sm">~100 Text to SFX (10s)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -206,7 +206,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Priority support</span>
+                  <span className="text-gray-300 text-sm">~20 Video to SFX (10s)</span>
                 </li>
               </ul>
 
@@ -270,7 +270,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Commercial license</span>
+                  <span className="text-gray-300 text-sm">~300 Text to SFX (10s)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-cyan-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -278,7 +278,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-sm">Premium support</span>
+                  <span className="text-gray-300 text-sm">~60 Video to SFX (10s)</span>
                 </li>
               </ul>
 
@@ -330,6 +330,22 @@ export default function Pricing() {
                     </svg>
                   </div>
                   <span className="text-gray-300 text-sm">Unlimited generations</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </div>
+                  <span className="text-gray-300 text-sm">Unlimited Text to SFX (10s)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </div>
+                  <span className="text-gray-300 text-sm">Unlimited Video to SFX (10s)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">

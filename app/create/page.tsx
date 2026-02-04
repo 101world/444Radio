@@ -1897,7 +1897,7 @@ function CreatePageContent() {
                 {isLoadingCredits ? '...' : userCredits}
               </span>
               <span className="text-xs text-cyan-400/60 font-mono">
-                {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : ''}
+                {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
               </span>
             </div>
           </div>
@@ -2007,7 +2007,7 @@ function CreatePageContent() {
                       : selectedType === 'image'
                       ? 'Describe your cover art...'
                       : selectedType === 'effects'
-                      ? 'Describe sound effects...'
+                      ? 'Describe sound effects (up to 10s)...'
                       : 'Coming soon...'
                   }
                   disabled={selectedType === 'video'}
@@ -2065,7 +2065,7 @@ function CreatePageContent() {
               {activeGenerations.size > 0 ? (
                 `⚡ ${activeGenerations.size} generation${activeGenerations.size > 1 ? 's' : ''} in progress • You can queue more`
               ) : (
-                `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : 'Coming soon'}`
+                `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : selectedType === 'effects' ? 'Generate Text to SFX' : 'Coming soon'}`
               )}
             </span>
           </div>
