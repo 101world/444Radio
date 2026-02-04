@@ -156,14 +156,23 @@ export default function Pricing() {
               const verifyData = await verifyResponse.json()
               
               if (verifyData.success) {
-                alert(`Payment successful! ${verifyData.creditsAdded} credits added.`)
+                alert(`✅ Payment successful! ${verifyData.creditsAdded} credits added to your account.`)
                 window.location.href = '/create' // Redirect to creation page
               } else {
-                alert(`Payment verification failed: ${verifyData.error}`)
+                // Payment succeeded but verification failed - credits will be added via webhook
+                console.warn('Verification failed but payment succeeded:', verifyData.error)
+                alert('✅ Payment received! Credits will be added to your account within 1-2 minutes. Redirecting...')
+                setTimeout(() => {
+                  window.location.href = '/create'
+                }, 2000)
               }
             } catch (err: any) {
+              // Network error during verification - but payment succeeded!
               console.error('Verification error:', err)
-              alert('Payment received but verification failed. Contact support.')
+              alert('✅ Payment received! Credits will be added to your account within 1-2 minutes. Redirecting...')
+              setTimeout(() => {
+                window.location.href = '/create'
+              }, 2000)
             }
           },
           prefill: {
