@@ -82,88 +82,57 @@ export default function Pricing() {
     return () => window.removeEventListener('keydown', handleEscKey)
   }, [router])
 
-  // Handle plan subscription - CONDITIONAL: INR uses Payment Links, USD uses Razorpay Checkout (includes PayPal)
+  // Handle plan subscription - Both INR and USD now use Razorpay Checkout (instant verification)
   const handleSubscribe = async (plan: string) => {
     try {
       setLoadingPlan(plan)
       console.log(`Creating ${plan} subscription with currency: ${currency}`)
       
-      // INR: Use existing Payment Link flow (untouched)
-      if (currency === 'INR') {
-        const response = await fetch('/api/subscriptions/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          body: JSON.stringify({
-            plan,
-            billing: billingCycle,
-            currency
-          })
+      // Both INR and USD: Use Razorpay Checkout with instant verification
+      const response = await fetch('/api/subscriptions/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        body: JSON.stringify({
+          plan,
+          billing: billingCycle,
+          currency
         })
+      })
         
-        console.log('Payment Link response status:', response.status)
-        const data = await response.json()
-        console.log('Payment Link data:', data)
-        
-        if (data.success && data.short_url) {
-          window.location.href = data.short_url
-        } else {
-          setLoadingPlan(null)
-          const errorMsg = `Error: ${data.error}\nStatus: ${data.status || 'unknown'}\nDetails: ${data.details || 'none'}`
-          console.error('Payment Link failed:', errorMsg)
-          alert(errorMsg)
-        }
+      console.log('Checkout response status:', response.status)
+      const data = await response.json()
+      console.log('Checkout data:', data)
+      
+      if (!data.success || !data.orderId) {
+        setLoadingPlan(null)
+        // Show detailed error with Razorpay info
+        const errorMsg = `Checkout Failed:\n${data.error || 'Unknown error'}\n${data.razorpay_error ? `Code: ${data.razorpay_error}` : ''}\n${data.details ? JSON.stringify(data.details, null, 2) : ''}`
+        console.error('Checkout error details:', data)
+        alert(errorMsg)
         return
       }
       
-      // USD: Use NEW Razorpay Checkout with PayPal support
-      if (currency === 'USD') {
-        const response = await fetch('/api/subscriptions/checkout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          body: JSON.stringify({
-            plan,
-            billing: billingCycle
-          })
-        })
-        
-        console.log('Checkout response status:', response.status)
-        const data = await response.json()
-        console.log('Checkout data:', data)
-        
-        if (!data.success || !data.orderId) {
-          setLoadingPlan(null)
-          // Show detailed error with Razorpay info
-          const errorMsg = `Checkout Failed:\n${data.error || 'Unknown error'}\n${data.razorpay_error ? `Code: ${data.razorpay_error}` : ''}\n${data.details ? JSON.stringify(data.details, null, 2) : ''}`
-          console.error('Checkout error details:', data)
-          alert(errorMsg)
-          return
-        }
-        
-        // Initialize Razorpay Checkout
-        if (!window.Razorpay) {
-          setLoadingPlan(null)
-          alert('Razorpay SDK not loaded. Please refresh and try again.')
-          return
-        }
-        
-        const customerName = data.customerName || ''
-        
-        // Simplified config - let Razorpay auto-show all available payment methods
-        const options = {
-          key: data.keyId,
-          amount: data.amount,
-          currency: 'USD',
-          name: '444Radio',
-          description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan - ${billingCycle}`,
-          order_id: data.orderId,
+      // Initialize Razorpay Checkout
+      if (!window.Razorpay) {
+        setLoadingPlan(null)
+        alert('Razorpay SDK not loaded. Please refresh and try again.')
+        return
+      }
+      
+      const customerName = data.customerName || ''
+      
+      // Simplified config - let Razorpay auto-show all available payment methods
+      const options = {
+        key: data.keyId,
+        amount: data.amount,
+        currency: data.currency,
+        name: '444Radio',
+        description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan - ${billingCycle}`,
+        order_id: data.orderId,
           handler: async function (response: any) {
             // Payment successful - verify and credit user
             console.log('Payment successful:', response)
@@ -218,7 +187,6 @@ export default function Pricing() {
         
         // Don't reset loading state - modal handles it via ondismiss
         return
-      }
       
     } catch (error: any) {
       setLoadingPlan(null)

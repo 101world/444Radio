@@ -6,20 +6,35 @@ export async function OPTIONS() {
   return handleOptions()
 }
 
-// Plan configuration (USD only for Razorpay Checkout with PayPal)
-// NOTE: Razorpay may not support USD in test mode - check dashboard if orders fail
-const USD_PLANS = {
-  creator: {
-    monthly: { credits: 100, price: 5 },
-    annual: { credits: 1200, price: 50 }
+// Plan configuration for both INR and USD (Razorpay Checkout with instant verification)
+const PLANS = {
+  INR: {
+    creator: {
+      monthly: { credits: 100, price: 450 },
+      annual: { credits: 1200, price: 4420 }
+    },
+    pro: {
+      monthly: { credits: 600, price: 1355 },
+      annual: { credits: 7200, price: 13090 }
+    },
+    studio: {
+      monthly: { credits: 1500, price: 3160 },
+      annual: { credits: 18000, price: 30330 }
+    }
   },
-  pro: {
-    monthly: { credits: 600, price: 16 },
-    annual: { credits: 7200, price: 155 }
-  },
-  studio: {
-    monthly: { credits: 1500, price: 37 },
-    annual: { credits: 18000, price: 359 }
+  USD: {
+    creator: {
+      monthly: { credits: 100, price: 5 },
+      annual: { credits: 1200, price: 50 }
+    },
+    pro: {
+      monthly: { credits: 600, price: 16 },
+      annual: { credits: 7200, price: 155 }
+    },
+    studio: {
+      monthly: { credits: 1500, price: 37 },
+      annual: { credits: 18000, price: 359 }
+    }
   }
 } as const
 
@@ -42,18 +57,19 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const planType = (body.plan || 'creator') as keyof typeof USD_PLANS
+    const planType = (body.plan || 'creator') as 'creator' | 'pro' | 'studio'
     const billing = (body.billing || 'monthly') as 'monthly' | 'annual'
+    const currency = (body.currency || 'USD') as 'INR' | 'USD'
     
-    const planConfig = USD_PLANS[planType][billing]
+    const planConfig = PLANS[currency]?.[planType]?.[billing]
     
     if (!planConfig) {
       return corsResponse(
-        NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+        NextResponse.json({ error: 'Invalid plan or currency' }, { status: 400 })
       )
     }
 
-    console.log(`[Checkout] Creating USD checkout for ${planType} ${billing}:`, userId, userEmail)
+    console.log(`[Checkout] Creating ${currency} checkout for ${planType} ${billing}:`, userId, userEmail)
 
     const keyId = process.env.RAZORPAY_KEY_ID
     const keySecret = process.env.RAZORPAY_KEY_SECRET
@@ -76,8 +92,8 @@ export async function POST(request: Request) {
 
     // Create Razorpay Order for checkout
     const orderPayload = {
-      amount: planConfig.price * 100, // Convert to cents
-      currency: 'USD',
+      amount: planConfig.price * 100, // Convert to smallest currency unit (cents/paise)
+      currency: currency,
       receipt: shortReceipt,
       notes: {
         clerk_user_id: userId,
@@ -127,7 +143,7 @@ export async function POST(request: Request) {
         success: true,
         orderId: order.id,
         amount: planConfig.price * 100,
-        currency: 'USD',
+        currency: currency,
         keyId: keyId,
         customerName: customerName,
         customerEmail: userEmail,
