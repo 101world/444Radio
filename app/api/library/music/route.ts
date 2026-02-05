@@ -3,6 +3,43 @@ import { auth } from '@clerk/nextjs/server'
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
 
 /**
+ * Clean title by removing timestamps and technical metadata
+ */
+function cleanTitle(title: string | null | undefined, fallback: string = 'Untitled'): string {
+  if (!title) return fallback
+  
+  let cleaned = title
+  
+  // Remove file extension if present
+  cleaned = cleaned.replace(/\.(mp3|wav|ogg)$/i, '')
+  
+  // Remove timestamp prefix (e.g., "1770324213562-")
+  cleaned = cleaned.replace(/^\d{10,}-/, '')
+  
+  // Remove timestamp suffix (e.g., "-1770324213318")
+  cleaned = cleaned.replace(/-\d{10,}$/, '')
+  
+  // Remove UUID patterns
+  cleaned = cleaned.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '')
+  
+  // Remove user ID patterns
+  cleaned = cleaned.replace(/^user_[^_]+_/i, '')
+  
+  // Convert underscores and dashes to spaces
+  cleaned = cleaned.replace(/[_-]+/g, ' ')
+  
+  // Remove extra whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim()
+  
+  // If after cleaning it's empty or just numbers, return fallback
+  if (!cleaned || /^[\d\s]+$/.test(cleaned)) {
+    return fallback
+  }
+  
+  return cleaned
+}
+
+/**
  * GET /api/library/music
  * Get all music files from user's library
  */
@@ -85,21 +122,11 @@ export async function GET() {
           .map((file, index) => {
             const key = file.Key || ''
             const baseName = key.split('/').pop() || key
-            // Remove file extension and clean up technical metadata
-            let cleanTitle = baseName.replace(/\.(mp3|wav|ogg)$/i, '')
-            // Remove common UUID patterns and user IDs from filenames
-            cleanTitle = cleanTitle.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_?/i, '')
-            cleanTitle = cleanTitle.replace(/^user_[^_]+_/i, '')
-            cleanTitle = cleanTitle.replace(/_/g, ' ')
-            // If title is still technical-looking or empty, use generic title
-            if (!cleanTitle || cleanTitle.length < 3 || /^[0-9a-f\s-]+$/i.test(cleanTitle)) {
-              cleanTitle = `Track ${index + 1}`
-            }
             return {
               id: `r2_${key.replace(/[^a-zA-Z0-9]/g, '_')}`,
               clerk_user_id: userId,
               user_id: userId,
-              title: cleanTitle,
+              title: cleanTitle(baseName, `Track ${index + 1}`),
               prompt: 'Legacy audio file',
               lyrics: null,
               audio_url: `${audioBaseUrl}/${key}`,
@@ -124,7 +151,7 @@ export async function GET() {
       id: item.id,
       clerk_user_id: item.user_id,
       user_id: item.user_id,
-      title: item.title || 'Untitled',
+      title: cleanTitle(item.title),
       prompt: item.prompt || item.audio_prompt || item.music_prompt || 'Generated audio',
       lyrics: item.lyrics,
       audioUrl: item.audio_url || item.audioUrl, // Normalize to audioUrl
@@ -143,7 +170,7 @@ export async function GET() {
       id: item.id,
       clerk_user_id: item.clerk_user_id,
       user_id: item.clerk_user_id,
-      title: item.title || 'Untitled',
+      title: cleanTitle(item.title),
       prompt: item.music_prompt || 'Generated music',
       lyrics: item.lyrics,
       audioUrl: item.audio_url || item.audioUrl, // Normalize to audioUrl
@@ -162,7 +189,7 @@ export async function GET() {
       id: item.id,
       clerk_user_id: item.clerk_user_id,
       user_id: item.clerk_user_id,
-      title: item.title || 'Untitled',
+      title: cleanTitle(item.title),
       prompt: item.prompt || 'Generated music',
       lyrics: item.lyrics,
       audio_url: item.audio_url,
