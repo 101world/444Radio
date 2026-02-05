@@ -7,11 +7,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 export const maxDuration = 300
 
 // Both use REPLICATE_API_KEY_LATEST2
-const replicateVideo = new Replicate({
-  auth: process.env.REPLICATE_API_KEY_LATEST2!,
-})
-
-const replicateAudio = new Replicate({
+const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST2!,
 })
 
@@ -112,7 +108,7 @@ export async function POST(req: NextRequest) {
         
         if (isHQ) {
           // HQ: HunyuanVideo-Foley model
-          prediction = await replicateHQ.predictions.create({
+          prediction = await replicate.predictions.create({
             model: "tencent/hunyuanvideo-foley",
             version: "88045928bb97971cffefabfc05a4e55e5bb1c96d475ad4ecc3d229d9169758ae",
             input: {
@@ -125,7 +121,7 @@ export async function POST(req: NextRequest) {
           })
         } else {
           // Standard: MMAudio model
-          prediction = await replicateStandard.predictions.create({
+          prediction = await replicate.predictions.create({
             model: "zsxkib/mmaudio",
             version: "62871fb59889b2d7c13777f08deb3b36bdff88f7e1d53a50ad7694548a41b484",
             input: {
@@ -146,11 +142,10 @@ export async function POST(req: NextRequest) {
         let finalPrediction = prediction
         let pollAttempts = 0
         const maxPollAttempts = isHQ ? 120 : 60 // HQ: 2 min, Standard: 1 min
-        const replicateInstance = isHQ ? replicateHQ : replicateStandard
         
         while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && pollAttempts < maxPollAttempts) {
           await new Promise(resolve => setTimeout(resolve, 1000))
-          finalPrediction = await replicateInstance.predictions.get(prediction.id)
+          finalPrediction = await replicate.predictions.get(prediction.id)
           console.log(`🎵 Status: ${finalPrediction.status}`)
           pollAttempts++
         }
