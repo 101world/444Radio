@@ -1,24 +1,29 @@
 -- Fix follower count trigger to use correct column names
 -- Date: 2026-02-06
--- The trigger references 'followed_id' but the table uses 'following_id'
+-- Issue: Trigger was using 'followed_id' but table has 'following_id'
+--        AND was using 'followers_count' but column is 'follower_count' (no 's')
 
 -- Drop and recreate the function with correct column names
 CREATE OR REPLACE FUNCTION public.update_follower_counts()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    -- Increment follower count for the user being followed
-    UPDATE public.users SET follower_count = COALESCE(follower_count, 0) + 1 
+    -- Increment follower count for the user being followed (note: follower_count not followers_count)
+    UPDATE public.users 
+    SET follower_count = COALESCE(follower_count, 0) + 1 
     WHERE clerk_user_id = NEW.following_id;
     
     -- Increment following count for the user who is following
-    UPDATE public.users SET following_count = COALESCE(following_count, 0) + 1 
+    UPDATE public.users 
+    SET following_count = COALESCE(following_count, 0) + 1 
     WHERE clerk_user_id = NEW.follower_id;
     
-  ELSIF TG_OP = 'DELETE' THEN
-    -- Decrement follower count for the user being unfollowed
-    UPDATE public.users SET follower_count = GREATEST(0, COALESCE(follower_count, 0) - 1) 
+    SET follower_count = GREATEST(0, COALESCE(follower_count, 0) - 1) 
     WHERE clerk_user_id = OLD.following_id;
+    
+    -- Decrement following count for the user who is unfollowing
+    UPDATE public.users 
+    = OLD.following_id;
     
     -- Decrement following count for the user who is unfollowing
     UPDATE public.users SET following_count = GREATEST(0, COALESCE(following_count, 0) - 1) 
@@ -46,6 +51,7 @@ BEGIN
     SELECT 1 FROM pg_trigger 
     WHERE tgname = 'update_follower_counts_trigger' 
     AND tgrelid = 'followers'::regclass
+    RAISE NOTICE '   → Updates follower_count and following_count columns';
   ) THEN
     RAISE NOTICE '✅ Trigger update_follower_counts_trigger created on followers table';
   ELSE
