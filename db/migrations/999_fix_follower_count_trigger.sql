@@ -18,15 +18,15 @@ BEGIN
     SET following_count = COALESCE(following_count, 0) + 1 
     WHERE clerk_user_id = NEW.follower_id;
     
+  ELSIF TG_OP = 'DELETE' THEN
+    -- Decrement follower count for the user being unfollowed
+    UPDATE public.users 
     SET follower_count = GREATEST(0, COALESCE(follower_count, 0) - 1) 
     WHERE clerk_user_id = OLD.following_id;
     
     -- Decrement following count for the user who is unfollowing
     UPDATE public.users 
-    = OLD.following_id;
-    
-    -- Decrement following count for the user who is unfollowing
-    UPDATE public.users SET following_count = GREATEST(0, COALESCE(following_count, 0) - 1) 
+    SET following_count = GREATEST(0, COALESCE(following_count, 0) - 1) 
     WHERE clerk_user_id = OLD.follower_id;
   END IF;
   
@@ -51,9 +51,9 @@ BEGIN
     SELECT 1 FROM pg_trigger 
     WHERE tgname = 'update_follower_counts_trigger' 
     AND tgrelid = 'followers'::regclass
-    RAISE NOTICE '   → Updates follower_count and following_count columns';
   ) THEN
     RAISE NOTICE '✅ Trigger update_follower_counts_trigger created on followers table';
+    RAISE NOTICE '   → Updates follower_count and following_count columns';
   ELSE
     RAISE NOTICE '❌ Trigger creation failed';
   END IF;
