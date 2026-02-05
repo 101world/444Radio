@@ -4,7 +4,7 @@ import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_KEY_LATEST!,
+  auth: process.env.REPLICATE_API_KEY_LATEST2!,
 })
 
 export async function OPTIONS() {

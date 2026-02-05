@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     // Initialize Replicate
     const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_KEY_LATEST!,
+      auth: process.env.REPLICATE_API_KEY_LATEST2!,
     });
 
     // Initialize Supabase (service role) for credits

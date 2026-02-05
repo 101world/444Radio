@@ -6,13 +6,13 @@ import { uploadToR2 } from '@/lib/r2-upload'
 // Allow up to 5 minutes for video-to-audio generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
 
-// Both use REPLICATE_API_KEY_LATEST
-const replicateStandard = new Replicate({
-  auth: process.env.REPLICATE_API_KEY_LATEST!,
+// Both use REPLICATE_API_KEY_LATEST2
+const replicateVideo = new Replicate({
+  auth: process.env.REPLICATE_API_KEY_LATEST2!,
 })
 
-const replicateHQ = new Replicate({
-  auth: process.env.REPLICATE_API_KEY_LATEST!,
+const replicateAudio = new Replicate({
+  auth: process.env.REPLICATE_API_KEY_LATEST2!,
 })
 
 // POST /api/generate/video-to-audio - Generate synced audio/SFX for video

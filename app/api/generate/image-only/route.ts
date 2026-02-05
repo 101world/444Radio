@@ -7,7 +7,7 @@ import { downloadAndUploadToR2 } from '@/lib/storage'
 export const maxDuration = 300
 
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_KEY_LATEST!,
+  auth: process.env.REPLICATE_API_KEY_LATEST2!,
 })
 
 // POST /api/generate/image-only - Generate ONLY image (no song record)

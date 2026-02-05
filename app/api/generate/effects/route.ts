@@ -8,7 +8,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 export const maxDuration = 150
 
 const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_KEY_LATEST!,
+  auth: process.env.REPLICATE_API_KEY_LATEST2!,
 })
 
 export async function OPTIONS() {

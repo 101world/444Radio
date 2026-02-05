@@ -7,9 +7,9 @@ export async function OPTIONS() {
 }
 
 export async function GET() {
-  const token = process.env.REPLICATE_API_KEY_LATEST
+  const token = process.env.REPLICATE_API_KEY_LATEST2
   if (!token) {
-    return corsResponse(NextResponse.json({ ok: false, error: 'REPLICATE_API_KEY_LATEST missing' }, { status: 500 }))
+    return corsResponse(NextResponse.json({ ok: false, error: 'REPLICATE_API_KEY_LATEST2 missing' }, { status: 500 }))
   }
   try {
     const resp = await fetch('https://api.replicate.com/v1/models/cjwbw/demucs', {
