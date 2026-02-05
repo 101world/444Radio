@@ -603,6 +603,8 @@ function CreatePageContent() {
             setCustomTitle(finalTitle)
             console.log('✅ Auto-generated title:', finalTitle)
           }
+          // Rate limit safety: wait 10s before next API call
+          await new Promise(resolve => setTimeout(resolve, 10000))
         } catch (error) {
           console.error('❌ Auto-title generation failed:', error)
           // Fallback: use first few words
@@ -633,6 +635,8 @@ function CreatePageContent() {
             setCustomLyrics(finalLyrics)
             console.log('✅ Auto-generated lyrics:', finalLyrics.substring(0, 100) + '...')
           }
+          // Rate limit safety: wait 10s before next API call
+          await new Promise(resolve => setTimeout(resolve, 10000))
         } catch (error) {
           console.error('❌ Auto-lyrics generation failed:', error)
         }
@@ -654,6 +658,8 @@ function CreatePageContent() {
             setGenre(finalGenre)
             console.log('✅ Auto-detected genre:', finalGenre)
           }
+          // Rate limit safety: wait 10s before music generation
+          await new Promise(resolve => setTimeout(resolve, 10000))
         } catch (error) {
           console.error('❌ Auto-genre detection failed:', error)
           // Fallback to pop
