@@ -151,7 +151,7 @@ function ExplorePageContent() {
         console.log('✅ Found', data.stations.length, 'live stations')
         const liveUsers = data.stations.map((s: {
           id: string
-          user_id: string
+          clerk_user_id: string
           username: string
           current_track_image: string | null
           listener_count: number
@@ -163,7 +163,7 @@ function ExplorePageContent() {
           isLive: true,
           listenerCount: s.listener_count || 0,
           owner: {
-            userId: s.user_id,
+            userId: s.clerk_user_id,
             username: s.username,
             profileImage: s.profile_image || null
           }
