@@ -175,7 +175,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         // Check following status
         if (!isOwn && user?.id) {
           const { data: followData, error: followError } = await supabase
-            .from('follows')
+            .from('followers')
             .select('id')
             .eq('follower_id', user.id)
             .eq('following_id', userId)

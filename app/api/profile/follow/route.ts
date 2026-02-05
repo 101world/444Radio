@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     if (action === 'follow') {
       // Insert follow relationship
       const { error } = await supabaseAdmin
-        .from('follows')
+        .from('followers')
         .insert({
           follower_id: clerkUserId,
           following_id: targetUserId
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     } else if (action === 'unfollow') {
       // Delete follow relationship
       const { error } = await supabaseAdmin
-        .from('follows')
+        .from('followers')
         .delete()
         .eq('follower_id', clerkUserId)
         .eq('following_id', targetUserId)
