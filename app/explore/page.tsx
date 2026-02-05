@@ -203,7 +203,9 @@ function ExplorePageContent() {
             artistMap.get(userId)!.trackCount++
           }
         })
-        setArtists(Array.from(artistMap.values()).slice(0, 10)) // Only show top 10 artists
+        // Filter out any artists with undefined user_id before displaying
+        const validArtists = Array.from(artistMap.values()).filter(artist => artist.user_id && artist.user_id !== 'undefined')
+        setArtists(validArtists.slice(0, 10)) // Only show top 10 valid artists
         
         // Fetch genres from dedicated API
         try {
@@ -402,7 +404,7 @@ function ExplorePageContent() {
                       </h2>
                     </div>
                     <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
-                  {liveStations.map((station) => (
+                  {liveStations.filter(station => station.owner.userId && station.owner.userId !== 'undefined').map((station) => (
                     <Link
                       key={station.id}
                       href={`/profile/${station.owner.userId}`}
@@ -507,7 +509,7 @@ function ExplorePageContent() {
             <div className="py-4 px-6 border-b border-white/5">
               <h2 className="text-2xl font-bold mb-3 relative z-10">👥 Artists</h2>
               <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none' }}>
-                {artists.map((artist) => (
+                {artists.filter(artist => artist.user_id && artist.user_id !== 'undefined').map((artist) => (
                   <Link 
                     key={artist.user_id}
                     href={`/profile/${artist.user_id}`}
@@ -605,13 +607,19 @@ function ExplorePageContent() {
                           {media.title}
                         </h3>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <Link 
-                            href={`/profile/${media.user_id}`}
-                            className="text-xs text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {media.users?.username || media.username || 'Unknown Artist'}
-                          </Link>
+                          {media.user_id && media.user_id !== 'undefined' ? (
+                            <Link 
+                              href={`/profile/${media.user_id}`}
+                              className="text-xs text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {media.users?.username || media.username || 'Unknown Artist'}
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-gray-300 truncate leading-tight">
+                              {media.users?.username || media.username || 'Unknown Artist'}
+                            </span>
+                          )}
                           <div className="flex items-center gap-2 text-[10px] text-gray-500">
                             <div className="flex items-center gap-0.5">
                               <Play size={9} />
@@ -702,13 +710,19 @@ function ExplorePageContent() {
                           {media.title}
                         </h3>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <Link 
-                            href={`/profile/${media.user_id}`}
-                            className="text-sm text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {media.users?.username || media.username || 'Unknown Artist'}
-                          </Link>
+                          {media.user_id && media.user_id !== 'undefined' ? (
+                            <Link 
+                              href={`/profile/${media.user_id}`}
+                              className="text-sm text-gray-300 hover:text-cyan-400 transition-colors truncate leading-tight"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {media.users?.username || media.username || 'Unknown Artist'}
+                            </Link>
+                          ) : (
+                            <span className="text-sm text-gray-300 truncate leading-tight">
+                              {media.users?.username || media.username || 'Unknown Artist'}
+                            </span>
+                          )}
                           <div className="flex items-center gap-2 text-xs text-gray-500">
                             <div className="flex items-center gap-0.5">
                               <Play size={10} />
@@ -878,7 +892,7 @@ function ExplorePageContent() {
               <div className="px-6 py-8">
                 {liveStations.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {liveStations.map((station) => (
+                    {liveStations.filter(station => station.owner.userId && station.owner.userId !== 'undefined').map((station) => (
                       <Link
                         key={station.id}
                         href={`/profile/${station.owner.userId}`}
