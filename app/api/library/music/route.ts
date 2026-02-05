@@ -85,13 +85,22 @@ export async function GET() {
           .map((file, index) => {
             const key = file.Key || ''
             const baseName = key.split('/').pop() || key
-            const title = baseName.replace(/\.(mp3|wav|ogg)$/i, '')
+            // Remove file extension and clean up technical metadata
+            let cleanTitle = baseName.replace(/\.(mp3|wav|ogg)$/i, '')
+            // Remove common UUID patterns and user IDs from filenames
+            cleanTitle = cleanTitle.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_?/i, '')
+            cleanTitle = cleanTitle.replace(/^user_[^_]+_/i, '')
+            cleanTitle = cleanTitle.replace(/_/g, ' ')
+            // If title is still technical-looking or empty, use generic title
+            if (!cleanTitle || cleanTitle.length < 3 || /^[0-9a-f\s-]+$/i.test(cleanTitle)) {
+              cleanTitle = `Track ${index + 1}`
+            }
             return {
               id: `r2_${key.replace(/[^a-zA-Z0-9]/g, '_')}`,
               clerk_user_id: userId,
               user_id: userId,
-              title: title || `Track ${index + 1}`,
-              prompt: 'Legacy R2 file',
+              title: cleanTitle,
+              prompt: 'Legacy audio file',
               lyrics: null,
               audio_url: `${audioBaseUrl}/${key}`,
               image_url: null,

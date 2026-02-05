@@ -665,10 +665,17 @@ export default function LibraryPage() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">
-                          {item.title || item.prompt || 'Untitled Track'}
+                          {/* Show a clean title, avoiding R2 metadata/filenames */}
+                          {item.title && !item.title.startsWith('r2_') && !item.title.includes('user_') ? 
+                            item.title : 
+                            (item.prompt && item.prompt !== 'Legacy R2 file' ? 
+                              (item.prompt.length > 40 ? `${item.prompt.substring(0, 40)}...` : item.prompt) : 
+                              'Untitled Track'
+                            )
+                          }
                         </h3>
                         <p className="text-cyan-400/50 text-xs mt-0.5 truncate">
-                          {item.title ? (item.prompt ? `${item.prompt.substring(0, 40)}...` : new Date(item.created_at).toLocaleDateString()) : new Date(item.created_at).toLocaleDateString()}
+                          {new Date(item.created_at).toLocaleDateString()}
                         </p>
                       </div>
 
