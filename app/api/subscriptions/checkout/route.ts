@@ -7,33 +7,35 @@ export async function OPTIONS() {
 }
 
 // Plan configuration for both INR and USD (Razorpay Checkout with instant verification)
+// Credit allocation: 1 credit = $0.03 retail value
+// Formula: Price / 0.03 = Credits (rounded up)
 const PLANS = {
   INR: {
     creator: {
-      monthly: { credits: 100, price: 450 },
-      annual: { credits: 1200, price: 4420 }
+      monthly: { credits: 167, price: 450 },      // $5 / $0.03 = 166.66 → 167 credits (83 songs)
+      annual: { credits: 1667, price: 4420 }      // $50 / $0.03 = 1666.66 → 1667 credits
     },
     pro: {
-      monthly: { credits: 600, price: 1355 },
-      annual: { credits: 7200, price: 13090 }
+      monthly: { credits: 535, price: 1355 },     // $16 / $0.03 = 533.33 → 535 credits (267 songs)
+      annual: { credits: 5167, price: 13090 }     // $155 / $0.03 = 5166.66 → 5167 credits
     },
     studio: {
-      monthly: { credits: 1500, price: 3160 },
-      annual: { credits: 18000, price: 30330 }
+      monthly: { credits: 1235, price: 3160 },    // $37 / $0.03 = 1233.33 → 1235 credits (617 songs)
+      annual: { credits: 11967, price: 30330 }    // $359 / $0.03 = 11966.66 → 11967 credits
     }
   },
   USD: {
     creator: {
-      monthly: { credits: 100, price: 5 },
-      annual: { credits: 1200, price: 50 }
+      monthly: { credits: 167, price: 5 },        // $5 / $0.03 = 166.66 → 167 credits (83 songs)
+      annual: { credits: 1667, price: 50 }        // $50 / $0.03 = 1666.66 → 1667 credits
     },
     pro: {
-      monthly: { credits: 600, price: 16 },
-      annual: { credits: 7200, price: 155 }
+      monthly: { credits: 535, price: 16 },       // $16 / $0.03 = 533.33 → 535 credits (267 songs)
+      annual: { credits: 5167, price: 155 }       // $155 / $0.03 = 5166.66 → 5167 credits
     },
     studio: {
-      monthly: { credits: 1500, price: 37 },
-      annual: { credits: 18000, price: 359 }
+      monthly: { credits: 1235, price: 37 },      // $37 / $0.03 = 1233.33 → 1235 credits (617 songs)
+      annual: { credits: 11967, price: 359 }      // $359 / $0.03 = 11966.66 → 11967 credits
     }
   }
 } as const

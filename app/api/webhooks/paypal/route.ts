@@ -126,11 +126,14 @@ export async function POST(req: NextRequest) {
       case 'BILLING.SUBSCRIPTION.ACTIVATED':
         console.log('🎉 Subscription activated - granting credits')
         
-        // Determine credits based on plan
+        // Determine credits based on plan (PayPal currently only supports Creator)
         let creditsToAdd = 0
-        if (planId === process.env.NEXT_PUBLIC_PAYPAL_CREATOR_PLAN_ID) {
-          creditsToAdd = 100 // Creator plan: 100 credits/month
+        const planMapping: Record<string, number> = {
+          [process.env.NEXT_PUBLIC_PAYPAL_CREATOR_PLAN_ID || '']: 167,  // Creator monthly: 167 credits
         }
+        
+        creditsToAdd = planMapping[planId] || 167 // Default to Creator monthly
+        console.log('[PayPal] Credits for plan', planId, ':', creditsToAdd)
 
         // Find user by email if customId not provided
         let userId = customId

@@ -157,11 +157,34 @@ async function handleSubscriptionSuccess(subscription: any) {
     return
   }
 
-  // Determine credits based on plan (support both env var and hardcoded plan ID)
+  // Determine credits based on plan - read from notes first (set by checkout), then fallback to plan mapping
   let creditsToAdd = 0
-  const creatorPlanId = process.env.RAZORPAY_CREATOR_PLAN_ID || 'plan_S2DGVK6J270rtt'
-  if (planId === creatorPlanId) {
-    creditsToAdd = 100 // Creator plan gives 100 credits
+  
+  // Try to get credits from order notes (most reliable - set by checkout route)
+  const orderNotesCredits = subscription.notes?.credits
+  if (orderNotesCredits) {
+    creditsToAdd = parseInt(orderNotesCredits, 10)
+    console.log('[Razorpay] Credits from order notes:', creditsToAdd)
+  } else {
+    // Fallback: map plan ID to credits (for old subscriptions)
+    const planMapping: Record<string, number> = {
+      // Creator plans (monthly/annual)
+      'plan_S2DGVK6J270rtt': 167,  // Creator monthly
+      'plan_S2DGkl8VQJiZvV': 1667,  // Creator annual
+      // Pro plans (monthly/annual) 
+      'plan_Pro_Monthly': 535,     // Pro monthly (update with actual plan ID)
+      'plan_Pro_Annual': 5167,     // Pro annual (update with actual plan ID)
+      // Studio plans (monthly/annual)
+      'plan_Studio_Monthly': 1235, // Studio monthly (update with actual plan ID)
+      'plan_Studio_Annual': 11967  // Studio annual (update with actual plan ID)
+    }
+    
+    creditsToAdd = planMapping[planId] || 0
+    console.log('[Razorpay] Credits from plan mapping:', creditsToAdd, 'for plan:', planId)
+    
+    if (creditsToAdd === 0) {
+      console.warn('[Razorpay] Unknown plan ID:', planId, '- using 0 credits')
+    }
   }
 
   console.log('[Razorpay] Adding', creditsToAdd, 'credits to user:', user.clerk_user_id)
@@ -300,13 +323,17 @@ async function handlePaymentCaptured(payment: any) {
 
   console.log('[Razorpay] Found user:', userData.email, 'Current credits:', userData.credits)
 
-  // Deliver 100 credits and activate Creator status
+  // Get credits from payment notes (set by checkout route)
+  const creditsToAdd = parseInt(notes.credits || '167', 10) // Default to Creator monthly (167)
+  console.log('[Razorpay] Credits from payment notes:', creditsToAdd)
+
+  // Deliver credits and activate subscription status
   const { error } = await supabaseAdmin
     .from('users')
     .update({
-      credits: (userData.credits || 0) + 100,
+      credits: (userData.credits || 0) + creditsToAdd,
       subscription_status: 'active',
-      subscription_plan: 'plan_S2DGVK6J270rtt',
+      subscription_plan: notes.plan_type || 'creator', // Use plan_type from notes
       razorpay_customer_id: notes.customer_id,
       subscription_id: notes.subscription_id,
       updated_at: new Date().toISOString()
@@ -316,8 +343,8 @@ async function handlePaymentCaptured(payment: any) {
   if (error) {
     console.error('[Razorpay] Failed to deliver credits:', error)
   } else {
-    console.log('[Razorpay] ✅ SUCCESS! Delivered 100 credits + Creator status to:', userData.email)
-    console.log('[Razorpay] New credit balance:', (userData.credits || 0) + 100)
+    console.log('[Razorpay] ✅ SUCCESS! Delivered', creditsToAdd, 'credits +', notes.plan_type || 'creator', 'status to:', userData.email)
+    console.log('[Razorpay] New credit balance:', (userData.credits || 0) + creditsToAdd)
   }
 }
 

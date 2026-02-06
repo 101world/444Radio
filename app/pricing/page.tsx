@@ -397,7 +397,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">100 credits</span> per month</span>
+                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">167 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -405,7 +405,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~50 songs or 100 cover art</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~83 songs or 167 cover art</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -413,7 +413,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~50 Text to SFX (10s)</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~83 Text to SFX (10s)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/30 to-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -421,7 +421,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~10 Video to SFX (10s)</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~83 Video to SFX (10s)</span>
                 </li>
               </ul>
 
@@ -500,7 +500,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">600 credits</span> per month</span>
+                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">535 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -508,7 +508,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~300 songs or 600 cover art</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~267 songs or 535 cover art</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -516,7 +516,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~300 Text to SFX (10s)</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~267 Text to SFX (10s)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500/40 to-purple-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -524,7 +524,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~60 Video to SFX (10s)</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~267 Video to SFX (10s)</span>
                 </li>
               </ul>
 
@@ -598,7 +598,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">1,500 credits</span> per month</span>
+                  <span className="text-gray-300 text-xs leading-relaxed"><span className="font-bold text-white">1,235 credits</span> per month</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -606,7 +606,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~750 songs or 1,500 cover art</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~617 songs or 1,235 cover art</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -614,7 +614,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~750 Text to SFX (10s)</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~617 Text to SFX (10s)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -622,7 +622,7 @@ export default function Pricing() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                     </svg>
                   </div>
-                  <span className="text-gray-300 text-xs leading-relaxed">~150 Video to SFX (10s)</span>
+                  <span className="text-gray-300 text-xs leading-relaxed">~617 Video to SFX (10s)</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">

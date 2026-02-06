@@ -53,8 +53,8 @@ export default function SubscribePage() {
 
               {/* Features */}
               <div className="space-y-4 mb-8">
-                <Feature text="100 credits per month" />
-                <Feature text="Generate unlimited AI music tracks" />
+                <Feature text="167 credits per month" />
+                <Feature text="~83 AI music tracks per month" />
                 <Feature text="High-quality audio exports" />
                 <Feature text="Priority processing" />
                 <Feature text="Access to all genres and styles" />
@@ -97,7 +97,7 @@ export default function SubscribePage() {
             <div className="space-y-4 text-left max-w-2xl mx-auto">
               <FAQ
                 question="How do credits work?"
-                answer="Each AI music generation costs credits. With 100 credits per month, you can create dozens of unique tracks."
+                answer="Each AI music generation costs 2 credits. With 167 credits per month, you can create 83+ unique tracks, plus cover art and sound effects."
               />
               <FAQ
                 question="Can I cancel anytime?"
