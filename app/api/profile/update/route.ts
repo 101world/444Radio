@@ -78,21 +78,7 @@ export async function POST(req: NextRequest) {
       username: username
     }
     
-    // Update Clerk's profile image if avatar was uploaded
-    if (avatarFile) {
-      try {
-        // Upload the image to Clerk's servers
-        await client.users.updateUserProfileImage(userId, {
-          file: avatarFile
-        })
-        console.log('Successfully updated Clerk profile image')
-      } catch (clerkError) {
-        console.error('Failed to update Clerk profile image:', clerkError)
-        // Don't fail the entire request if Clerk update fails
-      }
-    }
-    
-    // Store avatar URL in Clerk's publicMetadata for reference
+    // Store avatar URL in Clerk's publicMetadata for reference (we use R2 for storage)
     if (avatar) {
       clerkUpdateData.publicMetadata = { avatarUrl: avatar }
     }
