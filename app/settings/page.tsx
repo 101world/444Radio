@@ -27,6 +27,8 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription'>('subscription')
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true)
+  const [credits, setCredits] = useState<number | null>(null)
+  const [isLoadingCredits, setIsLoadingCredits] = useState(true)
   const [isCanceling, setIsCanceling] = useState(false)
   const [isReactivating, setIsReactivating] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
@@ -43,8 +45,25 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user) {
       fetchSubscriptionStatus()
+      fetchCredits()
     }
   }, [user])
+
+  const fetchCredits = async () => {
+    try {
+      setIsLoadingCredits(true)
+      const response = await fetch('/api/credits')
+      const data = await response.json()
+      
+      if (data.credits !== undefined) {
+        setCredits(data.credits)
+      }
+    } catch (error) {
+      console.error('Failed to fetch credits:', error)
+    } finally {
+      setIsLoadingCredits(false)
+    }
+  }
 
   const fetchSubscriptionStatus = async () => {
     try {
@@ -89,6 +108,7 @@ export default function SettingsPage() {
         setShowCancelConfirm(false)
         setTimeout(() => {
           fetchSubscriptionStatus()
+          fetchCredits()
         }, 1000)
       } else {
         setCancelMessage({
@@ -129,6 +149,7 @@ export default function SettingsPage() {
         })
         setTimeout(() => {
           fetchSubscriptionStatus()
+          fetchCredits()
         }, 1000)
       } else {
         setCancelMessage({
@@ -274,8 +295,17 @@ export default function SettingsPage() {
                   <div className="flex items-start gap-3">
                     <Zap className="w-5 h-5 text-cyan-400 mt-0.5" />
                     <div>
-                      <p className="text-sm text-gray-400">Monthly Credits</p>
-                      <p className="text-lg font-semibold">{getPlanCredits(subscription.plan)} credits</p>
+                      <p className="text-sm text-gray-400">Credits in Wallet</p>
+                      <p className="text-lg font-semibold">
+                        {isLoadingCredits ? (
+                          <span className="text-gray-500">Loading...</span>
+                        ) : (
+                          `${credits || 0} credits`
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        +{getPlanCredits(subscription.plan)} credits/month
+                      </p>
                     </div>
                   </div>
                   
