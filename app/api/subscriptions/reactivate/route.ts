@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // Resume by canceling the cancellation - send PATCH with cancel_at_cycle_end: false
+    // Resume by canceling the cancellation - send PATCH with cancel_at_cycle_end: 0
     const resumeResponse = await fetch(
       `https://api.razorpay.com/v1/subscriptions/${user.subscription_id}`,
       {
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          cancel_at_cycle_end: false
+          cancel_at_cycle_end: 0 // Razorpay expects 0/1, not true/false
         })
       }
     )

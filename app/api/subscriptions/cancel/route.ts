@@ -62,14 +62,16 @@ export async function POST(req: Request) {
       `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
     ).toString('base64')
 
+    // Use PATCH method to update subscription with cancel_at_cycle_end
+    // POST /cancel endpoint doesn't support cancel_at_cycle_end parameter
     const cancelPayload = {
-      cancel_at_cycle_end: cancelAtCycleEnd // If true, subscription remains active until period end
+      cancel_at_cycle_end: cancelAtCycleEnd ? 1 : 0 // Razorpay expects 1/0, not true/false
     }
 
     const response = await fetch(
-      `https://api.razorpay.com/v1/subscriptions/${user.subscription_id}/cancel`,
+      `https://api.razorpay.com/v1/subscriptions/${user.subscription_id}`,
       {
-        method: 'POST',
+        method: 'PATCH',
         headers: {
           'Authorization': `Basic ${razorpayAuth}`,
           'Content-Type': 'application/json'
