@@ -185,8 +185,8 @@ export default function SettingsPage() {
 
   const getPlanCredits = (plan: string) => {
     const planLower = plan.toLowerCase()
-    if (planLower.includes('studio')) return '400'
-    if (planLower.includes('pro')) return '200'
+    if (planLower.includes('studio')) return '1500'
+    if (planLower.includes('pro')) return '600'
     return '100'
   }
 
