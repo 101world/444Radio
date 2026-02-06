@@ -104,8 +104,12 @@ export default function SubscribePage() {
                 answer="Yes! You can cancel your subscription at any time. You'll keep your credits until the end of your billing period."
               />
               <FAQ
+                question="Do credits expire?"
+                answer="No! All credits accumulate and stay in your account forever, even after cancelling. Use them whenever you want."
+              />
+              <FAQ
                 question="What happens to unused credits?"
-                answer="Unused credits expire at the end of each billing cycle. New credits are added on renewal."
+                answer="They stay in your account! Credits accumulate month-to-month. If you cancel, you keep all accumulated credits forever."
               />
             </div>
           </div>
