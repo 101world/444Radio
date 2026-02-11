@@ -998,36 +998,12 @@ function CreatePageContent() {
     setIdeasStep('generating')
 
     try {
-      const promptType = selectedPromptType === 'song' ? 'a complete song with vocals, lyrics, and full production' : 'an instrumental beat with no vocals'
-      
-      const systemPrompt = `You are a professional music producer and prompt engineer. Generate a highly detailed, professional music generation prompt for ${promptType} in the ${genre} genre. 
-      
-The prompt MUST:
-- Be 200-265 characters maximum
-- Include specific instruments, production techniques, mood, and atmosphere
-- Use vivid, descriptive language
-- Focus on sonic qualities (frequencies, textures, dynamics)
-- Mention tempo/energy level
-- Include production style (reverb, compression, mixing details)
-- Be realistic and achievable
-- Sound professional and radio-ready
-- NO negative words like "bad", "poor", "amateur"
-- NO vague descriptions
-- Be specific about the sonic experience
-
-Examples of great prompts:
-"Euphoric progressive house track at 128 BPM with soaring synth leads, deep sub-bass, crisp percussion, ethereal vocal chops, and lush atmospheric pads. Warm analog saturation throughout."
-"Soulful R&B ballad with silky female vocals, warm Rhodes piano, subtle 808 bass, smooth string arrangements, and intimate room ambience. Tender and emotional."
-
-Generate ONLY the prompt text, nothing else.`
-
       const response = await fetch('/api/generate/prompt-idea', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           genre,
-          promptType: selectedPromptType,
-          systemPrompt
+          promptType: selectedPromptType
         })
       })
 
@@ -2153,8 +2129,8 @@ Generate ONLY the prompt text, nothing else.`
                         onClick={() => setShowPromptSuggestions(false)}
                       />
                       
-                      {/* Dropdown panel - Opens to the right */}
-                      <div className="absolute left-full bottom-0 ml-3 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast">
+                      {/* Dropdown panel - Opens upward on right */}
+                      <div className="absolute left-full bottom-full ml-3 mb-2 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
