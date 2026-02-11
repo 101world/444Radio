@@ -80,6 +80,10 @@ function CreatePageContent() {
   const [preselectedImageId, setPreselectedImageId] = useState<string | undefined>()
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showPromptSuggestions, setShowPromptSuggestions] = useState(false)
+  const [showIdeasFlow, setShowIdeasFlow] = useState(false)
+  const [ideasStep, setIdeasStep] = useState<'type' | 'genre' | 'generating'>('type')
+  const [selectedPromptType, setSelectedPromptType] = useState<'song' | 'beat'>('song')
+  const [generatingIdea, setGeneratingIdea] = useState(false)
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
   const [showBottomDock, setShowBottomDock] = useState(true)
@@ -989,6 +993,75 @@ function CreatePageContent() {
     setInput('')
   }
 
+  const handleGeneratePromptIdea = async (genre: string) => {
+    setGeneratingIdea(true)
+    setIdeasStep('generating')
+
+    try {
+      const promptType = selectedPromptType === 'song' ? 'a complete song with vocals, lyrics, and full production' : 'an instrumental beat with no vocals'
+      
+      const systemPrompt = `You are a professional music producer and prompt engineer. Generate a highly detailed, professional music generation prompt for ${promptType} in the ${genre} genre. 
+      
+The prompt MUST:
+- Be 200-265 characters maximum
+- Include specific instruments, production techniques, mood, and atmosphere
+- Use vivid, descriptive language
+- Focus on sonic qualities (frequencies, textures, dynamics)
+- Mention tempo/energy level
+- Include production style (reverb, compression, mixing details)
+- Be realistic and achievable
+- Sound professional and radio-ready
+- NO negative words like "bad", "poor", "amateur"
+- NO vague descriptions
+- Be specific about the sonic experience
+
+Examples of great prompts:
+"Euphoric progressive house track at 128 BPM with soaring synth leads, deep sub-bass, crisp percussion, ethereal vocal chops, and lush atmospheric pads. Warm analog saturation throughout."
+"Soulful R&B ballad with silky female vocals, warm Rhodes piano, subtle 808 bass, smooth string arrangements, and intimate room ambience. Tender and emotional."
+
+Generate ONLY the prompt text, nothing else.`
+
+      const response = await fetch('/api/generate/prompt-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          genre,
+          promptType: selectedPromptType,
+          systemPrompt
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success && data.prompt) {
+        // Insert generated prompt into input box
+        setInput(data.prompt.slice(0, MAX_PROMPT_LENGTH))
+        
+        // Close modals
+        setShowIdeasFlow(false)
+        setShowPromptSuggestions(false)
+        setIdeasStep('type')
+        
+        // Show success message
+        const successMessage: Message = {
+          id: Date.now().toString(),
+          type: 'assistant',
+          content: `✨ AI generated a ${genre} ${selectedPromptType} prompt for you! Feel free to edit it or hit create!`,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, successMessage])
+      } else {
+        throw new Error(data.error || 'Failed to generate prompt')
+      }
+    } catch (error) {
+      console.error('Prompt generation error:', error)
+      alert('Failed to generate prompt idea. Please try again.')
+      setIdeasStep('genre')
+    } finally {
+      setGeneratingIdea(false)
+    }
+  }
+
   const generateMusic = async (
     prompt: string, 
     title?: string, 
@@ -1329,19 +1402,19 @@ function CreatePageContent() {
             >
               {/* Message Content - Compact & Aligned */}
               <div className={`max-w-[75%] md:max-w-2xl ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
-                {/* Text Message - Compact Bubble */}
+                {/* Text Message - Sleeker Bubble */}
                 {message.content && (
                   <div className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}>
-                    <div className={`inline-block px-4 py-2 rounded-2xl ${
+                    <div className={`inline-block px-4 py-2.5 rounded-2xl backdrop-blur-xl ${
                       message.type === 'user' 
-                        ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30' 
-                        : 'bg-white/5 border border-white/10'
+                        ? 'bg-gradient-to-br from-cyan-500/15 via-cyan-600/10 to-blue-500/15 border border-cyan-400/40 shadow-lg shadow-cyan-500/10' 
+                        : 'bg-gradient-to-br from-white/8 to-white/4 border border-white/20 shadow-lg shadow-black/20'
                     }`}>
-                      <p className={`text-sm leading-relaxed break-words ${
-                        message.type === 'user' ? 'text-cyan-200' : 'text-gray-300'
+                      <p className={`text-sm leading-relaxed break-words font-light ${
+                        message.type === 'user' ? 'text-cyan-100' : 'text-gray-200'
                       }`}>{message.content}</p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{message.timestamp.toLocaleTimeString()}</p>
+                    <p className="text-[10px] text-gray-500/80 mt-1.5 font-mono">{message.timestamp.toLocaleTimeString()}</p>
                   </div>
                 )}
 
@@ -2080,24 +2153,32 @@ function CreatePageContent() {
                         onClick={() => setShowPromptSuggestions(false)}
                       />
                       
-                      {/* Dropdown panel */}
-                      <div className="absolute right-0 bottom-full mb-2 w-80 bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-4 z-50 animate-fade-in-fast">
-                        <div className="flex items-center justify-between mb-3">
+                      {/* Dropdown panel - Opens to the right */}
+                      <div className="absolute left-full bottom-0 ml-3 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast">
+                        <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
                               <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
                             </svg>
-                            <span className="text-sm font-semibold text-white">Quick Tags</span>
+                            <span className="text-sm font-bold text-white">Quick Tags</span>
                           </div>
-                          <button
-                            onClick={() => setShowPromptSuggestions(false)}
-                            className="p-1 hover:bg-white/10 rounded-lg transition-colors"
-                          >
-                            <X className="w-4 h-4 text-gray-400" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setShowIdeasFlow(true)}
+                              className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 hover:text-purple-200 transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
+                            >
+                              ✨ IDEAS
+                            </button>
+                            <button
+                              onClick={() => setShowPromptSuggestions(false)}
+                              className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                            >
+                              <X className="w-4 h-4 text-gray-400" />
+                            </button>
+                          </div>
                         </div>
                         
-                        <div className="flex flex-wrap gap-2 max-h-96 overflow-y-auto scrollbar-thin">
+                        <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto scrollbar-thin pr-2">
                           {[
                             'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
                             'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
@@ -2120,7 +2201,7 @@ function CreatePageContent() {
                                 setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
                               }}
                               style={{ animationDelay: `${idx * 15}ms` }}
-                              className="px-3 py-1.5 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/20 hover:border-cyan-400/50 rounded-lg text-xs text-cyan-300/80 hover:text-cyan-200 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30 animate-slide-in-up"
+                              className="px-3.5 py-2 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-sm font-medium text-cyan-200 hover:text-white transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30 animate-slide-in-up"
                             >
                               {tag}
                             </button>
@@ -2130,6 +2211,111 @@ function CreatePageContent() {
                     </>
                   )}
                 </div>
+              )}
+
+              {/* IDEAS Flow Modal */}
+              {showIdeasFlow && (
+                <>
+                  <div 
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+                    onClick={() => {
+                      setShowIdeasFlow(false)
+                      setIdeasStep('type')
+                    }}
+                  />
+                  
+                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 animate-fade-in-fast">
+                    <div className="bg-gradient-to-br from-black/95 via-cyan-950/30 to-black/95 backdrop-blur-2xl border-2 border-cyan-500/40 rounded-3xl p-6 shadow-2xl shadow-cyan-500/30">
+                      {/* Step 1: Type Selection */}
+                      {ideasStep === 'type' && (
+                        <div className="space-y-6">
+                          <div className="text-center">
+                            <h3 className="text-2xl font-bold text-white mb-2">✨ AI Prompt Ideas</h3>
+                            <p className="text-sm text-gray-400">What would you like to create?</p>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <button
+                              onClick={() => {
+                                setSelectedPromptType('song')
+                                setIdeasStep('genre')
+                              }}
+                              className="group p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-2 border-purple-400/40 hover:border-purple-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/30"
+                            >
+                              <div className="text-4xl mb-3">🎤</div>
+                              <div className="text-lg font-bold text-white mb-1">Song</div>
+                              <div className="text-xs text-gray-400">With vocals & lyrics</div>
+                            </button>
+                            
+                            <button
+                              onClick={() => {
+                                setSelectedPromptType('beat')
+                                setIdeasStep('genre')
+                              }}
+                              className="group p-6 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/30"
+                            >
+                              <div className="text-4xl mb-3">🎹</div>
+                              <div className="text-lg font-bold text-white mb-1">Beat</div>
+                              <div className="text-xs text-gray-400">Instrumental only</div>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Step 2: Genre Selection */}
+                      {ideasStep === 'genre' && (
+                        <div className="space-y-6">
+                          <div className="text-center">
+                            <h3 className="text-2xl font-bold text-white mb-2">🎵 Select Genre</h3>
+                            <p className="text-sm text-gray-400">Choose a style for your {selectedPromptType}</p>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-3 max-h-80 overflow-y-auto scrollbar-thin pr-2">
+                            {[
+                              'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
+                              'trap', 'drill', 'phonk', 'house', 'techno',
+                              'lo-fi beats', 'synthwave', 'indie', 'folk', 'blues',
+                              'soul', 'funk', 'reggae', 'latin', 'afrobeat',
+                              'orchestral', 'cinematic', 'acoustic', 'vaporwave', 'k-pop'
+                            ].map((genre) => (
+                              <button
+                                key={genre}
+                                onClick={() => handleGeneratePromptIdea(genre)}
+                                disabled={generatingIdea}
+                                className="px-3 py-2.5 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {genre}
+                              </button>
+                            ))}
+                          </div>
+                          
+                          <button
+                            onClick={() => setIdeasStep('type')}
+                            className="w-full py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                          >
+                            ← Back
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Step 3: Generating */}
+                      {ideasStep === 'generating' && (
+                        <div className="space-y-6 text-center py-8">
+                          <div className="relative">
+                            <div className="w-16 h-16 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-2xl">🎨</span>
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-white mb-2">Creating Amazing Prompt...</h3>
+                            <p className="text-sm text-gray-400">AI is crafting the perfect description</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
 
               {/* Create Button */}
