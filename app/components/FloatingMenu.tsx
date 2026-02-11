@@ -64,10 +64,10 @@ export default function FloatingMenu() {
 
   return (
     <>
-      {/* Floating Hamburger Button - Bottom Right (hidden on mobile) */}
+      {/* Floating Hamburger Button - hidden on desktop (navigation is in docked sidebar) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="hidden md:block fixed bottom-6 right-6 z-[60] p-3 md:p-4 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl hover:bg-white/20 transition-all active:scale-95"
+        className="md:hidden fixed bottom-6 right-6 z-[60] p-3 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-full shadow-2xl hover:bg-white/20 transition-all active:scale-95"
         aria-label="Menu"
       >
         {isOpen ? (

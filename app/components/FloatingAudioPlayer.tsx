@@ -1,11 +1,11 @@
 'use client'
 
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, X, Repeat, Shuffle, ChevronDown, ChevronUp, Search, List } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, X, Repeat, Shuffle, ChevronDown, ChevronUp, Search, List, Heart, Zap } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 
-// ─── Vertical Waveform Visualizer ───────────────────────────────
+// ─── Vertical Waveform Visualizer (thin sidebar) ────────────────
 function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudioElement | null; isPlaying: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
@@ -16,7 +16,6 @@ function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudio
 
   useEffect(() => {
     if (!audioElement || !canvasRef.current) return
-
     if (connectedRef.current !== audioElement) {
       try {
         if (!ctxRef.current) {
@@ -40,7 +39,6 @@ function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudio
     const canvas = canvasRef.current
     const c = canvas.getContext('2d')
     if (!c) return
-
     const analyser = analyserRef.current
     const bufLen = analyser ? analyser.frequencyBinCount : 64
     const data = new Uint8Array(bufLen)
@@ -56,35 +54,23 @@ function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudio
         c.setTransform(dpr, 0, 0, dpr, 0, 0)
       }
       c.clearRect(0, 0, W, H)
+      if (analyser && isPlaying) { analyser.getByteFrequencyData(data) }
+      else { for (let i = 0; i < bufLen; i++) data[i] = Math.floor(18 + 6 * Math.sin(Date.now() / 700 + i * 0.35)) }
 
-      if (analyser && isPlaying) {
-        analyser.getByteFrequencyData(data)
-      } else {
-        for (let i = 0; i < bufLen; i++) {
-          data[i] = Math.floor(18 + 6 * Math.sin(Date.now() / 700 + i * 0.35))
-        }
-      }
-
-      // Draw bars top-down in code; canvas is CSS-flipped so it renders bottom-to-top
       const barCount = Math.min(bufLen, 48)
       const gap = 1.5
       const barH = (H - gap * (barCount - 1)) / barCount
-
       for (let i = 0; i < barCount; i++) {
         const v = data[i] / 255
         const barW = Math.max(2, v * W * 0.85)
         const y = i * (barH + gap)
         const x = (W - barW) / 2
-
-        const alpha = 0.4 + v * 0.6
-        c.fillStyle = `rgba(34, 211, 238, ${alpha})`
+        c.fillStyle = `rgba(34, 211, 238, ${0.4 + v * 0.6})`
         c.shadowColor = 'rgba(34, 211, 238, 0.4)'
         c.shadowBlur = v * 5
-
         const r = Math.min(barH / 2, 1.5)
         c.beginPath()
-        c.moveTo(x + r, y)
-        c.lineTo(x + barW - r, y)
+        c.moveTo(x + r, y); c.lineTo(x + barW - r, y)
         c.quadraticCurveTo(x + barW, y, x + barW, y + r)
         c.lineTo(x + barW, y + barH - r)
         c.quadraticCurveTo(x + barW, y + barH, x + barW - r, y + barH)
@@ -101,6 +87,103 @@ function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudio
   }, [audioElement, isPlaying])
 
   return <canvas ref={canvasRef} className="w-full h-full" style={{ transform: 'scaleY(-1)' }} />
+}
+
+// ─── Horizontal Waveform (expanded mode) ────────────────────────
+function HorizontalWaveform({ audioElement, isPlaying, progress }: { audioElement: HTMLAudioElement | null; isPlaying: boolean; progress: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const ctxRef = useRef<AudioContext | null>(null)
+  const rafRef = useRef<number>(0)
+  const connectedRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    if (!audioElement || !canvasRef.current) return
+    if (connectedRef.current !== audioElement) {
+      try {
+        if (!ctxRef.current) {
+          ctxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+        }
+        const ctx = ctxRef.current
+        // Try to reuse existing analyser — the VerticalWaveform may have already connected
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 512
+        analyser.smoothingTimeConstant = 0.82
+        try {
+          const source = ctx.createMediaElementSource(audioElement)
+          source.connect(analyser)
+          analyser.connect(ctx.destination)
+        } catch {
+          // Already connected — try to get data anyway
+        }
+        analyserRef.current = analyser
+        connectedRef.current = audioElement
+      } catch {
+        console.warn('HorizontalWaveform: Could not create audio source')
+      }
+    }
+
+    const canvas = canvasRef.current
+    const c = canvas.getContext('2d')
+    if (!c) return
+    const analyser = analyserRef.current
+    const bufLen = analyser ? analyser.frequencyBinCount : 128
+    const data = new Uint8Array(bufLen)
+
+    const draw = () => {
+      rafRef.current = requestAnimationFrame(draw)
+      const dpr = window.devicePixelRatio || 1
+      const W = canvas.offsetWidth
+      const H = canvas.offsetHeight
+      if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
+        canvas.width = W * dpr
+        canvas.height = H * dpr
+        c.setTransform(dpr, 0, 0, dpr, 0, 0)
+      }
+      c.clearRect(0, 0, W, H)
+
+      if (analyser && isPlaying) { analyser.getByteFrequencyData(data) }
+      else { for (let i = 0; i < bufLen; i++) data[i] = Math.floor(14 + 8 * Math.sin(Date.now() / 800 + i * 0.4)) }
+
+      const barCount = Math.min(bufLen, 80)
+      const gap = 1
+      const barW = (W - gap * (barCount - 1)) / barCount
+      const midY = H / 2
+
+      for (let i = 0; i < barCount; i++) {
+        const v = data[i] / 255
+        const barH = Math.max(2, v * midY * 0.9)
+        const x = i * (barW + gap)
+        const pct = (i / barCount) * 100
+
+        // Played = bright teal, unplayed = dim
+        if (pct <= progress) {
+          c.fillStyle = `rgba(34, 211, 238, ${0.5 + v * 0.5})`
+          c.shadowColor = 'rgba(34, 211, 238, 0.3)'
+          c.shadowBlur = v * 4
+        } else {
+          c.fillStyle = `rgba(255, 255, 255, ${0.06 + v * 0.12})`
+          c.shadowBlur = 0
+        }
+
+        // Mirror bars from center
+        const r = Math.min(barW / 2, 1.5)
+        // Top half
+        c.beginPath()
+        c.roundRect(x, midY - barH, barW, barH, r)
+        c.fill()
+        // Bottom half (mirror)
+        c.beginPath()
+        c.roundRect(x, midY, barW, barH, r)
+        c.fill()
+      }
+      c.shadowBlur = 0
+    }
+    draw()
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [audioElement, isPlaying, progress])
+
+  return <canvas ref={canvasRef} className="w-full h-full" />
 }
 
 // ─── Explore media item type ────────────────────────────────────
@@ -133,6 +216,9 @@ export default function FloatingAudioPlayer() {
   const [audioEl, setAudioEl] = useState<HTMLAudioElement | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [showQueue, setShowQueue] = useState(false)
+  const [liked, setLiked] = useState(false)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const [showSpeed, setShowSpeed] = useState(false)
 
   // Explore mini-browser state
   const [exploreSongs, setExploreSongs] = useState<ExploreMedia[]>([])
@@ -173,6 +259,27 @@ export default function FloatingAudioPlayer() {
         .finally(() => setExploreLoading(false))
     }
   }, [expanded, exploreFetched])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.code === 'Space') { e.preventDefault(); togglePlayPause() }
+      if (e.key === 'ArrowRight' && e.shiftKey) playNext()
+      if (e.key === 'ArrowLeft' && e.shiftKey) playPrevious()
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [togglePlayPause, playNext, playPrevious])
+
+  // Sync playback rate
+  useEffect(() => {
+    const el = getAudioElement()
+    if (el) el.playbackRate = playbackRate
+  }, [playbackRate, getAudioElement, currentTrack])
+
+  // Reset liked state on track change
+  useEffect(() => { setLiked(false) }, [currentTrack?.id])
 
   const formatTime = useCallback((t: number) => {
     if (isNaN(t)) return '0:00'
@@ -396,139 +503,178 @@ export default function FloatingAudioPlayer() {
     )
   }
 
-  // ──── EXPANDED MODE (340px, Spotify-like vertical player) ───
+  // ──── EXPANDED MODE (544px, wide player + 2×2 explore grid) ───
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
+
   return (
     <div
-      className="fixed top-0 right-0 h-screen w-[340px] z-40 flex flex-col transition-all duration-300"
+      className="fixed top-0 right-0 h-screen w-[544px] z-40 flex flex-col transition-all duration-300"
       style={{
-        background: 'linear-gradient(180deg, #111113 0%, #09090b 100%)',
-        borderLeft: '1px solid rgba(34, 211, 238, 0.08)',
-        boxShadow: '-6px 0 32px rgba(0,0,0,0.5), 0 0 60px rgba(34,211,238,0.02)',
+        background: 'linear-gradient(180deg, #0d0d10 0%, #08080b 100%)',
+        borderLeft: '1px solid rgba(34, 211, 238, 0.06)',
+        boxShadow: '-8px 0 40px rgba(0,0,0,0.6)',
       }}
     >
-      {/* Accent line */}
-      <div className="absolute top-0 left-0 bottom-0 w-px bg-gradient-to-b from-transparent via-teal-500/25 to-transparent" />
-
       {/* ─── Header ─── */}
-      <div className="flex items-center justify-between px-4 h-14 border-b border-white/5 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 h-12 border-b border-white/[0.04] flex-shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-          <span className="text-[11px] text-gray-400 font-semibold tracking-wide">NOW PLAYING</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+          <span className="text-[10px] text-gray-500 font-semibold tracking-widest uppercase">Now Playing</span>
         </div>
-        <button onClick={() => setExpanded(false)} className="p-1.5 text-gray-500 hover:text-teal-400 hover:bg-white/5 rounded-lg transition-colors" title="Collapse">
-          <ChevronRight size={18} />
+        <button onClick={() => setExpanded(false)} className="p-1.5 text-gray-600 hover:text-teal-400 hover:bg-white/5 rounded-lg transition-colors" title="Collapse">
+          <ChevronRight size={16} />
         </button>
       </div>
 
-      {/* ─── Album Art ─── */}
-      <div className="px-6 pt-5 pb-3 flex-shrink-0">
-        <div className="relative aspect-square rounded-xl overflow-hidden ring-1 ring-white/10 shadow-2xl shadow-black/60">
-          {currentTrack.imageUrl ? (
-            <Image src={currentTrack.imageUrl} alt={currentTrack.title} fill className="object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gray-800/80 flex items-center justify-center">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.3)" strokeWidth="1.5">
-                <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-              </svg>
+      {/* ─── Now Playing Section ─── */}
+      <div className="flex gap-4 px-5 pt-4 pb-2 flex-shrink-0">
+        {/* Album art with progress ring */}
+        <div className="relative w-28 h-28 flex-shrink-0">
+          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="2" />
+            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(34,211,238,0.5)" strokeWidth="2.5"
+              strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 46}`}
+              strokeDashoffset={`${2 * Math.PI * 46 * (1 - progress / 100)}`}
+              className="transition-all duration-200" />
+          </svg>
+          <div className="absolute inset-[5px] rounded-xl overflow-hidden ring-1 ring-white/[0.08]">
+            {currentTrack.imageUrl ? (
+              <Image src={currentTrack.imageUrl} alt={currentTrack.title} fill className="object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gray-800/80 flex items-center justify-center">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.25)" strokeWidth="1.5">
+                  <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                </svg>
+              </div>
+            )}
+          </div>
+          {isPlaying && <div className="absolute inset-[5px] rounded-xl ring-1 ring-teal-500/20 animate-pulse" />}
+        </div>
+
+        {/* Track info + quick actions */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <p className="text-gray-100 font-bold text-sm truncate leading-tight">{currentTrack.title}</p>
+          {currentTrack.artist && <p className="text-gray-500 text-xs truncate mt-0.5">{currentTrack.artist}</p>}
+          <div className="flex items-center gap-2 mt-2.5">
+            {/* Like */}
+            <button onClick={() => setLiked(!liked)}
+              className={`p-1.5 rounded-lg transition-all ${liked ? 'text-pink-400 bg-pink-500/10' : 'text-gray-600 hover:text-pink-400'}`}
+              title="Like">
+              <Heart size={14} fill={liked ? 'currentColor' : 'none'} />
+            </button>
+            {/* Queue current */}
+            <button onClick={() => addToPlaylist(currentTrack)}
+              className="p-1.5 rounded-lg text-gray-600 hover:text-teal-400 transition-all" title="Add to queue">
+              <List size={14} />
+            </button>
+            {/* Speed */}
+            <div className="relative">
+              <button onClick={() => setShowSpeed(!showSpeed)}
+                className={`px-2 py-1 rounded-lg text-[10px] font-mono transition-all ${playbackRate !== 1 ? 'text-teal-400 bg-teal-500/10' : 'text-gray-600 hover:text-gray-300 hover:bg-white/5'}`}
+                title="Playback speed">
+                {playbackRate}×
+              </button>
+              {showSpeed && (
+                <div className="absolute bottom-full left-0 mb-1 bg-gray-900 border border-white/10 rounded-lg p-1 flex gap-0.5 shadow-xl z-10">
+                  {speeds.map(s => (
+                    <button key={s} onClick={() => { setPlaybackRate(s); setShowSpeed(false) }}
+                      className={`px-2 py-1 rounded text-[10px] font-mono transition-colors ${s === playbackRate ? 'text-teal-400 bg-teal-500/10' : 'text-gray-500 hover:text-gray-200'}`}>
+                      {s}×
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-          {isPlaying && (
-            <div className="absolute inset-0 ring-2 ring-teal-500/20 rounded-xl animate-pulse" />
-          )}
+            {/* BPM indicator */}
+            <div className="flex items-center gap-1 ml-auto">
+              <Zap size={10} className="text-teal-500/50" />
+              <span className="text-[9px] text-gray-600 font-mono">HQ</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ─── Track Info ─── */}
-      <div className="px-6 pb-2 flex-shrink-0">
-        <p className="text-gray-100 font-bold text-base truncate">{currentTrack.title}</p>
-        {currentTrack.artist && <p className="text-gray-500 text-sm truncate mt-0.5">{currentTrack.artist}</p>}
-      </div>
-
-      {/* ─── Waveform + Progress ─── */}
-      <div className="px-6 pb-1 flex-shrink-0">
-        <div className="w-full h-10 relative rounded-lg overflow-hidden cursor-pointer" onClick={handleHorizontalSeek}>
-          <VerticalWaveform audioElement={audioEl} isPlaying={isPlaying} />
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: `linear-gradient(to right, transparent ${progress}%, rgba(0,0,0,0.45) ${progress}%)`,
-          }} />
+      {/* ─── Horizontal Waveform ─── */}
+      <div className="px-5 pb-1 flex-shrink-0">
+        <div className="w-full h-14 relative rounded-lg overflow-hidden cursor-pointer" onClick={handleHorizontalSeek}>
+          <HorizontalWaveform audioElement={audioEl} isPlaying={isPlaying} progress={progress} />
         </div>
-        <div className="flex justify-between mt-1">
-          <span className="text-[10px] text-gray-500 font-mono">{formatTime(currentTime)}</span>
-          <span className="text-[10px] text-gray-500 font-mono">{formatTime(duration)}</span>
+        <div className="flex justify-between mt-0.5">
+          <span className="text-[9px] text-gray-600 font-mono">{formatTime(currentTime)}</span>
+          <span className="text-[9px] text-gray-600 font-mono">{formatTime(duration)}</span>
         </div>
       </div>
 
       {/* ─── Transport Controls ─── */}
-      <div className="px-6 py-2 flex items-center justify-center gap-4 flex-shrink-0">
-        <button onClick={toggleShuffle} className={`transition-colors ${isShuffled ? 'text-teal-400' : 'text-gray-600 hover:text-gray-300'}`}>
-          <Shuffle size={15} />
+      <div className="px-5 py-1.5 flex items-center justify-center gap-5 flex-shrink-0">
+        <button onClick={toggleShuffle} className={`transition-colors ${isShuffled ? 'text-teal-400' : 'text-gray-600 hover:text-gray-300'}`} title="Shuffle (Shift+←→)">
+          <Shuffle size={14} />
         </button>
-        <button onClick={playPrevious} className="text-gray-400 hover:text-gray-200 transition-colors">
-          <SkipBack size={19} />
+        <button onClick={playPrevious} className="text-gray-400 hover:text-gray-200 transition-colors" title="Previous">
+          <SkipBack size={18} />
         </button>
         <button
           onClick={togglePlayPause}
-          className="w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-all"
+          className="w-11 h-11 rounded-full flex items-center justify-center active:scale-95 transition-all"
           style={{
             background: 'linear-gradient(135deg, #14b8a6, #22d3ee)',
-            boxShadow: isPlaying ? '0 0 24px rgba(34,211,238,0.35)' : '0 2px 8px rgba(0,0,0,0.3)',
+            boxShadow: isPlaying ? '0 0 20px rgba(34,211,238,0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
           }}
+          title="Play/Pause (Space)"
         >
-          {isPlaying ? <Pause size={20} className="text-gray-900" fill="currentColor" /> : <Play size={20} className="text-gray-900 ml-0.5" fill="currentColor" />}
+          {isPlaying ? <Pause size={18} className="text-gray-900" fill="currentColor" /> : <Play size={18} className="text-gray-900 ml-0.5" fill="currentColor" />}
         </button>
-        <button onClick={playNext} className="text-gray-400 hover:text-gray-200 transition-colors">
-          <SkipForward size={19} />
+        <button onClick={playNext} className="text-gray-400 hover:text-gray-200 transition-colors" title="Next">
+          <SkipForward size={18} />
         </button>
-        <button onClick={toggleLoop} className={`transition-colors ${isLooping ? 'text-teal-400' : 'text-gray-600 hover:text-gray-300'}`}>
-          <Repeat size={15} />
+        <button onClick={toggleLoop} className={`transition-colors ${isLooping ? 'text-teal-400' : 'text-gray-600 hover:text-gray-300'}`} title="Loop">
+          <Repeat size={14} />
         </button>
       </div>
 
       {/* ─── Volume ─── */}
-      <div className="px-6 pb-3 flex items-center gap-2 flex-shrink-0">
-        <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-gray-500 hover:text-gray-300">
-          {volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+      <div className="px-5 pb-2 flex items-center gap-2 flex-shrink-0">
+        <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-gray-600 hover:text-gray-300">
+          {volume === 0 ? <VolumeX size={13} /> : <Volume2 size={13} />}
         </button>
-        <div className="flex-1 h-1 bg-white/[0.06] rounded-full relative cursor-pointer group/vol"
+        <div className="flex-1 h-[3px] bg-white/[0.06] rounded-full relative cursor-pointer group/vol"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect()
             setVolume(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
           }}
         >
-          <div className="absolute top-0 left-0 h-full rounded-full bg-teal-500/60 transition-all" style={{ width: `${volume * 100}%` }} />
-          <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-teal-400 opacity-0 group-hover/vol:opacity-100 transition-opacity"
-            style={{ left: `calc(${volume * 100}% - 5px)`, boxShadow: '0 0 6px rgba(34,211,238,0.5)' }} />
+          <div className="absolute top-0 left-0 h-full rounded-full bg-gradient-to-r from-teal-600 to-teal-400 transition-all" style={{ width: `${volume * 100}%` }} />
+          <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-teal-400 opacity-0 group-hover/vol:opacity-100 transition-opacity"
+            style={{ left: `calc(${volume * 100}% - 4px)`, boxShadow: '0 0 6px rgba(34,211,238,0.5)' }} />
         </div>
-        <span className="text-[10px] text-gray-600 font-mono w-7 text-right">{Math.round(volume * 100)}%</span>
+        <span className="text-[9px] text-gray-700 font-mono w-6 text-right">{Math.round(volume * 100)}</span>
       </div>
 
       {/* ─── Queue (collapsible) ─── */}
       <div className="px-4 flex-shrink-0">
         <button onClick={() => setShowQueue(!showQueue)}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-gray-200 hover:bg-white/[0.03] transition-colors"
+          className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-[10px] text-gray-500 hover:text-gray-300 hover:bg-white/[0.02] transition-colors"
         >
-          <span className="flex items-center gap-2 font-semibold tracking-wide uppercase">
-            <List size={13} /> Queue
-            {playlist.length > 0 && <span className="text-[9px] text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-full">{playlist.length}</span>}
+          <span className="flex items-center gap-1.5 font-semibold tracking-widest uppercase">
+            <List size={11} /> Queue
+            {playlist.length > 0 && <span className="text-[8px] text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-full">{playlist.length}</span>}
           </span>
-          {showQueue ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {showQueue ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </button>
       </div>
 
       {showQueue && (
-        <div className="px-2 max-h-36 overflow-y-auto flex-shrink-0 scrollbar-hide border-b border-white/5 mb-1">
+        <div className="px-3 max-h-28 overflow-y-auto flex-shrink-0 scrollbar-hide border-b border-white/[0.04] mb-1">
           {playlist.length === 0 ? (
-            <div className="py-4 text-center text-gray-700 text-[10px]">Queue empty</div>
+            <div className="py-3 text-center text-gray-700 text-[9px]">Queue empty</div>
           ) : playlist.map((track, i) => {
             const isCurrent = currentTrack?.id === track.id
             return (
-              <div key={`${track.id}-${i}`} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5 ${isCurrent ? 'bg-teal-500/[0.08] border-l-2 border-teal-400' : 'hover:bg-white/[0.02] border-l-2 border-transparent'}`}>
+              <div key={`${track.id}-${i}`} className={`flex items-center gap-2 px-2 py-1 rounded-lg mb-0.5 ${isCurrent ? 'bg-teal-500/[0.06] border-l-2 border-teal-400' : 'hover:bg-white/[0.02] border-l-2 border-transparent'}`}>
                 <button onClick={() => playTrack(track)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                  <span className="text-[9px] text-gray-600 w-4 font-mono">{i + 1}</span>
-                  {track.imageUrl && <Image src={track.imageUrl} alt={track.title} width={24} height={24} className="w-6 h-6 rounded object-cover ring-1 ring-white/5" />}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-[10px] truncate ${isCurrent ? 'text-teal-400 font-semibold' : 'text-gray-300'}`}>{track.title}</p>
-                  </div>
+                  <span className="text-[8px] text-gray-700 w-3 font-mono">{i + 1}</span>
+                  {track.imageUrl && <Image src={track.imageUrl} alt={track.title} width={20} height={20} className="w-5 h-5 rounded object-cover ring-1 ring-white/5" />}
+                  <p className={`text-[10px] truncate flex-1 ${isCurrent ? 'text-teal-400 font-semibold' : 'text-gray-400'}`}>{track.title}</p>
                   {isCurrent && isPlaying && (
                     <div className="flex gap-[2px]">
                       <div className="w-[2px] h-2 bg-teal-400 rounded-full animate-pulse" />
@@ -537,88 +683,102 @@ export default function FloatingAudioPlayer() {
                     </div>
                   )}
                 </button>
-                <button onClick={() => removeFromPlaylist(track.id)} className="text-gray-700 hover:text-red-400 p-1"><X size={11} /></button>
+                <button onClick={() => removeFromPlaylist(track.id)} className="text-gray-700 hover:text-red-400 p-0.5"><X size={10} /></button>
               </div>
             )
           })}
         </div>
       )}
 
-      {/* ─── EXPLORE MINI-BROWSER ─── */}
-      <div className="flex-1 flex flex-col min-h-0 border-t border-white/5">
+      {/* ─── EXPLORE — 2×2 GRID ─── */}
+      <div className="flex-1 flex flex-col min-h-0 border-t border-white/[0.04]">
         {/* Search bar */}
-        <div className="px-3 py-2 flex-shrink-0">
+        <div className="px-4 py-2 flex-shrink-0">
           <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
             <input
               type="text"
               value={exploreSearch}
               onChange={(e) => setExploreSearch(e.target.value)}
-              placeholder="Search songs, vibes, artists..."
-              className="w-full bg-white/[0.04] border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-teal-500/40 transition-colors"
+              placeholder="Search songs, artists, genres..."
+              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-[11px] text-gray-300 placeholder-gray-700 focus:outline-none focus:border-teal-500/30 transition-colors"
             />
           </div>
         </div>
 
-        {/* Song list */}
-        <div className="flex-1 overflow-y-auto px-2 pb-4 scrollbar-hide">
+        {/* 2×2 Grid */}
+        <div className="flex-1 overflow-y-auto px-3 pb-3 scrollbar-hide">
           {exploreLoading ? (
             <div className="py-8 text-center">
               <div className="w-5 h-5 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-[10px] text-gray-600">Loading tracks...</p>
+              <p className="text-[10px] text-gray-700">Loading...</p>
             </div>
           ) : filteredExplore.length === 0 ? (
             <div className="py-8 text-center">
-              <Search size={20} className="mx-auto mb-2 text-gray-700" />
-              <p className="text-xs text-gray-600">{exploreSearch ? 'No matches found' : 'No tracks available'}</p>
+              <Search size={18} className="mx-auto mb-2 text-gray-800" />
+              <p className="text-[11px] text-gray-700">{exploreSearch ? 'No matches' : 'No tracks'}</p>
             </div>
           ) : (
-            filteredExplore.slice(0, 100).map((song) => {
-              const isCurrent = currentTrack?.id === song.id
-              const imgUrl = song.imageUrl || song.image_url
-              return (
-                <div
-                  key={song.id}
-                  className={`group/song w-full flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5 transition-colors ${
-                    isCurrent ? 'bg-teal-500/[0.08] border-l-2 border-teal-400' : 'hover:bg-white/[0.03] border-l-2 border-transparent'
-                  }`}
-                >
-                  {/* Play button — clicking plays this song only */}
-                  <button onClick={() => playExploreTrack(song)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                    {/* Thumbnail */}
-                    {imgUrl ? (
-                      <Image src={imgUrl} alt={song.title} width={36} height={36}
-                        className="w-9 h-9 rounded-md object-cover ring-1 ring-white/5 flex-shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-md bg-gray-800/60 flex items-center justify-center ring-1 ring-white/5 flex-shrink-0">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.4)" strokeWidth="2">
-                          <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-[11px] truncate leading-tight ${isCurrent ? 'text-teal-400 font-semibold' : 'text-gray-300'}`}>{song.title}</p>
-                      <p className="text-[9px] text-gray-600 truncate">{song.users?.username || song.username || 'Unknown'}</p>
-                    </div>
-                  </button>
-                  {/* Queue button */}
-                  <button
-                    onClick={(e) => queueExploreTrack(e, song)}
-                    className="opacity-0 group-hover/song:opacity-100 p-1 text-gray-600 hover:text-teal-400 transition-all flex-shrink-0"
-                    title="Add to queue"
+            <div className="grid grid-cols-2 gap-2">
+              {filteredExplore.slice(0, 60).map((song) => {
+                const isCurrent = currentTrack?.id === song.id
+                const imgUrl = song.imageUrl || song.image_url
+                return (
+                  <div
+                    key={song.id}
+                    className={`group/card relative rounded-xl overflow-hidden transition-all cursor-pointer ${
+                      isCurrent ? 'ring-1 ring-teal-500/30 bg-teal-500/[0.06]' : 'hover:bg-white/[0.03] ring-1 ring-white/[0.04] hover:ring-white/[0.08]'
+                    }`}
                   >
-                    <List size={12} />
-                  </button>
-                  {isCurrent && isPlaying && (
-                    <div className="flex gap-[2px] flex-shrink-0">
-                      <div className="w-[2px] h-2.5 bg-teal-400 rounded-full animate-pulse" />
-                      <div className="w-[2px] h-2.5 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }} />
-                      <div className="w-[2px] h-2.5 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
-                    </div>
-                  )}
-                </div>
-              )
-            })
+                    <button onClick={() => playExploreTrack(song)} className="w-full text-left">
+                      {/* Cover */}
+                      <div className="aspect-square relative overflow-hidden">
+                        {imgUrl ? (
+                          <Image src={imgUrl} alt={song.title} fill className="object-cover group-hover/card:scale-105 transition-transform duration-300" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-800/60 to-gray-900/80 flex items-center justify-center">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.2)" strokeWidth="1.5">
+                              <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                            </svg>
+                          </div>
+                        )}
+                        {/* Play overlay */}
+                        <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/40 transition-all flex items-center justify-center">
+                          <div className="w-9 h-9 rounded-full bg-teal-500/90 flex items-center justify-center opacity-0 group-hover/card:opacity-100 scale-75 group-hover/card:scale-100 transition-all shadow-lg shadow-teal-500/20">
+                            {isCurrent && isPlaying ? (
+                              <Pause size={14} className="text-gray-900" fill="currentColor" />
+                            ) : (
+                              <Play size={14} className="text-gray-900 ml-0.5" fill="currentColor" />
+                            )}
+                          </div>
+                        </div>
+                        {/* Now playing indicator */}
+                        {isCurrent && isPlaying && (
+                          <div className="absolute bottom-1 left-1 flex gap-[2px]">
+                            <div className="w-[2px] h-3 bg-teal-400 rounded-full animate-pulse" />
+                            <div className="w-[2px] h-3 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }} />
+                            <div className="w-[2px] h-3 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+                          </div>
+                        )}
+                      </div>
+                      {/* Info */}
+                      <div className="px-2 py-1.5">
+                        <p className={`text-[10px] truncate leading-tight font-medium ${isCurrent ? 'text-teal-400' : 'text-gray-300'}`}>{song.title}</p>
+                        <p className="text-[8px] text-gray-600 truncate mt-0.5">{song.users?.username || song.username || 'Unknown'}</p>
+                      </div>
+                    </button>
+                    {/* Queue button — appears on hover */}
+                    <button
+                      onClick={(e) => queueExploreTrack(e, song)}
+                      className="absolute top-1.5 right-1.5 p-1.5 rounded-lg bg-black/60 text-gray-400 hover:text-teal-400 opacity-0 group-hover/card:opacity-100 transition-all backdrop-blur-sm"
+                      title="Add to queue"
+                    >
+                      <List size={11} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
           )}
         </div>
       </div>
