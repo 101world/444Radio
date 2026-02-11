@@ -1314,21 +1314,21 @@ function CreatePageContent() {
       </div>
 
       {/* Chat Area - Glassmorphism Effect */}
-      <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 md:px-8 lg:px-12 py-6 pb-40 max-w-4xl md:max-w-none mx-auto w-full scrollbar-thin scroll-smooth">
-        {/* Single Glassmorphism Container */}
+      <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 md:px-8 lg:px-12 py-6 pb-40 w-full scrollbar-thin scroll-smooth">
+        {/* Single Glassmorphism Container - Full Width */}
         <div className="relative p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-sm bg-white/[0.01] border border-white/10 shadow-2xl">
           {/* Dew-like gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5 rounded-3xl pointer-events-none"></div>
           
-          {/* Content */}
-          <div className="relative space-y-4">
+          {/* Content - Centered and Constrained */}
+          <div className="relative space-y-4 max-w-5xl mx-auto">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {/* Message Content - No Bubble */}
-              <div className={`max-w-[85%] ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
+              {/* Message Content - Aesthetic Width */}
+              <div className={`max-w-[85%] md:max-w-3xl ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
                 {/* Text Message - No Background Bubble */}
                 {message.content && (
                   <div className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}>
