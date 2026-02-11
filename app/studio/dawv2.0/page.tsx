@@ -41,7 +41,8 @@ import {
   Zap,
   Send,
   Lightbulb,
-  ChevronLeft
+  ChevronLeft,
+  GripVertical
 } from 'lucide-react'
 
 // Extend Window interface for drag throttling and pending clip tracking
@@ -1252,36 +1253,58 @@ export default function DAWProRebuild() {
         
         showToast('Stems separated! Adding to timeline...', 'success')
         
-        // Get current tracks from engine
-        const currentTracks = daw?.getTracks() || []
+        // Process stems: create tracks and add clips
         const stemEntries = Object.entries(data.stems) as [string, string][]
+        const stemTracks: Array<{ stemType: string; stemUrl: string; trackId: string }> = []
         
+        // First pass: Create/find tracks for each stem
         for (const [stemType, stemUrl] of stemEntries) {
-          // Find an empty track or create a new one
           const latestTracks = daw?.getTracks() || []
           let targetTrack = latestTracks.find(t => t.clips.length === 0)
           
-          if (!targetTrack) {
+          if (!targetTrack && daw) {
             // Create new track named after the stem type
             const trackName = `${stemType.charAt(0).toUpperCase() + stemType.slice(1)}`
-            targetTrack = daw?.getTrackManager()?.createTrack({ name: trackName })
-          } else {
+            targetTrack = daw.getTrackManager()?.createTrack({ name: trackName })
+            console.log(`Created new track for ${stemType}:`, targetTrack?.id)
+          } else if (targetTrack && daw) {
             // Rename the empty track to match the stem type
             const trackName = `${stemType.charAt(0).toUpperCase() + stemType.slice(1)}`
-            daw?.updateTrack(targetTrack.id, { name: trackName } as any)
+            daw.updateTrack(targetTrack.id, { name: trackName } as any)
+            console.log(`Using existing empty track for ${stemType}:`, targetTrack.id)
           }
           
-          if (targetTrack && daw) {
-            try {
-              await handleAddClip(stemUrl as string, targetTrack.id, 0)
-            } catch (error) {
-              console.error(`Failed to add ${stemType} stem:`, error)
-            }
+          if (targetTrack) {
+            stemTracks.push({ stemType, stemUrl, trackId: targetTrack.id })
           }
         }
         
-        // Refresh tracks state
-        setTracks(daw?.getTracks() || [])
+        // Update state after creating tracks
+        if (daw) {
+          setTracks(daw.getTracks())
+          console.log('Tracks updated after stem track creation:', daw.getTracks().length)
+        }
+        
+        // Second pass: Add clips to tracks
+        for (const { stemType, stemUrl, trackId } of stemTracks) {
+          try {
+            console.log(`Adding ${stemType} clip to track ${trackId}`)
+            await handleAddClip(stemUrl, trackId, 0)
+            console.log(`✓ ${stemType} clip added`)
+          } catch (error) {
+            console.error(`Failed to add ${stemType} stem:`, error)
+            showToast(`Failed to add ${stemType} stem`, 'error')
+          }
+        }
+        
+        // Final state update to ensure UI reflects all clips
+        if (daw) {
+          const finalTracks = daw.getTracks()
+          setTracks(finalTracks)
+          console.log('Final tracks after all stems added:', finalTracks.length)
+          console.log('Clips per track:', finalTracks.map(t => ({ id: t.id, name: t.name, clips: t.clips.length })))
+        }
+        
         showToast(`✓ ${stemEntries.length} stems added to timeline`, 'success')
       } else {
         throw new Error('No stems returned')
@@ -2290,8 +2313,9 @@ export default function DAWProRebuild() {
                     {tracks.map((track, idx) => (
                       <div
                         key={track.id}
+                        data-track-header-id={track.id}
                         style={{ height: `${TRACK_HEIGHT}px` }}
-                        className={`border-b border-white/[0.03] px-3 py-2 cursor-pointer transition-all ${
+                        className={`border-b border-white/[0.03] px-3 py-2 cursor-pointer transition-all relative ${
                           selectedTrackId === track.id
                             ? 'bg-white/[0.04] border-l-2 border-l-cyan-400'
                             : 'bg-transparent hover:bg-white/[0.02]'
@@ -2303,9 +2327,73 @@ export default function DAWProRebuild() {
                           setSelectedTrackId(track.id)
                         }}
                       >
+                        {/* Drag Handle */}
+                        <div
+                          className="absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-white/[0.05] group"
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                            const headerEl = e.currentTarget.parentElement as HTMLElement
+                            const headersContainer = headerEl.parentElement as HTMLElement
+                            const origIndex = idx
+                            let targetIndex = idx
+                            let insertIndicator: HTMLElement | null = null
+                            
+                            // Create insert indicator
+                            insertIndicator = document.createElement('div')
+                            insertIndicator.className = 'absolute left-0 right-0 h-0.5 bg-cyan-400 z-50'
+                            headersContainer.appendChild(insertIndicator)
+                            
+                            headerEl.style.opacity = '0.5'
+                            headerEl.style.cursor = 'grabbing'
+                            
+                            const handleMove = (moveE: MouseEvent) => {
+                              const headersRect = headersContainer.getBoundingClientRect()
+                              const y = moveE.clientY - headersRect.top + headersContainer.scrollTop
+                              targetIndex = Math.max(0, Math.min(tracks.length - 1, Math.floor(y / TRACK_HEIGHT)))
+                              
+                              // Update insert indicator position
+                              if (insertIndicator) {
+                                insertIndicator.style.top = `${targetIndex * TRACK_HEIGHT}px`
+                              }
+                            }
+                            
+                            const handleUp = () => {
+                              headerEl.style.opacity = ''
+                              headerEl.style.cursor = ''
+                              if (insertIndicator) {
+                                insertIndicator.remove()
+                              }
+                              
+                              // Reorder tracks if position changed
+                              if (daw && targetIndex !== origIndex) {
+                                const newTracks = [...tracks]
+                                const [movedTrack] = newTracks.splice(origIndex, 1)
+                                newTracks.splice(targetIndex, 0, movedTrack)
+                                
+                                // Update DAW track manager with new order
+                                const trackManager = daw.getTrackManager()
+                                const newTrackIds = newTracks.map(t => t.id)
+                                trackManager.reorderTracks(newTrackIds)
+                                setTracks(daw.getTracks())
+                                markProjectDirty()
+                                showToast(`Track moved to position ${targetIndex + 1}`, 'success')
+                              }
+                              
+                              window.removeEventListener('mousemove', handleMove)
+                              window.removeEventListener('mouseup', handleUp)
+                            }
+                            
+                            window.addEventListener('mousemove', handleMove)
+                            window.addEventListener('mouseup', handleUp)
+                          }}
+                          title="Drag to reorder track"
+                        >
+                          <GripVertical size={12} className="text-white/20 group-hover:text-white/40 transition-colors" />
+                        </div>
+                        
                         {/* Track Name */}
                         <div 
-                          className="text-[11px] font-medium text-white/60 mb-1.5 truncate cursor-text"
+                          className="text-[11px] font-medium text-white/60 mb-1.5 truncate cursor-text ml-5"
                           onDoubleClick={(e) => {
                             e.stopPropagation()
                             setEditingTrackId(track.id)
@@ -2549,12 +2637,14 @@ export default function DAWProRebuild() {
                           Loop {formatBarsBeats(loopStart)} → {formatBarsBeats(loopEnd)}
                         </div>
                       </>
-                    )}
+                    )}  
                   </div>
 
+                  <div data-tracks-container>
                   {tracks.map((track, idx) => (
                     <div
                       key={track.id}
+                      data-track-id={track.id}
                       className="relative border-b border-white/[0.02]"
                       style={{
                         height: `${TRACK_HEIGHT}px`,
@@ -2653,8 +2743,10 @@ export default function DAWProRebuild() {
                             // The clip element we're dragging
                             const clipEl = e.currentTarget as HTMLElement
                             const origLeft = clip.startTime * zoom
+                            const origTrackId = track.id
                             let lastNewStartTime = clip.startTime
                             let targetTrackId = track.id
+                            let highlightedTrackEl: HTMLElement | null = null
                             
                             const handleMove = (moveE: MouseEvent) => {
                               if (!timelineRef.current) return
@@ -2663,23 +2755,51 @@ export default function DAWProRebuild() {
                               const x = moveE.clientX - timelineRect.left + scrollLeft - TRACK_HEADER_WIDTH - offsetX
                               lastNewStartTime = snapTime(Math.max(0, x / zoom))
                               
+                              // Detect cross-track drag by Y position (more accurate calculation)
+                              const tracksContainer = timelineRef.current.querySelector('[data-tracks-container]') as HTMLElement
+                              if (tracksContainer) {
+                                const tracksRect = tracksContainer.getBoundingClientRect()
+                                const y = moveE.clientY - tracksRect.top + tracksContainer.scrollTop
+                                const trackIndex = Math.max(0, Math.min(tracks.length - 1, Math.floor(y / TRACK_HEIGHT)))
+                                const newTargetTrackId = tracks[trackIndex]?.id || track.id
+                                
+                                // Visual feedback: highlight target track
+                                if (newTargetTrackId !== targetTrackId) {
+                                  // Remove old highlight
+                                  if (highlightedTrackEl) {
+                                    highlightedTrackEl.style.backgroundColor = ''
+                                  }
+                                  // Add new highlight if crossing tracks
+                                  if (newTargetTrackId !== origTrackId) {
+                                    const trackEl = tracksContainer.querySelector(`[data-track-id="${newTargetTrackId}"]`) as HTMLElement
+                                    if (trackEl) {
+                                      trackEl.style.backgroundColor = 'rgba(34, 211, 238, 0.1)'
+                                      highlightedTrackEl = trackEl
+                                    }
+                                  }
+                                  targetTrackId = newTargetTrackId
+                                }
+                              }
+                              
                               // DOM-only transform for smooth dragging (no React re-render)
                               const deltaX = lastNewStartTime * zoom - origLeft
                               clipEl.style.transform = `translateX(${deltaX}px)`
-                              clipEl.style.opacity = '0.85'
+                              clipEl.style.opacity = '0.8'
                               clipEl.style.zIndex = '50'
-                              
-                              // Detect cross-track drag by Y position
-                              const y = moveE.clientY - timelineRect.top - TIMELINE_HEIGHT + timelineRef.current.scrollTop
-                              const trackIndex = Math.max(0, Math.min(tracks.length - 1, Math.floor(y / TRACK_HEIGHT)))
-                              targetTrackId = tracks[trackIndex]?.id || track.id
+                              clipEl.style.cursor = 'grabbing'
                             }
                             
                             const handleUp = () => {
+                              // Clear track highlight
+                              if (highlightedTrackEl) {
+                                highlightedTrackEl.style.backgroundColor = ''
+                              }
+                              
                               // Reset DOM transform
                               clipEl.style.transform = ''
                               clipEl.style.opacity = ''
                               clipEl.style.zIndex = ''
+                              clipEl.style.cursor = ''
                               
                               if (daw) {
                                 // Cross-track move: remove from old, add to new
@@ -2945,6 +3065,7 @@ export default function DAWProRebuild() {
                       )}
                     </div>
                   ))}
+                  </div> {/* End data-tracks-container */}
 
                   {/* Playhead line — positioned imperatively by TimelineRenderer */}
                   <div
