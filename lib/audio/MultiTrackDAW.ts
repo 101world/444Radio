@@ -139,10 +139,11 @@ export class MultiTrackDAW {
   }
 
   // Transport Controls
-  play(): void {
+  async play(): Promise<void> {
     if (this.transportState.isPlaying) return
 
-    this.audioContext.resume()
+    // CRITICAL: await context resume before scheduling anything
+    await this.audioContext.resume()
     this.transportState.isPlaying = true
     this.playbackStartTime = this.audioContext.currentTime
     this.playbackOffset = this.transportState.currentTime
@@ -355,7 +356,7 @@ export class MultiTrackDAW {
     this.emit('bpmChanged', bpm)
   }
 
-  seekTo(time: number): void {
+  async seekTo(time: number): Promise<void> {
     const wasPlaying = this.transportState.isPlaying
     
     if (wasPlaying) {
@@ -370,7 +371,7 @@ export class MultiTrackDAW {
     
     // Resume if was playing
     if (wasPlaying) {
-      this.play()
+      await this.play()
     }
   }
 

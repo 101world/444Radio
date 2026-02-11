@@ -233,23 +233,20 @@ export default function DAWProRebuild() {
           const state = instance.getTransportState()
           
           // CRITICAL: Use Web Audio clock as single source of truth
-          // This ensures deterministic, glitch-free timing
           const audioContext = instance.getAudioContext()
           if (state.isPlaying && audioContext) {
             const currentTime = instance.getCurrentTime()
             const loop = loopRef.current
             
-            // Handle looping - check if we've passed the loop end
+            // Handle looping
             if (loop.enabled && currentTime >= loop.end) {
-              instance.seekTo(loop.start) // This will restart playback from loop start
+              instance.seekTo(loop.start)
             } else {
-              // Use requestAnimationFrame batching to prevent UI jank
               setPlayhead(currentTime)
             }
-            setIsPlaying(true)
-          } else {
-            setIsPlaying(false)
           }
+          // Don't set isPlaying here — let handlePlay/handlePause own that state
+          // This prevents flicker during seekTo() which does pause→play internally
           animationFrameId = requestAnimationFrame(animate)
         }
 
@@ -526,10 +523,10 @@ export default function DAWProRebuild() {
   }, [daw, bpm])
 
   // Transport controls
-  const handlePlay = useCallback(() => {
+  const handlePlay = useCallback(async () => {
     if (!daw) return
     try {
-      daw.play()
+      await daw.play()
       setIsPlaying(true)
 
       // Start level metering at 60fps
@@ -1632,10 +1629,10 @@ export default function DAWProRebuild() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mx-auto mb-4" />
-          <div className="text-cyan-400 text-xl font-bold">Initializing Studio...</div>
+          <Loader2 className="w-8 h-8 text-cyan-400/60 animate-spin mx-auto mb-3" />
+          <div className="text-white/30 text-[11px] font-medium tracking-wide">Initializing Studio</div>
         </div>
       </div>
     )
@@ -1645,290 +1642,156 @@ export default function DAWProRebuild() {
     <ErrorBoundary>
       <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden md:pl-20">
       {hydrationProgress && (
-        <div className="fixed top-24 right-6 z-40 px-4 py-2 bg-[#111] border border-cyan-500/40 rounded-lg text-xs text-cyan-100 shadow-lg">
+        <div className="fixed top-20 right-4 z-40 px-3 py-1.5 bg-[#111]/90 backdrop-blur-sm border border-white/[0.08] rounded-md text-[10px] text-white/40">
           Loading project… {hydrationProgress.current}/{hydrationProgress.total}
         </div>
       )}
       {/* Top Bar */}
-      <div className="h-20 bg-gradient-to-r from-[#0a0a0a] via-[#0d0d0d] to-[#0a0a0a] border-b border-gray-800/50 flex items-center justify-between px-6 backdrop-blur-sm">
-        <div className="flex items-center gap-6">
-          {/* Logo/Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <Music2 size={20} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">444 Studio Pro</h1>
-              <input
-                id="project-name"
-                name="projectName"
-                type="text"
-                value={projectName}
-                onChange={(e) => {
-                  setProjectName(e.target.value)
-                  markProjectDirty()
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    e.currentTarget.blur() // Remove focus after Enter
-                  }
-                }}
-                className="bg-transparent border-none text-xs text-gray-500 focus:text-cyan-400 focus:outline-none w-48 -mt-0.5"
-                placeholder="Project Name"
-              />
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="h-8 w-px bg-gray-800"></div>
-
-          {/* Project Controls */}
-          <div className="flex items-center gap-2">
-            <select
-              value={currentProjectId || ''}
-              onChange={(e) => {
-                const id = e.target.value
-                if (!id) resetProject()
-                else handleLoadProject(id)
-              }}
-              className="bg-[#1a1a1a] border border-gray-700/50 hover:border-gray-600 rounded-lg px-4 py-2 text-sm focus:border-cyan-500 focus:outline-none min-w-[160px] transition-all"
-            >
-              <option value="">New Project</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title || 'Untitled'}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={resetProject}
-              className="px-4 py-2 bg-[#1a1a1a] hover:bg-gray-800 border border-gray-700/50 hover:border-gray-600 text-gray-300 rounded-lg text-sm transition-all"
-              title="New project"
-            >
-              New
-            </button>
-            <button
-              onClick={handleRenameProject}
-              disabled={!currentProjectId}
-              className="px-4 py-2 bg-[#1a1a1a] hover:bg-gray-800 border border-gray-700/50 hover:border-gray-600 text-gray-300 rounded-lg text-sm disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              title="Rename"
-            >
-              Rename
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="h-8 w-px bg-gray-800"></div>
-
-          {/* BPM */}
-          <div className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-4 py-2">
-            <span className="text-xs text-gray-500 uppercase font-semibold tracking-wider">BPM</span>
-            <input
-              type="range"
-              min="60"
-              max="200"
-              value={bpm}
-              onChange={(e) => {
-                const next = Number(e.target.value)
-                if (daw) {
-                  setBpm(next)
-                  daw.setBPM(next)
-                  // Update TimeEngine with new BPM
-                  const timeEngine = daw.getTimeEngine()
-                  timeEngine.setTempo(next, 0)
-                  markProjectDirty()
-                  // Clear and reset metronome if active
-                  if (metronomeInterval) {
-                    clearInterval(metronomeInterval)
-                    setMetronomeInterval(null)
-                    if (metronomeEnabled && isPlaying) {
-                      const interval = setInterval(() => {
-                        setMetronomeFlash(true)
-                        setTimeout(() => setMetronomeFlash(false), 50)
-                      }, (60 / next) * 1000)
-                      setMetronomeInterval(interval)
-                    }
-                  }
-                }
-              }}
-              className="w-32 accent-cyan-500"
-              title={`BPM: ${bpm}`}
-            />
-            <span className="text-sm text-white w-10 text-center font-mono font-bold">{bpm}</span>
-          </div>
-
-          {/* Master Volume */}
-          <div className="flex items-center gap-3 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-4 py-2">
-            <Volume2 size={16} className="text-gray-500" />
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={masterVolume}
-              onChange={(e) => {
-                const vol = Number(e.target.value)
-                setMasterVolume(vol)
-                // Master volume is applied during export and per-track during playback
-                // We store the value and apply it in the export function
-              }}
-              className="w-24 accent-cyan-500"
-              title={`Master Volume: ${masterVolume}%`}
-            />
-            <span className="text-xs text-gray-400 w-8 text-right font-mono">{masterVolume}</span>
-          </div>
+      {/* Unified Top Bar */}
+      <div className="h-14 bg-[#0d0d0d]/95 border-b border-white/[0.06] flex items-center px-4 gap-2 backdrop-blur-xl select-none shrink-0">
+        {/* Logo */}
+        <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-violet-500 rounded-md flex items-center justify-center shrink-0">
+          <Music2 size={15} className="text-white" />
         </div>
 
-        {/* Right Side Actions */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowBrowser(!showBrowser)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-              showBrowser
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                : 'bg-[#1a1a1a] text-gray-400 border border-gray-700/50 hover:border-gray-600'
-            }`}
-            title="Toggle browser (B)"
-          >
-            <Music2 size={16} />
-            Browser
-          </button>
+        {/* Project Name */}
+        <input
+          id="project-name"
+          name="projectName"
+          type="text"
+          value={projectName}
+          onChange={(e) => { setProjectName(e.target.value); markProjectDirty() }}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+          className="bg-transparent text-[13px] text-white/70 focus:text-white w-32 truncate border-none outline-none placeholder:text-white/20 font-medium"
+          placeholder="Untitled"
+        />
 
-          <button
-            onClick={() => setShowRightPanel(!showRightPanel)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-              showRightPanel
-                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                : 'bg-[#1a1a1a] text-gray-400 border border-gray-700/50 hover:border-gray-600'
-            }`}
-            title="Toggle tools panel"
-          >
-            <PanelRight size={16} />
-            Tools
-          </button>
+        {/* Divider */}
+        <div className="h-5 w-px bg-white/[0.06]" />
 
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold transition-all flex items-center gap-2 shadow-xl shadow-purple-500/30 border border-purple-400/30"
-            title="AI generation"
-          >
-            <Sparkles size={18} className="animate-pulse" />
-            Generate AI
-          </button>
-
-          <button
-            onClick={() => handleSave('manual')}
-            disabled={saving}
-            className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-black rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-cyan-500/20"
-            title={currentProjectId ? 'Save project' : 'Save as new project'}
-          >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            {saving ? 'Saving' : 'Save'}
-          </button>
-
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-emerald-500/20"
-            title="Export project as WAV"
-          >
-            {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            {isExporting ? 'Exporting...' : 'Export'}
-          </button>
-
-          {(saveStatus !== 'idle' || saveTick) && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-medium">
-              {saveStatus !== 'idle' ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  {saveStatus === 'autosaving' ? 'Auto' : 'Saving'}
-                </>
-              ) : (
-                <>
-                  <span className="text-emerald-400">✓</span>
-                  Saved
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Transport Bar */}
-      <div className="h-18 bg-[#0d0d0d] border-b border-gray-800 flex items-center justify-between px-8">
-        <div className="flex items-center gap-3">
+        {/* Transport */}
+        <div className="flex items-center gap-1">
           <button
             onClick={handleStop}
-            className="w-10 h-10 flex items-center justify-center hover:bg-gray-800 rounded-lg transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] transition-all"
             title="Stop"
           >
-            <Square size={18} />
+            <Square size={14} fill="currentColor" />
           </button>
           <button
             onClick={isPlaying ? handlePause : handlePlay}
-            className={`w-12 h-12 flex items-center justify-center rounded-lg transition-all ${
+            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
               isPlaying
-                ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/50'
-                : 'bg-gray-800 hover:bg-gray-700'
+                ? 'bg-cyan-400 text-black shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                : 'bg-white/[0.08] text-white hover:bg-white/[0.12]'
             }`}
             title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
           >
-            {isPlaying ? <Pause size={22} /> : <Play size={22} />}
+            {isPlaying ? <Pause size={16} strokeWidth={2.5} /> : <Play size={16} fill="currentColor" strokeWidth={0} />}
           </button>
           <button
             onClick={isRecording ? handleStopRecording : handleStartRecording}
             disabled={!recordingTrackId}
-            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${
               isRecording 
-                ? 'bg-red-600 text-white animate-pulse' 
+                ? 'bg-red-500 text-white animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.4)]' 
                 : recordingTrackId 
-                  ? 'bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white' 
-                  : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                  ? 'text-red-400 hover:bg-red-500/20' 
+                  : 'text-white/15 cursor-not-allowed'
             }`}
-            title={isRecording ? 'Stop recording' : recordingTrackId ? 'Start recording' : 'Arm a track first (click R)'}
+            title={isRecording ? 'Stop recording' : recordingTrackId ? 'Record' : 'Arm a track first'}
           >
-            <div className={`rounded-full ${isRecording ? 'w-3 h-3 bg-current' : 'w-5 h-5 bg-current'}`} />
+            <div className={`rounded-full bg-current ${isRecording ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'}`} />
           </button>
         </div>
 
-        <div className="flex-1 flex items-center justify-center gap-4">
-          <div className="text-3xl font-mono tabular-nums text-cyan-400 font-bold tracking-wider" title="Press B to toggle browser | Press Space to play/pause | Ctrl+S to save">
+        {/* Divider */}
+        <div className="h-5 w-px bg-white/[0.06]" />
+
+        {/* Time Display */}
+        <div className="flex items-baseline gap-2 min-w-[140px] justify-center font-mono">
+          <span className="text-xl tabular-nums text-cyan-400 font-semibold tracking-tight">
             {formatBarsBeats(playhead)}
-          </div>
-          <div className="text-xs font-mono text-gray-500 mt-0.5">
+          </span>
+          <span className="text-[11px] tabular-nums text-white/25">
             {Math.floor(playhead / 60)}:{String(Math.floor(playhead % 60)).padStart(2, '0')}.{String(Math.floor((playhead % 1) * 100)).padStart(2, '0')}
-          </div>
-          {(saveStatus === 'saving' || saveStatus === 'autosaving') && (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/40 text-cyan-100 text-xs">
-              <Loader2 size={14} className="animate-spin" />
-              {saveStatus === 'autosaving' ? 'Autosaving…' : 'Saving…'}
-            </div>
-          )}
-          {saveStatus === 'idle' && saveTick && (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-emerald-100 text-xs">
-              ✓ Saved
-            </div>
-          )}
+          </span>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Divider */}
+        <div className="h-5 w-px bg-white/[0.06]" />
+
+        {/* BPM */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-white/30 uppercase font-semibold tracking-widest">BPM</span>
+          <input
+            type="range"
+            min="60"
+            max="200"
+            value={bpm}
+            onChange={(e) => {
+              const next = Number(e.target.value)
+              if (daw) {
+                setBpm(next)
+                daw.setBPM(next)
+                const timeEngine = daw.getTimeEngine()
+                timeEngine.setTempo(next, 0)
+                markProjectDirty()
+                if (metronomeInterval) {
+                  clearInterval(metronomeInterval)
+                  setMetronomeInterval(null)
+                  if (metronomeEnabled && isPlaying) {
+                    const interval = setInterval(() => {
+                      setMetronomeFlash(true)
+                      setTimeout(() => setMetronomeFlash(false), 50)
+                    }, (60 / next) * 1000)
+                    setMetronomeInterval(interval)
+                  }
+                }
+              }
+            }}
+            className="w-20 h-1 accent-cyan-400 cursor-pointer"
+            title={`BPM: ${bpm}`}
+          />
+          <span className="text-[13px] text-white/80 w-8 text-center font-mono font-semibold">{bpm}</span>
+        </div>
+
+        {/* Master Volume */}
+        <div className="flex items-center gap-1.5">
+          <Volume2 size={13} className="text-white/30" />
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={masterVolume}
+            onChange={(e) => { setMasterVolume(Number(e.target.value)) }}
+            className="w-16 h-1 accent-cyan-400 cursor-pointer"
+            title={`Master: ${masterVolume}%`}
+          />
+          <span className="text-[11px] text-white/40 w-6 text-right font-mono">{masterVolume}</span>
+        </div>
+
+        {/* Divider */}
+        <div className="h-5 w-px bg-white/[0.06]" />
+
+        {/* Mode Toggles */}
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setLoopEnabled(!loopEnabled)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`h-7 px-2.5 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1.5 ${
               loopEnabled
-                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
-                : 'bg-gray-800 hover:bg-gray-700'
+                ? 'bg-orange-500/20 text-orange-400 ring-1 ring-orange-500/30'
+                : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]'
             }`}
+            title="Loop"
           >
-            <Repeat size={16} className="inline mr-2" />
+            <Repeat size={12} />
             Loop
           </button>
           <button
             onClick={() => {
               const nextEnabled = !metronomeEnabled
               setMetronomeEnabled(nextEnabled)
-              
-              // If turning on while already playing, start metronome immediately
               if (nextEnabled && isPlaying && !metronomeInterval) {
                 playMetronomeClick()
                 const interval = setInterval(() => {
@@ -1938,76 +1801,111 @@ export default function DAWProRebuild() {
                 }, (60 / bpm) * 1000)
                 setMetronomeInterval(interval)
               } else if (!nextEnabled && metronomeInterval) {
-                // Turn off
                 clearInterval(metronomeInterval)
                 setMetronomeInterval(null)
               }
             }}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+            className={`h-7 px-2.5 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1.5 ${
               metronomeEnabled
-                ? metronomeFlash
-                  ? 'bg-cyan-500 text-black scale-110 shadow-lg shadow-cyan-500/50'
-                  : 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30'
-                : 'bg-gray-800 hover:bg-gray-700 text-white'
+                ? `bg-cyan-400/20 text-cyan-400 ring-1 ring-cyan-400/30 ${metronomeFlash ? 'scale-105' : ''}`
+                : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]'
             }`}
-            title="Toggle metronome"
+            title="Metronome"
           >
-            {metronomeFlash ? '🔊' : '🎵'}
-            <span>Metronome</span>
+            <Mic size={12} />
+            Met
           </button>
           <button
             onClick={() => setSnapEnabled(!snapEnabled)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`h-7 px-2.5 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1.5 ${
               snapEnabled
-                ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30'
-                : 'bg-gray-800 hover:bg-gray-700'
+                ? 'bg-cyan-400/20 text-cyan-400 ring-1 ring-cyan-400/30'
+                : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]'
             }`}
+            title="Snap to grid"
           >
-            <Grid3x3 size={16} className="inline mr-2" />
+            <Grid3x3 size={12} />
             Snap
           </button>
-          {/* CPU Usage Indicator */}
-          {cpuUsage > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900/50 border border-gray-800 rounded-lg" title={`Audio engine load: ${Math.round(cpuUsage * 100)}%`}>
-              <div className="text-xs text-gray-500 uppercase font-medium">CPU</div>
-              <div className="w-20 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-200 ${
-                    cpuUsage > 0.8 ? 'bg-red-500' : cpuUsage > 0.5 ? 'bg-yellow-500' : 'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min(100, cpuUsage * 100)}%` }}
-                />
-              </div>
-              <div className="text-xs text-gray-400 font-mono w-8 text-right">
-                {Math.round(cpuUsage * 100)}%
-              </div>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Right Actions */}
+        <div className="flex items-center gap-1.5">
+          {/* Zoom */}
+          <div className="flex items-center gap-1 mr-1">
+            <button onClick={() => setZoom(prev => Math.max(10, prev - 10))} className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:text-white hover:bg-white/[0.06] text-sm font-bold" title="Zoom out">−</button>
+            <span className="text-[10px] text-white/25 w-10 text-center font-mono">{zoom}px/s</span>
+            <button onClick={() => setZoom(prev => Math.min(200, prev + 10))} className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:text-white hover:bg-white/[0.06] text-sm font-bold" title="Zoom in">+</button>
+          </div>
+
+          <button
+            onClick={() => setShowBrowser(!showBrowser)}
+            className={`h-7 px-2.5 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 ${
+              showBrowser
+                ? 'bg-cyan-400/15 text-cyan-400 ring-1 ring-cyan-400/20'
+                : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
+            }`}
+            title="Browser (B)"
+          >
+            <Music2 size={12} />
+            Library
+          </button>
+          <button
+            onClick={() => setShowRightPanel(!showRightPanel)}
+            className={`h-7 px-2.5 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 ${
+              showRightPanel
+                ? 'bg-violet-400/15 text-violet-400 ring-1 ring-violet-400/20'
+                : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
+            }`}
+            title="Tools panel"
+          >
+            <PanelRight size={12} />
+            Tools
+          </button>
+
+          <div className="h-5 w-px bg-white/[0.06] mx-0.5" />
+
+          <button
+            onClick={() => setShowGenerateModal(true)}
+            className="h-7 px-3 bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/25 text-violet-300 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5"
+            title="Generate AI"
+          >
+            <Sparkles size={12} />
+            Generate
+          </button>
+          <button
+            onClick={() => handleSave('manual')}
+            disabled={saving}
+            className="h-7 px-3 bg-white/[0.08] hover:bg-white/[0.12] text-white/80 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 disabled:opacity-40"
+            title="Save (Ctrl+S)"
+          >
+            {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+            Save
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="h-7 px-3 bg-white/[0.08] hover:bg-white/[0.12] text-white/80 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 disabled:opacity-40"
+            title="Export WAV"
+          >
+            {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+            Export
+          </button>
+          <button onClick={() => setShowKeyboardHelp(true)} className="w-6 h-6 flex items-center justify-center rounded text-white/20 hover:text-white/60 hover:bg-white/[0.06] text-[11px] font-bold" title="Shortcuts (?)">?</button>
+
+          {/* Save Status */}
+          {(saveStatus !== 'idle' || saveTick) && (
+            <div className="flex items-center gap-1.5 px-2 h-6 rounded-md bg-white/[0.04] text-[10px] font-medium text-white/40">
+              {saveStatus !== 'idle' ? (
+                <><Loader2 size={10} className="animate-spin" />{saveStatus === 'autosaving' ? 'Auto' : 'Saving'}</>
+              ) : (
+                <><span className="text-emerald-400">✓</span>Saved</>
+              )}
             </div>
           )}
-          <div className="flex items-center gap-2 ml-4">
-            <button
-              onClick={() => setShowKeyboardHelp(true)}
-              className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded transition-colors"
-              title="Keyboard shortcuts (?)"
-            >
-              <span className="text-sm font-bold">?</span>
-            </button>
-            <div className="text-xs text-gray-500 uppercase font-medium">Zoom</div>
-            <button
-              onClick={() => setZoom((prev) => Math.max(10, prev - 10))}
-              className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded text-lg font-bold"
-              title="Zoom out"
-            >
-              -
-            </button>
-            <div className="text-xs text-gray-400 w-12 text-center">{zoom}px/s</div>
-            <button
-              onClick={() => setZoom((prev) => Math.min(200, prev + 10))}
-              className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded text-lg font-bold"
-              title="Zoom in"
-            >
-              +
-            </button>
-          </div>
         </div>
       </div>
 
@@ -2015,22 +1913,22 @@ export default function DAWProRebuild() {
       <div className="flex-1 flex overflow-hidden">
         {/* Browser Panel */}
         {showBrowser && (
-          <div className="w-80 bg-gradient-to-b from-[#0a0a0a] to-[#0d0d0d] border-r border-gray-800/50 flex flex-col">
-            <div className="h-16 border-b border-gray-800/50 flex flex-col justify-center px-5">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-bold text-gray-200 uppercase tracking-wider">
+          <div className="w-72 bg-[#0b0b0b] border-r border-white/[0.04] flex flex-col">
+            <div className="h-12 border-b border-white/[0.04] flex flex-col justify-center px-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <h2 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">
                   Library
                 </h2>
-                <div className="text-xs text-gray-500 font-medium">
+                <div className="text-[10px] text-white/20 font-medium font-mono">
                   {library.filter((item) =>
                     item.title.toLowerCase().includes(searchTerm.toLowerCase())
                   ).length} tracks
                 </div>
               </div>
               <div className="flex gap-2">
-                <label className="px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 hover:from-cyan-500/30 hover:to-cyan-600/30 border border-cyan-500/30 text-cyan-400 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
-                  <Download size={13} />
-                  Import Audio
+                <label className="px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-cyan-400 rounded-md text-[10px] font-medium transition-all flex items-center gap-1 cursor-pointer">
+                  <Download size={11} />
+                  Import
                   <input
                     id="audio-import"
                     name="audioFile"
@@ -2097,38 +1995,38 @@ export default function DAWProRebuild() {
                 </label>
                 <button
                   onClick={() => setShowStemSplitter(true)}
-                  className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 text-purple-400 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+                  className="px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-violet-400 rounded-md text-[10px] font-medium transition-all flex items-center gap-1"
                 >
-                  <Scissors size={13} />
-                  Stem Split
+                  <Scissors size={11} />
+                  Stems
                 </button>
               </div>
             </div>
-            <div className="p-4 pb-2">
+            <div className="p-3 pb-2">
               <div className="relative">
                 <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
-                  size={15}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/20"
+                  size={13}
                 />
                 <input
                   id="library-search"
                   name="search"
                   type="text"
-                  placeholder="Search your library..."
+                  placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-gray-700/50 hover:border-gray-600 rounded-lg pl-9 pr-4 py-2.5 text-sm focus:border-cyan-500 focus:outline-none transition-all placeholder:text-gray-600"
+                  className="w-full bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.1] rounded-md pl-8 pr-3 py-2 text-[12px] focus:border-cyan-400/40 focus:outline-none transition-all placeholder:text-white/15"
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+            <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
               {library.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <div className="w-16 h-16 bg-gray-800/50 rounded-full flex items-center justify-center mb-4">
-                    <Music size={28} className="text-gray-600" />
+                  <div className="w-12 h-12 bg-white/[0.03] rounded-full flex items-center justify-center mb-3">
+                    <Music size={22} className="text-white/15" />
                   </div>
-                  <p className="text-sm text-gray-500 mb-2">No tracks yet</p>
-                  <p className="text-xs text-gray-600">Import audio or generate with AI</p>
+                  <p className="text-[11px] text-white/25 mb-1">No tracks yet</p>
+                  <p className="text-[10px] text-white/15">Import audio or generate with AI</p>
                 </div>
               ) : (
                 library
@@ -2145,37 +2043,37 @@ export default function DAWProRebuild() {
                         setDragPreview({ time: 0, trackId: null })
                       }}
                       onDragEnd={() => setDragPreview(null)}
-                      className="group relative bg-gradient-to-br from-[#1a1a1a] to-[#151515] hover:from-[#202020] hover:to-[#1a1a1a] border border-gray-800/50 hover:border-gray-700 rounded-xl p-4 cursor-move transition-all duration-200 hover:scale-[1.01] hover:shadow-lg hover:shadow-cyan-500/10"
+                      className="group relative bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] hover:border-white/[0.08] rounded-lg p-3 cursor-move transition-all duration-150"
                     >
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/30 to-purple-500/30 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                          <Music size={20} className="text-cyan-400" />
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <div className="w-8 h-8 bg-cyan-400/10 rounded-md flex items-center justify-center flex-shrink-0">
+                          <Music size={14} className="text-cyan-400/70" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-white font-semibold truncate group-hover:text-cyan-400 transition-colors mb-1">
+                          <div className="text-[11px] text-white/80 font-medium truncate group-hover:text-cyan-400 transition-colors">
                             {item.title}
                           </div>
                           {item.genre && (
-                            <div className="text-xs text-gray-500 capitalize">{item.genre}</div>
+                            <div className="text-[10px] text-white/25 capitalize">{item.genre}</div>
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1.5">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             setSelectedAudioForStems(item.audio_url)
                             setShowStemSplitter(true)
                           }}
-                          className="flex-1 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
+                          className="flex-1 px-2 py-1 bg-white/[0.04] hover:bg-violet-400/10 border border-white/[0.06] text-violet-400 rounded-md text-[10px] font-medium transition-all flex items-center justify-center gap-1"
                         >
-                          <Scissors size={12} />
+                          <Scissors size={10} />
                           Split
                         </button>
                       </div>
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="px-2 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded text-xs text-cyan-400 font-medium">
-                          Drag to timeline
+                      <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="px-1.5 py-0.5 bg-white/[0.06] rounded text-[9px] text-white/30 font-medium">
+                          Drag
                         </div>
                       </div>
                     </div>
@@ -2194,30 +2092,43 @@ export default function DAWProRebuild() {
                 style={{ minWidth: `${TRACK_HEADER_WIDTH + timelineWidth}px` }}
               >
                 <div
-                  className="sticky left-0 z-30 flex-shrink-0 bg-[#111] border-r border-gray-800"
+                  className="sticky left-0 z-30 flex-shrink-0 bg-[#0e0e0e] border-r border-white/[0.04]"
                   style={{ width: `${TRACK_HEADER_WIDTH}px` }}
                 >
                   <div
-                    className="sticky top-0 z-30 bg-[#111] border-b border-gray-800 flex items-center px-4 text-xs font-semibold uppercase tracking-wide text-gray-500"
+                    className="sticky top-0 z-30 bg-[#0e0e0e] border-b border-white/[0.06] flex items-center justify-between px-3 text-[10px] font-semibold uppercase tracking-widest text-white/25"
                     style={{ height: `${TIMELINE_HEIGHT}px` }}
                   >
-                    Tracks
+                    <span>Tracks</span>
+                    <button
+                      onClick={() => {
+                        if (!daw) return
+                        const trackManager = daw.getTrackManager()
+                        const currentTracks = daw.getTracks()
+                        trackManager.createTrack({ name: `${currentTracks.length + 1} Audio` })
+                        setTracks([...daw.getTracks()])
+                      }}
+                      className="w-5 h-5 flex items-center justify-center rounded text-white/20 hover:text-cyan-400 hover:bg-white/[0.06] transition-all"
+                      title="Add track"
+                    >
+                      <Plus size={12} />
+                    </button>
                   </div>
                   <div>
                     {tracks.map((track, idx) => (
                       <div
                         key={track.id}
                         style={{ height: `${TRACK_HEIGHT}px` }}
-                        className={`border-b border-gray-900 px-3 py-2 cursor-pointer transition-colors ${
+                        className={`border-b border-white/[0.03] px-3 py-2 cursor-pointer transition-all ${
                           selectedTrackId === track.id
-                            ? 'bg-gray-900 border-l-2 border-l-cyan-500'
-                            : 'bg-[#0d0d0d] hover:bg-gray-900/50'
+                            ? 'bg-white/[0.04] border-l-2 border-l-cyan-400'
+                            : 'bg-transparent hover:bg-white/[0.02]'
                         }`}
                         onClick={() => setSelectedTrackId(track.id)}
                       >
                         {/* Track Name */}
                         <div 
-                          className="text-xs font-semibold text-gray-300 mb-2 truncate cursor-text"
+                          className="text-[11px] font-medium text-white/60 mb-1.5 truncate cursor-text"
                           onDoubleClick={(e) => {
                             e.stopPropagation()
                             setEditingTrackId(track.id)
@@ -2249,27 +2160,29 @@ export default function DAWProRebuild() {
                                 }
                               }}
                               autoFocus
-                              className="w-full bg-gray-800 border border-cyan-500 rounded px-1 py-0.5 text-xs text-white focus:outline-none"
+                              className="w-full bg-white/[0.06] border border-cyan-400/40 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none"
                             />
                           ) : (
-                            track.name
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/40 shrink-0" />
+                              {track.name}
+                            </span>
                           )}
                         </div>
                         
                         {/* M/S/R Buttons */}
-                        <div className="flex gap-1 mb-2">
+                        <div className="flex gap-0.5 mb-1.5">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              const newMuted = !track.muted
-                              daw?.updateTrack(track.id, { muted: newMuted })
+                              daw?.updateTrack(track.id, { muted: !track.muted })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className={`w-7 h-6 text-[10px] font-bold rounded ${
+                            className={`w-6 h-5 text-[9px] font-bold rounded transition-all ${
                               track.muted
-                                ? 'bg-red-500 text-white'
-                                : 'bg-gray-800 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
+                                ? 'bg-red-500/80 text-white shadow-[0_0_6px_rgba(239,68,68,0.3)]'
+                                : 'bg-white/[0.06] text-white/25 hover:text-white/50 hover:bg-white/[0.08]'
                             }`}
                             title="Mute"
                           >
@@ -2278,15 +2191,14 @@ export default function DAWProRebuild() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              const newSolo = !track.solo
-                              daw?.updateTrack(track.id, { solo: newSolo })
+                              daw?.updateTrack(track.id, { solo: !track.solo })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className={`w-7 h-6 text-[10px] font-bold rounded ${
+                            className={`w-6 h-5 text-[9px] font-bold rounded transition-all ${
                               track.solo
-                                ? 'bg-yellow-500 text-black'
-                                : 'bg-gray-800 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
+                                ? 'bg-amber-400 text-black shadow-[0_0_6px_rgba(251,191,36,0.3)]'
+                                : 'bg-white/[0.06] text-white/25 hover:text-white/50 hover:bg-white/[0.08]'
                             }`}
                             title="Solo"
                           >
@@ -2297,20 +2209,20 @@ export default function DAWProRebuild() {
                               e.stopPropagation()
                               setRecordingTrackId(recordingTrackId === track.id ? null : track.id)
                             }}
-                            className={`w-7 h-6 text-[10px] font-bold rounded ${
+                            className={`w-6 h-5 text-[9px] font-bold rounded transition-all ${
                               recordingTrackId === track.id
-                                ? 'bg-red-600 text-white'
-                                : 'bg-gray-800 text-gray-500 hover:text-gray-300 hover:bg-gray-700'
+                                ? 'bg-red-500 text-white shadow-[0_0_6px_rgba(239,68,68,0.3)]'
+                                : 'bg-white/[0.06] text-white/25 hover:text-white/50 hover:bg-white/[0.08]'
                             }`}
-                            title="Arm"
+                            title="Arm for recording"
                           >
                             ●
                           </button>
                         </div>
                         
-                        {/* Volume Control + Level Meter */}
-                        <div className="flex items-center gap-1.5">
-                          <Volume2 size={10} className="text-gray-600 flex-shrink-0" />
+                        {/* Volume + Level Meter */}
+                        <div className="flex items-center gap-1">
+                          <Volume2 size={9} className="text-white/15 flex-shrink-0" />
                           <input
                             id={`volume-${track.id}`}
                             name={`volume-track-${idx + 1}`}
@@ -2320,25 +2232,23 @@ export default function DAWProRebuild() {
                             value={track.volume * 100}
                             onChange={(e) => {
                               e.stopPropagation()
-                              const newVolume = Number(e.target.value) / 100
-                              daw?.updateTrack(track.id, { volume: newVolume })
+                              daw?.updateTrack(track.id, { volume: Number(e.target.value) / 100 })
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className="flex-1 h-1 accent-cyan-500 min-w-0"
+                            className="flex-1 h-0.5 accent-cyan-400 min-w-0 cursor-pointer"
                             title={`Volume: ${Math.round(track.volume * 100)}%`}
                           />
-                          {/* Level Meter */}
-                          <div className="w-10 h-1.5 bg-gray-900 rounded-full overflow-hidden flex-shrink-0" title="Audio level">
+                          <div className="w-8 h-1 bg-white/[0.04] rounded-full overflow-hidden flex-shrink-0" title="Level">
                             <div 
-                              className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 transition-all duration-75"
+                              className="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-red-400 transition-all duration-75"
                               style={{ width: `${(trackLevels.get(track.id) || 0) * 100}%` }}
                             />
                           </div>
                         </div>
-                        {/* Pan Control */}
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-[9px] text-gray-600 font-mono w-3 flex-shrink-0">L</span>
+                        {/* Pan */}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[8px] text-white/15 font-mono w-2 flex-shrink-0">L</span>
                           <input
                             id={`pan-${track.id}`}
                             name={`pan-track-${idx + 1}`}
@@ -2353,10 +2263,10 @@ export default function DAWProRebuild() {
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
-                            className="flex-1 h-1 accent-purple-400 min-w-0"
+                            className="flex-1 h-0.5 accent-violet-400 min-w-0 cursor-pointer"
                             title={`Pan: ${track.pan === 0 ? 'C' : track.pan < 0 ? `L${Math.abs(Math.round(track.pan * 100))}` : `R${Math.round(track.pan * 100)}`}`}
                           />
-                          <span className="text-[9px] text-gray-600 font-mono w-3 flex-shrink-0">R</span>
+                          <span className="text-[8px] text-white/15 font-mono w-2 flex-shrink-0">R</span>
                         </div>
                       </div>
                     ))}
@@ -2367,15 +2277,24 @@ export default function DAWProRebuild() {
                   className="relative flex-1"
                   style={{ width: `${timelineWidth}px` }}
                 >
+                  {/* Timeline Ruler with continuous scrubbing */}
                   <div
-                    className="sticky top-0 z-10 bg-[#0d0d0d] border-b border-gray-800 relative cursor-pointer"
+                    className="sticky top-0 z-10 bg-[#0a0a0a] border-b border-white/[0.06] relative cursor-crosshair"
                     style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      const x = e.clientX - rect.left
-                      const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
-                      daw?.seekTo(time)
-                      setPlayhead(time)
+                    onMouseDown={(e) => {
+                      const ruler = e.currentTarget
+                      const scrub = (ev: MouseEvent) => {
+                        const rect = ruler.getBoundingClientRect()
+                        const x = ev.clientX - rect.left
+                        const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
+                        daw?.seekTo(time)
+                        setPlayhead(time)
+                      }
+                      scrub(e.nativeEvent)
+                      const onMove = (ev: MouseEvent) => { ev.preventDefault(); scrub(ev) }
+                      const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+                      window.addEventListener('mousemove', onMove)
+                      window.addEventListener('mouseup', onUp)
                     }}
                   >
                     {timeMarkerIndices.map((second) => (
@@ -2384,8 +2303,8 @@ export default function DAWProRebuild() {
                         className="absolute top-0 h-full"
                         style={{ left: `${second * zoom}px` }}
                       >
-                        <div className="h-full border-l border-gray-700 relative">
-                          <span className="text-xs text-gray-500 ml-2 absolute top-2">
+                        <div className="h-full border-l border-white/[0.06] relative">
+                          <span className="text-[10px] text-white/25 ml-1.5 absolute top-1.5 font-mono">
                             {formatBarsBeats(second)}
                           </span>
                         </div>
@@ -2394,7 +2313,7 @@ export default function DAWProRebuild() {
 
                     {loopEnabled && (
                       <div
-                        className="absolute top-0 bottom-0 bg-orange-500/20 border-l-2 border-r-2 border-orange-500"
+                        className="absolute top-0 bottom-0 bg-orange-400/10 border-l border-r border-orange-400/50"
                         style={{
                           left: `${loopStart * zoom}px`,
                           width: `${(loopEnd - loopStart) * zoom}px`
@@ -2405,19 +2324,19 @@ export default function DAWProRebuild() {
                     {loopEnabled && (
                       <>
                         <div
-                          className={`absolute -bottom-2 w-3 h-6 bg-orange-500 rounded cursor-ew-resize ${
-                            activeLoopHandle === 'start' ? 'ring-2 ring-orange-300' : ''
+                          className={`absolute -bottom-1 w-2 h-5 bg-orange-400 rounded-sm cursor-ew-resize ${
+                            activeLoopHandle === 'start' ? 'ring-1 ring-orange-200' : ''
                           }`}
-                          style={{ left: `${loopStart * zoom - 6}px` }}
+                          style={{ left: `${loopStart * zoom - 4}px` }}
                           onMouseDown={() => {
                             setDraggingLoopHandle('start')
                             setActiveLoopHandle('start')
                           }}
-                          title="Drag to set loop start"
+                          title="Loop start"
                         />
                         <div
-                          className={`absolute -bottom-2 w-3 h-6 bg-orange-500 rounded cursor-ew-resize ${
-                            activeLoopHandle === 'end' ? 'ring-2 ring-orange-300' : ''
+                          className={`absolute -bottom-1 w-2 h-5 bg-orange-400 rounded-sm cursor-ew-resize ${
+                            activeLoopHandle === 'end' ? 'ring-1 ring-orange-200' : ''
                           }`}
                           style={{ left: `${loopEnd * zoom - 6}px` }}
                           onMouseDown={() => {
@@ -2426,7 +2345,7 @@ export default function DAWProRebuild() {
                           }}
                           title="Drag to set loop end"
                         />
-                        <div className="absolute -bottom-8 left-2 text-[11px] text-orange-200 bg-[#1a1a1a] px-2 py-1 rounded border border-orange-500/40">
+                        <div className="absolute -bottom-7 left-1 text-[9px] text-orange-300/80 bg-[#111] px-1.5 py-0.5 rounded border border-orange-400/20 font-mono">
                           Loop {formatBarsBeats(loopStart)} → {formatBarsBeats(loopEnd)}
                         </div>
                       </>
@@ -2436,11 +2355,11 @@ export default function DAWProRebuild() {
                   {tracks.map((track, idx) => (
                     <div
                       key={track.id}
-                      className="relative border-b border-gray-900"
+                      className="relative border-b border-white/[0.02]"
                       style={{
                         height: `${TRACK_HEIGHT}px`,
                         width: `${timelineWidth}px`,
-                        backgroundColor: idx % 2 === 0 ? '#080808' : '#0a0a0a'
+                        backgroundColor: idx % 2 === 0 ? '#090909' : '#0b0b0b'
                       }}
                       onClick={(e) => {
                         // Click-to-seek: clicking on track background moves playhead
@@ -2504,8 +2423,8 @@ export default function DAWProRebuild() {
                       {track.clips.map((clip) => (
                         <div
                           key={clip.id}
-                          className={`absolute top-2 bottom-2 bg-gradient-to-br from-cyan-500/30 to-purple-500/20 border-2 rounded-lg overflow-hidden cursor-move hover:border-cyan-400 transition-all shadow-lg hover:shadow-cyan-500/30 ${
-                            selectedClipId === clip.id ? 'border-cyan-400 ring-2 ring-cyan-400/50 z-10' : 'border-cyan-500/50 z-[2]'
+                          className={`absolute top-1.5 bottom-1.5 bg-gradient-to-b from-cyan-400/20 to-cyan-600/10 border rounded-md overflow-hidden cursor-move hover:border-cyan-400/60 transition-all ${
+                            selectedClipId === clip.id ? 'border-cyan-400/70 ring-1 ring-cyan-400/30 z-10 shadow-[0_0_12px_rgba(34,211,238,0.15)]' : 'border-white/10 z-[2]'
                           }`}
                           style={{
                             left: `${clip.startTime * zoom}px`,
@@ -2577,7 +2496,7 @@ export default function DAWProRebuild() {
                                 // Only re-render if zoom or clip changed
                                 if (canvas.dataset.cacheKey !== cacheKey) {
                                   canvas.width = clip.duration * zoom
-                                  canvas.height = TRACK_HEIGHT - 16
+                                  canvas.height = TRACK_HEIGHT - 8
                                   canvas.dataset.cacheKey = cacheKey
                                   renderWaveform(canvas, clip.buffer)
                                 }
@@ -2588,7 +2507,7 @@ export default function DAWProRebuild() {
                           
                           {/* Left Resize Handle */}
                           <div
-                            className="absolute top-0 bottom-0 left-0 w-2 bg-purple-500/40 hover:w-3 hover:bg-purple-400 cursor-ew-resize z-[25] transition-all"
+                            className="absolute top-0 bottom-0 left-0 w-1.5 bg-white/10 hover:w-2 hover:bg-cyan-400/50 cursor-ew-resize z-[25] transition-all"
                             onMouseDown={(e) => {
                               e.stopPropagation()
                               const origStartTime = clip.startTime
@@ -2629,7 +2548,7 @@ export default function DAWProRebuild() {
                           
                           {/* Right Resize Handle */}
                           <div
-                            className="absolute top-0 bottom-0 right-0 w-2 bg-purple-500/40 hover:w-3 hover:bg-purple-400 cursor-ew-resize z-[25] transition-all"
+                            className="absolute top-0 bottom-0 right-0 w-1.5 bg-white/10 hover:w-2 hover:bg-cyan-400/50 cursor-ew-resize z-[25] transition-all"
                             onMouseDown={(e) => {
                               e.stopPropagation()
                               const origDuration = clip.duration
@@ -2666,11 +2585,11 @@ export default function DAWProRebuild() {
                           {clip.fadeIn && clip.fadeIn.duration > 0 && (
                             <>
                               <div 
-                                className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-black/60 to-transparent pointer-events-none"
+                                className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-black/40 to-transparent pointer-events-none"
                                 style={{ width: `${(clip.fadeIn.duration / clip.duration) * 100}%` }}
                               />
                               <div
-                                className="absolute top-0 bottom-0 left-0 w-2 bg-cyan-500/30 hover:w-3 hover:bg-cyan-400/80 cursor-ew-resize z-20 transition-all group"
+                                className="absolute top-0 bottom-0 left-0 w-1.5 bg-cyan-400/20 hover:w-2 hover:bg-cyan-400/60 cursor-ew-resize z-20 transition-all"
                                 onMouseDown={(e) => {
                                   // Fade In drag handler (existing code)
                                   e.stopPropagation()
@@ -2705,11 +2624,11 @@ export default function DAWProRebuild() {
                           {clip.fadeOut && clip.fadeOut.duration > 0 && (
                             <>
                               <div 
-                                className="absolute top-0 bottom-0 right-0 bg-gradient-to-l from-black/60 to-transparent pointer-events-none"
+                                className="absolute top-0 bottom-0 right-0 bg-gradient-to-l from-black/40 to-transparent pointer-events-none"
                                 style={{ width: `${(clip.fadeOut.duration / clip.duration) * 100}%` }}
                               />
                               <div
-                                className="absolute top-0 bottom-0 right-0 w-2 bg-cyan-500/30 hover:w-3 hover:bg-cyan-400/80 cursor-ew-resize z-20 transition-all group"
+                                className="absolute top-0 bottom-0 right-0 w-1.5 bg-cyan-400/20 hover:w-2 hover:bg-cyan-400/60 cursor-ew-resize z-20 transition-all"
                                 onMouseDown={(e) => {
                                   // Fade Out drag handler (existing code)
                                   e.stopPropagation()
@@ -2744,7 +2663,7 @@ export default function DAWProRebuild() {
 
                       {loopEnabled && (
                         <div
-                          className="absolute top-0 bottom-0 bg-orange-500/5 pointer-events-none"
+                          className="absolute top-0 bottom-0 bg-orange-400/[0.03] pointer-events-none"
                           style={{
                             left: `${loopStart * zoom}px`,
                             width: `${(loopEnd - loopStart) * zoom}px`
@@ -2755,9 +2674,9 @@ export default function DAWProRebuild() {
                       {/* Loading indicator for clips being added to this track */}
                       {Array.from(loadingClips).some(key => key.startsWith(`${track.id}-`)) && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none z-30">
-                          <div className="flex items-center gap-3 px-4 py-2 bg-gray-900/90 rounded-lg border border-cyan-500/30">
-                            <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-sm text-gray-300">Loading audio...</span>
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#111]/90 rounded-md border border-white/[0.08]">
+                            <div className="w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-[11px] text-white/50">Loading audio...</span>
                           </div>
                         </div>
                       )}
@@ -2765,12 +2684,13 @@ export default function DAWProRebuild() {
                   ))}
 
                   <div
-                    className="absolute top-0 w-1 bg-cyan-400 shadow-lg shadow-cyan-500/50 cursor-ew-resize"
+                    className="absolute top-0 w-px bg-cyan-400 cursor-ew-resize"
                     style={{
                       left: `${playhead * zoom}px`,
                       height: `${TIMELINE_HEIGHT + tracks.length * TRACK_HEIGHT}px`,
                       pointerEvents: 'auto',
-                      zIndex: 20
+                      zIndex: 20,
+                      boxShadow: '0 0 8px rgba(34,211,238,0.4), 0 0 2px rgba(34,211,238,0.8)'
                     }}
                     onMouseDown={(e) => {
                       e.stopPropagation()
@@ -2790,15 +2710,15 @@ export default function DAWProRebuild() {
                       window.addEventListener('mouseup', handleUp)
                     }}
                   >
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-cyan-400 rotate-45 rounded-sm pointer-events-none" />
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-cyan-400 rotate-45 rounded-[1px] pointer-events-none shadow-[0_0_6px_rgba(34,211,238,0.5)]" />
                   </div>
 
                   {dragPreview && (
                     <div
-                      className="absolute top-0 bottom-0 w-px bg-cyan-500/70 pointer-events-none"
+                      className="absolute top-0 bottom-0 w-px bg-cyan-400/40 pointer-events-none"
                       style={{ left: `${dragPreview.time * zoom}px`, zIndex: 30 }}
                     >
-                      <div className="absolute -top-6 -left-8 px-2 py-1 rounded bg-[#0d0d0d] border border-cyan-500/40 text-xs text-cyan-100 whitespace-nowrap">
+                      <div className="absolute -top-5 -left-8 px-1.5 py-0.5 rounded bg-[#111] border border-cyan-400/20 text-[10px] text-cyan-300 whitespace-nowrap font-mono">
                         {dragPreview.trackId ? 'Drop here' : 'Drag'} @{' '}
                         {snapEnabled ? formatBarsBeats(dragPreview.time) : `${dragPreview.time.toFixed(2)}s`}
                       </div>
@@ -2812,35 +2732,35 @@ export default function DAWProRebuild() {
 
         {/* Right Tools Panel */}
         {showRightPanel && (
-          <div className="w-72 bg-gradient-to-b from-[#0a0a0a] to-[#0d0d0d] border-l border-gray-800/50 flex flex-col overflow-y-auto">
+          <div className="w-64 bg-[#0b0b0b] border-l border-white/[0.04] flex flex-col overflow-y-auto">
             {/* Generate AI Section */}
-            <div className="p-4 border-b border-gray-800/50">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Sparkles size={14} className="text-purple-400" />
+            <div className="p-3 border-b border-white/[0.04]">
+              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                <Sparkles size={11} className="text-violet-400" />
                 Generate AI
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <input
                   type="text"
                   placeholder="Describe your track..."
                   value={genPrompt}
                   onChange={(e) => setGenPrompt(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:outline-none transition-all placeholder:text-gray-600"
+                  className="w-full bg-white/[0.03] border border-white/[0.06] rounded-md px-2.5 py-1.5 text-[11px] focus:border-violet-400/40 focus:outline-none transition-all placeholder:text-white/15"
                 />
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <input
                     type="text"
                     placeholder="Title"
                     value={genTitle}
                     onChange={(e) => setGenTitle(e.target.value)}
-                    className="flex-1 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-3 py-2 text-xs focus:border-purple-500 focus:outline-none transition-all placeholder:text-gray-600"
+                    className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-md px-2.5 py-1.5 text-[10px] focus:border-violet-400/40 focus:outline-none transition-all placeholder:text-white/15"
                   />
                   <input
                     type="text"
                     placeholder="Genre"
                     value={genGenre}
                     onChange={(e) => setGenGenre(e.target.value)}
-                    className="flex-1 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-3 py-2 text-xs focus:border-purple-500 focus:outline-none transition-all placeholder:text-gray-600"
+                    className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-md px-2.5 py-1.5 text-[10px] focus:border-violet-400/40 focus:outline-none transition-all placeholder:text-white/15"
                   />
                 </div>
                 <button
@@ -2852,23 +2772,23 @@ export default function DAWProRebuild() {
                     }
                   }}
                   disabled={generatingTrack}
-                  className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
+                  className="w-full px-3 py-2 bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/20 text-violet-300 rounded-md text-[11px] font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   {generatingTrack ? (
                     <>
-                      <Loader2 size={14} className="animate-spin" />
+                      <Loader2 size={12} className="animate-spin" />
                       {generationProgress || 'Generating...'}
                     </>
                   ) : (
                     <>
-                      <Sparkles size={14} />
+                      <Sparkles size={12} />
                       Generate
                     </>
                   )}
                 </button>
                 <button
                   onClick={() => setShowGenerateModal(true)}
-                  className="w-full px-3 py-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors text-center"
+                  className="w-full px-2 py-1 text-[10px] text-white/20 hover:text-white/40 transition-colors text-center"
                 >
                   Advanced options...
                 </button>
@@ -2876,13 +2796,13 @@ export default function DAWProRebuild() {
             </div>
 
             {/* Import Audio Section */}
-            <div className="p-4 border-b border-gray-800/50">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Download size={14} className="text-cyan-400" />
-                Import Audio
+            <div className="p-3 border-b border-white/[0.04]">
+              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                <Download size={11} className="text-cyan-400" />
+                Import
               </h3>
-              <label className="w-full px-4 py-2.5 bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 hover:from-cyan-500/30 hover:to-cyan-600/30 border border-cyan-500/30 text-cyan-400 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer">
-                <Download size={14} />
+              <label className="w-full px-3 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-cyan-400 rounded-md text-[11px] font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                <Download size={12} />
                 Choose File
                 <input
                   type="file"
@@ -2940,25 +2860,25 @@ export default function DAWProRebuild() {
             </div>
 
             {/* Stem Split Section */}
-            <div className="p-4 border-b border-gray-800/50">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Scissors size={14} className="text-purple-400" />
+            <div className="p-3 border-b border-white/[0.04]">
+              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                <Scissors size={11} className="text-violet-400" />
                 Stem Splitter
               </h3>
               <button
                 onClick={() => setShowStemSplitter(true)}
-                className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 text-purple-400 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                className="w-full px-3 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-violet-400 rounded-md text-[11px] font-medium transition-all flex items-center justify-center gap-1.5"
               >
-                <Scissors size={14} />
+                <Scissors size={12} />
                 Split Stems
               </button>
-              <p className="text-xs text-gray-600 mt-2">Separate vocals, drums, bass & more</p>
+              <p className="text-[10px] text-white/15 mt-1.5">Separate vocals, drums, bass & more</p>
             </div>
 
             {/* Add Track Section */}
-            <div className="p-4 border-b border-gray-800/50">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Music size={14} className="text-cyan-400" />
+            <div className="p-3 border-b border-white/[0.04]">
+              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                <Music size={11} className="text-cyan-400" />
                 Tracks
               </h3>
               <button
@@ -2970,43 +2890,43 @@ export default function DAWProRebuild() {
                   setTracks([...daw.getTracks()])
                   showToast(`Track ${currentTracks.length + 1} added`, 'success')
                 }}
-                className="w-full px-4 py-2.5 bg-[#1a1a1a] hover:bg-[#222] border border-gray-700/50 hover:border-cyan-500/30 text-gray-300 hover:text-cyan-400 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                className="w-full px-3 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/50 hover:text-cyan-400 rounded-md text-[11px] font-medium transition-all flex items-center justify-center gap-1.5"
               >
-                <Plus size={14} />
+                <Plus size={12} />
                 Add Track
               </button>
-              <p className="text-xs text-gray-600 mt-2">
+              <p className="text-[10px] text-white/15 mt-1.5">
                 {tracks.length} track{tracks.length !== 1 ? 's' : ''} active
               </p>
             </div>
 
             {/* Quick Actions */}
-            <div className="p-4">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+            <div className="p-3">
+              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5">
                 Quick Actions
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <button
                   onClick={() => handleSave('manual')}
                   disabled={saving}
-                  className="w-full px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 rounded-lg text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="w-full px-3 py-1.5 bg-white/[0.04] hover:bg-cyan-400/10 border border-white/[0.06] text-cyan-400 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <Save size={14} />
+                  <Save size={12} />
                   {saving ? 'Saving...' : 'Save Project'}
                 </button>
                 <button
                   onClick={handleExport}
                   disabled={isExporting}
-                  className="w-full px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-lg text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="w-full px-3 py-1.5 bg-white/[0.04] hover:bg-emerald-400/10 border border-white/[0.06] text-emerald-400 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <Download size={14} />
+                  <Download size={12} />
                   {isExporting ? 'Exporting...' : 'Export WAV'}
                 </button>
                 <button
                   onClick={resetProject}
-                  className="w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-sm transition-all flex items-center gap-2"
+                  className="w-full px-3 py-1.5 bg-white/[0.04] hover:bg-red-400/10 border border-white/[0.06] text-red-400/70 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={12} />
                   New Project
                 </button>
               </div>
@@ -3059,7 +2979,7 @@ export default function DAWProRebuild() {
             onClick={() => setContextMenu(null)}
           />
           <div
-            className="fixed z-50 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-2xl py-2 min-w-[200px]"
+            className="fixed z-50 bg-[#111]/95 backdrop-blur-xl border border-white/[0.08] rounded-lg shadow-2xl shadow-black/50 py-1 min-w-[180px]"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             <button
@@ -3067,9 +2987,9 @@ export default function DAWProRebuild() {
                 setShowGenerateModal(true)
                 setContextMenu(null)
               }}
-              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2"
             >
-              <Sparkles size={14} className="text-purple-400" />
+              <Sparkles size={12} className="text-violet-400" />
               Generate AI
             </button>
             <button
@@ -3082,19 +3002,19 @@ export default function DAWProRebuild() {
                 }
                 setContextMenu(null)
               }}
-              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2"
             >
-              <Scissors size={14} className="text-purple-400" />
+              <Scissors size={12} className="text-violet-400" />
               Split Stems
             </button>
-            <div className="border-t border-gray-800 my-1" />
+            <div className="border-t border-white/[0.06] my-1" />
             <button
               onClick={() => {
                 handleDuplicateClip(contextMenu.trackId, contextMenu.clipId)
               }}
-              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2"
             >
-              <Copy size={14} className="text-cyan-400" />
+              <Copy size={12} className="text-cyan-400" />
               Duplicate
             </button>
             <button
@@ -3107,9 +3027,9 @@ export default function DAWProRebuild() {
                 }
                 setContextMenu(null)
               }}
-              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2"
             >
-              <Copy size={14} className="text-cyan-400" />
+              <Copy size={12} className="text-cyan-400" />
               Copy
             </button>
             <button
@@ -3140,12 +3060,12 @@ export default function DAWProRebuild() {
                 setContextMenu(null)
               }}
               disabled={!copiedClip}
-              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              <Clipboard size={14} className="text-cyan-400" />
+              <Clipboard size={12} className="text-cyan-400" />
               Paste
             </button>
-            <div className="border-t border-gray-800 my-1" />
+            <div className="border-t border-white/[0.06] my-1" />
             <button
               onClick={() => {
                 if (daw) {
@@ -3156,9 +3076,9 @@ export default function DAWProRebuild() {
                 }
                 setContextMenu(null)
               }}
-              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-red-900/50 hover:text-red-400 transition-colors flex items-center gap-2"
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-red-500/10 hover:text-red-400 transition-colors flex items-center gap-2"
             >
-              <Trash2 size={14} />
+              <Trash2 size={12} />
               Delete
             </button>
           </div>
@@ -3174,12 +3094,12 @@ export default function DAWProRebuild() {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-lg text-sm font-medium z-50 border ${
+          className={`fixed bottom-4 right-4 px-3 py-2 rounded-md text-[11px] font-medium z-50 border backdrop-blur-sm ${
             toast.type === 'success'
-              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-200'
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
               : toast.type === 'error'
-              ? 'bg-red-500/20 border-red-500/40 text-red-200'
-              : 'bg-gray-800 border-gray-700 text-gray-200'
+              ? 'bg-red-500/10 border-red-500/20 text-red-300'
+              : 'bg-white/[0.06] border-white/[0.08] text-white/60'
           }`}
         >
           {toast.message}
