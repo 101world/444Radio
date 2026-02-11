@@ -2073,7 +2073,7 @@ function CreatePageContent() {
                       />
                       
                       {/* Dropdown panel */}
-                      <div className="absolute right-0 top-full mt-2 w-80 bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-4 z-50 animate-fade-in-fast">
+                      <div className="absolute right-0 bottom-full mb-2 w-80 bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-4 z-50 animate-fade-in-fast">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
