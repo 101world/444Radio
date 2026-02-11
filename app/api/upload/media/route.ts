@@ -69,8 +69,8 @@ export async function POST(req: NextRequest) {
 
       console.log(`🔑 Generating presigned URL for ${fileType}:`, fileName, `(${(fileSize / (1024 * 1024)).toFixed(2)} MB)`)
 
-      // Determine bucket
-      const bucket = isVideo ? '444radio-media' : 'audio-files'
+      // All files go to 444radio-media bucket (served by media.444radio.co.in)
+      const bucket = '444radio-media'
       const timestamp = Date.now()
       const sanitizedName = fileName.replace(/[^a-zA-Z0-9.-]/g, '-')
       const key = `upload-${timestamp}-${sanitizedName}`
@@ -84,10 +84,8 @@ export async function POST(req: NextRequest) {
 
       const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 })
 
-      // Construct the public URL that will be accessible after upload
-      const publicUrlBase = isVideo 
-        ? process.env.NEXT_PUBLIC_R2_VIDEOS_URL 
-        : process.env.NEXT_PUBLIC_R2_AUDIO_URL
+      // All files served from media.444radio.co.in
+      const publicUrlBase = process.env.NEXT_PUBLIC_R2_AUDIO_URL // Same for all: media.444radio.co.in
       const publicUrl = `${publicUrlBase}/${key}`
 
       console.log('✅ Presigned URL generated:', key)
@@ -122,7 +120,8 @@ export async function POST(req: NextRequest) {
 
       console.log(`📤 Server-side upload: ${file.type}`, file.name, `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`)
 
-      const bucket = isVideo ? '444radio-media' : 'audio-files'
+      // All files go to 444radio-media bucket (served by media.444radio.co.in)
+      const bucket = '444radio-media'
       const timestamp = Date.now()
       const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '-')
       const key = `upload-${timestamp}-${sanitizedName}`
@@ -140,9 +139,8 @@ export async function POST(req: NextRequest) {
 
       await s3Client.send(command)
 
-      const publicUrlBase = isVideo 
-        ? process.env.NEXT_PUBLIC_R2_VIDEOS_URL 
-        : process.env.NEXT_PUBLIC_R2_AUDIO_URL
+      // All files served from media.444radio.co.in
+      const publicUrlBase = process.env.NEXT_PUBLIC_R2_AUDIO_URL // Same for all: media.444radio.co.in
       const publicUrl = `${publicUrlBase}/${key}`
 
       console.log('✅ Server-side upload complete:', publicUrl)
