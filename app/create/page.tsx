@@ -2129,8 +2129,8 @@ function CreatePageContent() {
                         onClick={() => setShowPromptSuggestions(false)}
                       />
                       
-                      {/* Dropdown panel - Opens upward on right */}
-                      <div className="absolute left-full bottom-full ml-3 mb-2 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast">
+                      {/* Dropdown panel - Fixed position visible on screen */}
+                      <div className="fixed right-4 bottom-24 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -2154,7 +2154,7 @@ function CreatePageContent() {
                           </div>
                         </div>
                         
-                        <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto scrollbar-thin pr-2">
+                        <div className="flex flex-wrap gap-2 overflow-y-auto scrollbar-thin pr-2 flex-1">
                           {[
                             'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
                             'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
