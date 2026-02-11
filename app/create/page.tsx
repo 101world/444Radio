@@ -301,7 +301,8 @@ function CreatePageContent() {
           
           // If no message found but generation completed, create a new message
           // This handles cases where user switched tabs before message was created
-          if (gen.status === 'completed' && !messageByGenId) {
+          // SKIP for loopers (they have variations array) - already handled by onSuccess
+          if (gen.status === 'completed' && !messageByGenId && !gen.result?.variations) {
             console.log('[Sync] Creating new message for completed generation:', gen.id)
             const newMessage: Message = {
               id: `restored-${gen.id}`,
@@ -2385,6 +2386,33 @@ function CreatePageContent() {
                 </div>
               )}
 
+              {/* Prompt Suggestion Tags */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">💡 Quick Tags</label>
+                <div className="p-2.5 bg-white/5 border border-white/10 rounded-lg">
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+                      'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
+                      'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
+                      'lo-fi beats', 'orchestral', 'dreamy', 'aggressive'
+                    ].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          const newInput = input ? `${input}, ${tag}` : tag
+                          setInput(newInput.slice(0, 300))
+                        }}
+                        className="px-2 py-0.5 bg-white/10 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/30 rounded text-xs text-white/80 hover:text-cyan-300 transition-all"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {/* Genre */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Genre</label>
@@ -2571,19 +2599,21 @@ function CreatePageContent() {
           setInput('')
         }}
         onSuccess={(variations: Array<{ url: string; variation: number }>, prompt: string) => {
-          // Don't add messages here - let the generation queue sync handle it
-          // But we need to manually add both variations since sync only handles one
+          // Add both variations to chat with proper Message structure
           setMessages(prev => {
             // Find and remove the generating message
             const withoutGenerating = prev.filter(msg => msg.type !== 'generation' && !msg.isGenerating)
             
-            // Add both variations as separate messages
+            // Add both variations as separate messages with result.audioUrl
             const successMessages: Message[] = variations.map((v, index) => ({
               id: `loop-${Date.now()}-${index}-${Math.random()}`,
               type: 'assistant',
               content: `✅ Loop Variation ${v.variation} generated!`,
-              audioUrl: v.url,
-              prompt: prompt,
+              result: {
+                audioUrl: v.url,
+                title: `Loop: ${prompt.substring(0, 40)} (v${v.variation})`,
+                prompt: prompt
+              },
               timestamp: new Date(Date.now() + index) // Slight offset to maintain order
             }))
             
