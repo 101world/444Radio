@@ -88,6 +88,7 @@ export default function DAWProRebuild() {
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null)
   const [editingTrackName, setEditingTrackName] = useState('')
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; clipId: string; trackId: string } | null>(null)
+  const [trackContextMenu, setTrackContextMenu] = useState<{ x: number; y: number; trackId: string } | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [copiedClip, setCopiedClip] = useState<{ clip: TrackClip; trackId: string } | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'autosaving'>('idle')
@@ -2114,7 +2115,7 @@ export default function DAWProRebuild() {
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+            <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5 scrollbar-hide">
               {library.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
                   <div className="w-12 h-12 bg-white/[0.03] rounded-full flex items-center justify-center mb-3">
@@ -2220,6 +2221,11 @@ export default function DAWProRebuild() {
                             : 'bg-transparent hover:bg-white/[0.02]'
                         }`}
                         onClick={() => setSelectedTrackId(track.id)}
+                        onContextMenu={(e) => {
+                          e.preventDefault()
+                          setTrackContextMenu({ x: e.clientX, y: e.clientY, trackId: track.id })
+                          setSelectedTrackId(track.id)
+                        }}
                       >
                         {/* Track Name */}
                         <div 
@@ -2378,16 +2384,44 @@ export default function DAWProRebuild() {
                     style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
                     onMouseDown={(e) => {
                       const ruler = e.currentTarget
+                      // During continuous scrubbing, pause playback first to avoid
+                      // storm of pause→play cycles that cause double audio
+                      const wasPlaying = isPlaying
+                      if (wasPlaying && daw) {
+                        daw.getTransportState() // capture time
+                        handlePause()
+                      }
                       const scrub = (ev: MouseEvent) => {
                         const rect = ruler.getBoundingClientRect()
                         const x = ev.clientX - rect.left
                         const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
-                        daw?.seekTo(time)
+                        // Update playhead visually without triggering full seekTo
                         setPlayhead(time)
+                        if (daw) {
+                          // Direct position update without pause→play cycle
+                          const ts = daw.getTransportState()
+                          ;(ts as any).__directTimeUpdate = true
+                        }
                       }
                       scrub(e.nativeEvent)
                       const onMove = (ev: MouseEvent) => { ev.preventDefault(); scrub(ev) }
-                      const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+                      const onUp = (ev: MouseEvent) => {
+                        // On release, do a single seekTo to finalize position
+                        const rect = ruler.getBoundingClientRect()
+                        const x = ev.clientX - rect.left
+                        const finalTime = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
+                        if (daw) {
+                          // Set position and resume if was playing
+                          daw.seekTo(finalTime).then(() => {
+                            setPlayhead(finalTime)
+                            if (wasPlaying) {
+                              handlePlay()
+                            }
+                          })
+                        }
+                        window.removeEventListener('mousemove', onMove)
+                        window.removeEventListener('mouseup', onUp)
+                      }
                       window.addEventListener('mousemove', onMove)
                       window.addEventListener('mouseup', onUp)
                     }}
@@ -2544,35 +2578,60 @@ export default function DAWProRebuild() {
                             const offsetX = e.clientX - rect.left
                             setDraggingClip({ clipId: clip.id, trackId: track.id, offsetX })
                             
+                            // The clip element we're dragging
+                            const clipEl = e.currentTarget as HTMLElement
+                            const origLeft = clip.startTime * zoom
+                            let lastNewStartTime = clip.startTime
+                            let targetTrackId = track.id
+                            
                             const handleMove = (moveE: MouseEvent) => {
                               if (!timelineRef.current) return
                               const timelineRect = timelineRef.current.getBoundingClientRect()
                               const scrollLeft = timelineRef.current.scrollLeft
                               const x = moveE.clientX - timelineRect.left + scrollLeft - TRACK_HEADER_WIDTH - offsetX
-                              // Apply snap during drag for visual feedback
-                              const newStartTime = snapTime(Math.max(0, x / zoom))
+                              lastNewStartTime = snapTime(Math.max(0, x / zoom))
                               
-                              if (daw) {
-                                const trackManager = daw.getTrackManager()
-                                const updatedClip = { ...clip, startTime: newStartTime }
-                                trackManager.updateClip(track.id, clip.id, updatedClip)
-                                setTracks(daw.getTracks())
-                              }
+                              // DOM-only transform for smooth dragging (no React re-render)
+                              const deltaX = lastNewStartTime * zoom - origLeft
+                              clipEl.style.transform = `translateX(${deltaX}px)`
+                              clipEl.style.opacity = '0.85'
+                              clipEl.style.zIndex = '50'
+                              
+                              // Detect cross-track drag by Y position
+                              const y = moveE.clientY - timelineRect.top - TIMELINE_HEIGHT + timelineRef.current.scrollTop
+                              const trackIndex = Math.max(0, Math.min(tracks.length - 1, Math.floor(y / TRACK_HEIGHT)))
+                              targetTrackId = tracks[trackIndex]?.id || track.id
                             }
                             
                             const handleUp = () => {
-                              // Final snap on drag end for consistency
-                              if (daw && snapEnabled) {
-                                const trackManager = daw.getTrackManager()
-                                const clips = trackManager.getClips(track.id)
-                                const currentClip = clips.find(c => c.id === clip.id)
-                                if (currentClip) {
-                                  const snappedTime = snapTime(currentClip.startTime)
-                                  if (Math.abs(snappedTime - currentClip.startTime) > 0.001) {
-                                    trackManager.updateClip(track.id, clip.id, { ...currentClip, startTime: snappedTime })
-                                    setTracks(daw.getTracks())
+                              // Reset DOM transform
+                              clipEl.style.transform = ''
+                              clipEl.style.opacity = ''
+                              clipEl.style.zIndex = ''
+                              
+                              if (daw) {
+                                // Cross-track move: remove from old, add to new
+                                if (targetTrackId !== track.id) {
+                                  const clipData: Partial<TrackClip> = {
+                                    startTime: lastNewStartTime,
+                                    duration: clip.duration,
+                                    offset: clip.offset,
+                                    gain: clip.gain,
+                                    buffer: clip.buffer,
+                                    sourceUrl: clip.sourceUrl,
+                                    name: clip.name,
+                                    color: clip.color,
+                                    fadeIn: clip.fadeIn,
+                                    fadeOut: clip.fadeOut
                                   }
+                                  daw.removeClipFromTrack(track.id, clip.id)
+                                  daw.addClipToTrack(targetTrackId, clipData)
+                                } else {
+                                  // Same-track move: just update start time
+                                  const finalTime = snapEnabled ? snapTime(lastNewStartTime) : lastNewStartTime
+                                  daw.updateClip(track.id, clip.id, { startTime: finalTime })
                                 }
+                                setTracks(daw.getTracks())
                               }
                               setDraggingClip(null)
                               markProjectDirty()
@@ -2608,27 +2667,40 @@ export default function DAWProRebuild() {
                               const origStartTime = clip.startTime
                               const origDuration = clip.duration
                               const origOffset = clip.offset
+                              const clipEl = e.currentTarget.parentElement as HTMLElement
+                              const origLeftPx = origStartTime * zoom
+                              const origWidthPx = origDuration * zoom
+                              let finalStartTime = origStartTime
+                              let finalDuration = origDuration
+                              let finalOffset = origOffset
                               
                               const handleMove = (moveE: MouseEvent) => {
-                                if (!daw) return
                                 const dx = moveE.clientX - e.clientX
                                 const timeDelta = dx / zoom
                                 const newStartTime = Math.max(0, origStartTime + timeDelta)
                                 const newDuration = Math.max(0.1, origDuration - timeDelta)
                                 const newOffset = Math.max(0, origOffset + timeDelta)
                                 
-                                // Ensure we don't exceed buffer duration
                                 if (clip.buffer && newOffset + newDuration <= clip.buffer.duration) {
-                                  daw.updateClip(track.id, clip.id, {
-                                    startTime: newStartTime,
-                                    duration: newDuration,
-                                    offset: newOffset
-                                  })
-                                  setTracks(daw.getTracks())
+                                  finalStartTime = newStartTime
+                                  finalDuration = newDuration
+                                  finalOffset = newOffset
+                                  // DOM-only transform for smooth resize (no React re-render)
+                                  clipEl.style.left = `${newStartTime * zoom}px`
+                                  clipEl.style.width = `${newDuration * zoom}px`
                                 }
                               }
                               
                               const handleUp = () => {
+                                // Commit to engine on mouseup only
+                                if (daw && (finalStartTime !== origStartTime || finalDuration !== origDuration)) {
+                                  daw.updateClip(track.id, clip.id, {
+                                    startTime: finalStartTime,
+                                    duration: finalDuration,
+                                    offset: finalOffset
+                                  })
+                                  setTracks(daw.getTracks())
+                                }
                                 setDraggingResize(null)
                                 markProjectDirty()
                                 window.removeEventListener('mousemove', handleMove)
@@ -2647,23 +2719,29 @@ export default function DAWProRebuild() {
                             onMouseDown={(e) => {
                               e.stopPropagation()
                               const origDuration = clip.duration
+                              const clipEl = e.currentTarget.parentElement as HTMLElement
+                              let finalDuration = origDuration
                               
                               const handleMove = (moveE: MouseEvent) => {
-                                if (!daw) return
                                 const dx = moveE.clientX - e.clientX
                                 const timeDelta = dx / zoom
                                 const newDuration = Math.max(0.1, origDuration + timeDelta)
                                 
-                                // Ensure we don't exceed buffer duration
                                 if (clip.buffer && clip.offset + newDuration <= clip.buffer.duration) {
-                                  daw.updateClip(track.id, clip.id, {
-                                    duration: newDuration
-                                  })
-                                  setTracks(daw.getTracks())
+                                  finalDuration = newDuration
+                                  // DOM-only width change (no React re-render)
+                                  clipEl.style.width = `${newDuration * zoom}px`
                                 }
                               }
                               
                               const handleUp = () => {
+                                // Commit to engine on mouseup only
+                                if (daw && finalDuration !== origDuration) {
+                                  daw.updateClip(track.id, clip.id, {
+                                    duration: finalDuration
+                                  })
+                                  setTracks(daw.getTracks())
+                                }
                                 setDraggingResize(null)
                                 markProjectDirty()
                                 window.removeEventListener('mousemove', handleMove)
@@ -2686,21 +2764,30 @@ export default function DAWProRebuild() {
                               <div
                                 className="absolute top-0 bottom-0 left-0 w-1.5 bg-cyan-400/20 hover:w-2 hover:bg-cyan-400/60 cursor-ew-resize z-20 transition-all"
                                 onMouseDown={(e) => {
-                                  // Fade In drag handler (existing code)
+                                  // Fade In drag handler
                                   e.stopPropagation()
                                   setDraggingFade({ clipId: clip.id, trackId: track.id, type: 'in' })
+                                  const origFadeDuration = clip.fadeIn!.duration
+                                  const fadeOverlay = e.currentTarget.previousElementSibling as HTMLElement | null
+                                  let finalFadeDuration = origFadeDuration
                                   
                                   const handleMove = (moveE: MouseEvent) => {
-                                    if (!daw) return
                                     const dx = moveE.clientX - e.clientX
-                                    const newFadeDuration = Math.max(0.01, Math.min(clip.duration / 2, clip.fadeIn!.duration + dx / zoom))
-                                    daw.updateClip(track.id, clip.id, {
-                                      fadeIn: { duration: newFadeDuration, curve: 'exponential' }
-                                    })
-                                    setTracks(daw.getTracks())
+                                    const newFadeDuration = Math.max(0.01, Math.min(clip.duration / 2, origFadeDuration + dx / zoom))
+                                    finalFadeDuration = newFadeDuration
+                                    // DOM-only update for smooth fade preview
+                                    if (fadeOverlay) {
+                                      fadeOverlay.style.width = `${(newFadeDuration / clip.duration) * 100}%`
+                                    }
                                   }
                                   
                                   const handleUp = () => {
+                                    if (daw && finalFadeDuration !== origFadeDuration) {
+                                      daw.updateClip(track.id, clip.id, {
+                                        fadeIn: { duration: finalFadeDuration, curve: 'exponential' }
+                                      })
+                                      setTracks(daw.getTracks())
+                                    }
                                     setDraggingFade(null)
                                     markProjectDirty()
                                     window.removeEventListener('mousemove', handleMove)
@@ -2725,21 +2812,30 @@ export default function DAWProRebuild() {
                               <div
                                 className="absolute top-0 bottom-0 right-0 w-1.5 bg-cyan-400/20 hover:w-2 hover:bg-cyan-400/60 cursor-ew-resize z-20 transition-all"
                                 onMouseDown={(e) => {
-                                  // Fade Out drag handler (existing code)
+                                  // Fade Out drag handler
                                   e.stopPropagation()
                                   setDraggingFade({ clipId: clip.id, trackId: track.id, type: 'out' })
+                                  const origFadeDuration = clip.fadeOut!.duration
+                                  const fadeOverlay = e.currentTarget.previousElementSibling as HTMLElement | null
+                                  let finalFadeDuration = origFadeDuration
                                   
                                   const handleMove = (moveE: MouseEvent) => {
-                                    if (!daw) return
                                     const dx = e.clientX - moveE.clientX
-                                    const newFadeDuration = Math.max(0.01, Math.min(clip.duration / 2, clip.fadeOut!.duration + dx / zoom))
-                                    daw.updateClip(track.id, clip.id, {
-                                      fadeOut: { duration: newFadeDuration, curve: 'exponential' }
-                                    })
-                                    setTracks(daw.getTracks())
+                                    const newFadeDuration = Math.max(0.01, Math.min(clip.duration / 2, origFadeDuration + dx / zoom))
+                                    finalFadeDuration = newFadeDuration
+                                    // DOM-only update for smooth fade preview
+                                    if (fadeOverlay) {
+                                      fadeOverlay.style.width = `${(newFadeDuration / clip.duration) * 100}%`
+                                    }
                                   }
                                   
                                   const handleUp = () => {
+                                    if (daw && finalFadeDuration !== origFadeDuration) {
+                                      daw.updateClip(track.id, clip.id, {
+                                        fadeOut: { duration: finalFadeDuration, curve: 'exponential' }
+                                      })
+                                      setTracks(daw.getTracks())
+                                    }
                                     setDraggingFade(null)
                                     markProjectDirty()
                                     window.removeEventListener('mousemove', handleMove)
@@ -2791,13 +2887,25 @@ export default function DAWProRebuild() {
                       e.stopPropagation()
                       const startX = e.clientX
                       const startPlayhead = playhead
+                      // Pause during playhead drag to prevent double audio
+                      const wasPlaying = isPlaying
+                      if (wasPlaying && daw) {
+                        handlePause()
+                      }
                       const handleMove = (moveE: MouseEvent) => {
                         const delta = (moveE.clientX - startX) / zoom
                         const newTime = Math.max(0, Math.min(TIMELINE_SECONDS, startPlayhead + delta))
-                        daw?.seekTo(newTime)
                         setPlayhead(newTime)
                       }
-                      const handleUp = () => {
+                      const handleUp = (moveE: MouseEvent) => {
+                        const delta = (moveE.clientX - startX) / zoom
+                        const finalTime = Math.max(0, Math.min(TIMELINE_SECONDS, startPlayhead + delta))
+                        if (daw) {
+                          daw.seekTo(finalTime).then(() => {
+                            setPlayhead(finalTime)
+                            if (wasPlaying) handlePlay()
+                          })
+                        }
                         window.removeEventListener('mousemove', handleMove)
                         window.removeEventListener('mouseup', handleUp)
                       }
@@ -3251,6 +3359,121 @@ export default function DAWProRebuild() {
             >
               <Trash2 size={12} />
               Delete
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Track Header Context Menu */}
+      {trackContextMenu && (
+        <>
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setTrackContextMenu(null)}
+          />
+          <div
+            className="fixed z-50 bg-[#111]/95 backdrop-blur-xl border border-white/[0.08] rounded-lg shadow-2xl shadow-black/50 py-1 min-w-[180px]"
+            style={{ left: trackContextMenu.x, top: trackContextMenu.y }}
+          >
+            {/* Track Info */}
+            <div className="px-3 py-1.5 text-[10px] text-white/30 uppercase tracking-wider font-semibold border-b border-white/[0.06] mb-1">
+              {daw?.getTracks().find(t => t.id === trackContextMenu.trackId)?.name || 'Track'}
+            </div>
+            <button
+              onClick={() => {
+                if (!daw) return
+                const sourceTrack = daw.getTracks().find(t => t.id === trackContextMenu.trackId)
+                if (!sourceTrack) return
+                const trackManager = daw.getTrackManager()
+                const newTrack = trackManager.createTrack({
+                  name: `${sourceTrack.name} (copy)`,
+                  type: sourceTrack.type
+                })
+                // Copy track settings
+                daw.updateTrack(newTrack.id, {
+                  volume: sourceTrack.volume,
+                  pan: sourceTrack.pan,
+                  muted: sourceTrack.muted
+                })
+                // Duplicate all clips
+                sourceTrack.clips.forEach(clip => {
+                  daw.addClipToTrack(newTrack.id, {
+                    startTime: clip.startTime,
+                    duration: clip.duration,
+                    offset: clip.offset,
+                    gain: clip.gain,
+                    buffer: clip.buffer,
+                    sourceUrl: clip.sourceUrl,
+                    name: clip.name,
+                    color: clip.color,
+                    fadeIn: clip.fadeIn,
+                    fadeOut: clip.fadeOut
+                  })
+                })
+                setTracks(daw.getTracks())
+                markProjectDirty()
+                showToast('Track duplicated', 'success')
+                setTrackContextMenu(null)
+              }}
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2"
+            >
+              <Copy size={12} className="text-cyan-400" />
+              Duplicate Track
+            </button>
+            <button
+              onClick={() => {
+                setEditingTrackId(trackContextMenu.trackId)
+                const trackName = daw?.getTracks().find(t => t.id === trackContextMenu.trackId)?.name || ''
+                setEditingTrackName(trackName)
+                setTrackContextMenu(null)
+              }}
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2"
+            >
+              <Edit3 size={12} className="text-cyan-400" />
+              Rename Track
+            </button>
+            <div className="border-t border-white/[0.06] my-1" />
+            <button
+              onClick={() => {
+                if (!daw) return
+                const track = daw.getTracks().find(t => t.id === trackContextMenu.trackId)
+                if (!track) return
+                // Remove all clips first
+                track.clips.forEach(clip => {
+                  daw.removeClipFromTrack(trackContextMenu.trackId, clip.id)
+                })
+                setTracks(daw.getTracks())
+                markProjectDirty()
+                showToast('Track clips cleared', 'success')
+                setTrackContextMenu(null)
+              }}
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={12} className="text-amber-400" />
+              Clear Track
+            </button>
+            <button
+              onClick={() => {
+                if (!daw) return
+                const allTracks = daw.getTracks()
+                if (allTracks.length <= 1) {
+                  showToast('Cannot delete last track', 'error')
+                  setTrackContextMenu(null)
+                  return
+                }
+                daw.deleteTrack(trackContextMenu.trackId)
+                setTracks(daw.getTracks())
+                if (selectedTrackId === trackContextMenu.trackId) {
+                  setSelectedTrackId(null)
+                }
+                markProjectDirty()
+                showToast('Track deleted', 'success')
+                setTrackContextMenu(null)
+              }}
+              className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-red-500/10 hover:text-red-400 transition-colors flex items-center gap-2"
+            >
+              <Trash2 size={12} />
+              Delete Track
             </button>
           </div>
         </>

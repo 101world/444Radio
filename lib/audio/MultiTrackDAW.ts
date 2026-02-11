@@ -70,6 +70,8 @@ export class MultiTrackDAW {
   private playbackOffset: number = 0
   private rafId?: number
   private activeSourceNodes?: Map<string, AudioBufferSourceNode>
+  private _isSeeking: boolean = false
+  private _rescheduleTimer: ReturnType<typeof setTimeout> | null = null
   private listeners: Map<string, Set<Function>> = new Map()
 
   constructor(config: DAWConfig = {}) {
@@ -133,9 +135,7 @@ export class MultiTrackDAW {
     this.keyboardManager.on('toggleLoop', () => this.toggleLoop())
     this.keyboardManager.on('zoomIn', () => this.timelineManager.zoomIn())
     this.keyboardManager.on('zoomOut', () => this.timelineManager.zoomOut())
-
-    // Setup playback loop
-    this.setupPlaybackLoop()
+    // NOTE: No setupPlaybackLoop() — page.tsx rAF loop is the single source of truth
   }
 
   // Transport Controls
@@ -357,21 +357,28 @@ export class MultiTrackDAW {
   }
 
   async seekTo(time: number): Promise<void> {
-    const wasPlaying = this.transportState.isPlaying
-    
-    if (wasPlaying) {
-      // Stop current playback
-      this.pause()
-    }
-    
-    // Update position
-    this.transportState.currentTime = time
-    this.playbackOffset = time
-    this.emit('seeked', time)
-    
-    // Resume if was playing
-    if (wasPlaying) {
-      await this.play()
+    // Guard against re-entrant calls (rAF + loop region both calling seekTo)
+    if (this._isSeeking) return
+    this._isSeeking = true
+
+    try {
+      const wasPlaying = this.transportState.isPlaying
+      
+      if (wasPlaying) {
+        this.pause()
+      }
+      
+      // Update position
+      this.transportState.currentTime = time
+      this.playbackOffset = time
+      this.emit('seeked', time)
+      
+      // Resume if was playing
+      if (wasPlaying) {
+        await this.play()
+      }
+    } finally {
+      this._isSeeking = false
     }
   }
 
@@ -451,10 +458,31 @@ export class MultiTrackDAW {
     this.rescheduleIfPlaying()
   }
 
+  /**
+   * Update clip data without rescheduling — used during drag/resize.
+   * Call rescheduleIfPlaying() explicitly when the edit is committed (mouseup).
+   */
+  updateClipSilent(trackId: string, clipId: string, updates: Partial<import('./TrackManager').TrackClip>): void {
+    this.trackManager.updateClip(trackId, clipId, updates)
+    this.emit('clipUpdated', { trackId, clipId, updates })
+  }
+
   updateClip(trackId: string, clipId: string, updates: Partial<import('./TrackManager').TrackClip>): void {
     this.trackManager.updateClip(trackId, clipId, updates)
     this.emit('clipUpdated', { trackId, clipId, updates })
-    this.rescheduleIfPlaying()
+    this.debouncedReschedule()
+  }
+
+  /**
+   * Debounced reschedule — waits 50ms after the last call before rescheduling.
+   * Prevents storm of pause→play cycles during rapid drag/resize operations.
+   */
+  private debouncedReschedule(): void {
+    if (this._rescheduleTimer) clearTimeout(this._rescheduleTimer)
+    this._rescheduleTimer = setTimeout(() => {
+      this._rescheduleTimer = null
+      this.rescheduleIfPlaying()
+    }, 50)
   }
 
   /**
@@ -462,7 +490,7 @@ export class MultiTrackDAW {
    * and re-schedule clips from the current playhead position.
    * This prevents "double/triple layering" when clips are edited mid-playback.
    */
-  private rescheduleIfPlaying(): void {
+  rescheduleIfPlaying(): void {
     if (!this.transportState.isPlaying) return
 
     // Update current time before rescheduling
@@ -907,29 +935,8 @@ export class MultiTrackDAW {
     return this.performanceManager.getMetrics()
   }
 
-  // Playback Loop
-  private setupPlaybackLoop(): void {
-    const loop = () => {
-      if (this.transportState.isPlaying) {
-        const elapsed = this.audioContext.currentTime - this.playbackStartTime
-        this.transportState.currentTime = this.playbackOffset + elapsed
-
-        // Check loop region
-        if (this.transportState.loopEnabled) {
-          const loopRegion = this.timelineManager.getActiveLoopRegion()
-          if (loopRegion && this.transportState.currentTime >= loopRegion.endTime) {
-            this.seekTo(loopRegion.startTime)
-          }
-        }
-
-        this.emit('playheadUpdate', this.transportState.currentTime)
-      }
-
-      this.rafId = requestAnimationFrame(loop)
-    }
-
-    this.rafId = requestAnimationFrame(loop)
-  }
+  // NOTE: setupPlaybackLoop removed — page.tsx rAF loop handles the playhead update
+  // and loop region check to avoid double-scheduling issues
 
   // Getters
   getAudioContext(): AudioContext {
