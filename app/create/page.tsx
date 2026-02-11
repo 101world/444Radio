@@ -172,6 +172,14 @@ function CreatePageContent() {
     return () => window.removeEventListener('toggle-features-sidebar', handler)
   }, [])
 
+  // Auto-open Ideas flow from URL param
+  useEffect(() => {
+    if (searchParams.get('ideas') === 'true') {
+      setShowPromptSuggestions(true)
+      setShowIdeasFlow(true)
+    }
+  }, [searchParams])
+
   // Handle modal toggle - close others when opening one
   const toggleModal = (modalType: 'title' | 'genre' | 'lyrics' | 'bpm') => {
     closeAllModals()

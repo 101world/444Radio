@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
-import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, BarChart3, LogIn, UserPlus, LayoutGrid } from 'lucide-react'
+import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, BarChart3, LogIn, UserPlus, LayoutGrid, Lightbulb } from 'lucide-react'
 
 interface MenuItem {
   icon: any
@@ -58,6 +58,7 @@ export default function DockedSidebar() {
   const menuItems: MenuItem[] = user ? [
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
+    { icon: Lightbulb, label: 'Ideas', href: '/create?ideas=true', highlight: 'purple', badge: 'AI' },
     { icon: Compass, label: 'Explore', href: '/explore', highlight: false },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { 
@@ -81,6 +82,7 @@ export default function DockedSidebar() {
   ] : [
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
+    { icon: Lightbulb, label: 'Ideas', href: '/create?ideas=true', highlight: 'purple', badge: 'AI' },
     { icon: Compass, label: 'Explore', href: '/explore', highlight: false },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
