@@ -1992,50 +1992,65 @@ function CreatePageContent() {
               )}
 
               {/* Input Field */}
-              <div className="flex-1 text-center md:text-left">
-                <input
-                  ref={(el) => {
-                    if (el) {
-                      // Store input ref for keyboard control
-                      (window as unknown as Record<string, HTMLInputElement>).__createPageInput = el;
-                    }
-                  }}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onFocus={handleInputFocus}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      // Close keyboard by blurring input
-                      if (e.currentTarget) {
-                        e.currentTarget.blur()
+              <div className="flex-1 flex flex-col gap-2">
+                <div className="text-center md:text-left">
+                  <input
+                    ref={(el) => {
+                      if (el) {
+                        // Store input ref for keyboard control
+                        (window as unknown as Record<string, HTMLInputElement>).__createPageInput = el;
                       }
-                      // Small delay to let keyboard close before generating
-                      setTimeout(() => {
-                        handleGenerate()
-                      }, 100)
+                    }}
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onFocus={handleInputFocus}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        // Close keyboard by blurring input
+                        if (e.currentTarget) {
+                          e.currentTarget.blur()
+                        }
+                        // Small delay to let keyboard close before generating
+                        setTimeout(() => {
+                          handleGenerate()
+                        }, 100)
+                      }
+                    }}
+                    placeholder={
+                      selectedType === 'music'
+                        ? 'Describe your sound...'
+                        : selectedType === 'image'
+                        ? 'Describe your cover art...'
+                        : selectedType === 'effects'
+                        ? 'Describe sound effects (up to 10s)...'
+                        : 'Coming soon...'
                     }
-                  }}
-                  placeholder={
-                    selectedType === 'music'
-                      ? 'Describe your sound...'
-                      : selectedType === 'image'
-                      ? 'Describe your cover art...'
-                      : selectedType === 'effects'
-                      ? 'Describe sound effects (up to 10s)...'
-                      : 'Coming soon...'
-                  }
-                  disabled={selectedType === 'video'}
-                  className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                />
+                    disabled={selectedType === 'video'}
+                    className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  
+                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                    <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
+                      {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
+                    </div>
+                    <div className={`text-xs font-mono ${
+                      input.length < MIN_PROMPT_LENGTH ? 'text-red-400' :
+                      input.length > MAX_PROMPT_LENGTH ? 'text-red-400' :
+                      input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-400' :
+                      'text-gray-500'
+                    }`}>
+                      {input.length}/{MAX_PROMPT_LENGTH}
+                    </div>
+                  </div>
+                </div>
                 
                 {/* Prompt Suggestion Tags - Show for music only */}
                 {selectedType === 'music' && (
-                  <div className="mt-2 p-2 bg-black/40 backdrop-blur-sm border border-cyan-500/20 rounded-lg">
+                  <div className="p-2 bg-black/40 backdrop-blur-sm border border-cyan-500/20 rounded-lg">
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className="text-[10px] text-cyan-400/60 font-medium">💡</span>
-                      <span className="text-[10px] text-cyan-400/60 font-medium">Quick Tags:</span>
+                      <span className="text-[10px] text-cyan-400/60 font-medium">💡 Quick Tags:</span>
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {[
@@ -2059,20 +2074,6 @@ function CreatePageContent() {
                     </div>
                   </div>
                 )}
-                
-                <div className="flex items-center justify-between gap-2 mt-0.5">
-                  <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
-                    {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
-                  </div>
-                  <div className={`text-xs font-mono ${
-                    input.length < MIN_PROMPT_LENGTH ? 'text-red-400' :
-                    input.length > MAX_PROMPT_LENGTH ? 'text-red-400' :
-                    input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-400' :
-                    'text-gray-500'
-                  }`}>
-                    {input.length}/{MAX_PROMPT_LENGTH}
-                  </div>
-                </div>
               </div>
 
               {/* Create Button */}
