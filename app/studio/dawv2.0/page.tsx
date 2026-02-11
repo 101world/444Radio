@@ -1180,21 +1180,29 @@ export default function DAWProRebuild() {
     }
   }
 
-  // Stem splitter handler
-  const handleSplitStems = async () => {
-    if (!selectedAudioForStems) {
-      showToast('Please select an audio track to split', 'error')
+  // Stem splitter handler — can be called directly with a URL (from context menu) or uses selectedAudioForStems
+  const handleSplitStems = async (directAudioUrl?: string) => {
+    const audioUrl = directAudioUrl || selectedAudioForStems
+    if (!audioUrl) {
+      showToast('No audio selected to split', 'error')
+      return
+    }
+
+    // Check credits first
+    if (userCredits !== null && userCredits < 5) {
+      showToast('Need 5 credits to split stems', 'error')
       return
     }
 
     setIsSplittingStems(true)
     setStemResults(null)
+    showToast('Splitting stems... This may take 1-3 minutes', 'info')
 
     try {
       const response = await fetch('/api/audio/split-stems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl: selectedAudioForStems })
+        body: JSON.stringify({ audioUrl })
       })
 
       if (!response.ok) {
@@ -1206,39 +1214,56 @@ export default function DAWProRebuild() {
 
       if (data.success && data.stems) {
         setStemResults(data.stems)
-        showToast('Stems separated successfully! Adding to timeline...', 'success')
         
-        // Automatically add stems to timeline on separate tracks
+        // Update credits display
+        if (data.creditsRemaining !== undefined) {
+          setUserCredits(data.creditsRemaining)
+        } else {
+          fetchCredits()
+        }
+        
+        showToast('Stems separated! Adding to timeline...', 'success')
+        
+        // Get current tracks from engine
+        const currentTracks = daw?.getTracks() || []
         const stemEntries = Object.entries(data.stems) as [string, string][]
+        
         for (const [stemType, stemUrl] of stemEntries) {
-          // Find or create track for this stem type
-          let targetTrack = tracks.find(t => t.name.toLowerCase().includes(stemType.toLowerCase()))
+          // Find an empty track or create a new one
+          const latestTracks = daw?.getTracks() || []
+          let targetTrack = latestTracks.find(t => t.clips.length === 0)
           
-          if (!targetTrack || targetTrack.clips.length > 0) {
-            // Create new track if doesn't exist or already has clips
-            const trackName = `${stemType.charAt(0).toUpperCase() + stemType.slice(1)} Stem`
+          if (!targetTrack) {
+            // Create new track named after the stem type
+            const trackName = `${stemType.charAt(0).toUpperCase() + stemType.slice(1)}`
             targetTrack = daw?.getTrackManager()?.createTrack({ name: trackName })
-            if (targetTrack) {
-              setTracks(daw?.getTracks() || [])
-            }
+          } else {
+            // Rename the empty track to match the stem type
+            const trackName = `${stemType.charAt(0).toUpperCase() + stemType.slice(1)}`
+            daw?.updateTrack(targetTrack.id, { name: trackName } as any)
           }
           
           if (targetTrack && daw) {
             try {
-              await handleAddClip(stemUrl, targetTrack.id, 0)
+              await handleAddClip(stemUrl as string, targetTrack.id, 0)
             } catch (error) {
               console.error(`Failed to add ${stemType} stem:`, error)
             }
           }
         }
         
+        // Refresh tracks state
+        setTracks(daw?.getTracks() || [])
         showToast(`✓ ${stemEntries.length} stems added to timeline`, 'success')
       } else {
         throw new Error('No stems returned')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Stem splitting error:', error)
-      showToast('Stem splitting failed. Please try again.', 'error')
+      const msg = error?.message?.includes('credits') 
+        ? error.message 
+        : 'Stem splitting failed. Please try again.'
+      showToast(msg, 'error')
     } finally {
       setIsSplittingStems(false)
     }
@@ -2183,6 +2208,16 @@ export default function DAWProRebuild() {
         <div className="flex-1 flex flex-col overflow-hidden bg-[#0a0a0a]">
           <div className="flex-1 overflow-hidden">
             <div className="h-full overflow-auto relative" ref={timelineRef}>
+              {/* Stem splitting overlay */}
+              {isSplittingStems && (
+                <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+                  <div className="flex flex-col items-center gap-3 bg-[#111]/90 border border-violet-500/20 rounded-xl px-8 py-6 shadow-2xl shadow-violet-500/10">
+                    <Loader2 size={28} className="text-violet-400 animate-spin" />
+                    <div className="text-[13px] font-medium text-white/90">Splitting Stems...</div>
+                    <div className="text-[10px] text-white/40">This may take 1-3 minutes</div>
+                  </div>
+                </div>
+              )}
               <div
                 className="relative inline-flex min-w-full"
                 style={{ minWidth: `${TRACK_HEADER_WIDTH + timelineWidth}px` }}
@@ -3276,15 +3311,22 @@ export default function DAWProRebuild() {
                 const track = daw?.getTracks().find(t => t.id === contextMenu.trackId)
                 const clip = track?.clips.find(c => c.id === contextMenu.clipId)
                 if (clip?.sourceUrl) {
-                  setSelectedAudioForStems(clip.sourceUrl)
-                  setShowStemSplitter(true)
+                  handleSplitStems(clip.sourceUrl)
+                } else {
+                  showToast('No audio source found on this clip', 'error')
                 }
                 setContextMenu(null)
               }}
               className="w-full px-3 py-1.5 text-left text-[11px] text-white/70 hover:bg-white/[0.06] hover:text-white transition-colors flex items-center gap-2"
+              disabled={isSplittingStems}
             >
-              <Scissors size={12} className="text-violet-400" />
-              Split Stems
+              {isSplittingStems ? (
+                <Loader2 size={12} className="text-violet-400 animate-spin" />
+              ) : (
+                <Scissors size={12} className="text-violet-400" />
+              )}
+              {isSplittingStems ? 'Splitting...' : 'Split Stems'}
+              <span className="ml-auto text-[9px] text-white/20">5 ★</span>
             </button>
             <div className="border-t border-white/[0.06] my-1" />
             <button
