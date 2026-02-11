@@ -2,6 +2,7 @@
 
 import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
@@ -582,10 +583,13 @@ export default function LibraryPage() {
                     className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-xl overflow-hidden hover:border-cyan-400/60 hover:scale-105 transition-all duration-300 cursor-pointer"
                   >
                     {/* Image */}
-                    <img
+                    <Image
                       src={item.image_url}
                       alt={item.title || item.prompt}
+                      width={300}
+                      height={300}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      loading="lazy"
                     />
 
                     {/* Hover Actions */}
@@ -939,7 +943,7 @@ export default function LibraryPage() {
                   <div key={item.id} className="group relative bg-black/40 backdrop-blur-xl border border-pink-500/20 rounded-xl overflow-hidden hover:border-pink-400/60 transition-all duration-300">
                     <div className="flex items-center gap-3 p-3">
                       <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-pink-500/30">
-                        <img src={item.image_url} alt={item.title || 'Release'} className="w-full h-full object-cover" />
+                        <Image src={item.image_url} alt={item.title || 'Release'} width={56} height={56} className="w-full h-full object-cover" loading="lazy" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">{item.title || 'Release'}</h3>

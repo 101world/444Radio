@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { X, User, LogOut, Upload, Check } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
@@ -140,7 +141,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, currentUsername,
               <div className="relative">
                 <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
                   {avatarPreview ? (
-                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                    <Image src={avatarPreview} alt="Avatar" width={80} height={80} className="w-full h-full object-cover" />
                   ) : (
                     <User size={32} className="text-white" />
                   )}

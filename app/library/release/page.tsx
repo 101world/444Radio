@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { Search, Play, Pause, Send, X, Edit2, Music, Image as ImageIcon, ArrowLeft, Check, Filter, Grid3x3, List } from 'lucide-react'
@@ -398,7 +399,7 @@ export default function ReleasePage() {
                       {/* Cover Art */}
                       <div className={`relative ${viewMode === 'grid' ? 'aspect-square mb-3' : 'w-20 h-20 flex-shrink-0'} rounded-lg overflow-hidden bg-gradient-to-br from-cyan-500/20 to-purple-500/20`}>
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.title || 'Cover'} className="w-full h-full object-cover" />
+                          <Image src={item.image_url} alt={item.title || 'Cover'} width={300} height={300} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <ImageIcon size={24} className="text-cyan-400/40" />
@@ -480,7 +481,7 @@ export default function ReleasePage() {
                   {/* Cover Art */}
                   <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-cyan-500/20 to-purple-500/20">
                     {previewItem.image_url ? (
-                      <img src={previewItem.image_url} alt={previewItem.title || 'Cover'} className="w-full h-full object-cover" />
+                      <Image src={previewItem.image_url} alt={previewItem.title || 'Cover'} width={500} height={500} className="w-full h-full object-cover" priority />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <ImageIcon size={64} className="text-cyan-400/40" />
