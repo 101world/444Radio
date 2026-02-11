@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { safeLocalStorage } from '@/lib/safe-storage'
 
 export interface GenerationItem {
   id: string
@@ -46,7 +47,7 @@ export function GenerationQueueProvider({ children }: { children: ReactNode }) {
   // Load from localStorage on mount
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
+      const stored = safeLocalStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored) as GenerationItem[]
         // Filter out old items
@@ -66,7 +67,7 @@ export function GenerationQueueProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isInitialized) return
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(generations))
+      safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(generations))
     } catch (error) {
       console.error('Failed to save generation queue:', error)
     }

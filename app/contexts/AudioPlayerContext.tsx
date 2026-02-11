@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo, ReactNode } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { safeLocalStorage } from '@/lib/safe-storage'
 
 interface Track {
   id: string
@@ -65,6 +66,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const playTimeRef = useRef<number>(0)
   const hasTrackedPlayRef = useRef<boolean>(false)
   const isLoadingRef = useRef<boolean>(false)
+  const preloadAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Define pause first so it can be used in useEffect
   const pause = useCallback(() => {
@@ -76,7 +78,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   // Load queue from localStorage on mount
   useEffect(() => {
-    const savedQueue = localStorage.getItem('444radio-queue')
+    const savedQueue = safeLocalStorage.getItem('444radio-queue')
     if (savedQueue) {
       try {
         const parsedQueue = JSON.parse(savedQueue)
@@ -100,10 +102,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   // Save queue to localStorage whenever it changes
   useEffect(() => {
     if (queue.length > 0) {
-      localStorage.setItem('444radio-queue', JSON.stringify(queue))
+      safeLocalStorage.setItem('444radio-queue', JSON.stringify(queue))
       console.log('[Queue] Saved to localStorage:', queue.length, 'tracks')
     } else {
-      localStorage.removeItem('444radio-queue')
+      safeLocalStorage.removeItem('444radio-queue')
       console.log('[Queue] Cleared from localStorage')
     }
   }, [queue])
@@ -324,9 +326,72 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
           audioRef.current.pause()
           audioRef.current = null
         }
+        if (preloadAudioRef.current) {
+          preloadAudioRef.current.pause()
+          preloadAudioRef.current = null
+        }
       }
     }
   }, []) // Empty dependency array - only run once on mount
+
+  // Preload next track for smooth transitions (prevents stuttering)
+  useEffect(() => {
+    if (!currentTrack || playlist.length <= 1) {
+      // Clean up preload if no next track
+      if (preloadAudioRef.current) {
+        preloadAudioRef.current.pause()
+        preloadAudioRef.current = null
+      }
+      return
+    }
+
+    const nextIndex = (currentIndex + 1) % playlist.length
+    const nextTrack = playlist[nextIndex]
+    
+    if (nextTrack && nextTrack.audioUrl) {
+      console.log('🎵 Preloading next track:', nextTrack.title)
+      
+      // Clean up previous preload
+      if (preloadAudioRef.current) {
+        preloadAudioRef.current.pause()
+        preloadAudioRef.current = null
+      }
+      
+      // Create new preload audio element
+      const preloadAudio = new Audio()
+      preloadAudio.crossOrigin = 'anonymous'
+      preloadAudio.preload = 'auto'
+      
+      // Compute URL same way as playTrack
+      try {
+        const computeUrl = (u: string) => {
+          if (u.startsWith('blob:') || u.startsWith('/')) return u
+          try {
+            const target = new URL(u)
+            const r2Hosts: string[] = []
+            if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
+            const isR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com') || r2Hosts.includes(target.hostname)
+            const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')
+            const needsProxy = isR2 || isReplicate
+            return needsProxy ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
+          } catch { return u }
+        }
+        
+        preloadAudio.src = computeUrl(nextTrack.audioUrl)
+        preloadAudio.load()
+        preloadAudioRef.current = preloadAudio
+      } catch (error) {
+        console.warn('Failed to preload next track:', error)
+      }
+    }
+    
+    return () => {
+      if (preloadAudioRef.current) {
+        preloadAudioRef.current.pause()
+        preloadAudioRef.current = null
+      }
+    }
+  }, [currentTrack, currentIndex, playlist])
 
   // Listen for studio playback events to pause the global audio when Studio starts playing
   useEffect(() => {
