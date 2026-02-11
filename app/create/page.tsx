@@ -2857,14 +2857,39 @@ function CreatePageContent() {
           setInput('')
         }}
         onSuccess={(variations: Array<{ url: string; variation: number }>, prompt: string) => {
+          console.log('[Looper Success] Adding variations to chat:', variations.length)
           // Add both variations to chat with proper Message structure
           setMessages(prev => {
-            // Find and remove the generating message
-            const withoutGenerating = prev.filter(msg => msg.type !== 'generation' && !msg.isGenerating)
+            console.log('[Looper Success] Current messages:', prev.length)
             
-            // Add both variations as separate messages with result.audioUrl
+            // Find and remove ONLY the most recent generating message for loopers
+            // Search from the END to find the last one
+            let lastGeneratingIndex = -1
+            for (let i = prev.length - 1; i >= 0; i--) {
+              if (prev[i].isGenerating && prev[i].generationType === 'music') {
+                lastGeneratingIndex = i
+                break
+              }
+            }
+            
+            let withoutGenerating = prev
+            if (lastGeneratingIndex !== -1) {
+              console.log('[Looper Success] Removing generating message at index:', lastGeneratingIndex)
+              withoutGenerating = [
+                ...prev.slice(0, lastGeneratingIndex),
+                ...prev.slice(lastGeneratingIndex + 1)
+              ]
+            }
+            
+            // Add variations as separate messages with timestamps AFTER all existing messages
+            // Use baseTime that's guaranteed to be AFTER the last message
+            const lastMsgTime = withoutGenerating.length > 0 
+              ? Math.max(...withoutGenerating.map(m => m.timestamp.getTime()))
+              : Date.now()
+            const baseTime = Math.max(lastMsgTime + 1000, Date.now()) // At least 1 second after last message
+            
             const successMessages: Message[] = variations.map((v, index) => ({
-              id: `loop-${Date.now()}-${index}-${Math.random()}`,
+              id: `loop-${baseTime}-${index}-${Math.random()}`,
               type: 'assistant',
               content: `✅ Loop Variation ${v.variation} generated!`,
               result: {
@@ -2872,9 +2897,10 @@ function CreatePageContent() {
                 title: `Loop: ${prompt.substring(0, 40)} (v${v.variation})`,
                 prompt: prompt
               },
-              timestamp: new Date(Date.now() + index) // Slight offset to maintain order
+              timestamp: new Date(baseTime + (index * 2000)) // 2 seconds apart for guaranteed ordering
             }))
             
+            console.log('[Looper Success] Adding variations at timestamps:', successMessages.map(m => m.timestamp.toISOString()))
             return [...withoutGenerating, ...successMessages]
           })
         }}
