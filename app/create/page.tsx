@@ -16,6 +16,8 @@ const CombineMediaModal = lazy(() => import('../components/CombineMediaModal'))
 const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
 const MediaUploadModal = lazy(() => import('../components/MediaUploadModal'))
 const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
+const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
+const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 import GenerationRecovery from '../components/GenerationRecovery'
 import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
@@ -150,6 +152,9 @@ function CreatePageContent() {
   const [isSplittingStems, setIsSplittingStems] = useState(false)
   const [splitStemsMessageId, setSplitStemsMessageId] = useState<string | null>(null)
   
+  // Features sidebar state
+  const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
+  
   // Title validation state
   const [showTitleError, setShowTitleError] = useState(false)
 
@@ -160,6 +165,13 @@ function CreatePageContent() {
     setShowLyricsModal(false)
     setShowBpmModal(false)
   }
+
+  // Listen for features sidebar toggle from DockedSidebar
+  useEffect(() => {
+    const handler = () => setShowFeaturesSidebar(prev => !prev)
+    window.addEventListener('toggle-features-sidebar', handler)
+    return () => window.removeEventListener('toggle-features-sidebar', handler)
+  }, [])
 
   // Handle modal toggle - close others when opening one
   const toggleModal = (modalType: 'title' | 'genre' | 'lyrics' | 'bpm') => {
@@ -1339,7 +1351,64 @@ function CreatePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col md:pl-20">
+    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[368px]' : 'md:pl-20'}`}>
+      {/* Features Sidebar */}
+      <Suspense fallback={null}>
+        <FeaturesSidebar
+          isOpen={showFeaturesSidebar}
+          onClose={() => setShowFeaturesSidebar(false)}
+          selectedType={selectedType}
+          isInstrumental={isInstrumental}
+          isRecording={isRecording}
+          showAdvancedButtons={showAdvancedButtons}
+          userCredits={userCredits}
+          isLoadingCredits={isLoadingCredits}
+          customTitle={customTitle}
+          genre={genre}
+          customLyrics={customLyrics}
+          bpm={bpm}
+          onSelectType={(type) => setSelectedType(type as GenerationType)}
+          onShowEffects={() => setShowEffectsModal(true)}
+          onShowLoopers={() => setShowLoopersModal(true)}
+          onShowLyrics={() => setShowLyricsModal(true)}
+          onShowUpload={() => setShowMediaUploadModal(true)}
+          onOpenRelease={() => handleOpenRelease()}
+          onClearChat={() => {
+            if (confirm('Clear all chat messages? They will be saved to your deleted chats archive.')) {
+              try {
+                const archives = localStorage.getItem('444radio-chat-archives')
+                const archiveList = archives ? JSON.parse(archives) : []
+                const newArchive = {
+                  id: `chat-${Date.now()}`,
+                  messages: messages,
+                  archivedAt: new Date(),
+                  messageCount: messages.length
+                }
+                archiveList.unshift(newArchive)
+                const limitedArchives = archiveList.slice(0, 20)
+                localStorage.setItem('444radio-chat-archives', JSON.stringify(limitedArchives))
+                localStorage.removeItem('444radio-chat-backup')
+              } catch (error) {
+                console.error('Failed to archive chat:', error)
+              }
+              setMessages([{
+                id: '1',
+                type: 'assistant',
+                content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?',
+                timestamp: new Date()
+              }])
+              localStorage.removeItem('444radio-chat-messages')
+            }
+          }}
+          onShowDeletedChats={() => setShowDeletedChatsModal(true)}
+          onToggleInstrumental={() => setIsInstrumental(!isInstrumental)}
+          onToggleRecording={isRecording ? stopRecording : startRecording}
+          onSubmitPrompt={handleGenerate}
+          promptText={input}
+          onPromptChange={setInput}
+          isGenerating={isGenerating}
+        />
+      </Suspense>
       {/* Holographic 3D Background */}
       {!isMobile && <HolographicBackground />}
       
@@ -1779,8 +1848,8 @@ function CreatePageContent() {
         </div>
       </div>
 
-      {/* Fixed Bottom Dock - Home Page Style */}
-      {showBottomDock && (
+      {/* Fixed Bottom Dock - Home Page Style (hidden when Features Sidebar is open) */}
+      {showBottomDock && !showFeaturesSidebar && (
       <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           
@@ -2361,6 +2430,17 @@ function CreatePageContent() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Matrix GPU Console - Shown when Features Sidebar is open */}
+      {showFeaturesSidebar && (
+        <div className="hidden md:block fixed bottom-0 left-[368px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent">
+          <div className="h-full border-t border-cyan-500/20">
+            <Suspense fallback={<div className="h-full bg-black" />}>
+              <MatrixConsole />
+            </Suspense>
+          </div>
+        </div>
       )}
 
       {/* Lyrics & Settings Modal - Comprehensive */}

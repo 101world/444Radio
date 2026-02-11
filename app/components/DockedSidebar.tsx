@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
-import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, BarChart3, LogIn, UserPlus } from 'lucide-react'
+import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, BarChart3, LogIn, UserPlus, LayoutGrid } from 'lucide-react'
 
 interface MenuItem {
   icon: any
@@ -223,6 +223,30 @@ export default function DockedSidebar() {
           })}
         </ul>
       </nav>
+
+      {/* Features Button - Only on /create page */}
+      {pathname === '/create' && (
+        <div className="px-3 py-4 border-t border-white/10">
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('toggle-features-sidebar'))
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative bg-gradient-to-r from-cyan-600/20 to-purple-500/20 border border-cyan-500/40 text-cyan-400 hover:from-cyan-600/30 hover:to-purple-500/30 hover:border-cyan-400/50`}
+          >
+            <div className={`flex-shrink-0 ${isExpanded ? '' : 'mx-auto'}`}>
+              <LayoutGrid size={20} />
+            </div>
+            {isExpanded && (
+              <span className="font-medium whitespace-nowrap">Features</span>
+            )}
+            {!isExpanded && (
+              <div className="absolute left-full ml-2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50">
+                Features
+              </div>
+            )}
+          </button>
+        </div>
+      )}
     </aside>
   )
 }
