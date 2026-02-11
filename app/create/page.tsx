@@ -2123,9 +2123,9 @@ function CreatePageContent() {
                   {/* Suggestions Dropdown */}
                   {showPromptSuggestions && (
                     <>
-                      {/* Backdrop to close dropdown */}
+                      {/* Backdrop to close dropdown - Click outside to close */}
                       <div 
-                        className="fixed inset-0 z-40"
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 animate-fade-in-fast"
                         onClick={() => setShowPromptSuggestions(false)}
                       />
                       
