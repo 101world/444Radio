@@ -28,7 +28,9 @@ import {
   Trash2,
   ClipboardPaste,
   Clipboard,
-  Folder
+  Folder,
+  Plus,
+  PanelRight
 } from 'lucide-react'
 
 // Extend Window interface for drag throttling and pending clip tracking
@@ -115,6 +117,9 @@ export default function DAWProRebuild() {
   const [genBpm, setGenBpm] = useState('')
   const [genIsInstrumental, setGenIsInstrumental] = useState(false)
 
+  // Right sidebar panel
+  const [showRightPanel, setShowRightPanel] = useState(true)
+
   // Stem splitter states
   const [showStemSplitter, setShowStemSplitter] = useState(false)
   const [isSplittingStems, setIsSplittingStems] = useState(false)
@@ -197,7 +202,7 @@ export default function DAWProRebuild() {
         const instance = new MultiTrackDAW({ userId: user.id })
         dawInstance = instance
 
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 3; i++) {
           instance.createTrack(`${i + 1} Audio`)
         }
 
@@ -1209,7 +1214,7 @@ export default function DAWProRebuild() {
       daw.stop()
       const trackManager = daw.getTrackManager()
       trackManager.getTracks().forEach((t) => trackManager.deleteTrack(t.id))
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 3; i++) {
         trackManager.createTrack({ name: `${i + 1} Audio` })
       }
       setProjectName('Untitled Project')
@@ -1790,6 +1795,19 @@ export default function DAWProRebuild() {
           </button>
 
           <button
+            onClick={() => setShowRightPanel(!showRightPanel)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+              showRightPanel
+                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                : 'bg-[#1a1a1a] text-gray-400 border border-gray-700/50 hover:border-gray-600'
+            }`}
+            title="Toggle tools panel"
+          >
+            <PanelRight size={16} />
+            Tools
+          </button>
+
+          <button
             onClick={() => setShowGenerateModal(true)}
             className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold transition-all flex items-center gap-2 shadow-xl shadow-purple-500/30 border border-purple-400/30"
             title="AI generation"
@@ -1875,8 +1893,10 @@ export default function DAWProRebuild() {
 
         <div className="flex-1 flex items-center justify-center gap-4">
           <div className="text-3xl font-mono tabular-nums text-cyan-400 font-bold tracking-wider" title="Press B to toggle browser | Press Space to play/pause | Ctrl+S to save">
-            {Math.floor(playhead / 60)}:{String(Math.floor(playhead % 60)).padStart(2, '0')}.
-            {String(Math.floor((playhead % 1) * 100)).padStart(2, '0')}
+            {formatBarsBeats(playhead)}
+          </div>
+          <div className="text-xs font-mono text-gray-500 mt-0.5">
+            {Math.floor(playhead / 60)}:{String(Math.floor(playhead % 60)).padStart(2, '0')}.{String(Math.floor((playhead % 1) * 100)).padStart(2, '0')}
           </div>
           {(saveStatus === 'saving' || saveStatus === 'autosaving') && (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/40 text-cyan-100 text-xs">
@@ -2015,7 +2035,7 @@ export default function DAWProRebuild() {
                     id="audio-import"
                     name="audioFile"
                     type="file"
-                    accept="audio/mp3,audio/wav,audio/mpeg,audio/wave"
+                    accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac,.aiff"
                     className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0]
@@ -2037,8 +2057,32 @@ export default function DAWProRebuild() {
                         const result = await response.json()
                         
                         if (response.ok && result.success) {
-                          showToast('✓ Audio imported', 'success')
+                          showToast('✓ Audio imported to library', 'success')
                           await loadLibrary()
+                          
+                          // Also decode and add to first available track
+                          try {
+                            const audioContext = daw?.getAudioContext()
+                            if (audioContext && daw) {
+                              const arrayBuffer = await file.arrayBuffer()
+                              const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+                              const currentTracks = daw.getTracks()
+                              const emptyTrack = currentTracks.find(t => t.clips.length === 0) || currentTracks[0]
+                              if (emptyTrack) {
+                                const trackManager = daw.getTrackManager()
+                                trackManager.addClip(emptyTrack.id, {
+                                  buffer: audioBuffer,
+                                  startTime: 0,
+                                  sourceUrl: result.url || '',
+                                  name: file.name.replace(/\.[^/.]+$/, '')
+                                })
+                                setTracks([...daw.getTracks()])
+                                showToast('✓ Added to track', 'success')
+                              }
+                            }
+                          } catch (decodeErr) {
+                            console.warn('Could not auto-add to track:', decodeErr)
+                          }
                         } else {
                           console.error('Import failed:', result.error || 'Unknown error')
                           showToast(`Import failed: ${result.error || 'Unknown error'}`, 'error')
@@ -2342,7 +2386,7 @@ export default function DAWProRebuild() {
                       >
                         <div className="h-full border-l border-gray-700 relative">
                           <span className="text-xs text-gray-500 ml-2 absolute top-2">
-                            {second}s
+                            {formatBarsBeats(second)}
                           </span>
                         </div>
                       </div>
@@ -2765,6 +2809,210 @@ export default function DAWProRebuild() {
             </div>
           </div>
         </div>
+
+        {/* Right Tools Panel */}
+        {showRightPanel && (
+          <div className="w-72 bg-gradient-to-b from-[#0a0a0a] to-[#0d0d0d] border-l border-gray-800/50 flex flex-col overflow-y-auto">
+            {/* Generate AI Section */}
+            <div className="p-4 border-b border-gray-800/50">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Sparkles size={14} className="text-purple-400" />
+                Generate AI
+              </h3>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Describe your track..."
+                  value={genPrompt}
+                  onChange={(e) => setGenPrompt(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-3 py-2 text-sm focus:border-purple-500 focus:outline-none transition-all placeholder:text-gray-600"
+                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Title"
+                    value={genTitle}
+                    onChange={(e) => setGenTitle(e.target.value)}
+                    className="flex-1 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-3 py-2 text-xs focus:border-purple-500 focus:outline-none transition-all placeholder:text-gray-600"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Genre"
+                    value={genGenre}
+                    onChange={(e) => setGenGenre(e.target.value)}
+                    className="flex-1 bg-[#1a1a1a] border border-gray-700/50 rounded-lg px-3 py-2 text-xs focus:border-purple-500 focus:outline-none transition-all placeholder:text-gray-600"
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (genPrompt.trim().length >= 3) {
+                      handleGenerate()
+                    } else {
+                      setShowGenerateModal(true)
+                    }
+                  }}
+                  disabled={generatingTrack}
+                  className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
+                >
+                  {generatingTrack ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      {generationProgress || 'Generating...'}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      Generate
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowGenerateModal(true)}
+                  className="w-full px-3 py-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors text-center"
+                >
+                  Advanced options...
+                </button>
+              </div>
+            </div>
+
+            {/* Import Audio Section */}
+            <div className="p-4 border-b border-gray-800/50">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Download size={14} className="text-cyan-400" />
+                Import Audio
+              </h3>
+              <label className="w-full px-4 py-2.5 bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 hover:from-cyan-500/30 hover:to-cyan-600/30 border border-cyan-500/30 text-cyan-400 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <Download size={14} />
+                Choose File
+                <input
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac,.aiff"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    showToast('Uploading...', 'info')
+                    try {
+                      const formData = new FormData()
+                      formData.append('file', file)
+                      formData.append('title', file.name.replace(/\.[^/.]+$/, ''))
+                      formData.append('type', 'music')
+                      const response = await fetch('/api/profile/upload', {
+                        method: 'POST',
+                        body: formData
+                      })
+                      const result = await response.json()
+                      if (response.ok && result.success) {
+                        showToast('\u2713 Audio imported', 'success')
+                        await loadLibrary()
+                        try {
+                          const audioContext = daw?.getAudioContext()
+                          if (audioContext && daw) {
+                            const arrayBuffer = await file.arrayBuffer()
+                            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+                            const currentTracks = daw.getTracks()
+                            const emptyTrack = currentTracks.find(t => t.clips.length === 0) || currentTracks[0]
+                            if (emptyTrack) {
+                              const trackManager = daw.getTrackManager()
+                              trackManager.addClip(emptyTrack.id, {
+                                buffer: audioBuffer,
+                                startTime: 0,
+                                sourceUrl: result.url || '',
+                                name: file.name.replace(/\.[^/.]+$/, '')
+                              })
+                              setTracks([...daw.getTracks()])
+                              showToast('\u2713 Added to track', 'success')
+                            }
+                          }
+                        } catch (decodeErr) {
+                          console.warn('Could not auto-add to track:', decodeErr)
+                        }
+                      } else {
+                        showToast(`Import failed: ${result.error || 'Unknown error'}`, 'error')
+                      }
+                    } catch (error: any) {
+                      showToast(`Import failed: ${error.message || 'Network error'}`, 'error')
+                    }
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </div>
+
+            {/* Stem Split Section */}
+            <div className="p-4 border-b border-gray-800/50">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Scissors size={14} className="text-purple-400" />
+                Stem Splitter
+              </h3>
+              <button
+                onClick={() => setShowStemSplitter(true)}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-500/30 text-purple-400 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2"
+              >
+                <Scissors size={14} />
+                Split Stems
+              </button>
+              <p className="text-xs text-gray-600 mt-2">Separate vocals, drums, bass & more</p>
+            </div>
+
+            {/* Add Track Section */}
+            <div className="p-4 border-b border-gray-800/50">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Music size={14} className="text-cyan-400" />
+                Tracks
+              </h3>
+              <button
+                onClick={() => {
+                  if (!daw) return
+                  const trackManager = daw.getTrackManager()
+                  const currentTracks = daw.getTracks()
+                  trackManager.createTrack({ name: `${currentTracks.length + 1} Audio` })
+                  setTracks([...daw.getTracks()])
+                  showToast(`Track ${currentTracks.length + 1} added`, 'success')
+                }}
+                className="w-full px-4 py-2.5 bg-[#1a1a1a] hover:bg-[#222] border border-gray-700/50 hover:border-cyan-500/30 text-gray-300 hover:text-cyan-400 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+              >
+                <Plus size={14} />
+                Add Track
+              </button>
+              <p className="text-xs text-gray-600 mt-2">
+                {tracks.length} track{tracks.length !== 1 ? 's' : ''} active
+              </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="p-4">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                Quick Actions
+              </h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleSave('manual')}
+                  disabled={saving}
+                  className="w-full px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 rounded-lg text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Save size={14} />
+                  {saving ? 'Saving...' : 'Save Project'}
+                </button>
+                <button
+                  onClick={handleExport}
+                  disabled={isExporting}
+                  className="w-full px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-lg text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Download size={14} />
+                  {isExporting ? 'Exporting...' : 'Export WAV'}
+                </button>
+                <button
+                  onClick={resetProject}
+                  className="w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-sm transition-all flex items-center gap-2"
+                >
+                  <Trash2 size={14} />
+                  New Project
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Advanced AI Generation Modal */}

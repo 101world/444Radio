@@ -152,14 +152,15 @@ export class MultiTrackDAW {
       this.activeSourceNodes = new Map()
     }
 
-    // Get master gain for volume control
-    const masterGain = this.audioEngine.getMasterGain()
-
-    // Schedule all clips
+    // Schedule all clips through existing track routing graph
+    // TrackManager routing: gainNode → panNode → analyserNode → masterOutput → destination
     const tracks = this.trackManager.getTracks()
+    const hasSolos = tracks.some(t => t.solo)
     tracks.forEach(track => {
       const routingNode = this.trackManager.getRoutingNode(track.id)
-      if (!routingNode || track.muted || track.solo || !track.clips.length) return
+      if (!routingNode || track.muted || !track.clips.length) return
+      // If any track is solo'd, only play solo'd tracks
+      if (hasSolos && !track.solo) return
 
       track.clips.forEach(clip => {
         if (!clip.buffer) return // Skip clips without audio buffer
@@ -222,12 +223,10 @@ export class MultiTrackDAW {
           }
         }
 
-        // FIX #1: Connect through master gain for volume control
-        // source → clipGain → track routing → master gain → destination
+        // Connect: source → clipGain → track routingNode.gainNode
+        // RoutingNode already chains: gainNode → panNode → analyserNode → masterOutput → destination
         source.connect(clipGain)
         clipGain.connect(routingNode.gainNode)
-        routingNode.gainNode.connect(masterGain)
-        masterGain.connect(this.audioContext.destination)
 
         // Start playback
         source.start(startTime, offset, duration)
