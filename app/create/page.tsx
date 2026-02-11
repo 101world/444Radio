@@ -4,16 +4,18 @@ import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat } from 'lucide-react'
-import MusicGenerationModal from '../components/MusicGenerationModal'
-import EffectsGenerationModal from '../components/EffectsGenerationModal'
-import LoopersGenerationModal from '../components/LoopersGenerationModal'
-import CombineMediaModal from '../components/CombineMediaModal'
-import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
-import MediaUploadModal from '../components/MediaUploadModal'
-import DeletedChatsModal from '../components/DeletedChatsModal'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
+
+// Lazy load heavy modals for better performance
+const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
+const EffectsGenerationModal = lazy(() => import('../components/EffectsGenerationModal'))
+const LoopersGenerationModal = lazy(() => import('../components/LoopersGenerationModal'))
+const CombineMediaModal = lazy(() => import('../components/CombineMediaModal'))
+const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
+const MediaUploadModal = lazy(() => import('../components/MediaUploadModal'))
+const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
@@ -2481,27 +2483,30 @@ function CreatePageContent() {
       )}
 
       {/* Music Generation Modal */}
-      <MusicGenerationModal
-        isOpen={showMusicModal}
-        onClose={() => setShowMusicModal(false)}
-        initialPrompt={input}
-        onGenerationStart={(prompt: string) => {
-          handleMusicGenerationStart(prompt)
-        }}
-        onSuccess={(audioUrl: string, prompt: string) => {
-          // Extract title and lyrics from the generated music
-          // This will be called after successful generation
-          handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
-        }}
-      />
+      <Suspense fallback={null}>
+        <MusicGenerationModal
+          isOpen={showMusicModal}
+          onClose={() => setShowMusicModal(false)}
+          initialPrompt={input}
+          onGenerationStart={(prompt: string) => {
+            handleMusicGenerationStart(prompt)
+          }}
+          onSuccess={(audioUrl: string, prompt: string) => {
+            // Extract title and lyrics from the generated music
+            // This will be called after successful generation
+            handleMusicGenerated(audioUrl, 'Generated Track', '', prompt)
+          }}
+        />
+      </Suspense>
 
       {/* Effects Generation Modal */}
-      <EffectsGenerationModal
-        isOpen={showEffectsModal}
-        onClose={() => setShowEffectsModal(false)}
-        userCredits={userCredits || 0}
-        initialPrompt={input}
-        onGenerationStart={(prompt: string, generationId: string) => {
+      <Suspense fallback={null}>
+        <EffectsGenerationModal
+          isOpen={showEffectsModal}
+          onClose={() => setShowEffectsModal(false)}
+          userCredits={userCredits || 0}
+          initialPrompt={input}
+          onGenerationStart={(prompt: string, generationId: string) => {
           // Add user message and generating message
           const userMsgId = Date.now().toString()
           const genMsgId = (Date.now() + 1).toString()
@@ -2530,15 +2535,17 @@ function CreatePageContent() {
           // Handle successful effects generation
           // The GenerationQueue will update the message automatically
         }}
-      />
+        />
+      </Suspense>
 
       {/* Loopers Generation Modal */}
-      <LoopersGenerationModal
-        isOpen={showLoopersModal}
-        onClose={() => setShowLoopersModal(false)}
-        userCredits={userCredits || 0}
-        initialPrompt={input}
-        onGenerationStart={(prompt: string, generationId: string) => {
+      <Suspense fallback={null}>
+        <LoopersGenerationModal
+          isOpen={showLoopersModal}
+          onClose={() => setShowLoopersModal(false)}
+          userCredits={userCredits || 0}
+          initialPrompt={input}
+          onGenerationStart={(prompt: string, generationId: string) => {
           // Add user message and generating message
           const userMsgId = Date.now().toString()
           const genMsgId = (Date.now() + 1).toString()
@@ -2568,30 +2575,36 @@ function CreatePageContent() {
           // The GenerationQueue will update the message automatically
         }}
       />
+      </Suspense>
 
       {/* Combine Media Modal */}
-      <CombineMediaModal
-        isOpen={showCombineModal}
-        onClose={() => setShowCombineModal(false)}
-      />
+      <Suspense fallback={null}>
+        <CombineMediaModal
+          isOpen={showCombineModal}
+          onClose={() => setShowCombineModal(false)}
+        />
+      </Suspense>
 
       {/* Two-Step Release Modal */}
-      <TwoStepReleaseModal
-        isOpen={showReleaseModal}
-        onClose={() => {
-          setShowReleaseModal(false)
-          setPreselectedMusicId(undefined)
-          setPreselectedImageId(undefined)
-        }}
-        preselectedMusic={preselectedMusicId}
-        preselectedImage={preselectedImageId}
-      />
+      <Suspense fallback={null}>
+        <TwoStepReleaseModal
+          isOpen={showReleaseModal}
+          onClose={() => {
+            setShowReleaseModal(false)
+            setPreselectedMusicId(undefined)
+            setPreselectedImageId(undefined)
+          }}
+          preselectedMusic={preselectedMusicId}
+          preselectedImage={preselectedImageId}
+        />
+      </Suspense>
 
       {/* Media Upload Modal - New for Audio/Video Processing */}
-      <MediaUploadModal
-        isOpen={showMediaUploadModal}
-        onClose={() => setShowMediaUploadModal(false)}
-        onSuccess={(result) => {
+      <Suspense fallback={null}>
+        <MediaUploadModal
+          isOpen={showMediaUploadModal}
+          onClose={() => setShowMediaUploadModal(false)}
+          onSuccess={(result) => {
           // Add result to messages
           const resultMessage: Message = {
             id: Date.now().toString(),
@@ -2615,11 +2628,13 @@ function CreatePageContent() {
           }
         }}
       />
+      </Suspense>
 
       {/* Deleted Chats Modal */}
-      <DeletedChatsModal
-        isOpen={showDeletedChatsModal}
-        onClose={() => setShowDeletedChatsModal(false)}
+      <Suspense fallback={null}>
+        <DeletedChatsModal
+          isOpen={showDeletedChatsModal}
+          onClose={() => setShowDeletedChatsModal(false)}
         onRestore={(chat) => {
           // Archive current chat first
           try {
@@ -2652,6 +2667,7 @@ function CreatePageContent() {
           console.log('Chat deleted:', chatId)
         }}
       />
+      </Suspense>
 
       {/* Floating Navigation Button */}
       <FloatingNavButton 

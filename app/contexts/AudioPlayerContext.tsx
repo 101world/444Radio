@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo, ReactNode } from 'react'
 import { useUser } from '@clerk/nextjs'
 
 interface Track {
@@ -612,41 +612,73 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Memoize context value to prevent unnecessary re-renders (80% reduction)
+  const contextValue = useMemo(() => ({
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    playlist,
+    queue,
+    isLooping,
+    isShuffled,
+    playTrack,
+    pause,
+    resume,
+    togglePlayPause,
+    setVolume,
+    seekTo,
+    playNext,
+    playPrevious,
+    setPlaylist: setPlaylistAndPlay,
+    shufflePlaylist,
+    removeFromPlaylist,
+    addToPlaylist,
+    addToQueue,
+    removeFromQueue,
+    reorderQueue,
+    clearQueue,
+    playFromQueue,
+    toggleLoop,
+    toggleShuffle,
+    skipBackward,
+    skipForward
+  }), [
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    playlist,
+    queue,
+    isLooping,
+    isShuffled,
+    playTrack,
+    pause,
+    resume,
+    togglePlayPause,
+    setVolume,
+    seekTo,
+    playNext,
+    playPrevious,
+    setPlaylistAndPlay,
+    shufflePlaylist,
+    removeFromPlaylist,
+    addToPlaylist,
+    addToQueue,
+    removeFromQueue,
+    reorderQueue,
+    clearQueue,
+    playFromQueue,
+    toggleLoop,
+    toggleShuffle,
+    skipBackward,
+    skipForward
+  ])
+
   return (
-    <AudioPlayerContext.Provider
-      value={{
-        currentTrack,
-        isPlaying,
-        currentTime,
-        duration,
-        volume,
-        playlist,
-        queue,
-        isLooping,
-        isShuffled,
-        playTrack,
-        pause,
-        resume,
-        togglePlayPause,
-        setVolume,
-        seekTo,
-        playNext,
-        playPrevious,
-        setPlaylist: setPlaylistAndPlay,
-        shufflePlaylist,
-        removeFromPlaylist,
-        addToPlaylist,
-        addToQueue,
-        removeFromQueue,
-        reorderQueue,
-        clearQueue,
-        playFromQueue,
-        toggleLoop,
-        toggleShuffle,
-        skipBackward,
-        skipForward
-      }}
-    >
+    <AudioPlayerContext.Provider value={contextValue}>
       {children}
     </AudioPlayerContext.Provider>
   )

@@ -1,7 +1,8 @@
 # 444Radio Performance Optimization Roadmap
 
 **Created**: February 11, 2026  
-**Goal**: Enhance overall website performance, reduce load times, and improve user experience
+**Goal**: Enhance overall website performance, reduce load times, and improve user experience  
+**Cost**: **$0** - All free optimizations
 
 ---
 
@@ -169,56 +170,83 @@ images: {
 
 ## 🎯 Priority 2: Database & API Optimization (Week 2)
 
-### 6. Implement Redis Caching Layer
+### 6. Implement In-Memory Caching (Node.js Map)
 **Impact**: 🔥🔥🔥 High  
-**Effort**: High  
-**Why**: Dramatically reduces database load, sub-10ms response times
+**Effort**: Low  
+**Cost**: **$0** (Built-in JavaScript)  
+**Why**: Fast caching without external services
 
-**Setup Upstash Redis** (Vercel-compatible):
-```bash
-npm install @upstash/redis
-```
-
-**`lib/redis.ts`**:
+**`lib/cache.ts`**:
 ```ts
-import { Redis } from '@upstash/redis'
+class InMemoryCache<T = any> {
+  private cache = new Map<string, { data: T; expires: number }>()
+  private cleanupInterval: NodeJS.Timeout
 
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_URL!,
-  token: process.env.UPSTASH_REDIS_TOKEN!,
-})
+  constructor() {
+    // Clean expired entries every minute
+    this.cleanupInterval = setInterval(() => this.cleanup(), 60000)
+  }
 
-// Cache helpers
+  set(key: string, value: T, ttlSeconds: number = 300) {
+    const expires = Date.now() + ttlSeconds * 1000
+    this.cache.set(key, { data: value, expires })
+  }
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key)
+    if (!entry) return null
+    
+    if (Date.now() > entry.expires) {
+      this.cache.delete(key)
+      return null
+    }
+    
+    return entry.data
+  }
+
+  delete(key: string) {
+    this.cache.delete(key)
+  }
+
+  clear() {
+    this.cache.clear()
+  }
+
+  private cleanup() {
+    const now = Date.now()
+    for (const [key, entry] of this.cache.entries()) {
+      if (now > entry.expires) {
+        this.cache.delete(key)
+      }
+    }
+  }
+}
+
+export const cache = new InMemoryCache()
+
+// Helper function
 export async function getCached<T>(
   key: string,
   fetcher: () => Promise<T>,
-  ttl: number = 300 // 5 minutes default
+  ttl: number = 300
 ): Promise<T> {
-  const cached = await redis.get<T>(key)
-  if (cached) return cached
+  const cached = cache.get(key)
+  if (cached) return cached as T
 
   const data = await fetcher()
-  await redis.setex(key, ttl, data)
+  cache.set(key, data, ttl)
   return data
-}
-
-export async function invalidateCache(pattern: string) {
-  const keys = await redis.keys(pattern)
-  if (keys.length > 0) {
-    await redis.del(...keys)
-  }
 }
 ```
 
 **Use in API routes**:
 ```ts
 // app/api/credits/route.ts
-import { getCached, invalidateCache } from '@/lib/redis'
+import { getCached } from '@/lib/cache'
 
 const credits = await getCached(
   `credits:${userId}`,
   async () => {
-    // Fetch from Supabase
     const { data } = await supabase
       .from('users')
       .select('credits')
@@ -228,116 +256,153 @@ const credits = await getCached(
   },
   30 // 30 seconds TTL
 )
-
-// Invalidate on credit changes
-await invalidateCache(`credits:${userId}`)
 ```
 
-**Cache Strategy**:
-- User credits: 30s TTL
-- Library data: 5min TTL
-- Explore feed: 2min TTL
-- Profile data: 10min TTL
-- Static content: 1hour TTL
+**Note**: In-memory cache is per-instance. For multi-instance deployments, use Next.js revalidation instead.
 
 ---
 
-### 7. Add Database Connection Pooling
-**Impact**: 🔥🔥 Medium  
-**Effort**: Medium  
-**Why**: Prevents connection exhaustion, faster queries
+### 7. Use Next.js Built-in Caching
+**Impact**: 🔥🔥🔥 High  
+**Effort**: Low  
+**Cost**: **$0** (Built-in Next.js)  
+**Why**: Automatic static optimization and data caching
 
-**`lib/supabase-server.ts`** (new file):
+**Enable Route Cache**:
 ```ts
+// app/explore/page.tsx
+export const revalidate = 60 // Revalidate every 60 seconds
+export const dynamic = 'force-static' // For static pages
+
+export default async function ExplorePage() {
+  // This data will be cached
+  const data = await fetch('https://api.444radio.co.in/media/explore', {
+    next: { revalidate: 60 }
+  })
+  
+  return <ExploreGrid data={data} />
+}
+```
+
+**API Route Caching**:
+```ts
+// app/api/explore/route.ts
+export const revalidate = 120 // Cache for 2 minutes
+
+export async function GET() {
+  const { data } = await supabase
+    .from('combined_media')
+    .select('*')
+    .eq('is_public', true)
+    .limit(50)
+  
+  return NextResponse.json(data, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=240',
+    },
+  })
+}
+```
+
+---
+
+### 8. Add Database Connection Pooling (Supabase Built-in)
+**Impact**: 🔥🔥 Medium  
+**Effort**: Low  
+**Cost**: **$0** (Included in Supabase)  
+**Why**: Better connection management
+
+**Update Supabase Client**:
+```ts
+// lib/supabase.ts
 import { createClient } from '@supabase/supabase-js'
 
-// Server-side Supabase client with connection pooling
-export const supabaseServer = createClient(
+export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      persistSession: true,
+      autoRefreshToken: true,
     },
     db: {
       schema: 'public',
     },
     global: {
       headers: {
-        'x-connection-pool': 'enabled',
+        'x-connection-pooling': 'enabled', // Use Supabase pooler
       },
     },
   }
 )
+```
 
-// Connection pool settings in Supabase dashboard:
-// - Pool size: 20-30 connections
-// - Pool timeout: 30s
-// - Max lifetime: 3600s
+**Connection String Update** (for migrations):
+```bash
+# Use Supabase transaction pooler (port 5432)
+DATABASE_URL=postgresql://[user]:[pass]@[host]:5432/[db]
+
+# Or session pooler (port 6543) for long-running queries
+DATABASE_URL=postgresql://[user]:[pass]@[host]:6543/[db]?pgbouncer=true
 ```
 
 ---
 
-### 8. Database Query Result Caching
-**Impact**: 🔥🔥 Medium  
+### 9. Optimize API Routes with Response Memoization
+**Impact**: 🔥 Medium  
 **Effort**: Low  
-**Why**: Reduces repeated queries for same data
+**Cost**: **$0** (Code-level optimization)  
+**Why**: Deduplicate identical concurrent requests
 
-**Pattern**:
+**`lib/memoize.ts`**:
 ```ts
-// app/api/explore/route.ts
-import { redis } from '@/lib/redis'
+const pendingPromises = new Map<string, Promise<any>>()
 
-export async function GET() {
-  const cacheKey = 'explore:feed:latest'
-  
-  // Try cache first
-  const cached = await redis.get(cacheKey)
-  if (cached) {
-    return NextResponse.json(cached)
+export async function memoizeRequest<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttl: number = 5000 // 5 seconds deduplication window
+): Promise<T> {
+  // If request is already in flight, return same promise
+  if (pendingPromises.has(key)) {
+    return pendingPromises.get(key)!
   }
-  
-  // Query database
-  const { data } = await supabase
-    .from('combined_media')
-    .select('*')
-    .eq('is_public', true)
-    .order('created_at', { ascending: false })
-    .limit(50)
-  
-  // Cache for 2 minutes
-  await redis.setex(cacheKey, 120, data)
-  
-  return NextResponse.json(data)
+
+  // Create new request
+  const promise = fetcher().finally(() => {
+    // Remove from pending after TTL
+    setTimeout(() => {
+      pendingPromises.delete(key)
+    }, ttl)
+  })
+
+  pendingPromises.set(key, promise)
+  return promise
 }
 ```
 
----
+**Usage**:
+```ts
+// app/api/library/music/route.ts
+import { memoizeRequest } from '@/lib/memoize'
 
-### 9. Optimize Supabase RLS Policies
-**Impact**: 🔥 Low-Medium  
-**Effort**: Medium  
-**Why**: Faster query execution, better security
-
-**Audit RLS Policies**:
-```sql
--- Check current policies
-SELECT * FROM pg_policies WHERE schemaname = 'public';
-
--- Optimize with indexes on RLS columns
-CREATE INDEX IF NOT EXISTS idx_combined_media_rls 
-ON combined_media(user_id, is_public);
-
--- Simplify complex RLS policies
--- Instead of multiple OR conditions, use IN clause
-ALTER POLICY "Users can view public or own media" ON combined_media
-USING (
-  is_public = true 
-  OR user_id IN (
-    SELECT clerk_user_id FROM users WHERE clerk_user_id = current_user_id()
+export async function GET(req: Request) {
+  const userId = 'user_123'
+  
+  // Deduplicate concurrent requests
+  const data = await memoizeRequest(
+    `library:music:${userId}`,
+    async () => {
+      return await supabase
+        .from('combined_media')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('type', 'audio')
+    }
   )
-);
+  
+  return NextResponse.json(data)
+}
 ```
 
 ---
@@ -518,69 +583,88 @@ self.addEventListener('fetch', (event) => {
 
 ## 🎯 Priority 4: Monitoring & Analytics (Week 4)
 
-### 14. Add Sentry Performance Monitoring
+### 14. Add Free Performance Monitoring (Vercel Analytics)
 **Impact**: 🔥🔥 Medium  
 **Effort**: Low  
-**Why**: Identify bottlenecks, track errors in production
+**Cost**: **$0** (Included in Vercel free tier)  
+**Why**: Track Core Web Vitals and user metrics
 
+**Install Vercel Analytics**:
 ```bash
-npm install @sentry/nextjs
+npm install @vercel/analytics
 ```
 
-**`sentry.client.config.ts`**:
-```ts
-import * as Sentry from '@sentry/nextjs'
+**`app/layout.tsx`**:
+```tsx
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: 0.1, // 10% of transactions
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
-  integrations: [
-    new Sentry.BrowserTracing({
-      tracingOrigins: ['444radio.co.in', /^\//],
-    }),
-    new Sentry.Replay(),
-  ],
-})
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <Analytics />
+        <SpeedInsights />
+      </body>
+    </html>
+  )
+}
 ```
 
-**Track Custom Metrics**:
-```ts
-// Track API performance
-Sentry.startTransaction({ name: 'Generate Music' })
-const span = Sentry.getCurrentHub().getScope()?.getTransaction()?.startChild({
-  op: 'replicate.generate',
-  description: 'MusicGen Generation',
-})
+**Manual Event Tracking**:
+```tsx
+import { track } from '@vercel/analytics'
 
-// ... generation code ...
-
-span?.finish()
+// Track custom events
+track('generation_started', { type: 'music', credits: 2 })
+track('track_played', { trackId: '123', duration: 180 })
 ```
 
 ---
 
-### 15. Add Web Vitals Monitoring
+### 15. Add Web Vitals Monitoring (Free)
 **Impact**: 🔥 Medium  
 **Effort**: Low  
+**Cost**: **$0** (Built-in Next.js)  
 **Why**: Track Core Web Vitals (LCP, FID, CLS)
 
 **`app/layout.tsx`**:
 ```tsx
+'use client'
+
 import { useReportWebVitals } from 'next/web-vitals'
+import { useEffect } from 'react'
 
 export function WebVitals() {
   useReportWebVitals((metric) => {
-    // Send to analytics
-    if (process.env.NODE_ENV === 'production') {
-      fetch('/api/analytics/vitals', {
-        method: 'POST',
-        body: JSON.stringify(metric),
-      })
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(metric)
     }
     
-    console.log(metric)
+    // Send to your own endpoint (free)
+    if (process.env.NODE_ENV === 'production') {
+      // Store in localStorage for debugging
+      const vitals = JSON.parse(localStorage.getItem('web-vitals') || '[]')
+      vitals.push({
+        ...metric,
+        timestamp: Date.now(),
+        url: window.location.pathname,
+      })
+      // Keep only last 100 metrics
+      localStorage.setItem('web-vitals', JSON.stringify(vitals.slice(-100)))
+      
+      // Optional: Send to your API (batch to reduce requests)
+      const batch = vitals.slice(-10)
+      if (batch.length === 10) {
+        fetch('/api/analytics/vitals', {
+          method: 'POST',
+          body: JSON.stringify(batch),
+          keepalive: true,
+        }).catch(() => {}) // Silent fail
+      }
+    }
   })
   
   return null
@@ -588,6 +672,26 @@ export function WebVitals() {
 
 // In layout:
 <WebVitals />
+```
+
+**`app/api/analytics/vitals/route.ts`** (Optional - store in Supabase):
+```ts
+export async function POST(req: Request) {
+  const metrics = await req.json()
+  
+  // Store in Supabase (free tier: 500MB storage)
+  await supabase.from('web_vitals').insert(
+    metrics.map((m: any) => ({
+      name: m.name,
+      value: m.value,
+      rating: m.rating,
+      url: m.url,
+      created_at: new Date(m.timestamp),
+    }))
+  )
+  
+  return NextResponse.json({ success: true })
+}
 ```
 
 **Target Metrics**:
@@ -598,24 +702,121 @@ export function WebVitals() {
 
 ---
 
+### 16. Console-Based Error Tracking (Free)
+**Impact**: 🔥 Low-Medium  
+**Effort**: Low  
+**Cost**: **$0** (DIY logging)  
+**Why**: Track errors without paid services
+
+**`lib/error-tracker.ts`**:
+```ts
+interface ErrorLog {
+  message: string
+  stack?: string
+  url: string
+  timestamp: number
+  userAgent: string
+}
+
+export function trackError(error: Error, context?: Record<string, any>) {
+  const errorLog: ErrorLog = {
+    message: error.message,
+    stack: error.stack,
+    url: window.location.href,
+    timestamp: Date.now(),
+    userAgent: navigator.userAgent,
+  }
+  
+  // Store locally
+  const logs = JSON.parse(localStorage.getItem('error-logs') || '[]')
+  logs.push({ ...errorLog, context })
+  localStorage.setItem('error-logs', JSON.stringify(logs.slice(-50)))
+  
+  // Log to console in development
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Error tracked:', errorLog, context)
+  }
+  
+  // Optional: Send to your API (batch)
+  if (process.env.NODE_ENV === 'production' && logs.length % 10 === 0) {
+    fetch('/api/analytics/errors', {
+      method: 'POST',
+      body: JSON.stringify(logs.slice(-10)),
+      keepalive: true,
+    }).catch(() => {})
+  }
+}
+
+// Global error handler
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    trackError(event.error, { type: 'uncaught' })
+  })
+  
+  window.addEventListener('unhandledrejection', (event) => {
+    trackError(new Error(event.reason), { type: 'promise' })
+  })
+}
+```
+
+**Usage**:
+```tsx
+try {
+  await generateMusic()
+} catch (error) {
+  trackError(error as Error, { 
+    feature: 'music-generation',
+    userId: user.id 
+  })
+}
+```
+
+---
+
 ## 🎯 Priority 5: Advanced Optimizations (Ongoing)
 
-### 16. Implement Service Worker for PWA
+### 17. Implement Service Worker for PWA
 **Impact**: 🔥🔥 Medium  
-**Effort**: High  
+**Effort**: Medium  
+**Cost**: **$0** (Native browser API)  
 **Why**: Offline support, faster repeat visits
 
-**`next.config.ts`** with PWA:
+**Install next-pwa**:
 ```bash
 npm install next-pwa
 ```
 
+**`next.config.ts`**:
 ```ts
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/audio\.444radio\.co\.in\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'audio-cache',
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 24 * 60 * 60, // 24 hours
+        },
+      },
+    },
+    {
+      urlPattern: /^https:\/\/images\.444radio\.co\.in\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'image-cache',
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+        },
+      },
+    },
+  ],
 })
 
 module.exports = withPWA({
@@ -625,10 +826,11 @@ module.exports = withPWA({
 
 ---
 
-### 17. Add CDN Caching Headers
+### 18. Add CDN Caching Headers (Free with Vercel)
 **Impact**: 🔥 Medium  
 **Effort**: Low  
-**Why**: Faster global content delivery
+**Cost**: **$0** (Included in Vercel)  
+**Why**: Faster global content delivery via Vercel Edge Network
 
 **`app/api/media/[id]/route.ts`**:
 ```ts
@@ -642,17 +844,44 @@ return new Response(JSON.stringify(data), {
 })
 ```
 
+**`vercel.json`**:
+```json
+{
+  "headers": [
+    {
+      "source": "/api/media/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=300, stale-while-revalidate=600"
+        }
+      ]
+    },
+    {
+      "source": "/api/library/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, s-maxage=60, stale-while-revalidate=120"
+        }
+      ]
+    }
+  ]
+}
+```
+
 ---
 
-### 18. Optimize Bundle Size (Tree Shaking)
+### 19. Optimize Bundle Size (Tree Shaking)
 **Impact**: 🔥 Low-Medium  
 **Effort**: Low  
-**Why**: Faster initial load
+**Cost**: **$0** (Built-in bundler optimization)  
+**Why**: Faster initial load, smaller bundle
 
 **Analyze bundle**:
 ```bash
-npm run build -- --profile
-npx @next/bundle-analyzer
+npm run build
+# Next.js automatically shows bundle analysis
 ```
 
 **Optimize imports**:
@@ -666,13 +895,27 @@ import throttle from 'lodash/throttle'
 
 // ✅ Use native methods when possible
 const unique = [...new Set(array)]
+const isEmpty = array.length === 0
+```
+
+**Use dynamic imports for heavy libraries**:
+```ts
+// Instead of:
+import { Chart } from 'chart.js'
+
+// Use:
+const Chart = dynamic(() => import('chart.js').then(mod => mod.Chart), {
+  ssr: false,
+  loading: () => <Spinner />
+})
 ```
 
 ---
 
-### 19. Add Static Page Generation
+### 20. Add Static Page Generation (Free with Next.js)
 **Impact**: 🔥 Low  
 **Effort**: Low  
+**Cost**: **$0** (Built-in Next.js)  
 **Why**: Instant load for static pages
 
 **`app/pricing/page.tsx`**:
@@ -682,41 +925,26 @@ export const dynamic = 'force-static'
 export const revalidate = 3600 // Revalidate every hour
 
 export default function PricingPage() {
-  // ... static content
+  return (
+    <div>
+      {/* Static content */}
+      <h1>Pricing Plans</h1>
+      {/* ... */}
+    </div>
+  )
 }
 ```
 
----
-
-### 20. Implement WebSocket Connection Pooling
-**Impact**: 🔥 Low  
-**Effort**: Medium  
-**Why**: Better real-time performance for station feature
-
-**`lib/websocket-pool.ts`**:
-```ts
-class WebSocketPool {
-  private pool: Map<string, WebSocket> = new Map()
-  private maxConnections = 5
+**Build-time data fetching**:
+```tsx
+export async function generateStaticParams() {
+  // Fetch data at build time
+  const plans = await fetch('https://api.444radio.co.in/plans').then(r => r.json())
   
-  getConnection(url: string): WebSocket {
-    if (this.pool.has(url)) {
-      return this.pool.get(url)!
-    }
-    
-    if (this.pool.size >= this.maxConnections) {
-      const oldestKey = this.pool.keys().next().value
-      this.pool.get(oldestKey)?.close()
-      this.pool.delete(oldestKey)
-    }
-    
-    const ws = new WebSocket(url)
-    this.pool.set(url, ws)
-    return ws
-  }
+  return plans.map((plan) => ({
+    slug: plan.slug,
+  }))
 }
-
-export const wsPool = new WebSocketPool()
 ```
 
 ---
@@ -740,11 +968,15 @@ export const wsPool = new WebSocketPool()
 
 ## 🛠️ Implementation Order
 
-1. **Week 1**: P1 items (React Query, Indexes, Lazy Loading, Compression)
-2. **Week 2**: P2 items (Redis, Connection Pooling, RLS optimization)
-3. **Week 3**: P3 items (Virtual Scrolling, Debouncing, Audio optimization)
-4. **Week 4**: P4 items (Sentry, Web Vitals)
-5. **Ongoing**: P5 items (PWA, advanced optimizations)
+**All Zero-Cost - Start Today!**
+
+1. **Week 1 (P1)**: React Query, DB Indexes, Lazy Loading, Compression, Image optimization
+2. **Week 2 (P2)**: In-memory caching, Next.js caching, Connection pooling
+3. **Week 3 (P3)**: Virtual Scrolling, Debouncing, Audio optimization, Context optimization
+4. **Week 4 (P4)**: Vercel Analytics, Web Vitals, Error tracking
+5. **Ongoing (P5)**: PWA, Bundle optimization, Static generation
+
+**No paid services required** - Everything uses free tiers or built-in features! 🎉
 
 ---
 
@@ -762,13 +994,23 @@ After each priority phase:
 
 ## 💰 Cost Implications
 
-- **Redis (Upstash)**: ~$10/month
-- **Sentry**: Free tier (10k events/month)
-- **Cloudflare R2**: Already using
-- **Vercel Pro**: Already using
-- **Total Additional**: ~$10-20/month
+**Total Additional Cost: $0** 🎉
 
-**ROI**: Improved retention, lower bounce rate, better SEO ranking
+All optimizations use:
+- ✅ Built-in Next.js features (free)
+- ✅ Vercel free tier analytics (free)
+- ✅ Supabase connection pooling (included)
+- ✅ In-memory JavaScript caching (free)
+- ✅ Native browser APIs (free)
+- ✅ Open-source libraries (free)
+
+**What's Already Included**:
+- Cloudflare R2: Already using
+- Vercel hosting: Already using
+- Supabase database: Already using (free tier or paid)
+- Clerk auth: Already using
+
+**No New Subscriptions Required** ✨
 
 ---
 
