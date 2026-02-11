@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     // Shows all tracks regardless of is_public status
     const { data, error } = await supabase
       .from('combined_media')
-      .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, mood')
+      .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, mood, bpm, tags, description')
       // Filter out tracks with NULL or empty audio_url
       .not('audio_url', 'is', null)
       .neq('audio_url', '')

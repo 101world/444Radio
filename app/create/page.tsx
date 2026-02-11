@@ -1351,7 +1351,7 @@ function CreatePageContent() {
   }
 
   return (
-    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[464px]' : 'md:pl-20'} md:pr-20`}>
+    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[464px]' : 'md:pl-20'} md:pr-28`}>
       {/* Features Sidebar */}
       <Suspense fallback={null}>
         <FeaturesSidebar

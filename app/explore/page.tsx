@@ -258,7 +258,7 @@ function ExplorePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col md:pl-20 md:pr-20">
+    <div className="min-h-screen bg-black text-white flex flex-col md:pl-20 md:pr-28">
       {/* 3D Holographic Background - Lazy loaded */}
       <Suspense fallback={<div className="absolute inset-0 bg-black" />}>
         <HolographicBackgroundClient />
