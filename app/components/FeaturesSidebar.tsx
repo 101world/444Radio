@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors } from 'lucide-react'
 
 interface FeaturesSidebarProps {
   isOpen: boolean
@@ -20,6 +20,8 @@ interface FeaturesSidebarProps {
   onShowLoopers: () => void
   onShowLyrics: () => void
   onShowUpload: () => void
+  onShowVideoToAudio: () => void
+  onShowStemSplit: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -48,6 +50,8 @@ export default function FeaturesSidebar({
   onShowLoopers,
   onShowLyrics,
   onShowUpload,
+  onShowVideoToAudio,
+  onShowStemSplit,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -98,6 +102,24 @@ export default function FeaturesSidebar({
       onClick: () => onSelectType('image'),
     },
     {
+      icon: Film,
+      label: 'Video to Audio',
+      description: 'Synced SFX from video',
+      color: 'cyan',
+      active: false,
+      cost: 2,
+      onClick: onShowVideoToAudio,
+    },
+    {
+      icon: Scissors,
+      label: 'Split Stems',
+      description: 'Vocals, drums, bass & more',
+      color: 'purple',
+      active: false,
+      cost: 5,
+      onClick: onShowStemSplit,
+    },
+    {
       icon: Edit3,
       label: 'Lyrics',
       description: 'Write & edit lyrics',
@@ -124,25 +146,8 @@ export default function FeaturesSidebar({
     },
   ]
 
-  const utilities = [
-    {
-      icon: RotateCcw,
-      label: 'Restore',
-      description: 'View deleted chats',
-      color: 'green',
-      onClick: onShowDeletedChats,
-    },
-    {
-      icon: X,
-      label: 'Clear',
-      description: 'Clear chat',
-      color: 'red',
-      onClick: onClearChat,
-    },
-  ]
-
   return (
-    <div className="hidden md:flex fixed left-20 top-0 h-screen w-72 bg-black/95 backdrop-blur-2xl border-r border-white/10 z-40 flex-col animate-slideInLeft">
+    <div className="hidden md:flex fixed left-20 top-0 h-screen w-96 bg-black/95 backdrop-blur-2xl border-r border-white/10 z-40 flex-col animate-slideInLeft">
       {/* Header */}
       <div className="flex items-center justify-between px-5 h-20 border-b border-white/10">
         <div className="flex items-center gap-3">
@@ -173,28 +178,43 @@ export default function FeaturesSidebar({
         </div>
       </div>
 
-      {/* Mode Toggle */}
+      {/* Mode Toggle - SVG Icons */}
       <div className="px-5 py-3 border-b border-white/10">
         <div className="flex gap-2">
           <button
             onClick={onToggleInstrumental}
-            className={`flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               !isInstrumental
-                ? 'bg-cyan-500 text-black'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
             }`}
+            title="Vocal Mode"
           >
+            {/* Microphone SVG */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" x2="12" y1="19" y2="22"/>
+            </svg>
             Vocal
           </button>
           <button
             onClick={onToggleInstrumental}
-            className={`flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
               isInstrumental
-                ? 'bg-purple-500 text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
             }`}
+            title="Instrumental Mode"
           >
-            Instrumental
+            {/* Piano/Keys SVG */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <line x1="8" x2="8" y1="4" y2="14"/>
+              <line x1="16" x2="16" y1="4" y2="14"/>
+              <line x1="12" x2="12" y1="4" y2="14"/>
+            </svg>
+            Inst
           </button>
         </div>
       </div>
@@ -207,7 +227,7 @@ export default function FeaturesSidebar({
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder="Describe your music..."
             className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
-            rows={3}
+            rows={5}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -276,32 +296,29 @@ export default function FeaturesSidebar({
           })}
         </div>
 
-        {/* Utilities Section */}
-        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-6 mb-3 px-1">Utilities</p>
-        <div className="space-y-2">
-          {utilities.map((util) => {
-            const Icon = util.icon
-            const colorMap: Record<string, string> = {
-              green: 'border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-400/50',
-              red: 'border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-400/50',
-            }
-
-            return (
-              <button
-                key={util.label}
-                onClick={util.onClick}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${colorMap[util.color]}`}
-              >
-                <div className="p-2 rounded-lg bg-white/5">
-                  <Icon size={18} />
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-semibold">{util.label}</div>
-                  <div className="text-[10px] text-gray-500">{util.description}</div>
-                </div>
-              </button>
-            )
-          })}
+        {/* Utilities Section - Icon Only */}
+        <div className="mt-6 pt-4 border-t border-white/10">
+          <div className="flex items-center gap-2 px-1">
+            <button
+              onClick={onShowDeletedChats}
+              className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-400/50 transition-all"
+              title="Restore deleted chats"
+            >
+              <RotateCcw size={16} />
+            </button>
+            <button
+              onClick={onClearChat}
+              className="p-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-400/50 transition-all"
+              title="Clear chat"
+            >
+              {/* Trash SVG */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18"/>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 

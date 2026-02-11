@@ -1351,7 +1351,7 @@ function CreatePageContent() {
   }
 
   return (
-    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[368px]' : 'md:pl-20'}`}>
+    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[464px]' : 'md:pl-20'}`}>
       {/* Features Sidebar */}
       <Suspense fallback={null}>
         <FeaturesSidebar
@@ -1372,6 +1372,8 @@ function CreatePageContent() {
           onShowLoopers={() => setShowLoopersModal(true)}
           onShowLyrics={() => setShowLyricsModal(true)}
           onShowUpload={() => setShowMediaUploadModal(true)}
+          onShowVideoToAudio={() => setShowMediaUploadModal(true)}
+          onShowStemSplit={() => setShowMediaUploadModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onClearChat={() => {
             if (confirm('Clear all chat messages? They will be saved to your deleted chats archive.')) {
@@ -2434,7 +2436,7 @@ function CreatePageContent() {
 
       {/* Matrix GPU Console - Shown when Features Sidebar is open */}
       {showFeaturesSidebar && (
-        <div className="hidden md:block fixed bottom-0 left-[368px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent">
+        <div className="hidden md:block fixed bottom-0 left-[464px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent">
           <div className="h-full border-t border-cyan-500/20">
             <Suspense fallback={<div className="h-full bg-black" />}>
               <MatrixConsole />
