@@ -24,12 +24,6 @@ export default function DockedSidebar() {
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
 
-  // Hide on home page and pricing pages
-  const hiddenPages = ['/', '/pricing', '/subscription']
-  if (hiddenPages.includes(pathname)) {
-    return null
-  }
-
   // Fetch credits
   useEffect(() => {
     if (user) {
@@ -54,6 +48,12 @@ export default function DockedSidebar() {
         .catch(() => {})
     }
   }, [user])
+
+  // Hide on home page and pricing pages
+  const hiddenPages = ['/', '/pricing', '/subscription']
+  if (hiddenPages.includes(pathname)) {
+    return null
+  }
 
   const menuItems: MenuItem[] = user ? [
     { icon: Home, label: 'Home', href: '/', highlight: false },
