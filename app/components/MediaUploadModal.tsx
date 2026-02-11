@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { X, Upload, Film, Music, Loader2, AlertCircle } from 'lucide-react'
+import { useState, useRef, Suspense, lazy } from 'react'
+import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors } from 'lucide-react'
+
+const StemSplitModal = lazy(() => import('@/app/components/studio/StemSplitModal'))
 
 interface MediaUploadModalProps {
   isOpen: boolean
@@ -12,19 +14,24 @@ interface MediaUploadModalProps {
 export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
+  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | null>(null)
   const [prompt, setPrompt] = useState('')
   const [useHQ, setUseHQ] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
   const [error, setError] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [showStemModal, setShowStemModal] = useState(false)
+  const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const audioFileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split') => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setError('')
+    setUploadMode(mode)
     
     // Check file size (100MB max)
     const MAX_SIZE = 100 * 1024 * 1024 // 100MB in bytes
@@ -37,8 +44,14 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
     const isAudio = file.type.startsWith('audio/')
     const isVideo = file.type.startsWith('video/')
     
-    if (!isAudio && !isVideo) {
-      setError('Please select an audio or video file')
+    // Validate file type based on mode
+    if (mode === 'video-to-audio' && !isVideo) {
+      setError('Please select a video file')
+      return
+    }
+    
+    if (mode === 'stem-split' && !isAudio) {
+      setError('Please select an audio file')
       return
     }
 
@@ -58,7 +71,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         setError(`⚠️ Video is ${duration.toFixed(1)}s. Recommended max is 5s. May be truncated.`)
       }
       
-      if (isAudio && duration > 30.5) {
+      if (isAudio && mode === 'video-to-audio' && duration > 30.5) {
         setError(`⚠️ Audio is ${duration.toFixed(1)}s. Recommended max is 30s. May be truncated.`)
       }
     }
@@ -74,7 +87,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
     if (!selectedFile || !fileType) return
 
     // For video-to-audio, prompt is required
-    if (fileType === 'video' && !prompt.trim()) {
+    if (uploadMode === 'video-to-audio' && !prompt.trim()) {
       setError('Please describe the sound you want to generate')
       return
     }
@@ -148,10 +161,19 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         console.log('✅ Server-side upload complete:', publicUrl)
       }
 
-      // Step 3: Generate audio/remix using the uploaded file URL
+      // For stem splitting, store the URL and show format modal
+      if (uploadMode === 'stem-split') {
+        setUploadedAudioUrl(publicUrl)
+        setShowStemModal(true)
+        setIsUploading(false)
+        setUploadProgress('')
+        return
+      }
+
+      // Step 3: Generate audio/remix using the uploaded file URL (for video-to-audio only)
       setUploadProgress('Generating audio...')
       console.log('🎵 Step 3: Generating...')
-      const generateEndpoint = fileType === 'video' 
+      const generateEndpoint = uploadMode === 'video-to-audio' 
         ? '/api/generate/video-to-audio'
         : '/api/generate/audio-to-audio'
 
@@ -162,7 +184,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
           videoUrl: publicUrl,
           audioUrl: publicUrl,
           prompt: prompt,
-          quality: fileType === 'video' && useHQ ? 'hq' : 'standard'
+          quality: uploadMode === 'video-to-audio' && useHQ ? 'hq' : 'standard'
         })
       })
 
@@ -184,12 +206,48 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
     }
   }
 
+  const handleStemSplit = async (format: 'mp3' | 'wav') => {
+    if (!uploadedAudioUrl) return
+
+    setShowStemModal(false)
+    setIsUploading(true)
+    setUploadProgress('Splitting stems... This may take 1-2 minutes.')
+
+    try {
+      const response = await fetch('/api/audio/split-stems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioUrl: uploadedAudioUrl, format })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Stem splitting failed')
+      }
+
+      console.log('✅ Stem splitting complete:', result)
+      onSuccess?.(result)
+      handleClose()
+    } catch (err) {
+      console.error('Stem splitting error:', err)
+      setError(err instanceof Error ? err.message : 'Stem splitting failed')
+      setShowStemModal(true) // Re-show modal on error
+    } finally {
+      setIsUploading(false)
+      setUploadProgress('')
+    }
+  }
+
   const handleClose = () => {
     setSelectedFile(null)
     setFileType(null)
+    setUploadMode(null)
     setPrompt('')
     setUseHQ(false)
     setError('')
+    setShowStemModal(false)
+    setUploadedAudioUrl(null)
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
@@ -273,11 +331,37 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
                 </div>
               </button>
 
+              {/* Split Audio Stems Button - NEW */}
+              <button
+                onClick={() => audioFileInputRef.current?.click()}
+                className="w-full p-4 bg-gradient-to-r from-teal-500/10 to-cyan-500/10 border-2 border-teal-500/30 hover:border-teal-400/50 rounded-xl transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-teal-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Scissors size={24} className="text-teal-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="text-base font-semibold text-white mb-1">Split Audio Stems</h3>
+                    <p className="text-xs text-gray-400">Upload audio and separate vocals, drums, bass & other</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-teal-400">5 credits</p>
+                  </div>
+                </div>
+              </button>
+
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="video/*"
-                onChange={handleFileSelect}
+                onChange={(e) => handleFileSelect(e, 'video-to-audio')}
+                className="hidden"
+              />
+              <input
+                ref={audioFileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={(e) => handleFileSelect(e, 'stem-split')}
                 className="hidden"
               />
             </div>
@@ -289,8 +373,14 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
               
               {/* Compact File Info */}
               <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
-                <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
-                  <Film size={20} className="text-cyan-400" />
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  uploadMode === 'stem-split' ? 'bg-teal-500/20' : 'bg-cyan-500/20'
+                }`}>
+                  {uploadMode === 'stem-split' ? (
+                    <Scissors size={20} className="text-teal-400" />
+                  ) : (
+                    <Film size={20} className="text-cyan-400" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{selectedFile.name}</p>
@@ -300,6 +390,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
                   onClick={() => {
                     setSelectedFile(null)
                     setFileType(null)
+                    setUploadMode(null)
                     setPrompt('')
                     setUseHQ(false)
                     if (previewUrl) {
@@ -324,38 +415,73 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
                 </div>
               )}
 
-              {/* Prompt */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                  <span>Describe the sounds you want</span>
-                  <span className="text-red-400 text-xs">*</span>
-                </label>
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="e.g., car engine roaring, water splashing, birds chirping..."
-                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-transparent transition-all resize-none"
-                  rows={2}
-                  required
-                />
-              </div>
-              
-              {/* HQ Toggle */}
-              <label className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg cursor-pointer hover:bg-yellow-500/15 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={useHQ}
-                  onChange={(e) => setUseHQ(e.target.checked)}
-                  className="w-4 h-4 rounded border-yellow-500/30 bg-white/5 text-yellow-500 focus:ring-2 focus:ring-yellow-500/50"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-yellow-300">✨ High Quality</span>
-                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded">+8 credits</span>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5">Better audio, longer processing</p>
+              {/* Compact Audio Preview for Stem Split */}
+              {previewUrl && fileType === 'audio' && uploadMode === 'stem-split' && (
+                <div className="rounded-lg overflow-hidden bg-teal-500/10 border border-teal-500/20 p-4">
+                  <audio 
+                    src={previewUrl} 
+                    controls 
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">Preview your audio before splitting stems</p>
                 </div>
-              </label>
+              )}
+
+              {/* Prompt - Only for video-to-audio */}
+              {uploadMode === 'video-to-audio' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                    <span>Describe the sounds you want</span>
+                    <span className="text-red-400 text-xs">*</span>
+                  </label>
+                  <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="e.g., car engine roaring, water splashing, birds chirping..."
+                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-transparent transition-all resize-none"
+                    rows={2}
+                    required
+                  />
+                </div>
+              )}
+              
+              {/* HQ Toggle - Only for video-to-audio */}
+              {uploadMode === 'video-to-audio' && (
+                <label className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg cursor-pointer hover:bg-yellow-500/15 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={useHQ}
+                    onChange={(e) => setUseHQ(e.target.checked)}
+                    className="w-4 h-4 rounded border-yellow-500/30 bg-white/5 text-yellow-500 focus:ring-2 focus:ring-yellow-500/50"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-yellow-300">✨ High Quality</span>
+                      <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded">+8 credits</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">Better audio, longer processing</p>
+                  </div>
+                </label>
+              )}
+
+              {/* Stem Split Info - Only for stem-split mode */}
+              {uploadMode === 'stem-split' && (
+                <div className="bg-teal-500/10 border border-teal-500/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Scissors className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
+                    <div className="text-sm space-y-1">
+                      <p className="text-white font-semibold">What you'll get:</p>
+                      <ul className="text-gray-300 space-y-1 text-xs">
+                        <li>• Vocals track (isolated vocals)</li>
+                        <li>• Drums track (percussion)</li>
+                        <li>• Bass track (bass instruments)</li>
+                        <li>• Other track (remaining instruments)</li>
+                      </ul>
+                      <p className="text-teal-400 font-semibold mt-2">Cost: 5 credits</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -381,11 +507,15 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         {/* Footer */}
         <div className="px-6 py-3 border-t border-white/10 flex items-center gap-3 bg-black/40">
           <div className="flex-1 flex items-center gap-2 text-sm">
-            <span className={useHQ ? 'text-yellow-400' : 'text-cyan-400'}>💰</span>
-            <span className={`font-semibold ${useHQ ? 'text-yellow-400' : 'text-cyan-400'}`}>
-              {selectedFile && useHQ ? '10 credits' : '2 credits'}
+            <span className={uploadMode === 'stem-split' ? 'text-teal-400' : useHQ ? 'text-yellow-400' : 'text-cyan-400'}>💰</span>
+            <span className={`font-semibold ${
+              uploadMode === 'stem-split' ? 'text-teal-400' :
+              useHQ ? 'text-yellow-400' : 'text-cyan-400'
+            }`}>
+              {uploadMode === 'stem-split' ? '5 credits' :
+               selectedFile && useHQ ? '10 credits' : '2 credits'}
             </span>
-            {selectedFile && (
+            {selectedFile && uploadMode === 'video-to-audio' && (
               <>
                 <span className="text-gray-600">•</span>
                 <span className="text-gray-400 text-xs">Max 5s</span>
@@ -394,13 +524,22 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
           </div>
           <button
             onClick={handleUpload}
-            disabled={!selectedFile || isUploading || !prompt.trim()}
-            className="px-5 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/30 disabled:opacity-40 disabled:cursor-not-allowed min-w-[120px]"
+            disabled={!selectedFile || isUploading || (uploadMode === 'video-to-audio' && !prompt.trim())}
+            className={`px-5 py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg disabled:opacity-40 disabled:cursor-not-allowed min-w-[120px] ${
+              uploadMode === 'stem-split'
+                ? 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 shadow-teal-500/30'
+                : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 shadow-cyan-500/30'
+            }`}
           >
             {isUploading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 <span>Processing...</span>
+              </>
+            ) : uploadMode === 'stem-split' ? (
+              <>
+                <Scissors size={16} />
+                <span>Next</span>
               </>
             ) : (
               <>
@@ -412,6 +551,22 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         </div>
 
       </div>
+
+      {/* Stem Split Format Selection Modal */}
+      {showStemModal && uploadedAudioUrl && (
+        <Suspense fallback={null}>
+          <StemSplitModal
+            isOpen={showStemModal}
+            onClose={() => {
+              setShowStemModal(false)
+              setUploadedAudioUrl(null)
+            }}
+            onSplit={handleStemSplit}
+            clipName={selectedFile?.name || 'Uploaded Audio'}
+            isProcessing={isUploading}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

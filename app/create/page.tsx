@@ -2951,29 +2951,42 @@ function CreatePageContent() {
           isOpen={showMediaUploadModal}
           onClose={() => setShowMediaUploadModal(false)}
           onSuccess={(result) => {
-          // Add result to messages
-          const resultMessage: Message = {
-            id: Date.now().toString(),
-            type: 'generation',
-            content: '✅ Processing complete!',
-            generationType: 'video',
-            result: {
-              url: result.videoUrl,
-              title: result.prompt,
-              prompt: result.prompt
-            },
-            timestamp: new Date()
-          }
-          setMessages(prev => [...prev, resultMessage])
-          
-          // Update credits
-          if (result.creditsRemaining !== undefined) {
-            setUserCredits(result.creditsRemaining)
-          } else {
-            fetchCredits()
-          }
-        }}
-      />
+            // Handle stem splitting results
+            if (result.stems) {
+              const stemMessage: Message = {
+                id: Date.now().toString(),
+                type: 'generation',
+                content: `✅ Stems separated successfully! Used ${result.creditsUsed || 5} credits. ${result.creditsRemaining || 0} credits remaining.`,
+                generationType: 'music',
+                stems: result.stems,
+                timestamp: new Date()
+              }
+              setMessages(prev => [...prev, stemMessage])
+            } else {
+              // Handle video-to-audio results
+              const resultMessage: Message = {
+                id: Date.now().toString(),
+                type: 'generation',
+                content: '✅ Processing complete!',
+                generationType: 'video',
+                result: {
+                  url: result.videoUrl,
+                  title: result.prompt,
+                  prompt: result.prompt
+                },
+                timestamp: new Date()
+              }
+              setMessages(prev => [...prev, resultMessage])
+            }
+            
+            // Update credits
+            if (result.creditsRemaining !== undefined) {
+              setUserCredits(result.creditsRemaining)
+            } else {
+              fetchCredits()
+            }
+          }}
+        />
       </Suspense>
 
       {/* Deleted Chats Modal */}
