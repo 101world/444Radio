@@ -56,8 +56,17 @@ function CreatePageContent() {
   const { addGeneration, updateGeneration, generations } = useGenerationQueue()
   const [isMobile, setIsMobile] = useState(false)
   
+  // Detect mobile and update on resize for responsive layout
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+    const checkMobile = () => {
+      const isMobileDevice = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      setIsMobile(isMobileDevice)
+    }
+    
+    checkMobile() // Check on mount
+    window.addEventListener('resize', checkMobile) // Check on resize
+    
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
   
   const [messages, setMessages] = useState<Message[]>([
@@ -2130,8 +2139,12 @@ function CreatePageContent() {
                         onClick={() => setShowPromptSuggestions(false)}
                       />
                       
-                      {/* Dropdown panel - Opens to the right */}
-                      <div className="absolute left-full bottom-0 ml-3 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col">
+                      {/* Dropdown panel - Responsive positioning */}
+                      <div className={
+                        isMobile 
+                          ? 'absolute left-1/2 -translate-x-1/2 top-full mt-3 w-[calc(100vw-2rem)] max-w-md bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-4 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col' 
+                          : 'absolute left-full bottom-0 ml-3 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col'
+                      }>
                         
                         {/* Show IDEAS flow or Quick Tags */}
                         {!showIdeasFlow ? (
