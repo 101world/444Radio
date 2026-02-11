@@ -169,6 +169,7 @@ export default function DAWProRebuild() {
   const secondsDisplayRef = useRef<HTMLSpanElement>(null)
   const zoomRef = useRef(200) // Keep zoom in a ref so renderer getter is never stale
   const snapTimeRef = useRef<(t: number) => number>((t) => t)
+  const isPlayingRef = useRef(false) // Track latest playback state for autosave check
 
   // Ableton-style constants
   const TRACK_HEIGHT = 100
@@ -181,6 +182,9 @@ export default function DAWProRebuild() {
 
   // Keep zoomRef in sync so renderer getter is never stale
   useEffect(() => { zoomRef.current = zoom }, [zoom])
+
+  // Sync isPlaying to ref for autosave closure access (prevents double-play bug)
+  useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
 
   useEffect(() => {
     loopRef.current = { enabled: loopEnabled, start: loopStart, end: loopEnd }
@@ -1352,12 +1356,17 @@ export default function DAWProRebuild() {
   // Autosave: debounce 5s after changes (increased from 2s for better performance)
   const queueAutosave = useCallback(() => {
     if (!currentProjectId) return // avoid autosave before first explicit save
-    if (isPlaying) return // don't autosave during playback (causes lag)
+    if (isPlayingRef.current) return // don't autosave during playback (causes lag)
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     autosaveTimer.current = setTimeout(() => {
+      // Double-check playback state before saving (user might have started playback after queuing)
+      if (isPlayingRef.current) {
+        console.log('⏸️  Autosave skipped: playback started after queuing')
+        return
+      }
       handleSave('auto')
     }, 5000) // Increased from 2000ms for better performance
-  }, [handleSave, currentProjectId, isPlaying])
+  }, [handleSave, currentProjectId])
 
   useEffect(() => {
     return () => {
