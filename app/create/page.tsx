@@ -1977,9 +1977,6 @@ function CreatePageContent() {
             </button>
             )}
 
-            {/* Divider */}
-            <div className="hidden md:block w-px h-8 bg-cyan-500/30"></div>
-
             {/* Credits Display - Always Visible */}
             <div className="hidden md:flex items-center gap-2 px-3 md:px-4 py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
               <Zap size={16} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
