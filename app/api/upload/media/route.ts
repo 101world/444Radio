@@ -6,6 +6,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 
 // Allow larger uploads - Vercel Pro supports up to 100MB
 export const maxDuration = 300
+export const maxBodySize = 100 * 1024 * 1024 // 100MB
 
 export async function OPTIONS() {
   return handleOptions()
