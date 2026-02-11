@@ -2129,8 +2129,8 @@ function CreatePageContent() {
                         onClick={() => setShowPromptSuggestions(false)}
                       />
                       
-                      {/* Dropdown panel - Fixed position visible on screen */}
-                      <div className="fixed right-4 bottom-24 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col">
+                      {/* Dropdown panel - Opens to the right */}
+                      <div className="absolute left-full bottom-0 ml-3 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -2193,14 +2193,14 @@ function CreatePageContent() {
               {showIdeasFlow && (
                 <>
                   <div 
-                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
                     onClick={() => {
                       setShowIdeasFlow(false)
                       setIdeasStep('type')
                     }}
                   />
                   
-                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 animate-fade-in-fast">
+                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[70] animate-fade-in-fast px-4">
                     <div className="bg-gradient-to-br from-black/95 via-cyan-950/30 to-black/95 backdrop-blur-2xl border-2 border-cyan-500/40 rounded-3xl p-6 shadow-2xl shadow-cyan-500/30">
                       {/* Step 1: Type Selection */}
                       {ideasStep === 'type' && (
