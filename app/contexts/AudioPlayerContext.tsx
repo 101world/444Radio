@@ -44,6 +44,7 @@ interface AudioPlayerContextType {
   toggleShuffle: () => void
   skipBackward: (seconds?: number) => void
   skipForward: (seconds?: number) => void
+  getAudioElement: () => HTMLAudioElement | null
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined)
@@ -708,7 +709,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     toggleLoop,
     toggleShuffle,
     skipBackward,
-    skipForward
+    skipForward,
+    getAudioElement: () => audioRef.current
   }), [
     currentTrack,
     isPlaying,
@@ -739,7 +741,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     toggleLoop,
     toggleShuffle,
     skipBackward,
-    skipForward
+    skipForward,
+    audioRef
   ])
 
   return (
