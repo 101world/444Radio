@@ -496,7 +496,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white md:pl-20">
+      <div className="min-h-screen bg-black text-white md:pl-20 md:pr-20">
         <ProfileHeaderSkeleton />
         <div className="px-8 pb-32">
           <TrackListSkeleton count={8} />
@@ -507,14 +507,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center md:pl-20">
+      <div className="min-h-screen bg-black flex items-center justify-center md:pl-20 md:pr-20">
         <div className="text-red-400 text-xl">Profile not found</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white md:pl-20">
+    <div className="min-h-screen bg-black text-white md:pl-20 md:pr-20">
       <FloatingMenu />
 
       {/* Banner - Gradient only (upload feature removed) */}
