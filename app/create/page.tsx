@@ -2030,6 +2030,36 @@ function CreatePageContent() {
                   className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 
+                {/* Prompt Suggestion Tags - Show for music only */}
+                {selectedType === 'music' && (
+                  <div className="mt-2 p-2 bg-black/40 backdrop-blur-sm border border-cyan-500/20 rounded-lg">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="text-[10px] text-cyan-400/60 font-medium">💡</span>
+                      <span className="text-[10px] text-cyan-400/60 font-medium">Quick Tags:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+                        'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
+                        'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
+                        'lo-fi beats', 'orchestral', 'dreamy', 'aggressive'
+                      ].map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            const newInput = input ? `${input}, ${tag}` : tag
+                            setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
+                          }}
+                          className="px-1.5 py-0.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-500/40 rounded text-[10px] text-cyan-300/80 hover:text-cyan-300 transition-all"
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex items-center justify-between gap-2 mt-0.5">
                   <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
                     {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
