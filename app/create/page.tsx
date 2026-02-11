@@ -2439,7 +2439,7 @@ function CreatePageContent() {
         <div className="hidden md:block fixed bottom-0 left-[464px] right-0 h-36 z-20 bg-gradient-to-t from-black via-black/95 to-transparent">
           <div className="h-full border-t border-cyan-500/20">
             <Suspense fallback={<div className="h-full bg-black" />}>
-              <MatrixConsole />
+              <MatrixConsole isGenerating={activeGenerations.size > 0} />
             </Suspense>
           </div>
         </div>
