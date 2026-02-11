@@ -1,6 +1,7 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors, Lightbulb, ChevronLeft } from 'lucide-react'
+import { useState } from 'react'
 
 interface FeaturesSidebarProps {
   isOpen: boolean
@@ -31,6 +32,10 @@ interface FeaturesSidebarProps {
   promptText: string
   onPromptChange: (text: string) => void
   isGenerating: boolean
+  // Ideas & Tags
+  onTagClick: (tag: string) => void
+  onGenerateIdea: (genre: string, type: 'song' | 'beat') => void
+  isGeneratingIdea: boolean
 }
 
 export default function FeaturesSidebar({
@@ -61,7 +66,14 @@ export default function FeaturesSidebar({
   promptText,
   onPromptChange,
   isGenerating,
+  onTagClick,
+  onGenerateIdea,
+  isGeneratingIdea,
 }: FeaturesSidebarProps) {
+  const [showIdeas, setShowIdeas] = useState(false)
+  const [ideasView, setIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
+  const [promptType, setPromptType] = useState<'song' | 'beat'>('song')
+
   if (!isOpen) return null
 
   const features = [
@@ -258,8 +270,162 @@ export default function FeaturesSidebar({
         </div>
       </div>
 
+      {/* ─── Ideas / Tags Panel ─── */}
+      {showIdeas && (
+        <div className="px-4 py-4 border-b border-white/10 max-h-[40vh] overflow-y-auto scrollbar-thin">
+          {ideasView === 'tags' && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                  </svg>
+                  <span className="text-sm font-bold text-white">Quick Tags</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIdeasView('type')}
+                    className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 hover:text-purple-200 transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
+                  >
+                    ✨ IDEAS
+                  </button>
+                  <button onClick={() => setShowIdeas(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                    <X className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+                  'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
+                  'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
+                  'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+                  'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
+                  'drum & bass', 'dubstep', 'house', 'techno', 'trance',
+                  'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
+                  'reggae', 'latin', 'afrobeat', 'k-pop', 'anime',
+                  'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
+                  'romantic', 'sad', 'happy', 'mysterious', 'powerful',
+                  'soft vocals', 'no vocals', 'female vocals', 'male vocals',
+                  'synth lead', 'strings', 'brass', 'flute', 'violin'
+                ].map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => onTagClick(tag)}
+                    className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-lg text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {ideasView === 'type' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-bold text-white">✨ AI Prompt Ideas</h3>
+                <button onClick={() => setIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 text-center">What would you like to create?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => { setPromptType('song'); setIdeasView('genre') }}
+                  className="group p-5 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-2 border-purple-400/40 hover:border-purple-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/30"
+                >
+                  <div className="text-3xl mb-2">🎤</div>
+                  <div className="text-sm font-bold text-white mb-1">Song</div>
+                  <div className="text-[10px] text-gray-400">With vocals & lyrics</div>
+                </button>
+                <button
+                  onClick={() => { setPromptType('beat'); setIdeasView('genre') }}
+                  className="group p-5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/30"
+                >
+                  <div className="text-3xl mb-2">🎹</div>
+                  <div className="text-sm font-bold text-white mb-1">Beat</div>
+                  <div className="text-[10px] text-gray-400">Instrumental only</div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {ideasView === 'genre' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <button onClick={() => setIdeasView('type')} className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1">
+                  <ChevronLeft size={14} /> Back
+                </button>
+                <h3 className="text-sm font-bold text-white">🎵 Select Genre</h3>
+                <button onClick={() => setIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400 text-center">Choose a style for your {promptType}</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
+                  'trap', 'drill', 'phonk', 'house', 'techno',
+                  'lo-fi beats', 'synthwave', 'indie', 'folk', 'blues',
+                  'soul', 'funk', 'reggae', 'latin', 'afrobeat',
+                  'orchestral', 'cinematic', 'acoustic', 'vaporwave', 'k-pop'
+                ].map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => {
+                      setIdeasView('generating')
+                      onGenerateIdea(g, promptType)
+                      setTimeout(() => setIdeasView('tags'), 5000)
+                    }}
+                    disabled={isGeneratingIdea}
+                    className="px-2 py-2 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105 disabled:opacity-50"
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {ideasView === 'generating' && (
+            <div className="space-y-4 text-center py-6">
+              <div className="relative">
+                <div className="w-12 h-12 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xl">🎨</span>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white mb-1">Creating Amazing Prompt...</h3>
+                <p className="text-xs text-gray-400">AI is crafting the perfect description</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Feature Buttons - Vertically Stacked */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
+        {/* Ideas Lightbulb Button */}
+        <button
+          onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all group mb-3 ${
+            showIdeas
+              ? 'bg-gradient-to-r from-yellow-600/30 to-amber-400/20 border-yellow-400 text-yellow-300'
+              : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-400/50'
+          }`}
+        >
+          <div className={`p-2 rounded-lg ${showIdeas ? 'bg-white/10' : 'bg-white/5'}`}>
+            <Lightbulb size={18} />
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-sm font-semibold">Ideas & Tags</div>
+            <div className="text-[10px] text-gray-500">AI prompts & quick tags</div>
+          </div>
+          <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">AI</span>
+        </button>
+
         <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-3 px-1">Creation Tools</p>
         <div className="space-y-2">
           {features.filter(f => !f.hidden).map((feature) => {

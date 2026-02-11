@@ -1382,6 +1382,15 @@ function CreatePageContent() {
           onShowVideoToAudio={() => setShowMediaUploadModal(true)}
           onShowStemSplit={() => setShowMediaUploadModal(true)}
           onOpenRelease={() => handleOpenRelease()}
+          onTagClick={(tag: string) => {
+            const newInput = input ? `${input}, ${tag}` : tag
+            setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
+          }}
+          onGenerateIdea={(genre: string, type: 'song' | 'beat') => {
+            setSelectedPromptType(type)
+            handleGeneratePromptIdea(genre)
+          }}
+          isGeneratingIdea={generatingIdea}
           onClearChat={() => {
             if (confirm('Clear all chat messages? They will be saved to your deleted chats archive.')) {
               try {
