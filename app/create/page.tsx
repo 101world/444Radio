@@ -55,18 +55,24 @@ function CreatePageContent() {
   const { playTrack, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
   const { addGeneration, updateGeneration, generations } = useGenerationQueue()
   const [isMobile, setIsMobile] = useState(false)
+  const [isPortrait, setIsPortrait] = useState(false)
   
-  // Detect mobile and update on resize for responsive layout
+  // Detect mobile and portrait orientation (9:16 ratio for vertical layouts)
   useEffect(() => {
-    const checkMobile = () => {
-      const isMobileDevice = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    const checkLayout = () => {
+      const width = window.innerWidth
+      const height = window.innerHeight
+      const isMobileDevice = width < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      const isPortraitMode = height > width // Portrait orientation (9:16, 9:18, etc.)
+      
       setIsMobile(isMobileDevice)
+      setIsPortrait(isPortraitMode)
     }
     
-    checkMobile() // Check on mount
-    window.addEventListener('resize', checkMobile) // Check on resize
+    checkLayout() // Check on mount
+    window.addEventListener('resize', checkLayout) // Check on resize/orientation change
     
-    return () => window.removeEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkLayout)
   }, [])
   
   const [messages, setMessages] = useState<Message[]>([
@@ -2139,10 +2145,10 @@ function CreatePageContent() {
                         onClick={() => setShowPromptSuggestions(false)}
                       />
                       
-                      {/* Dropdown panel - Responsive positioning */}
+                      {/* Dropdown panel - Responsive positioning: Fixed center for portrait, right-aligned for desktop */}
                       <div className={
-                        isMobile 
-                          ? 'absolute left-1/2 -translate-x-1/2 top-full mt-3 w-[calc(100vw-2rem)] max-w-md bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-4 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col' 
+                        isPortrait 
+                          ? 'fixed left-1/2 -translate-x-1/2 bottom-24 w-[calc(100vw-2rem)] max-w-md bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-4 z-50 animate-fade-in-fast max-h-[55vh] overflow-hidden flex flex-col' 
                           : 'absolute left-full bottom-0 ml-3 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col'
                       }>
                         
