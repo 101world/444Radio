@@ -926,6 +926,7 @@ export default function DAWProRebuild() {
       fadeOut: clip.fadeOut
     }
     daw.addClipToTrack(trackId, newClip)
+    daw.rescheduleIfPlaying() // Rebuild audio schedule with duplicated clip
     setTracks(daw.getTracks())
     markProjectDirty()
     showToast('Clip duplicated', 'success')
@@ -1636,6 +1637,7 @@ export default function DAWProRebuild() {
         // Delete selected clip
         if (selectedClipId && selectedTrackId && daw) {
           daw.removeClipFromTrack(selectedTrackId, selectedClipId)
+          daw.rescheduleIfPlaying() // Rebuild audio schedule after deletion
           setTracks(daw.getTracks())
           setSelectedClipId(null)
           markProjectDirty()
@@ -1671,6 +1673,7 @@ export default function DAWProRebuild() {
               fadeOut: clip.fadeOut
             }
             daw.addClipToTrack(selectedTrackId, rightClip)
+            daw.rescheduleIfPlaying() // Rebuild audio schedule with new clip arrangement
             setTracks(daw.getTracks())
             markProjectDirty()
             showToast('Clip split at playhead', 'success')
@@ -1719,6 +1722,7 @@ export default function DAWProRebuild() {
             fadeOut: copiedClip.clip.fadeOut
           }
           daw.addClipToTrack(track.id, newClip)
+          daw.rescheduleIfPlaying() // Rebuild audio schedule with pasted clip
           setTracks(daw.getTracks())
           markProjectDirty()
           showToast('Clip pasted', 'success')
