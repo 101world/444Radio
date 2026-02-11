@@ -1,12 +1,12 @@
 'use client'
 
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronLeft, ChevronRight, X, Repeat, Shuffle, ChevronDown, ChevronUp, Search, List } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ChevronRight, X, Repeat, Shuffle, ChevronDown, ChevronUp, Search, List } from 'lucide-react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 
 // ─── Vertical Waveform Visualizer ───────────────────────────────
-function VerticalWaveform({ audioElement, isPlaying, height }: { audioElement: HTMLAudioElement | null; isPlaying: boolean; height: number }) {
+function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudioElement | null; isPlaying: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
@@ -100,7 +100,7 @@ function VerticalWaveform({ audioElement, isPlaying, height }: { audioElement: H
     return () => cancelAnimationFrame(rafRef.current)
   }, [audioElement, isPlaying])
 
-  return <canvas ref={canvasRef} className="w-full" style={{ height: `${height}px`, transform: 'scaleY(-1)' }} />
+  return <canvas ref={canvasRef} className="w-full h-full" style={{ transform: 'scaleY(-1)' }} />
 }
 
 // ─── Explore media item type ────────────────────────────────────
@@ -318,7 +318,7 @@ export default function FloatingAudioPlayer() {
   if (!expanded) {
     return (
       <div
-        className="fixed top-0 right-0 h-screen w-20 z-40 flex flex-col items-center py-4 transition-all duration-300"
+        className="fixed top-0 right-0 h-screen w-20 z-40 flex flex-col items-center py-3 transition-all duration-300 overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, #111113 0%, #0a0a0c 100%)',
           borderLeft: '1px solid rgba(34, 211, 238, 0.08)',
@@ -342,9 +342,9 @@ export default function FloatingAudioPlayer() {
           )}
         </div>
 
-        {/* Vertical waveform */}
-        <div className="flex-1 w-12 relative overflow-hidden rounded-lg mx-auto cursor-pointer" onClick={handleVerticalSeek}>
-          <VerticalWaveform audioElement={audioEl} isPlaying={isPlaying} height={300} />
+        {/* Vertical waveform — fills all available space */}
+        <div className="flex-1 w-14 relative overflow-hidden rounded-lg mx-auto cursor-pointer" onClick={handleVerticalSeek}>
+          <VerticalWaveform audioElement={audioEl} isPlaying={isPlaying} />
           {/* Progress overlay — dims unplayed portion (top = unplayed) */}
           <div className="absolute inset-0 pointer-events-none" style={{
             background: `linear-gradient(to bottom, rgba(0,0,0,0.5) ${100 - progress}%, transparent ${100 - progress}%)`,
@@ -352,13 +352,13 @@ export default function FloatingAudioPlayer() {
         </div>
 
         {/* Time */}
-        <div className="my-2 text-center">
+        <div className="my-1.5 text-center">
           <span className="text-[9px] text-gray-500 font-mono block">{formatTime(currentTime)}</span>
           <span className="text-[8px] text-gray-700 font-mono block">{formatTime(duration)}</span>
         </div>
 
         {/* Vertical controls */}
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-1.5">
           <button onClick={toggleShuffle} className={`p-1.5 rounded-lg transition-colors ${isShuffled ? 'text-teal-400 bg-teal-500/10' : 'text-gray-600 hover:text-gray-300'}`} title="Shuffle">
             <Shuffle size={14} />
           </button>
@@ -384,11 +384,11 @@ export default function FloatingAudioPlayer() {
         </div>
 
         {/* Volume - vertical */}
-        <div className="flex flex-col items-center gap-1 mt-3 mb-2">
+        <div className="flex flex-col items-center gap-1 mt-2 mb-1">
           <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-gray-500 hover:text-gray-300 p-1">
             {volume === 0 ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
-          <div className="w-1 h-14 bg-white/[0.06] rounded-full relative cursor-pointer"
+          <div className="w-1 h-10 bg-white/[0.06] rounded-full relative cursor-pointer"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               const pct = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
@@ -398,16 +398,20 @@ export default function FloatingAudioPlayer() {
             <div className="absolute bottom-0 left-0 w-full rounded-full bg-teal-500/50 transition-all"
               style={{ height: `${volume * 100}%` }} />
           </div>
-          <span className="text-[8px] text-gray-600 font-mono">{Math.round(volume * 100)}</span>
         </div>
 
-        {/* Expand button — cool pulsing chevron */}
+        {/* Expand button — SVG expand icon */}
         <button
           onClick={() => setExpanded(true)}
-          className="group mt-auto mb-2 p-2 rounded-lg text-teal-500/60 hover:text-teal-400 hover:bg-teal-500/10 transition-all"
-          title="Expand player"
+          className="group mb-2 p-2.5 rounded-xl text-teal-500/70 hover:text-teal-400 hover:bg-teal-500/10 border border-teal-500/10 hover:border-teal-500/30 transition-all"
+          title="Expand player & explore"
         >
-          <ChevronLeft size={18} className="group-hover:animate-pulse" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 3 21 3 21 9" />
+            <polyline points="9 21 3 21 3 15" />
+            <line x1="21" y1="3" x2="14" y2="10" />
+            <line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
         </button>
       </div>
     )
@@ -464,7 +468,7 @@ export default function FloatingAudioPlayer() {
       {/* ─── Waveform + Progress ─── */}
       <div className="px-6 pb-1 flex-shrink-0">
         <div className="w-full h-10 relative rounded-lg overflow-hidden cursor-pointer" onClick={handleHorizontalSeek}>
-          <VerticalWaveform audioElement={audioEl} isPlaying={isPlaying} height={40} />
+          <VerticalWaveform audioElement={audioEl} isPlaying={isPlaying} />
           <div className="absolute inset-0 pointer-events-none" style={{
             background: `linear-gradient(to right, transparent ${progress}%, rgba(0,0,0,0.45) ${progress}%)`,
           }} />
@@ -533,7 +537,7 @@ export default function FloatingAudioPlayer() {
       </div>
 
       {showQueue && (
-        <div className="px-2 max-h-36 overflow-y-auto flex-shrink-0 scrollbar-thin border-b border-white/5 mb-1">
+        <div className="px-2 max-h-36 overflow-y-auto flex-shrink-0 scrollbar-hide border-b border-white/5 mb-1">
           {playlist.length === 0 ? (
             <div className="py-4 text-center text-gray-700 text-[10px]">Queue empty</div>
           ) : playlist.map((track, i) => {
@@ -578,7 +582,7 @@ export default function FloatingAudioPlayer() {
         </div>
 
         {/* Song list */}
-        <div className="flex-1 overflow-y-auto px-2 pb-4 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto px-2 pb-4 scrollbar-hide">
           {exploreLoading ? (
             <div className="py-8 text-center">
               <div className="w-5 h-5 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin mx-auto mb-2" />
