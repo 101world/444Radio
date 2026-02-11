@@ -79,6 +79,7 @@ function CreatePageContent() {
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
   const [preselectedImageId, setPreselectedImageId] = useState<string | undefined>()
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showPromptSuggestions, setShowPromptSuggestions] = useState(false)
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [isLoadingCredits, setIsLoadingCredits] = useState(true)
   const [showBottomDock, setShowBottomDock] = useState(true)
@@ -1992,89 +1993,128 @@ function CreatePageContent() {
               )}
 
               {/* Input Field */}
-              <div className="flex-1 flex flex-col gap-2">
-                <div className="text-center md:text-left">
-                  <input
-                    ref={(el) => {
-                      if (el) {
-                        // Store input ref for keyboard control
-                        (window as unknown as Record<string, HTMLInputElement>).__createPageInput = el;
-                      }
-                    }}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onFocus={handleInputFocus}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        // Close keyboard by blurring input
-                        if (e.currentTarget) {
-                          e.currentTarget.blur()
-                        }
-                        // Small delay to let keyboard close before generating
-                        setTimeout(() => {
-                          handleGenerate()
-                        }, 100)
-                      }
-                    }}
-                    placeholder={
-                      selectedType === 'music'
-                        ? 'Describe your sound...'
-                        : selectedType === 'image'
-                        ? 'Describe your cover art...'
-                        : selectedType === 'effects'
-                        ? 'Describe sound effects (up to 10s)...'
-                        : 'Coming soon...'
+              <div className="flex-1 text-center md:text-left">
+                <input
+                  ref={(el) => {
+                    if (el) {
+                      // Store input ref for keyboard control
+                      (window as unknown as Record<string, HTMLInputElement>).__createPageInput = el;
                     }
-                    disabled={selectedType === 'video'}
-                    className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  
-                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                    <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
-                      {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
-                    </div>
-                    <div className={`text-xs font-mono ${
-                      input.length < MIN_PROMPT_LENGTH ? 'text-red-400' :
-                      input.length > MAX_PROMPT_LENGTH ? 'text-red-400' :
-                      input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-400' :
-                      'text-gray-500'
-                    }`}>
-                      {input.length}/{MAX_PROMPT_LENGTH}
-                    </div>
+                  }}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onFocus={handleInputFocus}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      // Close keyboard by blurring input
+                      if (e.currentTarget) {
+                        e.currentTarget.blur()
+                      }
+                      // Small delay to let keyboard close before generating
+                      setTimeout(() => {
+                        handleGenerate()
+                      }, 100)
+                    }
+                  }}
+                  placeholder={
+                    selectedType === 'music'
+                      ? 'Describe your sound...'
+                      : selectedType === 'image'
+                      ? 'Describe your cover art...'
+                      : selectedType === 'effects'
+                      ? 'Describe sound effects (up to 10s)...'
+                      : 'Coming soon...'
+                  }
+                  disabled={selectedType === 'video'}
+                  className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
+                    {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
+                  </div>
+                  <div className={`text-xs font-mono ${
+                    input.length < MIN_PROMPT_LENGTH ? 'text-red-400' :
+                    input.length > MAX_PROMPT_LENGTH ? 'text-red-400' :
+                    input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-400' :
+                    'text-gray-500'
+                  }`}>
+                    {input.length}/{MAX_PROMPT_LENGTH}
                   </div>
                 </div>
-                
-                {/* Prompt Suggestion Tags - Show for music only */}
-                {selectedType === 'music' && (
-                  <div className="p-2 bg-black/40 backdrop-blur-sm border border-cyan-500/20 rounded-lg">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className="text-[10px] text-cyan-400/60 font-medium">💡 Quick Tags:</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {[
-                        'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
-                        'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
-                        'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                        'lo-fi beats', 'orchestral', 'dreamy', 'aggressive'
-                      ].map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => {
-                            const newInput = input ? `${input}, ${tag}` : tag
-                            setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
-                          }}
-                          className="px-1.5 py-0.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 hover:border-cyan-500/40 rounded text-[10px] text-cyan-300/80 hover:text-cyan-300 transition-all"
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {/* Prompt Suggestions Button - Only for music */}
+              {selectedType === 'music' && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowPromptSuggestions(!showPromptSuggestions)}
+                    className={`p-2.5 rounded-xl transition-all duration-300 ${
+                      showPromptSuggestions
+                        ? 'bg-yellow-500/20 border-2 border-yellow-400/60 shadow-lg shadow-yellow-500/30'
+                        : 'bg-yellow-500/10 border-2 border-yellow-500/30 hover:bg-yellow-500/20 hover:border-yellow-400/50 hover:shadow-lg hover:shadow-yellow-500/20'
+                    }`}
+                    title="Prompt Suggestions"
+                  >
+                    <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                    </svg>
+                  </button>
+
+                  {/* Suggestions Dropdown */}
+                  {showPromptSuggestions && (
+                    <>
+                      {/* Backdrop to close dropdown */}
+                      <div 
+                        className="fixed inset-0 z-40"
+                        onClick={() => setShowPromptSuggestions(false)}
+                      />
+                      
+                      {/* Dropdown panel */}
+                      <div className="absolute right-0 top-full mt-2 w-80 bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-4 z-50 animate-fade-in-fast">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                            </svg>
+                            <span className="text-sm font-semibold text-white">Quick Tags</span>
+                          </div>
+                          <button
+                            onClick={() => setShowPromptSuggestions(false)}
+                            className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                          >
+                            <X className="w-4 h-4 text-gray-400" />
+                          </button>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+                            'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
+                            'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
+                            'lo-fi beats', 'orchestral', 'dreamy', 'aggressive'
+                          ].map((tag, idx) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => {
+                                const newInput = input ? `${input}, ${tag}` : tag
+                                setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
+                              }}
+                              style={{ animationDelay: `${idx * 15}ms` }}
+                              className="px-3 py-1.5 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/20 hover:border-cyan-400/50 rounded-lg text-xs text-cyan-300/80 hover:text-cyan-200 transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30 animate-slide-in-up"
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Create Button */}
               <button
