@@ -5,6 +5,8 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { useUser } from '@clerk/nextjs'
 import { MultiTrackDAW } from '@/lib/audio/MultiTrackDAW'
 import type { Track, TrackClip } from '@/lib/audio/TrackManager'
+import { TimelineRenderer } from '@/lib/timeline/TimelineRenderer'
+import { useTrackStore } from '@/lib/stores/trackStore'
 import {
   Play,
   Pause,
@@ -61,13 +63,19 @@ const MediaUploadModal = lazy(() => import('@/app/components/MediaUploadModal'))
 export default function DAWProRebuild() {
   const { user } = useUser()
   const [daw, setDaw] = useState<MultiTrackDAW | null>(null)
-  const [tracks, setTracks] = useState<Track[]>([])
+  const [tracks, setTracksInternal] = useState<Track[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
   const [playhead, setPlayhead] = useState(0)
   const [bpm, setBpm] = useState(120)
   const [zoom, setZoom] = useState(200) // pixels per second - default 200 for clean view
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null)
+
+  // Bridge: sync React tracks state to Zustand store
+  const setTracks = useCallback((newTracks: Track[]) => {
+    setTracksInternal(newTracks)
+    useTrackStore.getState().setTracks(newTracks)
+  }, [])
   const [showBrowser, setShowBrowser] = useState(false)
   const [library, setLibrary] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -113,9 +121,7 @@ export default function DAWProRebuild() {
   }, [])
   const [hydrationProgress, setHydrationProgress] = useState<{ current: number; total: number } | null>(null)
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 30 })
-  const [trackLevels, setTrackLevels] = useState<Map<string, number>>(new Map())
   const [cpuUsage, setCpuUsage] = useState<number>(0)
-  const levelUpdateInterval = useRef<NodeJS.Timeout | null>(null)
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false)
 
   // Advanced generation modal states
@@ -156,6 +162,12 @@ export default function DAWProRebuild() {
   const timelineRef = useRef<HTMLDivElement>(null)
   const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map())
   const loopRef = useRef({ enabled: false, start: 0, end: 32 })
+  const rendererRef = useRef<TimelineRenderer | null>(null)
+  const playheadLineRef = useRef<HTMLDivElement>(null)
+  const timeDisplayRef = useRef<HTMLSpanElement>(null)
+  const secondsDisplayRef = useRef<HTMLSpanElement>(null)
+  const zoomRef = useRef(200) // Keep zoom in a ref so renderer getter is never stale
+  const snapTimeRef = useRef<(t: number) => number>((t) => t)
 
   // Ableton-style constants
   const TRACK_HEIGHT = 100
@@ -166,9 +178,24 @@ export default function DAWProRebuild() {
   const TIMELINE_SECONDS = 180 // reduce DOM nodes for smoother UI (3 minutes visible)
   const timelineWidth = TIMELINE_SECONDS * zoom
 
+  // Keep zoomRef in sync so renderer getter is never stale
+  useEffect(() => { zoomRef.current = zoom }, [zoom])
+
   useEffect(() => {
     loopRef.current = { enabled: loopEnabled, start: loopStart, end: loopEnd }
+    // Sync loop state to renderer (imperative DOM)
+    rendererRef.current?.setLoopState(loopEnabled, loopStart, loopEnd)
   }, [loopEnabled, loopStart, loopEnd])
+
+  // Re-bind DOM elements to renderer after mount / track count changes
+  useEffect(() => {
+    const r = rendererRef.current
+    if (!r) return
+    if (playheadLineRef.current) r.bindPlayhead(playheadLineRef.current)
+    if (timeDisplayRef.current && secondsDisplayRef.current) {
+      r.bindTimeDisplay(timeDisplayRef.current, secondsDisplayRef.current)
+    }
+  })
 
   useEffect(() => {
     const timelineEl = timelineRef.current
@@ -255,25 +282,43 @@ export default function DAWProRebuild() {
           window.addEventListener('touchstart', resumeAudio, { once: true })
         }
 
+        // Create TimelineRenderer — owns ALL real-time DOM updates
+        const renderer = new TimelineRenderer({
+          timelineEl: timelineRef.current!,
+          getZoom: () => zoomRef.current,
+          getSnap: (t: number) => snapTimeRef.current(t),
+          getDaw: () => instance,
+          onCommitPlayhead: (time: number) => setPlayhead(time),
+          onCommitLoopBounds: (start: number, end: number) => {
+            setLoopStart(start)
+            setLoopEnd(end)
+          },
+          maxSeconds: TIMELINE_SECONDS,
+          headerWidth: TRACK_HEADER_WIDTH,
+          timelineHeight: TIMELINE_HEIGHT,
+          trackHeight: TRACK_HEIGHT
+        })
+        rendererRef.current = renderer
+
+        // Bind DOM elements after they exist
+        if (playheadLineRef.current) renderer.bindPlayhead(playheadLineRef.current)
+        if (timeDisplayRef.current && secondsDisplayRef.current) {
+          renderer.bindTimeDisplay(timeDisplayRef.current, secondsDisplayRef.current)
+        }
+
+        // Playback animation loop — NO setPlayhead, purely imperative
         const animate = () => {
           if (!instance) return
           const state = instance.getTransportState()
-          
-          // CRITICAL: Use Web Audio clock as single source of truth
-          const audioContext = instance.getAudioContext()
-          if (state.isPlaying && audioContext) {
+          if (state.isPlaying) {
             const currentTime = instance.getCurrentTime()
             const loop = loopRef.current
-            
-            // Handle looping
             if (loop.enabled && currentTime >= loop.end) {
               instance.seekTo(loop.start)
             } else {
-              setPlayhead(currentTime)
+              renderer.setPlayheadVisual(currentTime)
             }
           }
-          // Don't set isPlaying here — let handlePlay/handlePause own that state
-          // This prevents flicker during seekTo() which does pause→play internally
           animationFrameId = requestAnimationFrame(animate)
         }
 
@@ -291,6 +336,8 @@ export default function DAWProRebuild() {
       if (animationFrameId !== null) {
         cancelAnimationFrame(animationFrameId)
       }
+      rendererRef.current?.dispose()
+      rendererRef.current = null
       dawInstance?.dispose()
       setDaw(null)
       setTracks([])
@@ -359,6 +406,7 @@ export default function DAWProRebuild() {
     },
     [snapEnabled, daw]
   )
+  useEffect(() => { snapTimeRef.current = snapTime }, [snapTime])
 
   const beatLength = useCallback(() => 60 / bpm, [bpm])
 
@@ -556,31 +604,8 @@ export default function DAWProRebuild() {
       await daw.play()
       setIsPlaying(true)
 
-      // Start level metering at 60fps
-      if (levelUpdateInterval.current) clearInterval(levelUpdateInterval.current)
-      levelUpdateInterval.current = setInterval(() => {
-        const trackManager = daw.getTrackManager()
-        const allTracks = trackManager.getTracks()
-        const newLevels = new Map<string, number>()
-        
-        allTracks.forEach(track => {
-          const node = trackManager.getRoutingNode(track.id)
-          if (node?.analyserNode) {
-            const dataArray = new Uint8Array(node.analyserNode.frequencyBinCount)
-            node.analyserNode.getByteTimeDomainData(dataArray)
-            // Calculate RMS level
-            let sum = 0
-            for (let i = 0; i < dataArray.length; i++) {
-              const normalized = (dataArray[i] - 128) / 128
-              sum += normalized * normalized
-            }
-            const rms = Math.sqrt(sum / dataArray.length)
-            newLevels.set(track.id, Math.min(1, rms * 2)) // Scale for visibility
-          }
-        })
-        
-        setTrackLevels(newLevels)
-      }, 1000 / 60) // 60fps
+      // Start imperative level metering (no React re-renders)
+      rendererRef.current?.startLevelMetering()
 
       if (metronomeEnabled) {
         // Play first click immediately
@@ -606,12 +631,12 @@ export default function DAWProRebuild() {
     daw.pause()
     setIsPlaying(false)
     
-    // Stop metering
-    if (levelUpdateInterval.current) {
-      clearInterval(levelUpdateInterval.current)
-      levelUpdateInterval.current = null
+    // Stop imperative level metering
+    rendererRef.current?.stopLevelMetering()
+    // Commit current playhead position to React state
+    if (rendererRef.current) {
+      setPlayhead(rendererRef.current.playhead)
     }
-    setTrackLevels(new Map())
     
     if (metronomeInterval) {
       clearInterval(metronomeInterval)
@@ -623,6 +648,8 @@ export default function DAWProRebuild() {
     if (!daw) return
     daw.stop()
     setPlayhead(0)
+    rendererRef.current?.setPlayheadVisual(0)
+    rendererRef.current?.stopLevelMetering()
     setIsPlaying(false)
     if (metronomeInterval) {
       clearInterval(metronomeInterval)
@@ -1269,22 +1296,26 @@ export default function DAWProRebuild() {
     }
   }
 
-  // Loop handle drag listeners
+  // Loop handle drag listeners — imperative DOM during drag, commit on mouseup
   useEffect(() => {
     const handleMove = (e: MouseEvent) => {
-      if (!draggingLoopHandle || !timelineRef.current) return
+      if (!draggingLoopHandle || !timelineRef.current || !rendererRef.current) return
       const rect = timelineRef.current.getBoundingClientRect()
       const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0)
       const time = Math.max(0, snapTime(x / zoom))
 
       if (draggingLoopHandle === 'start') {
-        setLoopStart(Math.min(time, loopEnd - 0.25))
+        rendererRef.current.setLoopBoundsVisual(Math.min(time, loopEnd - 0.25), loopEnd)
       } else {
-        setLoopEnd(Math.max(time, loopStart + 0.25))
+        rendererRef.current.setLoopBoundsVisual(loopStart, Math.max(time, loopStart + 0.25))
       }
     }
 
-    const handleUp = () => setDraggingLoopHandle(null)
+    const handleUp = () => {
+      // Commit loop bounds to React state on mouseup only
+      rendererRef.current?.commitLoopBounds()
+      setDraggingLoopHandle(null)
+    }
 
     window.addEventListener('mousemove', handleMove)
     window.addEventListener('mouseup', handleUp)
@@ -1721,13 +1752,19 @@ export default function DAWProRebuild() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [isPlaying, handlePlay, handlePause, handleSave, loopEnabled, activeLoopHandle, beatLength, loopEnd, loopStart, selectedClipId, selectedTrackId, daw, tracks, copiedClip, playhead, markProjectDirty, showToast])
 
-  // Alt+Scroll to zoom timeline
+  // Alt+Scroll to zoom timeline (rAF-throttled to prevent rapid re-renders)
   useEffect(() => {
+    let pending = false
     const handleWheel = (e: WheelEvent) => {
       if (e.altKey) {
         e.preventDefault()
-        const delta = e.deltaY > 0 ? -10 : 10 // Zoom out/in
-        setZoom(prev => Math.max(20, Math.min(200, prev + delta)))
+        if (pending) return
+        pending = true
+        requestAnimationFrame(() => {
+          const delta = e.deltaY > 0 ? -10 : 10
+          setZoom(prev => Math.max(20, Math.min(200, prev + delta)))
+          pending = false
+        })
       }
     }
     window.addEventListener('wheel', handleWheel, { passive: false })
@@ -1815,12 +1852,12 @@ export default function DAWProRebuild() {
         {/* Divider */}
         <div className="h-5 w-px bg-white/[0.06]" />
 
-        {/* Time Display */}
+        {/* Time Display — updated imperatively by TimelineRenderer */}
         <div className="flex items-baseline gap-2 min-w-[140px] justify-center font-mono">
-          <span className="text-xl tabular-nums text-cyan-400 font-semibold tracking-tight">
+          <span ref={timeDisplayRef} className="text-xl tabular-nums text-cyan-400 font-semibold tracking-tight">
             {formatBarsBeats(playhead)}
           </span>
-          <span className="text-[11px] tabular-nums text-white/25">
+          <span ref={secondsDisplayRef} className="text-[11px] tabular-nums text-white/25">
             {Math.floor(playhead / 60)}:{String(Math.floor(playhead % 60)).padStart(2, '0')}.{String(Math.floor((playhead % 1) * 100)).padStart(2, '0')}
           </span>
         </div>
@@ -2369,6 +2406,8 @@ export default function DAWProRebuild() {
                             onChange={(e) => {
                               e.stopPropagation()
                               daw?.updateTrack(track.id, { volume: Number(e.target.value) / 100 })
+                            }}
+                            onMouseUp={() => {
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
@@ -2377,8 +2416,13 @@ export default function DAWProRebuild() {
                           />
                           <div className="w-8 h-1 bg-white/[0.04] rounded-full overflow-hidden flex-shrink-0" title="Level">
                             <div 
+                              ref={(el) => {
+                                if (el && rendererRef.current) {
+                                  rendererRef.current.bindLevelMeter(track.id, el)
+                                }
+                              }}
                               className="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-red-400 transition-all duration-75"
-                              style={{ width: `${(trackLevels.get(track.id) || 0) * 100}%` }}
+                              style={{ width: '0%' }}
                             />
                           </div>
                         </div>
@@ -2396,6 +2440,8 @@ export default function DAWProRebuild() {
                               e.stopPropagation()
                               const newPan = Number(e.target.value) / 100
                               daw?.updateTrack(track.id, { pan: newPan })
+                            }}
+                            onMouseUp={() => {
                               setTracks(daw?.getTracks() || [])
                               markProjectDirty()
                             }}
@@ -2413,45 +2459,31 @@ export default function DAWProRebuild() {
                   className="relative flex-1"
                   style={{ width: `${timelineWidth}px` }}
                 >
-                  {/* Timeline Ruler with continuous scrubbing */}
+                  {/* Timeline Ruler with continuous scrubbing — imperative DOM only */}
                   <div
                     className="sticky top-0 z-10 bg-[#0a0a0a] border-b border-white/[0.06] relative cursor-crosshair"
                     style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
                     onMouseDown={(e) => {
+                      e.preventDefault()
                       const ruler = e.currentTarget
-                      // During continuous scrubbing, pause playback first to avoid
-                      // storm of pause→play cycles that cause double audio
                       const wasPlaying = isPlaying
-                      if (wasPlaying && daw) {
-                        daw.getTransportState() // capture time
-                        handlePause()
-                      }
-                      const scrub = (ev: MouseEvent) => {
+                      if (wasPlaying && daw) handlePause()
+                      const scrub = (clientX: number) => {
                         const rect = ruler.getBoundingClientRect()
-                        const x = ev.clientX - rect.left
+                        const x = clientX - rect.left
                         const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
-                        // Update playhead visually without triggering full seekTo
-                        setPlayhead(time)
-                        if (daw) {
-                          // Direct position update without pause→play cycle
-                          const ts = daw.getTransportState()
-                          ;(ts as any).__directTimeUpdate = true
-                        }
+                        // Imperative playhead update — no React re-render
+                        rendererRef.current?.setPlayheadVisual(time)
                       }
-                      scrub(e.nativeEvent)
-                      const onMove = (ev: MouseEvent) => { ev.preventDefault(); scrub(ev) }
+                      scrub(e.clientX)
+                      const onMove = (ev: MouseEvent) => { ev.preventDefault(); scrub(ev.clientX) }
                       const onUp = (ev: MouseEvent) => {
-                        // On release, do a single seekTo to finalize position
-                        const rect = ruler.getBoundingClientRect()
-                        const x = ev.clientX - rect.left
-                        const finalTime = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
+                        scrub(ev.clientX)
+                        const finalTime = rendererRef.current?.playhead ?? 0
                         if (daw) {
-                          // Set position and resume if was playing
                           daw.seekTo(finalTime).then(() => {
                             setPlayhead(finalTime)
-                            if (wasPlaying) {
-                              handlePlay()
-                            }
+                            if (wasPlaying) handlePlay()
                           })
                         }
                         window.removeEventListener('mousemove', onMove)
@@ -2526,13 +2558,14 @@ export default function DAWProRebuild() {
                         backgroundColor: idx % 2 === 0 ? '#090909' : '#0b0b0b'
                       }}
                       onClick={(e) => {
-                        // Click-to-seek: clicking on track background moves playhead
+                        // Click-to-seek: imperative update + commit
                         if (e.target === e.currentTarget) {
                           const rect = e.currentTarget.getBoundingClientRect()
                           const x = e.clientX - rect.left
                           const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
                           daw?.seekTo(time)
                           setPlayhead(time)
+                          rendererRef.current?.setPlayheadVisual(time)
                           setSelectedTrackId(track.id)
                         }
                       }}
@@ -2909,7 +2942,9 @@ export default function DAWProRebuild() {
                     </div>
                   ))}
 
+                  {/* Playhead line — positioned imperatively by TimelineRenderer */}
                   <div
+                    ref={playheadLineRef}
                     className="absolute top-0 w-px bg-cyan-400 cursor-ew-resize"
                     style={{
                       left: `${playhead * zoom}px`,
@@ -2921,16 +2956,14 @@ export default function DAWProRebuild() {
                     onMouseDown={(e) => {
                       e.stopPropagation()
                       const startX = e.clientX
-                      const startPlayhead = playhead
-                      // Pause during playhead drag to prevent double audio
+                      const startPlayhead = rendererRef.current?.playhead ?? playhead
                       const wasPlaying = isPlaying
-                      if (wasPlaying && daw) {
-                        handlePause()
-                      }
+                      if (wasPlaying && daw) handlePause()
                       const handleMove = (moveE: MouseEvent) => {
                         const delta = (moveE.clientX - startX) / zoom
                         const newTime = Math.max(0, Math.min(TIMELINE_SECONDS, startPlayhead + delta))
-                        setPlayhead(newTime)
+                        // Imperative DOM only — no React re-render
+                        rendererRef.current?.setPlayheadVisual(newTime)
                       }
                       const handleUp = (moveE: MouseEvent) => {
                         const delta = (moveE.clientX - startX) / zoom

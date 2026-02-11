@@ -39,7 +39,8 @@
     "svix": "^1.77.0",
     "three": "^0.180.0",
     "tone": "^14.8.49",
-    "wavesurfer.js": "^7.11.1"
+    "wavesurfer.js": "^7.11.1",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
