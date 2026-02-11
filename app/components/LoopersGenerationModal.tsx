@@ -192,6 +192,32 @@ export default function LoopersGenerationModal({
             <label className="text-sm font-medium text-gray-300 block">
               Describe the loop
             </label>
+            
+            {/* Loop Prompt Suggestion Tags */}
+            <div className="p-2.5 bg-white/5 border border-white/10 rounded-lg">
+              <p className="text-xs text-gray-400 mb-2 font-medium">💡 Quick Tags:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'techno kick', 'deep bass', 'ambient pad', 'melodic trance',
+                  'drum and bass', 'house beat', 'synth lead', 'acid bass',
+                  'trap hi-hats', '808 drums', 'reverb', 'distorted'
+                ].map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      const newPrompt = prompt ? `${prompt}, ${tag}` : tag
+                      setPrompt(newPrompt.slice(0, 300))
+                    }}
+                    disabled={isGenerating}
+                    className="px-2 py-0.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded text-xs text-cyan-300 hover:text-cyan-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}

@@ -223,6 +223,33 @@ export default function MusicGenerationModal({ isOpen, onClose, userCredits, onS
                 Music Style & Description
                 <span className="text-white/40 ml-2">(10-500 characters)</span>
               </label>
+              
+              {/* Prompt Suggestion Tags */}
+              <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+                <p className="text-xs text-gray-400 mb-2 font-medium">💡 Quick Tags:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+                    'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
+                    'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
+                    'lo-fi beats', 'orchestral', 'dreamy', 'aggressive'
+                  ].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        const newPrompt = prompt ? `${prompt}, ${tag}` : tag
+                        setPrompt(newPrompt.slice(0, 500))
+                      }}
+                      disabled={isGenerating}
+                      className="px-2.5 py-1 bg-white/10 hover:bg-white/20 border border-white/10 rounded-md text-xs text-white/80 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value.slice(0, 500))}

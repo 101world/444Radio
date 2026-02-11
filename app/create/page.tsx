@@ -2571,8 +2571,21 @@ function CreatePageContent() {
           setInput('')
         }}
         onSuccess={(variations: Array<{ url: string; variation: number }>, prompt: string) => {
-          // Handle successful loop generation
-          // The GenerationQueue will update the message automatically
+          // Add both variations to chat
+          const successMessages: Message[] = variations.map((variation, index) => ({
+            id: `${Date.now()}-${index}`,
+            type: 'assistant',
+            content: `✅ Loop Variation ${variation.variation} generated successfully!`,
+            audioUrl: variation.url,
+            prompt: prompt,
+            timestamp: new Date()
+          }))
+          
+          // Remove the generating message and add success messages
+          setMessages(prev => {
+            const withoutGenerating = prev.filter(msg => msg.type !== 'generation')
+            return [...withoutGenerating, ...successMessages]
+          })
         }}
       />
       </Suspense>
