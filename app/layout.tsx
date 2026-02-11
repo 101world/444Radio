@@ -7,6 +7,7 @@ import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
 import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
+import DockedSidebar from './components/DockedSidebar';
 import SkipToContent from './components/SkipToContent';
 import StructuredData from './components/StructuredData';
 import ConsoleBlocker from './components/ConsoleBlocker';
@@ -51,6 +52,7 @@ export default function RootLayout({
             <GenerationQueueProvider>
               <SkipToContent />
               <Toaster position="top-right" richColors closeButton />
+              <DockedSidebar />
               <main id="main-content" tabIndex={-1} className="focus:outline-none">
                 {children}
               </main>

@@ -132,7 +132,7 @@ export default function DecryptPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden">
+    <div className="min-h-screen bg-black relative overflow-hidden md:pl-20">
       {/* Matrix Rain Background */}
       {!isMobile ? (
         <canvas

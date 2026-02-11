@@ -1339,7 +1339,7 @@ function CreatePageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="min-h-screen bg-black text-white flex flex-col md:pl-20">
       {/* Holographic 3D Background */}
       {!isMobile && <HolographicBackground />}
       

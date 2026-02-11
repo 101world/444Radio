@@ -425,7 +425,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white md:pl-20">
       {/* Holographic 3D Background - Lazy Loaded */}
       <Suspense fallback={null}>
         <HolographicBackgroundClient />

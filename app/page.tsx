@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward, X, Gift } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
+import DockedSidebar from './components/DockedSidebar'
 import SEOHeroSection from './components/SEOHeroSection'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
@@ -150,6 +151,9 @@ function HomePageContent() {
 
   return (
     <>
+      {/* Docked Sidebar - Desktop Only */}
+      <DockedSidebar />
+
       {/* 3D Background with lazy loading */}
       <div className="fixed inset-0 -z-10">
         <Suspense fallback={<div className="w-full h-full bg-gradient-to-b from-gray-950 via-gray-900 to-black" />}>
@@ -172,7 +176,7 @@ function HomePageContent() {
         <CreditIndicator />
       </div>
 
-      <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10">
+      <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10 md:pl-24">
         {/* SEO Hero Section - Hidden but crawlable */}
         <div className="sr-only">
           <SEOHeroSection />
@@ -399,9 +403,9 @@ function HomePageContent() {
         </div>
       )}
 
-      {/* Claim Free Credits Button - Bottom Left */}
+      {/* Claim Free Credits Button - Bottom Left (adjusted for sidebar) */}
       <Link href="/decrypt">
-        <div className="fixed bottom-6 left-6 z-40 group cursor-pointer">
+        <div className="fixed bottom-6 left-6 md:left-24 z-40 group cursor-pointer">
           {/* Glowing background effect */}
           <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 rounded-full blur-md opacity-60 group-hover:opacity-90 transition-all duration-300 animate-pulse"></div>
           
