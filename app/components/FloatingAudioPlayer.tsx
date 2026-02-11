@@ -65,7 +65,7 @@ function VerticalWaveform({ audioElement, isPlaying, height }: { audioElement: H
         }
       }
 
-      // Draw vertical bars bottom-to-top (audio signal rising)
+      // Draw bars top-down in code; canvas is CSS-flipped so it renders bottom-to-top
       const barCount = Math.min(bufLen, 48)
       const gap = 1.5
       const barH = (H - gap * (barCount - 1)) / barCount
@@ -73,7 +73,7 @@ function VerticalWaveform({ audioElement, isPlaying, height }: { audioElement: H
       for (let i = 0; i < barCount; i++) {
         const v = data[i] / 255
         const barW = Math.max(2, v * W * 0.85)
-        const y = H - (i + 1) * (barH + gap) + gap
+        const y = i * (barH + gap)
         const x = (W - barW) / 2
 
         const alpha = 0.4 + v * 0.6
@@ -100,7 +100,7 @@ function VerticalWaveform({ audioElement, isPlaying, height }: { audioElement: H
     return () => cancelAnimationFrame(rafRef.current)
   }, [audioElement, isPlaying])
 
-  return <canvas ref={canvasRef} className="w-full" style={{ height: `${height}px` }} />
+  return <canvas ref={canvasRef} className="w-full" style={{ height: `${height}px`, transform: 'scaleY(-1)' }} />
 }
 
 // ─── Explore media item type ────────────────────────────────────
