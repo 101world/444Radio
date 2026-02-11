@@ -2950,7 +2950,38 @@ function CreatePageContent() {
         <MediaUploadModal
           isOpen={showMediaUploadModal}
           onClose={() => setShowMediaUploadModal(false)}
+          onStart={(type) => {
+            // Add processing message when stem splitting starts
+            if (type === 'stem-split') {
+              const processingMessage: Message = {
+                id: `stem-split-${Date.now()}`,
+                type: 'assistant',
+                content: '🎵 Splitting stems... This may take 1-2 minutes. Separating vocals, drums, bass, and other instruments.',
+                timestamp: new Date(),
+                isGenerating: true
+              }
+              setMessages(prev => [...prev, processingMessage])
+              // Close the modal so user sees the chat
+              setShowMediaUploadModal(false)
+            }
+          }}
+          onError={(errorMessage) => {
+            // Remove processing message
+            setMessages(prev => prev.filter(msg => !msg.isGenerating))
+            
+            // Show error in chat
+            const errorMsg: Message = {
+              id: Date.now().toString(),
+              type: 'assistant',
+              content: `❌ Error: ${errorMessage}`,
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, errorMsg])
+          }}
           onSuccess={(result) => {
+            // Remove processing message
+            setMessages(prev => prev.filter(msg => !msg.isGenerating))
+            
             // Handle stem splitting results
             if (result.stems) {
               const stemMessage: Message = {

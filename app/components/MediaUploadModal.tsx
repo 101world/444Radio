@@ -1,17 +1,17 @@
 'use client'
 
-import { useState, useRef, Suspense, lazy } from 'react'
+import { useState, useRef } from 'react'
 import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors } from 'lucide-react'
-
-const StemSplitModal = lazy(() => import('@/app/components/studio/StemSplitModal'))
 
 interface MediaUploadModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: (result: any) => void
+  onStart?: (type: 'stem-split' | 'video-to-audio') => void
+  onError?: (error: string) => void
 }
 
-export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUploadModalProps) {
+export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
   const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | null>(null)
@@ -21,8 +21,6 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
   const [uploadProgress, setUploadProgress] = useState('')
   const [error, setError] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [showStemModal, setShowStemModal] = useState(false)
-  const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioFileInputRef = useRef<HTMLInputElement>(null)
 
@@ -120,12 +118,71 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
       publicUrl = uploadResult.url
       console.log('✅ Server-side upload complete:', publicUrl)
 
-      // For stem splitting, store the URL and show format modal
+      // For stem splitting, verify URL is accessible before proceeding
       if (uploadMode === 'stem-split') {
-        setUploadedAudioUrl(publicUrl)
-        setShowStemModal(true)
-        setIsUploading(false)
-        setUploadProgress('')
+        setUploadProgress('Verifying file accessibility...')
+        
+        // Wait for R2 to propagate (increased from 2s to 5s)
+        await new Promise(resolve => setTimeout(resolve, 5000))
+        
+        // Verify the URL is accessible
+        let retries = 0
+        const maxRetries = 3
+        let isAccessible = false
+        
+        while (retries < maxRetries && !isAccessible) {
+          try {
+            console.log(`🔍 Checking URL accessibility (attempt ${retries + 1}/${maxRetries}):`, publicUrl)
+            const headResponse = await fetch(publicUrl, { method: 'HEAD' })
+            if (headResponse.ok) {
+              isAccessible = true
+              console.log('✅ URL is accessible, content-type:', headResponse.headers.get('content-type'))
+            } else {
+              console.warn(`⚠️ URL not yet accessible (${headResponse.status}), waiting...`)
+              await new Promise(resolve => setTimeout(resolve, 2000))
+              retries++
+            }
+          } catch (error) {
+            console.warn(`⚠️ URL check failed (attempt ${retries + 1}), waiting...`, error)
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            retries++
+          }
+        }
+        
+        if (!isAccessible) {
+          throw new Error('Uploaded file is not yet accessible. Please try again in a moment.')
+        }
+      }
+
+      // For stem splitting, directly call the split-stems API
+      if (uploadMode === 'stem-split') {
+        // Notify parent that stem splitting is starting
+        onStart?.('stem-split')
+        
+        setUploadProgress('Splitting stems... This may take 1-2 minutes.')
+        console.log('🎵 Splitting stems from:', publicUrl)
+
+        const splitResponse = await fetch('/api/audio/split-stems', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            audioUrl: publicUrl,
+            format: 'mp3' // Default to MP3 for faster processing
+          })
+        })
+
+        const splitResult = await splitResponse.json()
+
+        if (!splitResponse.ok || splitResult.error) {
+          console.error('❌ Stem splitting error:', splitResult)
+          console.error('❌ Response status:', splitResponse.status)
+          console.error('❌ Audio URL tried:', publicUrl)
+          throw new Error(splitResult.error || `Stem splitting failed (${splitResponse.status})`)
+        }
+
+        console.log('✅ Stems split successfully:', splitResult)
+        onSuccess?.(splitResult)
+        handleClose()
         return
       }
 
@@ -158,40 +215,10 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
       handleClose()
     } catch (err) {
       console.error('Upload error:', err)
-      setError(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setIsUploading(false)
-      setUploadProgress('')
-    }
-  }
-
-  const handleStemSplit = async (format: 'mp3' | 'wav') => {
-    if (!uploadedAudioUrl) return
-
-    setShowStemModal(false)
-    setIsUploading(true)
-    setUploadProgress('Splitting stems... This may take 1-2 minutes.')
-
-    try {
-      const response = await fetch('/api/audio/split-stems', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl: uploadedAudioUrl, format })
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || result.error) {
-        throw new Error(result.error || 'Stem splitting failed')
-      }
-
-      console.log('✅ Stem splitting complete:', result)
-      onSuccess?.(result)
-      handleClose()
-    } catch (err) {
-      console.error('Stem splitting error:', err)
-      setError(err instanceof Error ? err.message : 'Stem splitting failed')
-      setShowStemModal(true) // Re-show modal on error
+      const errorMessage = err instanceof Error ? err.message : 'Upload failed'
+      setError(errorMessage)
+      // Notify parent of error for chat display
+      onError?.(errorMessage)
     } finally {
       setIsUploading(false)
       setUploadProgress('')
@@ -205,8 +232,6 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
     setPrompt('')
     setUseHQ(false)
     setError('')
-    setShowStemModal(false)
-    setUploadedAudioUrl(null)
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
       setPreviewUrl(null)
@@ -498,7 +523,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
             ) : uploadMode === 'stem-split' ? (
               <>
                 <Scissors size={16} />
-                <span>Next</span>
+                <span>Split Stems</span>
               </>
             ) : (
               <>
@@ -510,22 +535,6 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess }: MediaUp
         </div>
 
       </div>
-
-      {/* Stem Split Format Selection Modal */}
-      {showStemModal && uploadedAudioUrl && (
-        <Suspense fallback={null}>
-          <StemSplitModal
-            isOpen={showStemModal}
-            onClose={() => {
-              setShowStemModal(false)
-              setUploadedAudioUrl(null)
-            }}
-            onSplit={handleStemSplit}
-            clipName={selectedFile?.name || 'Uploaded Audio'}
-            isProcessing={isUploading}
-          />
-        </Suspense>
-      )}
     </div>
   )
 }
