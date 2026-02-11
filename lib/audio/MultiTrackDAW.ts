@@ -142,9 +142,18 @@ export class MultiTrackDAW {
   async play(): Promise<void> {
     if (this.transportState.isPlaying) return
 
-    // CRITICAL: await context resume before scheduling anything
-    await this.audioContext.resume()
+    // CRITICAL: Set isPlaying BEFORE the await to prevent race condition
+    // where two rapid calls both pass the guard and double-schedule clips
     this.transportState.isPlaying = true
+
+    try {
+      await this.audioContext.resume()
+    } catch (e) {
+      // If resume fails, revert isPlaying so it can be retried
+      this.transportState.isPlaying = false
+      throw e
+    }
+
     this.playbackStartTime = this.audioContext.currentTime
     this.playbackOffset = this.transportState.currentTime
 
@@ -210,19 +219,9 @@ export class MultiTrackDAW {
           }
         }
 
-        // FIX #3: Handle looping with proper source.loop
-        const loopState = this.timelineManager.getActiveLoopRegion()
-        if (this.transportState.loopEnabled && loopState) {
-          // Check if clip intersects with loop region
-          const clipEnd = clip.startTime + clip.duration
-          if (clip.startTime < loopState.endTime && clipEnd > loopState.startTime) {
-            source.loop = true
-            const loopStart = Math.max(loopState.startTime, clip.startTime)
-            const loopEnd = Math.min(loopState.endTime, clipEnd)
-            source.loopStart = loopStart
-            source.loopEnd = loopEnd
-          }
-        }
+        // NOTE: Loop handling is done by the page.tsx rAF loop via seekTo().
+        // Do NOT set source.loop here — it conflicts with the transport-level looping
+        // and causes double-play when both mechanisms fire simultaneously.
 
         // Connect: source → clipGain → track routingNode.gainNode
         // RoutingNode already chains: gainNode → panNode → analyserNode → masterOutput → destination

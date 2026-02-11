@@ -249,11 +249,11 @@ export default function DAWProRebuild() {
   }, [zoom, TIMELINE_SECONDS, TRACK_HEADER_WIDTH])
 
   // Initialize DAW
+  // Phase 1: Initialize DAW engine and tracks (no DOM dependency)
   useEffect(() => {
     if (!user?.id) return
 
     let isMounted = true
-    let animationFrameId: number | null = null
     let dawInstance: MultiTrackDAW | null = null
 
     const initDAW = async () => {
@@ -286,48 +286,6 @@ export default function DAWProRebuild() {
           window.addEventListener('click', resumeAudio, { once: true })
           window.addEventListener('touchstart', resumeAudio, { once: true })
         }
-
-        // Create TimelineRenderer — owns ALL real-time DOM updates
-        const renderer = new TimelineRenderer({
-          timelineEl: timelineRef.current!,
-          getZoom: () => zoomRef.current,
-          getSnap: (t: number) => snapTimeRef.current(t),
-          getDaw: () => instance,
-          onCommitPlayhead: (time: number) => setPlayhead(time),
-          onCommitLoopBounds: (start: number, end: number) => {
-            setLoopStart(start)
-            setLoopEnd(end)
-          },
-          maxSeconds: TIMELINE_SECONDS,
-          headerWidth: TRACK_HEADER_WIDTH,
-          timelineHeight: TIMELINE_HEIGHT,
-          trackHeight: TRACK_HEIGHT
-        })
-        rendererRef.current = renderer
-
-        // Bind DOM elements after they exist
-        if (playheadLineRef.current) renderer.bindPlayhead(playheadLineRef.current)
-        if (timeDisplayRef.current && secondsDisplayRef.current) {
-          renderer.bindTimeDisplay(timeDisplayRef.current, secondsDisplayRef.current)
-        }
-
-        // Playback animation loop — NO setPlayhead, purely imperative
-        const animate = () => {
-          if (!instance) return
-          const state = instance.getTransportState()
-          if (state.isPlaying) {
-            const currentTime = instance.getCurrentTime()
-            const loop = loopRef.current
-            if (loop.enabled && currentTime >= loop.end) {
-              instance.seekTo(loop.start)
-            } else {
-              renderer.setPlayheadVisual(currentTime)
-            }
-          }
-          animationFrameId = requestAnimationFrame(animate)
-        }
-
-        animationFrameId = requestAnimationFrame(animate)
       } catch (error) {
         console.error('DAW init failed:', error)
         setLoading(false)
@@ -338,11 +296,6 @@ export default function DAWProRebuild() {
 
     return () => {
       isMounted = false
-      if (animationFrameId !== null) {
-        cancelAnimationFrame(animationFrameId)
-      }
-      rendererRef.current?.dispose()
-      rendererRef.current = null
       dawInstance?.dispose()
       setDaw(null)
       setTracks([])
@@ -350,6 +303,64 @@ export default function DAWProRebuild() {
       isHydratingRef.current = false
     }
   }, [user?.id])
+
+  // Phase 2: Create TimelineRenderer + rAF loop AFTER DOM has mounted (loading=false)
+  useEffect(() => {
+    if (!daw || loading) return
+    if (!timelineRef.current) return
+
+    let animationFrameId: number | null = null
+
+    // Create TimelineRenderer — owns ALL real-time DOM updates
+    const renderer = new TimelineRenderer({
+      timelineEl: timelineRef.current,
+      getZoom: () => zoomRef.current,
+      getSnap: (t: number) => snapTimeRef.current(t),
+      getDaw: () => daw,
+      onCommitPlayhead: (time: number) => setPlayhead(time),
+      onCommitLoopBounds: (start: number, end: number) => {
+        setLoopStart(start)
+        setLoopEnd(end)
+      },
+      maxSeconds: TIMELINE_SECONDS,
+      headerWidth: TRACK_HEADER_WIDTH,
+      timelineHeight: TIMELINE_HEIGHT,
+      trackHeight: TRACK_HEIGHT
+    })
+    rendererRef.current = renderer
+
+    // Bind DOM elements — now guaranteed to exist since loading=false
+    if (playheadLineRef.current) renderer.bindPlayhead(playheadLineRef.current)
+    if (timeDisplayRef.current && secondsDisplayRef.current) {
+      renderer.bindTimeDisplay(timeDisplayRef.current, secondsDisplayRef.current)
+    }
+
+    // Playback animation loop — NO setPlayhead, purely imperative
+    const animate = () => {
+      if (!daw) return
+      const state = daw.getTransportState()
+      if (state.isPlaying) {
+        const currentTime = daw.getCurrentTime()
+        const loop = loopRef.current
+        if (loop.enabled && currentTime >= loop.end) {
+          daw.seekTo(loop.start)
+        } else {
+          renderer.setPlayheadVisual(currentTime)
+        }
+      }
+      animationFrameId = requestAnimationFrame(animate)
+    }
+
+    animationFrameId = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId)
+      }
+      rendererRef.current?.dispose()
+      rendererRef.current = null
+    }
+  }, [daw, loading])
 
   // Load library
   useEffect(() => {
