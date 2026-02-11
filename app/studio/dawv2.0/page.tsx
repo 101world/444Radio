@@ -1638,7 +1638,7 @@ export default function DAWProRebuild() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden md:pl-20">
       {hydrationProgress && (
         <div className="fixed top-24 right-6 z-40 px-4 py-2 bg-[#111] border border-cyan-500/40 rounded-lg text-xs text-cyan-100 shadow-lg">
           Loading project… {hydrationProgress.current}/{hydrationProgress.total}
@@ -2285,12 +2285,34 @@ export default function DAWProRebuild() {
                             title={`Volume: ${Math.round(track.volume * 100)}%`}
                           />
                           {/* Level Meter */}
-                          <div className="w-10 h-1.5 bg-gray-900 rounded-full overflow-hidden flex-shrink-0\" title="Audio level">
+                          <div className="w-10 h-1.5 bg-gray-900 rounded-full overflow-hidden flex-shrink-0" title="Audio level">
                             <div 
                               className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 transition-all duration-75"
                               style={{ width: `${(trackLevels.get(track.id) || 0) * 100}%` }}
                             />
                           </div>
+                        </div>
+                        {/* Pan Control */}
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-[9px] text-gray-600 font-mono w-3 flex-shrink-0">L</span>
+                          <input
+                            id={`pan-${track.id}`}
+                            name={`pan-track-${idx + 1}`}
+                            type="range"
+                            min="-100"
+                            max="100"
+                            value={Math.round(track.pan * 100)}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              const newPan = Number(e.target.value) / 100
+                              daw?.updateTrack(track.id, { pan: newPan })
+                              setTracks(daw?.getTracks() || [])
+                              markProjectDirty()
+                            }}
+                            className="flex-1 h-1 accent-purple-400 min-w-0"
+                            title={`Pan: ${track.pan === 0 ? 'C' : track.pan < 0 ? `L${Math.abs(Math.round(track.pan * 100))}` : `R${Math.round(track.pan * 100)}`}`}
+                          />
+                          <span className="text-[9px] text-gray-600 font-mono w-3 flex-shrink-0">R</span>
                         </div>
                       </div>
                     ))}
@@ -2306,8 +2328,7 @@ export default function DAWProRebuild() {
                     style={{ height: `${TIMELINE_HEIGHT}px`, width: `${timelineWidth}px` }}
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect()
-                      const scrollLeft = timelineRef.current?.scrollLeft || 0
-                      const x = e.clientX - rect.left + scrollLeft
+                      const x = e.clientX - rect.left
                       const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
                       daw?.seekTo(time)
                       setPlayhead(time)
@@ -2377,14 +2398,24 @@ export default function DAWProRebuild() {
                         width: `${timelineWidth}px`,
                         backgroundColor: idx % 2 === 0 ? '#080808' : '#0a0a0a'
                       }}
+                      onClick={(e) => {
+                        // Click-to-seek: clicking on track background moves playhead
+                        if (e.target === e.currentTarget) {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          const x = e.clientX - rect.left
+                          const time = Math.max(0, Math.min(TIMELINE_SECONDS, x / zoom))
+                          daw?.seekTo(time)
+                          setPlayhead(time)
+                          setSelectedTrackId(track.id)
+                        }
+                      }}
                       onDrop={async (e) => {
                         e.preventDefault()
                         const audioUrl = e.dataTransfer.getData('audioUrl')
                         if (audioUrl) {
                           setDragPreview(null) // Clear preview immediately
                           const rect = e.currentTarget.getBoundingClientRect()
-                          const scrollLeft = timelineRef.current?.scrollLeft || 0
-                          const x = e.clientX - rect.left + scrollLeft - TRACK_HEADER_WIDTH
+                          const x = e.clientX - rect.left
                           const startTime = snapTime(Math.max(0, x) / zoom)
                           
                           // Show loading state
@@ -2409,8 +2440,7 @@ export default function DAWProRebuild() {
                         if (!window.lastDragUpdate || now - window.lastDragUpdate > 50) {
                           window.lastDragUpdate = now
                           const rect = e.currentTarget.getBoundingClientRect()
-                          const scrollLeft = timelineRef.current?.scrollLeft || 0
-                          const x = e.clientX - rect.left + scrollLeft - TRACK_HEADER_WIDTH
+                          const x = e.clientX - rect.left
                           const time = snapTime(Math.max(0, x) / zoom)
                           setDragPreview({ time, trackId: track.id })
                         }
@@ -2517,22 +2547,17 @@ export default function DAWProRebuild() {
                             className="absolute top-0 bottom-0 left-0 w-2 bg-purple-500/40 hover:w-3 hover:bg-purple-400 cursor-ew-resize z-[25] transition-all"
                             onMouseDown={(e) => {
                               e.stopPropagation()
-                              setDraggingResize({
-                                clipId: clip.id,
-                                trackId: track.id,
-                                edge: 'left',
-                                originalStartTime: clip.startTime,
-                                originalDuration: clip.duration,
-                                originalOffset: clip.offset
-                              })
+                              const origStartTime = clip.startTime
+                              const origDuration = clip.duration
+                              const origOffset = clip.offset
                               
                               const handleMove = (moveE: MouseEvent) => {
                                 if (!daw) return
                                 const dx = moveE.clientX - e.clientX
                                 const timeDelta = dx / zoom
-                                const newStartTime = Math.max(0, draggingResize!.originalStartTime + timeDelta)
-                                const newDuration = Math.max(0.1, draggingResize!.originalDuration - timeDelta)
-                                const newOffset = Math.max(0, draggingResize!.originalOffset + timeDelta)
+                                const newStartTime = Math.max(0, origStartTime + timeDelta)
+                                const newDuration = Math.max(0.1, origDuration - timeDelta)
+                                const newOffset = Math.max(0, origOffset + timeDelta)
                                 
                                 // Ensure we don't exceed buffer duration
                                 if (clip.buffer && newOffset + newDuration <= clip.buffer.duration) {
@@ -2563,20 +2588,13 @@ export default function DAWProRebuild() {
                             className="absolute top-0 bottom-0 right-0 w-2 bg-purple-500/40 hover:w-3 hover:bg-purple-400 cursor-ew-resize z-[25] transition-all"
                             onMouseDown={(e) => {
                               e.stopPropagation()
-                              setDraggingResize({
-                                clipId: clip.id,
-                                trackId: track.id,
-                                edge: 'right',
-                                originalStartTime: clip.startTime,
-                                originalDuration: clip.duration,
-                                originalOffset: clip.offset
-                              })
+                              const origDuration = clip.duration
                               
                               const handleMove = (moveE: MouseEvent) => {
                                 if (!daw) return
                                 const dx = moveE.clientX - e.clientX
                                 const timeDelta = dx / zoom
-                                const newDuration = Math.max(0.1, draggingResize!.originalDuration + timeDelta)
+                                const newDuration = Math.max(0.1, origDuration + timeDelta)
                                 
                                 // Ensure we don't exceed buffer duration
                                 if (clip.buffer && clip.offset + newDuration <= clip.buffer.duration) {
