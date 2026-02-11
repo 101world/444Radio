@@ -2131,167 +2131,176 @@ function CreatePageContent() {
                       
                       {/* Dropdown panel - Opens to the right */}
                       <div className="absolute left-full bottom-0 ml-3 w-[420px] bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-5 z-50 animate-fade-in-fast max-h-[70vh] overflow-hidden flex flex-col">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
-                            </svg>
-                            <span className="text-sm font-bold text-white">Quick Tags</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setShowIdeasFlow(true)}
-                              className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 hover:text-purple-200 transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
-                            >
-                              ✨ IDEAS
-                            </button>
-                            <button
-                              onClick={() => setShowPromptSuggestions(false)}
-                              className="p-1 hover:bg-white/10 rounded-lg transition-colors"
-                            >
-                              <X className="w-4 h-4 text-gray-400" />
-                            </button>
-                          </div>
-                        </div>
                         
-                        <div className="flex flex-wrap gap-2 overflow-y-auto scrollbar-thin pr-2 flex-1">
-                          {[
-                            'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
-                            'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
-                            'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                            'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
-                            'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
-                            'drum & bass', 'dubstep', 'house', 'techno', 'trance',
-                            'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
-                            'reggae', 'latin', 'afrobeat', 'k-pop', 'anime',
-                            'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
-                            'romantic', 'sad', 'happy', 'mysterious', 'powerful',
-                            'soft vocals', 'no vocals', 'female vocals', 'male vocals',
-                            'synth lead', 'strings', 'brass', 'flute', 'violin'
-                          ].map((tag, idx) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={() => {
-                                const newInput = input ? `${input}, ${tag}` : tag
-                                setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
-                              }}
-                              style={{ animationDelay: `${idx * 15}ms` }}
-                              className="px-3.5 py-2 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-sm font-medium text-cyan-200 hover:text-white transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30 animate-slide-in-up"
-                            >
-                              {tag}
-                            </button>
-                          ))}
+                        {/* Show IDEAS flow or Quick Tags */}
+                        {!showIdeasFlow ? (
+                          <>
+                            {/* Header for Quick Tags */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                                </svg>
+                                <span className="text-sm font-bold text-white">Quick Tags</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => setShowIdeasFlow(true)}
+                                  className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 hover:text-purple-200 transition-all hover:scale-105 shadow-lg shadow-purple-500/20"
+                                >
+                                  ✨ IDEAS
+                                </button>
+                                <button
+                                  onClick={() => setShowPromptSuggestions(false)}
+                                  className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                                >
+                                  <X className="w-4 h-4 text-gray-400" />
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* Quick Tags */}
+                            <div className="flex flex-wrap gap-2 overflow-y-auto scrollbar-thin pr-2 flex-1">
+                              {[
+                                'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+                                'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
+                                'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
+                                'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+                                'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
+                                'drum & bass', 'dubstep', 'house', 'techno', 'trance',
+                                'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
+                                'reggae', 'latin', 'afrobeat', 'k-pop', 'anime',
+                                'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
+                                'romantic', 'sad', 'happy', 'mysterious', 'powerful',
+                                'soft vocals', 'no vocals', 'female vocals', 'male vocals',
+                                'synth lead', 'strings', 'brass', 'flute', 'violin'
+                              ].map((tag, idx) => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => {
+                                    const newInput = input ? `${input}, ${tag}` : tag
+                                    setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
+                                  }}
+                                  style={{ animationDelay: `${idx * 15}ms` }}
+                                  className="px-3.5 py-2 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-sm font-medium text-cyan-200 hover:text-white transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30 animate-slide-in-up"
+                                >
+                                  {tag}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* IDEAS Flow inside same dropdown */}
+                            {ideasStep === 'type' && (
+                              <div className="space-y-6">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h3 className="text-xl font-bold text-white">✨ AI Prompt Ideas</h3>
+                                  <button
+                                    onClick={() => {
+                                      setShowIdeasFlow(false)
+                                      setIdeasStep('type')
+                                    }}
+                                    className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                                  >
+                                    <X className="w-4 h-4 text-gray-400" />
+                                  </button>
+                                </div>
+                                <p className="text-sm text-gray-400 text-center">What would you like to create?</p>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedPromptType('song')
+                                      setIdeasStep('genre')
+                                    }}
+                                    className="group p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-2 border-purple-400/40 hover:border-purple-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/30"
+                                  >
+                                    <div className="text-4xl mb-3">🎤</div>
+                                    <div className="text-lg font-bold text-white mb-1">Song</div>
+                                    <div className="text-xs text-gray-400">With vocals & lyrics</div>
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => {
+                                      setSelectedPromptType('beat')
+                                      setIdeasStep('genre')
+                                    }}
+                                    className="group p-6 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/30"
+                                  >
+                                    <div className="text-4xl mb-3">🎹</div>
+                                    <div className="text-lg font-bold text-white mb-1">Beat</div>
+                                    <div className="text-xs text-gray-400">Instrumental only</div>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {ideasStep === 'genre' && (
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <button
+                                    onClick={() => setIdeasStep('type')}
+                                    className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                                  >
+                                    ← Back
+                                  </button>
+                                  <h3 className="text-lg font-bold text-white">🎵 Select Genre</h3>
+                                  <button
+                                    onClick={() => {
+                                      setShowIdeasFlow(false)
+                                      setIdeasStep('type')
+                                    }}
+                                    className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                                  >
+                                    <X className="w-4 h-4 text-gray-400" />
+                                  </button>
+                                </div>
+                                <p className="text-xs text-gray-400 text-center">Choose a style for your {selectedPromptType}</p>
+                                
+                                <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto scrollbar-thin pr-2">
+                                  {[
+                                    'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
+                                    'trap', 'drill', 'phonk', 'house', 'techno',
+                                    'lo-fi beats', 'synthwave', 'indie', 'folk', 'blues',
+                                    'soul', 'funk', 'reggae', 'latin', 'afrobeat',
+                                    'orchestral', 'cinematic', 'acoustic', 'vaporwave', 'k-pop'
+                                  ].map((genre) => (
+                                    <button
+                                      key={genre}
+                                      onClick={() => handleGeneratePromptIdea(genre)}
+                                      disabled={generatingIdea}
+                                      className="px-3 py-2.5 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {genre}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {ideasStep === 'generating' && (
+                              <div className="space-y-6 text-center py-8">
+                                <div className="relative">
+                                  <div className="w-16 h-16 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
+                                  <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-2xl">🎨</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <h3 className="text-xl font-bold text-white mb-2">Creating Amazing Prompt...</h3>
+                                  <p className="text-sm text-gray-400">AI is crafting the perfect description</p>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                         </div>
                       </div>
                     </>
                   )}
                 </div>
-              )}
-
-              {/* IDEAS Flow Modal */}
-              {showIdeasFlow && (
-                <>
-                  <div 
-                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]"
-                    onClick={() => {
-                      setShowIdeasFlow(false)
-                      setIdeasStep('type')
-                    }}
-                  />
-                  
-                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-[70] animate-fade-in-fast px-4">
-                    <div className="bg-gradient-to-br from-black/95 via-cyan-950/30 to-black/95 backdrop-blur-2xl border-2 border-cyan-500/40 rounded-3xl p-6 shadow-2xl shadow-cyan-500/30">
-                      {/* Step 1: Type Selection */}
-                      {ideasStep === 'type' && (
-                        <div className="space-y-6">
-                          <div className="text-center">
-                            <h3 className="text-2xl font-bold text-white mb-2">✨ AI Prompt Ideas</h3>
-                            <p className="text-sm text-gray-400">What would you like to create?</p>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <button
-                              onClick={() => {
-                                setSelectedPromptType('song')
-                                setIdeasStep('genre')
-                              }}
-                              className="group p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-2 border-purple-400/40 hover:border-purple-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/30"
-                            >
-                              <div className="text-4xl mb-3">🎤</div>
-                              <div className="text-lg font-bold text-white mb-1">Song</div>
-                              <div className="text-xs text-gray-400">With vocals & lyrics</div>
-                            </button>
-                            
-                            <button
-                              onClick={() => {
-                                setSelectedPromptType('beat')
-                                setIdeasStep('genre')
-                              }}
-                              className="group p-6 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/30"
-                            >
-                              <div className="text-4xl mb-3">🎹</div>
-                              <div className="text-lg font-bold text-white mb-1">Beat</div>
-                              <div className="text-xs text-gray-400">Instrumental only</div>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Step 2: Genre Selection */}
-                      {ideasStep === 'genre' && (
-                        <div className="space-y-6">
-                          <div className="text-center">
-                            <h3 className="text-2xl font-bold text-white mb-2">🎵 Select Genre</h3>
-                            <p className="text-sm text-gray-400">Choose a style for your {selectedPromptType}</p>
-                          </div>
-                          
-                          <div className="grid grid-cols-3 gap-3 max-h-80 overflow-y-auto scrollbar-thin pr-2">
-                            {[
-                              'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
-                              'trap', 'drill', 'phonk', 'house', 'techno',
-                              'lo-fi beats', 'synthwave', 'indie', 'folk', 'blues',
-                              'soul', 'funk', 'reggae', 'latin', 'afrobeat',
-                              'orchestral', 'cinematic', 'acoustic', 'vaporwave', 'k-pop'
-                            ].map((genre) => (
-                              <button
-                                key={genre}
-                                onClick={() => handleGeneratePromptIdea(genre)}
-                                disabled={generatingIdea}
-                                className="px-3 py-2.5 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {genre}
-                              </button>
-                            ))}
-                          </div>
-                          
-                          <button
-                            onClick={() => setIdeasStep('type')}
-                            className="w-full py-2 text-sm text-gray-400 hover:text-white transition-colors"
-                          >
-                            ← Back
-                          </button>
-                        </div>
-                      )}
-                      
-                      {/* Step 3: Generating */}
-                      {ideasStep === 'generating' && (
-                        <div className="space-y-6 text-center py-8">
-                          <div className="relative">
-                            <div className="w-16 h-16 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-2xl">🎨</span>
-                            </div>
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-bold text-white mb-2">Creating Amazing Prompt...</h3>
-                            <p className="text-sm text-gray-400">AI is crafting the perfect description</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
               )}
 
               {/* Create Button */}
