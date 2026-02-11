@@ -16,6 +16,7 @@ const CombineMediaModal = lazy(() => import('../components/CombineMediaModal'))
 const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
 const MediaUploadModal = lazy(() => import('../components/MediaUploadModal'))
 const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
+import GenerationRecovery from '../components/GenerationRecovery'
 import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
@@ -2977,6 +2978,9 @@ function CreatePageContent() {
         showPromptToggle={true}
         onTogglePrompt={() => setShowBottomDock(!showBottomDock)}
       />
+
+      {/* Generation Recovery UI for stuck generations */}
+      <GenerationRecovery />
     </div>
   )
 }

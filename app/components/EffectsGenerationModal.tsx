@@ -75,9 +75,14 @@ export default function EffectsGenerationModal({
     }
     
     try {
+      // Create timeout controller (220s - longer than server's 180s max)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 220000) // 220 seconds
+      
       const res = await fetch('/api/generate/effects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           prompt,
           duration,
@@ -89,6 +94,7 @@ export default function EffectsGenerationModal({
         })
       })
 
+      clearTimeout(timeoutId)
       const data = await res.json()
       
       if (data.success) {
@@ -120,11 +126,22 @@ export default function EffectsGenerationModal({
       }
     } catch (error) {
       console.error('Generation error:', error)
-      updateGeneration(generationId, {
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
-      alert('Failed to generate effects')
+      
+      // Check if it's a timeout/abort error
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('⏱️ Effects generation request timed out')
+        updateGeneration(generationId, {
+          status: 'failed',
+          error: 'Request timed out. Check your Library - effects may have generated. Credits were deducted.'
+        })
+        alert(`⏱️ Request timed out.\n\n✅ Check your Library - effects may have generated server-side.\n💰 Credits were likely deducted.`)
+      } else {
+        updateGeneration(generationId, {
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+        alert('Failed to generate effects')
+      }
     } finally {
       setIsGenerating(false)
     }

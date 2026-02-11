@@ -83,9 +83,14 @@ export default function LoopersGenerationModal({
     }
     
     try {
+      // Create timeout controller (220s - longer than server's 180s max)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 220000) // 220 seconds
+      
       const res = await fetch('/api/generate/loopers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           prompt,
           bpm,
@@ -101,6 +106,7 @@ export default function LoopersGenerationModal({
         })
       })
 
+      clearTimeout(timeoutId)
       const data = await res.json()
       
       if (data.success) {
@@ -133,11 +139,68 @@ export default function LoopersGenerationModal({
       }
     } catch (error) {
       console.error('Generation error:', error)
-      updateGeneration(generationId, {
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
-      alert('Failed to generate loops')
+      
+      // Check if it's a timeout/abort error
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('⏱️ Request timed out - checking for server-side completion...')
+        
+        // Try to fetch recent loops to see if generation actually succeeded
+        try {
+          const checkRes = await fetch('/api/media/recent-loops')
+          if (checkRes.ok) {
+            const recentData = await checkRes.json()
+            
+            // Check if any recent loops match our prompt (created in last 5 minutes)
+            const matchingLoops = recentData.loops?.filter((loop: any) => 
+              loop.audio_prompt?.includes(prompt.substring(0, 20)) && 
+              Date.now() - new Date(loop.created_at).getTime() < 300000 // 5 minutes
+            )
+            
+            if (matchingLoops && matchingLoops.length > 0) {
+              console.log('✅ Found completed loops on server despite timeout!')
+              
+              const variations = matchingLoops.map((loop: any, idx: number) => ({
+                url: loop.audio_url,
+                variation: idx + 1
+              }))
+              
+              updateGeneration(generationId, {
+                status: 'completed',
+                result: {
+                  audioUrl: variations[0]?.url,
+                  title: `Loop: ${prompt.substring(0, 30)}`,
+                  prompt: prompt,
+                  variations: variations
+                }
+              })
+              
+              if (onSuccess) {
+                onSuccess(variations, prompt)
+              }
+              
+              alert(`✅ Loops found! Network timeout but generation succeeded. Check your library.`)
+              setIsGenerating(false)
+              return
+            }
+          }
+        } catch (checkError) {
+          console.error('Failed to check for completed loops:', checkError)
+        }
+        
+        // If we get here, no loops found - mark as potentially stuck
+        updateGeneration(generationId, {
+          status: 'failed',
+          error: 'Request timed out. Check your Library - loops may have generated. Credits were deducted.'
+        })
+        alert(`⏱️ Request timed out after 3+ minutes.\n\n✅ Check your Library - loops may have generated server-side.\n💰 Credits were likely deducted.\n\nIf loops appear, this was just a network issue.`)
+      } else {
+        // Other errors
+        updateGeneration(generationId, {
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+        alert('Failed to generate loops')
+      }
     } finally {
       setIsGenerating(false)
     }
