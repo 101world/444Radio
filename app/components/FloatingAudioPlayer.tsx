@@ -123,7 +123,7 @@ export default function FloatingAudioPlayer() {
   const {
     currentTrack, isPlaying, currentTime, duration, volume,
     togglePlayPause, setVolume, seekTo, playNext, playPrevious,
-    playlist, playTrack, removeFromPlaylist,
+    playlist, playTrack, removeFromPlaylist, addToPlaylist,
     isLooping, isShuffled, toggleLoop, toggleShuffle,
     getAudioElement, setPlaylist,
   } = useAudioPlayer()
@@ -194,26 +194,23 @@ export default function FloatingAudioPlayer() {
     seekTo(pct * duration)
   }
 
+  const toTrack = (song: ExploreMedia) => ({
+    id: song.id,
+    title: song.title,
+    audioUrl: song.audioUrl || song.audio_url,
+    imageUrl: song.imageUrl || song.image_url,
+    artist: song.users?.username || song.username || 'Unknown',
+    userId: song.user_id,
+  })
+
   const playExploreTrack = (song: ExploreMedia) => {
-    const track = {
-      id: song.id,
-      title: song.title,
-      audioUrl: song.audioUrl || song.audio_url,
-      imageUrl: song.imageUrl || song.image_url,
-      artist: song.users?.username || song.username || 'Unknown',
-      userId: song.user_id,
-    }
-    // Add all filtered explore songs as playlist
-    const allTracks = filteredExplore.map(s => ({
-      id: s.id,
-      title: s.title,
-      audioUrl: s.audioUrl || s.audio_url,
-      imageUrl: s.imageUrl || s.image_url,
-      artist: s.users?.username || s.username || 'Unknown',
-      userId: s.user_id,
-    }))
-    setPlaylist(allTracks)
-    playTrack(track)
+    // Just play this single song — don't set playlist
+    playTrack(toTrack(song))
+  }
+
+  const queueExploreTrack = (e: React.MouseEvent, song: ExploreMedia) => {
+    e.stopPropagation()
+    addToPlaylist(toTrack(song))
   }
 
   const filteredExplore = exploreSongs.filter(s => {
@@ -318,24 +315,20 @@ export default function FloatingAudioPlayer() {
   if (!expanded) {
     return (
       <div
-        className="fixed top-0 right-0 h-screen w-20 z-40 flex flex-col items-center py-3 transition-all duration-300 overflow-hidden"
+        className="fixed top-0 right-0 h-screen w-[88px] z-40 flex flex-col items-center py-1 transition-all duration-300 overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, #111113 0%, #0a0a0c 100%)',
-          borderLeft: '1px solid rgba(34, 211, 238, 0.08)',
-          boxShadow: '-4px 0 24px rgba(0,0,0,0.4)',
+          background: 'linear-gradient(180deg, rgba(17,17,19,0.95) 0%, rgba(10,10,12,0.97) 100%)',
+          borderLeft: '1px solid rgba(34, 211, 238, 0.06)',
         }}
       >
-        {/* Teal accent line */}
-        <div className="absolute top-0 left-0 bottom-0 w-px bg-gradient-to-b from-transparent via-teal-500/20 to-transparent" />
-
-        {/* Album art / music icon */}
-        <div className="mb-4 mt-2">
+        {/* Album art / music icon — click to expand */}
+        <div className="mb-2 mt-1 cursor-pointer" onClick={() => setExpanded(true)} title="Expand player">
           {currentTrack.imageUrl ? (
-            <Image src={currentTrack.imageUrl} alt={currentTrack.title} width={48} height={48}
-              className="w-12 h-12 rounded-lg object-cover ring-1 ring-white/10 shadow-lg shadow-black/50" />
+            <Image src={currentTrack.imageUrl} alt={currentTrack.title} width={56} height={56}
+              className="w-14 h-14 rounded-lg object-cover ring-1 ring-white/10 shadow-lg shadow-black/50 hover:ring-teal-500/30 transition-all" />
           ) : (
-            <div className="w-12 h-12 rounded-lg bg-gray-800/80 flex items-center justify-center ring-1 ring-white/10">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.5)" strokeWidth="2">
+            <div className="w-14 h-14 rounded-lg bg-gray-800/80 flex items-center justify-center ring-1 ring-white/10 hover:ring-teal-500/30 transition-all">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.5)" strokeWidth="2">
                 <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
               </svg>
             </div>
@@ -343,7 +336,7 @@ export default function FloatingAudioPlayer() {
         </div>
 
         {/* Vertical waveform — fills all available space */}
-        <div className="flex-1 w-14 relative overflow-hidden rounded-lg mx-auto cursor-pointer" onClick={handleVerticalSeek}>
+        <div className="flex-1 w-16 min-h-[80px] relative overflow-hidden rounded-md mx-auto cursor-pointer" onClick={handleVerticalSeek}>
           <VerticalWaveform audioElement={audioEl} isPlaying={isPlaying} />
           {/* Progress overlay — dims unplayed portion (top = unplayed) */}
           <div className="absolute inset-0 pointer-events-none" style={{
@@ -352,13 +345,13 @@ export default function FloatingAudioPlayer() {
         </div>
 
         {/* Time */}
-        <div className="my-1.5 text-center">
-          <span className="text-[9px] text-gray-500 font-mono block">{formatTime(currentTime)}</span>
-          <span className="text-[8px] text-gray-700 font-mono block">{formatTime(duration)}</span>
+        <div className="my-0.5 text-center">
+          <span className="text-[9px] text-gray-500 font-mono block leading-tight">{formatTime(currentTime)}</span>
+          <span className="text-[8px] text-gray-700 font-mono block leading-tight">{formatTime(duration)}</span>
         </div>
 
         {/* Vertical controls */}
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex flex-col items-center gap-1">
           <button onClick={toggleShuffle} className={`p-1.5 rounded-lg transition-colors ${isShuffled ? 'text-teal-400 bg-teal-500/10' : 'text-gray-600 hover:text-gray-300'}`} title="Shuffle">
             <Shuffle size={14} />
           </button>
@@ -384,11 +377,11 @@ export default function FloatingAudioPlayer() {
         </div>
 
         {/* Volume - vertical */}
-        <div className="flex flex-col items-center gap-1 mt-2 mb-1">
-          <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-gray-500 hover:text-gray-300 p-1">
-            {volume === 0 ? <VolumeX size={13} /> : <Volume2 size={13} />}
+        <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
+          <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-gray-500 hover:text-gray-300 p-0.5">
+            {volume === 0 ? <VolumeX size={12} /> : <Volume2 size={12} />}
           </button>
-          <div className="w-1 h-10 bg-white/[0.06] rounded-full relative cursor-pointer"
+          <div className="w-1 h-8 bg-white/[0.06] rounded-full relative cursor-pointer"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect()
               const pct = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
@@ -399,20 +392,6 @@ export default function FloatingAudioPlayer() {
               style={{ height: `${volume * 100}%` }} />
           </div>
         </div>
-
-        {/* Expand button — SVG expand icon */}
-        <button
-          onClick={() => setExpanded(true)}
-          className="group mb-2 p-2.5 rounded-xl text-teal-500/70 hover:text-teal-400 hover:bg-teal-500/10 border border-teal-500/10 hover:border-teal-500/30 transition-all"
-          title="Expand player & explore"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 3 21 3 21 9" />
-            <polyline points="9 21 3 21 3 15" />
-            <line x1="21" y1="3" x2="14" y2="10" />
-            <line x1="3" y1="21" x2="10" y2="14" />
-          </svg>
-        </button>
       </div>
     )
   }
@@ -598,31 +577,38 @@ export default function FloatingAudioPlayer() {
               const isCurrent = currentTrack?.id === song.id
               const imgUrl = song.imageUrl || song.image_url
               return (
-                <button
+                <div
                   key={song.id}
-                  onClick={() => playExploreTrack(song)}
-                  className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg mb-0.5 text-left transition-colors ${
+                  className={`group/song w-full flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5 transition-colors ${
                     isCurrent ? 'bg-teal-500/[0.08] border-l-2 border-teal-400' : 'hover:bg-white/[0.03] border-l-2 border-transparent'
                   }`}
                 >
-                  {/* Thumbnail */}
-                  {imgUrl ? (
-                    <Image src={imgUrl} alt={song.title} width={36} height={36}
-                      className="w-9 h-9 rounded-md object-cover ring-1 ring-white/5 flex-shrink-0" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-md bg-gray-800/60 flex items-center justify-center ring-1 ring-white/5 flex-shrink-0">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.4)" strokeWidth="2">
-                        <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
-                      </svg>
+                  {/* Play button — clicking plays this song only */}
+                  <button onClick={() => playExploreTrack(song)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                    {/* Thumbnail */}
+                    {imgUrl ? (
+                      <Image src={imgUrl} alt={song.title} width={36} height={36}
+                        className="w-9 h-9 rounded-md object-cover ring-1 ring-white/5 flex-shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-md bg-gray-800/60 flex items-center justify-center ring-1 ring-white/5 flex-shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(34,211,238,0.4)" strokeWidth="2">
+                          <path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[11px] truncate leading-tight ${isCurrent ? 'text-teal-400 font-semibold' : 'text-gray-300'}`}>{song.title}</p>
+                      <p className="text-[9px] text-gray-600 truncate">{song.users?.username || song.username || 'Unknown'}</p>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-[11px] truncate leading-tight ${isCurrent ? 'text-teal-400 font-semibold' : 'text-gray-300'}`}>{song.title}</p>
-                    <p className="text-[9px] text-gray-600 truncate">{song.users?.username || song.username || 'Unknown'}</p>
-                  </div>
-                  {song.genre && (
-                    <span className="text-[8px] text-gray-600 bg-white/[0.03] px-1.5 py-0.5 rounded-full flex-shrink-0">{song.genre}</span>
-                  )}
+                  </button>
+                  {/* Queue button */}
+                  <button
+                    onClick={(e) => queueExploreTrack(e, song)}
+                    className="opacity-0 group-hover/song:opacity-100 p-1 text-gray-600 hover:text-teal-400 transition-all flex-shrink-0"
+                    title="Add to queue"
+                  >
+                    <List size={12} />
+                  </button>
                   {isCurrent && isPlaying && (
                     <div className="flex gap-[2px] flex-shrink-0">
                       <div className="w-[2px] h-2.5 bg-teal-400 rounded-full animate-pulse" />
@@ -630,7 +616,7 @@ export default function FloatingAudioPlayer() {
                       <div className="w-[2px] h-2.5 bg-teal-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
                     </div>
                   )}
-                </button>
+                </div>
               )
             })
           )}
