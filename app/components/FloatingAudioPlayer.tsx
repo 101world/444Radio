@@ -65,7 +65,7 @@ function VerticalWaveform({ audioElement, isPlaying, height }: { audioElement: H
         }
       }
 
-      // Draw vertical bars (horizontal bars stacked vertically)
+      // Draw vertical bars bottom-to-top (audio signal rising)
       const barCount = Math.min(bufLen, 48)
       const gap = 1.5
       const barH = (H - gap * (barCount - 1)) / barCount
@@ -73,7 +73,7 @@ function VerticalWaveform({ audioElement, isPlaying, height }: { audioElement: H
       for (let i = 0; i < barCount; i++) {
         const v = data[i] / 255
         const barW = Math.max(2, v * W * 0.85)
-        const y = i * (barH + gap)
+        const y = H - (i + 1) * (barH + gap) + gap
         const x = (W - barW) / 2
 
         const alpha = 0.4 + v * 0.6
@@ -183,7 +183,8 @@ export default function FloatingAudioPlayer() {
 
   const handleVerticalSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    const pct = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
+    // Bottom-to-top: clicking higher = further in track
+    const pct = 1 - Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
     seekTo(pct * duration)
   }
 
@@ -344,9 +345,9 @@ export default function FloatingAudioPlayer() {
         {/* Vertical waveform */}
         <div className="flex-1 w-12 relative overflow-hidden rounded-lg mx-auto cursor-pointer" onClick={handleVerticalSeek}>
           <VerticalWaveform audioElement={audioEl} isPlaying={isPlaying} height={300} />
-          {/* Progress overlay — dims unplayed portion */}
+          {/* Progress overlay — dims unplayed portion (top = unplayed) */}
           <div className="absolute inset-0 pointer-events-none" style={{
-            background: `linear-gradient(to bottom, transparent ${progress}%, rgba(0,0,0,0.5) ${progress}%)`,
+            background: `linear-gradient(to bottom, rgba(0,0,0,0.5) ${100 - progress}%, transparent ${100 - progress}%)`,
           }} />
         </div>
 
