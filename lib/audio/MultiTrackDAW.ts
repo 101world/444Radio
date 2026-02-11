@@ -422,7 +422,7 @@ export class MultiTrackDAW {
     this.emit('trackUpdated', { trackId, updates })
   }
 
-  // Clip Management
+  // Clip Management — reschedule playback if currently playing
   addClipToTrack(trackId: string, clipConfig: Partial<import('./TrackManager').TrackClip>): void {
     const clip = this.trackManager.addClip(trackId, clipConfig)
     
@@ -434,6 +434,7 @@ export class MultiTrackDAW {
     })
 
     this.emit('clipAdded', { trackId, clip })
+    this.rescheduleIfPlaying()
   }
 
   removeClipFromTrack(trackId: string, clipId: string): void {
@@ -447,11 +448,37 @@ export class MultiTrackDAW {
     })
 
     this.emit('clipRemoved', { trackId, clipId })
+    this.rescheduleIfPlaying()
   }
 
   updateClip(trackId: string, clipId: string, updates: Partial<import('./TrackManager').TrackClip>): void {
     this.trackManager.updateClip(trackId, clipId, updates)
     this.emit('clipUpdated', { trackId, clipId, updates })
+    this.rescheduleIfPlaying()
+  }
+
+  /**
+   * If the DAW is currently playing, stop all active source nodes
+   * and re-schedule clips from the current playhead position.
+   * This prevents "double/triple layering" when clips are edited mid-playback.
+   */
+  private rescheduleIfPlaying(): void {
+    if (!this.transportState.isPlaying) return
+
+    // Update current time before rescheduling
+    this.transportState.currentTime = this.audioContext.currentTime - this.playbackStartTime + this.playbackOffset
+
+    // Stop all active source nodes
+    if (this.activeSourceNodes) {
+      this.activeSourceNodes.forEach((source) => {
+        try { source.stop(); source.disconnect() } catch (e) { /* already stopped */ }
+      })
+      this.activeSourceNodes.clear()
+    }
+
+    // Mark as not playing so play() will proceed, then replay from current position
+    this.transportState.isPlaying = false
+    this.play()
   }
 
   // Getters for Transport State

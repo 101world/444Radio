@@ -30,7 +30,16 @@ import {
   Clipboard,
   Folder,
   Plus,
-  PanelRight
+  PanelRight,
+  Image as ImageIcon,
+  Film,
+  Upload,
+  Rocket,
+  Edit3,
+  Zap,
+  Send,
+  Lightbulb,
+  ChevronLeft
 } from 'lucide-react'
 
 // Extend Window interface for drag throttling and pending clip tracking
@@ -45,6 +54,9 @@ declare global {
 import GenerateModal from '@/app/components/studio/GenerationModal'
 import StemSplitterModal from '@/app/components/studio/StemSplitterModal'
 import KeyboardHelpModal from '@/app/components/studio/KeyboardHelpModal'
+const EffectsGenerationModal = lazy(() => import('@/app/components/EffectsGenerationModal'))
+const LoopersGenerationModal = lazy(() => import('@/app/components/LoopersGenerationModal'))
+const MediaUploadModal = lazy(() => import('@/app/components/MediaUploadModal'))
 
 export default function DAWProRebuild() {
   const { user } = useUser()
@@ -125,6 +137,20 @@ export default function DAWProRebuild() {
   const [isSplittingStems, setIsSplittingStems] = useState(false)
   const [selectedAudioForStems, setSelectedAudioForStems] = useState<string | null>(null)
   const [stemResults, setStemResults] = useState<any>(null)
+
+  // Credits
+  const [userCredits, setUserCredits] = useState<number | null>(null)
+  const [isLoadingCredits, setIsLoadingCredits] = useState(true)
+
+  // Feature modals
+  const [showEffectsModal, setShowEffectsModal] = useState(false)
+  const [showLoopersModal, setShowLoopersModal] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showIdeas, setShowIdeas] = useState(false)
+  const [ideasView, setIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
+  const [promptType, setPromptType] = useState<'song' | 'beat'>('song')
+  const [isGeneratingIdea, setIsGeneratingIdea] = useState(false)
+  const [selectedType, setSelectedType] = useState<string>('music')
 
   const timelineRef = useRef<HTMLDivElement>(null)
   const canvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map())
@@ -629,6 +655,71 @@ export default function DAWProRebuild() {
     [daw, addClipFromUrl, showToast]
   )
 
+  // Fetch credits
+  const fetchCredits = useCallback(async () => {
+    try {
+      const res = await fetch('/api/credits')
+      const data = await res.json()
+      setUserCredits(data.credits || 0)
+      setIsLoadingCredits(false)
+    } catch {
+      setUserCredits(0)
+      setIsLoadingCredits(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      fetchCredits()
+      const iv = setInterval(fetchCredits, 30000)
+      return () => clearInterval(iv)
+    }
+  }, [user, fetchCredits])
+
+  // Tag click handler for Ideas
+  const handleTagClick = useCallback((tag: string) => {
+    setGenPrompt(prev => prev ? `${prev}, ${tag}` : tag)
+  }, [])
+
+  // Generate prompt idea
+  const handleGenerateIdea = useCallback(async (genre: string, type: 'song' | 'beat') => {
+    setIsGeneratingIdea(true)
+    try {
+      const res = await fetch('/api/generate/prompt-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ genre, promptType: type })
+      })
+      const data = await res.json()
+      if (data.success && data.prompt) {
+        setGenPrompt(data.prompt.slice(0, 300))
+        setShowIdeas(false)
+      }
+    } catch {
+      showToast('Failed to generate idea', 'error')
+    } finally {
+      setIsGeneratingIdea(false)
+    }
+  }, [showToast])
+
+  // Add generated audio result to an empty DAW track
+  const addResultToTrack = useCallback(async (audioUrl: string, title: string) => {
+    if (!daw) return
+    const emptyTrack = tracks.find(t => t.clips.length === 0)
+    if (emptyTrack) {
+      try {
+        await handleAddClip(audioUrl, emptyTrack.id, 0)
+        showToast(`✓ "${title}" added to timeline`, 'success')
+      } catch {
+        showToast(`✓ Generated: "${title}" (check library)`, 'success')
+      }
+    } else {
+      showToast(`✓ Generated: "${title}" (drag from library)`, 'success')
+    }
+    await loadLibrary()
+    fetchCredits()
+  }, [daw, tracks, handleAddClip, showToast, fetchCredits, loadLibrary])
+
   const handleExport = useCallback(async () => {
     if (!daw || isExporting) return
     setIsExporting(true)
@@ -1033,48 +1124,38 @@ export default function DAWProRebuild() {
       // Call music generation API (Step 5/5)
       setGenerationStep(5)
       setGenerationProgress(`Generating "${finalTitle}"... (60-90s)`)
-      const songId = `song_${Date.now()}`
-      const response = await fetch('/api/generate/music', {
+
+      // Build prompt with genre/BPM like create page does
+      let fullPrompt = genPrompt
+      if (finalGenre) fullPrompt += ` [${finalGenre}]`
+      if (finalBpm) fullPrompt += ` [${finalBpm} BPM]`
+
+      const response = await fetch('/api/generate/music-only', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          songId,
-          prompt: finalLyrics,
-          params: {
-            title: finalTitle,
-            genre: finalGenre,
-            bpm: parseInt(finalBpm),
-            style_strength: 0.8
-          },
-          language: 'english'
+          prompt: fullPrompt,
+          title: finalTitle,
+          lyrics: finalLyrics || (genIsInstrumental ? '[Instrumental]' : ''),
+          duration: 'medium',
+          language: 'English',
+          genre: finalGenre,
+          bpm: finalBpm ? parseInt(finalBpm) : undefined,
+          generateCoverArt: false
         })
       })
 
       if (!response.ok) {
-        throw new Error('Generation failed')
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || 'Generation failed')
       }
 
       const result = await response.json()
 
       if (result.success && result.audioUrl) {
         setGenerationProgress('Adding to timeline...')
-        
-        // Add generated track to first available empty track
-        const emptyTrack = tracks.find(t => t.clips.length === 0)
-        if (emptyTrack && daw) {
-          try {
-            await handleAddClip(result.audioUrl, emptyTrack.id, 0)
-            showToast(`✓ "${finalTitle}" added to timeline`, 'success')
-          } catch (error) {
-            console.error('Failed to add generated track to timeline:', error)
-            showToast(`✓ Track generated: "${finalTitle}" (check library)`, 'success')
-          }
-        } else {
-          showToast(`✓ Track generated: "${finalTitle}" (drag from library)`, 'success')
-        }
-        
-        // Refresh library to show new track
-        await loadLibrary()
+        await addResultToTrack(result.audioUrl, finalTitle)
+        if (result.creditsRemaining != null) setUserCredits(result.creditsRemaining)
         setShowGenerateModal(false)
         // Reset form
         setGenPrompt('')
@@ -1867,6 +1948,20 @@ export default function DAWProRebuild() {
           </button>
 
           <div className="h-5 w-px bg-white/[0.06] mx-0.5" />
+
+          {/* Credit Display + GPU Bar */}
+          <div className="relative h-7 px-3 bg-cyan-500/10 border border-cyan-500/20 rounded-md flex items-center gap-1.5 overflow-hidden">
+            <Zap size={11} className="text-cyan-400" />
+            <span className="text-[11px] font-bold text-cyan-300">{isLoadingCredits ? '...' : userCredits}</span>
+            {generatingTrack && (
+              <div className="absolute bottom-0 left-0 right-0 h-[2px]">
+                <div className="h-full w-full bg-gradient-to-r from-cyan-400 via-violet-400 to-cyan-400" style={{
+                  backgroundSize: '200% 100%',
+                  animation: 'gpuBar 1.5s ease-in-out infinite'
+                }} />
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() => setShowGenerateModal(true)}
@@ -2730,85 +2825,248 @@ export default function DAWProRebuild() {
           </div>
         </div>
 
-        {/* Right Tools Panel */}
+        {/* Right Tools Panel — FeaturesSidebar style */}
         {showRightPanel && (
-          <div className="w-64 bg-[#0b0b0b] border-l border-white/[0.04] flex flex-col overflow-y-auto">
-            {/* Generate AI Section */}
-            <div className="p-3 border-b border-white/[0.04]">
-              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                <Sparkles size={11} className="text-violet-400" />
-                Generate AI
-              </h3>
-              <div className="space-y-1.5">
-                <input
-                  type="text"
-                  placeholder="Describe your track..."
-                  value={genPrompt}
-                  onChange={(e) => setGenPrompt(e.target.value)}
-                  className="w-full bg-white/[0.03] border border-white/[0.06] rounded-md px-2.5 py-1.5 text-[11px] focus:border-violet-400/40 focus:outline-none transition-all placeholder:text-white/15"
-                />
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Title"
-                    value={genTitle}
-                    onChange={(e) => setGenTitle(e.target.value)}
-                    className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-md px-2.5 py-1.5 text-[10px] focus:border-violet-400/40 focus:outline-none transition-all placeholder:text-white/15"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Genre"
-                    value={genGenre}
-                    onChange={(e) => setGenGenre(e.target.value)}
-                    className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-md px-2.5 py-1.5 text-[10px] focus:border-violet-400/40 focus:outline-none transition-all placeholder:text-white/15"
-                  />
-                </div>
+          <div className="w-96 bg-black/95 backdrop-blur-2xl border-l border-white/10 flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 h-14 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-3">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-cyan-400">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                </svg>
+                <span className="text-white font-bold text-lg">Features</span>
+              </div>
+              <button onClick={() => setShowRightPanel(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <X size={16} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Credits */}
+            <div className="px-5 py-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl relative overflow-hidden">
+                <Zap size={16} className="text-cyan-400" />
+                <span className="text-white font-bold text-sm">
+                  {isLoadingCredits ? '...' : userCredits} credits
+                </span>
+                {/* GPU loading bar during generation */}
+                {generatingTrack && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-cyan-900/30">
+                    <div className="h-full bg-gradient-to-r from-cyan-400 via-violet-400 to-cyan-400 animate-pulse" style={{
+                      animation: 'gpuBar 2s ease-in-out infinite',
+                      backgroundSize: '200% 100%'
+                    }} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mode Toggle */}
+            <div className="px-5 py-3 border-b border-white/10 shrink-0">
+              <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    if (genPrompt.trim().length >= 3) {
-                      handleGenerate()
-                    } else {
-                      setShowGenerateModal(true)
-                    }
-                  }}
-                  disabled={generatingTrack}
-                  className="w-full px-3 py-2 bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/20 text-violet-300 rounded-md text-[11px] font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  onClick={() => setGenIsInstrumental(false)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    !genIsInstrumental
+                      ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
+                  }`}
                 >
-                  {generatingTrack ? (
-                    <>
-                      <Loader2 size={12} className="animate-spin" />
-                      {generationProgress || 'Generating...'}
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={12} />
-                      Generate
-                    </>
-                  )}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" x2="12" y1="19" y2="22"/>
+                  </svg>
+                  Vocal
                 </button>
                 <button
-                  onClick={() => setShowGenerateModal(true)}
-                  className="w-full px-2 py-1 text-[10px] text-white/20 hover:text-white/40 transition-colors text-center"
+                  onClick={() => setGenIsInstrumental(true)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    genIsInstrumental
+                      ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
+                  }`}
                 >
-                  Advanced options...
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2"/>
+                    <line x1="8" x2="8" y1="4" y2="14"/>
+                    <line x1="16" x2="16" y1="4" y2="14"/>
+                    <line x1="12" x2="12" y1="4" y2="14"/>
+                  </svg>
+                  Inst
                 </button>
               </div>
             </div>
 
-            {/* Import Audio Section */}
-            <div className="p-3 border-b border-white/[0.04]">
-              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                <Download size={11} className="text-cyan-400" />
-                Import
-              </h3>
-              <label className="w-full px-3 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-cyan-400 rounded-md text-[11px] font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-                <Download size={12} />
-                Choose File
-                <input
-                  type="file"
-                  accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac,.aiff"
-                  className="hidden"
-                  onChange={async (e) => {
+            {/* Prompt Input */}
+            <div className="px-5 py-4 border-b border-white/10 shrink-0">
+              <div className="relative">
+                <textarea
+                  value={genPrompt}
+                  onChange={(e) => setGenPrompt(e.target.value)}
+                  placeholder="Describe your music..."
+                  className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
+                  rows={4}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (genPrompt.trim().length >= 3) handleGenerate()
+                    }
+                  }}
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <div className="text-[10px] text-white/20">{genPrompt.length}/300</div>
+                  <button
+                    onClick={() => { if (genPrompt.trim().length >= 3) handleGenerate() }}
+                    disabled={generatingTrack || genPrompt.trim().length < 3}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-xl text-black text-xs font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    {generatingTrack ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                    {generatingTrack ? (generationProgress || 'Generating...') : 'Generate'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Ideas & Tags */}
+            {showIdeas && (
+              <div className="px-4 py-4 border-b border-white/10 max-h-[40vh] overflow-y-auto shrink-0">
+                {ideasView === 'tags' && (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Lightbulb size={14} className="text-yellow-400" />
+                        <span className="text-sm font-bold text-white">Quick Tags</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setIdeasView('type')} className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 transition-all">
+                          ✨ IDEAS
+                        </button>
+                        <button onClick={() => setShowIdeas(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                          <X size={14} className="text-gray-400" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['upbeat','chill','energetic','melancholic','ambient','electronic','acoustic','jazz','rock','hip-hop','heavy bass','soft piano','guitar solo','synthwave','lo-fi beats','orchestral','dreamy','aggressive','trap','drill','phonk','house','techno','trance','indie','folk','blues','soul','funk','disco','reggae','latin','afrobeat','cinematic','epic','dark','bright','nostalgic','romantic','sad','happy','mysterious','powerful'].map((tag) => (
+                        <button key={tag} onClick={() => handleTagClick(tag)} className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-lg text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105">
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {ideasView === 'type' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-bold text-white">✨ AI Prompt Ideas</h3>
+                      <button onClick={() => setIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg"><X size={14} className="text-gray-400" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => { setPromptType('song'); setIdeasView('genre') }} className="group p-5 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-2 border-purple-400/40 hover:border-purple-400/60 rounded-2xl transition-all hover:scale-105">
+                        <div className="text-3xl mb-2">🎤</div><div className="text-sm font-bold text-white mb-1">Song</div><div className="text-[10px] text-gray-400">With vocals & lyrics</div>
+                      </button>
+                      <button onClick={() => { setPromptType('beat'); setIdeasView('genre') }} className="group p-5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-105">
+                        <div className="text-3xl mb-2">🎹</div><div className="text-sm font-bold text-white mb-1">Beat</div><div className="text-[10px] text-gray-400">Instrumental only</div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {ideasView === 'genre' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <button onClick={() => setIdeasView('type')} className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"><ChevronLeft size={14} /> Back</button>
+                      <h3 className="text-sm font-bold text-white">🎵 Select Genre</h3>
+                      <button onClick={() => setIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg"><X size={14} className="text-gray-400" /></button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {['electronic','hip-hop','rock','jazz','ambient','trap','drill','phonk','house','techno','lo-fi beats','synthwave','indie','folk','blues','soul','funk','reggae','latin','afrobeat','orchestral','cinematic','acoustic','vaporwave','k-pop'].map((g) => (
+                        <button key={g} onClick={() => { setIdeasView('generating'); handleGenerateIdea(g, promptType); setTimeout(() => setIdeasView('tags'), 5000) }} disabled={isGeneratingIdea} className="px-2 py-2 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all disabled:opacity-50">
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {ideasView === 'generating' && (
+                  <div className="space-y-4 text-center py-6">
+                    <div className="w-12 h-12 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin" />
+                    <div><h3 className="text-base font-bold text-white mb-1">Creating Prompt...</h3><p className="text-xs text-gray-400">AI is crafting the perfect description</p></div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Feature Buttons */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              {/* Ideas Button */}
+              <button
+                onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all group mb-3 ${
+                  showIdeas
+                    ? 'bg-gradient-to-r from-yellow-600/30 to-amber-400/20 border-yellow-400 text-yellow-300'
+                    : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-400/50'
+                }`}
+              >
+                <div className={`p-2 rounded-lg ${showIdeas ? 'bg-white/10' : 'bg-white/5'}`}><Lightbulb size={18} /></div>
+                <div className="flex-1 text-left"><div className="text-sm font-semibold">Ideas & Tags</div><div className="text-[10px] text-gray-500">AI prompts & quick tags</div></div>
+                <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">AI</span>
+              </button>
+
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-3 px-1">Creation Tools</p>
+              <div className="space-y-2">
+                {/* Music */}
+                <button onClick={() => { setSelectedType('music'); setShowGenerateModal(true) }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${selectedType === 'music' ? 'bg-gradient-to-r from-cyan-600/30 to-cyan-400/20 border-cyan-400 text-cyan-300' : 'border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/50'}`}>
+                  <div className="p-2 rounded-lg bg-white/5"><Music size={18} /></div>
+                  <div className="flex-1 text-left"><div className="text-sm font-semibold">Music</div><div className="text-[10px] text-gray-500">Generate AI music</div></div>
+                  <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">-2</span>
+                </button>
+                {/* Effects */}
+                <button onClick={() => setShowEffectsModal(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/50 transition-all">
+                  <div className="p-2 rounded-lg bg-white/5"><Sparkles size={18} /></div>
+                  <div className="flex-1 text-left"><div className="text-sm font-semibold">Effects</div><div className="text-[10px] text-gray-500">Sound effects</div></div>
+                  <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">-2</span>
+                </button>
+                {/* Loops */}
+                <button onClick={() => setShowLoopersModal(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/50 transition-all">
+                  <div className="p-2 rounded-lg bg-white/5"><Repeat size={18} /></div>
+                  <div className="flex-1 text-left"><div className="text-sm font-semibold">Loops</div><div className="text-[10px] text-gray-500">Fixed BPM loops</div></div>
+                  <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">-2</span>
+                </button>
+                {/* Cover Art */}
+                <button onClick={() => { setSelectedType('image'); setShowGenerateModal(true) }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/50 transition-all">
+                  <div className="p-2 rounded-lg bg-white/5"><ImageIcon size={18} /></div>
+                  <div className="flex-1 text-left"><div className="text-sm font-semibold">Cover Art</div><div className="text-[10px] text-gray-500">AI album artwork</div></div>
+                  <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">-1</span>
+                </button>
+                {/* Video to Audio */}
+                <button onClick={() => setShowUploadModal(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/50 transition-all">
+                  <div className="p-2 rounded-lg bg-white/5"><Film size={18} /></div>
+                  <div className="flex-1 text-left"><div className="text-sm font-semibold">Video to Audio</div><div className="text-[10px] text-gray-500">Synced SFX from video</div></div>
+                  <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">-2</span>
+                </button>
+                {/* Split Stems */}
+                <button onClick={() => setShowStemSplitter(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/50 transition-all">
+                  <div className="p-2 rounded-lg bg-white/5"><Scissors size={18} /></div>
+                  <div className="flex-1 text-left"><div className="text-sm font-semibold">Split Stems</div><div className="text-[10px] text-gray-500">Vocals, drums, bass & more</div></div>
+                  <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">-5</span>
+                </button>
+                {/* Lyrics (only show when music + not instrumental) */}
+                {selectedType === 'music' && !genIsInstrumental && (
+                  <button onClick={() => setShowGenerateModal(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/50 transition-all">
+                    <div className="p-2 rounded-lg bg-white/5"><Edit3 size={18} /></div>
+                    <div className="flex-1 text-left"><div className="text-sm font-semibold">Lyrics</div><div className="text-[10px] text-gray-500">Write & edit lyrics</div></div>
+                  </button>
+                )}
+                {/* Upload */}
+                <button onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = 'audio/*,.mp3,.wav,.flac,.ogg,.m4a,.aac,.aiff'
+                  input.onchange = async (e: any) => {
                     const file = e.target.files?.[0]
                     if (!file) return
                     showToast('Uploading...', 'info')
@@ -2817,123 +3075,36 @@ export default function DAWProRebuild() {
                       formData.append('file', file)
                       formData.append('title', file.name.replace(/\.[^/.]+$/, ''))
                       formData.append('type', 'music')
-                      const response = await fetch('/api/profile/upload', {
-                        method: 'POST',
-                        body: formData
-                      })
+                      const response = await fetch('/api/profile/upload', { method: 'POST', body: formData })
                       const result = await response.json()
                       if (response.ok && result.success) {
-                        showToast('\u2713 Audio imported', 'success')
-                        await loadLibrary()
-                        try {
-                          const audioContext = daw?.getAudioContext()
-                          if (audioContext && daw) {
-                            const arrayBuffer = await file.arrayBuffer()
-                            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-                            const currentTracks = daw.getTracks()
-                            const emptyTrack = currentTracks.find(t => t.clips.length === 0) || currentTracks[0]
-                            if (emptyTrack) {
-                              const trackManager = daw.getTrackManager()
-                              trackManager.addClip(emptyTrack.id, {
-                                buffer: audioBuffer,
-                                startTime: 0,
-                                sourceUrl: result.url || '',
-                                name: file.name.replace(/\.[^/.]+$/, '')
-                              })
-                              setTracks([...daw.getTracks()])
-                              showToast('\u2713 Added to track', 'success')
-                            }
-                          }
-                        } catch (decodeErr) {
-                          console.warn('Could not auto-add to track:', decodeErr)
-                        }
+                        await addResultToTrack(result.url || '', file.name.replace(/\.[^/.]+$/, ''))
                       } else {
-                        showToast(`Import failed: ${result.error || 'Unknown error'}`, 'error')
+                        showToast(`Upload failed: ${result.error || 'Unknown'}`, 'error')
                       }
-                    } catch (error: any) {
-                      showToast(`Import failed: ${error.message || 'Network error'}`, 'error')
+                    } catch (err: any) {
+                      showToast(`Upload failed: ${err.message || 'Network error'}`, 'error')
                     }
-                    e.target.value = ''
-                  }}
-                />
-              </label>
-            </div>
-
-            {/* Stem Split Section */}
-            <div className="p-3 border-b border-white/[0.04]">
-              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                <Scissors size={11} className="text-violet-400" />
-                Stem Splitter
-              </h3>
-              <button
-                onClick={() => setShowStemSplitter(true)}
-                className="w-full px-3 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-violet-400 rounded-md text-[11px] font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <Scissors size={12} />
-                Split Stems
-              </button>
-              <p className="text-[10px] text-white/15 mt-1.5">Separate vocals, drums, bass & more</p>
-            </div>
-
-            {/* Add Track Section */}
-            <div className="p-3 border-b border-white/[0.04]">
-              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                <Music size={11} className="text-cyan-400" />
-                Tracks
-              </h3>
-              <button
-                onClick={() => {
-                  if (!daw) return
-                  const trackManager = daw.getTrackManager()
-                  const currentTracks = daw.getTracks()
-                  trackManager.createTrack({ name: `${currentTracks.length + 1} Audio` })
-                  setTracks([...daw.getTracks()])
-                  showToast(`Track ${currentTracks.length + 1} added`, 'success')
-                }}
-                className="w-full px-3 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/50 hover:text-cyan-400 rounded-md text-[11px] font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                <Plus size={12} />
-                Add Track
-              </button>
-              <p className="text-[10px] text-white/15 mt-1.5">
-                {tracks.length} track{tracks.length !== 1 ? 's' : ''} active
-              </p>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="p-3">
-              <h3 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2.5">
-                Quick Actions
-              </h3>
-              <div className="space-y-1.5">
-                <button
-                  onClick={() => handleSave('manual')}
-                  disabled={saving}
-                  className="w-full px-3 py-1.5 bg-white/[0.04] hover:bg-cyan-400/10 border border-white/[0.06] text-cyan-400 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <Save size={12} />
-                  {saving ? 'Saving...' : 'Save Project'}
-                </button>
-                <button
-                  onClick={handleExport}
-                  disabled={isExporting}
-                  className="w-full px-3 py-1.5 bg-white/[0.04] hover:bg-emerald-400/10 border border-white/[0.06] text-emerald-400 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <Download size={12} />
-                  {isExporting ? 'Exporting...' : 'Export WAV'}
-                </button>
-                <button
-                  onClick={resetProject}
-                  className="w-full px-3 py-1.5 bg-white/[0.04] hover:bg-red-400/10 border border-white/[0.06] text-red-400/70 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5"
-                >
-                  <Trash2 size={12} />
-                  New Project
+                  }
+                  input.click()
+                }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/50 transition-all">
+                  <div className="p-2 rounded-lg bg-white/5"><Upload size={18} /></div>
+                  <div className="flex-1 text-left"><div className="text-sm font-semibold">Upload</div><div className="text-[10px] text-gray-500">Upload audio/video</div></div>
                 </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* GPU loading bar animation */}
+      <style jsx>{`
+        @keyframes gpuBar {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}</style>
 
       {/* Advanced AI Generation Modal */}
       <GenerateModal
@@ -3090,6 +3261,48 @@ export default function DAWProRebuild() {
         isOpen={showKeyboardHelp}
         onClose={() => setShowKeyboardHelp(false)}
       />
+
+      {/* Effects Generation Modal */}
+      <Suspense fallback={null}>
+        <EffectsGenerationModal
+          isOpen={showEffectsModal}
+          onClose={() => setShowEffectsModal(false)}
+          userCredits={userCredits ?? undefined}
+          onSuccess={async (url: string, prompt: string) => {
+            setShowEffectsModal(false)
+            await addResultToTrack(url, `Effect: ${prompt.slice(0, 30)}`)
+          }}
+        />
+      </Suspense>
+
+      {/* Loopers Generation Modal */}
+      <Suspense fallback={null}>
+        <LoopersGenerationModal
+          isOpen={showLoopersModal}
+          onClose={() => setShowLoopersModal(false)}
+          userCredits={userCredits ?? undefined}
+          onSuccess={async (variations: Array<{ url: string; variation: number }>, prompt: string) => {
+            setShowLoopersModal(false)
+            if (variations.length > 0) {
+              await addResultToTrack(variations[0].url, `Loop: ${prompt.slice(0, 30)}`)
+            }
+          }}
+        />
+      </Suspense>
+
+      {/* Media Upload Modal */}
+      <Suspense fallback={null}>
+        <MediaUploadModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={async (result: any) => {
+            setShowUploadModal(false)
+            const url = result?.url || result?.audioUrl || ''
+            const name = result?.title || result?.name || 'Uploaded media'
+            if (url) await addResultToTrack(url, name)
+          }}
+        />
+      </Suspense>
 
       {/* Toast */}
       {toast && (
