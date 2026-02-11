@@ -147,7 +147,7 @@ function HorizontalWaveform({ audioElement, isPlaying, progress }: { audioElemen
 
       const barCount = Math.min(bufLen, 80)
       const gap = 1
-      const barW = (W - gap * (barCount - 1)) / barCount
+      const barW = Math.max(1, (W - gap * (barCount - 1)) / barCount)
       const midY = H / 2
 
       for (let i = 0; i < barCount; i++) {
@@ -167,7 +167,7 @@ function HorizontalWaveform({ audioElement, isPlaying, progress }: { audioElemen
         }
 
         // Mirror bars from center
-        const r = Math.min(barW / 2, 1.5)
+        const r = Math.max(0, Math.min(barW / 2, 1.5))
         // Top half
         c.beginPath()
         c.roundRect(x, midY - barH, barW, barH, r)
