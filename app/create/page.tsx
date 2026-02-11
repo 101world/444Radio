@@ -1314,25 +1314,33 @@ function CreatePageContent() {
       </div>
 
       {/* Chat Area - Glassmorphism Effect */}
-      <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 md:px-8 lg:px-12 py-6 pb-40 w-full scrollbar-thin scroll-smooth">
+      <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 md:px-8 lg:px-16 xl:px-24 py-6 pb-40 w-full scrollbar-thin scroll-smooth">
         {/* Single Glassmorphism Container - Full Width */}
         <div className="relative p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-sm bg-white/[0.01] border border-white/10 shadow-2xl">
           {/* Dew-like gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5 rounded-3xl pointer-events-none"></div>
           
-          {/* Content - Centered and Constrained */}
-          <div className="relative space-y-4 max-w-5xl mx-auto">
+          {/* Content - Symmetrical Layout */}
+          <div className="relative space-y-3 max-w-6xl mx-auto">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {/* Message Content - Aesthetic Width */}
-              <div className={`max-w-[85%] md:max-w-3xl ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
-                {/* Text Message - No Background Bubble */}
+              {/* Message Content - Compact & Aligned */}
+              <div className={`max-w-[75%] md:max-w-2xl ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
+                {/* Text Message - Compact Bubble */}
                 {message.content && (
                   <div className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}>
-                    <p className={`text-sm ${message.type === 'user' ? 'text-cyan-300' : 'text-gray-200'}`}>{message.content}</p>
+                    <div className={`inline-block px-4 py-2 rounded-2xl ${
+                      message.type === 'user' 
+                        ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30' 
+                        : 'bg-white/5 border border-white/10'
+                    }`}>
+                      <p className={`text-sm leading-relaxed break-words ${
+                        message.type === 'user' ? 'text-cyan-200' : 'text-gray-300'
+                      }`}>{message.content}</p>
+                    </div>
                     <p className="text-xs text-gray-500 mt-1">{message.timestamp.toLocaleTimeString()}</p>
                   </div>
                 )}
@@ -2089,12 +2097,20 @@ function CreatePageContent() {
                           </button>
                         </div>
                         
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 max-h-96 overflow-y-auto scrollbar-thin">
                           {[
                             'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
                             'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
                             'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                            'lo-fi beats', 'orchestral', 'dreamy', 'aggressive'
+                            'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+                            'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
+                            'drum & bass', 'dubstep', 'house', 'techno', 'trance',
+                            'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
+                            'reggae', 'latin', 'afrobeat', 'k-pop', 'anime',
+                            'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
+                            'romantic', 'sad', 'happy', 'mysterious', 'powerful',
+                            'soft vocals', 'no vocals', 'female vocals', 'male vocals',
+                            'synth lead', 'strings', 'brass', 'flute', 'violin'
                           ].map((tag, idx) => (
                             <button
                               key={tag}
