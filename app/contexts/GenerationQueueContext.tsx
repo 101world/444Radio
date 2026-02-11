@@ -18,6 +18,7 @@ export interface GenerationItem {
     lyrics?: string
     prompt?: string
     stems?: Record<string, string>
+    variations?: Array<{ url: string; variation: number }>
     creditsUsed?: number
     creditsRemaining?: number
   }

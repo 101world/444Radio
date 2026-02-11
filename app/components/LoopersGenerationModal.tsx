@@ -106,13 +106,14 @@ export default function LoopersGenerationModal({
       if (data.success) {
         setGeneratedVariations(data.variations)
         
-        // Update generation queue with success
+        // Update generation queue with success - store ALL variations
         updateGeneration(generationId, {
           status: 'completed',
           result: {
-            audioUrl: data.variations[0]?.url, // Primary variation
+            audioUrl: data.variations[0]?.url, // Primary variation for backward compatibility
             title: `Loop: ${prompt.substring(0, 30)}`,
-            prompt: prompt
+            prompt: prompt,
+            variations: data.variations // Store all variations
           }
         })
         

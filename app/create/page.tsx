@@ -2571,19 +2571,22 @@ function CreatePageContent() {
           setInput('')
         }}
         onSuccess={(variations: Array<{ url: string; variation: number }>, prompt: string) => {
-          // Add both variations to chat
-          const successMessages: Message[] = variations.map((variation, index) => ({
-            id: `${Date.now()}-${index}`,
-            type: 'assistant',
-            content: `✅ Loop Variation ${variation.variation} generated successfully!`,
-            audioUrl: variation.url,
-            prompt: prompt,
-            timestamp: new Date()
-          }))
-          
-          // Remove the generating message and add success messages
+          // Don't add messages here - let the generation queue sync handle it
+          // But we need to manually add both variations since sync only handles one
           setMessages(prev => {
-            const withoutGenerating = prev.filter(msg => msg.type !== 'generation')
+            // Find and remove the generating message
+            const withoutGenerating = prev.filter(msg => msg.type !== 'generation' && !msg.isGenerating)
+            
+            // Add both variations as separate messages
+            const successMessages: Message[] = variations.map((v, index) => ({
+              id: `loop-${Date.now()}-${index}-${Math.random()}`,
+              type: 'assistant',
+              content: `✅ Loop Variation ${v.variation} generated!`,
+              audioUrl: v.url,
+              prompt: prompt,
+              timestamp: new Date(Date.now() + index) // Slight offset to maintain order
+            }))
+            
             return [...withoutGenerating, ...successMessages]
           })
         }}
