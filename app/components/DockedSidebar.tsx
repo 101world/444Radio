@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
-import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, BarChart3, LogIn, UserPlus, LayoutGrid } from 'lucide-react'
+import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, LogIn, UserPlus, LayoutGrid } from 'lucide-react'
 
 interface MenuItem {
   icon: any
@@ -74,7 +74,6 @@ export default function DockedSidebar() {
       badge: 'Pro'
     },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
-    { icon: BarChart3, label: 'Charts', href: 'https://www.thesocialtwin.com/billboard', highlight: false, external: true },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
     { icon: Settings, label: 'Settings', href: '/settings', highlight: false },
     { icon: User, label: 'Profile', href: `/profile/${user.id}`, highlight: false },
@@ -84,7 +83,6 @@ export default function DockedSidebar() {
     { icon: Compass, label: 'Explore', href: '/explore', highlight: false },
     { icon: Library, label: 'Library', href: '/library', highlight: false },
     { icon: Unlock, label: 'Decrypt', href: '/decrypt', highlight: 'cyan' },
-    { icon: BarChart3, label: 'Charts', href: 'https://www.thesocialtwin.com/billboard', highlight: false, external: true },
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
     { icon: User, label: 'Profile', href: '/profile', highlight: false },
     { icon: LogIn, label: 'Sign In', href: '/sign-in', highlight: false, divider: true },
