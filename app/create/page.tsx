@@ -19,7 +19,6 @@ const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 import GenerationRecovery from '../components/GenerationRecovery'
-import { useEffect as useEffectOnce, useState as useStateOnce } from 'react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
