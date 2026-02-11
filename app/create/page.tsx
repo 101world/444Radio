@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat } from 'lucide-react'
 import MusicGenerationModal from '../components/MusicGenerationModal'
 import EffectsGenerationModal from '../components/EffectsGenerationModal'
+import LoopersGenerationModal from '../components/LoopersGenerationModal'
 import CombineMediaModal from '../components/CombineMediaModal'
 import TwoStepReleaseModal from '../components/TwoStepReleaseModal'
 import MediaUploadModal from '../components/MediaUploadModal'
@@ -69,6 +70,7 @@ function CreatePageContent() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [showMusicModal, setShowMusicModal] = useState(false)
   const [showEffectsModal, setShowEffectsModal] = useState(false)
+  const [showLoopersModal, setShowLoopersModal] = useState(false)
   const [showCombineModal, setShowCombineModal] = useState(false)
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false)
@@ -1733,23 +1735,28 @@ function CreatePageContent() {
             {/* Effects Type Button - Hidden by default */}
             {showAdvancedButtons && (
             <button
-              onClick={() => setSelectedType('effects')}
-              className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
-                selectedType === 'effects'
-                  ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-purple-400 shadow-lg shadow-purple-500/50 scale-110'
-                  : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105'
-              }`}
+              onClick={() => setShowEffectsModal(true)}
+              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
               title="Generate Sound Effects"
             >
               <Sparkles 
                 size={18} 
-                className={`${
-                  selectedType === 'effects' ? 'text-black' : 'text-purple-400'
-                } drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]`}
+                className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]"
               />
-              {selectedType === 'effects' && (
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>
-              )}
+            </button>
+            )}
+
+            {/* Loopers Button - Hidden by default */}
+            {showAdvancedButtons && (
+            <button
+              onClick={() => setShowLoopersModal(true)}
+              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
+              title="Generate Fixed BPM Loops"
+            >
+              <Repeat 
+                size={18} 
+                className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)] md:w-[20px] md:h-[20px]"
+              />
             </button>
             )}
 
@@ -2521,6 +2528,43 @@ function CreatePageContent() {
         }}
         onSuccess={(audioUrl: string, prompt: string) => {
           // Handle successful effects generation
+          // The GenerationQueue will update the message automatically
+        }}
+      />
+
+      {/* Loopers Generation Modal */}
+      <LoopersGenerationModal
+        isOpen={showLoopersModal}
+        onClose={() => setShowLoopersModal(false)}
+        userCredits={userCredits || 0}
+        initialPrompt={input}
+        onGenerationStart={(prompt: string, generationId: string) => {
+          // Add user message and generating message
+          const userMsgId = Date.now().toString()
+          const genMsgId = (Date.now() + 1).toString()
+          
+          const userMessage: Message = {
+            id: userMsgId,
+            type: 'user',
+            content: `🔄 Generate loops: "${prompt}"`,
+            timestamp: new Date()
+          }
+          
+          const generatingMessage: Message = {
+            id: genMsgId,
+            type: 'generation',
+            content: '🔄 Generating fixed BPM loops...',
+            generationType: 'music',
+            generationId: generationId, // Link to generation queue
+            isGenerating: true,
+            timestamp: new Date()
+          }
+          
+          setMessages(prev => [...prev, userMessage, generatingMessage])
+          setInput('')
+        }}
+        onSuccess={(variations: Array<{ url: string; variation: number }>, prompt: string) => {
+          // Handle successful loop generation
           // The GenerationQueue will update the message automatically
         }}
       />
