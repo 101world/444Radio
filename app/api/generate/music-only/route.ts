@@ -515,8 +515,7 @@ export async function POST(req: NextRequest) {
             if (imageR2Result.success) {
               console.log('✅ Cover art uploaded to R2:', imageR2Result.url)
               response.imageUrl = imageR2Result.url
-              response.creditsRemaining -= 1
-              response.creditsDeducted += 1
+              // Note: Cover art is included in the base 2-credit cost, no extra deduction
             } else {
               console.error('❌ Cover art R2 upload failed:', imageR2Result.error)
               // Continue without image

@@ -134,29 +134,32 @@ export async function POST(request: NextRequest) {
       throw new Error('No song data returned')
     }
 
-    // ✅ DEDUCT 1 CREDIT from user
-    const deductResponse = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${user.id}`,
+    // ✅ DEDUCT 1 CREDIT atomically (prevents race conditions / double-deductions)
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
       {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
-          'Prefer': 'return=minimal'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          credits: userRecord.credits - 1,
-          total_generated: (userRecord.total_generated || 0) + 1
+          p_clerk_user_id: user.id,
+          p_amount: 1
         })
       }
     )
 
-    if (!deductResponse.ok) {
-      console.error('Failed to deduct credit, but continuing...')
+    const deductResult = deductRes.ok ? await deductRes.json() : null
+    if (!deductRes.ok || !deductResult?.success) {
+      console.error('Failed to deduct credit:', deductResult?.error_message || deductRes.statusText)
+      // Still return success since song record was created — credit deduction failure shouldn't block the generation
+    } else {
+      console.log(`✅ Credit deducted atomically. User now has ${deductResult.new_credits} credits`)
     }
 
-    console.log(`✅ Credit deducted. User now has ${userRecord.credits - 1} credits`)
+    const creditsAfter = deductResult?.new_credits ?? Math.max(0, userRecord.credits - 1)
 
     // Return the song ID so frontend can track generation progress
     return corsResponse(NextResponse.json({ 
@@ -164,7 +167,7 @@ export async function POST(request: NextRequest) {
       songId: song.id,
       outputType,
       prompt,
-      creditsRemaining: userRecord.credits - 1
+      creditsRemaining: creditsAfter
     }))
   } catch (error) {
     console.error('Generation initiation error:', error)

@@ -38,6 +38,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Credit check — this endpoint has no deduction logic (the caller /api/generate/route.ts handles it)
+    // but we still verify the user has credits to prevent direct API abuse
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    
+    const creditCheck = await fetch(
+      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    )
+    if (creditCheck.ok) {
+      const userData = await creditCheck.json()
+      const credits = userData?.[0]?.credits ?? 0
+      if (credits < 1) {
+        return NextResponse.json({ error: 'Insufficient credits', success: false }, { status: 402 })
+      }
+    }
+
     const { songId, prompt, params, language = 'english' } = await req.json()
 
     if (!songId || !prompt) {
@@ -158,9 +180,6 @@ export async function POST(req: NextRequest) {
     console.log('✅ Audio uploaded to R2:', permanentAudioUrl)
 
     // Update song in database with permanent R2 URL and status
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-    
     const updateRes = await fetch(`${supabaseUrl}/rest/v1/songs?id=eq.${songId}`, {
       method: 'PATCH',
       headers: {
