@@ -128,27 +128,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
       })
 
       if (!uploadResponse.ok) {
-        // Fallback: try server-side upload for small files (< 4MB)
-        if (selectedFile.size < 4 * 1024 * 1024) {
-          console.warn('⚠️ Presigned upload failed, trying server-side fallback...')
-          setUploadProgress('Retrying upload...')
-          
-          const formData = new FormData()
-          formData.append('file', selectedFile)
-          const serverResponse = await fetch('/api/upload/media', {
-            method: 'POST',
-            body: formData
-          })
-          if (!serverResponse.ok) {
-            const serverError = await serverResponse.json()
-            throw new Error(serverError.error || 'Upload failed')
-          }
-          const uploadResult = await serverResponse.json()
-          publicUrl = uploadResult.url
-          console.log('✅ Server-side fallback upload complete:', publicUrl)
-        } else {
-          throw new Error(`Direct upload failed (${uploadResponse.status}). File may be too large for server fallback. Check R2 CORS configuration.`)
-        }
+        console.error('❌ R2 direct upload failed:', uploadResponse.status, uploadResponse.statusText)
+        throw new Error(`Upload failed (${uploadResponse.status}). Please try again or use a smaller file.`)
       } else {
         publicUrl = signedPublicUrl
         console.log('✅ Direct R2 upload complete:', publicUrl)

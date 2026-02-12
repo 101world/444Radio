@@ -1,27 +1,16 @@
-'use client'
-
-import { useUser } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { useEffect } from 'react'
 
 /**
- * /profile → redirects to /profile/[currentUserId]
- * Prevents 404 when navigating to /profile without a userId
+ * /profile → server-side redirect to /profile/[currentUserId]
+ * Handles both browser navigation AND RSC prefetch requests (_rsc param)
  */
-export default function ProfileRedirect() {
-  const { user, isLoaded } = useUser()
+export default async function ProfileRedirect() {
+  const { userId } = await auth()
 
-  useEffect(() => {
-    if (isLoaded && user) {
-      redirect(`/profile/${user.id}`)
-    } else if (isLoaded && !user) {
-      redirect('/sign-in')
-    }
-  }, [isLoaded, user])
+  if (!userId) {
+    redirect('/sign-in')
+  }
 
-  return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="animate-pulse text-white/60 text-sm">Redirecting to profile...</div>
-    </div>
-  )
+  redirect(`/profile/${userId}`)
 }
