@@ -1482,43 +1482,43 @@ function CreatePageContent() {
       let buffer = ''
       let data: any = null
 
+      const processLine = (line: string) => {
+        if (!line.trim()) return
+        try {
+          const parsed = JSON.parse(line)
+          if (parsed.type === 'started' && parsed.predictionId) {
+            predictionIdsRef.current.set(processingMessage.id, parsed.predictionId)
+            console.log('[StemSplit] Stored prediction ID:', parsed.predictionId)
+            if (pendingCancelsRef.current.has(processingMessage.id)) {
+              pendingCancelsRef.current.delete(processingMessage.id)
+              fetch('/api/generate/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ predictionId: parsed.predictionId })
+              }).catch(() => {})
+              predictionIdsRef.current.delete(processingMessage.id)
+            }
+          } else if (parsed.type === 'result') {
+            data = parsed
+          } else if (parsed.type === 'progress') {
+            console.log('[StemSplit] Progress:', parsed.status, `${parsed.elapsed}s`)
+          }
+        } catch (e) {
+          console.warn('[StemSplit] NDJSON parse skip:', (e as Error).message?.substring(0, 80))
+        }
+      }
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
-        for (const line of lines) {
-          if (!line.trim()) continue
-          try {
-            const parsed = JSON.parse(line)
-            if (parsed.type === 'started' && parsed.predictionId) {
-              predictionIdsRef.current.set(processingMessage.id, parsed.predictionId)
-              console.log('[StemSplit] Stored prediction ID:', parsed.predictionId)
-              // Deferred cancel if requested before ID arrived
-              if (pendingCancelsRef.current.has(processingMessage.id)) {
-                pendingCancelsRef.current.delete(processingMessage.id)
-                fetch('/api/generate/cancel', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ predictionId: parsed.predictionId })
-                }).catch(() => {})
-                predictionIdsRef.current.delete(processingMessage.id)
-              }
-            } else if (parsed.type === 'result') {
-              data = parsed
-            }
-          } catch { /* skip unparseable lines */ }
-        }
+        for (const line of lines) processLine(line)
       }
+      // Process any remaining buffer lines
       if (buffer.trim()) {
-        try {
-          const parsed = JSON.parse(buffer)
-          if (parsed.type === 'result') data = parsed
-          else if (parsed.type === 'started' && parsed.predictionId) {
-            predictionIdsRef.current.set(processingMessage.id, parsed.predictionId)
-          }
-        } catch { /* ignore */ }
+        for (const line of buffer.split('\n')) processLine(line)
       }
       reader.releaseLock()
 

@@ -44,7 +44,7 @@ export async function logCreditTransaction(params: LogTransactionParams): Promis
       type: params.type,
       status: params.status || 'success',
       description: params.description || null,
-      metadata: params.metadata ? JSON.stringify(params.metadata) : '{}',
+      metadata: params.metadata ?? {},
     }
 
     const res = await fetch(`${supabaseUrl}/rest/v1/credit_transactions`, {
