@@ -54,6 +54,9 @@ export async function POST(request: Request) {
       await writer.write(encoder.encode(JSON.stringify(data) + '\n'))
     }
 
+    // Capture request signal for client disconnect detection
+    const requestSignal = request.signal
+
     // Send prediction ID immediately
     const prediction = await replicate.predictions.create({
       version: "f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e",
@@ -74,7 +77,7 @@ export async function POST(request: Request) {
     // Process in background IIFE
     ;(async () => {
       try {
-        // Poll for result
+        // Poll for result — also check if client disconnected
         let finalPrediction = prediction
         let attempts = 0
         while (
@@ -83,6 +86,13 @@ export async function POST(request: Request) {
           finalPrediction.status !== 'canceled' &&
           attempts < 60 // 5min at 5s intervals
         ) {
+          if (requestSignal.aborted) {
+            console.log('[Stem Split] Client disconnected, cancelling:', prediction.id)
+            try { await replicate.predictions.cancel(prediction.id) } catch {}
+            await sendLine({ type: 'result', success: false, error: 'Stem split cancelled' }).catch(() => {})
+            await writer.close().catch(() => {})
+            return
+          }
           await new Promise(resolve => setTimeout(resolve, 5000))
           finalPrediction = await replicate.predictions.get(prediction.id)
           attempts++

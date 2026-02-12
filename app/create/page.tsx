@@ -155,6 +155,8 @@ function CreatePageContent() {
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
   // Replicate prediction IDs for server-side cancellation
   const predictionIdsRef = useRef<Map<string, string>>(new Map())
+  // Message IDs pending cancellation (cancel clicked before prediction ID arrived)
+  const pendingCancelsRef = useRef<Set<string>>(new Set())
   
   // Features sidebar state
   const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
@@ -336,7 +338,7 @@ function CreatePageContent() {
 
   // Cancel an in-progress generation
   const handleCancelGeneration = (messageId: string) => {
-    // Abort the active fetch
+    // Abort the active fetch (this also causes the server to detect disconnect via request.signal)
     const controller = abortControllersRef.current.get(messageId)
     if (controller) {
       controller.abort()
@@ -351,6 +353,9 @@ function CreatePageContent() {
         body: JSON.stringify({ predictionId })
       }).catch(() => {}) // best-effort
       predictionIdsRef.current.delete(messageId)
+    } else {
+      // Prediction ID not received yet — mark for deferred cancellation
+      pendingCancelsRef.current.add(messageId)
     }
     // Mark message as cancelled
     setMessages(prev => prev.map(msg =>
@@ -1232,6 +1237,17 @@ function CreatePageContent() {
               // Store prediction ID for cancellation
               predictionIdsRef.current.set(messageId, parsed.predictionId)
               console.log('[Cancel] Stored prediction ID:', parsed.predictionId, 'for message:', messageId)
+              // If cancel was requested before ID arrived, fire it now
+              if (pendingCancelsRef.current.has(messageId)) {
+                pendingCancelsRef.current.delete(messageId)
+                fetch('/api/generate/cancel', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ predictionId: parsed.predictionId })
+                }).catch(() => {})
+                predictionIdsRef.current.delete(messageId)
+                console.log('[Cancel] Deferred cancel fired for:', parsed.predictionId)
+              }
             } else if (parsed.type === 'result') {
               resultData = parsed
             }
@@ -1422,6 +1438,16 @@ function CreatePageContent() {
             if (parsed.type === 'started' && parsed.predictionId) {
               predictionIdsRef.current.set(processingMessage.id, parsed.predictionId)
               console.log('[StemSplit] Stored prediction ID:', parsed.predictionId)
+              // Deferred cancel if requested before ID arrived
+              if (pendingCancelsRef.current.has(processingMessage.id)) {
+                pendingCancelsRef.current.delete(processingMessage.id)
+                fetch('/api/generate/cancel', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ predictionId: parsed.predictionId })
+                }).catch(() => {})
+                predictionIdsRef.current.delete(processingMessage.id)
+              }
             } else if (parsed.type === 'result') {
               data = parsed
             }

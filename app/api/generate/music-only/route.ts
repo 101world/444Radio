@@ -253,6 +253,9 @@ export async function POST(req: NextRequest) {
       await writer.write(encoder.encode(JSON.stringify(data) + '\n'))
     }
 
+    // Capture the request signal so the IIFE can detect client disconnect
+    const requestSignal = req.signal
+
     // Start async processing
     ;(async () => {
       try {
@@ -273,7 +276,7 @@ export async function POST(req: NextRequest) {
         // Send prediction ID to client immediately
         await sendLine({ type: 'started', predictionId: prediction.id })
 
-        // Poll until done
+        // Poll until done — also check if client disconnected via requestSignal
         let finalPrediction = prediction
         let attempts = 0
         const maxAttempts = 150 // 300s at 2s intervals
@@ -284,6 +287,14 @@ export async function POST(req: NextRequest) {
           finalPrediction.status !== 'canceled' &&
           attempts < maxAttempts
         ) {
+          // If the client disconnected, cancel the prediction and bail
+          if (requestSignal.aborted) {
+            console.log('⏹ Client disconnected, cancelling prediction:', prediction.id)
+            try { await replicate.predictions.cancel(prediction.id) } catch {}
+            await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: userCredits }).catch(() => {})
+            await writer.close().catch(() => {})
+            return
+          }
           await new Promise(resolve => setTimeout(resolve, 2000))
           finalPrediction = await replicate.predictions.get(prediction.id)
           attempts++
