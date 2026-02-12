@@ -111,10 +111,14 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
                       <p className="text-gray-400 text-xs truncate">@{username || 'username'}</p>
                     </div>
                     {credits !== null && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full flex-shrink-0">
+                      <a
+                        href="/settings?tab=wallet"
+                        onClick={(e) => { e.stopPropagation() }}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 rounded-full flex-shrink-0 transition-colors"
+                      >
                         <Zap className="text-cyan-400" size={12} />
                         <span className="text-cyan-300 font-bold text-xs">{credits}</span>
-                      </div>
+                      </a>
                     )}
                   </div>
                 )}

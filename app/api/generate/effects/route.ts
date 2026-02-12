@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 // Allow up to 2.5 minutes for effects generation (AudioGen can take 60-90s)
 export const maxDuration = 150
@@ -221,8 +222,10 @@ export async function POST(req: NextRequest) {
       }
       if (!creditDeductRes.ok || !deductResult?.success) {
         console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || creditDeductRes.statusText)
+        logCreditTransaction({ userId, amount: -2, type: 'generation_effects', status: 'failed', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
       } else {
         console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
+        logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_effects', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
       }
 
       console.log('✅ Effects generation complete')

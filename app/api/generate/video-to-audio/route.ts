@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 // Allow up to 5 minutes for video-to-audio generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -290,8 +291,10 @@ export async function POST(req: NextRequest) {
 
     if (!creditDeductRes.ok) {
       console.error('⚠️ Failed to deduct credits, but generation succeeded')
+      logCreditTransaction({ userId, amount: -creditsRequired, type: 'generation_video_to_audio', status: 'failed', description: `Video SFX: ${prompt.substring(0, 50)}`, metadata: { prompt, quality, isHQ } })
     } else {
       console.log('✅ Credits deducted successfully')
+      logCreditTransaction({ userId, amount: -creditsRequired, balanceAfter: user.credits - creditsRequired, type: 'generation_video_to_audio', description: `Video SFX: ${prompt.substring(0, 50)}`, metadata: { prompt, quality, isHQ } })
     }
 
     console.log('✅ Video-to-audio generation complete')

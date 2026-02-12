@@ -63,6 +63,7 @@ export default function EarnPage() {
   const [loading, setLoading] = useState(true)
   const [credits, setCredits] = useState(0)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none')
+  const isSubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
   const [filter, setFilter] = useState<FilterType>('trending')
   const [selectedGenre, setSelectedGenre] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -334,13 +335,22 @@ export default function EarnPage() {
             </div>
 
             {/* List Track button */}
-            {isSignedIn && (
+            {isSignedIn && isSubscribed && (
               <button
                 onClick={() => setShowListModal(true)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/40 hover:scale-[1.02]"
               >
                 <Sparkles size={16} />
                 List Your Track
+              </button>
+            )}
+            {isSignedIn && !isSubscribed && (
+              <button
+                onClick={() => router.push('/pricing')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white/10 border border-amber-500/30 text-amber-300 text-sm font-semibold rounded-xl hover:bg-white/15 transition-all"
+              >
+                <Sparkles size={16} />
+                Subscribe to List
               </button>
             )}
           </section>
@@ -383,13 +393,22 @@ export default function EarnPage() {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-300 mb-2">No tracks listed yet</h3>
                 <p className="text-gray-500 max-w-md mb-6">Be the first to list your AI-generated tracks and start earning credits from the community.</p>
-                {isSignedIn && (
+                {isSignedIn && isSubscribed && (
                   <button
                     onClick={() => setShowListModal(true)}
                     className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-semibold rounded-xl"
                   >
                     <Sparkles size={18} />
                     List Your First Track
+                  </button>
+                )}
+                {isSignedIn && !isSubscribed && (
+                  <button
+                    onClick={() => router.push('/pricing')}
+                    className="flex items-center gap-2 px-6 py-3 bg-white/10 border border-amber-500/30 text-amber-300 font-semibold rounded-xl hover:bg-white/15 transition-all"
+                  >
+                    <Sparkles size={18} />
+                    Subscribe to List & Download
                   </button>
                 )}
               </div>

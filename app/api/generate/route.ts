@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '../../../lib/cors'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -158,9 +159,11 @@ export async function POST(request: NextRequest) {
     }
     if (!deductRes.ok || !deductResult?.success) {
       console.error('Failed to deduct credit:', deductResult?.error_message || deductRes.statusText)
+      logCreditTransaction({ userId: user.id, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
       // Still return success since song record was created — credit deduction failure shouldn't block the generation
     } else {
       console.log(`✅ Credit deducted atomically. User now has ${deductResult.new_credits} credits`)
+      logCreditTransaction({ userId: user.id, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
     }
 
     const creditsAfter = deductResult?.new_credits ?? Math.max(0, userRecord.credits - 1)

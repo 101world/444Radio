@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -45,6 +46,15 @@ export async function POST(request: NextRequest) {
 
     if (!trackId) {
       return corsResponse(NextResponse.json({ error: 'trackId required' }, { status: 400 }))
+    }
+
+    // 0. Subscription gate — only subscribers can list
+    const subRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=subscription_status`)
+    const subUsers = await subRes.json()
+    const subStatus = subUsers?.[0]?.subscription_status
+    const isSubscribed = subStatus === 'active' || subStatus === 'trialing'
+    if (!isSubscribed) {
+      return corsResponse(NextResponse.json({ error: 'Active subscription required to list tracks on the marketplace.' }, { status: 403 }))
     }
 
     // 1. Verify user owns the track
@@ -131,7 +141,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. Mark track as listed on earn marketplace
+    // 6. Log credit transactions
+    logCreditTransaction({ userId, amount: -LISTING_FEE, balanceAfter: newUserCredits, type: 'earn_list', description: `Listed track on Earn`, metadata: { trackId } })
+    if (admin) {
+      const newAdminCredits2 = (admin.credits || 0) + LISTING_FEE
+      logCreditTransaction({ userId: admin.clerk_user_id, amount: LISTING_FEE, balanceAfter: newAdminCredits2, type: 'earn_admin', description: `Listing fee received`, metadata: { trackId, listerId: userId } })
+    }
+
+    // 7. Mark track as listed on earn marketplace
     const updateRes = await supabaseRest(`combined_media?id=eq.${trackId}`, {
       method: 'PATCH',
       body: JSON.stringify({

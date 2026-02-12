@@ -9,6 +9,7 @@ import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
 import DockedSidebar from './components/DockedSidebar';
 import FloatingNavButton from './components/FloatingNavButton';
+import CreditBadge from './components/CreditBadge';
 import SkipToContent from './components/SkipToContent';
 import StructuredData from './components/StructuredData';
 import ConsoleBlocker from './components/ConsoleBlocker';
@@ -55,6 +56,7 @@ export default function RootLayout({
               <Toaster position="top-right" richColors closeButton />
               <DockedSidebar />
               <FloatingNavButton />
+              <CreditBadge />
               <main id="main-content" tabIndex={-1} className="focus:outline-none">
                 {children}
               </main>

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter } from 'lucide-react'
 import Link from 'next/link'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
 
@@ -22,9 +22,23 @@ type SubscriptionStatus = {
 }
 
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center md:pl-20 md:pr-28">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
+      </div>
+    }>
+      <SettingsPageInner />
+    </Suspense>
+  )
+}
+
+function SettingsPageInner() {
   const { user, isLoaded } = useUser()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'profile' | 'subscription'>('subscription')
+  const searchParams = useSearchParams()
+  const initialTab = (['profile', 'subscription', 'wallet'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'subscription') as 'profile' | 'subscription' | 'wallet'
+  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'wallet'>(initialTab)
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true)
   const [credits, setCredits] = useState<number | null>(null)
@@ -34,6 +48,15 @@ export default function SettingsPage() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [cancelMessage, setCancelMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
+
+  // Wallet state
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [walletPage, setWalletPage] = useState(1)
+  const [walletTotal, setWalletTotal] = useState(0)
+  const [walletTotalPages, setWalletTotalPages] = useState(0)
+  const [isLoadingWallet, setIsLoadingWallet] = useState(false)
+  const [walletFilter, setWalletFilter] = useState('')
+  const [walletCredits, setWalletCredits] = useState(0)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -190,6 +213,79 @@ export default function SettingsPage() {
     return '100'
   }
 
+  const fetchWalletTransactions = useCallback(async (page = 1, filter = '') => {
+    try {
+      setIsLoadingWallet(true)
+      const params = new URLSearchParams({ page: String(page), limit: '15' })
+      if (filter) params.set('type', filter)
+      const res = await fetch(`/api/wallet/transactions?${params}`)
+      const data = await res.json()
+      if (data.transactions) {
+        setTransactions(data.transactions)
+        setWalletPage(data.pagination.page)
+        setWalletTotal(data.pagination.total)
+        setWalletTotalPages(data.pagination.totalPages)
+        setWalletCredits(data.credits ?? 0)
+      }
+    } catch (err) {
+      console.error('Failed to fetch wallet:', err)
+    } finally {
+      setIsLoadingWallet(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'wallet' && user) {
+      fetchWalletTransactions(walletPage, walletFilter)
+    }
+  }, [activeTab, user, walletPage, walletFilter, fetchWalletTransactions])
+
+  const txTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      generation_music: 'Music Generation',
+      generation_effects: 'Sound Effects',
+      generation_loops: 'Loop Generation',
+      generation_image: 'Image Generation',
+      generation_video_to_audio: 'Video-to-Audio',
+      generation_cover_art: 'Cover Art',
+      generation_stem_split: 'Stem Split',
+      earn_list: 'Earn Listing',
+      earn_purchase: 'Earn Purchase',
+      earn_sale: 'Earn Sale',
+      earn_admin: 'Platform Fee',
+      credit_award: 'Credit Award',
+      credit_refund: 'Refund',
+      subscription_bonus: 'Subscription Bonus',
+      other: 'Other',
+    }
+    return map[type] || type
+  }
+
+  const txTypeIcon = (type: string) => {
+    if (type.startsWith('generation_music') || type === 'generation_loops') return <Music className="w-4 h-4" />
+    if (type === 'generation_image' || type === 'generation_cover_art') return <Image className="w-4 h-4" />
+    if (type === 'generation_video_to_audio') return <Video className="w-4 h-4" />
+    if (type === 'generation_effects') return <Sparkles className="w-4 h-4" />
+    if (type === 'earn_purchase') return <ShoppingCart className="w-4 h-4" />
+    if (type === 'earn_sale' || type === 'earn_list') return <Tag className="w-4 h-4" />
+    if (type === 'credit_award' || type === 'subscription_bonus') return <Gift className="w-4 h-4" />
+    if (type === 'credit_refund') return <RefreshCw className="w-4 h-4" />
+    return <Zap className="w-4 h-4" />
+  }
+
+  const txFilterOptions = [
+    { value: '', label: 'All' },
+    { value: 'generation_music', label: 'Music' },
+    { value: 'generation_effects', label: 'Effects' },
+    { value: 'generation_loops', label: 'Loops' },
+    { value: 'generation_image', label: 'Images' },
+    { value: 'generation_video_to_audio', label: 'Video' },
+    { value: 'earn_purchase', label: 'Purchases' },
+    { value: 'earn_sale', label: 'Sales' },
+    { value: 'earn_list', label: 'Listings' },
+    { value: 'credit_award', label: 'Awards' },
+  ]
+
   if (!isLoaded || !user) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center md:pl-20 md:pr-28">
@@ -230,6 +326,20 @@ export default function SettingsPage() {
               <span>Subscription</span>
             </div>
             {activeTab === 'subscription' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('wallet')}
+            className={`pb-4 px-2 font-medium transition-colors relative ${
+              activeTab === 'wallet' ? 'text-cyan-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Wallet className="w-5 h-5" />
+              <span>Wallet & Billing</span>
+            </div>
+            {activeTab === 'wallet' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
             )}
           </button>
@@ -408,6 +518,125 @@ export default function SettingsPage() {
                 </Link>
               </div>
             )}
+          </div>
+        ) : activeTab === 'wallet' ? (
+          <div className="space-y-6">
+            {/* Credit Balance Card */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-500 bg-opacity-20">
+                    <Wallet className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Credit Balance</p>
+                    <p className="text-3xl font-bold">{isLoadingWallet ? '...' : walletCredits}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-400">Total Transactions</p>
+                  <p className="text-lg font-semibold text-cyan-400">{walletTotal}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+              <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              {txFilterOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setWalletFilter(opt.value); setWalletPage(1) }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
+                    walletFilter === opt.value
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                      : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Transaction List */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
+              {isLoadingWallet ? (
+                <div className="p-12 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Wallet className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+                  <p className="text-gray-400">No transactions yet</p>
+                  <p className="text-sm text-gray-500 mt-1">Generate some music to see your credit history here</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {transactions.map((tx: any) => (
+                    <div key={tx.id} className="flex items-center gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                      {/* Icon */}
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${
+                        tx.amount > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                      }`}>
+                        {txTypeIcon(tx.type)}
+                      </div>
+
+                      {/* Info */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{tx.description || txTypeLabel(tx.type)}</p>
+                        <p className="text-xs text-gray-500">
+                          {txTypeLabel(tx.type)} &middot; {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+
+                      {/* Amount */}
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-sm font-bold ${
+                          tx.amount > 0 ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {tx.amount > 0 ? '+' : ''}{tx.amount}
+                        </p>
+                        {tx.balance_after !== null && (
+                          <p className="text-xs text-gray-500">Bal: {tx.balance_after}</p>
+                        )}
+                      </div>
+
+                      {/* Status badge */}
+                      <div className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                        tx.status === 'success' ? 'bg-green-500/10 text-green-400' :
+                        tx.status === 'failed' ? 'bg-red-500/10 text-red-400' :
+                        'bg-yellow-500/10 text-yellow-400'
+                      }`}>
+                        {tx.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {walletTotalPages > 1 && (
+                <div className="flex items-center justify-between px-5 py-3 border-t border-white/5">
+                  <button
+                    onClick={() => setWalletPage(p => Math.max(1, p - 1))}
+                    disabled={walletPage <= 1}
+                    className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Prev
+                  </button>
+                  <span className="text-xs text-gray-500">
+                    Page {walletPage} of {walletTotalPages}
+                  </span>
+                  <button
+                    onClick={() => setWalletPage(p => Math.min(walletTotalPages, p + 1))}
+                    disabled={walletPage >= walletTotalPages}
+                    className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="space-y-6">

@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -145,6 +146,10 @@ export async function POST(request: NextRequest) {
     } catch (e) {
       console.error('Failed to record earn transaction:', e)
     }
+
+    // 9b. Log credit transactions for buyer and seller
+    logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}`, metadata: { trackId, splitStems } })
+    logCreditTransaction({ userId: track.user_id, amount: totalCost, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId } })
 
     // 10. Save to buyer's music_library so it appears in their Library
     try {

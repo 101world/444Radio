@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 // Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -399,8 +400,10 @@ export async function POST(req: NextRequest) {
 
         if (!deductRes.ok || !deductResult?.success) {
           console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || deductRes.statusText)
+          logCreditTransaction({ userId, amount: -2, type: 'generation_music', status: 'failed', description: `Music: ${title}`, metadata: { prompt, genre } })
         } else {
           console.log(`💰 Credits deducted. Remaining: ${deductResult.new_credits}`)
+          logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Music: ${title}`, metadata: { prompt, genre } })
         }
 
         // Record 444 Radio lyrics usage

@@ -145,13 +145,16 @@ export default function DockedSidebar() {
                   <p className="text-gray-400 text-xs truncate">@{username || 'username'}</p>
                 </div>
                 
-                {/* Credits */}
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full">
+                {/* Credits — tap to open wallet */}
+                <Link
+                  href="/settings?tab=wallet"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 rounded-full transition-colors"
+                >
                   <Zap className="text-[#22D3EE]" size={14} />
                   <span className="text-white font-bold text-xs">
                     {credits !== null ? `${credits} credits` : '...'}
                   </span>
-                </div>
+                </Link>
               </>
             )}
           </div>

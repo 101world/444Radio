@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 // Allow up to 3 minutes for looper generation (can take 1-2 minutes for 20s loops)
 export const maxDuration = 180
@@ -272,8 +273,10 @@ export async function POST(req: NextRequest) {
       }
       if (!creditDeductRes.ok || !deductResult?.success) {
         console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || creditDeductRes.statusText)
+        logCreditTransaction({ userId, amount: -creditCost, type: 'generation_loops', status: 'failed', description: `Loops: ${prompt}`, metadata: { prompt, bpm, variations: uploadedVariations.length } })
       } else {
         console.log('✅ Credits deducted successfully')
+        logCreditTransaction({ userId, amount: -creditCost, balanceAfter: deductResult.new_credits, type: 'generation_loops', description: `Loops: ${prompt}`, metadata: { prompt, bpm, variations: uploadedVariations.length } })
       }
 
       console.log('✅ Looper generation complete')
