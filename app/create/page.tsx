@@ -121,7 +121,7 @@ function CreatePageContent() {
   const [customTitle, setCustomTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [bpm, setBpm] = useState('')
-  const [songDuration, setSongDuration] = useState<'short' | 'medium' | 'long'>('medium')
+  const [songDuration, setSongDuration] = useState<'short' | 'medium' | 'long'>('long')
   const [generateCoverArt, setGenerateCoverArt] = useState(false)
   
   // Instrumental mode (LLM approach - no API parameters needed)
@@ -697,10 +697,21 @@ function CreatePageContent() {
 
       setMessages(prev => [...prev, userMessage, generatingMessage])
       setGenerationQueue(prev => [...prev, generatingMessage.id])
+      setActiveGenerations(prev => new Set(prev).add(generatingMessage.id))
+      
+      // Create abort controller early so cancel works even during auto-fill
+      const earlyAbortController = new AbortController()
+      abortControllersRef.current.set(generatingMessage.id, earlyAbortController)
       
       // Store original prompt before clearing input
-      const originalPrompt = input
+      let originalPrompt = input
       setInput('')
+
+      // If instrumental mode, ensure "no vocals" is in the prompt
+      if (isInstrumental && !originalPrompt.toLowerCase().includes('no vocals')) {
+        originalPrompt = originalPrompt.trimEnd() + ', no vocals, instrumental only'
+        console.log('🎹 Instrumental mode: appended "no vocals" to prompt:', originalPrompt)
+      }
 
       // Smart auto-fill: If user hasn't filled mandatory fields, auto-generate them
       let finalTitle = customTitle
@@ -709,8 +720,11 @@ function CreatePageContent() {
       let finalBpm = bpm
       let wasAutoFilled = false
 
+      // Helper: check if user cancelled during auto-fill
+      const wasCancelled = () => earlyAbortController.signal.aborted
+
       // Auto-generate missing fields based on prompt using LLM
-      if (!finalTitle.trim()) {
+      if (!finalTitle.trim() && !wasCancelled()) {
         console.log('🤖 Auto-generating natural title from prompt...')
         wasAutoFilled = true
         try {
@@ -738,6 +752,10 @@ function CreatePageContent() {
       }
 
       // Handle lyrics based on instrumental mode
+      if (wasCancelled()) {
+        // User cancelled during auto-fill, abort early
+        return
+      }
       if (isInstrumental) {
         // For instrumental mode, set lyrics to [Instrumental]
         finalLyrics = '[Instrumental]'
@@ -767,7 +785,7 @@ function CreatePageContent() {
       }
 
       // Auto-detect genre using LLM if not provided
-      if (!finalGenre.trim()) {
+      if (!finalGenre.trim() && !wasCancelled()) {
         console.log('🤖 Auto-detecting genre from prompt...')
         wasAutoFilled = true
         try {
@@ -790,6 +808,11 @@ function CreatePageContent() {
           finalGenre = 'pop'
           setGenre(finalGenre)
         }
+      }
+
+      // Bail out if user cancelled during auto-fill
+      if (wasCancelled()) {
+        return
       }
 
       // Auto-detect BPM from prompt if not provided
@@ -839,8 +862,13 @@ function CreatePageContent() {
         songDuration
       })
 
-      // Don't clear parameters - keep them visible so user can see what was auto-filled
-      // They'll be cleared after the next generation or manually
+      // Clear parameters so the next generation gets fresh auto-filled values
+      setCustomTitle('')
+      setCustomLyrics('')
+      setGenre('')
+      setBpm('')
+      setSongDuration('long')
+      setIsInstrumental(false)
       return
     }
 
@@ -893,9 +921,19 @@ function CreatePageContent() {
   ) => {
     console.log('[Generation] Starting generation:', { messageId, type, params })
     
-    // Create abort controller for this generation
-    const abortController = new AbortController()
-    abortControllersRef.current.set(messageId, abortController)
+    // Reuse abort controller if already created (e.g. during auto-fill in handleGenerate),
+    // otherwise create a new one (for image/effects or other callers)
+    let abortController = abortControllersRef.current.get(messageId)
+    if (!abortController) {
+      abortController = new AbortController()
+      abortControllersRef.current.set(messageId, abortController)
+    }
+    
+    // If already aborted (cancelled during auto-fill), bail out immediately
+    if (abortController.signal.aborted) {
+      console.log('[Generation] Already cancelled before processQueue started:', messageId)
+      return
+    }
     
     // Add to persistent generation queue
     const genId = addGeneration({
@@ -929,7 +967,7 @@ function CreatePageContent() {
         // ALWAYS provide a title - use custom title or first 50 chars of prompt
         const titleToUse = params.customTitle || params.prompt.substring(0, 50)
         const lyricsToUse = params.customLyrics || undefined
-        const durationToUse = params.songDuration || 'medium'
+        const durationToUse = params.songDuration || 'long'
         const genreToUse = params.genre || undefined
         const bpmToUse = params.bpm || undefined
         
@@ -1168,7 +1206,7 @@ function CreatePageContent() {
     prompt: string, 
     title?: string, 
     lyrics?: string, 
-    duration: 'short' | 'medium' | 'long' = 'medium',
+    duration: 'short' | 'medium' | 'long' = 'long',
     genreParam?: string,
     bpmParam?: string,
     signal?: AbortSignal,
@@ -1221,6 +1259,10 @@ function CreatePageContent() {
 
     try {
       while (true) {
+        // Explicit signal check each iteration to ensure cancel always works
+        if (signal?.aborted) {
+          throw new DOMException('The operation was aborted.', 'AbortError')
+        }
         const { done, value } = await reader.read()
         if (done) break
         buffer += decoder.decode(value, { stream: true })
@@ -1604,6 +1646,10 @@ function CreatePageContent() {
           }}
           onGenerateIdea={(genre: string, type: 'song' | 'beat') => {
             setSelectedPromptType(type)
+            // When selecting "Beat" in Ideas flow, auto-enable instrumental mode
+            if (type === 'beat') {
+              setIsInstrumental(true)
+            }
             handleGeneratePromptIdea(genre)
           }}
           isGeneratingIdea={generatingIdea}
@@ -2488,6 +2534,7 @@ function CreatePageContent() {
                                   <button
                                     onClick={() => {
                                       setSelectedPromptType('beat')
+                                      setIsInstrumental(true)
                                       setIdeasStep('genre')
                                     }}
                                     className="group p-6 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/30"
