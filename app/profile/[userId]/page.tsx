@@ -65,7 +65,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const { user } = useUser()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { playTrack, setPlaylist, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
+  const { setPlaylist, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
 
   // Profile State
   const [profile, setProfile] = useState<ProfileData | null>(null)
@@ -345,16 +345,11 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   // Handle Track Play
   const handlePlayTrack = (track: Track) => {
-    // Map track properties to AudioPlayerContext format
-    const audioPlayerTrack = {
-      id: track.id,
-      title: track.title,
-      audioUrl: track.audio_url,
-      imageUrl: track.image_url,
-      artist: profile?.username,
-      userId: track.user_id
+    if (currentTrack?.id === track.id) {
+      togglePlayPause()
+      return
     }
-    
+
     const audioPlayerTracks = tracks.map(t => ({
       id: t.id,
       title: t.title,
@@ -364,8 +359,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       userId: t.user_id
     }))
     
-    setPlaylist(audioPlayerTracks)
-    playTrack(audioPlayerTrack)
+    const startIndex = tracks.findIndex(t => t.id === track.id)
+    setPlaylist(audioPlayerTracks, Math.max(startIndex, 0))
   }
 
   // Handle Like/Unlike Track

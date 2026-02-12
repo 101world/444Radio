@@ -56,7 +56,7 @@ type FilterType = 'most_downloaded' | 'latest' | 'trending'
 export default function EarnPage() {
   const { user, isSignedIn } = useUser()
   const router = useRouter()
-  const { currentTrack, isPlaying, playTrack, togglePlayPause, setPlaylist } = useAudioPlayer()
+  const { currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
 
   // State
   const [tracks, setTracks] = useState<EarnTrack[]>([])
@@ -120,31 +120,24 @@ export default function EarnPage() {
 
   // Play handler — integrate with global audio player
   const handlePlay = useCallback((track: EarnTrack) => {
-    const audioTrack = {
-      id: track.id,
-      audioUrl: track.audio_url,
-      title: track.title,
-      artist: track.username,
-      imageUrl: track.image_url,
-      userId: track.user_id
-    }
+    const toAudioTrack = (t: EarnTrack) => ({
+      id: t.id,
+      audioUrl: t.audio_url,
+      title: t.title,
+      artist: t.username,
+      imageUrl: t.image_url,
+      userId: t.user_id
+    })
 
     if (currentTrack?.id === track.id) {
       togglePlayPause()
     } else {
-      // Set all earn tracks as playlist
-      const playlist = tracks.map(t => ({
-        id: t.id,
-        audioUrl: t.audio_url,
-        title: t.title,
-        artist: t.username,
-        imageUrl: t.image_url,
-        userId: t.user_id
-      }))
-      setPlaylist(playlist)
-      playTrack(audioTrack)
+      // Build playlist and find the clicked track's index
+      const playlist = tracks.map(toAudioTrack)
+      const startIndex = tracks.findIndex(t => t.id === track.id)
+      setPlaylist(playlist, Math.max(startIndex, 0))
     }
-  }, [currentTrack, togglePlayPause, playTrack, setPlaylist, tracks])
+  }, [currentTrack, togglePlayPause, setPlaylist, tracks])
 
   // Purchase handler
   const handlePurchase = async (trackId: string, splitStems: boolean) => {
