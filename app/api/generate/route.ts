@@ -178,6 +178,7 @@ export async function POST(request: NextRequest) {
     }))
   } catch (error) {
     console.error('Generation initiation error:', error)
+    logCreditTransaction({ userId: user.id, amount: 0, type: 'generation_image', status: 'failed', description: `Image failed: ${prompt || 'unknown'}`, metadata: { prompt, error: String(error).substring(0, 200) } })
     const errorMessage = error instanceof Error ? error.message : 'Failed to initiate generation'
     return corsResponse(NextResponse.json({ 
       error: errorMessage

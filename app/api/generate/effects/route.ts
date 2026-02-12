@@ -245,6 +245,7 @@ export async function POST(req: NextRequest) {
 
     } catch (genError) {
       console.error('❌ AudioGen generation failed:', genError)
+      logCreditTransaction({ userId, amount: 0, type: 'generation_effects', status: 'failed', description: `Effects failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, error: String(genError).substring(0, 200) } })
       throw genError
     }
 

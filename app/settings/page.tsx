@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter } from 'lucide-react'
+import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors } from 'lucide-react'
 import Link from 'next/link'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
 
@@ -266,6 +266,7 @@ function SettingsPageInner() {
     if (type === 'generation_image' || type === 'generation_cover_art') return <Image className="w-4 h-4" />
     if (type === 'generation_video_to_audio') return <Video className="w-4 h-4" />
     if (type === 'generation_effects') return <Sparkles className="w-4 h-4" />
+    if (type === 'generation_stem_split') return <Scissors className="w-4 h-4" />
     if (type === 'earn_purchase') return <ShoppingCart className="w-4 h-4" />
     if (type === 'earn_sale' || type === 'earn_list') return <Tag className="w-4 h-4" />
     if (type === 'credit_award' || type === 'subscription_bonus') return <Gift className="w-4 h-4" />
@@ -279,7 +280,9 @@ function SettingsPageInner() {
     { value: 'generation_effects', label: 'Effects' },
     { value: 'generation_loops', label: 'Loops' },
     { value: 'generation_image', label: 'Images' },
+    { value: 'generation_cover_art', label: 'Cover Art' },
     { value: 'generation_video_to_audio', label: 'Video' },
+    { value: 'generation_stem_split', label: 'Stems' },
     { value: 'earn_purchase', label: 'Purchases' },
     { value: 'earn_sale', label: 'Sales' },
     { value: 'earn_list', label: 'Listings' },

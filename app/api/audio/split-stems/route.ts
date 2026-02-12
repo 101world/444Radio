@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { createClient } from '@supabase/supabase-js'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 export const maxDuration = 300
 
@@ -137,6 +138,8 @@ export async function POST(request: Request) {
 
         const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
 
+        logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST), type: 'generation_stem_split', description: `Stem split`, metadata: { stems: Object.keys(stems) } })
+
         await sendLine({
           type: 'result',
           success: true,
@@ -147,6 +150,7 @@ export async function POST(request: Request) {
         await writer.close()
       } catch (error) {
         console.error('[Stem Split] Stream error:', error)
+        logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split failed`, metadata: { error: String(error).substring(0, 200) } })
         try {
           await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes' })
           await writer.close()

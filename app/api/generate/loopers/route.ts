@@ -295,6 +295,7 @@ export async function POST(req: NextRequest) {
 
     } catch (genError) {
       console.error('❌ MusicGen Looper generation failed:', genError)
+      logCreditTransaction({ userId, amount: 0, type: 'generation_loops', status: 'failed', description: `Loops failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, bpm, error: String(genError).substring(0, 200) } })
       throw genError
     }
 

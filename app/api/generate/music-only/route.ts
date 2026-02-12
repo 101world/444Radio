@@ -292,6 +292,7 @@ export async function POST(req: NextRequest) {
           if (requestSignal.aborted) {
             console.log('⏹ Client disconnected, cancelling prediction:', prediction.id)
             try { await replicate.predictions.cancel(prediction.id) } catch {}
+            logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Cancelled: ${title}`, metadata: { prompt, genre, reason: 'client_disconnected' } })
             await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: userCredits }).catch(() => {})
             await writer.close().catch(() => {})
             return
@@ -303,6 +304,7 @@ export async function POST(req: NextRequest) {
 
         if (finalPrediction.status === 'canceled') {
           console.log('⏹ Prediction cancelled by user:', prediction.id)
+          logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Cancelled: ${title}`, metadata: { prompt, genre, reason: 'user_cancelled' } })
           await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: userCredits })
           await writer.close()
           return
@@ -311,6 +313,7 @@ export async function POST(req: NextRequest) {
         if (finalPrediction.status !== 'succeeded') {
           const errMsg = finalPrediction.error || `Generation ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
           console.error('❌ Prediction did not succeed:', errMsg)
+          logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Failed: ${title}`, metadata: { prompt, genre, error: String(errMsg).substring(0, 200) } })
           await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: userCredits })
           await writer.close()
           return
@@ -493,9 +496,12 @@ export async function POST(req: NextRequest) {
                   response.imageLibraryId = Array.isArray(savedImage) ? savedImage[0].id : savedImage.id
                 }
               }
+              // Log cover art transaction
+              logCreditTransaction({ userId, amount: -1, balanceAfter: (deductResult?.new_credits ?? (userCredits - 2)) - 1, type: 'generation_cover_art', description: `Cover art: ${title}`, metadata: { prompt: imagePrompt } })
             }
           } catch (imageError) {
             console.error('❌ Cover art error:', imageError)
+            logCreditTransaction({ userId, amount: 0, type: 'generation_cover_art', status: 'failed', description: `Cover art failed: ${title}`, metadata: { error: String(imageError).substring(0, 200) } })
           }
         }
 
@@ -504,6 +510,7 @@ export async function POST(req: NextRequest) {
 
       } catch (error) {
         console.error('❌ Music generation error (stream):', error)
+        logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Error: ${String(error).substring(0, 80)}`, metadata: { prompt, genre, error: String(error).substring(0, 200) } })
         try {
           await sendLine({ type: 'result', success: false, error: sanitizeError(error) })
           await writer.close()

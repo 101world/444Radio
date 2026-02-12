@@ -176,6 +176,7 @@ export async function POST(req: NextRequest) {
         }
         
         console.error(`❌ Generation failed after ${attempt} attempts:`, genError)
+        logCreditTransaction({ userId, amount: 0, type: 'generation_video_to_audio', status: 'failed', description: `Video SFX failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, retriesAttempted: attempt, error: errorMessage.substring(0, 200) } })
         
         return NextResponse.json(
           { 
