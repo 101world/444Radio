@@ -1214,13 +1214,9 @@ function CreatePageContent() {
   ) => {
     console.log('🔍 [TITLE DEBUG] generateMusic called with title:', title)
     
-    // Build full prompt with genre/BPM if provided
-    let fullPrompt = prompt
-    if (genreParam) fullPrompt += ` [${genreParam}]`
-    if (bpmParam) fullPrompt += ` [${bpmParam} BPM]`
-    
+    // Genre/BPM are sent as separate fields — don't bloat the prompt string
     const requestBody: any = {
-      prompt: fullPrompt,
+      prompt: prompt.slice(0, 500),
       title,
       lyrics: lyrics, // Pass lyrics as-is (either regular lyrics or [Instrumental])
       duration,

@@ -104,9 +104,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is required (3-100 characters)' }, { status: 400 })
     }
 
-    // Prompt is REQUIRED
-    if (!prompt || prompt.length < 10 || prompt.length > 300) {
-      return NextResponse.json({ error: 'Prompt is required (10-300 characters)' }, { status: 400 })
+    // Prompt is REQUIRED (allow up to 500 to accommodate genre/instrumental tags)
+    if (!prompt || prompt.length < 10 || prompt.length > 500) {
+      return NextResponse.json({ error: 'Prompt is required (10-500 characters)' }, { status: 400 })
     }
     
     console.log('🎵 Music Generation Parameters:')
