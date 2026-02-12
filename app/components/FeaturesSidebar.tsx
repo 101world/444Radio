@@ -468,7 +468,7 @@ export default function FeaturesSidebar({
             <button
               onClick={onShowDeletedChats}
               className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-400/50 transition-all"
-              title="Restore deleted chats"
+              title="Chat History"
             >
               <RotateCcw size={16} />
             </button>

@@ -54,7 +54,7 @@ function CreatePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { playTrack, currentTrack, isPlaying, togglePlayPause } = useAudioPlayer()
-  const { addGeneration, updateGeneration, generations } = useGenerationQueue()
+  const { addGeneration, updateGeneration, generations, clearCompleted } = useGenerationQueue()
   const [isMobile, setIsMobile] = useState(false)
   const [isPortrait, setIsPortrait] = useState(false)
   
@@ -299,6 +299,35 @@ function CreatePageContent() {
       console.error('Failed to save chat to localStorage:', error)
     }
   }, [messages])
+
+  // Centralized clear-chat handler: archive → reset messages → purge completed generations
+  const handleClearChat = () => {
+    if (!confirm('Start a new chat? Your current session will be saved to Chat History.')) return
+    try {
+      const archives = localStorage.getItem('444radio-chat-archives')
+      const archiveList = archives ? JSON.parse(archives) : []
+      const newArchive = {
+        id: `chat-${Date.now()}`,
+        messages,
+        archivedAt: new Date(),
+        messageCount: messages.length
+      }
+      archiveList.unshift(newArchive)
+      localStorage.setItem('444radio-chat-archives', JSON.stringify(archiveList.slice(0, 50)))
+      localStorage.removeItem('444radio-chat-backup')
+    } catch (error) {
+      console.error('Failed to archive chat:', error)
+    }
+    // Reset messages to welcome
+    setMessages([{
+      id: '1',
+      type: 'assistant',
+      content: '\u{1F44B} Hey! I\'m your AI music studio assistant. What would you like to create today?',
+      timestamp: new Date()
+    }])
+    // Purge completed/failed generations so the sync effect doesn't restore them
+    clearCompleted()
+  }
 
   // Sync generation queue results with messages on mount and when generations change
   useEffect(() => {
@@ -1391,33 +1420,7 @@ function CreatePageContent() {
             handleGeneratePromptIdea(genre)
           }}
           isGeneratingIdea={generatingIdea}
-          onClearChat={() => {
-            if (confirm('Clear all chat messages? They will be saved to your deleted chats archive.')) {
-              try {
-                const archives = localStorage.getItem('444radio-chat-archives')
-                const archiveList = archives ? JSON.parse(archives) : []
-                const newArchive = {
-                  id: `chat-${Date.now()}`,
-                  messages: messages,
-                  archivedAt: new Date(),
-                  messageCount: messages.length
-                }
-                archiveList.unshift(newArchive)
-                const limitedArchives = archiveList.slice(0, 20)
-                localStorage.setItem('444radio-chat-archives', JSON.stringify(limitedArchives))
-                localStorage.removeItem('444radio-chat-backup')
-              } catch (error) {
-                console.error('Failed to archive chat:', error)
-              }
-              setMessages([{
-                id: '1',
-                type: 'assistant',
-                content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?',
-                timestamp: new Date()
-              }])
-              localStorage.removeItem('444radio-chat-messages')
-            }
-          }}
+          onClearChat={handleClearChat}
           onShowDeletedChats={() => setShowDeletedChatsModal(true)}
           onToggleInstrumental={() => setIsInstrumental(!isInstrumental)}
           onToggleRecording={isRecording ? stopRecording : startRecording}
@@ -2001,45 +2004,7 @@ function CreatePageContent() {
             {/* Clear Chat Button - Hidden by default */}
             {showAdvancedButtons && (
             <button
-              onClick={() => {
-                if (confirm('Clear all chat messages? They will be saved to your deleted chats archive.')) {
-                  // Archive current chat with unique ID and timestamp
-                  try {
-                    const archives = localStorage.getItem('444radio-chat-archives')
-                    const archiveList = archives ? JSON.parse(archives) : []
-                    
-                    // Create new archive entry
-                    const newArchive = {
-                      id: `chat-${Date.now()}`,
-                      messages: messages,
-                      archivedAt: new Date(),
-                      messageCount: messages.length
-                    }
-                    
-                    // Add to beginning of list (most recent first)
-                    archiveList.unshift(newArchive)
-                    
-                    // Keep only last 20 archived chats to prevent storage overflow
-                    const limitedArchives = archiveList.slice(0, 20)
-                    
-                    localStorage.setItem('444radio-chat-archives', JSON.stringify(limitedArchives))
-                    
-                    // Remove old single backup if it exists
-                    localStorage.removeItem('444radio-chat-backup')
-                  } catch (error) {
-                    console.error('Failed to archive chat:', error)
-                  }
-                  
-                  // Clear current chat
-                  setMessages([{
-                    id: '1',
-                    type: 'assistant',
-                    content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?',
-                    timestamp: new Date()
-                  }])
-                  localStorage.removeItem('444radio-chat-messages')
-                }
-              }}
+              onClick={handleClearChat}
               className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-red-500/30 hover:border-red-400/60 hover:scale-105"
               title="Clear Chat"
             >
@@ -2055,7 +2020,7 @@ function CreatePageContent() {
             <button
               onClick={() => setShowDeletedChatsModal(true)}
               className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
-              title="View Deleted Chats"
+              title="Chat History"
             >
               <RotateCcw 
                 size={18} 
@@ -3118,43 +3083,37 @@ function CreatePageContent() {
         />
       </Suspense>
 
-      {/* Deleted Chats Modal */}
+      {/* Chat History Modal */}
       <Suspense fallback={null}>
         <DeletedChatsModal
           isOpen={showDeletedChatsModal}
           onClose={() => setShowDeletedChatsModal(false)}
-        onRestore={(chat) => {
-          // Archive current chat first
-          try {
-            const archives = localStorage.getItem('444radio-chat-archives')
-            const archiveList = archives ? JSON.parse(archives) : []
-            
-            // Only archive if current chat has more than just the welcome message
-            if (messages.length > 1) {
-              const currentArchive = {
-                id: `chat-${Date.now()}`,
-                messages: messages,
-                archivedAt: new Date(),
-                messageCount: messages.length
+          onRestore={(chat) => {
+            // Archive current chat if it has real content
+            try {
+              if (messages.length > 1) {
+                const archives = localStorage.getItem('444radio-chat-archives')
+                const archiveList = archives ? JSON.parse(archives) : []
+                archiveList.unshift({
+                  id: `chat-${Date.now()}`,
+                  messages,
+                  archivedAt: new Date(),
+                  messageCount: messages.length
+                })
+                localStorage.setItem('444radio-chat-archives', JSON.stringify(archiveList.slice(0, 50)))
               }
-              archiveList.unshift(currentArchive)
-              const limitedArchives = archiveList.slice(0, 20)
-              localStorage.setItem('444radio-chat-archives', JSON.stringify(limitedArchives))
+            } catch (error) {
+              console.error('Failed to archive current chat:', error)
             }
-          } catch (error) {
-            console.error('Failed to archive current chat:', error)
-          }
-          
-          // Restore selected chat
-          setMessages(chat.messages)
-          localStorage.setItem('444radio-chat-messages', JSON.stringify(chat.messages))
-          setShowDeletedChatsModal(false)
-        }}
-        onDelete={(chatId) => {
-          // Deletion is handled within the modal
-          console.log('Chat deleted:', chatId)
-        }}
-      />
+            // Load the selected history chat and clear stale generations
+            setMessages(chat.messages)
+            clearCompleted()
+            setShowDeletedChatsModal(false)
+          }}
+          onDelete={(chatId) => {
+            console.log('Chat deleted from history:', chatId)
+          }}
+        />
       </Suspense>
 
       {/* Floating Navigation Button */}
