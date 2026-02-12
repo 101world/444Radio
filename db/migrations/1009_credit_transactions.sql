@@ -31,9 +31,18 @@ CREATE TABLE IF NOT EXISTS credit_transactions (
 
 ALTER TABLE credit_transactions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access on credit_transactions"
-  ON credit_transactions FOR ALL
-  USING (auth.role() = 'service_role');
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'credit_transactions'
+      AND policyname = 'Service role full access on credit_transactions'
+  ) THEN
+    CREATE POLICY "Service role full access on credit_transactions"
+      ON credit_transactions FOR ALL
+      USING (auth.role() = 'service_role');
+  END IF;
+END $$;
 
 -- Indexes for fast lookups
 CREATE INDEX IF NOT EXISTS idx_credit_transactions_user ON credit_transactions(user_id, created_at DESC);

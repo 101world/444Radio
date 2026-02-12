@@ -44,6 +44,8 @@ export async function GET(req: NextRequest) {
       headers: {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`,
+        'Range-Unit': 'items',
+        'Range': `${offset}-${offset + limit - 1}`,
         'Prefer': 'count=exact',
       },
     })
