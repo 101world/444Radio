@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 // Allow up to 5 minutes for image generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -204,31 +205,36 @@ export async function POST(req: NextRequest) {
     const savedImage = await saveResponse.json()
     console.log('✅ Saved to library:', savedImage)
 
-    // NOW deduct credits (-1 for image) since everything succeeded
-    console.log(`💰 Deducting 1 credit from user (${user.credits} → ${user.credits - 1})`)
-    const creditDeductRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+    // NOW deduct credits (-1 for image) atomically since everything succeeded
+    console.log(`💰 Deducting 1 credit from user (${user.credits})...`)
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
       {
-        method: 'PATCH',
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'apikey': supabaseKey,
           'Authorization': `Bearer ${supabaseKey}`,
-          'Prefer': 'return=minimal'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          credits: user.credits - 1
-        })
+        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 1 })
       }
     )
 
-    if (!creditDeductRes.ok) {
-      console.error('⚠️ Failed to deduct credits, but generation succeeded')
-      // Continue anyway - better to give free generation than lose the work
-    } else {
-      console.log('✅ Credits deducted successfully')
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
     }
 
+    if (!deductRes.ok || !deductResult?.success) {
+      console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || deductRes.statusText)
+      await logCreditTransaction({ userId, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt } })
+    } else {
+      console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
+      await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt, imageUrl, libraryId: savedImage[0]?.id } })
+    }
+
+    const creditsAfter = deductResult?.new_credits ?? Math.max(0, user.credits - 1)
     console.log('✅ Standalone image generated:', imageUrl)
 
     return NextResponse.json({ 
@@ -236,13 +242,19 @@ export async function POST(req: NextRequest) {
       imageUrl,
       libraryId: savedImage[0]?.id,
       message: 'Image generated successfully',
-      creditsRemaining: user.credits - 1,
+      creditsRemaining: creditsAfter,
       creditsDeducted: 1
     })
 
   } catch (error) {
     console.error('Standalone image generation error:', error)
     console.log('💰 No credits deducted due to error')
+    try {
+      const { userId: uid } = await auth()
+      if (uid) {
+        await logCreditTransaction({ userId: uid, amount: 0, type: 'generation_image', status: 'failed', description: `Image failed: ${String(error).substring(0, 80)}`, metadata: { error: String(error).substring(0, 200) } })
+      }
+    } catch { /* auth failed in catch — skip logging */ }
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate image'
     return NextResponse.json({ 
       success: false,
