@@ -390,11 +390,17 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 2 })
         })
 
-        const deductResult: { success: boolean; new_credits: number; error_message: string | null } | null =
-          deductRes.ok ? await deductRes.json() : null
+        // Supabase RPC returns an array of rows for RETURNS TABLE functions
+        let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+        if (deductRes.ok) {
+          const raw = await deductRes.json()
+          deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+        }
 
         if (!deductRes.ok || !deductResult?.success) {
           console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || deductRes.statusText)
+        } else {
+          console.log(`💰 Credits deducted. Remaining: ${deductResult.new_credits}`)
         }
 
         // Record 444 Radio lyrics usage

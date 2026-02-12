@@ -151,7 +151,11 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    const deductResult = deductRes.ok ? await deductRes.json() : null
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+    }
     if (!deductRes.ok || !deductResult?.success) {
       console.error('Failed to deduct credit:', deductResult?.error_message || deductRes.statusText)
       // Still return success since song record was created — credit deduction failure shouldn't block the generation

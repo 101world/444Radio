@@ -265,7 +265,11 @@ export async function POST(req: NextRequest) {
         }
       )
 
-      const deductResult = creditDeductRes.ok ? await creditDeductRes.json() : null
+      let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+      if (creditDeductRes.ok) {
+        const raw = await creditDeductRes.json()
+        deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+      }
       if (!creditDeductRes.ok || !deductResult?.success) {
         console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || creditDeductRes.statusText)
       } else {
