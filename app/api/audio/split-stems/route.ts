@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     // Process in background IIFE
     ;(async () => {
       try {
-        // Poll for result — also check if client disconnected
+        // Poll for result — send heartbeats to keep Vercel stream alive
         let finalPrediction = prediction
         let attempts = 0
         while (
@@ -90,6 +90,7 @@ export async function POST(request: Request) {
           if (requestSignal.aborted) {
             console.log('[Stem Split] Client disconnected, cancelling:', prediction.id)
             try { await replicate.predictions.cancel(prediction.id) } catch {}
+            logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: 'Stem split cancelled', metadata: { reason: 'client_disconnected' } })
             await sendLine({ type: 'result', success: false, error: 'Stem split cancelled' }).catch(() => {})
             await writer.close().catch(() => {})
             return
@@ -97,6 +98,8 @@ export async function POST(request: Request) {
           await new Promise(resolve => setTimeout(resolve, 5000))
           finalPrediction = await replicate.predictions.get(prediction.id)
           attempts++
+          // Heartbeat every poll to prevent Vercel 504 gateway timeout
+          await sendLine({ type: 'progress', status: finalPrediction.status, elapsed: attempts * 5 }).catch(() => {})
         }
 
         if (finalPrediction.status === 'canceled') {
