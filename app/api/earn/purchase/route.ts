@@ -28,10 +28,10 @@ export async function OPTIONS() {
  * Purchase (download) a track on the EARN marketplace.
  *
  * Pricing model:
- *   - Download costs 2 credits (fixed).
- *   - All 2 credits go to the artist.
+ *   - Download costs 5 credits (fixed).
+ *   - 1 credit goes to the artist, 4 credits go to 444 Radio.
  *   - Only subscribers (subscription_status = active | trialing) can purchase.
- *   - Optional stem-split adds 5 credits (still goes to artist).
+ *   - Optional stem-split adds 5 credits.
  */
 export async function POST(request: NextRequest) {
   const { userId } = await auth()
@@ -77,8 +77,10 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Cannot purchase your own track' }, { status: 400 }))
     }
 
-    // 4. Calculate cost — 2 base + optional 5 for stems
-    const baseCost = 2
+    // 4. Calculate cost — 5 base + optional 5 for stems
+    const baseCost = 5
+    const artistShare = 1
+    const adminShare = 4
     const stemsCost = splitStems ? 5 : 0
     const totalCost = baseCost + stemsCost
 
@@ -106,8 +108,9 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 }))
     }
 
-    // 7. Credit ALL to the artist (no admin share on downloads)
-    const newArtistCredits = (artist.credits || 0) + totalCost
+    // 7. Credit artist (1 credit) and admin/444 Radio (4 credits)
+    const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
+    const newArtistCredits = (artist.credits || 0) + artistShare
     const creditArtistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}`, {
       method: 'PATCH',
       body: JSON.stringify({ credits: newArtistCredits }),
@@ -120,6 +123,20 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({ credits: buyer.credits }),
       })
       return corsResponse(NextResponse.json({ error: 'Failed to credit artist — rolled back' }, { status: 500 }))
+    }
+
+    // Credit 444 Radio admin
+    const adminRes2 = await supabaseRest(`users?clerk_user_id=eq.${ADMIN_CLERK_ID}&select=clerk_user_id,credits`)
+    const admins = await adminRes2.json()
+    const admin = admins?.[0]
+    if (admin) {
+      const newAdminCredits = (admin.credits || 0) + adminShare
+      await supabaseRest(`users?clerk_user_id=eq.${ADMIN_CLERK_ID}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ credits: newAdminCredits }),
+      })
+      // Log admin credit transaction
+      await logCreditTransaction({ userId: ADMIN_CLERK_ID, amount: adminShare, balanceAfter: newAdminCredits, type: 'earn_admin', description: `Download fee: ${track.title}`, metadata: { trackId, buyerId: userId } })
     }
 
     // 8. Increment download count on track
@@ -135,11 +152,11 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           buyer_id: userId,
           seller_id: track.user_id,
-          admin_id: null,
+          admin_id: admin?.clerk_user_id || null,
           track_id: trackId,
           total_cost: totalCost,
-          artist_share: totalCost,
-          admin_share: 0,
+          artist_share: artistShare,
+          admin_share: adminShare,
           split_stems: splitStems || false,
         }),
       })
@@ -149,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     // 9b. Log credit transactions for buyer and seller
     await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}`, metadata: { trackId, splitStems } })
-    await logCreditTransaction({ userId: track.user_id, amount: totalCost, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId } })
+    await logCreditTransaction({ userId: track.user_id, amount: artistShare, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId } })
 
     // 10. Save to buyer's music_library so it appears in their Library
     try {
@@ -193,8 +210,8 @@ export async function POST(request: NextRequest) {
       title: track.title,
       transaction: {
         totalCost,
-        artistShare: totalCost,
-        adminShare: 0,
+        artistShare,
+        adminShare,
       },
       splitJobId,
     }))

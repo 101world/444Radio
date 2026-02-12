@@ -98,7 +98,7 @@ export default function ListTrackModal({ onClose, onListed }: ListTrackModalProp
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">List a Track</h3>
-              <p className="text-xs text-gray-400">Earn 2 credits every time someone downloads</p>
+              <p className="text-xs text-gray-400">Earn 1 credit every time someone downloads</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition">
@@ -164,7 +164,7 @@ export default function ListTrackModal({ onClose, onListed }: ListTrackModalProp
         <div className="p-6 pt-4 border-t border-white/10">
           <div className="text-xs text-gray-500 mb-3">
             <strong className="text-yellow-400">Listing fee: 2 credits</strong> (one-time, paid to 444 Radio)<br/>
-            Subscribers can download for <strong className="text-white">2 credits</strong> → all goes to you
+            Subscribers can download for <strong className="text-white">5 credits</strong> → 1 credit goes to you, 4 to 444 Radio
           </div>
           <div className="flex gap-3">
             <button

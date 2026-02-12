@@ -153,9 +153,9 @@ export async function POST(request: NextRequest) {
       method: 'PATCH',
       body: JSON.stringify({
         listed_on_earn: true,
-        earn_price: 2,
-        artist_share: 2,
-        admin_share: 0,
+        earn_price: 5,
+        artist_share: 1,
+        admin_share: 4,
       }),
     })
 

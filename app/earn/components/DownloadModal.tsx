@@ -25,7 +25,9 @@ export default function DownloadModal({ track, userCredits, subscriptionStatus, 
   const modalRef = useRef<HTMLDivElement>(null)
 
   const isSubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
-  const baseCost = 2
+  const baseCost = 5
+  const artistCut = 1
+  const adminCut = 4
   const stemsCost = 5
   const totalCost = baseCost + (splitStems ? stemsCost : 0)
   const canAfford = userCredits >= totalCost
@@ -98,11 +100,15 @@ export default function DownloadModal({ track, userCredits, subscriptionStatus, 
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Goes to artist (@{track.username})</span>
-                <span className="text-emerald-400 font-medium">2 credits</span>
+                <span className="text-emerald-400 font-medium">{artistCut} credit</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Goes to 444 Radio</span>
+                <span className="text-cyan-400 font-medium">{adminCut} credits</span>
               </div>
               <div className="border-t border-white/10 pt-2 flex justify-between text-sm font-semibold">
                 <span className="text-gray-300">Download Cost</span>
-                <span className="text-white">2 credits</span>
+                <span className="text-white">{baseCost} credits</span>
               </div>
             </div>
           </div>

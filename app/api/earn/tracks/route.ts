@@ -84,9 +84,9 @@ export async function GET(request: NextRequest) {
           avatar_url: userInfo?.avatar_url || null,
           downloads: t.downloads || 0,
           listed_on_earn: true,
-          earn_price: 4,
-          artist_share: 2,
-          admin_share: 2,
+          earn_price: 5,
+          artist_share: 1,
+          admin_share: 4,
         }
       })
 
@@ -120,9 +120,9 @@ export async function GET(request: NextRequest) {
         username: userInfo?.username || 'Unknown',
         avatar_url: userInfo?.avatar_url || null,
         downloads: t.downloads || 0,
-        earn_price: t.earn_price || 4,
-        artist_share: t.artist_share || 2,
-        admin_share: t.admin_share || 2,
+        earn_price: t.earn_price || 5,
+        artist_share: t.artist_share || 1,
+        admin_share: t.admin_share || 4,
       }
     })
 
