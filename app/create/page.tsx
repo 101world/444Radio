@@ -707,10 +707,13 @@ function CreatePageContent() {
       let originalPrompt = input
       setInput('')
 
-      // If instrumental mode, ensure "no vocals" is in the prompt
+      // If instrumental mode, ensure "no vocals" is in the prompt (keep total ≤300 for Replicate)
       if (isInstrumental && !originalPrompt.toLowerCase().includes('no vocals')) {
-        originalPrompt = originalPrompt.trimEnd() + ', no vocals, instrumental only'
+        const tag = ', no vocals, instrumental only'
+        originalPrompt = originalPrompt.trimEnd().slice(0, 300 - tag.length) + tag
         console.log('🎹 Instrumental mode: appended "no vocals" to prompt:', originalPrompt)
+      } else {
+        originalPrompt = originalPrompt.slice(0, 300)
       }
 
       // Smart auto-fill: If user hasn't filled mandatory fields, auto-generate them
@@ -1215,8 +1218,9 @@ function CreatePageContent() {
     console.log('🔍 [TITLE DEBUG] generateMusic called with title:', title)
     
     // Genre/BPM are sent as separate fields — don't bloat the prompt string
+    // Replicate model limit is 300 chars for prompt
     const requestBody: any = {
-      prompt: prompt.slice(0, 500),
+      prompt: prompt.slice(0, 300),
       title,
       lyrics: lyrics, // Pass lyrics as-is (either regular lyrics or [Instrumental])
       duration,
