@@ -188,13 +188,48 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
           })
         })
 
-        const splitResult = await splitResponse.json()
+        // Parse NDJSON stream (server sends heartbeats + result)
+        const reader = splitResponse.body?.getReader()
+        if (!reader) throw new Error('No response stream from stem splitter')
 
-        if (!splitResponse.ok || splitResult.error) {
-          console.error('❌ Stem splitting error:', splitResult)
-          console.error('❌ Response status:', splitResponse.status)
-          console.error('❌ Audio URL tried:', publicUrl)
-          throw new Error(splitResult.error || `Stem splitting failed (${splitResponse.status})`)
+        const decoder = new TextDecoder()
+        let streamBuffer = ''
+        let splitResult: any = null
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          streamBuffer += decoder.decode(value, { stream: true })
+          const lines = streamBuffer.split('\n')
+          streamBuffer = lines.pop() || ''
+          for (const line of lines) {
+            if (!line.trim()) continue
+            try {
+              const parsed = JSON.parse(line)
+              if (parsed.type === 'progress') {
+                setUploadProgress(`Splitting stems... ${parsed.status} (${parsed.elapsed || 0}s)`)
+              } else if (parsed.type === 'result') {
+                splitResult = parsed
+              }
+            } catch { /* skip unparseable lines */ }
+          }
+        }
+        // Process remaining buffer
+        if (streamBuffer.trim()) {
+          for (const line of streamBuffer.split('\n')) {
+            if (!line.trim()) continue
+            try {
+              const parsed = JSON.parse(line)
+              if (parsed.type === 'result') splitResult = parsed
+            } catch { /* skip */ }
+          }
+        }
+        reader.releaseLock()
+
+        if (!splitResult || !splitResult.success) {
+          const errMsg = splitResult?.error || 'Stem splitting failed'
+          console.error('❌ Stem splitting error:', errMsg)
+          throw new Error(errMsg)
         }
 
         console.log('✅ Stems split successfully:', splitResult)
