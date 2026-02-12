@@ -1715,7 +1715,7 @@ function CreatePageContent() {
                       </button>
                       <button
                         onClick={() => handleOpenRelease(message.id, undefined)}
-                        className="p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-2.5 hover:bg-cyan-500/20 rounded-xl transition-colors md:opacity-0 md:group-hover:opacity-100"
                         title="Release"
                       >
                         <Rocket size={20} className="text-cyan-400" />
@@ -1723,8 +1723,8 @@ function CreatePageContent() {
                     </div>
 
                     {/* Parameters Modal */}
-                    <dialog id={`details-${message.id}`} className="backdrop:bg-black/80 bg-transparent p-0 rounded-2xl">
-                      <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 border-2 border-cyan-500/30 rounded-2xl p-6 max-w-lg w-full">
+                    <dialog id={`details-${message.id}`} className="backdrop:bg-black/80 bg-transparent p-0 rounded-2xl mx-4 md:mx-auto">
+                      <div className="bg-gradient-to-br from-gray-900 via-black to-gray-900 border-2 border-cyan-500/30 rounded-2xl p-4 md:p-6 max-w-lg w-[calc(100vw-3rem)] md:w-full">
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-xl font-bold text-white">Generation Details</h3>
                           <button
@@ -1732,7 +1732,7 @@ function CreatePageContent() {
                               const dialog = (e.target as HTMLElement).closest('dialog')
                               if (dialog) (dialog as HTMLDialogElement).close()
                             }}
-                            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            className="p-2.5 hover:bg-white/10 rounded-lg transition-colors"
                           >
                             <X size={20} className="text-gray-400" />
                           </button>
@@ -1825,8 +1825,8 @@ function CreatePageContent() {
                         className="w-full h-auto aspect-square object-cover"
                       />
                       {/* Expand Hint */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute inset-0 bg-black/0 md:group-hover:bg-black/20 transition-all flex items-center justify-center">
+                        <div className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="bg-black/80 backdrop-blur-md rounded-full p-3">
                             <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -1839,10 +1839,10 @@ function CreatePageContent() {
                           e.stopPropagation()
                           handleOpenRelease(undefined, message.id)
                         }}
-                        className="absolute top-2 right-2 p-2 bg-black/70 hover:bg-cyan-500/50 backdrop-blur-xl border border-cyan-500/40 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:scale-110"
+                        className="absolute top-2 right-2 p-2.5 bg-black/70 hover:bg-cyan-500/50 backdrop-blur-xl border border-cyan-500/40 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100 hover:scale-110"
                         title="Release"
                       >
-                        <Rocket size={16} className="text-cyan-400" />
+                        <Rocket size={18} className="text-cyan-400" />
                       </button>
                     </div>
 
@@ -2030,9 +2030,9 @@ function CreatePageContent() {
                                   const filename = `444_${stemName}.mp3`
                                   handleDownload(url, filename, 'mp3')
                                 }}
-                                className={`p-2 ${def.hoverBg} rounded-lg transition-colors`}
+                                className={`p-2.5 ${def.hoverBg} rounded-lg transition-colors`}
                               >
-                                <Download size={16} className={def.text} />
+                                <Download size={18} className={def.text} />
                               </button>
                             </div>
                           </div>
@@ -2048,10 +2048,10 @@ function CreatePageContent() {
                     <span className="text-xs text-cyan-300 flex-1">Generating...</span>
                     <button
                       onClick={() => handleCancelGeneration(message.id)}
-                      className="p-1 rounded-lg hover:bg-white/10 transition-colors opacity-40 hover:opacity-100"
+                      className="p-2.5 -m-1 rounded-lg hover:bg-white/10 active:bg-red-500/20 transition-colors opacity-60 hover:opacity-100"
                       title="Cancel"
                     >
-                      <Square size={10} className="text-gray-400" />
+                      <Square size={14} className="text-gray-400" />
                     </button>
                   </div>
                 )}
@@ -2074,7 +2074,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setSelectedType('music')}
-              className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
+              className={`group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
                 selectedType === 'music'
                   ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
                   : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -2097,7 +2097,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setShowEffectsModal(true)}
-              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
+              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
               title="Generate Sound Effects"
             >
               <Sparkles 
@@ -2111,7 +2111,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setShowLoopersModal(true)}
-              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
+              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
               title="Generate Fixed BPM Loops"
             >
               <Repeat 
@@ -2125,7 +2125,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setSelectedType('image')}
-              className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
+              className={`group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
                 selectedType === 'image'
                   ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
                   : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -2151,7 +2151,7 @@ function CreatePageContent() {
             {showAdvancedButtons && selectedType === 'music' && !isInstrumental && (
               <button
                 onClick={() => setShowLyricsModal(true)}
-                className={`group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 ${
+                className={`group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
                   customTitle || genre || customLyrics || bpm
                     ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105'
                     : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -2171,7 +2171,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => handleOpenRelease()}
-              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
+              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
               title="Release to Feed"
             >
               <Rocket 
@@ -2185,7 +2185,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setShowMediaUploadModal(true)}
-              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
+              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
               title="Upload Audio/Video"
             >
               <Upload 
@@ -2199,7 +2199,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={handleClearChat}
-              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
+              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
               title="New Chat"
             >
               <Plus 
@@ -2213,7 +2213,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setShowDeletedChatsModal(true)}
-              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
+              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
               title="Chat History"
             >
               <RotateCcw 
@@ -2224,12 +2224,12 @@ function CreatePageContent() {
             )}
 
             {/* Credits Display - Always Visible */}
-            <div className="hidden md:flex items-center gap-2 px-3 md:px-4 py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
-              <Zap size={16} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
-              <span className="text-sm font-bold text-white">
+            <div className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
+              <Zap size={14} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)] md:w-[16px] md:h-[16px]" />
+              <span className="text-xs md:text-sm font-bold text-white">
                 {isLoadingCredits ? '...' : userCredits}
               </span>
-              <span className="text-xs text-cyan-400/60 font-mono">
+              <span className="hidden sm:inline text-xs text-cyan-400/60 font-mono">
                 {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
               </span>
             </div>
@@ -2260,7 +2260,7 @@ function CreatePageContent() {
               {/* Toggle Advanced Buttons - Plus Icon */}
               <button
                 onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
-                className={`relative flex-shrink-0 p-2 rounded-full transition-all duration-300 ${
+                className={`relative flex-shrink-0 p-2.5 rounded-full transition-all duration-300 ${
                   showAdvancedButtons
                     ? 'bg-cyan-500 shadow-lg shadow-cyan-500/50 scale-110'
                     : 'bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 hover:border-cyan-400 hover:scale-110'
@@ -2276,7 +2276,7 @@ function CreatePageContent() {
               {/* Record Button - Small Dot/Mic */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`relative flex-shrink-0 p-2 rounded-full transition-all duration-300 ${
+                className={`relative flex-shrink-0 p-2.5 rounded-full transition-all duration-300 ${
                   isRecording 
                     ? 'bg-red-500 shadow-lg shadow-red-500/50 scale-110 animate-pulse' 
                     : 'bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 hover:border-cyan-400 hover:scale-110'
@@ -2284,10 +2284,10 @@ function CreatePageContent() {
                 title={isRecording ? 'Stop Recording' : 'Start Voice Recording'}
               >
                 {isRecording ? (
-                  <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+                  <div className="w-3 h-3 bg-white rounded-full"></div>
                 ) : (
                   <Mic 
-                    size={14} 
+                    size={16} 
                     className="text-cyan-400"
                   />
                 )}
@@ -2297,7 +2297,7 @@ function CreatePageContent() {
               {selectedType === 'music' && (
                 <button
                   onClick={() => setIsInstrumental(!isInstrumental)}
-                  className={`relative flex-shrink-0 px-2 py-1 rounded-full text-xs font-semibold transition-all duration-300 ${
+                  className={`relative flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
                     isInstrumental
                       ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
                       : 'bg-purple-500/20 border border-purple-500/40 text-purple-400 hover:bg-purple-500/30 hover:border-purple-400'
@@ -2630,7 +2630,7 @@ function CreatePageContent() {
           />
           
           {/* Modal Container - Square 1:1 */}
-          <div className="relative w-full max-w-md aspect-square bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="relative w-full max-w-md max-h-[80vh] md:aspect-square bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
             
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">

@@ -133,12 +133,12 @@ export default function DeletedChatsModal({
             {archivedChats.length > 0 && (
               <button
                 onClick={handleClearAll}
-                className="text-xs text-red-400/70 hover:text-red-400 transition-colors px-2 py-1"
+                className="text-xs text-red-400/70 hover:text-red-400 transition-colors px-3 py-2 rounded-lg hover:bg-red-500/10"
               >
                 Clear all
               </button>
             )}
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+            <button onClick={onClose} className="p-2.5 hover:bg-white/10 rounded-xl transition-colors">
               <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>
@@ -172,7 +172,7 @@ export default function DeletedChatsModal({
                       <p className="text-white text-sm font-medium truncate">
                         {getChatTitle(chat)}
                       </p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                      <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1 text-xs text-gray-500">
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" /> {formatDate(chat.archivedAt)}
                         </span>
@@ -189,17 +189,17 @@ export default function DeletedChatsModal({
                     <div className="flex gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => handleRestore(chat)}
-                        className="p-2 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 hover:border-green-400/50 rounded-xl transition-all"
+                        className="p-2.5 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 hover:border-green-400/50 rounded-xl transition-all"
                         title="Restore this chat"
                       >
                         <RotateCcw className="w-4 h-4 text-green-400" />
                       </button>
                       <button
                         onClick={() => handleDelete(chat.id)}
-                        className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-400/40 rounded-xl transition-all"
+                        className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-400/40 rounded-xl transition-all"
                         title="Delete from history"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-red-400/70" />
+                        <Trash2 className="w-4 h-4 text-red-400/70" />
                       </button>
                     </div>
                   </button>

@@ -234,8 +234,8 @@ export default function EarnPage() {
       {/* Background */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-black via-gray-950 to-black" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/4 w-64 h-64 md:w-96 md:h-96 bg-cyan-500/5 rounded-full blur-2xl md:blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-purple-500/5 rounded-full blur-2xl md:blur-3xl" />
       </div>
 
       {/* Nav components */}
@@ -250,7 +250,7 @@ export default function EarnPage() {
           {/* Header */}
           <header className="pt-8 pb-6">
             <div className="flex items-center gap-3 mb-2">
-              <button onClick={() => router.push('/create')} className="p-2 rounded-lg hover:bg-white/10 transition">
+              <button onClick={() => router.push('/create')} className="p-2.5 rounded-lg hover:bg-white/10 transition">
                 <ArrowLeft size={20} className="text-gray-400" />
               </button>
               <div className="flex items-center gap-3">
@@ -258,16 +258,16 @@ export default function EarnPage() {
                   <DollarSign size={22} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight">
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                     <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">EARN</span>
                   </h1>
-                  <p className="text-sm text-gray-400">Community marketplace — list tracks, earn credits, discover AI music</p>
+                  <p className="text-xs md:text-sm text-gray-400">Community marketplace — list tracks, earn credits, discover AI music</p>
                 </div>
               </div>
             </div>
 
             {/* Stats bar */}
-            <div className="mt-6 flex flex-wrap gap-4">
+            <div className="mt-6 flex flex-wrap gap-2 md:gap-4">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl backdrop-blur-xl">
                 <Music2 size={16} className="text-cyan-400" />
                 <span className="text-sm text-gray-300"><strong className="text-white">{tracks.length}</strong> tracks listed</span>
@@ -280,7 +280,7 @@ export default function EarnPage() {
                 <Users size={16} className="text-purple-400" />
                 <span className="text-sm text-gray-300"><strong className="text-white">{totalArtists}</strong> artists earning</span>
               </div>
-              <div className="ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-xl backdrop-blur-xl">
+              <div className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 rounded-xl backdrop-blur-xl">
                 <Zap size={16} className="text-emerald-400" />
                 <span className="text-sm text-emerald-300"><strong className="text-white">{credits}</strong> credits</span>
               </div>
@@ -299,7 +299,7 @@ export default function EarnPage() {
                 <button
                   key={f.key}
                   onClick={() => setFilter(f.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                     filter === f.key 
                       ? 'bg-gradient-to-r from-cyan-600 to-cyan-400 text-white shadow-lg shadow-cyan-500/25' 
                       : 'text-gray-400 hover:text-white hover:bg-white/10'
@@ -316,7 +316,7 @@ export default function EarnPage() {
               <select
                 value={selectedGenre}
                 onChange={e => setSelectedGenre(e.target.value)}
-                className="appearance-none bg-white/5 border border-white/10 text-gray-300 text-sm px-4 py-2 pr-8 rounded-xl backdrop-blur-xl focus:outline-none focus:border-cyan-500/50 cursor-pointer"
+                className="appearance-none bg-white/5 border border-white/10 text-gray-300 text-sm px-4 py-2.5 pr-8 rounded-xl backdrop-blur-xl focus:outline-none focus:border-cyan-500/50 cursor-pointer"
               >
                 {genres.map(g => <option key={g} value={g} className="bg-gray-900">{g}</option>)}
               </select>
@@ -331,11 +331,11 @@ export default function EarnPage() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search tracks, artists..."
-                className="w-full bg-white/5 border border-white/10 text-white text-sm pl-10 pr-4 py-2 rounded-xl backdrop-blur-xl placeholder-gray-500 focus:outline-none focus:border-cyan-500/50"
+                className="w-full bg-white/5 border border-white/10 text-white text-sm pl-10 pr-10 py-2.5 rounded-xl backdrop-blur-xl placeholder-gray-500 focus:outline-none focus:border-cyan-500/50"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
-                  <X size={14} />
+                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-500 hover:text-white hover:bg-white/10 transition">
+                  <X size={16} />
                 </button>
               )}
             </div>
