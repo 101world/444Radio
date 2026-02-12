@@ -146,7 +146,23 @@ export async function POST(request: NextRequest) {
       console.error('Failed to record earn transaction:', e)
     }
 
-    // 10. If split stems requested, queue the job
+    // 10. Save to buyer's music_library so it appears in their Library
+    try {
+      await supabaseRest('music_library', {
+        method: 'POST',
+        body: JSON.stringify({
+          clerk_user_id: userId,
+          title: track.title,
+          audio_url: track.audio_url,
+          prompt: `Purchased from EARN marketplace`,
+          status: 'ready',
+        }),
+      })
+    } catch (e) {
+      console.error('Failed to save to buyer library (non-critical):', e)
+    }
+
+    // 11. If split stems requested, queue the job
     let splitJobId = undefined
     if (splitStems) {
       try {
@@ -168,6 +184,8 @@ export async function POST(request: NextRequest) {
     return corsResponse(NextResponse.json({
       success: true,
       message: 'Purchase completed',
+      audioUrl: track.audio_url,
+      title: track.title,
       transaction: {
         totalCost,
         artistShare: totalCost,

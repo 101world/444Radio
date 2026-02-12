@@ -47,7 +47,7 @@ export default function SuccessModal({ track, splitJobId, onClose }: SuccessModa
             <CheckCircle2 size={40} className="text-emerald-400" />
           </div>
           <h3 className="text-xl font-bold text-white relative">Purchase Complete!</h3>
-          <p className="text-sm text-gray-400 mt-1 relative">Track downloaded successfully</p>
+          <p className="text-sm text-gray-400 mt-1 relative">Track downloaded &amp; added to your Library</p>
         </div>
 
         {/* Track info */}

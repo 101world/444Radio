@@ -164,6 +164,24 @@ export default function EarnPage() {
       ))
       setCredits(prev => prev - (2 + (splitStems ? 5 : 0)))
 
+      // Auto-download the audio file
+      if (data.audioUrl) {
+        try {
+          const dlRes = await fetch(data.audioUrl)
+          const blob = await dlRes.blob()
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${data.title || 'track'}.mp3`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+        } catch (dlErr) {
+          console.error('Auto-download failed:', dlErr)
+        }
+      }
+
       // Show success
       const track = tracks.find(t => t.id === trackId)
       if (track) {
