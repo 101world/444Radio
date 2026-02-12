@@ -2,9 +2,6 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
 export async function OPTIONS() {
   return handleOptions()
 }
@@ -23,6 +20,14 @@ export async function GET(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) {
     return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('⚠️ wallet/transactions: missing env vars', { url: !!supabaseUrl, key: !!supabaseKey })
+    return corsResponse(NextResponse.json({ error: 'Server configuration error' }, { status: 500 }))
   }
 
   const { searchParams } = new URL(req.url)

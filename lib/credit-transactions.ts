@@ -52,6 +52,8 @@ export async function logCreditTransaction(params: LogTransactionParams): Promis
       metadata: params.metadata ?? {},
     }
 
+    console.log('💳 logCreditTransaction:', params.type, params.amount, params.status || 'success')
+
     const res = await fetch(`${supabaseUrl}/rest/v1/credit_transactions`, {
       method: 'POST',
       headers: {
@@ -65,7 +67,9 @@ export async function logCreditTransaction(params: LogTransactionParams): Promis
 
     if (!res.ok) {
       const text = await res.text().catch(() => res.statusText)
-      console.error('⚠️ Failed to log credit transaction:', text)
+      console.error('⚠️ Failed to log credit transaction:', res.status, text, JSON.stringify(body))
+    } else {
+      console.log('✅ Credit transaction logged:', params.type, params.amount)
     }
   } catch (err) {
     console.error('⚠️ logCreditTransaction error:', err)
