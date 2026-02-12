@@ -38,9 +38,10 @@ export async function GET(request: NextRequest) {
       query += `&genre=ilike.*${encodeURIComponent(genre)}*`
     }
 
-    // Search
+    // Search — title is filtered server-side, username/genre filtering happens client-side
+    // since username lives in the users table, not combined_media
     if (q) {
-      query += `&or=(title.ilike.*${encodeURIComponent(q)}*)`
+      // Don't filter server-side so artist name search works client-side
     }
 
     // Sort
