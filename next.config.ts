@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // Performance optimizations
   reactStrictMode: true,
   
+  // Transpile packages that need ESM resolution for Turbopack
+  transpilePackages: ['tone', '@waveform-playlist/browser', '@waveform-playlist/core', '@waveform-playlist/playout', '@waveform-playlist/webaudio-peaks', '@waveform-playlist/ui-components', '@waveform-playlist/loaders'],
+  
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
@@ -14,6 +17,13 @@ const nextConfig: NextConfig = {
   // Experimental optimizations
   experimental: {
     optimizePackageImports: ['lucide-react', '@clerk/nextjs'],
+  },
+
+  // Turbopack config — force Tone.js ESM resolution (browser field points to CJS)
+  turbopack: {
+    resolveAlias: {
+      'tone': 'tone/build/esm/index.js',
+    },
   },
   
   typescript: {
