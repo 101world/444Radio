@@ -8,6 +8,7 @@ import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
 import DockedSidebar from './components/DockedSidebar';
+import FloatingNavButton from './components/FloatingNavButton';
 import SkipToContent from './components/SkipToContent';
 import StructuredData from './components/StructuredData';
 import ConsoleBlocker from './components/ConsoleBlocker';
@@ -53,6 +54,7 @@ export default function RootLayout({
               <SkipToContent />
               <Toaster position="top-right" richColors closeButton />
               <DockedSidebar />
+              <FloatingNavButton />
               <main id="main-content" tabIndex={-1} className="focus:outline-none">
                 {children}
               </main>

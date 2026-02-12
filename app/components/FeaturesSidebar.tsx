@@ -159,7 +159,12 @@ export default function FeaturesSidebar({
   ]
 
   return (
-    <div className="hidden md:flex fixed left-20 top-0 h-screen w-96 bg-black/95 backdrop-blur-2xl border-r border-white/10 z-40 flex-col animate-slideInLeft">
+    <>
+      {/* Mobile backdrop overlay */}
+      <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={onClose} />
+
+      {/* Sidebar panel — fullscreen on mobile, docked sidebar on desktop */}
+      <div className="fixed inset-0 md:inset-auto md:left-20 md:top-0 md:h-screen md:w-96 bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col animate-slideInLeft">
       {/* Header */}
       <div className="flex items-center justify-between px-5 h-20 border-b border-white/10">
         <div className="flex items-center gap-3">
@@ -499,5 +504,6 @@ export default function FeaturesSidebar({
         }
       `}</style>
     </div>
+    </>
   )
 }

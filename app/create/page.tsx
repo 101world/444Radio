@@ -2112,13 +2112,13 @@ function CreatePageContent() {
       <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out">
         <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
           
-          {/* Icon Row Above Prompt Box */}
-          <div className="flex items-center justify-center gap-3 mb-3 md:mb-4">
+          {/* Icon Row Above Prompt Box — scrollable on mobile */}
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 md:mb-4 overflow-x-auto no-scrollbar px-1 sm:justify-center">
             {/* Music Type Button - Hidden by default */}
             {showAdvancedButtons && (
             <button
               onClick={() => setSelectedType('music')}
-              className={`group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
+              className={`flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
                 selectedType === 'music'
                   ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
                   : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -2141,7 +2141,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setShowEffectsModal(true)}
-              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
               title="Generate Sound Effects"
             >
               <Sparkles 
@@ -2155,7 +2155,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setShowLoopersModal(true)}
-              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
               title="Generate Fixed BPM Loops"
             >
               <Repeat 
@@ -2169,7 +2169,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setSelectedType('image')}
-              className={`group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
+              className={`flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
                 selectedType === 'image'
                   ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110'
                   : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -2189,13 +2189,13 @@ function CreatePageContent() {
             )}
 
             {/* Divider - Only show when advanced buttons are visible */}
-            {showAdvancedButtons && <div className="w-px h-8 bg-cyan-500/30"></div>}
+            {showAdvancedButtons && <div className="flex-shrink-0 w-px h-8 bg-cyan-500/30"></div>}
 
             {/* Lyrics Button - Only show for regular music, not instrumental - Hidden by default */}
             {showAdvancedButtons && selectedType === 'music' && !isInstrumental && (
               <button
                 onClick={() => setShowLyricsModal(true)}
-                className={`group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
+                className={`flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 ${
                   customTitle || genre || customLyrics || bpm
                     ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105'
                     : 'bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'
@@ -2215,7 +2215,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => handleOpenRelease()}
-              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105"
               title="Release to Feed"
             >
               <Rocket 
@@ -2229,7 +2229,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setShowMediaUploadModal(true)}
-              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
               title="Upload Audio/Video"
             >
               <Upload 
@@ -2243,7 +2243,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={handleClearChat}
-              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
               title="New Chat"
             >
               <Plus 
@@ -2257,7 +2257,7 @@ function CreatePageContent() {
             {showAdvancedButtons && (
             <button
               onClick={() => setShowDeletedChatsModal(true)}
-              className="group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
               title="Chat History"
             >
               <RotateCcw 
@@ -2268,7 +2268,7 @@ function CreatePageContent() {
             )}
 
             {/* Credits Display - Always Visible */}
-            <div className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
+            <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
               <Zap size={14} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)] md:w-[16px] md:h-[16px]" />
               <span className="text-xs md:text-sm font-bold text-white">
                 {isLoadingCredits ? '...' : userCredits}

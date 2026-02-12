@@ -3,7 +3,7 @@
 // Professional mobile navigation — slide-up panel with labeled icons
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings, CreditCard, Home, Zap, DollarSign } from 'lucide-react'
+import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings, CreditCard, Home, Zap, DollarSign, LayoutGrid } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import ProfileSettingsModal from './ProfileSettingsModal'
@@ -22,6 +22,10 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   const [credits, setCredits] = useState<number | null>(null)
   const pathname = usePathname()
   const { user } = useUser()
+
+  // If this is the global (no-props) instance, hide on /create where the page renders its own
+  const isGlobalInstance = !showPromptToggle && !onTogglePrompt
+  if (isGlobalInstance && pathname === '/create') return null
 
   useEffect(() => {
     if (user) {
@@ -122,6 +126,23 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
                     >
                       <MessageSquare size={18} />
                       <span className="font-medium text-sm">Toggle Prompt Box</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Features Button (on create page only) */}
+                {pathname === '/create' && (
+                  <div className="px-3 pt-2">
+                    <button
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('toggle-features-sidebar'))
+                        setIsOpen(false)
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-purple-500/15 to-cyan-500/15 border border-purple-500/30 rounded-xl text-purple-300 active:scale-[0.98] transition-all"
+                    >
+                      <LayoutGrid size={18} />
+                      <span className="font-medium text-sm">Features</span>
+                      <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200">Tools</span>
                     </button>
                   </div>
                 )}
