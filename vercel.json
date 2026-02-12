@@ -12,13 +12,11 @@
     },
     "app/api/upload/media/route.ts": {
       "memory": 3008,
-      "maxDuration": 300,
-      "maxBodySize": "100mb"
+      "maxDuration": 300
     },
     "app/api/profile/banner/route.ts": {
       "memory": 3008,
-      "maxDuration": 60,
-      "maxBodySize": "10mb"
+      "maxDuration": 60
     }
   },
   "headers": [
