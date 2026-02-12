@@ -5,6 +5,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const ADMIN_EMAIL = '444radioog@gmail.com'
+const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
 
 async function supabaseRest(path: string, options?: RequestInit) {
   const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
@@ -77,13 +78,28 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Fetch admin account to credit
-    const adminRes = await supabaseRest(`users?email=eq.${encodeURIComponent(ADMIN_EMAIL)}&select=clerk_user_id,credits`)
-    const admins = await adminRes.json()
-    const admin = admins?.[0]
+    let admin: any = null
+
+    // Try by clerk_user_id first (most reliable)
+    if (ADMIN_CLERK_ID) {
+      const adminRes = await supabaseRest(`users?clerk_user_id=eq.${ADMIN_CLERK_ID}&select=clerk_user_id,credits`)
+      if (adminRes.ok) {
+        const admins = await adminRes.json()
+        admin = admins?.[0]
+      }
+    }
+
+    // Fall back to email lookup
+    if (!admin) {
+      const adminRes = await supabaseRest(`users?email=eq.${encodeURIComponent(ADMIN_EMAIL)}&select=clerk_user_id,credits`)
+      if (adminRes.ok) {
+        const admins = await adminRes.json()
+        admin = admins?.[0]
+      }
+    }
 
     if (!admin) {
-      console.error('Admin account not found for:', ADMIN_EMAIL)
-      return corsResponse(NextResponse.json({ error: 'Platform configuration error' }, { status: 500 }))
+      console.warn('Admin account not found — listing will still proceed but admin will not be credited')
     }
 
     // 4. Deduct credits from lister
@@ -97,20 +113,22 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Failed to deduct listing fee' }, { status: 500 }))
     }
 
-    // 5. Credit admin
-    const newAdminCredits = (admin.credits || 0) + LISTING_FEE
-    const creditAdminRes = await supabaseRest(`users?clerk_user_id=eq.${admin.clerk_user_id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ credits: newAdminCredits }),
-    })
-
-    if (!creditAdminRes.ok) {
-      // Rollback lister deduction
-      await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
+    // 5. Credit admin (skip if admin account not found)
+    if (admin) {
+      const newAdminCredits = (admin.credits || 0) + LISTING_FEE
+      const creditAdminRes = await supabaseRest(`users?clerk_user_id=eq.${admin.clerk_user_id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ credits: user.credits }),
+        body: JSON.stringify({ credits: newAdminCredits }),
       })
-      return corsResponse(NextResponse.json({ error: 'Failed to credit platform — rolled back' }, { status: 500 }))
+
+      if (!creditAdminRes.ok) {
+        // Rollback lister deduction
+        await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ credits: user.credits }),
+        })
+        return corsResponse(NextResponse.json({ error: 'Failed to credit platform — rolled back' }, { status: 500 }))
+      }
     }
 
     // 6. Mark track as listed on earn marketplace
@@ -133,15 +151,17 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({ is_public: true }),
       })
       if (!fallbackRes.ok) {
-        // Rollback both credit operations
+        // Rollback credit operations
         await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
           method: 'PATCH',
           body: JSON.stringify({ credits: user.credits }),
         })
-        await supabaseRest(`users?clerk_user_id=eq.${admin.clerk_user_id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ credits: admin.credits }),
-        })
+        if (admin) {
+          await supabaseRest(`users?clerk_user_id=eq.${admin.clerk_user_id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ credits: admin.credits }),
+          })
+        }
         return corsResponse(NextResponse.json({ error: 'Failed to list track — rolled back' }, { status: 500 }))
       }
     }
@@ -152,8 +172,8 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         body: JSON.stringify({
           buyer_id: userId,
-          seller_id: admin.clerk_user_id,
-          admin_id: admin.clerk_user_id,
+          seller_id: admin?.clerk_user_id || 'admin_not_found',
+          admin_id: admin?.clerk_user_id || null,
           track_id: trackId,
           total_cost: LISTING_FEE,
           artist_share: 0,
@@ -174,8 +194,11 @@ export async function POST(request: NextRequest) {
       creditsDeducted: LISTING_FEE,
     }))
 
-  } catch (error) {
-    console.error('List track error:', error)
-    return corsResponse(NextResponse.json({ error: 'Failed to list track' }, { status: 500 }))
+  } catch (error: any) {
+    console.error('List track error:', error?.message || error)
+    return corsResponse(NextResponse.json({ 
+      error: 'Failed to list track', 
+      detail: error?.message || String(error) 
+    }, { status: 500 }))
   }
 }
