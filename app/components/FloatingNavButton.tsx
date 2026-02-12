@@ -70,7 +70,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
     { href: '/earn', icon: DollarSign, label: 'Earn', highlight: 'green' as const, badge: 'New' },
     { href: '/decrypt', icon: Unlock, label: 'Decrypt', highlight: 'cyan-outline' as const },
     { href: '/pricing', icon: CreditCard, label: 'Pricing' },
-    { href: user?.id ? `/profile/${user.id}` : '/profile', icon: User, label: 'Profile' },
+    { href: user?.id ? `/profile/${user.id}` : '/profile', icon: User, label: 'My Profile', highlight: 'cyan' as const, badge: '🎤' },
   ]
 
   if (shouldHide) return null

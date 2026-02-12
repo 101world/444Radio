@@ -217,10 +217,17 @@ export default function FloatingMenu() {
                     <Link
                       href={`/profile/${user.id}`}
                       onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-cyan-600/20 to-blue-500/20 border border-cyan-500/30 text-cyan-400 hover:from-cyan-600/30 hover:to-blue-500/30 rounded-xl transition-all"
                     >
-                      <User size={20} />
-                      <span className="font-medium">Profile</span>
+                      <div className="w-6 h-6 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-500 flex-shrink-0">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          <User size={14} className="text-white w-full h-full p-1" />
+                        )}
+                      </div>
+                      <span className="font-semibold">My Profile</span>
+                      <span className="ml-auto text-xs">🎤</span>
                     </Link>
                   </>
                 ) : (

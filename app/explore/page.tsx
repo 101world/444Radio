@@ -8,7 +8,7 @@ import { UserButton } from '@clerk/nextjs'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
-import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
@@ -76,6 +76,19 @@ function ExplorePageContent() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchBox, setShowSearchBox] = useState(true)
+  const [searchResults, setSearchResults] = useState<CombinedMedia[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [isSearchActive, setIsSearchActive] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchFilters, setSearchFilters] = useState({
+    genre: '',
+    mood: '',
+    bpm_min: '',
+    bpm_max: '',
+    key: '',
+    vocals: '',
+    sort: 'relevance'
+  })
   const [activeTab, setActiveTab] = useState<'tracks' | 'genres' | 'stations'>('tracks')
   const [genres, setGenres] = useState<string[]>([])
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
@@ -232,13 +245,75 @@ function ExplorePageContent() {
     }
   }
 
+  // Search handler with debounce
+  const performSearch = async (query: string, filters = searchFilters) => {
+    if (!query.trim() && !filters.genre && !filters.mood && !filters.key && !filters.vocals) {
+      setSearchResults([])
+      setIsSearchActive(false)
+      setIsSearching(false)
+      return
+    }
+
+    setIsSearching(true)
+    setIsSearchActive(true)
+    
+    try {
+      const params = new URLSearchParams()
+      if (query.trim()) params.set('q', query.trim())
+      if (filters.genre) params.set('genre', filters.genre)
+      if (filters.mood) params.set('mood', filters.mood)
+      if (filters.bpm_min) params.set('bpm_min', filters.bpm_min)
+      if (filters.bpm_max) params.set('bpm_max', filters.bpm_max)
+      if (filters.key) params.set('key', filters.key)
+      if (filters.vocals) params.set('vocals', filters.vocals)
+      if (filters.sort) params.set('sort', filters.sort)
+      params.set('limit', '100')
+
+      const res = await fetch(`/api/search?${params.toString()}`)
+      const data = await res.json()
+      
+      if (data.success) {
+        setSearchResults(data.results)
+      } else {
+        setSearchResults([])
+      }
+    } catch (error) {
+      console.error('Search failed:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  // Debounced search on query change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim() || searchFilters.genre || searchFilters.mood) {
+        performSearch(searchQuery, searchFilters)
+      } else if (isSearchActive) {
+        setIsSearchActive(false)
+        setSearchResults([])
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const clearSearch = () => {
+    setSearchQuery('')
+    setSearchResults([])
+    setIsSearchActive(false)
+    setShowFilters(false)
+    setSearchFilters({ genre: '', mood: '', bpm_min: '', bpm_max: '', key: '', vocals: '', sort: 'relevance' })
+  }
+
   const handlePlay = (media: CombinedMedia) => {
     if (playingId === media.id && isPlaying) {
       togglePlayPause()
       setShowSearchBox(true) // Show search bar when paused
     } else {
-      // Create playlist from all tracks with userId for play tracking
-      const playlistTracks = combinedMedia.map(m => ({
+      // Create playlist from current display list (either search results or all tracks)
+      const sourceList = isSearchActive && searchResults.length > 0 ? searchResults : combinedMedia
+      const playlistTracks = sourceList.map(m => ({
         id: m.id,
         title: m.title,
         audioUrl: m.audioUrl || m.audio_url,
@@ -332,9 +407,222 @@ function ExplorePageContent() {
               </div>
             </div>
 
-            {/* TAB NAVIGATION */}
+            {/* TAB NAVIGATION + SEARCH BAR */}
             <div className="border-b border-white/10 bg-black/40 backdrop-blur-sm sticky top-0 z-40">
-              <div className="px-6 py-4">
+              {/* Search Bar */}
+              <div className="px-4 pt-4 pb-2">
+                <div className="relative flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') performSearch(searchQuery)
+                      }}
+                      placeholder="Search tracks, artists, genres, tags, keywords, moods..."
+                      className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-500 focus:border-cyan-500/50 focus:bg-white/8 focus:outline-none transition-all"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={clearSearch}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className={`p-2.5 rounded-xl border transition-all flex-shrink-0 ${
+                      showFilters || searchFilters.genre || searchFilters.mood || searchFilters.key || searchFilters.vocals
+                        ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+                    }`}
+                    title="Filters"
+                  >
+                    <SlidersHorizontal size={18} />
+                  </button>
+                </div>
+
+                {/* Quick Filter Pills */}
+                {!showFilters && (
+                  <div className="flex gap-2 mt-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                    {['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno', 'trap', 'ambient'].map(g => (
+                      <button
+                        key={g}
+                        onClick={() => {
+                          const newFilters = { ...searchFilters, genre: searchFilters.genre === g ? '' : g }
+                          setSearchFilters(newFilters)
+                          performSearch(searchQuery, newFilters)
+                        }}
+                        className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                          searchFilters.genre === g
+                            ? 'bg-cyan-500/30 border border-cyan-400/50 text-cyan-300'
+                            : 'bg-white/5 border border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Expanded Filters */}
+                {showFilters && (
+                  <div className="mt-3 p-3 bg-white/5 border border-white/10 rounded-xl space-y-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {/* Genre Filter */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Genre</label>
+                        <select
+                          value={searchFilters.genre}
+                          onChange={e => {
+                            const newFilters = { ...searchFilters, genre: e.target.value }
+                            setSearchFilters(newFilters)
+                            performSearch(searchQuery, newFilters)
+                          }}
+                          className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-white text-xs focus:border-cyan-500/50 focus:outline-none"
+                        >
+                          <option value="">All Genres</option>
+                          {['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno', 'electronic', 'pop', 'rock', 'indie', 'classical', 'ambient', 'trap', 'drill', 'house', 'dubstep', 'reggae', 'soul', 'funk', 'blues', 'phonk', 'synthwave'].map(g => (
+                            <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {/* Mood Filter */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Mood</label>
+                        <select
+                          value={searchFilters.mood}
+                          onChange={e => {
+                            const newFilters = { ...searchFilters, mood: e.target.value }
+                            setSearchFilters(newFilters)
+                            performSearch(searchQuery, newFilters)
+                          }}
+                          className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-white text-xs focus:border-cyan-500/50 focus:outline-none"
+                        >
+                          <option value="">All Moods</option>
+                          {['chill', 'energetic', 'dark', 'uplifting', 'melancholic', 'aggressive', 'romantic', 'dreamy', 'epic', 'peaceful', 'happy', 'sad', 'nostalgic', 'smooth', 'atmospheric'].map(m => (
+                            <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {/* Key Filter */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Key</label>
+                        <select
+                          value={searchFilters.key}
+                          onChange={e => {
+                            const newFilters = { ...searchFilters, key: e.target.value }
+                            setSearchFilters(newFilters)
+                            performSearch(searchQuery, newFilters)
+                          }}
+                          className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-white text-xs focus:border-cyan-500/50 focus:outline-none"
+                        >
+                          <option value="">Any Key</option>
+                          {['C', 'Cm', 'D', 'Dm', 'E', 'Em', 'F', 'Fm', 'G', 'Gm', 'A', 'Am', 'B', 'Bm'].map(k => (
+                            <option key={k} value={k}>{k}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {/* Vocals Filter */}
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Vocals</label>
+                        <select
+                          value={searchFilters.vocals}
+                          onChange={e => {
+                            const newFilters = { ...searchFilters, vocals: e.target.value }
+                            setSearchFilters(newFilters)
+                            performSearch(searchQuery, newFilters)
+                          }}
+                          className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-white text-xs focus:border-cyan-500/50 focus:outline-none"
+                        >
+                          <option value="">Any</option>
+                          <option value="instrumental">Instrumental</option>
+                          <option value="with-lyrics">With Lyrics</option>
+                        </select>
+                      </div>
+                    </div>
+                    {/* BPM Range + Sort */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">BPM Min</label>
+                        <input
+                          type="number"
+                          value={searchFilters.bpm_min}
+                          onChange={e => {
+                            const newFilters = { ...searchFilters, bpm_min: e.target.value }
+                            setSearchFilters(newFilters)
+                          }}
+                          placeholder="60"
+                          className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-white text-xs placeholder-gray-600 focus:border-cyan-500/50 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">BPM Max</label>
+                        <input
+                          type="number"
+                          value={searchFilters.bpm_max}
+                          onChange={e => {
+                            const newFilters = { ...searchFilters, bpm_max: e.target.value }
+                            setSearchFilters(newFilters)
+                          }}
+                          placeholder="200"
+                          className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-white text-xs placeholder-gray-600 focus:border-cyan-500/50 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Sort By</label>
+                        <select
+                          value={searchFilters.sort}
+                          onChange={e => {
+                            const newFilters = { ...searchFilters, sort: e.target.value }
+                            setSearchFilters(newFilters)
+                            performSearch(searchQuery, newFilters)
+                          }}
+                          className="w-full px-2 py-1.5 bg-black/40 border border-white/10 rounded-lg text-white text-xs focus:border-cyan-500/50 focus:outline-none"
+                        >
+                          <option value="relevance">Relevance</option>
+                          <option value="newest">Newest</option>
+                          <option value="popular">Most Liked</option>
+                          <option value="plays">Most Played</option>
+                        </select>
+                      </div>
+                    </div>
+                    {/* Apply / Clear */}
+                    <div className="flex justify-between items-center pt-1">
+                      <button
+                        onClick={() => {
+                          setSearchFilters({ genre: '', mood: '', bpm_min: '', bpm_max: '', key: '', vocals: '', sort: 'relevance' })
+                          if (!searchQuery) {
+                            setIsSearchActive(false)
+                            setSearchResults([])
+                          } else {
+                            performSearch(searchQuery, { genre: '', mood: '', bpm_min: '', bpm_max: '', key: '', vocals: '', sort: 'relevance' })
+                          }
+                        }}
+                        className="text-xs text-gray-400 hover:text-white transition-colors"
+                      >
+                        Clear Filters
+                      </button>
+                      <button
+                        onClick={() => {
+                          performSearch(searchQuery, searchFilters)
+                          setShowFilters(false)
+                        }}
+                        className="px-4 py-1.5 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-cyan-400 text-xs font-medium hover:bg-cyan-500/30 transition-colors"
+                      >
+                        Apply Filters
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tabs */}
+              <div className="px-6 py-3">
                 <div className="flex items-center gap-6">
                   <button
                     onClick={() => setActiveTab('tracks')}
@@ -386,8 +674,149 @@ function ExplorePageContent() {
               </div>
             </div>
 
+            {/* SEARCH RESULTS */}
+            {isSearchActive && (
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Search size={18} className="text-cyan-400" />
+                    {isSearching ? 'Searching...' : `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`}
+                    {searchQuery && <span className="text-gray-400 font-normal text-sm">for &quot;{searchQuery}&quot;</span>}
+                  </h2>
+                  <button onClick={clearSearch} className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
+                    Clear Search
+                  </button>
+                </div>
+                
+                {isSearching ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="w-8 h-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="text-5xl mb-3">🔍</div>
+                    <h3 className="text-lg font-bold text-white mb-2">No results found</h3>
+                    <p className="text-gray-400 text-sm">Try different keywords, genres, or filters</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Active filter badges */}
+                    {(searchFilters.genre || searchFilters.mood || searchFilters.key || searchFilters.vocals) && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {searchFilters.genre && (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 border border-cyan-500/20 rounded-full text-xs text-cyan-300">
+                            Genre: {searchFilters.genre}
+                            <button onClick={() => { const f = { ...searchFilters, genre: '' }; setSearchFilters(f); performSearch(searchQuery, f) }}><X size={12} /></button>
+                          </span>
+                        )}
+                        {searchFilters.mood && (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full text-xs text-purple-300">
+                            Mood: {searchFilters.mood}
+                            <button onClick={() => { const f = { ...searchFilters, mood: '' }; setSearchFilters(f); performSearch(searchQuery, f) }}><X size={12} /></button>
+                          </span>
+                        )}
+                        {searchFilters.key && (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full text-xs text-amber-300">
+                            Key: {searchFilters.key}
+                            <button onClick={() => { const f = { ...searchFilters, key: '' }; setSearchFilters(f); performSearch(searchQuery, f) }}><X size={12} /></button>
+                          </span>
+                        )}
+                        {searchFilters.vocals && (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-xs text-green-300">
+                            Vocals: {searchFilters.vocals}
+                            <button onClick={() => { const f = { ...searchFilters, vocals: '' }; setSearchFilters(f); performSearch(searchQuery, f) }}><X size={12} /></button>
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Search Results Grid - Desktop */}
+                    <div className="hidden md:grid md:grid-cols-4 gap-x-6 gap-y-1">
+                      {searchResults.map((media) => {
+                        const isCurrentlyPlaying = playingId === media.id
+                        return (
+                          <div
+                            key={media.id}
+                            className={`group flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${
+                              isCurrentlyPlaying ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' : 'hover:bg-white/5'
+                            }`}
+                            onClick={() => handlePlay(media)}
+                          >
+                            <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden">
+                              {media.image_url || media.imageUrl ? (
+                                <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={48} height={48} className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center">
+                                  <Music size={20} className="text-cyan-400/40" />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                                  {isCurrentlyPlaying && isPlaying ? <Pause className="text-black" size={12} /> : <Play className="text-black ml-0.5" size={12} />}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0 relative z-10">
+                              <h3 className="font-semibold text-white truncate text-sm leading-tight">{media.title}</h3>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <Link href={`/profile/${media.user_id}`} className="text-xs text-gray-300 hover:text-cyan-400 transition-colors truncate" onClick={e => e.stopPropagation()}>
+                                  {media.users?.username || media.username || 'Unknown'}
+                                </Link>
+                                {media.genre && <span className="text-[10px] text-cyan-500/70 bg-cyan-500/10 px-1.5 py-0.5 rounded">{media.genre}</span>}
+                                {media.bpm && <span className="text-[10px] text-gray-500">{media.bpm}bpm</span>}
+                              </div>
+                            </div>
+                            <div onClick={e => e.stopPropagation()}>
+                              <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={true} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Search Results - Mobile */}
+                    <div className="md:hidden space-y-1">
+                      {searchResults.map((media) => {
+                        const isCurrentlyPlaying = playingId === media.id
+                        return (
+                          <div
+                            key={media.id}
+                            className={`group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                              isCurrentlyPlaying ? 'bg-cyan-500/10 ring-1 ring-cyan-400/30' : 'hover:bg-white/5'
+                            }`}
+                            onClick={() => handlePlay(media)}
+                          >
+                            <div className="relative w-14 h-14 flex-shrink-0 rounded overflow-hidden">
+                              {media.image_url || media.imageUrl ? (
+                                <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={56} height={56} className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-cyan-900/40 to-blue-900/40 flex items-center justify-center">
+                                  <Music size={24} className="text-cyan-400/40" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-white truncate leading-tight">{media.title}</h3>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-sm text-gray-300 truncate">{media.users?.username || media.username || 'Unknown'}</span>
+                                {media.genre && <span className="text-[10px] text-cyan-500/70 bg-cyan-500/10 px-1.5 py-0.5 rounded">{media.genre}</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <Play size={10} />
+                              <span>{media.plays || 0}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* TRACKS TAB CONTENT */}
-            {activeTab === 'tracks' && (
+            {activeTab === 'tracks' && !isSearchActive && (
               <>
                 {/* LIVE NOW SECTION - Horizontal Scroll */}
                 {liveStations.length > 0 && (
@@ -764,7 +1193,7 @@ function ExplorePageContent() {
             )}
 
             {/* GENRES TAB CONTENT */}
-            {activeTab === 'genres' && (
+            {activeTab === 'genres' && !isSearchActive && (
               <div className="px-6 py-8">
                 {genres.length === 0 ? (
                   <div className="text-center py-12">
@@ -888,7 +1317,7 @@ function ExplorePageContent() {
             )}
 
             {/* STATIONS TAB CONTENT */}
-            {activeTab === 'stations' && (
+            {activeTab === 'stations' && !isSearchActive && (
               <div className="px-6 py-8">
                 {liveStations.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

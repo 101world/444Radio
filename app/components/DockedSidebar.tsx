@@ -77,7 +77,7 @@ export default function DockedSidebar() {
     { icon: CreditCard, label: 'Pricing', href: '/pricing', highlight: false },
     { icon: DollarSign, label: 'Earn', href: '/earn', highlight: 'purple', badge: 'New' },
     { icon: Settings, label: 'Settings', href: '/settings', highlight: false },
-    { icon: User, label: 'Profile', href: `/profile/${user.id}`, highlight: false },
+    { icon: User, label: 'My Profile', href: `/profile/${user.id}`, highlight: 'cyan', badge: '🎤' },
   ] : [
     { icon: Home, label: 'Home', href: '/', highlight: false },
     { icon: Zap, label: 'Create', href: '/create', highlight: true, badge: 'Suggested' },
