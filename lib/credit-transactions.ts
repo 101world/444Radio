@@ -5,9 +5,6 @@
  * never block the calling route.
  */
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
 export type CreditTransactionType =
   | 'generation_music'
   | 'generation_effects'
@@ -37,6 +34,14 @@ export interface LogTransactionParams {
 
 export async function logCreditTransaction(params: LogTransactionParams): Promise<void> {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('⚠️ logCreditTransaction: missing SUPABASE env vars (url:', !!supabaseUrl, 'key:', !!supabaseKey, ')')
+      return
+    }
+
     const body = {
       user_id: params.userId,
       amount: params.amount,
