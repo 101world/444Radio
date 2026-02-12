@@ -241,13 +241,24 @@ export async function POST(req: NextRequest) {
     console.log(`💰 User has ${userCredits} credits. Music requires 2 credits.`)
 
     // Generate music with MiniMax Music-1.5 (all languages)
+    // Use NDJSON streaming so the client gets the prediction ID immediately for cancellation
     console.log('🎵 Using MiniMax Music-1.5 ...')
-    let audioUrl: string
-    let output
-    try {
-      output = await replicate.run(
-        "minimax/music-1.5",
-        {
+
+    const encoder = new TextEncoder()
+    const stream = new TransformStream()
+    const writer = stream.writable.getWriter()
+
+    // Helper to send a JSON line
+    const sendLine = async (data: Record<string, unknown>) => {
+      await writer.write(encoder.encode(JSON.stringify(data) + '\n'))
+    }
+
+    // Start async processing
+    ;(async () => {
+      try {
+        // Create prediction (non-blocking)
+        const prediction = await replicate.predictions.create({
+          model: "minimax/music-1.5",
           input: {
             prompt: prompt.trim(),
             lyrics: formattedLyrics,
@@ -255,221 +266,158 @@ export async function POST(req: NextRequest) {
             sample_rate,
             audio_format
           }
+        })
+
+        console.log('🎵 Prediction created:', prediction.id)
+
+        // Send prediction ID to client immediately
+        await sendLine({ type: 'started', predictionId: prediction.id })
+
+        // Poll until done
+        let finalPrediction = prediction
+        let attempts = 0
+        const maxAttempts = 150 // 300s at 2s intervals
+
+        while (
+          finalPrediction.status !== 'succeeded' &&
+          finalPrediction.status !== 'failed' &&
+          finalPrediction.status !== 'canceled' &&
+          attempts < maxAttempts
+        ) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          finalPrediction = await replicate.predictions.get(prediction.id)
+          attempts++
         }
-      )
-      console.log('✅ MiniMax Music-1.5 API response received')
-    } catch (genError) {
-      console.error('❌ Music generation failed (MiniMax):', genError)
-      // NO credits deducted since generation failed
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: sanitizeError(genError),
-          creditsRefunded: false,
-          creditsRemaining: userCredits
-        },
-        { status: 500 }
-      )
-    }
 
-    console.log('✅ Generation succeeded, processing output...')
-    console.log('🎵 Output type:', typeof output)
-    console.log('🎵 Output:', output)
+        if (finalPrediction.status === 'canceled') {
+          console.log('⏹ Prediction cancelled by user:', prediction.id)
+          await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: userCredits })
+          await writer.close()
+          return
+        }
 
-    if (typeof output === 'string') {
-      audioUrl = output
-    } else if (output && typeof (output as { url?: () => string }).url === 'function') {
-      audioUrl = (output as { url: () => string }).url()
-    } else if (output && typeof output === 'object' && 'url' in output) {
-      audioUrl = (output as { url: string }).url
-    } else {
-      console.error('❌ Unexpected output format:', output)
-      throw new Error('Invalid output format from API')
-    }
+        if (finalPrediction.status !== 'succeeded') {
+          const errMsg = finalPrediction.error || `Generation ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
+          console.error('❌ Prediction did not succeed:', errMsg)
+          await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: userCredits })
+          await writer.close()
+          return
+        }
 
-    console.log('🎵 Audio URL extracted:', audioUrl)
+        console.log('✅ Generation succeeded, processing output...')
+        const output = finalPrediction.output
 
-    // Upload to R2 for permanent storage (MANDATORY)
-    console.log('📦 Uploading to R2 for permanent storage...')
-    const fileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${audio_format}`
-    
-    let finalAudioUrl: string
-    
-    try {
-      // Log R2 credentials status (without exposing actual values)
-      console.log('🔑 R2 Config check:', {
-        hasEndpoint: !!process.env.R2_ENDPOINT,
-        hasAccessKey: !!process.env.R2_ACCESS_KEY_ID,
-        hasSecretKey: !!process.env.R2_SECRET_ACCESS_KEY,
-        bucketName: process.env.R2_BUCKET_NAME,
-        publicUrl: process.env.R2_PUBLIC_URL
-      })
+        let audioUrl: string
+        if (typeof output === 'string') {
+          audioUrl = output
+        } else if (output && typeof (output as { url?: () => string }).url === 'function') {
+          audioUrl = (output as { url: () => string }).url()
+        } else if (output && typeof output === 'object' && 'url' in output) {
+          audioUrl = (output as { url: string }).url
+        } else {
+          console.error('❌ Unexpected output format:', output)
+          throw new Error('Invalid output format from API')
+        }
 
-      const r2Result = await downloadAndUploadToR2(
-        audioUrl,
-        userId,
-        'music',
-        fileName
-      )
+        console.log('🎵 Audio URL extracted:', audioUrl)
 
-      if (!r2Result.success) {
-        console.error('❌ R2 UPLOAD FAILED:', {
-          error: r2Result.error,
-          replicateUrl: audioUrl,
-          fileName: fileName,
-          userId: userId
-        })
-        throw new Error(`Failed to upload to permanent storage: ${r2Result.error}`)
-      } else {
-        console.log('✅ R2 upload successful!', {
-          r2Url: r2Result.url,
-          key: r2Result.key,
-          size: `${(r2Result.size / 1024 / 1024).toFixed(2)} MB`
-        })
-        // Use permanent R2 URL
-        finalAudioUrl = r2Result.url
-      }
-    } catch (r2Error) {
-      console.error('❌ R2 UPLOAD EXCEPTION:', r2Error)
-      console.error('Exception details:', {
-        message: r2Error instanceof Error ? r2Error.message : 'Unknown error',
-        stack: r2Error instanceof Error ? r2Error.stack : undefined,
-        replicateUrl: audioUrl
-      })
-      throw new Error(`Failed to upload to permanent storage: ${r2Error instanceof Error ? r2Error.message : 'Unknown error'}`)
-    }
-    
-    audioUrl = finalAudioUrl
+        // Upload to R2 for permanent storage (MANDATORY)
+        console.log('📦 Uploading to R2 for permanent storage...')
+        const fileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.${audio_format}`
 
-    // Log that we're saving permanent R2 URL
-    console.log(`💾 Saving to database with PERMANENT R2 URL:`, audioUrl)
+        const r2Result = await downloadAndUploadToR2(audioUrl, userId, 'music', fileName)
+        if (!r2Result.success) {
+          throw new Error(`Failed to upload to permanent storage: ${r2Result.error}`)
+        }
+        console.log('✅ R2 upload successful!', { r2Url: r2Result.url, key: r2Result.key })
+        audioUrl = r2Result.url
 
-    // Save to music_library table first
-    console.log('💾 Saving to music library...')
-    console.log('💾 Title being saved:', title)
-    console.log('💾 Audio URL being saved:', audioUrl)
-    const libraryEntry = {
-      clerk_user_id: userId,
-      title: title, // Use the actual title from request - NOT the filename
-      prompt: prompt,
-      lyrics: formattedLyrics,
-      audio_url: audioUrl,
-      audio_format: audio_format,
-      bitrate: bitrate,
-      sample_rate: sample_rate,
-      generation_params: {
-        bitrate,
-        sample_rate,
-        audio_format,
-        language
-      },
-      status: 'ready'
-    }
-    console.log('💾 Full library entry being saved:', JSON.stringify(libraryEntry, null, 2))
+        // Save to music_library
+        console.log('💾 Saving to music library...')
+        const libraryEntry = {
+          clerk_user_id: userId,
+          title,
+          prompt,
+          lyrics: formattedLyrics,
+          audio_url: audioUrl,
+          audio_format,
+          bitrate,
+          sample_rate,
+          generation_params: { bitrate, sample_rate, audio_format, language },
+          status: 'ready'
+        }
 
-    const saveResponse = await fetch(
-      `${supabaseUrl}/rest/v1/music_library`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(libraryEntry)
-      }
-    )
-
-    let savedMusic: any = null
-    if (!saveResponse.ok) {
-      const errorText = await saveResponse.text()
-      console.error('❌ Failed to save to music_library:', saveResponse.status, errorText)
-      console.error('❌ Library entry that failed:', JSON.stringify(libraryEntry, null, 2))
-      // Continue anyway - don't fail the whole generation
-      // The audio was generated successfully, just failed to save metadata
-    } else {
-      const saveData = await saveResponse.json()
-      savedMusic = Array.isArray(saveData) ? saveData[0] : saveData
-      console.log('✅ Saved to library:', savedMusic)
-      console.log('✅ Confirmed title in DB:', savedMusic?.title)
-    }
-
-    // NOW deduct credits (-2 for music) atomically to prevent race conditions
-    console.log(`💰 Deducting 2 credits from user atomically (${userCredits} → ${userCredits - 2})`)
-    
-    const deductRes = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          p_clerk_user_id: userId,
-          p_amount: 2
-        })
-      }
-    )
-
-    const deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = 
-      deductRes.ok ? await deductRes.json() : null
-
-    if (!deductRes.ok || !deductResult?.success) {
-      console.error('⚠️ Failed to deduct credits atomically:', deductResult?.error_message || deductRes.statusText)
-      // Continue anyway - better to give free generation than lose the work
-    } else {
-      console.log('✅ Credits deducted successfully (atomic operation)')
-    }
-    
-    // If user used 444 Radio lyrics, record today's date (separate update)
-    if (used444Radio) {
-      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-      await fetch(
-        `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
-        {
-          method: 'PATCH',
+        const saveResponse = await fetch(`${supabaseUrl}/rest/v1/music_library`, {
+          method: 'POST',
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
             'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
+            'Prefer': 'return=representation'
           },
-          body: JSON.stringify({ last_444_radio_date: today })
-        }
-      )
-      console.log('📅 Recording 444 Radio usage date:', today)
-    }
+          body: JSON.stringify(libraryEntry)
+        })
 
-    console.log('✅ Music generated successfully:', audioUrl)
-    
-    // Return proper response with all required fields
-    const response: any = {
-      success: true,
-      audioUrl,
-      title: title, // Use the actual title from request
-      lyrics: formattedLyrics, // Return the formatted lyrics
-      libraryId: savedMusic?.id || null,
-      creditsRemaining: deductResult?.new_credits ?? (userCredits - 2),
-      creditsDeducted: 2
-    }
-
-    // Generate cover art if requested
-    if (generateCoverArt) {
-      console.log('🎨 Generating cover art for the track...')
-      
-      try {
-        // Check if user has enough credits for image (1 credit)
-        if (userCredits - 2 < 1) {
-          console.warn('⚠️ Not enough credits for cover art, skipping')
+        let savedMusic: any = null
+        if (saveResponse.ok) {
+          const saveData = await saveResponse.json()
+          savedMusic = Array.isArray(saveData) ? saveData[0] : saveData
+          console.log('✅ Saved to library:', savedMusic?.title)
         } else {
-          // Generate image using Replicate
-          const imagePrompt = `${prompt} music album cover art, ${genre || 'electronic'} style, professional music artwork`
-          
+          console.error('❌ Failed to save to music_library:', saveResponse.status)
+        }
+
+        // Deduct credits (-2 for music)
+        console.log(`💰 Deducting 2 credits...`)
+        const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 2 })
+        })
+
+        const deductResult: { success: boolean; new_credits: number; error_message: string | null } | null =
+          deductRes.ok ? await deductRes.json() : null
+
+        if (!deductRes.ok || !deductResult?.success) {
+          console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || deductRes.statusText)
+        }
+
+        // Record 444 Radio lyrics usage
+        if (used444Radio) {
+          const today = new Date().toISOString().split('T')[0]
+          await fetch(`${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ last_444_radio_date: today })
+          })
+        }
+
+        console.log('✅ Music generated successfully:', audioUrl)
+
+        const response: any = {
+          type: 'result',
+          success: true,
+          audioUrl,
+          title,
+          lyrics: formattedLyrics,
+          libraryId: savedMusic?.id || null,
+          creditsRemaining: deductResult?.new_credits ?? (userCredits - 2),
+          creditsDeducted: 2
+        }
+
+        // Generate cover art if requested
+        if (generateCoverArt && userCredits - 2 >= 1) {
           try {
-            // Use FLUX.2 Klein 9B Base for faster, better cover art
+            const imagePrompt = `${prompt} music album cover art, ${genre || 'electronic'} style, professional music artwork`
             const imagePrediction = await replicate.predictions.create({
               model: "black-forest-labs/flux-2-klein-9b-base",
               input: {
@@ -484,112 +432,82 @@ export async function POST(req: NextRequest) {
               }
             })
 
-            // Poll for completion
             let imageResult = await replicate.predictions.get(imagePrediction.id)
-            let attempts = 0
-            while (imageResult.status !== 'succeeded' && imageResult.status !== 'failed' && attempts < 40) { // ~40 seconds max (reduced from 60s)
+            let imgAttempts = 0
+            while (imageResult.status !== 'succeeded' && imageResult.status !== 'failed' && imgAttempts < 40) {
               await new Promise(resolve => setTimeout(resolve, 1000))
               imageResult = await replicate.predictions.get(imagePrediction.id)
-              attempts++
+              imgAttempts++
             }
 
             if (imageResult.status === 'succeeded' && imageResult.output) {
-            const imageUrls = Array.isArray(imageResult.output) ? imageResult.output : [imageResult.output]
-            let imageUrl = imageUrls[0]
-            
-            // Handle FLUX.2 Klein output format with .url() method
-            if (typeof imageUrl === 'object' && 'url' in imageUrl && typeof imageUrl.url === 'function') {
-              imageUrl = imageUrl.url()
-            }
+              const imageUrls = Array.isArray(imageResult.output) ? imageResult.output : [imageResult.output]
+              let imageUrl = imageUrls[0]
+              if (typeof imageUrl === 'object' && 'url' in imageUrl && typeof (imageUrl as any).url === 'function') {
+                imageUrl = (imageUrl as any).url()
+              }
 
-            // Upload image to R2
-            const imageFileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-cover-${Date.now()}.jpg`
-            
-            const imageR2Result = await downloadAndUploadToR2(
-              imageUrl,
-              userId,
-              'images',
-              imageFileName
-            )
+              const imageFileName = `${title.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}-cover-${Date.now()}.jpg`
+              const imageR2Result = await downloadAndUploadToR2(imageUrl, userId, 'images', imageFileName)
+              if (imageR2Result.success) {
+                response.imageUrl = imageR2Result.url
 
-            if (imageR2Result.success) {
-              console.log('✅ Cover art uploaded to R2:', imageR2Result.url)
-              response.imageUrl = imageR2Result.url
-              // Note: Cover art is included in the base 2-credit cost, no extra deduction
-            } else {
-              console.error('❌ Cover art R2 upload failed:', imageR2Result.error)
-              // Continue without image
+                // Save to images_library
+                const imageRes = await fetch(`${supabaseUrl}/rest/v1/images_library`, {
+                  method: 'POST',
+                  headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                  },
+                  body: JSON.stringify({
+                    user_id: userId,
+                    image_url: imageR2Result.url,
+                    prompt: imagePrompt,
+                    created_at: new Date().toISOString()
+                  })
+                })
+                if (imageRes.ok) {
+                  const savedImage = await imageRes.json()
+                  response.imageLibraryId = Array.isArray(savedImage) ? savedImage[0].id : savedImage.id
+                }
+              }
             }
-          } else {
-              console.error('❌ Cover art generation failed:', imageResult.error)
-              // Continue without image
-            }
-          } catch (innerImageError) {
-            console.error('❌ Cover art generation error:', innerImageError)
-            const errorMessage = innerImageError instanceof Error ? innerImageError.message : String(innerImageError)
-            const is502Error = errorMessage.includes('502') || errorMessage.includes('Bad Gateway')
-            
-            if (is502Error) {
-              console.warn('🔒 444 radio is lockin in - Replicate API temporarily unavailable')
-            }
-            // Continue without image
+          } catch (imageError) {
+            console.error('❌ Cover art error:', imageError)
           }
         }
-      } catch (imageError) {
-        console.error('❌ Cover art generation outer error:', imageError)
-        // Continue without image
+
+        await sendLine(response)
+        await writer.close()
+
+      } catch (error) {
+        console.error('❌ Music generation error (stream):', error)
+        try {
+          await sendLine({ type: 'result', success: false, error: sanitizeError(error) })
+          await writer.close()
+        } catch { /* stream may already be closed */ }
       }
-    }
+    })()
 
-    // Save generated image to images_library if cover art was generated
-    if (response.imageUrl) {
-      console.log('💾 Saving cover art to images_library...')
-      try {
-        const imageEntry = {
-          user_id: userId,
-          image_url: response.imageUrl,
-          prompt: `${prompt} music album cover art`,
-          created_at: new Date().toISOString()
-        }
-
-        const imageRes = await fetch(
-          `${supabaseUrl}/rest/v1/images_library`,
-          {
-            method: 'POST',
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=representation'
-            },
-            body: JSON.stringify(imageEntry)
-          }
-        )
-
-        if (imageRes.ok) {
-          const savedImage = await imageRes.json()
-          console.log('✅ Cover art saved to images_library:', savedImage)
-          response.imageLibraryId = Array.isArray(savedImage) ? savedImage[0].id : savedImage.id
-        } else {
-          console.error('❌ Failed to save to images_library:', imageRes.status)
-        }
-      } catch (imageError) {
-        console.error('❌ Error saving to images_library:', imageError)
+    // Return the streaming response immediately
+    return new Response(stream.readable, {
+      headers: {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache',
+        'Transfer-Encoding': 'chunked'
       }
-    }
-
-    // Note: User must manually combine audio + image using /api/media/combine to release
-    return NextResponse.json(response)
+    })
 
   } catch (error) {
     console.error('❌ Music generation error:', error)
     console.log('💰 No credits deducted due to error')
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: sanitizeError(error),
-        creditsRefunded: false, // No deduction happened
-        // Note: We don't have userCredits here if error happened before credit check
+        creditsRefunded: false,
       },
       { status: 500 }
     )

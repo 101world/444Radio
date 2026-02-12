@@ -153,6 +153,8 @@ function CreatePageContent() {
 
   // Abort controllers for cancellable generations
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
+  // Replicate prediction IDs for server-side cancellation
+  const predictionIdsRef = useRef<Map<string, string>>(new Map())
   
   // Features sidebar state
   const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
@@ -339,6 +341,16 @@ function CreatePageContent() {
     if (controller) {
       controller.abort()
       abortControllersRef.current.delete(messageId)
+    }
+    // Cancel the Replicate prediction server-side (fire and forget)
+    const predictionId = predictionIdsRef.current.get(messageId)
+    if (predictionId) {
+      fetch('/api/generate/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ predictionId })
+      }).catch(() => {}) // best-effort
+      predictionIdsRef.current.delete(messageId)
     }
     // Mark message as cancelled
     setMessages(prev => prev.map(msg =>
@@ -925,7 +937,7 @@ function CreatePageContent() {
           bpmToUse
         })
         console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
-        result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse, abortController.signal)
+        result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse, abortController.signal, messageId)
         console.log('[Generation] Music generation result:', result)
       } else {
         console.log('[Generation] Calling generateImage with:', params.prompt)
@@ -1154,7 +1166,8 @@ function CreatePageContent() {
     duration: 'short' | 'medium' | 'long' = 'medium',
     genreParam?: string,
     bpmParam?: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    messageId?: string
   ) => {
     console.log('🔍 [TITLE DEBUG] generateMusic called with title:', title)
     
@@ -1191,19 +1204,72 @@ function CreatePageContent() {
       signal
     })
 
-    const data = await res.json()
+    // Parse NDJSON stream: first line = {type:'started', predictionId}, last line = result
+    const reader = res.body?.getReader()
+    if (!reader) {
+      return { error: 'No response stream' }
+    }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let resultData: any = null
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        // Process complete lines
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || '' // keep incomplete last line in buffer
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'started' && parsed.predictionId && messageId) {
+              // Store prediction ID for cancellation
+              predictionIdsRef.current.set(messageId, parsed.predictionId)
+              console.log('[Cancel] Stored prediction ID:', parsed.predictionId, 'for message:', messageId)
+            } else if (parsed.type === 'result') {
+              resultData = parsed
+            }
+          } catch {
+            console.warn('[NDJSON] Failed to parse line:', line)
+          }
+        }
+      }
+      // Process any remaining buffer
+      if (buffer.trim()) {
+        try {
+          const parsed = JSON.parse(buffer)
+          if (parsed.type === 'result') resultData = parsed
+          else if (parsed.type === 'started' && parsed.predictionId && messageId) {
+            predictionIdsRef.current.set(messageId, parsed.predictionId)
+          }
+        } catch { /* ignore */ }
+      }
+    } finally {
+      reader.releaseLock()
+      if (messageId) predictionIdsRef.current.delete(messageId)
+    }
+
+    if (!resultData) {
+      return { error: 'No result received from generation' }
+    }
     
-    if (data.success) {
+    if (resultData.success) {
       return {
-        audioUrl: data.audioUrl,
-        imageUrl: data.imageUrl,
-        title: data.title || title || prompt.substring(0, 50),
+        audioUrl: resultData.audioUrl,
+        imageUrl: resultData.imageUrl,
+        title: resultData.title || title || prompt.substring(0, 50),
         prompt: prompt,
-        lyrics: data.lyrics || lyrics,
-        creditsRemaining: data.creditsRemaining
+        lyrics: resultData.lyrics || lyrics,
+        creditsRemaining: resultData.creditsRemaining
       }
     } else {
-      return { error: data.error || 'Failed to generate music' }
+      return { error: resultData.error || 'Failed to generate music' }
     }
   }
 
@@ -1335,10 +1401,46 @@ function CreatePageContent() {
         signal: abortController.signal
       })
 
-      const data = await response.json()
+      // Parse NDJSON stream for prediction ID and result
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response stream')
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Stem splitting failed')
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let data: any = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'started' && parsed.predictionId) {
+              predictionIdsRef.current.set(processingMessage.id, parsed.predictionId)
+              console.log('[StemSplit] Stored prediction ID:', parsed.predictionId)
+            } else if (parsed.type === 'result') {
+              data = parsed
+            }
+          } catch { /* skip unparseable lines */ }
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          const parsed = JSON.parse(buffer)
+          if (parsed.type === 'result') data = parsed
+          else if (parsed.type === 'started' && parsed.predictionId) {
+            predictionIdsRef.current.set(processingMessage.id, parsed.predictionId)
+          }
+        } catch { /* ignore */ }
+      }
+      reader.releaseLock()
+
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Stem splitting failed')
       }
 
       // Update credits
@@ -1388,6 +1490,7 @@ function CreatePageContent() {
       ))
     } finally {
       abortControllersRef.current.delete(processingMessage.id)
+      predictionIdsRef.current.delete(processingMessage.id)
       setIsSplittingStems(false)
       setSplitStemsMessageId(null)
     }

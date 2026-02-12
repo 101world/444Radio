@@ -45,7 +45,16 @@ export async function POST(request: Request) {
       }, { status: 402 })
     }
 
-    // Send to Replicate and wait for result
+    // Stream prediction ID to client for cancellation, then process result
+    const encoder = new TextEncoder()
+    const stream = new TransformStream()
+    const writer = stream.writable.getWriter()
+
+    const sendLine = async (data: Record<string, unknown>) => {
+      await writer.write(encoder.encode(JSON.stringify(data) + '\n'))
+    }
+
+    // Send prediction ID immediately
     const prediction = await replicate.predictions.create({
       version: "f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e",
       input: {
@@ -60,39 +69,83 @@ export async function POST(request: Request) {
       }
     })
 
-    const result = await replicate.wait(prediction, { interval: 5000 })
-    const raw = result?.output ?? result
+    await sendLine({ type: 'started', predictionId: prediction.id })
 
-    // Simple: grab every key that has an audio URL, skip nulls/json/non-strings
-    const stems: Record<string, string> = {}
-    for (const [key, value] of Object.entries(raw || {})) {
-      if (typeof value === 'string' && value.startsWith('http') && !value.includes('.json')) {
-        // Clean display name: demucs_vocals → vocals, mdx_instrumental → instrumental
-        let name = key.replace(/^(demucs_|mdx_)/, '')
-        // If name already taken (e.g. vocals from demucs + vocals from mdx), append " 2"
-        if (stems[name]) {
-          name = `${name} 2`
+    // Process in background IIFE
+    ;(async () => {
+      try {
+        // Poll for result
+        let finalPrediction = prediction
+        let attempts = 0
+        while (
+          finalPrediction.status !== 'succeeded' &&
+          finalPrediction.status !== 'failed' &&
+          finalPrediction.status !== 'canceled' &&
+          attempts < 60 // 5min at 5s intervals
+        ) {
+          await new Promise(resolve => setTimeout(resolve, 5000))
+          finalPrediction = await replicate.predictions.get(prediction.id)
+          attempts++
         }
-        stems[name] = value
+
+        if (finalPrediction.status === 'canceled') {
+          await sendLine({ type: 'result', success: false, error: 'Stem split cancelled' })
+          await writer.close()
+          return
+        }
+
+        if (finalPrediction.status !== 'succeeded') {
+          await sendLine({ type: 'result', success: false, error: 'Stem split failed or timed out' })
+          await writer.close()
+          return
+        }
+
+        const raw = finalPrediction.output ?? finalPrediction
+
+        // Simple: grab every key that has an audio URL, skip nulls/json/non-strings
+        const stems: Record<string, string> = {}
+        for (const [key, value] of Object.entries(raw || {})) {
+          if (typeof value === 'string' && value.startsWith('http') && !value.includes('.json')) {
+            let name = key.replace(/^(demucs_|mdx_)/, '')
+            if (stems[name]) {
+              name = `${name} 2`
+            }
+            stems[name] = value
+          }
+        }
+
+        if (Object.keys(stems).length === 0) {
+          await sendLine({ type: 'result', success: false, error: 'No stems returned. Try a different audio file.' })
+          await writer.close()
+          return
+        }
+
+        // Deduct credits after success
+        const { data: deductResultRaw } = await supabase
+          .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST })
+          .single()
+
+        const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
+
+        await sendLine({
+          type: 'result',
+          success: true,
+          stems,
+          creditsUsed: STEM_SPLIT_COST,
+          creditsRemaining: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST)
+        })
+        await writer.close()
+      } catch (error) {
+        console.error('[Stem Split] Stream error:', error)
+        try {
+          await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes' })
+          await writer.close()
+        } catch { /* stream may already be closed */ }
       }
-    }
+    })()
 
-    if (Object.keys(stems).length === 0) {
-      return NextResponse.json({ error: 'No stems returned. Try a different audio file.' }, { status: 500 })
-    }
-
-    // Deduct credits after success
-    const { data: deductResultRaw } = await supabase
-      .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST })
-      .single()
-
-    const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
-
-    return NextResponse.json({ 
-      success: true,
-      stems,
-      creditsUsed: STEM_SPLIT_COST,
-      creditsRemaining: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST)
+    return new Response(stream.readable, {
+      headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache' }
     })
   } catch (error) {
     console.error('[Stem Split] Error:', error)

@@ -17,14 +17,20 @@ CREATE TABLE IF NOT EXISTS earn_transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   buyer_id TEXT NOT NULL,
   seller_id TEXT NOT NULL,
-  admin_id TEXT NOT NULL,
+  admin_id TEXT,
   track_id UUID NOT NULL,
-  total_cost INTEGER NOT NULL DEFAULT 4,
+  total_cost INTEGER NOT NULL DEFAULT 2,
   artist_share INTEGER NOT NULL DEFAULT 2,
-  admin_share INTEGER NOT NULL DEFAULT 2,
+  admin_share INTEGER NOT NULL DEFAULT 0,
   split_stems BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE earn_transactions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role full access on earn_transactions"
+  ON earn_transactions FOR ALL
+  USING (auth.role() = 'service_role');
 
 CREATE INDEX IF NOT EXISTS idx_earn_transactions_buyer ON earn_transactions(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_earn_transactions_seller ON earn_transactions(seller_id);
@@ -40,6 +46,12 @@ CREATE TABLE IF NOT EXISTS earn_split_jobs (
   created_at TIMESTAMPTZ DEFAULT now(),
   completed_at TIMESTAMPTZ
 );
+
+ALTER TABLE earn_split_jobs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role full access on earn_split_jobs"
+  ON earn_split_jobs FOR ALL
+  USING (auth.role() = 'service_role');
 
 CREATE INDEX IF NOT EXISTS idx_earn_split_jobs_user ON earn_split_jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_earn_split_jobs_status ON earn_split_jobs(status) WHERE status IN ('queued', 'processing');
