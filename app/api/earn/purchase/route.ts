@@ -148,8 +148,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 9b. Log credit transactions for buyer and seller
-    logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}`, metadata: { trackId, splitStems } })
-    logCreditTransaction({ userId: track.user_id, amount: totalCost, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId } })
+    await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}`, metadata: { trackId, splitStems } })
+    await logCreditTransaction({ userId: track.user_id, amount: totalCost, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId } })
 
     // 10. Save to buyer's music_library so it appears in their Library
     try {

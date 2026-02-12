@@ -142,10 +142,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Log credit transactions
-    logCreditTransaction({ userId, amount: -LISTING_FEE, balanceAfter: newUserCredits, type: 'earn_list', description: `Listed track on Earn`, metadata: { trackId } })
+    await logCreditTransaction({ userId, amount: -LISTING_FEE, balanceAfter: newUserCredits, type: 'earn_list', description: `Listed track on Earn`, metadata: { trackId } })
     if (admin) {
       const newAdminCredits2 = (admin.credits || 0) + LISTING_FEE
-      logCreditTransaction({ userId: admin.clerk_user_id, amount: LISTING_FEE, balanceAfter: newAdminCredits2, type: 'earn_admin', description: `Listing fee received`, metadata: { trackId, listerId: userId } })
+      await logCreditTransaction({ userId: admin.clerk_user_id, amount: LISTING_FEE, balanceAfter: newAdminCredits2, type: 'earn_admin', description: `Listing fee received`, metadata: { trackId, listerId: userId } })
     }
 
     // 7. Mark track as listed on earn marketplace

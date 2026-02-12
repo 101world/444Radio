@@ -159,11 +159,11 @@ export async function POST(request: NextRequest) {
     }
     if (!deductRes.ok || !deductResult?.success) {
       console.error('Failed to deduct credit:', deductResult?.error_message || deductRes.statusText)
-      logCreditTransaction({ userId: user.id, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
+      await logCreditTransaction({ userId: user.id, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
       // Still return success since song record was created — credit deduction failure shouldn't block the generation
     } else {
       console.log(`✅ Credit deducted atomically. User now has ${deductResult.new_credits} credits`)
-      logCreditTransaction({ userId: user.id, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
+      await logCreditTransaction({ userId: user.id, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
     }
 
     const creditsAfter = deductResult?.new_credits ?? Math.max(0, userRecord.credits - 1)
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     }))
   } catch (error) {
     console.error('Generation initiation error:', error)
-    logCreditTransaction({ userId: user.id, amount: 0, type: 'generation_image', status: 'failed', description: `Image failed: ${prompt || 'unknown'}`, metadata: { prompt, error: String(error).substring(0, 200) } })
+    await logCreditTransaction({ userId: user.id, amount: 0, type: 'generation_image', status: 'failed', description: `Image failed: ${prompt || 'unknown'}`, metadata: { prompt, error: String(error).substring(0, 200) } })
     const errorMessage = error instanceof Error ? error.message : 'Failed to initiate generation'
     return corsResponse(NextResponse.json({ 
       error: errorMessage

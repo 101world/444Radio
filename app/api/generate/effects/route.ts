@@ -222,10 +222,10 @@ export async function POST(req: NextRequest) {
       }
       if (!creditDeductRes.ok || !deductResult?.success) {
         console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || creditDeductRes.statusText)
-        logCreditTransaction({ userId, amount: -2, type: 'generation_effects', status: 'failed', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
+        await logCreditTransaction({ userId, amount: -2, type: 'generation_effects', status: 'failed', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
       } else {
         console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-        logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_effects', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
+        await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_effects', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
       }
 
       console.log('✅ Effects generation complete')
@@ -245,7 +245,7 @@ export async function POST(req: NextRequest) {
 
     } catch (genError) {
       console.error('❌ AudioGen generation failed:', genError)
-      logCreditTransaction({ userId, amount: 0, type: 'generation_effects', status: 'failed', description: `Effects failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, error: String(genError).substring(0, 200) } })
+      await logCreditTransaction({ userId, amount: 0, type: 'generation_effects', status: 'failed', description: `Effects failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, error: String(genError).substring(0, 200) } })
       throw genError
     }
 

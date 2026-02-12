@@ -95,7 +95,7 @@ export async function POST(request: Request) {
           if (requestSignal.aborted) {
             console.log('[Stem Split] Client disconnected, cancelling:', prediction.id)
             try { await replicate.predictions.cancel(prediction.id) } catch {}
-            logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: 'Stem split cancelled', metadata: { reason: 'client_disconnected' } })
+            await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: 'Stem split cancelled', metadata: { reason: 'client_disconnected' } })
             await sendLine({ type: 'result', success: false, error: 'Stem split cancelled' }).catch(() => {})
             await writer.close().catch(() => {})
             return
@@ -199,7 +199,7 @@ export async function POST(request: Request) {
 
         const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
 
-        logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST), type: 'generation_stem_split', description: `Stem split (${Object.keys(permanentStems).join(', ')})`, metadata: { stems: Object.keys(permanentStems), libraryIds: savedLibraryIds } })
+        await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST), type: 'generation_stem_split', description: `Stem split (${Object.keys(permanentStems).join(', ')})`, metadata: { stems: Object.keys(permanentStems), libraryIds: savedLibraryIds } })
 
         await sendLine({
           type: 'result',
@@ -212,7 +212,7 @@ export async function POST(request: Request) {
         await writer.close()
       } catch (error) {
         console.error('[Stem Split] Stream error:', error)
-        logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split failed`, metadata: { error: String(error).substring(0, 200) } })
+        await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split failed`, metadata: { error: String(error).substring(0, 200) } })
         try {
           await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes' })
           await writer.close()
