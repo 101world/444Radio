@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat } from 'lucide-react'
+import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -150,6 +150,9 @@ function CreatePageContent() {
   // Stem splitting state
   const [isSplittingStems, setIsSplittingStems] = useState(false)
   const [splitStemsMessageId, setSplitStemsMessageId] = useState<string | null>(null)
+
+  // Abort controllers for cancellable generations
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
   
   // Features sidebar state
   const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
@@ -327,6 +330,36 @@ function CreatePageContent() {
     }])
     // Purge completed/failed generations so the sync effect doesn't restore them
     clearCompleted()
+  }
+
+  // Cancel an in-progress generation
+  const handleCancelGeneration = (messageId: string) => {
+    // Abort the active fetch
+    const controller = abortControllersRef.current.get(messageId)
+    if (controller) {
+      controller.abort()
+      abortControllersRef.current.delete(messageId)
+    }
+    // Mark message as cancelled
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId
+        ? { ...msg, isGenerating: false, content: '⏹ Generation cancelled.' }
+        : msg
+    ))
+    // Update generation queue item if linked
+    const msg = messages.find(m => m.id === messageId)
+    if (msg?.generationId) {
+      updateGeneration(msg.generationId, { status: 'failed', error: 'Cancelled by user' })
+    }
+    // Clean up active generations set
+    setActiveGenerations(prev => {
+      const next = new Set(prev)
+      next.delete(messageId)
+      return next
+    })
+    setGenerationQueue(prev => prev.filter(id => id !== messageId))
+    // Re-check if any still active
+    fetchCredits()
   }
 
   // Sync generation queue results with messages on mount and when generations change
@@ -843,6 +876,10 @@ function CreatePageContent() {
   ) => {
     console.log('[Generation] Starting generation:', { messageId, type, params })
     
+    // Create abort controller for this generation
+    const abortController = new AbortController()
+    abortControllersRef.current.set(messageId, abortController)
+    
     // Add to persistent generation queue
     const genId = addGeneration({
       type: type,
@@ -888,11 +925,11 @@ function CreatePageContent() {
           bpmToUse
         })
         console.log('🔍 [TITLE DEBUG] Title being sent to generateMusic:', titleToUse)
-        result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse)
+        result = await generateMusic(params.prompt, titleToUse, lyricsToUse, durationToUse, genreToUse, bpmToUse, abortController.signal)
         console.log('[Generation] Music generation result:', result)
       } else {
         console.log('[Generation] Calling generateImage with:', params.prompt)
-        result = await generateImage(params.prompt)
+        result = await generateImage(params.prompt, abortController.signal)
         console.log('[Generation] Image generation result:', result)
       }
 
@@ -953,6 +990,12 @@ function CreatePageContent() {
         setMessages(prev => [...prev, assistantMessage])
       }
     } catch (error) {
+      // If aborted by user, don't overwrite the cancel message
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.log('[Generation] Aborted by user:', messageId)
+        return
+      }
+      
       console.error('Generation error:', error)
       
       // Update persistent queue with error
@@ -971,6 +1014,8 @@ function CreatePageContent() {
       // Refetch credits in case of error
       fetchCredits()
     } finally {
+      // Clean up abort controller
+      abortControllersRef.current.delete(messageId)
       // Remove from queue and active generations
       console.log('[Generation] Cleaning up generation', messageId)
       setGenerationQueue(prev => prev.filter(id => id !== messageId))
@@ -1108,7 +1153,8 @@ function CreatePageContent() {
     lyrics?: string, 
     duration: 'short' | 'medium' | 'long' = 'medium',
     genreParam?: string,
-    bpmParam?: string
+    bpmParam?: string,
+    signal?: AbortSignal
   ) => {
     console.log('🔍 [TITLE DEBUG] generateMusic called with title:', title)
     
@@ -1141,7 +1187,8 @@ function CreatePageContent() {
     const res = await fetch('/api/generate/music-only', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal
     })
 
     const data = await res.json()
@@ -1160,11 +1207,12 @@ function CreatePageContent() {
     }
   }
 
-  const generateImage = async (prompt: string) => {
+  const generateImage = async (prompt: string, signal?: AbortSignal) => {
     const res = await fetch('/api/generate/image-only', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ prompt }),
+      signal
     })
 
     const data = await res.json()
@@ -1275,11 +1323,16 @@ function CreatePageContent() {
     }
     setMessages(prev => [...prev, processingMessage])
 
+    // Create abort controller for stem split
+    const abortController = new AbortController()
+    abortControllersRef.current.set(processingMessage.id, abortController)
+
     try {
       const response = await fetch('/api/audio/split-stems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl })
+        body: JSON.stringify({ audioUrl }),
+        signal: abortController.signal
       })
 
       const data = await response.json()
@@ -1315,6 +1368,10 @@ function CreatePageContent() {
           : msg
       ))
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.log('[StemSplit] Aborted by user')
+        return
+      }
       console.error('Stem splitting error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to split stems. Please try again.'
       
@@ -1330,6 +1387,7 @@ function CreatePageContent() {
           : msg
       ))
     } finally {
+      abortControllersRef.current.delete(processingMessage.id)
       setIsSplittingStems(false)
       setSplitStemsMessageId(null)
     }
@@ -1854,11 +1912,18 @@ function CreatePageContent() {
                   </div>
                 )}
 
-                {/* Loading */}
+                {/* Loading with cancel */}
                 {message.isGenerating && (
                   <div className="flex items-center gap-2 px-4 py-3 backdrop-blur-xl bg-cyan-500/10 border border-cyan-400/20 rounded-2xl">
                     <Loader2 className="animate-spin text-cyan-400" size={16} />
-                    <span className="text-xs text-cyan-300">Generating...</span>
+                    <span className="text-xs text-cyan-300 flex-1">Generating...</span>
+                    <button
+                      onClick={() => handleCancelGeneration(message.id)}
+                      className="p-1 rounded-lg hover:bg-white/10 transition-colors opacity-40 hover:opacity-100"
+                      title="Cancel"
+                    >
+                      <Square size={10} className="text-gray-400" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -2001,16 +2066,16 @@ function CreatePageContent() {
             </button>
             )}
 
-            {/* Clear Chat Button - Hidden by default */}
+            {/* New Chat Button */}
             {showAdvancedButtons && (
             <button
               onClick={handleClearChat}
-              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-red-500/30 hover:border-red-400/60 hover:scale-105"
-              title="Clear Chat"
+              className="group relative p-2 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105"
+              title="New Chat"
             >
-              <X 
+              <Plus 
                 size={18} 
-                className="text-red-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.9)] md:w-[20px] md:h-[20px]"
+                className="text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.9)] md:w-[20px] md:h-[20px]"
               />
             </button>
             )}
