@@ -31,9 +31,11 @@ export async function POST(request: NextRequest) {
 
     const typeDescription = promptType === 'song' 
       ? 'a complete song with vocals, lyrics, and full melodic vocal performance' 
-      : 'a pure instrumental beat with absolutely NO vocals, NO voice, NO singing - instrumental only'
+      : 'a pure instrumental beat with absolutely NO vocals, NO voice, NO singing, NO humming - purely instrumental'
     
-    const fullPrompt = `Generate a professional music generation prompt for ${typeDescription} in the ${genre} genre. The prompt should be 200-265 characters, include specific instruments, production techniques, mood, atmosphere, tempo/energy, and sound professional. Use vivid, descriptive language about sonic qualities. NO negative words. ${promptType === 'beat' ? 'IMPORTANT: This is instrumental only - do NOT mention vocals, voice, singing, or any human vocal elements.' : ''} Example: "Euphoric progressive house at 128 BPM with soaring synth leads, deep sub-bass, crisp percussion, ethereal vocal chops, lush pads, warm analog saturation." Generate ONLY the music prompt, nothing else:`
+    const fullPrompt = promptType === 'beat'
+      ? `Generate a professional INSTRUMENTAL music production prompt in the ${genre} genre. CRITICAL RULES: This is 100% instrumental — NEVER mention vocals, voice, singing, humming, melody vocals, vocal chops, vocal samples, or any human vocal element. Focus ONLY on: instruments, synths, drums, bass, production techniques, mood, atmosphere, tempo/energy. The prompt should be 200-265 characters. Use vivid, descriptive language about sonic qualities. Example: "Hard-hitting trap beat at 140 BPM with distorted 808 bass, crisp hi-hats, dark synth pads, eerie atmospheric textures, punchy kicks, and aggressive energy." Generate ONLY the music prompt, nothing else:`
+      : `Generate a professional music generation prompt for ${typeDescription} in the ${genre} genre. The prompt should be 200-265 characters, include specific instruments, production techniques, mood, atmosphere, tempo/energy, and sound professional. Use vivid, descriptive language about sonic qualities. NO negative words. Example: "Euphoric progressive house at 128 BPM with soaring synth leads, deep sub-bass, crisp percussion, ethereal vocal chops, lush pads, warm analog saturation." Generate ONLY the music prompt, nothing else:`
 
     // Use GPT-5 Nano
     const output = await replicate.run(
@@ -59,18 +61,21 @@ export async function POST(request: NextRequest) {
       .replace(/\s+/g, ' ') // Normalize spaces
       .trim()
 
-    // For beats/instrumentals: Remove any vocal-related words and add "no vocals"
+    // For beats/instrumentals: Aggressively remove all vocal-related words and add "no vocals"
     if (promptType === 'beat') {
       cleanPrompt = cleanPrompt
-        .replace(/\b(vocal|vocals|voice|voices|singing|singer|sung|sing|vox|vocoder|choir|choral|lyrics|lyric)\b/gi, '')
+        // Remove vocal-related words (including accented variants like mélodie)
+        .replace(/(vocal|vocals|voice|voices|singing|singer|sung|sing|vox|vocoder|choir|choral|lyrics|lyric|humming|hum|chant|chanting|whisper|whispered|spoken|rap|rapping|rapper|melodic\s*vocal|vocal\s*melody|vocal\s*m[eé]lod[iíy]e?|rich\s*vocal|m[eé]lod[iíy]e?\s*vocal|lush\s*vocal|soaring\s*vocal|ethereal\s*vocal|warm\s*vocal|smooth\s*vocal|deep\s*vocal|powerful\s*vocal|soulful\s*vocal|vocal\s*chop|vocal\s*sample|vocal\s*harmony|vocal\s*performance|harmony\s*vocal|backing\s*vocal|lead\s*vocal|falsetto|soprano|alto|tenor|baritone|a\s*capella|acapella)/gi, '')
         .replace(/\s+/g, ' ') // Clean up extra spaces
-        .replace(/,\s*,/g, ',') // Remove double commas
+        .replace(/,\s*,+/g, ',') // Remove double/triple commas
         .replace(/,\s*$/, '') // Remove trailing comma
         .replace(/^\s*,/, '') // Remove leading comma
         .trim()
       
-      // Add "no vocals" if not present
-      if (!cleanPrompt.toLowerCase().includes('no vocal')) {
+      // Add explicit instrumental tag if not present
+      if (!cleanPrompt.toLowerCase().includes('no vocal') && !cleanPrompt.toLowerCase().includes('instrumental only')) {
+        cleanPrompt += ', no vocals, instrumental only'
+      } else if (!cleanPrompt.toLowerCase().includes('no vocal')) {
         cleanPrompt += ', no vocals'
       }
     }

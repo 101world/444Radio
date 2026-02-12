@@ -706,11 +706,24 @@ function CreatePageContent() {
       let originalPrompt = input
       setInput('')
 
-      // If instrumental mode, ensure "no vocals" is in the prompt (keep total ≤300 for Replicate)
-      if (isInstrumental && !originalPrompt.toLowerCase().includes('no vocals')) {
-        const tag = ', no vocals, instrumental only'
-        originalPrompt = originalPrompt.trimEnd().slice(0, 300 - tag.length) + tag
-        console.log('🎹 Instrumental mode: appended "no vocals" to prompt:', originalPrompt)
+      // If instrumental mode, strip any vocal-related words and ensure "no vocals" tag
+      if (isInstrumental) {
+        // First, strip any vocal-related words that might have slipped in from AI-generated prompts
+        originalPrompt = originalPrompt
+          .replace(/(vocal|vocals|voice|voices|singing|singer|sung|sing|vox|vocoder|choir|choral|humming|hum|chant|chanting|whisper|falsetto|a\s*capella|acapella|vocal\s*chop|vocal\s*sample|vocal\s*harmony|vocal\s*m[eé]lod[iíy]e?|rich\s*vocal|lush\s*vocal|soaring\s*vocal|ethereal\s*vocal|warm\s*vocal|smooth\s*vocal|soulful\s*vocal|lead\s*vocal|backing\s*vocal)/gi, '')
+          .replace(/\s+/g, ' ')
+          .replace(/,\s*,+/g, ',')
+          .replace(/,\s*$/, '')
+          .replace(/^\s*,/, '')
+          .trim()
+
+        if (!originalPrompt.toLowerCase().includes('no vocals')) {
+          const tag = ', no vocals, instrumental only'
+          originalPrompt = originalPrompt.trimEnd().slice(0, 300 - tag.length) + tag
+        } else {
+          originalPrompt = originalPrompt.slice(0, 300)
+        }
+        console.log('🎹 Instrumental mode: cleaned prompt:', originalPrompt)
       } else {
         originalPrompt = originalPrompt.slice(0, 300)
       }
