@@ -96,27 +96,63 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
     try {
       let publicUrl: string
 
-      // Try server-side upload directly (avoids CORS issues)
-      // Presigned URLs require R2 CORS configuration which may not be set
-      setUploadProgress('Uploading file to storage...')
-      console.log('📤 Uploading file via server...')
-      
-      const formData = new FormData()
-      formData.append('file', selectedFile)
+      // Use presigned URL for all uploads (avoids Vercel 4.5MB body limit / 413 errors)
+      setUploadProgress('Preparing upload...')
+      console.log('📤 Requesting presigned URL for:', selectedFile.name, `(${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)`)
 
-      const serverResponse = await fetch('/api/upload/media', {
+      const presignResponse = await fetch('/api/upload/media', {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: selectedFile.name,
+          fileType: selectedFile.type,
+          fileSize: selectedFile.size,
+        })
       })
 
-      if (!serverResponse.ok) {
-        const serverError = await serverResponse.json()
-        throw new Error(serverError.error || 'Server upload failed')
+      if (!presignResponse.ok) {
+        const presignError = await presignResponse.json()
+        throw new Error(presignError.error || 'Failed to prepare upload')
       }
 
-      const uploadResult = await serverResponse.json()
-      publicUrl = uploadResult.url
-      console.log('✅ Server-side upload complete:', publicUrl)
+      const { uploadUrl, publicUrl: signedPublicUrl } = await presignResponse.json()
+
+      // Upload file directly to R2 via presigned URL (bypasses Vercel body limit)
+      setUploadProgress('Uploading file to storage...')
+      console.log('📤 Uploading directly to R2 via presigned URL...')
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': selectedFile.type },
+        body: selectedFile,
+      })
+
+      if (!uploadResponse.ok) {
+        // Fallback: try server-side upload for small files (< 4MB)
+        if (selectedFile.size < 4 * 1024 * 1024) {
+          console.warn('⚠️ Presigned upload failed, trying server-side fallback...')
+          setUploadProgress('Retrying upload...')
+          
+          const formData = new FormData()
+          formData.append('file', selectedFile)
+          const serverResponse = await fetch('/api/upload/media', {
+            method: 'POST',
+            body: formData
+          })
+          if (!serverResponse.ok) {
+            const serverError = await serverResponse.json()
+            throw new Error(serverError.error || 'Upload failed')
+          }
+          const uploadResult = await serverResponse.json()
+          publicUrl = uploadResult.url
+          console.log('✅ Server-side fallback upload complete:', publicUrl)
+        } else {
+          throw new Error(`Direct upload failed (${uploadResponse.status}). File may be too large for server fallback. Check R2 CORS configuration.`)
+        }
+      } else {
+        publicUrl = signedPublicUrl
+        console.log('✅ Direct R2 upload complete:', publicUrl)
+      }
 
       // For stem splitting, verify URL is accessible before proceeding
       if (uploadMode === 'stem-split') {

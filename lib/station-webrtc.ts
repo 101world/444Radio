@@ -24,7 +24,12 @@ export class StationWebRTC {
   }
 
   async init() {
-    // Initialize Pusher
+    // Validate Pusher config before attempting connection
+    if (!process.env.NEXT_PUBLIC_PUSHER_KEY) {
+      throw new Error('Live streaming is not configured. Missing NEXT_PUBLIC_PUSHER_KEY.')
+    }
+
+    // Initialize Pusher with reconnection handling
     this.pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap2',
       authEndpoint: '/api/pusher/auth',
@@ -32,6 +37,17 @@ export class StationWebRTC {
         endpoint: '/api/pusher/auth',
         transport: 'ajax'
       }
+    })
+
+    // Handle connection state changes to avoid "WebSocket is already in CLOSING or CLOSED state"
+    this.pusher.connection.bind('error', (err: any) => {
+      console.error('❌ Pusher connection error:', err)
+    })
+    this.pusher.connection.bind('disconnected', () => {
+      console.warn('⚠️ Pusher disconnected — will auto-reconnect')
+    })
+    this.pusher.connection.bind('unavailable', () => {
+      console.warn('⚠️ Pusher connection unavailable')
     })
 
     // Subscribe to station channel
@@ -90,8 +106,13 @@ export class StationWebRTC {
 
       peer.on('signal', async (signal) => {
         // Send signal back to viewer via server API (Pusher client events not enabled)
+        // Check Pusher connection state before signaling
+        if (this.pusher?.connection?.state !== 'connected') {
+          console.warn('⚠️ Pusher not connected, waiting before sending signal...')
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
         try {
-          await fetch('/api/station/signal', {
+          const res = await fetch('/api/station/signal', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -102,6 +123,10 @@ export class StationWebRTC {
               type: 'host'
             })
           })
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}))
+            console.error('❌ Signal API error:', res.status, errData)
+          }
         } catch (err) {
           console.error('Failed to send host signal:', err)
         }
@@ -161,8 +186,13 @@ export class StationWebRTC {
 
     this.peer.on('signal', async (signal) => {
       // Send signal to host via server API (Pusher client events not enabled)
+      // Check Pusher connection state before signaling
+      if (this.pusher?.connection?.state !== 'connected') {
+        console.warn('⚠️ Pusher not connected, waiting before sending signal...')
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
       try {
-        await fetch('/api/station/signal', {
+        const res = await fetch('/api/station/signal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -173,6 +203,13 @@ export class StationWebRTC {
             type: 'viewer'
           })
         })
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          console.error('❌ Signal API error:', res.status, errData)
+          if (errData.code === 'PUSHER_NOT_CONFIGURED') {
+            throw new Error('Live streaming is not available — Pusher is not configured on the server.')
+          }
+        }
       } catch (err) {
         console.error('Failed to send viewer signal:', err)
       }
@@ -276,24 +313,45 @@ export class StationWebRTC {
   }
 
   disconnect() {
-    if (this.peer) {
-      this.peer.destroy()
-      this.peer = null
+    try {
+      if (this.peer) {
+        this.peer.destroy()
+        this.peer = null
+      }
+    } catch (e) {
+      console.warn('Peer cleanup error:', e)
     }
 
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop())
-      this.localStream = null
+    try {
+      if (this.localStream) {
+        this.localStream.getTracks().forEach(track => track.stop())
+        this.localStream = null
+      }
+    } catch (e) {
+      console.warn('Stream cleanup error:', e)
     }
 
-    if (this.channel) {
-      this.pusher?.unsubscribe(`presence-station-${this.stationId}`)
-      this.channel = null
+    try {
+      if (this.channel) {
+        this.channel.unbind_all()
+        this.pusher?.unsubscribe(`presence-station-${this.stationId}`)
+        this.channel = null
+      }
+    } catch (e) {
+      console.warn('Channel cleanup error:', e)
     }
 
-    if (this.pusher) {
-      this.pusher.disconnect()
-      this.pusher = null
+    try {
+      if (this.pusher) {
+        // Only disconnect if not already closing/closed — prevents
+        // "WebSocket is already in CLOSING or CLOSED state" error
+        if (this.pusher.connection?.state === 'connected' || this.pusher.connection?.state === 'connecting') {
+          this.pusher.disconnect()
+        }
+        this.pusher = null
+      }
+    } catch (e) {
+      console.warn('Pusher cleanup error:', e)
     }
   }
 }

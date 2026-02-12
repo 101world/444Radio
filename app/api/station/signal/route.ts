@@ -65,14 +65,28 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ Signal routing error:', error)
+    const pusherConfigured = !!(process.env.PUSHER_APP_ID && process.env.PUSHER_KEY && process.env.PUSHER_SECRET && process.env.PUSHER_CLUSTER)
     console.error('Error details:', {
       message: error?.message,
       stack: error?.stack,
-      pusherConfigured: !!(process.env.PUSHER_APP_ID && process.env.PUSHER_KEY)
+      pusherConfigured,
+      envVars: {
+        PUSHER_APP_ID: !!process.env.PUSHER_APP_ID,
+        PUSHER_KEY: !!process.env.PUSHER_KEY,
+        PUSHER_SECRET: !!process.env.PUSHER_SECRET,
+        PUSHER_CLUSTER: !!process.env.PUSHER_CLUSTER,
+      }
     })
+
+    // Return a clear error so the client can show a helpful message
+    const statusCode = !pusherConfigured ? 503 : 500
+    const userMessage = !pusherConfigured
+      ? 'Live streaming is not configured. Pusher environment variables are missing.'
+      : 'Signal routing failed. Please try refreshing the page.'
     return corsResponse(NextResponse.json({ 
-      error: 'Signal failed',
-      details: error?.message || 'Unknown error'
-    }, { status: 500 }))
+      error: userMessage,
+      details: error?.message || 'Unknown error',
+      code: !pusherConfigured ? 'PUSHER_NOT_CONFIGURED' : 'SIGNAL_FAILED'
+    }, { status: statusCode }))
   }
 }

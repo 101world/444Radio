@@ -2,7 +2,6 @@
 // Tracks play counts for combined_media after 3s of playback
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { supabase } from '@/lib/supabase'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
@@ -28,13 +27,15 @@ export async function POST(request: Request) {
     }
 
     // Check if user is the artist (per copilot instructions: "Artist plays don't count")
-    const { data: media, error: fetchError } = await supabase
+    // Use admin client to bypass RLS — avoids false 404s when RLS blocks the select
+    const { data: media, error: fetchError } = await supabaseAdmin
       .from('combined_media')
       .select('user_id')
       .eq('id', mediaId)
       .single()
 
     if (fetchError) {
+      console.error('Track-play media lookup failed:', fetchError.message, 'mediaId:', mediaId)
       return corsResponse(
         NextResponse.json({ error: 'Media not found', details: fetchError.message }, { status: 404 })
       )

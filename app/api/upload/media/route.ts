@@ -4,9 +4,8 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
-// Allow larger uploads - Vercel Pro supports up to 100MB
+// Allow larger uploads - Vercel Pro supports up to 300s duration
 export const maxDuration = 300
-export const maxBodySize = 100 * 1024 * 1024 // 100MB
 
 export async function OPTIONS() {
   return handleOptions()
