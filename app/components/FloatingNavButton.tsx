@@ -25,7 +25,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
 
   // If this is the global (no-props) instance, hide on /create where the page renders its own
   const isGlobalInstance = !showPromptToggle && !onTogglePrompt
-  if (isGlobalInstance && pathname === '/create') return null
+  const shouldHide = isGlobalInstance && pathname === '/create'
 
   useEffect(() => {
     if (user) {
@@ -72,6 +72,8 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
     { href: '/pricing', icon: CreditCard, label: 'Pricing' },
     { href: user?.id ? `/profile/${user.id}` : '/profile', icon: User, label: 'Profile' },
   ]
+
+  if (shouldHide) return null
 
   return (
     <>

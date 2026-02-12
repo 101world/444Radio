@@ -708,9 +708,12 @@ function CreatePageContent() {
 
       // If instrumental mode, strip any vocal-related words and ensure "no vocals" tag
       if (isInstrumental) {
-        // First, strip any vocal-related words that might have slipped in from AI-generated prompts
+        // Strip vocal-related words that might have slipped in from AI-generated prompts
+        // Use word boundaries (\b) to avoid matching inside other words (e.g. 'hum' in 'thumping')
         originalPrompt = originalPrompt
-          .replace(/(vocal|vocals|voice|voices|singing|singer|sung|sing|vox|vocoder|choir|choral|humming|hum|chant|chanting|whisper|falsetto|a\s*capella|acapella|vocal\s*chop|vocal\s*sample|vocal\s*harmony|vocal\s*m[eé]lod[iíy]e?|rich\s*vocal|lush\s*vocal|soaring\s*vocal|ethereal\s*vocal|warm\s*vocal|smooth\s*vocal|soulful\s*vocal|lead\s*vocal|backing\s*vocal)/gi, '')
+          .replace(/\b(vocals?|voices?|singing|singer|sung|sing|vox|vocoder|choir|choral|humming|chant(?:ing)?|whisper(?:ed)?|falsetto|a\s*capella|acapella)\b/gi, '')
+          .replace(/\b(vocal\s*chops?|vocal\s*samples?|vocal\s*harmon(?:y|ies)|vocal\s*m[eé]lod(?:y|ie|ía)s?)\b/gi, '')
+          .replace(/\b(rich|lush|soaring|ethereal|warm|smooth|soulful|lead|backing)\s+vocals?\b/gi, '')
           .replace(/\s+/g, ' ')
           .replace(/,\s*,+/g, ',')
           .replace(/,\s*$/, '')

@@ -61,11 +61,14 @@ export async function POST(request: NextRequest) {
       .replace(/\s+/g, ' ') // Normalize spaces
       .trim()
 
-    // For beats/instrumentals: Aggressively remove all vocal-related words and add "no vocals"
+    // For beats/instrumentals: Remove vocal-related words and add "no vocals"
     if (promptType === 'beat') {
       cleanPrompt = cleanPrompt
-        // Remove vocal-related words (including accented variants like mélodie)
-        .replace(/(vocal|vocals|voice|voices|singing|singer|sung|sing|vox|vocoder|choir|choral|lyrics|lyric|humming|hum|chant|chanting|whisper|whispered|spoken|rap|rapping|rapper|melodic\s*vocal|vocal\s*melody|vocal\s*m[eé]lod[iíy]e?|rich\s*vocal|m[eé]lod[iíy]e?\s*vocal|lush\s*vocal|soaring\s*vocal|ethereal\s*vocal|warm\s*vocal|smooth\s*vocal|deep\s*vocal|powerful\s*vocal|soulful\s*vocal|vocal\s*chop|vocal\s*sample|vocal\s*harmony|vocal\s*performance|harmony\s*vocal|backing\s*vocal|lead\s*vocal|falsetto|soprano|alto|tenor|baritone|a\s*capella|acapella)/gi, '')
+        // Remove vocal-related words with word boundaries to avoid false matches
+        .replace(/\b(vocals?|voices?|singing|singer|sung|sing|vox|vocoder|choir|choral|lyrics?|humming|chant(?:ing)?|whisper(?:ed)?|spoken|rap(?:ping|per)?|falsetto|soprano|alto|tenor|baritone|a\s*capella|acapella)\b/gi, '')
+        // Remove compound vocal phrases
+        .replace(/\b(vocal\s*(?:chops?|samples?|harmon(?:y|ies)|m[eé]lod(?:y|ie|ía)s?|performance))\b/gi, '')
+        .replace(/\b(rich|lush|soaring|ethereal|warm|smooth|deep|powerful|soulful|backing|lead|melodic)\s+vocals?\b/gi, '')
         .replace(/\s+/g, ' ') // Clean up extra spaces
         .replace(/,\s*,+/g, ',') // Remove double/triple commas
         .replace(/,\s*$/, '') // Remove trailing comma
