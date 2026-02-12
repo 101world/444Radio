@@ -156,7 +156,7 @@ export default function EarnPage() {
       setTracks(prev => prev.map(t => 
         t.id === trackId ? { ...t, downloads: (t.downloads || 0) + 1 } : t
       ))
-      setCredits(prev => prev - (2 + (splitStems ? 5 : 0)))
+      setCredits(prev => prev - (5 + (splitStems ? 5 : 0)))
 
       // Auto-download the audio file
       if (data.audioUrl) {
@@ -206,6 +206,24 @@ export default function EarnPage() {
     setShowListModal(false)
     fetchTracks()
     fetchCredits() // Refresh balance after listing fee
+  }
+
+  // Unlist handler
+  const handleUnlist = async (trackId: string) => {
+    if (!confirm('Remove this track from the marketplace? The listing fee is non-refundable.')) return
+    try {
+      const res = await fetch('/api/earn/unlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackId })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to unlist')
+      // Remove from local state
+      setTracks(prev => prev.filter(t => t.id !== trackId))
+    } catch (err: any) {
+      alert(err.message || 'Failed to unlist track')
+    }
   }
 
   // Filtered + searched tracks
@@ -380,9 +398,11 @@ export default function EarnPage() {
                     track={track}
                     isCurrentTrack={currentTrack?.id === track.id}
                     isPlaying={currentTrack?.id === track.id && isPlaying}
+                    currentUserId={user?.id}
                     onPlay={() => handlePlay(track)}
                     onDownload={() => setDownloadTrack(track)}
                     onOpenArtist={() => handleOpenArtist(track.user_id)}
+                    onUnlist={handleUnlist}
                   />
                 ))}
               </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { Play, Pause, Download, Music2 } from 'lucide-react'
+import { Play, Pause, Download, Music2, Trash2 } from 'lucide-react'
 import LikeButton from '../../components/LikeButton'
 
 interface EarnTrack {
@@ -23,9 +23,11 @@ interface TrackCardProps {
   track: EarnTrack
   isCurrentTrack: boolean
   isPlaying: boolean
+  currentUserId?: string | null
   onPlay: () => void
   onDownload: () => void
   onOpenArtist: () => void
+  onUnlist?: (trackId: string) => void
 }
 
 function formatNumber(n: number): string {
@@ -45,7 +47,8 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(days / 30)}mo ago`
 }
 
-export default function TrackCard({ track, isCurrentTrack, isPlaying, onPlay, onDownload, onOpenArtist }: TrackCardProps) {
+export default function TrackCard({ track, isCurrentTrack, isPlaying, currentUserId, onPlay, onDownload, onOpenArtist, onUnlist }: TrackCardProps) {
+  const isOwner = currentUserId === track.user_id
   return (
     <div className={`group relative bg-white/5 border rounded-2xl p-4 backdrop-blur-xl transition-all duration-300 hover:bg-white/[0.08] hover:shadow-xl hover:shadow-cyan-500/5 hover:border-cyan-500/20 ${
       isCurrentTrack ? 'border-cyan-500/40 bg-cyan-500/5' : 'border-white/10'
@@ -159,8 +162,18 @@ export default function TrackCard({ track, isCurrentTrack, isPlaying, onPlay, on
               className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white rounded-lg text-xs font-semibold transition shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/25"
             >
               <Download size={12} />
-              2 cr
+              5 cr
             </button>
+            {isOwner && onUnlist && (
+              <button
+                onClick={() => onUnlist(track.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 rounded-lg text-xs font-medium transition"
+                title="Remove from marketplace"
+              >
+                <Trash2 size={12} />
+                Unlist
+              </button>
+            )}
           </div>
         </div>
       </div>
