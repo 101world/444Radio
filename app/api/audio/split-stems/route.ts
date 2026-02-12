@@ -68,7 +68,11 @@ export async function POST(request: Request) {
     for (const [key, value] of Object.entries(raw || {})) {
       if (typeof value === 'string' && value.startsWith('http') && !value.includes('.json')) {
         // Clean display name: demucs_vocals → vocals, mdx_instrumental → instrumental
-        const name = key.replace(/^(demucs_|mdx_)/, '')
+        let name = key.replace(/^(demucs_|mdx_)/, '')
+        // If name already taken (e.g. vocals from demucs + vocals from mdx), append " 2"
+        if (stems[name]) {
+          name = `${name} 2`
+        }
         stems[name] = value
       }
     }
