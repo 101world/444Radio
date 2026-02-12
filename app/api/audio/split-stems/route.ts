@@ -116,8 +116,10 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
-    console.log('[Stem Split] Replicate output:', JSON.stringify(output, null, 2))
-    console.log('[Stem Split] Output keys:', Object.keys(output || {}))
+    // replicate.wait() returns the full prediction object — stems are in .output
+    const stemOutput = output?.output ?? output
+    console.log('[Stem Split] Replicate output:', JSON.stringify(stemOutput, null, 2))
+    console.log('[Stem Split] Output keys:', Object.keys(stemOutput || {}))
 
     // BULLETPROOF stem extraction - find ANY valid audio URLs
     // Then deduplicate and present with clean names
@@ -198,7 +200,7 @@ export async function POST(request: Request) {
       return Object.keys(stems).length > 0 ? stems : null
     }
 
-    const allStems = normalizeStems(output)
+    const allStems = normalizeStems(stemOutput)
     
     if (!allStems || Object.keys(allStems).length === 0) {
       console.error('[Stem Split] No audio stems found in Replicate output')

@@ -26,6 +26,14 @@ export async function POST(request: Request) {
       )
     }
 
+    // Skip play tracking for non-UUID IDs (e.g. stem playback IDs like "123-output.demucs_vocals")
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!UUID_REGEX.test(mediaId)) {
+      return corsResponse(
+        NextResponse.json({ success: true, message: 'Non-database media, play tracking skipped', skipped: true })
+      )
+    }
+
     // Check if user is the artist (per copilot instructions: "Artist plays don't count")
     // Use admin client to bypass RLS — avoids false 404s when RLS blocks the select
     const { data: media, error: fetchError } = await supabaseAdmin
