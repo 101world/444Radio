@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Music, Image as ImageIcon, Rocket, ChevronRight, Check } from 'lucide-react'
+import { X, Music, Image as ImageIcon, Rocket, ChevronRight, ChevronLeft, Check, Plus, Trash2, Info, Shield, Tag, Mic2, Users } from 'lucide-react'
 
 interface LibraryMusic {
   id: string
@@ -20,6 +20,11 @@ interface LibraryImage {
   created_at: string
 }
 
+interface Contributor {
+  name: string
+  role: string
+}
+
 interface TwoStepReleaseModalProps {
   isOpen: boolean
   onClose: () => void
@@ -27,13 +32,53 @@ interface TwoStepReleaseModalProps {
   preselectedImage?: string
 }
 
-export default function TwoStepReleaseModal({ 
-  isOpen, 
+// ─── Options ───
+const GENRE_OPTIONS = [
+  'Pop', 'Hip-Hop', 'Electronic', 'Rock', 'R&B', 'Jazz', 'Classical', 'Country', 'Reggae',
+  'Latin', 'K-Pop', 'Indie', 'Lo-Fi', 'Trap', 'House', 'Techno', 'Ambient', 'Drill',
+  'Dubstep', 'Funk', 'Soul', 'Blues', 'Phonk', 'Synthwave', 'Afrobeats', 'Dancehall',
+  'Metal', 'Punk', 'Folk', 'World', 'Gospel', 'Reggaeton', 'Drum & Bass', 'Other'
+]
+
+const MOOD_OPTIONS = [
+  'Happy', 'Sad', 'Energetic', 'Chill', 'Romantic', 'Dark', 'Uplifting', 'Melancholic',
+  'Aggressive', 'Peaceful', 'Mysterious', 'Nostalgic', 'Dreamy', 'Epic', 'Smooth',
+  'Atmospheric', 'Groovy', 'Haunting', 'Playful', 'Triumphant', 'Anxious', 'Bittersweet'
+]
+
+const KEY_OPTIONS = [
+  'C Major', 'C Minor', 'C# Major', 'C# Minor', 'D Major', 'D Minor',
+  'D# Major', 'D# Minor', 'E Major', 'E Minor', 'F Major', 'F Minor',
+  'F# Major', 'F# Minor', 'G Major', 'G Minor', 'G# Major', 'G# Minor',
+  'A Major', 'A Minor', 'A# Major', 'A# Minor', 'B Major', 'B Minor'
+]
+
+const INSTRUMENT_OPTIONS = [
+  'Piano', 'Guitar', 'Bass', 'Drums', 'Synthesizer', 'Violin', 'Viola', 'Cello',
+  'Trumpet', 'Saxophone', 'Flute', 'Harp', 'Organ', 'Ukulele', 'Banjo',
+  'Mandolin', 'Percussion', 'Tabla', 'Sitar', 'Harmonica', 'Accordion',
+  '808', 'Sampler', 'Turntable', 'Vocal Chops'
+]
+
+const LANGUAGE_OPTIONS = [
+  'Instrumental', 'English', 'Spanish', 'French', 'German', 'Japanese', 'Korean',
+  'Chinese', 'Portuguese', 'Italian', 'Arabic', 'Hindi', 'Russian', 'Swedish',
+  'Dutch', 'Turkish', 'Thai', 'Yoruba', 'Swahili', 'Other'
+]
+
+const CONTRIBUTOR_ROLES = [
+  'Producer', 'Songwriter', 'Composer', 'Arranger', 'Vocalist', 'Featured Artist',
+  'Mixing Engineer', 'Mastering Engineer', 'Sound Designer', 'Remixer',
+  'Session Musician', 'Lyricist', 'Beat Maker', 'DJ'
+]
+
+export default function TwoStepReleaseModal({
+  isOpen,
   onClose,
   preselectedMusic,
-  preselectedImage 
+  preselectedImage
 }: TwoStepReleaseModalProps) {
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [selectedMusic, setSelectedMusic] = useState<string | null>(preselectedMusic || null)
   const [selectedImage, setSelectedImage] = useState<string | null>(preselectedImage || null)
   const [isLoading, setIsLoading] = useState(true)
@@ -41,20 +86,43 @@ export default function TwoStepReleaseModal({
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [isPublishing, setIsPublishing] = useState(false)
 
-  // Step 2: Metadata
+  // ─── Step 2: Essential Metadata ───
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState('')
   const [isPublic, setIsPublic] = useState(true)
-  
-  // Mandatory metadata fields
   const [genre, setGenre] = useState('')
+  const [secondaryGenre, setSecondaryGenre] = useState('')
   const [mood, setMood] = useState('')
   const [bpm, setBpm] = useState('')
   const [vocals, setVocals] = useState('none')
-  const [language, setLanguage] = useState('instrumental')
+  const [language, setLanguage] = useState('Instrumental')
+  const [keySignature, setKeySignature] = useState('')
+  const [isExplicit, setIsExplicit] = useState(false)
+  const [lyrics, setLyrics] = useState('')
 
-  // Fetch library items when modal opens
+  // ─── Step 3: Distribution & Credits ───
+  const [artistName, setArtistName] = useState('')
+  const [featuredArtists, setFeaturedArtists] = useState('')
+  const [releaseType, setReleaseType] = useState('single')
+  const [instruments, setInstruments] = useState<string[]>([])
+  const [keywords, setKeywords] = useState('')
+  const [versionTag, setVersionTag] = useState('')
+  const [isCover, setIsCover] = useState(false)
+  // Rights
+  const [copyrightHolder, setCopyrightHolder] = useState('')
+  const [copyrightYear, setCopyrightYear] = useState(new Date().getFullYear().toString())
+  const [recordLabel, setRecordLabel] = useState('')
+  const [publisher, setPublisher] = useState('')
+  const [proAffiliation, setProAffiliation] = useState('')
+  // Identifiers
+  const [isrc, setIsrc] = useState('')
+  const [upc, setUpc] = useState('')
+  // Contributors
+  const [contributors, setContributors] = useState<Contributor[]>([])
+  // Release scheduling
+  const [releaseDate, setReleaseDate] = useState('')
+
   useEffect(() => {
     if (isOpen) {
       fetchLibraryItems()
@@ -71,14 +139,12 @@ export default function TwoStepReleaseModal({
         fetch('/api/library/music'),
         fetch('/api/library/images')
       ])
-      
       const musicData = await musicRes.json()
       const imagesData = await imagesRes.json()
 
       if (musicData.success && Array.isArray(musicData.music)) {
         setMusicItems(musicData.music)
       }
-      
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
       }
@@ -89,50 +155,91 @@ export default function TwoStepReleaseModal({
     }
   }
 
-  const handleNextStep = () => {
+  const handleNextToStep2 = () => {
     if (!selectedMusic || !selectedImage) {
       alert('Please select both music and cover art to continue')
       return
     }
-
-    // Auto-fill title from music if available
     const music = musicItems.find(m => m.id === selectedMusic)
-    console.log('🔍 [RELEASE DEBUG] Music item found:', music)
-    console.log('🔍 [RELEASE DEBUG] music.title:', music?.title)
     if (music && !title) {
-      const autoFilledTitle = music.title || music.prompt.substring(0, 50)
-      console.log('🔍 [RELEASE DEBUG] Auto-filling title with:', autoFilledTitle)
-      setTitle(autoFilledTitle)
+      setTitle(music.title || music.prompt.substring(0, 50))
     }
-
+    if (music?.lyrics && !lyrics) {
+      setLyrics(music.lyrics)
+    }
     setStep(2)
   }
 
+  const handleNextToStep3 = () => {
+    if (!title.trim()) { alert('Please enter a title'); return }
+    if (!genre) { alert('Please select a genre'); return }
+    if (!mood) { alert('Please select a mood'); return }
+    setStep(3)
+  }
+
+  const addContributor = () => {
+    setContributors([...contributors, { name: '', role: 'Producer' }])
+  }
+
+  const removeContributor = (index: number) => {
+    setContributors(contributors.filter((_, i) => i !== index))
+  }
+
+  const updateContributor = (index: number, field: 'name' | 'role', value: string) => {
+    const updated = [...contributors]
+    updated[index] = { ...updated[index], [field]: value }
+    setContributors(updated)
+  }
+
+  const toggleInstrument = (instrument: string) => {
+    setInstruments(prev =>
+      prev.includes(instrument)
+        ? prev.filter(i => i !== instrument)
+        : [...prev, instrument]
+    )
+  }
+
   const handlePublish = async () => {
-    // Validate mandatory fields
-    if (!title.trim()) {
-      alert('Please enter a title for your release')
-      return
-    }
-    if (!genre) {
-      alert('Please select a genre')
-      return
-    }
-    if (!mood) {
-      alert('Please select a mood')
-      return
-    }
+    if (!title.trim()) { alert('Please enter a title'); return }
+    if (!genre) { alert('Please select a genre'); return }
+    if (!mood) { alert('Please select a mood'); return }
 
     setIsPublishing(true)
     try {
       const music = musicItems.find(m => m.id === selectedMusic)
       const image = imageItems.find(i => i.id === selectedImage)
+      if (!music || !image) throw new Error('Selected media not found')
 
-      if (!music || !image) {
-        throw new Error('Selected media not found')
+      const metadata: Record<string, unknown> = {
+        description: description.trim() || null,
+        tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+        genre,
+        secondary_genre: secondaryGenre || null,
+        mood,
+        bpm: bpm ? parseInt(bpm) : null,
+        vocals,
+        language,
+        key_signature: keySignature || null,
+        is_explicit: isExplicit,
+        is_cover: isCover,
+        lyrics: lyrics.trim() || null,
+        artist_name: artistName.trim() || null,
+        featured_artists: featuredArtists.split(',').map(a => a.trim()).filter(Boolean),
+        release_type: releaseType,
+        instruments: instruments.length > 0 ? instruments : null,
+        keywords: keywords.split(',').map(k => k.trim()).filter(Boolean),
+        version_tag: versionTag.trim() || null,
+        copyright_holder: copyrightHolder.trim() || null,
+        copyright_year: copyrightYear ? parseInt(copyrightYear) : null,
+        record_label: recordLabel.trim() || null,
+        publisher: publisher.trim() || null,
+        pro_affiliation: proAffiliation.trim() || null,
+        isrc: isrc.trim() || null,
+        upc: upc.trim() || null,
+        contributors: contributors.filter(c => c.name.trim()),
+        release_date: releaseDate || null,
       }
 
-      // Combine media with full metadata
       const combineRes = await fetch('/api/media/combine', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,16 +249,8 @@ export default function TwoStepReleaseModal({
           title: title.trim(),
           audioPrompt: music.prompt,
           imagePrompt: image.prompt,
-          isPublic: isPublic,
-          metadata: {
-            description: description.trim(),
-            tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-            genre: genre,
-            mood: mood,
-            bpm: bpm ? parseInt(bpm) : null,
-            vocals: vocals,
-            language: language
-          }
+          isPublic,
+          metadata
         })
       })
 
@@ -170,10 +269,6 @@ export default function TwoStepReleaseModal({
     }
   }
 
-  const handleBack = () => {
-    setStep(1)
-  }
-
   if (!isOpen) return null
 
   const selectedMusicItem = musicItems.find(m => m.id === selectedMusic)
@@ -181,103 +276,92 @@ export default function TwoStepReleaseModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal Container */}
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        
+      <div className="relative w-full max-w-4xl max-h-[92vh] bg-black/95 backdrop-blur-2xl border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
           <div className="flex items-center gap-3">
-            <Rocket size={24} className="text-cyan-400" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+              <Rocket size={18} className="text-cyan-400" />
+            </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Release Your Track</h2>
-              <p className="text-xs text-gray-400">
-                {step === 1 ? 'Step 1: Select Media' : 'Step 2: Add Details'}
+              <h2 className="text-lg font-bold text-white">Release Your Track</h2>
+              <p className="text-xs text-gray-500">
+                {step === 1 ? 'Step 1 — Select Media' : step === 2 ? 'Step 2 — Track Details' : 'Step 3 — Distribution Info'}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-          >
-            <X size={20} className="text-gray-400" />
+          <button onClick={onClose} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+            <X size={18} className="text-gray-400" />
           </button>
         </div>
 
         {/* Progress Bar */}
-        <div className="px-6 py-3 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <div className={`flex-1 h-1 rounded-full transition-all ${step >= 1 ? 'bg-cyan-500' : 'bg-white/10'}`} />
-            <div className={`flex-1 h-1 rounded-full transition-all ${step >= 2 ? 'bg-cyan-500' : 'bg-white/10'}`} />
+        <div className="px-6 py-2.5 border-b border-white/[0.06]">
+          <div className="flex items-center gap-1.5">
+            <div className={`flex-1 h-1 rounded-full transition-all duration-300 ${step >= 1 ? 'bg-cyan-500' : 'bg-white/10'}`} />
+            <div className={`flex-1 h-1 rounded-full transition-all duration-300 ${step >= 2 ? 'bg-cyan-500' : 'bg-white/10'}`} />
+            <div className={`flex-1 h-1 rounded-full transition-all duration-300 ${step >= 3 ? 'bg-cyan-500' : 'bg-white/10'}`} />
+          </div>
+          <div className="flex justify-between mt-1.5 text-[10px] text-gray-600">
+            <span className={step >= 1 ? 'text-cyan-400' : ''}>Media</span>
+            <span className={step >= 2 ? 'text-cyan-400' : ''}>Details</span>
+            <span className={step >= 3 ? 'text-cyan-400' : ''}>Distribution</span>
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          
-          {/* STEP 1: Select Media */}
+
+          {/* ═══ STEP 1: SELECT MEDIA ═══ */}
           {step === 1 && (
             <div className="p-6 space-y-6">
-              
-              {/* Selection Summary */}
               {(selectedMusic || selectedImage) && (
-                <div className="flex gap-4 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
+                <div className="flex gap-3 p-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
                   {selectedMusicItem && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-black/40 rounded-lg">
-                      <Music size={16} className="text-cyan-400" />
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
+                      <Music size={14} className="text-cyan-400" />
                       <span className="text-sm text-white">{selectedMusicItem.title || 'Music'}</span>
-                      <Check size={16} className="text-green-400" />
+                      <Check size={14} className="text-green-400" />
                     </div>
                   )}
                   {selectedImageItem && (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-black/40 rounded-lg">
-                      <ImageIcon size={16} className="text-cyan-400" />
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
+                      <ImageIcon size={14} className="text-cyan-400" />
                       <span className="text-sm text-white">{selectedImageItem.title || 'Cover'}</span>
-                      <Check size={16} className="text-green-400" />
+                      <Check size={14} className="text-green-400" />
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Music Selection */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  Select Music Track
-                </h3>
-                <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Select Music Track</h3>
+                <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                   {isLoading ? (
-                    <p className="col-span-2 text-gray-500 text-sm text-center py-8">Loading...</p>
+                    <p className="col-span-2 text-gray-600 text-sm text-center py-8">Loading...</p>
                   ) : musicItems.length === 0 ? (
-                    <p className="col-span-2 text-gray-500 text-sm text-center py-8">No music tracks yet</p>
+                    <p className="col-span-2 text-gray-600 text-sm text-center py-8">No music tracks yet</p>
                   ) : (
-                    musicItems.map((music) => (
+                    musicItems.map(music => (
                       <button
                         key={music.id}
                         onClick={() => setSelectedMusic(music.id)}
                         className={`p-3 rounded-xl transition-all text-left ${
                           selectedMusic === music.id
-                            ? 'bg-cyan-500/20 border-2 border-cyan-500'
-                            : 'bg-white/5 border-2 border-white/10 hover:border-cyan-500/50'
+                            ? 'bg-cyan-500/15 border-2 border-cyan-500/50'
+                            : 'bg-white/[0.03] border-2 border-white/[0.06] hover:border-cyan-500/30'
                         }`}
                       >
                         <div className="flex items-start gap-2">
-                          <Music size={16} className="text-cyan-400 mt-1 flex-shrink-0" />
+                          <Music size={14} className="text-cyan-400 mt-0.5 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
-                              {music.title || 'Untitled'}
-                            </p>
-                            <p className="text-xs text-gray-400 truncate mt-1">
-                              {music.prompt.substring(0, 40)}...
-                            </p>
+                            <p className="text-sm font-medium text-white truncate">{music.title || 'Untitled'}</p>
+                            <p className="text-xs text-gray-500 truncate mt-0.5">{music.prompt.substring(0, 40)}...</p>
                           </div>
-                          {selectedMusic === music.id && (
-                            <Check size={16} className="text-cyan-400 flex-shrink-0" />
-                          )}
+                          {selectedMusic === music.id && <Check size={14} className="text-cyan-400 flex-shrink-0" />}
                         </div>
                       </button>
                     ))
@@ -285,36 +369,27 @@ export default function TwoStepReleaseModal({
                 </div>
               </div>
 
-              {/* Image Selection */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  Select Cover Art
-                </h3>
-                <div className="grid grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Select Cover Art</h3>
+                <div className="grid grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
                   {isLoading ? (
-                    <p className="col-span-3 text-gray-500 text-sm text-center py-8">Loading...</p>
+                    <p className="col-span-3 text-gray-600 text-sm text-center py-8">Loading...</p>
                   ) : imageItems.length === 0 ? (
-                    <p className="col-span-3 text-gray-500 text-sm text-center py-8">No cover art yet</p>
+                    <p className="col-span-3 text-gray-600 text-sm text-center py-8">No cover art yet</p>
                   ) : (
-                    imageItems.map((image) => (
+                    imageItems.map(image => (
                       <button
                         key={image.id}
                         onClick={() => setSelectedImage(image.id)}
                         className={`aspect-square rounded-xl overflow-hidden transition-all ${
-                          selectedImage === image.id
-                            ? 'ring-4 ring-cyan-500'
-                            : 'ring-2 ring-white/10 hover:ring-cyan-500/50'
+                          selectedImage === image.id ? 'ring-3 ring-cyan-500' : 'ring-1 ring-white/10 hover:ring-cyan-500/40'
                         }`}
                       >
                         <div className="relative w-full h-full">
-                          <img
-                            src={image.image_url}
-                            alt={image.title || 'Cover art'}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={image.image_url} alt={image.title || 'Cover art'} className="w-full h-full object-cover" />
                           {selectedImage === image.id && (
                             <div className="absolute inset-0 bg-cyan-500/20 flex items-center justify-center">
-                              <Check size={32} className="text-white" />
+                              <Check size={28} className="text-white" />
                             </div>
                           )}
                         </div>
@@ -323,32 +398,24 @@ export default function TwoStepReleaseModal({
                   )}
                 </div>
               </div>
-
             </div>
           )}
 
-          {/* STEP 2: Metadata */}
+          {/* ═══ STEP 2: ESSENTIAL METADATA ═══ */}
           {step === 2 && (
-            <div className="p-6 space-y-5">
-              
+            <div className="p-6 space-y-4">
               {/* Preview */}
-              <div className="flex gap-4 p-4 bg-white/5 rounded-xl">
+              <div className="flex gap-4 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
                 {selectedImageItem && (
-                  <img
-                    src={selectedImageItem.image_url}
-                    alt="Cover"
-                    className="w-24 h-24 rounded-lg object-cover"
-                  />
+                  <img src={selectedImageItem.image_url} alt="Cover" className="w-20 h-20 rounded-lg object-cover" />
                 )}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <Music size={16} className="text-cyan-400" />
-                    <span className="text-sm font-medium text-white">
-                      {selectedMusicItem?.title || 'Untitled'}
-                    </span>
+                    <Music size={14} className="text-cyan-400" />
+                    <span className="text-sm font-medium text-white truncate">{selectedMusicItem?.title || 'Untitled'}</span>
                   </div>
                   {selectedMusicItem && (
-                    <audio controls className="w-full h-8">
+                    <audio controls className="w-full h-8 [&::-webkit-media-controls-panel]:bg-white/5">
                       <source src={selectedMusicItem.audio_url} type="audio/mpeg" />
                     </audio>
                   )}
@@ -357,218 +424,337 @@ export default function TwoStepReleaseModal({
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Title *
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                  Title <span className="text-red-400">*</span>
                 </label>
                 <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  type="text" value={title} onChange={e => setTitle(e.target.value)}
                   placeholder="Enter track title..."
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20 transition-all"
                 />
               </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Tell people about your track..."
-                  rows={3}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all resize-none"
-                />
-              </div>
-
-              {/* Genre (Mandatory) */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Genre * <span className="text-red-400">(Required)</span>
-                </label>
-                <select
-                  value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 transition-all"
-                >
-                  <option value="" className="bg-black">Select genre...</option>
-                  <option value="Pop" className="bg-black">Pop</option>
-                  <option value="Hip-Hop" className="bg-black">Hip-Hop</option>
-                  <option value="Electronic" className="bg-black">Electronic</option>
-                  <option value="Rock" className="bg-black">Rock</option>
-                  <option value="R&B" className="bg-black">R&B</option>
-                  <option value="Jazz" className="bg-black">Jazz</option>
-                  <option value="Classical" className="bg-black">Classical</option>
-                  <option value="Country" className="bg-black">Country</option>
-                  <option value="Reggae" className="bg-black">Reggae</option>
-                  <option value="Latin" className="bg-black">Latin</option>
-                  <option value="K-Pop" className="bg-black">K-Pop</option>
-                  <option value="Indie" className="bg-black">Indie</option>
-                  <option value="Lo-Fi" className="bg-black">Lo-Fi</option>
-                  <option value="Trap" className="bg-black">Trap</option>
-                  <option value="House" className="bg-black">House</option>
-                  <option value="Techno" className="bg-black">Techno</option>
-                  <option value="Ambient" className="bg-black">Ambient</option>
-                  <option value="Other" className="bg-black">Other</option>
-                </select>
-              </div>
-
-              {/* Mood (Mandatory) */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Mood * <span className="text-red-400">(Required)</span>
-                </label>
-                <select
-                  value={mood}
-                  onChange={(e) => setMood(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 transition-all"
-                >
-                  <option value="" className="bg-black">Select mood...</option>
-                  <option value="Happy" className="bg-black">Happy</option>
-                  <option value="Sad" className="bg-black">Sad</option>
-                  <option value="Energetic" className="bg-black">Energetic</option>
-                  <option value="Chill" className="bg-black">Chill</option>
-                  <option value="Romantic" className="bg-black">Romantic</option>
-                  <option value="Dark" className="bg-black">Dark</option>
-                  <option value="Uplifting" className="bg-black">Uplifting</option>
-                  <option value="Melancholic" className="bg-black">Melancholic</option>
-                  <option value="Aggressive" className="bg-black">Aggressive</option>
-                  <option value="Peaceful" className="bg-black">Peaceful</option>
-                  <option value="Mysterious" className="bg-black">Mysterious</option>
-                  <option value="Nostalgic" className="bg-black">Nostalgic</option>
-                </select>
-              </div>
-
-              {/* Two-column grid for smaller fields */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* BPM */}
+              {/* Genre + Mood (required) */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                    BPM (Optional)
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    Genre <span className="text-red-400">*</span>
                   </label>
-                  <input
-                    type="number"
-                    value={bpm}
-                    onChange={(e) => setBpm(e.target.value)}
-                    placeholder="120"
-                    min="40"
-                    max="200"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
-                  />
+                  <select value={genre} onChange={e => setGenre(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    <option value="" className="bg-black">Select genre...</option>
+                    {GENRE_OPTIONS.map(g => <option key={g} value={g} className="bg-black">{g}</option>)}
+                  </select>
                 </div>
-
-                {/* Vocals */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                    Vocals
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    Mood <span className="text-red-400">*</span>
                   </label>
-                  <select
-                    value={vocals}
-                    onChange={(e) => setVocals(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 transition-all"
-                  >
+                  <select value={mood} onChange={e => setMood(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    <option value="" className="bg-black">Select mood...</option>
+                    {MOOD_OPTIONS.map(m => <option key={m} value={m} className="bg-black">{m}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Secondary genre + Key */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Secondary Genre</label>
+                  <select value={secondaryGenre} onChange={e => setSecondaryGenre(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    <option value="" className="bg-black">None</option>
+                    {GENRE_OPTIONS.map(g => <option key={g} value={g} className="bg-black">{g}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Key Signature</label>
+                  <select value={keySignature} onChange={e => setKeySignature(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    <option value="" className="bg-black">Unknown</option>
+                    {KEY_OPTIONS.map(k => <option key={k} value={k} className="bg-black">{k}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* BPM + Vocals + Language */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">BPM</label>
+                  <input type="number" value={bpm} onChange={e => setBpm(e.target.value)}
+                    placeholder="120" min="40" max="300"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Vocals</label>
+                  <select value={vocals} onChange={e => setVocals(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
                     <option value="none" className="bg-black">Instrumental</option>
                     <option value="male" className="bg-black">Male Vocals</option>
                     <option value="female" className="bg-black">Female Vocals</option>
                     <option value="both" className="bg-black">Mixed Vocals</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Language</label>
+                  <select value={language} onChange={e => setLanguage(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    {LANGUAGE_OPTIONS.map(l => <option key={l} value={l} className="bg-black">{l}</option>)}
+                  </select>
+                </div>
               </div>
 
-              {/* Language */}
+              {/* Description */}
               <div>
-                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Language
-                </label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 transition-all"
-                >
-                  <option value="instrumental" className="bg-black">Instrumental</option>
-                  <option value="English" className="bg-black">English</option>
-                  <option value="Spanish" className="bg-black">Spanish</option>
-                  <option value="French" className="bg-black">French</option>
-                  <option value="German" className="bg-black">German</option>
-                  <option value="Japanese" className="bg-black">Japanese</option>
-                  <option value="Korean" className="bg-black">Korean</option>
-                  <option value="Chinese" className="bg-black">Chinese</option>
-                  <option value="Portuguese" className="bg-black">Portuguese</option>
-                  <option value="Other" className="bg-black">Other</option>
-                </select>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Description</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)}
+                  placeholder="Tell listeners about your track..."
+                  rows={2}
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all resize-none" />
               </div>
 
               {/* Tags */}
               <div>
-                <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Tags
-                </label>
-                <input
-                  type="text"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  placeholder="summer, vibes, 2024 (comma separated)"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all"
-                />
-                <p className="text-xs text-gray-500 mt-1">Separate tags with commas</p>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Tags</label>
+                <input type="text" value={tags} onChange={e => setTags(e.target.value)}
+                  placeholder="summer, vibes, 2025 (comma separated)"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
               </div>
 
-              {/* Visibility */}
-              <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
-                <div>
-                  <p className="text-sm font-medium text-white">Make Public</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Show this track on the explore feed</p>
-                </div>
-                <button
-                  onClick={() => setIsPublic(!isPublic)}
-                  className={`relative w-14 h-7 rounded-full transition-colors ${
-                    isPublic ? 'bg-cyan-500' : 'bg-white/20'
-                  }`}
-                >
-                  <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
-                    isPublic ? 'translate-x-7' : 'translate-x-0'
-                  }`} />
-                </button>
+              {/* Lyrics (collapsible) */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Lyrics</label>
+                <textarea value={lyrics} onChange={e => setLyrics(e.target.value)}
+                  placeholder="Paste or type your lyrics here..."
+                  rows={3}
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all resize-none font-mono" />
               </div>
 
+              {/* Toggles row */}
+              <div className="flex items-center gap-4">
+                <ToggleSwitch label="Public" value={isPublic} onChange={setIsPublic} description="Show on explore feed" />
+                <ToggleSwitch label="Explicit" value={isExplicit} onChange={setIsExplicit} description="Contains mature content" />
+              </div>
             </div>
           )}
 
+          {/* ═══ STEP 3: DISTRIBUTION & CREDITS ═══ */}
+          {step === 3 && (
+            <div className="p-6 space-y-5">
+              <div className="flex items-center gap-2 p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl">
+                <Info size={14} className="text-blue-400 flex-shrink-0" />
+                <p className="text-xs text-blue-300/80">
+                  Distribution metadata is optional but recommended for professional releases and music distributors (DistroKid, TuneCore, etc.)
+                </p>
+              </div>
+
+              {/* Artist Info Section */}
+              <SectionHeader icon={Mic2} label="Artist Info" color="cyan" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Artist Name</label>
+                  <input type="text" value={artistName} onChange={e => setArtistName(e.target.value)}
+                    placeholder="Your artist name"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Featured Artists</label>
+                  <input type="text" value={featuredArtists} onChange={e => setFeaturedArtists(e.target.value)}
+                    placeholder="Comma separated"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Release Type</label>
+                  <select value={releaseType} onChange={e => setReleaseType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    <option value="single" className="bg-black">Single</option>
+                    <option value="ep" className="bg-black">EP</option>
+                    <option value="album" className="bg-black">Album</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Version Tag</label>
+                  <input type="text" value={versionTag} onChange={e => setVersionTag(e.target.value)}
+                    placeholder="e.g. Remix, Deluxe"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Release Date</label>
+                  <input type="date" value={releaseDate} onChange={e => setReleaseDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+              </div>
+
+              <ToggleSwitch label="Cover Song" value={isCover} onChange={setIsCover} description="This is a cover of another song" />
+
+              {/* Instruments */}
+              <SectionHeader icon={Music} label="Instruments" color="purple" />
+              <div className="flex flex-wrap gap-1.5">
+                {INSTRUMENT_OPTIONS.map(inst => (
+                  <button
+                    key={inst}
+                    onClick={() => toggleInstrument(inst)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border ${
+                      instruments.includes(inst)
+                        ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                        : 'bg-white/[0.03] text-gray-500 border-white/[0.06] hover:border-white/10'
+                    }`}
+                  >
+                    {inst}
+                  </button>
+                ))}
+              </div>
+
+              {/* Keywords */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Keywords (for search)</label>
+                <input type="text" value={keywords} onChange={e => setKeywords(e.target.value)}
+                  placeholder="study, workout, driving, rain (comma separated)"
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+              </div>
+
+              {/* Contributors */}
+              <SectionHeader icon={Users} label="Credits & Contributors" color="green" />
+              {contributors.map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="text" value={c.name} onChange={e => updateContributor(i, 'name', e.target.value)}
+                    placeholder="Name"
+                    className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                  <select value={c.role} onChange={e => updateContributor(i, 'role', e.target.value)}
+                    className="w-40 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    {CONTRIBUTOR_ROLES.map(r => <option key={r} value={r} className="bg-black">{r}</option>)}
+                  </select>
+                  <button onClick={() => removeContributor(i)} className="p-2 hover:bg-red-500/10 rounded-lg transition-colors">
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
+                </div>
+              ))}
+              <button onClick={addContributor}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.03] border border-dashed border-white/10 rounded-lg text-xs text-gray-400 hover:text-white hover:border-white/20 transition-colors">
+                <Plus size={14} /> Add Contributor
+              </button>
+
+              {/* Rights & Legal */}
+              <SectionHeader icon={Shield} label="Rights & Legal" color="amber" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Copyright Holder</label>
+                  <input type="text" value={copyrightHolder} onChange={e => setCopyrightHolder(e.target.value)}
+                    placeholder="Your name or label"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Copyright Year</label>
+                  <input type="number" value={copyrightYear} onChange={e => setCopyrightYear(e.target.value)}
+                    min="1950" max="2030"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Record Label</label>
+                  <input type="text" value={recordLabel} onChange={e => setRecordLabel(e.target.value)}
+                    placeholder="Self-released"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Publisher</label>
+                  <input type="text" value={publisher} onChange={e => setPublisher(e.target.value)}
+                    placeholder="Publishing company"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">PRO</label>
+                  <select value={proAffiliation} onChange={e => setProAffiliation(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    <option value="" className="bg-black">None</option>
+                    <option value="ASCAP" className="bg-black">ASCAP</option>
+                    <option value="BMI" className="bg-black">BMI</option>
+                    <option value="SESAC" className="bg-black">SESAC</option>
+                    <option value="PRS" className="bg-black">PRS</option>
+                    <option value="SOCAN" className="bg-black">SOCAN</option>
+                    <option value="GEMA" className="bg-black">GEMA</option>
+                    <option value="SACEM" className="bg-black">SACEM</option>
+                    <option value="JASRAC" className="bg-black">JASRAC</option>
+                    <option value="KOMCA" className="bg-black">KOMCA</option>
+                    <option value="Other" className="bg-black">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Identifiers */}
+              <SectionHeader icon={Tag} label="Identifiers" color="blue" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    ISRC <span className="text-gray-600 font-normal">(optional)</span>
+                  </label>
+                  <input type="text" value={isrc} onChange={e => setIsrc(e.target.value)}
+                    placeholder="e.g. USXXXX2500001"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all font-mono" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    UPC <span className="text-gray-600 font-normal">(optional)</span>
+                  </label>
+                  <input type="text" value={upc} onChange={e => setUpc(e.target.value)}
+                    placeholder="e.g. 012345678901"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all font-mono" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between">
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-white/[0.06] flex items-center justify-between">
           {step === 1 ? (
             <>
-              <button
-                onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white font-medium"
-              >
+              <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white text-sm font-medium">
                 Cancel
               </button>
               <button
-                onClick={handleNextStep}
+                onClick={handleNextToStep2}
                 disabled={!selectedMusic || !selectedImage}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/30"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
               >
-                Next Step
-                <ChevronRight size={18} />
+                Next: Details <ChevronRight size={16} />
               </button>
+            </>
+          ) : step === 2 ? (
+            <>
+              <button onClick={() => setStep(1)} className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white text-sm font-medium flex items-center gap-1">
+                <ChevronLeft size={16} /> Back
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePublish}
+                  disabled={isPublishing || !title.trim() || !genre || !mood}
+                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 transition-all text-white text-sm font-medium"
+                >
+                  Publish Now
+                </button>
+                <button
+                  onClick={handleNextToStep3}
+                  disabled={!title.trim() || !genre || !mood}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
+                >
+                  Add Distribution Info <ChevronRight size={16} />
+                </button>
+              </div>
             </>
           ) : (
             <>
-              <button
-                onClick={handleBack}
-                className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white font-medium"
-              >
-                Back
+              <button onClick={() => setStep(2)} className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white text-sm font-medium flex items-center gap-1">
+                <ChevronLeft size={16} /> Back
               </button>
               <button
                 onClick={handlePublish}
-                disabled={isPublishing || !title.trim()}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-white font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/30"
+                disabled={isPublishing || !title.trim() || !genre || !mood}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
               >
                 {isPublishing ? (
                   <>
@@ -577,16 +763,52 @@ export default function TwoStepReleaseModal({
                   </>
                 ) : (
                   <>
-                    <Rocket size={18} />
-                    Publish Release
+                    <Rocket size={16} /> Publish Release
                   </>
                 )}
               </button>
             </>
           )}
         </div>
-
       </div>
+    </div>
+  )
+}
+
+// ─── Helper Components ───
+
+function SectionHeader({ icon: Icon, label, color }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; color: string }) {
+  const colorMap: Record<string, string> = {
+    cyan: 'from-cyan-500/20 to-blue-500/20 text-cyan-400',
+    purple: 'from-purple-500/20 to-pink-500/20 text-purple-400',
+    green: 'from-green-500/20 to-emerald-500/20 text-green-400',
+    amber: 'from-amber-500/20 to-orange-500/20 text-amber-400',
+    blue: 'from-blue-500/20 to-indigo-500/20 text-blue-400',
+  }
+  const c = colorMap[color] || colorMap.cyan
+  return (
+    <div className="flex items-center gap-2 pt-2">
+      <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${c.split(' ').slice(0, 2).join(' ')} flex items-center justify-center`}>
+        <Icon size={12} className={c.split(' ').pop()} />
+      </div>
+      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</h3>
+    </div>
+  )
+}
+
+function ToggleSwitch({ label, value, onChange, description }: { label: string; value: boolean; onChange: (v: boolean) => void; description?: string }) {
+  return (
+    <div className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl flex-1">
+      <div>
+        <p className="text-sm font-medium text-white">{label}</p>
+        {description && <p className="text-[10px] text-gray-500 mt-0.5">{description}</p>}
+      </div>
+      <button
+        onClick={() => onChange(!value)}
+        className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-cyan-500' : 'bg-white/15'}`}
+      >
+        <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${value ? 'translate-x-5' : 'translate-x-0'}`} />
+      </button>
     </div>
   )
 }

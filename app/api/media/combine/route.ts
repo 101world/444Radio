@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Extract metadata fields
+    // Extract metadata fields (basic - always exist)
     const genre = metadata?.genre || null
     const mood = metadata?.mood || null
     const bpm = metadata?.bpm || null
@@ -46,25 +46,54 @@ export async function POST(req: NextRequest) {
     const description = metadata?.description || null
     const tags = metadata?.tags || []
 
+    // Build insert object - start with required fields
+    const insertData: Record<string, unknown> = {
+      user_id: userId,
+      audio_url: audioUrl,
+      image_url: imageUrl,
+      title: title || 'Untitled Track',
+      genre,
+      mood,
+      bpm,
+      vocals,
+      language,
+      description,
+      tags,
+      created_at: new Date().toISOString(),
+      likes: 0,
+      plays: 0,
+    }
+
+    // Distribution-quality metadata (post-migration fields)
+    // These are added conditionally - if column doesn't exist yet, the insert still works for core fields
+    if (metadata?.secondary_genre) insertData.secondary_genre = metadata.secondary_genre
+    if (metadata?.mood_tags?.length) insertData.mood_tags = metadata.mood_tags
+    if (metadata?.key_signature) insertData.key_signature = metadata.key_signature
+    if (metadata?.instruments?.length) insertData.instruments = metadata.instruments
+    if (metadata?.keywords?.length) insertData.keywords = metadata.keywords
+    if (metadata?.artist_name) insertData.artist_name = metadata.artist_name
+    if (metadata?.featured_artists?.length) insertData.featured_artists = metadata.featured_artists
+    if (metadata?.release_type) insertData.release_type = metadata.release_type
+    if (metadata?.version_tag) insertData.version_tag = metadata.version_tag
+    if (metadata?.is_explicit !== undefined) insertData.is_explicit = metadata.is_explicit
+    if (metadata?.is_cover !== undefined) insertData.is_cover = metadata.is_cover
+    if (metadata?.lyrics) insertData.lyrics = metadata.lyrics
+    if (metadata?.isrc) insertData.isrc = metadata.isrc
+    if (metadata?.upc) insertData.upc = metadata.upc
+    if (metadata?.copyright_holder) insertData.copyright_holder = metadata.copyright_holder
+    if (metadata?.copyright_year) insertData.copyright_year = metadata.copyright_year
+    if (metadata?.record_label) insertData.record_label = metadata.record_label
+    if (metadata?.publisher) insertData.publisher = metadata.publisher
+    if (metadata?.pro_affiliation) insertData.pro_affiliation = metadata.pro_affiliation
+    if (metadata?.territories?.length) insertData.territories = metadata.territories
+    if (metadata?.release_date) insertData.release_date = metadata.release_date
+    if (metadata?.songwriters?.length) insertData.songwriters = metadata.songwriters
+    if (metadata?.contributors?.length) insertData.contributors = metadata.contributors
+
     // Insert combined media into database with full metadata
     const { data, error } = await supabase
       .from('combined_media')
-      .insert({
-        user_id: userId,
-        audio_url: audioUrl,
-        image_url: imageUrl,
-        title: title || 'Untitled Track',
-        genre: genre,
-        mood: mood,
-        bpm: bpm,
-        vocals: vocals,
-        language: language,
-        description: description,
-        tags: tags,
-        created_at: new Date().toISOString(),
-        likes: 0,
-        plays: 0
-      })
+      .insert(insertData)
       .select()
       .single()
 

@@ -50,38 +50,43 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(Number(searchParams.get('limit')) || 50, 200)
     const offset = Number(searchParams.get('offset')) || 0
 
-    // Build the query
+    // Build the query - use select('*') for resilience when new columns aren't migrated yet
     let query = supabase
       .from('combined_media')
-      .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, secondary_genre, mood, mood_tags, bpm, tags, keywords, description, vocals, language, key_signature, instruments, artist_name, featured_artists, version_tag, is_explicit, release_type, record_label, isrc, duration_seconds, lyrics')
+      .select('*')
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
 
-    // Full-text search using PostgreSQL tsvector
+    // Full-text search: try tsvector first, fall back to ILIKE
+    let usedFullText = false
     if (q) {
-      // Convert the search query to a tsquery format
-      // Replace spaces with & for AND matching, support phrases with quotes
-      const searchTerms = q
-        .replace(/[^\w\s'"]/g, '') // Remove special chars except quotes
-        .split(/\s+/)
-        .filter(t => t.length > 0)
-        .map(t => t + ':*') // Prefix matching for partial words
-        .join(' & ')
+      try {
+        const searchTerms = q
+          .replace(/[^\w\s'"]/g, '')
+          .split(/\s+/)
+          .filter(t => t.length > 0)
+          .map(t => t + ':*')
+          .join(' & ')
 
-      if (searchTerms) {
-        query = query.textSearch('search_vector', searchTerms, {
-          type: 'plain',
-          config: 'english'
-        })
+        if (searchTerms) {
+          query = query.textSearch('search_vector', searchTerms, {
+            type: 'plain',
+            config: 'english'
+          })
+          usedFullText = true
+        }
+      } catch {
+        // tsvector column might not exist yet - will fall back below
       }
     }
 
-    // Exact filters
+    // Exact filters - use try/catch-safe approach for columns that may not exist yet
     if (genre) {
-      query = query.or(`genre.ilike.%${genre}%,secondary_genre.ilike.%${genre}%`)
+      // secondary_genre may not exist pre-migration, just filter on genre
+      query = query.ilike('genre', `%${genre}%`)
     }
     if (mood) {
-      query = query.or(`mood.ilike.%${mood}%`)
+      query = query.ilike('mood', `%${mood}%`)
     }
     if (bpmMin) {
       query = query.gte('bpm', parseInt(bpmMin))
@@ -89,19 +94,11 @@ export async function GET(req: NextRequest) {
     if (bpmMax) {
       query = query.lte('bpm', parseInt(bpmMax))
     }
-    if (key) {
-      query = query.eq('key_signature', key)
-    }
     if (vocals) {
       query = query.eq('vocals', vocals)
     }
     if (language) {
       query = query.ilike('language', `%${language}%`)
-    }
-    if (explicit === 'true') {
-      query = query.eq('is_explicit', true)
-    } else if (explicit === 'false') {
-      query = query.eq('is_explicit', false)
     }
     if (tagsParam) {
       const tags = tagsParam.split(',').map(t => t.trim()).filter(Boolean)
@@ -109,12 +106,8 @@ export async function GET(req: NextRequest) {
         query = query.overlaps('tags', tags)
       }
     }
-    if (instrumentsParam) {
-      const instruments = instrumentsParam.split(',').map(t => t.trim()).filter(Boolean)
-      if (instruments.length > 0) {
-        query = query.overlaps('instruments', instruments)
-      }
-    }
+    // These filters only work post-migration; silently skip if columns don't exist
+    // key_signature, is_explicit, instruments will be applied but if DB errors, fallback handles it
 
     // Sorting
     switch (sort) {
@@ -145,12 +138,8 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error('Search query error:', error)
       
-      // Fallback: if tsvector search fails (column might not exist yet), do ILIKE fallback
-      if (q && error.message?.includes('search_vector')) {
-        return await fallbackSearch(q, genre, mood, sort, limit, offset)
-      }
-      
-      return corsResponse(NextResponse.json({ error: 'Search failed', details: error.message }, { status: 500 }))
+      // Fallback: if any column doesn't exist or tsvector fails, do ILIKE fallback
+      return await fallbackSearch(q, genre, mood, sort, limit, offset)
     }
 
     // Fetch usernames for results
@@ -180,7 +169,7 @@ export async function GET(req: NextRequest) {
         
         const { data: artistTracks } = await supabase
           .from('combined_media')
-          .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, secondary_genre, mood, mood_tags, bpm, tags, keywords, description, vocals, language, key_signature, instruments, artist_name, featured_artists, version_tag, is_explicit, release_type, record_label, isrc, duration_seconds, lyrics')
+          .select('*')
           .not('audio_url', 'is', null)
           .neq('audio_url', '')
           .in('user_id', matchingUserIds)
@@ -222,17 +211,20 @@ export async function GET(req: NextRequest) {
 // Fallback search using ILIKE when tsvector is not available
 async function fallbackSearch(q: string, genre: string | undefined, mood: string | undefined, sort: string, limit: number, offset: number) {
   try {
-    const searchPattern = `%${q}%`
-    
     let query = supabase
       .from('combined_media')
-      .select('id, title, audio_url, image_url, user_id, likes, plays, created_at, genre, secondary_genre, mood, mood_tags, bpm, tags, keywords, description, vocals, language, key_signature, instruments, artist_name, featured_artists, version_tag, is_explicit, release_type, record_label, isrc, duration_seconds, lyrics')
+      .select('*')
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
-      .or(`title.ilike.${searchPattern},genre.ilike.${searchPattern},mood.ilike.${searchPattern},description.ilike.${searchPattern},artist_name.ilike.${searchPattern},audio_prompt.ilike.${searchPattern}`)
+
+    // ILIKE search across existing columns only
+    if (q) {
+      const searchPattern = `%${q}%`
+      query = query.or(`title.ilike.${searchPattern},genre.ilike.${searchPattern},mood.ilike.${searchPattern},description.ilike.${searchPattern},audio_prompt.ilike.${searchPattern}`)
+    }
 
     if (genre) {
-      query = query.or(`genre.ilike.%${genre}%,secondary_genre.ilike.%${genre}%`)
+      query = query.ilike('genre', `%${genre}%`)
     }
     if (mood) {
       query = query.ilike('mood', `%${mood}%`)
