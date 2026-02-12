@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { createClient } from '@supabase/supabase-js'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { uploadToR2 } from '@/lib/r2-upload'
 
 export const maxDuration = 300
 
@@ -138,6 +139,59 @@ export async function POST(request: Request) {
           return
         }
 
+        // Download each stem from Replicate and upload to R2 for permanent storage
+        await sendLine({ type: 'progress', status: 'uploading', elapsed: attempts * 5 + 1 }).catch(() => {})
+        const permanentStems: Record<string, string> = {}
+        const savedLibraryIds: string[] = []
+        const timestamp = Date.now()
+
+        for (const [stemName, replicateUrl] of Object.entries(stems)) {
+          try {
+            const dlRes = await fetch(replicateUrl)
+            if (!dlRes.ok) {
+              console.error(`[Stem Split] Failed to download ${stemName}:`, dlRes.status)
+              permanentStems[stemName] = replicateUrl // fallback to temp URL
+              continue
+            }
+            const buffer = Buffer.from(await dlRes.arrayBuffer())
+            const safeName = stemName.replace(/[^a-zA-Z0-9_-]/g, '-')
+            const r2Key = `${userId}/stems/${timestamp}-${safeName}.mp3`
+
+            const r2Result = await uploadToR2(buffer, 'audio-files', r2Key, 'audio/mpeg')
+            if (r2Result.success && r2Result.url) {
+              permanentStems[stemName] = r2Result.url
+              console.log(`[Stem Split] ✅ ${stemName} → R2:`, r2Result.url)
+
+              // Save to combined_media so it appears in library
+              const { data: saved, error: saveErr } = await supabase
+                .from('combined_media')
+                .insert({
+                  user_id: userId,
+                  type: 'audio',
+                  title: `${stemName.charAt(0).toUpperCase() + stemName.slice(1)} (Stem)`,
+                  audio_url: r2Result.url,
+                  image_url: null,
+                  is_public: false,
+                  genre: 'stem',
+                })
+                .select('id')
+                .single()
+
+              if (saved?.id) {
+                savedLibraryIds.push(saved.id)
+              } else if (saveErr) {
+                console.error(`[Stem Split] Library save error for ${stemName}:`, saveErr.message)
+              }
+            } else {
+              permanentStems[stemName] = replicateUrl // fallback
+              console.error(`[Stem Split] R2 upload failed for ${stemName}`)
+            }
+          } catch (err) {
+            console.error(`[Stem Split] Error persisting ${stemName}:`, err)
+            permanentStems[stemName] = replicateUrl // fallback
+          }
+        }
+
         // Deduct credits after success
         const { data: deductResultRaw } = await supabase
           .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST })
@@ -145,12 +199,13 @@ export async function POST(request: Request) {
 
         const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
 
-        logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST), type: 'generation_stem_split', description: `Stem split`, metadata: { stems: Object.keys(stems) } })
+        logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST), type: 'generation_stem_split', description: `Stem split (${Object.keys(permanentStems).join(', ')})`, metadata: { stems: Object.keys(permanentStems), libraryIds: savedLibraryIds } })
 
         await sendLine({
           type: 'result',
           success: true,
-          stems,
+          stems: permanentStems,
+          libraryIds: savedLibraryIds,
           creditsUsed: STEM_SPLIT_COST,
           creditsRemaining: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST)
         })
