@@ -120,6 +120,7 @@ export async function POST(request: Request) {
     console.log('[Stem Split] Output keys:', Object.keys(output || {}))
 
     // BULLETPROOF stem extraction - find ANY valid audio URLs
+    // Then deduplicate and present with clean names
     function normalizeStems(replicateOutput: any): Record<string, string> | null {
       console.log('[Stem Split] Starting bulletproof stem extraction...')
       
@@ -128,45 +129,71 @@ export async function POST(request: Request) {
         return null
       }
       
+      // Known stem keys from the all-in-one-audio model and their display names
+      // Priority: demucs stems first (higher quality), then mdx as fallback
+      const STEM_MAP: Record<string, { name: string; priority: number }> = {
+        'demucs_vocals':  { name: 'vocals',       priority: 1 },
+        'demucs_drums':   { name: 'drums',        priority: 1 },
+        'demucs_bass':    { name: 'bass',          priority: 1 },
+        'demucs_other':   { name: 'other',         priority: 1 },   // synths, pads, fx — DO NOT skip
+        'demucs_guitar':  { name: 'guitar',        priority: 1 },
+        'demucs_piano':   { name: 'piano',         priority: 1 },
+        'mdx_vocals':     { name: 'mdx_vocals',    priority: 2 },   // MDX model vocals
+        'mdx_instrumental': { name: 'instrumental', priority: 2 },  // MDX model instrumental
+      }
+
       const stems: Record<string, string> = {}
-      
-      // Recursive function to find all URLs in any nested object
-      function findAllUrls(obj: any, path = ''): void {
-        if (!obj) return
+      const usedCategories = new Set<string>()  // track dedup: e.g. "vocals" only once
+
+      // First pass: extract known keys in priority order
+      const sortedKeys = Object.keys(STEM_MAP).sort((a, b) => STEM_MAP[a].priority - STEM_MAP[b].priority)
+
+      for (const key of sortedKeys) {
+        const value = replicateOutput[key]
+        if (!value || typeof value !== 'string' || !value.startsWith('http')) continue
+        if (value.includes('.json')) continue  // skip analyzer results
+
+        const displayName = STEM_MAP[key].name
+        // For dedup: "vocals" from demucs takes priority over mdx_vocals
+        const category = displayName.replace('mdx_', '')
         
-        if (typeof obj === 'string' && obj.startsWith('http')) {
-          // Found a URL string - check if it's audio (exclude .json files)
-          if ((obj.includes('.wav') || obj.includes('.mp3') || obj.includes('.flac')) && !obj.includes('.json')) {
-            // Filter out unwanted stems and empty URLs
-            if (!path.includes('other') && !path.includes('analyzer_result') && obj.trim().length > 10) {
-              const key = path || `stem_${Object.keys(stems).length + 1}`
-              stems[key] = obj
-              console.log(`[Stem Split] ✅ Found audio URL at ${path}: ${obj}`)
-            } else {
-              console.log(`[Stem Split] ⏭️ Skipped unwanted/empty stem: ${path}`)
-            }
-          } else if (obj.includes('.json')) {
-            console.log(`[Stem Split] ⏭️ Skipped JSON file: ${path}`)
-          }
-        } else if (typeof obj === 'object' && !Array.isArray(obj)) {
-          // Recursively search object properties
-          for (const [key, value] of Object.entries(obj)) {
-            const newPath = path ? `${path}.${key}` : key
-            findAllUrls(value, newPath)
-          }
-        } else if (Array.isArray(obj)) {
-          // Search array elements
-          obj.forEach((item, index) => {
-            const newPath = path ? `${path}[${index}]` : `[${index}]`
-            findAllUrls(item, newPath)
-          })
+        if (!usedCategories.has(category)) {
+          stems[displayName] = value
+          usedCategories.add(category)
+          console.log(`[Stem Split] ✅ ${key} → "${displayName}": ${value}`)
+        } else {
+          console.log(`[Stem Split] ⏭️ Skipped duplicate category "${category}": ${key}`)
         }
       }
-      
-      // Find all URLs in the entire response
-      findAllUrls(replicateOutput)
-      
-      console.log(`[Stem Split] Bulletproof extraction found ${Object.keys(stems).length} stems:`, Object.keys(stems))
+
+      // Second pass: pick up any unknown keys that are audio URLs (future-proofing)
+      for (const [key, value] of Object.entries(replicateOutput)) {
+        if (key in STEM_MAP) continue  // already handled
+        if (key === 'analyzer_result' || key === 'sonification' || key === 'visualization') continue
+        if (!value || typeof value !== 'string' || !value.startsWith('http')) continue
+        if (value.includes('.json')) continue
+
+        const cleanName = key.replace(/^(demucs_|mdx_)/, '')
+        if (!usedCategories.has(cleanName)) {
+          stems[cleanName] = value
+          usedCategories.add(cleanName)
+          console.log(`[Stem Split] ✅ Unknown key ${key} → "${cleanName}": ${value}`)
+        }
+      }
+
+      // Also check for mdx_other array (can contain multiple URLs)
+      if (Array.isArray(replicateOutput.mdx_other)) {
+        for (let i = 0; i < replicateOutput.mdx_other.length; i++) {
+          const url = replicateOutput.mdx_other[i]
+          if (typeof url === 'string' && url.startsWith('http') && !url.includes('.json')) {
+            const name = `mdx_other_${i + 1}`
+            stems[name] = url
+            console.log(`[Stem Split] ✅ mdx_other[${i}] → "${name}": ${url}`)
+          }
+        }
+      }
+
+      console.log(`[Stem Split] Extraction found ${Object.keys(stems).length} stems:`, Object.keys(stems))
       
       return Object.keys(stems).length > 0 ? stems : null
     }
