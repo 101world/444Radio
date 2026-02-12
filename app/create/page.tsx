@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square } from 'lucide-react'
-import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
 
@@ -1675,8 +1674,7 @@ function CreatePageContent() {
         <CreditIndicator />
       </div>
       
-      {/* Floating Menu - Desktop Only */}
-      <FloatingMenu />
+
 
       {/* Back to Home Button - Mobile optimized with fade transition */}
       <div 
