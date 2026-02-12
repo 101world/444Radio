@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
-import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard, Settings } from 'lucide-react'
+import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard, Settings, DollarSign } from 'lucide-react'
 import ProfileSettingsModal from './ProfileSettingsModal'
 
 export default function FloatingMenu() {
@@ -197,6 +197,15 @@ export default function FloatingMenu() {
                       <span className="font-medium">Pricing</span>
                     </Link>
                     <Link
+                      href="/earn"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-emerald-600/20 to-cyan-500/20 border border-emerald-500/40 text-emerald-300 hover:from-emerald-600/30 hover:to-cyan-500/30 rounded-xl transition-all"
+                    >
+                      <DollarSign size={20} />
+                      <span className="font-semibold">Earn</span>
+                      <span className="ml-auto text-xs bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-full">New</span>
+                    </Link>
+                    <Link
                       href="/settings"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-white hover:bg-white/10 rounded-xl transition-colors"
@@ -273,6 +282,15 @@ export default function FloatingMenu() {
                     >
                       <CreditCard size={20} />
                       <span className="font-medium">Pricing</span>
+                    </Link>
+                    <Link
+                      href="/earn"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-emerald-600/20 to-cyan-500/20 border border-emerald-500/40 text-emerald-300 hover:from-emerald-600/30 hover:to-cyan-500/30 rounded-xl transition-all"
+                    >
+                      <DollarSign size={20} />
+                      <span className="font-semibold">Earn</span>
+                      <span className="ml-auto text-xs bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-full">New</span>
                     </Link>
                     <Link
                       href="/profile"
