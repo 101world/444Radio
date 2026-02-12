@@ -58,26 +58,30 @@ export async function POST(request: Request) {
     // Capture request signal for client disconnect detection
     const requestSignal = request.signal
 
-    // Send prediction ID immediately
-    const prediction = await replicate.predictions.create({
-      version: "f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e",
-      input: {
-        music_input: audioUrl,
-        model: "harmonix-all",
-        sonify: false,
-        visualize: false,
-        audioSeparator: true,
-        include_embeddings: false,
-        audioSeparatorModel: "Kim_Vocal_2.onnx",
-        include_activations: false
-      }
-    })
-
-    await sendLine({ type: 'started', predictionId: prediction.id })
-
-    // Process in background IIFE
+    // Return streaming response IMMEDIATELY — do all slow work inside the IIFE
+    // This prevents Vercel 504 from slow Replicate cold-starts
     ;(async () => {
       try {
+        // Send initial heartbeat so client knows the stream is alive
+        await sendLine({ type: 'progress', status: 'starting', elapsed: 0 })
+
+        // Create Replicate prediction (can take 5-30s on cold start)
+        const prediction = await replicate.predictions.create({
+          version: "f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e",
+          input: {
+            music_input: audioUrl,
+            model: "harmonix-all",
+            sonify: false,
+            visualize: false,
+            audioSeparator: true,
+            include_embeddings: false,
+            audioSeparatorModel: "Kim_Vocal_2.onnx",
+            include_activations: false
+          }
+        })
+
+        await sendLine({ type: 'started', predictionId: prediction.id })
+
         // Poll for result — send heartbeats to keep Vercel stream alive
         let finalPrediction = prediction
         let attempts = 0
