@@ -47,8 +47,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Verify user owns the track
-    const trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&user_id=eq.${userId}&select=id,title,user_id,listed_on_earn`)
-    const tracks = await trackRes.json()
+    // Try with listed_on_earn column first, fall back without it if column doesn't exist yet
+    let trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&user_id=eq.${userId}&select=id,title,user_id,listed_on_earn`)
+    let tracks: any[]
+    if (!trackRes.ok) {
+      // Column probably doesn't exist yet — query without it
+      trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&user_id=eq.${userId}&select=id,title,user_id`)
+      tracks = await trackRes.json()
+    } else {
+      tracks = await trackRes.json()
+    }
     const track = tracks?.[0]
 
     if (!track) {
@@ -117,7 +125,9 @@ export async function POST(request: NextRequest) {
     })
 
     if (!updateRes.ok) {
-      // If earn columns don't exist yet, fallback to is_public
+      const errText = await updateRes.text().catch(() => 'unknown')
+      console.warn('Earn columns PATCH failed (columns may not exist yet):', errText)
+      // Fallback: set is_public so the track still appears
       const fallbackRes = await supabaseRest(`combined_media?id=eq.${trackId}`, {
         method: 'PATCH',
         body: JSON.stringify({ is_public: true }),
@@ -136,9 +146,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Record the listing fee transaction
+    // 7. Record the listing fee transaction (best-effort — table may not exist yet)
     try {
-      await supabaseRest('earn_transactions', {
+      const txRes = await supabaseRest('earn_transactions', {
         method: 'POST',
         body: JSON.stringify({
           buyer_id: userId,
@@ -151,6 +161,9 @@ export async function POST(request: NextRequest) {
           split_stems: false,
         }),
       })
+      if (!txRes.ok) {
+        console.warn('earn_transactions insert failed (table may not exist yet):', await txRes.text().catch(() => ''))
+      }
     } catch (e) {
       console.error('Failed to record listing transaction:', e)
     }
