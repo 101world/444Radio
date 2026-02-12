@@ -14,16 +14,18 @@ interface EarnTrack {
 interface DownloadModalProps {
   track: EarnTrack
   userCredits: number
+  subscriptionStatus: string
   onClose: () => void
   onConfirm: (splitStems: boolean) => void
 }
 
-export default function DownloadModal({ track, userCredits, onClose, onConfirm }: DownloadModalProps) {
+export default function DownloadModal({ track, userCredits, subscriptionStatus, onClose, onConfirm }: DownloadModalProps) {
   const [splitStems, setSplitStems] = useState(false)
   const [purchasing, setPurchasing] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
 
-  const baseCost = track.earn_price || 4
+  const isSubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
+  const baseCost = 2
   const stemsCost = 5
   const totalCost = baseCost + (splitStems ? stemsCost : 0)
   const canAfford = userCredits >= totalCost
@@ -38,7 +40,7 @@ export default function DownloadModal({ track, userCredits, onClose, onConfirm }
   }, [onClose])
 
   const handleConfirm = async () => {
-    if (!canAfford || purchasing) return
+    if (!isSubscribed || !canAfford || purchasing) return
     setPurchasing(true)
     await onConfirm(splitStems)
     setPurchasing(false)
@@ -79,22 +81,28 @@ export default function DownloadModal({ track, userCredits, onClose, onConfirm }
           </div>
         </div>
 
-        {/* Credit split explanation */}
+        {/* Credit breakdown */}
         <div className="px-6 py-4">
+          {!isSubscribed && (
+            <div className="flex items-center gap-2 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4 text-sm text-amber-300">
+              <AlertCircle size={16} className="flex-shrink-0" />
+              <div>
+                <span className="font-semibold">Subscription required</span>
+                <p className="text-xs text-amber-400/70 mt-0.5">Only subscribed users can download tracks. <a href="/pricing" className="underline font-medium">View plans</a></p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-            <h4 className="text-sm font-semibold text-gray-300 mb-3">Credit Split</h4>
+            <h4 className="text-sm font-semibold text-gray-300 mb-3">How it works</h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Artist (@{track.username})</span>
+                <span className="text-gray-400">Goes to artist (@{track.username})</span>
                 <span className="text-emerald-400 font-medium">2 credits</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Platform (444 Radio)</span>
-                <span className="text-cyan-400 font-medium">2 credits</span>
-              </div>
               <div className="border-t border-white/10 pt-2 flex justify-between text-sm font-semibold">
-                <span className="text-gray-300">Download Total</span>
-                <span className="text-white">{baseCost} credits</span>
+                <span className="text-gray-300">Download Cost</span>
+                <span className="text-white">2 credits</span>
               </div>
             </div>
           </div>
@@ -142,7 +150,7 @@ export default function DownloadModal({ track, userCredits, onClose, onConfirm }
           </div>
 
           {/* Not enough credits warning */}
-          {!canAfford && (
+          {isSubscribed && !canAfford && (
             <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl mb-4 text-sm text-red-300">
               <AlertCircle size={16} />
               <span>Not enough credits — <a href="/pricing" className="underline font-medium">get more</a></span>
@@ -157,18 +165,27 @@ export default function DownloadModal({ track, userCredits, onClose, onConfirm }
             >
               Cancel
             </button>
-            <button
-              onClick={handleConfirm}
-              disabled={!canAfford || purchasing}
-              className={`flex-1 px-4 py-3 font-semibold rounded-xl transition flex items-center justify-center gap-2 ${
-                canAfford && !purchasing
-                  ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-[1.01]'
-                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              <Download size={16} />
-              {purchasing ? 'Processing...' : `Download • ${totalCost} cr`}
-            </button>
+            {isSubscribed ? (
+              <button
+                onClick={handleConfirm}
+                disabled={!canAfford || purchasing}
+                className={`flex-1 px-4 py-3 font-semibold rounded-xl transition flex items-center justify-center gap-2 ${
+                  canAfford && !purchasing
+                    ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-[1.01]'
+                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                <Download size={16} />
+                {purchasing ? 'Processing...' : `Download • ${totalCost} cr`}
+              </button>
+            ) : (
+              <a
+                href="/pricing"
+                className="flex-1 px-4 py-3 font-semibold rounded-xl transition flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 text-white shadow-lg"
+              >
+                Subscribe to Download
+              </a>
+            )}
           </div>
         </div>
       </div>

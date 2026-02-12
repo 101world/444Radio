@@ -163,7 +163,8 @@ export default function ListTrackModal({ onClose, onListed }: ListTrackModalProp
         {/* Footer */}
         <div className="p-6 pt-4 border-t border-white/10">
           <div className="text-xs text-gray-500 mb-3">
-            Download price: <strong className="text-white">4 credits</strong> (2 to you + 2 to platform)
+            <strong className="text-yellow-400">Listing fee: 2 credits</strong> (one-time, paid to 444 Radio)<br/>
+            Subscribers can download for <strong className="text-white">2 credits</strong> → all goes to you
           </div>
           <div className="flex gap-3">
             <button

@@ -62,6 +62,7 @@ export default function EarnPage() {
   const [tracks, setTracks] = useState<EarnTrack[]>([])
   const [loading, setLoading] = useState(true)
   const [credits, setCredits] = useState(0)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none')
   const [filter, setFilter] = useState<FilterType>('trending')
   const [selectedGenre, setSelectedGenre] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -97,12 +98,13 @@ export default function EarnPage() {
     }
   }, [filter, selectedGenre, searchQuery])
 
-  // Fetch credits
+  // Fetch credits + subscription
   const fetchCredits = useCallback(async () => {
     try {
       const res = await fetch('/api/credits')
       const data = await res.json()
       setCredits(data.credits || 0)
+      setSubscriptionStatus(data.subscription_status || 'none')
     } catch {
       setCredits(0)
     }
@@ -160,7 +162,7 @@ export default function EarnPage() {
       setTracks(prev => prev.map(t => 
         t.id === trackId ? { ...t, downloads: (t.downloads || 0) + 1 } : t
       ))
-      setCredits(prev => prev - (4 + (splitStems ? 5 : 0)))
+      setCredits(prev => prev - (2 + (splitStems ? 5 : 0)))
 
       // Show success
       const track = tracks.find(t => t.id === trackId)
@@ -191,6 +193,7 @@ export default function EarnPage() {
   const handleTrackListed = () => {
     setShowListModal(false)
     fetchTracks()
+    fetchCredits() // Refresh balance after listing fee
   }
 
   // Filtered + searched tracks
@@ -392,6 +395,7 @@ export default function EarnPage() {
         <DownloadModal
           track={downloadTrack}
           userCredits={credits}
+          subscriptionStatus={subscriptionStatus}
           onClose={() => setDownloadTrack(null)}
           onConfirm={(splitStems: boolean) => handlePurchase(downloadTrack.id, splitStems)}
         />

@@ -4,7 +4,6 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const ADMIN_EMAIL = '444radioog@gmail.com'
 
 async function supabaseRest(path: string, options?: RequestInit) {
   const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
@@ -24,6 +23,15 @@ export async function OPTIONS() {
   return handleOptions()
 }
 
+/**
+ * Purchase (download) a track on the EARN marketplace.
+ *
+ * Pricing model:
+ *   - Download costs 2 credits (fixed).
+ *   - All 2 credits go to the artist.
+ *   - Only subscribers (subscription_status = active | trialing) can purchase.
+ *   - Optional stem-split adds 5 credits (still goes to artist).
+ */
 export async function POST(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) {
@@ -31,17 +39,34 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { trackId, splitStems } = await request.json()
+    const { trackId, splitStems }: { trackId: string; splitStems: boolean } = await request.json()
 
     if (!trackId) {
       return corsResponse(NextResponse.json({ error: 'trackId required' }, { status: 400 }))
     }
 
-    // 1. Fetch track details
-    const trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=id,user_id,title,audio_url,earn_price`)
+    // 1. Fetch buyer — need credits + subscription_status
+    const buyerRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=clerk_user_id,credits,subscription_status`)
+    const buyers = await buyerRes.json()
+    const buyer = buyers?.[0]
+
+    if (!buyer) {
+      return corsResponse(NextResponse.json({ error: 'User not found' }, { status: 404 }))
+    }
+
+    // 2. Subscription gate — free users cannot download
+    const isSubscribed = buyer.subscription_status === 'active' || buyer.subscription_status === 'trialing'
+    if (!isSubscribed) {
+      return corsResponse(
+        NextResponse.json({ error: 'Subscription required. Upgrade at /pricing to download tracks.' }, { status: 403 })
+      )
+    }
+
+    // 3. Fetch track details
+    const trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=id,user_id,title,audio_url,downloads`)
     const tracks = await trackRes.json()
     const track = tracks?.[0]
-    
+
     if (!track) {
       return corsResponse(NextResponse.json({ error: 'Track not found' }, { status: 404 }))
     }
@@ -51,32 +76,16 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Cannot purchase your own track' }, { status: 400 }))
     }
 
-    const baseCost = track.earn_price || 4
+    // 4. Calculate cost — 2 base + optional 5 for stems
+    const baseCost = 2
     const stemsCost = splitStems ? 5 : 0
     const totalCost = baseCost + stemsCost
-    const artistShare = 2
-    const adminShare = 2
 
-    // 2. Fetch buyer's credits
-    const buyerRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=clerk_user_id,credits`)
-    const buyers = await buyerRes.json()
-    const buyer = buyers?.[0]
-
-    if (!buyer || (buyer.credits || 0) < totalCost) {
+    if ((buyer.credits || 0) < totalCost) {
       return corsResponse(NextResponse.json({ error: 'Insufficient credits' }, { status: 402 }))
     }
 
-    // 3. Fetch admin account
-    const adminRes = await supabaseRest(`users?email=eq.${encodeURIComponent(ADMIN_EMAIL)}&select=clerk_user_id,credits`)
-    const admins = await adminRes.json()
-    const admin = admins?.[0]
-
-    if (!admin) {
-      console.error('Admin account not found for:', ADMIN_EMAIL)
-      return corsResponse(NextResponse.json({ error: 'Platform configuration error' }, { status: 500 }))
-    }
-
-    // 4. Fetch artist's credits
+    // 5. Fetch artist's credits
     const artistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}&select=clerk_user_id,credits`)
     const artists = await artistRes.json()
     const artist = artists?.[0]
@@ -85,8 +94,7 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Artist account not found' }, { status: 500 }))
     }
 
-    // 5. ATOMIC TRANSACTION — deduct from buyer, credit artist and admin
-    // Deduct buyer credits
+    // 6. Deduct credits from buyer
     const newBuyerCredits = (buyer.credits || 0) - totalCost
     const deductRes = await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
       method: 'PATCH',
@@ -97,8 +105,8 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 }))
     }
 
-    // Credit artist
-    const newArtistCredits = (artist.credits || 0) + artistShare
+    // 7. Credit ALL to the artist (no admin share on downloads)
+    const newArtistCredits = (artist.credits || 0) + totalCost
     const creditArtistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}`, {
       method: 'PATCH',
       body: JSON.stringify({ credits: newArtistCredits }),
@@ -113,54 +121,32 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Failed to credit artist — rolled back' }, { status: 500 }))
     }
 
-    // Credit admin
-    const newAdminCredits = (admin.credits || 0) + adminShare
-    const creditAdminRes = await supabaseRest(`users?clerk_user_id=eq.${admin.clerk_user_id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ credits: newAdminCredits }),
-    })
-
-    if (!creditAdminRes.ok) {
-      // Rollback buyer and artist
-      await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ credits: buyer.credits }),
-      })
-      await supabaseRest(`users?clerk_user_id=eq.${track.user_id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ credits: artist.credits }),
-      })
-      return corsResponse(NextResponse.json({ error: 'Failed to credit platform — rolled back' }, { status: 500 }))
-    }
-
-    // 6. Increment download count on track
-    const currentDownloads = track.downloads || 0
+    // 8. Increment download count on track
     await supabaseRest(`combined_media?id=eq.${trackId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ downloads: currentDownloads + 1 }),
+      body: JSON.stringify({ downloads: (track.downloads || 0) + 1 }),
     })
 
-    // 7. Record transaction
+    // 9. Record transaction
     try {
       await supabaseRest('earn_transactions', {
         method: 'POST',
         body: JSON.stringify({
           buyer_id: userId,
           seller_id: track.user_id,
-          admin_id: admin.clerk_user_id,
+          admin_id: null,
           track_id: trackId,
           total_cost: totalCost,
-          artist_share: artistShare,
-          admin_share: adminShare,
+          artist_share: totalCost,
+          admin_share: 0,
           split_stems: splitStems || false,
         }),
       })
     } catch (e) {
-      // Transaction record is secondary — don't fail the purchase
       console.error('Failed to record earn transaction:', e)
     }
 
-    // 8. If split stems requested, queue the job
+    // 10. If split stems requested, queue the job
     let splitJobId = undefined
     if (splitStems) {
       try {
@@ -184,8 +170,8 @@ export async function POST(request: NextRequest) {
       message: 'Purchase completed',
       transaction: {
         totalCost,
-        artistShare,
-        adminShare,
+        artistShare: totalCost,
+        adminShare: 0,
       },
       splitJobId,
     }))

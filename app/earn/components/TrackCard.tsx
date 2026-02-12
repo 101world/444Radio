@@ -159,7 +159,7 @@ export default function TrackCard({ track, isCurrentTrack, isPlaying, onPlay, on
               className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white rounded-lg text-xs font-semibold transition shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/25"
             >
               <Download size={12} />
-              {track.earn_price || 4} cr
+              2 cr
             </button>
           </div>
         </div>
