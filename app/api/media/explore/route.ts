@@ -76,11 +76,13 @@ export async function GET(req: NextRequest) {
     )
 
     // Add username to each media item and normalize field names
+    // IMPORTANT: strip track_id_444 — it's private to the owner / buyer only
     const mediaWithUsers = (data || []).map((media) => {
       const username = usernameMap.get(media.user_id) || 'Unknown User'
+      const { track_id_444, ...publicMedia } = media
       
       return {
-        ...media,
+        ...publicMedia,
         audioUrl: media.audio_url, // Normalize for AudioPlayerContext
         imageUrl: media.image_url, // Normalize for AudioPlayerContext
         users: { username }

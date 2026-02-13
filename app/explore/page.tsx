@@ -25,7 +25,7 @@ interface CombinedMedia {
   created_at: string; users: { username: string }; genre?: string; mood?: string; bpm?: number; vocals?: string
   language?: string; tags?: string[]; description?: string; key_signature?: string; instruments?: string[]
   secondary_genre?: string; is_explicit?: boolean; duration_seconds?: number; artist_name?: string
-  featured_artists?: string[]; release_type?: string; track_id_444?: string
+  featured_artists?: string[]; release_type?: string
   record_label?: string; version_tag?: string
   contributors?: { name: string; role: string }[]; songwriters?: { name: string; role: string }[]
   copyright_holder?: string; copyright_year?: number; publisher?: string
