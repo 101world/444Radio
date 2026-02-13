@@ -259,7 +259,7 @@ export async function POST(req: NextRequest) {
           prompt: prompt,
           audio_url: outputR2Result.url, // Store in audio_url (existing column)
           media_url: outputR2Result.url, // Also store in media_url (new column, if exists)
-          is_public: true
+          is_public: false // Tool output - not a released track
         })
       }
     )

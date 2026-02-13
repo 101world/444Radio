@@ -288,6 +288,8 @@ export async function POST(request: Request) {
               type: 'effect',
               title: `Effect: ${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}`,
               audio_url: upload.url,
+              is_public: false,
+              genre: 'effects',
               metadata: {
                 prompt,
                 duration,

@@ -154,7 +154,7 @@ export async function POST(request: Request) {
           title: `Beat - ${prompt.substring(0, 50)}`,
           content_type: 'audio',
           audio_url: permanentAudioUrl, // Use permanent R2 URL
-          is_public: true,
+          is_public: false, // Not released yet - user must go through release flow
           created_at: new Date().toISOString(),
         }]);
 

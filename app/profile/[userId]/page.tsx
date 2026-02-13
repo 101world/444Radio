@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { use } from 'react'
-import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus } from 'lucide-react'
+import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
@@ -361,6 +361,30 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     
     const startIndex = tracks.findIndex(t => t.id === track.id)
     setPlaylist(audioPlayerTracks, Math.max(startIndex, 0))
+  }
+
+  // Handle Delete Track (own profile only)
+  const handleDeleteTrack = async (trackId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!isOwnProfile) return
+    if (!confirm('Are you sure you want to delete this release? This cannot be undone.')) return
+
+    try {
+      const res = await fetch('/api/media/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: trackId })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setTracks(prev => prev.filter(t => t.id !== trackId))
+      } else {
+        alert('Failed to delete: ' + (data.error || 'Unknown error'))
+      }
+    } catch (err) {
+      console.error('Delete error:', err)
+      alert('Failed to delete release')
+    }
   }
 
   // Handle Like/Unlike Track
@@ -731,6 +755,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       >
                         <Plus size={20} className="text-white" />
                       </button>
+                      {isOwnProfile && (
+                        <button
+                          onClick={(e) => handleDeleteTrack(track.id, e)}
+                          className="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-all"
+                          title="Delete release"
+                        >
+                          <Trash2 size={18} className="text-red-400" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="p-3">
@@ -809,6 +842,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                         <Play size={16} className="text-black ml-0.5" />
                       )}
                     </button>
+                    {isOwnProfile && (
+                      <button
+                        onClick={(e) => handleDeleteTrack(track.id, e)}
+                        className="w-8 h-8 rounded-full bg-red-500/10 hover:bg-red-500/30 flex items-center justify-center transition-all"
+                        title="Delete release"
+                      >
+                        <Trash2 size={14} className="text-red-400" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

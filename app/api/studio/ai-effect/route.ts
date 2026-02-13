@@ -105,6 +105,8 @@ export async function POST(request: Request) {
         type: 'effect',
         title: `AI Effect: ${prompt.substring(0, 50)}`,
         audio_url: output,
+        is_public: false,
+        genre: 'effects',
         metadata: {
           prompt,
           trackId,
