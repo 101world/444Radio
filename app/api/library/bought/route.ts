@@ -101,6 +101,16 @@ export async function GET() {
         instruments: full?.instruments || null,
         is_explicit: full?.is_explicit || false,
         duration_seconds: full?.duration_seconds || null,
+        artist_name: full?.artist_name || null,
+        featured_artists: full?.featured_artists || null,
+        contributors: full?.contributors || null,
+        songwriters: full?.songwriters || null,
+        copyright_holder: full?.copyright_holder || null,
+        copyright_year: full?.copyright_year || null,
+        record_label: full?.record_label || null,
+        publisher: full?.publisher || null,
+        release_type: full?.release_type || null,
+        version_tag: full?.version_tag || null,
         plays: full?.plays || 0,
         likes: full?.likes || 0,
         downloads: full?.downloads || 0,
@@ -136,6 +146,16 @@ export async function GET() {
           instruments: null,
           is_explicit: false,
           duration_seconds: null,
+          artist_name: null,
+          featured_artists: null,
+          contributors: null,
+          songwriters: null,
+          copyright_holder: null,
+          copyright_year: null,
+          record_label: null,
+          publisher: null,
+          release_type: null,
+          version_tag: null,
           plays: 0,
           likes: 0,
           downloads: 0,
@@ -148,6 +168,47 @@ export async function GET() {
           purchased_at: m.created_at,
           source: 'music_library',
         })
+      }
+    }
+
+    // ── Enrich bare tracks with metadata from their released sibling ──
+    // Same audio_url may have a separate "released" combined_media row with genre/mood/bpm
+    const bareEarn = boughtTracks.filter((t: any) => !t.genre && t.audio_url && t.source === 'earn_purchase')
+    if (bareEarn.length > 0) {
+      try {
+        const bareAudioUrls = bareEarn.map((t: any) => `"${t.audio_url}"`).join(',')
+        const siblingsRes = await fetch(
+          `${supabaseUrl}/rest/v1/combined_media?audio_url=in.(${bareAudioUrls})&genre=not.is.null&select=audio_url,user_id,genre,secondary_genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url`,
+          { headers }
+        )
+        if (siblingsRes.ok) {
+          const siblings = await siblingsRes.json()
+          const sibMap = new Map<string, any>()
+          for (const s of (siblings || [])) {
+            const key = `${s.audio_url}|${s.user_id}`
+            if (!sibMap.has(key)) sibMap.set(key, s)
+          }
+          const metaFields = [
+            'genre', 'secondary_genre', 'mood', 'bpm', 'key_signature', 'vocals',
+            'language', 'description', 'instruments', 'tags', 'is_explicit',
+            'duration_seconds', 'artist_name', 'featured_artists', 'contributors',
+            'songwriters', 'copyright_holder', 'copyright_year', 'record_label',
+            'publisher', 'release_type', 'version_tag'
+          ]
+          for (const t of bareEarn) {
+            const sib = sibMap.get(`${(t as any).audio_url}|${(t as any).user_id}`)
+            if (sib) {
+              for (const f of metaFields) {
+                if (sib[f] != null && (t as any)[f] == null) {
+                  (t as any)[f] = sib[f]
+                }
+              }
+              if (sib.image_url && !(t as any).image_url) (t as any).image_url = sib.image_url
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[BOUGHT] Sibling metadata enrichment failed:', e)
       }
     }
 

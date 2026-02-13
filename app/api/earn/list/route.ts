@@ -159,7 +159,52 @@ export async function POST(request: NextRequest) {
       await logCreditTransaction({ userId: admin.clerk_user_id, amount: LISTING_FEE, balanceAfter: newAdminCredits2, type: 'earn_admin', description: `Listing fee received`, metadata: { trackId, listerId: userId } })
     }
 
-    // 7. Mark track as listed on earn marketplace
+    // 6b. Enrich the track with release metadata if missing
+    //     The release flow creates a SEPARATE combined_media record with full metadata.
+    //     Look for a sibling record (same audio_url, same user) that has genre set.
+    let metadataPatch: Record<string, unknown> = {}
+    try {
+      // First, get this track's audio_url and check if it already has metadata
+      const thisTrackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=audio_url,genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,secondary_genre,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url`)
+      if (thisTrackRes.ok) {
+        const thisTrackArr = await thisTrackRes.json()
+        const thisTrack = thisTrackArr?.[0]
+        if (thisTrack && !thisTrack.genre && thisTrack.audio_url) {
+          // Look for a released sibling with metadata (same audio_url, same user, has genre)
+          const siblingRes = await supabaseRest(
+            `combined_media?audio_url=eq.${encodeURIComponent(thisTrack.audio_url)}&user_id=eq.${userId}&genre=not.is.null&id=not.eq.${trackId}&select=genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,secondary_genre,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url&limit=1`
+          )
+          if (siblingRes.ok) {
+            const siblings = await siblingRes.json()
+            const sibling = siblings?.[0]
+            if (sibling) {
+              // Build patch from non-null sibling fields (only fill gaps)
+              const fieldsToMerge = [
+                'genre', 'mood', 'bpm', 'key_signature', 'vocals', 'language',
+                'description', 'instruments', 'tags', 'secondary_genre', 'is_explicit',
+                'duration_seconds', 'artist_name', 'featured_artists', 'contributors',
+                'songwriters', 'copyright_holder', 'copyright_year', 'record_label',
+                'publisher', 'release_type', 'version_tag'
+              ]
+              for (const f of fieldsToMerge) {
+                if (sibling[f] != null && thisTrack[f] == null) {
+                  metadataPatch[f] = sibling[f]
+                }
+              }
+              // Also fill image_url if the listed record has none
+              if (sibling.image_url && !thisTrack.image_url) {
+                metadataPatch.image_url = sibling.image_url
+              }
+              console.log(`[EARN-LIST] Merged ${Object.keys(metadataPatch).length} metadata fields from released sibling`)
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[EARN-LIST] Metadata merge failed (non-critical):', e)
+    }
+
+    // 7. Mark track as listed on earn marketplace (+ merged metadata)
     const updateRes = await supabaseRest(`combined_media?id=eq.${trackId}`, {
       method: 'PATCH',
       body: JSON.stringify({
@@ -167,6 +212,7 @@ export async function POST(request: NextRequest) {
         earn_price: 5,
         artist_share: 1,
         admin_share: 4,
+        ...metadataPatch,
       }),
     })
 

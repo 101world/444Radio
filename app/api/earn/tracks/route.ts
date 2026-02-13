@@ -126,6 +126,50 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // ── Enrich bare tracks with metadata from their released sibling ──
+    // Some tracks were listed on Earn before being released, so their
+    // combined_media record has NULL genre/mood/bpm while a separate
+    // "released" record (same audio_url, same user) has full metadata.
+    const bareTracks = enrichedTracks.filter((t: any) => !t.genre && t.audio_url)
+    if (bareTracks.length > 0) {
+      try {
+        const bareAudioUrls = bareTracks.map((t: any) => `"${t.audio_url}"`).join(',')
+        const siblingsRes = await supabaseRest(
+          `combined_media?audio_url=in.(${bareAudioUrls})&genre=not.is.null&listed_on_earn=not.eq.true&select=audio_url,user_id,genre,secondary_genre,mood,bpm,key_signature,vocals,language,description,instruments,tags,is_explicit,duration_seconds,artist_name,featured_artists,contributors,songwriters,copyright_holder,copyright_year,record_label,publisher,release_type,version_tag,image_url`
+        )
+        if (siblingsRes.ok) {
+          const siblings = await siblingsRes.json()
+          // Build map: audio_url+user_id → sibling with metadata
+          const sibMap = new Map<string, any>()
+          for (const s of (siblings || [])) {
+            const key = `${s.audio_url}|${s.user_id}`
+            if (!sibMap.has(key)) sibMap.set(key, s)
+          }
+          // Merge into bare tracks
+          const metaFields = [
+            'genre', 'secondary_genre', 'mood', 'bpm', 'key_signature', 'vocals',
+            'language', 'description', 'instruments', 'tags', 'is_explicit',
+            'duration_seconds', 'artist_name', 'featured_artists', 'contributors',
+            'songwriters', 'copyright_holder', 'copyright_year', 'record_label',
+            'publisher', 'release_type', 'version_tag'
+          ]
+          for (const t of bareTracks) {
+            const sib = sibMap.get(`${t.audio_url}|${t.user_id}`)
+            if (sib) {
+              for (const f of metaFields) {
+                if (sib[f] != null && t[f] == null) {
+                  t[f] = sib[f]
+                }
+              }
+              if (sib.image_url && !t.image_url) t.image_url = sib.image_url
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[EARN-TRACKS] Sibling metadata enrichment failed:', e)
+      }
+    }
+
     // Extract genres
     const genreSet = new Set<string>()
     enrichedTracks.forEach((t: any) => { if (t.genre) genreSet.add(t.genre) })
