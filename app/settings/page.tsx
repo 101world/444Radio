@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info } from 'lucide-react'
+import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info, Bell } from 'lucide-react'
 import Link from 'next/link'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
 import { useCredits } from '../contexts/CreditsContext'
@@ -529,6 +529,22 @@ function SettingsPageInner() {
           </div>
         ) : activeTab === 'wallet' ? (
           <div className="space-y-6">
+            {/* Notification Header */}
+            <div className="flex items-center gap-3 px-1">
+              <div className="relative">
+                <Bell className="w-6 h-6 text-cyan-400" />
+                {walletTotal > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-cyan-500 rounded-full flex items-center justify-center">
+                    <span className="text-[8px] font-bold text-black">{walletTotal > 99 ? '99+' : walletTotal}</span>
+                  </span>
+                )}
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Activity &amp; Notifications</h2>
+                <p className="text-xs text-gray-500">All transactions, generations, purchases, releases &amp; sales</p>
+              </div>
+            </div>
+
             {/* Credit Balance Card */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
               <div className="flex items-center justify-between">
