@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, Music, Image as ImageIcon, Rocket, ChevronRight, ChevronLeft, Check, Plus, Trash2, Info, Shield, Tag, Mic2, Users, Lock, Eye, EyeOff, Zap } from 'lucide-react'
-import { calculateMetadataStrength, type Atmosphere, type EraVibe, type TempoFeel, type LicenseType444 } from '@/lib/track-id-444'
+import { X, Music, Image as ImageIcon, Rocket, ChevronRight, ChevronLeft, Check, Plus, Trash2, Info, Shield, Tag, Mic2, Users, Lock, Zap, AlertTriangle, Fingerprint } from 'lucide-react'
+import { calculateMetadataStrength, type Atmosphere, type EraVibe, type TempoFeel, type LicenseType444, type CreationType } from '@/lib/track-id-444'
 
 interface LibraryMusic {
   id: string
@@ -11,6 +11,7 @@ interface LibraryMusic {
   lyrics: string | null
   audio_url: string
   created_at: string
+  is_purchased?: boolean
 }
 
 interface LibraryImage {
@@ -73,6 +74,22 @@ const CONTRIBUTOR_ROLES = [
   'Session Musician', 'Lyricist', 'Beat Maker', 'DJ'
 ]
 
+const LICENSE_PRESETS: { value: LicenseType444; label: string; desc: string; icon: string; remix: boolean; derivative: boolean }[] = [
+  { value: 'fully_ownable', label: 'Full Ownership', desc: 'All rights — remix, redistribute, resell', icon: '👑', remix: true, derivative: true },
+  { value: 'remix_allowed', label: 'Remix Allowed', desc: 'Others can remix but you keep master rights', icon: '🎛️', remix: true, derivative: false },
+  { value: 'non_exclusive', label: 'Non-Exclusive', desc: 'Multiple licenses, you retain ownership', icon: '📋', remix: false, derivative: false },
+  { value: 'download_only', label: 'Personal Use', desc: 'Download for personal listening only', icon: '🎧', remix: false, derivative: false },
+  { value: 'streaming_only', label: 'Stream Only', desc: 'Listen on 444Radio, no downloads', icon: '📡', remix: false, derivative: false },
+  { value: 'no_derivatives', label: 'No Derivatives', desc: 'No remixes, no modifications allowed', icon: '🔒', remix: false, derivative: false },
+]
+
+const CREATION_TYPES: { value: CreationType; label: string; desc: string; icon: string }[] = [
+  { value: 'ai_generated', label: 'Fully AI Generated', desc: 'Created entirely by 444 Engine', icon: '🤖' },
+  { value: 'ai_assisted', label: 'AI Assisted', desc: 'Human-created with AI enhancement', icon: '🎨' },
+  { value: 'human_upload', label: 'Uploaded Audio', desc: 'Pure human-made audio file', icon: '🎤' },
+  { value: 'remix_444', label: 'Remix of 444 Track', desc: 'Remix of an existing 444Radio track', icon: '🔄' },
+]
+
 export default function TwoStepReleaseModal({
   isOpen,
   onClose,
@@ -86,8 +103,11 @@ export default function TwoStepReleaseModal({
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [isPublishing, setIsPublishing] = useState(false)
+  const [showMintConfirm, setShowMintConfirm] = useState(false)
+  const [fingerprintStatus, setFingerprintStatus] = useState<'idle' | 'checking' | 'clear' | 'flagged'>('idle')
+  const [purchaseBlockError, setPurchaseBlockError] = useState<string | null>(null)
 
-  // ─── Step 2: Essential Metadata ───
+  // ─── Step 2: Sound DNA ───
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState('')
@@ -101,8 +121,10 @@ export default function TwoStepReleaseModal({
   const [keySignature, setKeySignature] = useState('')
   const [isExplicit, setIsExplicit] = useState(false)
   const [lyrics, setLyrics] = useState('')
+  const [creationType, setCreationType] = useState<CreationType>('ai_generated')
+  const [parentTrackId, setParentTrackId] = useState('')
 
-  // ─── Step 3: Distribution & Credits ───
+  // ─── Step 3: Release & Rights ───
   const [artistName, setArtistName] = useState('')
   const [featuredArtists, setFeaturedArtists] = useState('')
   const [releaseType, setReleaseType] = useState('single')
@@ -110,18 +132,9 @@ export default function TwoStepReleaseModal({
   const [keywords, setKeywords] = useState('')
   const [versionTag, setVersionTag] = useState('')
   const [isCover, setIsCover] = useState(false)
-  // Rights
   const [copyrightHolder, setCopyrightHolder] = useState('')
   const [copyrightYear, setCopyrightYear] = useState(new Date().getFullYear().toString())
-  const [recordLabel, setRecordLabel] = useState('')
-  const [publisher, setPublisher] = useState('')
-  const [proAffiliation, setProAffiliation] = useState('')
-  // Identifiers
-  const [isrc, setIsrc] = useState('')
-  const [upc, setUpc] = useState('')
-  // Contributors
-  const [contributors, setContributors] = useState<Contributor[]>([])
-  // Release scheduling
+  const [contributors, setContributors] = useState<Contributor[]>([{ name: '444 Radio', role: 'Producer' }])
   const [releaseDate, setReleaseDate] = useState('')
 
   // ─── 444 Sonic DNA ───
@@ -132,8 +145,8 @@ export default function TwoStepReleaseModal({
   const [eraVibe, setEraVibe] = useState<EraVibe | ''>('')
   // ─── 444 Ownership ───
   const [licenseType444, setLicenseType444] = useState<LicenseType444>('fully_ownable')
-  const [remixAllowed, setRemixAllowed] = useState(false)
-  const [derivativeAllowed, setDerivativeAllowed] = useState(false)
+  const [remixAllowed, setRemixAllowed] = useState(true)
+  const [derivativeAllowed, setDerivativeAllowed] = useState(true)
   const [promptVisibility, setPromptVisibility] = useState<'public' | 'private'>('private')
 
   // ─── Real-time Release Strength ───
@@ -157,10 +170,10 @@ export default function TwoStepReleaseModal({
       atmosphere: (atmosphere as Atmosphere) || undefined,
       eraVibe: (eraVibe as EraVibe) || undefined,
       licenseType444,
-      creationType: 'ai_generated',
+      creationType,
       generationPrompt: musicItem?.prompt || undefined,
     })
-  }, [title, description, genre, mood, tags, bpm, keySignature, selectedImage, instruments, keywords, lyrics, energyLevel, danceability, tempoFeel, atmosphere, eraVibe, licenseType444, musicItems, selectedMusic])
+  }, [title, description, genre, mood, tags, bpm, keySignature, selectedImage, instruments, keywords, lyrics, energyLevel, danceability, tempoFeel, atmosphere, eraVibe, licenseType444, creationType, musicItems, selectedMusic])
 
   const strengthColor = metadataStrength >= 80 ? { text: 'text-emerald-400', bg: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' }
     : metadataStrength >= 60 ? { text: 'text-blue-400', bg: 'bg-blue-500', badge: 'bg-blue-500/15 text-blue-400 border-blue-500/30' }
@@ -168,12 +181,30 @@ export default function TwoStepReleaseModal({
     : { text: 'text-red-400', bg: 'bg-red-500', badge: 'bg-red-500/15 text-red-400 border-red-500/30' }
   const strengthLabel = metadataStrength >= 80 ? 'Excellent' : metadataStrength >= 60 ? 'Good' : metadataStrength >= 40 ? 'Fair' : 'Needs Work'
 
+  const strengthHints = useMemo(() => {
+    const hints: { text: string; points: number }[] = []
+    if (!description || description.length < 120) hints.push({ text: 'Add description (120+ chars)', points: 5 })
+    if (!tags || tags.split(',').filter(t => t.trim()).length < 5) hints.push({ text: 'Add 5+ tags', points: 5 })
+    if (energyLevel == null) hints.push({ text: 'Set energy level', points: 5 })
+    if (danceability == null) hints.push({ text: 'Set danceability', points: 5 })
+    if (!atmosphere) hints.push({ text: 'Select atmosphere', points: 5 })
+    if (!tempoFeel) hints.push({ text: 'Choose tempo feel', points: 5 })
+    if (!eraVibe) hints.push({ text: 'Pick era vibe', points: 5 })
+    if (!keySignature) hints.push({ text: 'Select key signature', points: 5 })
+    if (instruments.length === 0) hints.push({ text: 'Tag instruments', points: 5 })
+    if (!keywords || keywords.split(',').filter(k => k.trim()).length < 3) hints.push({ text: 'Add 3+ keywords', points: 2 })
+    return hints.slice(0, 4)
+  }, [description, tags, energyLevel, danceability, atmosphere, tempoFeel, eraVibe, keySignature, instruments, keywords])
+
   useEffect(() => {
     if (isOpen) {
       fetchLibraryItems()
       setStep(1)
       setSelectedMusic(preselectedMusic || null)
       setSelectedImage(preselectedImage || null)
+      setPurchaseBlockError(null)
+      setShowMintConfirm(false)
+      setFingerprintStatus('idle')
     }
   }, [isOpen, preselectedMusic, preselectedImage])
 
@@ -188,7 +219,11 @@ export default function TwoStepReleaseModal({
       const imagesData = await imagesRes.json()
 
       if (musicData.success && Array.isArray(musicData.music)) {
-        setMusicItems(musicData.music)
+        const markedMusic = musicData.music.map((m: LibraryMusic) => ({
+          ...m,
+          is_purchased: m.prompt?.toLowerCase().includes('purchased from earn')
+        }))
+        setMusicItems(markedMusic)
       }
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
@@ -200,12 +235,26 @@ export default function TwoStepReleaseModal({
     }
   }
 
+  const handleSelectMusic = (id: string) => {
+    const item = musicItems.find(m => m.id === id)
+    if (item?.is_purchased) {
+      setPurchaseBlockError('This track was purchased from the Earn marketplace. You cannot release tracks created by other artists. Only your original creations can be released.')
+      return
+    }
+    setPurchaseBlockError(null)
+    setSelectedMusic(id)
+  }
+
   const handleNextToStep2 = () => {
     if (!selectedMusic || !selectedImage) {
       alert('Please select both music and cover art to continue')
       return
     }
     const music = musicItems.find(m => m.id === selectedMusic)
+    if (music?.is_purchased) {
+      setPurchaseBlockError('Purchased tracks cannot be released.')
+      return
+    }
     if (music && !title) {
       setTitle(music.title || music.prompt.substring(0, 50))
     }
@@ -219,14 +268,20 @@ export default function TwoStepReleaseModal({
     if (!title.trim()) { alert('Please enter a title'); return }
     if (!genre) { alert('Please select a genre'); return }
     if (!mood) { alert('Please select a mood'); return }
+    if (!creationType) { alert('Please select a creation source'); return }
+    if (creationType === 'remix_444' && !parentTrackId.trim()) {
+      alert('Please enter the parent 444 Track ID for your remix')
+      return
+    }
     setStep(3)
   }
 
   const addContributor = () => {
-    setContributors([...contributors, { name: '', role: 'Producer' }])
+    setContributors([...contributors, { name: '', role: 'Featured Artist' }])
   }
 
   const removeContributor = (index: number) => {
+    if (index === 0 && contributors[0]?.name === '444 Radio') return
     setContributors(contributors.filter((_, i) => i !== index))
   }
 
@@ -244,16 +299,49 @@ export default function TwoStepReleaseModal({
     )
   }
 
+  const handleLicensePreset = (preset: typeof LICENSE_PRESETS[0]) => {
+    setLicenseType444(preset.value)
+    setRemixAllowed(preset.remix)
+    setDerivativeAllowed(preset.derivative)
+  }
+
+  const handlePrePublishCheck = async () => {
+    setFingerprintStatus('checking')
+    try {
+      const music = musicItems.find(m => m.id === selectedMusic)
+      if (music) {
+        const res = await fetch('/api/ownership/validate-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audioUrl: music.audio_url })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.blocked) {
+            setFingerprintStatus('flagged')
+            alert('This audio matches an existing track by another creator. Release blocked.')
+            return
+          }
+        }
+      }
+      setFingerprintStatus('clear')
+      setShowMintConfirm(true)
+    } catch {
+      setFingerprintStatus('clear')
+      setShowMintConfirm(true)
+    }
+  }
+
   const handlePublish = async () => {
-    if (!title.trim()) { alert('Please enter a title'); return }
-    if (!genre) { alert('Please select a genre'); return }
-    if (!mood) { alert('Please select a mood'); return }
+    if (!title.trim() || !genre || !mood) return
 
     setIsPublishing(true)
+    setShowMintConfirm(false)
     try {
       const music = musicItems.find(m => m.id === selectedMusic)
       const image = imageItems.find(i => i.id === selectedImage)
       if (!music || !image) throw new Error('Selected media not found')
+      if (music.is_purchased) throw new Error('Purchased tracks cannot be released.')
 
       const metadata: Record<string, unknown> = {
         description: description.trim() || null,
@@ -276,11 +364,8 @@ export default function TwoStepReleaseModal({
         version_tag: versionTag.trim() || null,
         copyright_holder: copyrightHolder.trim() || null,
         copyright_year: copyrightYear ? parseInt(copyrightYear) : null,
-        record_label: recordLabel.trim() || null,
-        publisher: publisher.trim() || null,
-        pro_affiliation: proAffiliation.trim() || null,
-        isrc: isrc.trim() || null,
-        upc: upc.trim() || null,
+        record_label: '444 Radio',
+        publisher: '444 Radio',
         contributors: contributors.filter(c => c.name.trim()),
         release_date: releaseDate || null,
         // 444 Ownership Protocol
@@ -293,8 +378,9 @@ export default function TwoStepReleaseModal({
         remix_allowed: remixAllowed,
         derivative_allowed: derivativeAllowed,
         prompt_visibility: promptVisibility,
-        creation_type: 'ai_generated',
+        creation_type: creationType,
         metadata_strength: metadataStrength,
+        parent_track_id: (creationType === 'remix_444' && parentTrackId.trim()) ? parentTrackId.trim() : null,
       }
 
       const combineRes = await fetch('/api/media/combine', {
@@ -312,11 +398,9 @@ export default function TwoStepReleaseModal({
       })
 
       const combineData = await combineRes.json()
-      if (!combineData.success) {
-        throw new Error(combineData.error || 'Failed to combine media')
-      }
+      if (!combineData.success) throw new Error(combineData.error || 'Failed to mint track')
 
-      alert('🚀 Release published successfully!')
+      alert('Your track has been minted on 444Radio! Your permanent 444 Track ID has been assigned.')
       onClose()
     } catch (error) {
       console.error('Error publishing:', error)
@@ -330,6 +414,8 @@ export default function TwoStepReleaseModal({
 
   const selectedMusicItem = musicItems.find(m => m.id === selectedMusic)
   const selectedImageItem = imageItems.find(i => i.id === selectedImage)
+  const releasableMusic = musicItems.filter(m => !m.is_purchased)
+  const purchasedMusic = musicItems.filter(m => m.is_purchased)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
@@ -344,12 +430,20 @@ export default function TwoStepReleaseModal({
               <Rocket size={18} className="text-cyan-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Release Your Track</h2>
+              <h2 className="text-lg font-bold text-white">Mint Your Track</h2>
               <p className="text-xs text-gray-500">
-                {step === 1 ? 'Step 1 — Select Media' : step === 2 ? 'Step 2 — Track Details' : 'Step 3 — Distribution Info'}
+                {step === 1 ? 'Step 1 — Select Media' : step === 2 ? 'Step 2 — Sound DNA' : 'Step 3 — Release & Rights'}
               </p>
             </div>
           </div>
+          {(step === 2 || step === 3) && (
+            <div className="flex items-center gap-2 mr-10">
+              <div className="w-20 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-500 ${strengthColor.bg}`} style={{ width: `${Math.max(metadataStrength, 3)}%` }} />
+              </div>
+              <span className={`text-xs font-mono ${strengthColor.text}`}>{metadataStrength}%</span>
+            </div>
+          )}
           <button onClick={onClose} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
             <X size={18} className="text-gray-400" />
           </button>
@@ -364,8 +458,8 @@ export default function TwoStepReleaseModal({
           </div>
           <div className="flex justify-between mt-1.5 text-[10px] text-gray-600">
             <span className={step >= 1 ? 'text-cyan-400' : ''}>Media</span>
-            <span className={step >= 2 ? 'text-cyan-400' : ''}>Details</span>
-            <span className={step >= 3 ? 'text-cyan-400' : ''}>Distribution</span>
+            <span className={step >= 2 ? 'text-cyan-400' : ''}>Sound DNA</span>
+            <span className={step >= 3 ? 'text-cyan-400' : ''}>Release &amp; Rights</span>
           </div>
         </div>
 
@@ -375,7 +469,17 @@ export default function TwoStepReleaseModal({
           {/* ═══ STEP 1: SELECT MEDIA ═══ */}
           {step === 1 && (
             <div className="p-6 space-y-6">
-              {(selectedMusic || selectedImage) && (
+              {purchaseBlockError && (
+                <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                  <AlertTriangle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-red-400">Cannot Release</p>
+                    <p className="text-xs text-red-300/70 mt-1">{purchaseBlockError}</p>
+                  </div>
+                </div>
+              )}
+
+              {(selectedMusic || selectedImage) && !purchaseBlockError && (
                 <div className="flex gap-3 p-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
                   {selectedMusicItem && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
@@ -396,16 +500,21 @@ export default function TwoStepReleaseModal({
 
               <div>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Select Music Track</h3>
+                {purchasedMusic.length > 0 && (
+                  <p className="text-[10px] text-amber-400/70 mb-2">
+                    ⚠ {purchasedMusic.length} track{purchasedMusic.length > 1 ? 's' : ''} purchased from Earn hidden — only your original creations can be released
+                  </p>
+                )}
                 <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
                   {isLoading ? (
                     <p className="col-span-2 text-gray-600 text-sm text-center py-8">Loading...</p>
-                  ) : musicItems.length === 0 ? (
-                    <p className="col-span-2 text-gray-600 text-sm text-center py-8">No music tracks yet</p>
+                  ) : releasableMusic.length === 0 ? (
+                    <p className="col-span-2 text-gray-600 text-sm text-center py-8">No original music tracks to release</p>
                   ) : (
-                    musicItems.map(music => (
+                    releasableMusic.map(music => (
                       <button
                         key={music.id}
-                        onClick={() => setSelectedMusic(music.id)}
+                        onClick={() => handleSelectMusic(music.id)}
                         className={`p-3 rounded-xl transition-all text-left ${
                           selectedMusic === music.id
                             ? 'bg-cyan-500/15 border-2 border-cyan-500/50'
@@ -458,7 +567,7 @@ export default function TwoStepReleaseModal({
             </div>
           )}
 
-          {/* ═══ STEP 2: ESSENTIAL METADATA ═══ */}
+          {/* ═══ STEP 2: SOUND DNA ═══ */}
           {step === 2 && (
             <div className="p-6 space-y-4">
               {/* Preview */}
@@ -484,19 +593,53 @@ export default function TwoStepReleaseModal({
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">
                   Title <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="text" value={title} onChange={e => setTitle(e.target.value)}
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)}
                   placeholder="Enter track title..."
-                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20 transition-all"
-                />
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20 transition-all" />
               </div>
 
-              {/* Genre + Mood (required) */}
+              {/* Creation Source — MANDATORY */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2">
+                  Creation Source <span className="text-red-400">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {CREATION_TYPES.map(ct => (
+                    <button key={ct.value} type="button" onClick={() => setCreationType(ct.value)}
+                      className={`p-3 rounded-xl text-left transition-all border ${
+                        creationType === ct.value
+                          ? 'bg-cyan-500/15 border-cyan-500/40'
+                          : 'bg-white/[0.02] border-white/[0.06] hover:border-cyan-500/20'
+                      }`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{ct.icon}</span>
+                        <div>
+                          <p className={`text-xs font-medium ${creationType === ct.value ? 'text-cyan-300' : 'text-gray-300'}`}>{ct.label}</p>
+                          <p className="text-[10px] text-gray-500">{ct.desc}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Parent Track ID for remixes */}
+              {creationType === 'remix_444' && (
+                <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                  <label className="block text-xs font-medium text-amber-400 mb-1.5">
+                    Parent 444 Track ID <span className="text-red-400">*</span>
+                  </label>
+                  <input type="text" value={parentTrackId} onChange={e => setParentTrackId(e.target.value)}
+                    placeholder="e.g. 444-2026-A91K-3F8B2C"
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-amber-500/20 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-amber-500/40 transition-all font-mono" />
+                  <p className="text-[10px] text-amber-300/50 mt-1">Links your remix to the original for crediting and ancestry</p>
+                </div>
+              )}
+
+              {/* Genre + Mood */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                    Genre <span className="text-red-400">*</span>
-                  </label>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Genre <span className="text-red-400">*</span></label>
                   <select value={genre} onChange={e => setGenre(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
                     <option value="" className="bg-black">Select genre...</option>
@@ -504,9 +647,7 @@ export default function TwoStepReleaseModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                    Mood <span className="text-red-400">*</span>
-                  </label>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Mood <span className="text-red-400">*</span></label>
                   <select value={mood} onChange={e => setMood(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
                     <option value="" className="bg-black">Select mood...</option>
@@ -539,8 +680,7 @@ export default function TwoStepReleaseModal({
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">BPM</label>
-                  <input type="number" value={bpm} onChange={e => setBpm(e.target.value)}
-                    placeholder="120" min="40" max="300"
+                  <input type="number" value={bpm} onChange={e => setBpm(e.target.value)} placeholder="120" min="40" max="300"
                     className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
                 </div>
                 <div>
@@ -564,31 +704,32 @@ export default function TwoStepReleaseModal({
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Description</label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)}
-                  placeholder="Tell listeners about your track..."
-                  rows={2}
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-gray-400">Description</label>
+                  <span className={`text-[10px] font-mono ${(description.length || 0) >= 120 ? 'text-emerald-400' : 'text-gray-600'}`}>{description.length}/120+</span>
+                </div>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Tell listeners about your track..." rows={2}
                   className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all resize-none" />
               </div>
 
               {/* Tags */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Tags</label>
-                <input type="text" value={tags} onChange={e => setTags(e.target.value)}
-                  placeholder="summer, vibes, 2025 (comma separated)"
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-gray-400">Tags</label>
+                  <span className={`text-[10px] font-mono ${tags.split(',').filter(t => t.trim()).length >= 5 ? 'text-emerald-400' : 'text-gray-600'}`}>{tags.split(',').filter(t => t.trim()).length}/5+</span>
+                </div>
+                <input type="text" value={tags} onChange={e => setTags(e.target.value)} placeholder="summer, vibes, 2026, dark, electronic (comma sep)"
                   className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
               </div>
 
-              {/* Lyrics (collapsible) */}
+              {/* Lyrics */}
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Lyrics</label>
-                <textarea value={lyrics} onChange={e => setLyrics(e.target.value)}
-                  placeholder="Paste or type your lyrics here..."
-                  rows={3}
+                <textarea value={lyrics} onChange={e => setLyrics(e.target.value)} placeholder="Paste or type your lyrics here..." rows={3}
                   className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all resize-none font-mono" />
               </div>
 
-              {/* Toggles row */}
+              {/* Toggles */}
               <div className="flex items-center gap-4">
                 <ToggleSwitch label="Public" value={isPublic} onChange={setIsPublic} description="Show on explore feed" />
                 <ToggleSwitch label="Explicit" value={isExplicit} onChange={setIsExplicit} description="Contains mature content" />
@@ -596,10 +737,10 @@ export default function TwoStepReleaseModal({
             </div>
           )}
 
-          {/* ═══ STEP 3: DISTRIBUTION & CREDITS ═══ */}
+          {/* ═══ STEP 3: RELEASE & RIGHTS ═══ */}
           {step === 3 && (
             <div className="p-6 space-y-5">
-              {/* Release Strength Meter */}
+              {/* Release Strength */}
               <div className="p-4 bg-gradient-to-r from-gray-900/80 to-gray-900/40 border border-white/[0.08] rounded-xl">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -607,39 +748,106 @@ export default function TwoStepReleaseModal({
                     <span className="text-sm font-medium text-gray-300">Release Strength</span>
                     <span className={`text-lg font-bold font-mono ${strengthColor.text}`}>{metadataStrength}%</span>
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${strengthColor.badge}`}>
-                    {strengthLabel}
-                  </span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${strengthColor.badge}`}>{strengthLabel}</span>
                 </div>
-                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${strengthColor.bg}`}
-                    style={{ width: `${Math.max(metadataStrength, 3)}%` }}
-                  />
+                <div className="h-2 bg-gray-800 rounded-full overflow-hidden mb-2">
+                  <div className={`h-full rounded-full transition-all duration-700 ease-out ${strengthColor.bg}`} style={{ width: `${Math.max(metadataStrength, 3)}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-600 mt-1.5">Fill in more fields to improve discoverability and earn a higher release score</p>
+                {strengthHints.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {strengthHints.map((hint, i) => (
+                      <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-gray-400">
+                        +{hint.points}% {hint.text}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl">
-                <Info size={14} className="text-blue-400 flex-shrink-0" />
-                <p className="text-xs text-blue-300/80">
-                  Distribution metadata is optional but recommended for professional releases and music distributors (DistroKid, TuneCore, etc.)
-                </p>
+              {/* Sonic DNA */}
+              <SectionHeader icon={Zap} label="Sonic DNA" color="purple" />
+              <div className="p-3 bg-purple-500/5 border border-purple-500/15 rounded-xl">
+                <p className="text-[10px] text-purple-300/70">Sonic DNA defines your track&apos;s unique character — it powers search, recommendations, and your Release Strength score.</p>
               </div>
 
-              {/* Artist Info Section */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-gray-400">Energy Level</label>
+                    <span className="text-xs font-mono text-purple-400">{energyLevel != null ? energyLevel : '—'}</span>
+                  </div>
+                  <input type="range" min="0" max="100" step="1" value={energyLevel ?? 50} onChange={e => setEnergyLevel(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-500/30" />
+                  <div className="flex justify-between text-[10px] text-gray-600 mt-1"><span>Calm</span><span>Intense</span></div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-gray-400">Danceability</label>
+                    <span className="text-xs font-mono text-purple-400">{danceability != null ? danceability : '—'}</span>
+                  </div>
+                  <input type="range" min="0" max="100" step="1" value={danceability ?? 50} onChange={e => setDanceability(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-500/30" />
+                  <div className="flex justify-between text-[10px] text-gray-600 mt-1"><span>Still</span><span>Groovy</span></div>
+                </div>
+              </div>
+
+              {/* Atmosphere */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2">Atmosphere</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    { value: 'dark', emoji: '🌑', label: 'Dark' }, { value: 'dreamy', emoji: '💭', label: 'Dreamy' },
+                    { value: 'uplifting', emoji: '☀️', label: 'Uplifting' }, { value: 'aggressive', emoji: '🔥', label: 'Aggressive' },
+                    { value: 'calm', emoji: '🌊', label: 'Calm' }, { value: 'melancholic', emoji: '🌧️', label: 'Melancholic' },
+                    { value: 'euphoric', emoji: '✨', label: 'Euphoric' }, { value: 'mysterious', emoji: '🌀', label: 'Mysterious' },
+                  ] as const).map(a => (
+                    <button key={a.value} type="button" onClick={() => setAtmosphere(atmosphere === a.value ? '' : a.value as Atmosphere)}
+                      className={`flex flex-col items-center gap-0.5 py-2 rounded-lg border transition-all text-center ${atmosphere === a.value ? 'bg-purple-500/15 border-purple-500/40 text-white' : 'bg-white/[0.02] border-white/[0.06] text-gray-500 hover:border-purple-500/20'}`}>
+                      <span className="text-base">{a.emoji}</span>
+                      <span className="text-[10px] font-medium">{a.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Era Vibe + Tempo Feel */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">Era Vibe</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['70s', '80s', '90s', '2000s', '2010s', 'futuristic', 'retro', 'timeless'] as const).map(era => (
+                      <button key={era} type="button" onClick={() => setEraVibe(eraVibe === era ? '' : era)}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${eraVibe === era ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' : 'bg-white/[0.03] text-gray-500 border-white/[0.06] hover:border-purple-500/20'}`}>
+                        {era === 'futuristic' ? '🚀 Future' : era === 'retro' ? '📼 Retro' : era === 'timeless' ? '♾️ Timeless' : era}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">Tempo Feel</label>
+                  <div className="flex gap-2">
+                    {([{ value: 'slow' as const, label: '🐌 Slow', desc: '<90 BPM' }, { value: 'mid' as const, label: '🚶 Mid', desc: '90-130' }, { value: 'fast' as const, label: '⚡ Fast', desc: '130+' }]).map(tf => (
+                      <button key={tf.value} type="button" onClick={() => setTempoFeel(tempoFeel === tf.value ? '' : tf.value)}
+                        className={`flex-1 py-2 rounded-lg border text-center transition-all ${tempoFeel === tf.value ? 'bg-purple-500/15 border-purple-500/40 text-white' : 'bg-white/[0.02] border-white/[0.06] text-gray-500 hover:border-purple-500/20'}`}>
+                        <p className="text-xs font-medium">{tf.label}</p>
+                        <p className="text-[10px] text-gray-600">{tf.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Artist Info */}
               <SectionHeader icon={Mic2} label="Artist Info" color="cyan" />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Artist Name</label>
-                  <input type="text" value={artistName} onChange={e => setArtistName(e.target.value)}
-                    placeholder="Your artist name"
+                  <input type="text" value={artistName} onChange={e => setArtistName(e.target.value)} placeholder="Your artist name"
                     className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Featured Artists</label>
-                  <input type="text" value={featuredArtists} onChange={e => setFeaturedArtists(e.target.value)}
-                    placeholder="Comma separated"
+                  <input type="text" value={featuredArtists} onChange={e => setFeaturedArtists(e.target.value)} placeholder="@user_id or name, comma separated"
                     className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
                 </div>
               </div>
@@ -655,8 +863,7 @@ export default function TwoStepReleaseModal({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Version Tag</label>
-                  <input type="text" value={versionTag} onChange={e => setVersionTag(e.target.value)}
-                    placeholder="e.g. Remix, Deluxe"
+                  <input type="text" value={versionTag} onChange={e => setVersionTag(e.target.value)} placeholder="e.g. Remix, Deluxe"
                     className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
                 </div>
                 <div>
@@ -672,15 +879,8 @@ export default function TwoStepReleaseModal({
               <SectionHeader icon={Music} label="Instruments" color="purple" />
               <div className="flex flex-wrap gap-1.5">
                 {INSTRUMENT_OPTIONS.map(inst => (
-                  <button
-                    key={inst}
-                    onClick={() => toggleInstrument(inst)}
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border ${
-                      instruments.includes(inst)
-                        ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                        : 'bg-white/[0.03] text-gray-500 border-white/[0.06] hover:border-white/10'
-                    }`}
-                  >
+                  <button key={inst} onClick={() => toggleInstrument(inst)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border ${instruments.includes(inst) ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' : 'bg-white/[0.03] text-gray-500 border-white/[0.06] hover:border-white/10'}`}>
                     {inst}
                   </button>
                 ))}
@@ -688,217 +888,75 @@ export default function TwoStepReleaseModal({
 
               {/* Keywords */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Keywords (for search)</label>
-                <input type="text" value={keywords} onChange={e => setKeywords(e.target.value)}
-                  placeholder="study, workout, driving, rain (comma separated)"
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-gray-400">Keywords (for search)</label>
+                  <span className={`text-[10px] font-mono ${keywords.split(',').filter(k => k.trim()).length >= 3 ? 'text-emerald-400' : 'text-gray-600'}`}>{keywords.split(',').filter(k => k.trim()).length}/3+</span>
+                </div>
+                <input type="text" value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="study, workout, driving, rain (comma separated)"
                   className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
               </div>
 
-              {/* ─── 444 SONIC DNA ─── */}
-              <SectionHeader icon={Zap} label="Sonic DNA" color="purple" />
-              <div className="p-3 bg-purple-500/5 border border-purple-500/15 rounded-xl">
-                <p className="text-[10px] text-purple-300/70">
-                  Sonic DNA defines your track&apos;s unique character — it powers search, recommendations, and your Release Strength score.
-                </p>
+              {/* 444 License */}
+              <SectionHeader icon={Lock} label="444 License" color="cyan" />
+              <div className="grid grid-cols-3 gap-1.5">
+                {LICENSE_PRESETS.map(lp => (
+                  <button key={lp.value} type="button" onClick={() => handleLicensePreset(lp)}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${licenseType444 === lp.value ? 'bg-cyan-500/15 border-cyan-500/40' : 'bg-white/[0.02] border-white/[0.06] hover:border-cyan-500/20'}`}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-sm">{lp.icon}</span>
+                      <p className={`text-[11px] font-medium ${licenseType444 === lp.value ? 'text-cyan-300' : 'text-gray-400'}`}>{lp.label}</p>
+                    </div>
+                    <p className="text-[9px] text-gray-600">{lp.desc}</p>
+                  </button>
+                ))}
               </div>
 
-              {/* Energy & Danceability sliders */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-gray-400">Energy Level</label>
-                    <span className="text-xs font-mono text-purple-400">{energyLevel != null ? energyLevel : '—'}</span>
-                  </div>
-                  <input
-                    type="range" min="0" max="100" step="1"
-                    value={energyLevel ?? 50}
-                    onChange={e => setEnergyLevel(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-500/30"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-600 mt-1">
-                    <span>Calm</span><span>Intense</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-gray-400">Danceability</label>
-                    <span className="text-xs font-mono text-purple-400">{danceability != null ? danceability : '—'}</span>
-                  </div>
-                  <input
-                    type="range" min="0" max="100" step="1"
-                    value={danceability ?? 50}
-                    onChange={e => setDanceability(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-500/30"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-600 mt-1">
-                    <span>Still</span><span>Groovy</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Atmosphere grid */}
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-2">Atmosphere</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {([
-                    { value: 'dark', emoji: '🌑', label: 'Dark' },
-                    { value: 'dreamy', emoji: '💭', label: 'Dreamy' },
-                    { value: 'uplifting', emoji: '☀️', label: 'Uplifting' },
-                    { value: 'aggressive', emoji: '🔥', label: 'Aggressive' },
-                    { value: 'calm', emoji: '🌊', label: 'Calm' },
-                    { value: 'melancholic', emoji: '🌧️', label: 'Melancholic' },
-                    { value: 'euphoric', emoji: '✨', label: 'Euphoric' },
-                    { value: 'mysterious', emoji: '🌀', label: 'Mysterious' },
-                  ] as const).map(a => (
-                    <button
-                      key={a.value}
-                      type="button"
-                      onClick={() => setAtmosphere(atmosphere === a.value ? '' : a.value as Atmosphere)}
-                      className={`flex flex-col items-center gap-0.5 py-2 rounded-lg border transition-all text-center ${
-                        atmosphere === a.value
-                          ? 'bg-purple-500/15 border-purple-500/40 text-white'
-                          : 'bg-white/[0.02] border-white/[0.06] text-gray-500 hover:border-purple-500/20'
-                      }`}
-                    >
-                      <span className="text-base">{a.emoji}</span>
-                      <span className="text-[10px] font-medium">{a.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Era Vibe + Tempo Feel */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2">Era Vibe</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(['70s', '80s', '90s', '2000s', '2010s', 'futuristic', 'retro', 'timeless'] as const).map(era => (
-                      <button
-                        key={era}
-                        type="button"
-                        onClick={() => setEraVibe(eraVibe === era ? '' : era)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
-                          eraVibe === era
-                            ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                            : 'bg-white/[0.03] text-gray-500 border-white/[0.06] hover:border-purple-500/20'
-                        }`}
-                      >
-                        {era === 'futuristic' ? '🚀 Future' : era === 'retro' ? '📼 Retro' : era === 'timeless' ? '♾️ Timeless' : era}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2">Tempo Feel</label>
-                  <div className="flex gap-2">
-                    {([
-                      { value: 'slow' as const, label: '🐌 Slow', desc: '<90 BPM' },
-                      { value: 'mid' as const, label: '🚶 Mid', desc: '90-130' },
-                      { value: 'fast' as const, label: '⚡ Fast', desc: '130+' },
-                    ]).map(tf => (
-                      <button
-                        key={tf.value}
-                        type="button"
-                        onClick={() => setTempoFeel(tempoFeel === tf.value ? '' : tf.value)}
-                        className={`flex-1 py-2 rounded-lg border text-center transition-all ${
-                          tempoFeel === tf.value
-                            ? 'bg-purple-500/15 border-purple-500/40 text-white'
-                            : 'bg-white/[0.02] border-white/[0.06] text-gray-500 hover:border-purple-500/20'
-                        }`}
-                      >
-                        <p className="text-xs font-medium">{tf.label}</p>
-                        <p className="text-[10px] text-gray-600">{tf.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* ─── 444 OWNERSHIP ─── */}
-              <SectionHeader icon={Lock} label="444 Ownership" color="cyan" />
-
-              {/* License Type */}
-              <div>
-                <label className="block text-xs font-medium text-gray-400 mb-2">License Type</label>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {([
-                    { value: 'fully_ownable', label: 'Fully Ownable', desc: 'Full rights transfer' },
-                    { value: 'non_exclusive', label: 'Non-Exclusive', desc: 'Multiple licenses' },
-                    { value: 'remix_allowed', label: 'Remix OK', desc: 'Remixes permitted' },
-                    { value: 'download_only', label: 'Download Only', desc: 'No redistribute' },
-                    { value: 'streaming_only', label: 'Stream Only', desc: 'No downloads' },
-                    { value: 'no_derivatives', label: 'No Derivatives', desc: 'No remixes' },
-                  ] as const).map(lt => (
-                    <button
-                      key={lt.value}
-                      type="button"
-                      onClick={() => setLicenseType444(lt.value as LicenseType444)}
-                      className={`p-2 rounded-lg border text-left transition-all ${
-                        licenseType444 === lt.value
-                          ? 'bg-cyan-500/15 border-cyan-500/40'
-                          : 'bg-white/[0.02] border-white/[0.06] hover:border-cyan-500/20'
-                      }`}
-                    >
-                      <p className={`text-[11px] font-medium ${licenseType444 === lt.value ? 'text-cyan-300' : 'text-gray-400'}`}>{lt.label}</p>
-                      <p className="text-[9px] text-gray-600 mt-0.5">{lt.desc}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Permission toggles + Prompt visibility */}
+              {/* Permission toggles */}
               <div className="grid grid-cols-3 gap-2">
                 <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${remixAllowed ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-white/[0.06]'}`}>
-                  <div>
-                    <p className="text-xs font-medium text-white">Remix</p>
-                    <p className="text-[9px] text-gray-500">Allow remixes</p>
-                  </div>
-                  <button onClick={() => setRemixAllowed(!remixAllowed)}
-                    className={`relative w-9 h-5 rounded-full transition-colors ${remixAllowed ? 'bg-cyan-500' : 'bg-white/15'}`}>
+                  <div><p className="text-xs font-medium text-white">Remix</p><p className="text-[9px] text-gray-500">Allow remixes</p></div>
+                  <button onClick={() => setRemixAllowed(!remixAllowed)} className={`relative w-9 h-5 rounded-full transition-colors ${remixAllowed ? 'bg-cyan-500' : 'bg-white/15'}`}>
                     <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${remixAllowed ? 'translate-x-4' : 'translate-x-0'}`} />
                   </button>
                 </div>
                 <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${derivativeAllowed ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-white/[0.06]'}`}>
-                  <div>
-                    <p className="text-xs font-medium text-white">Derivative</p>
-                    <p className="text-[9px] text-gray-500">Allow derivatives</p>
-                  </div>
-                  <button onClick={() => setDerivativeAllowed(!derivativeAllowed)}
-                    className={`relative w-9 h-5 rounded-full transition-colors ${derivativeAllowed ? 'bg-cyan-500' : 'bg-white/15'}`}>
+                  <div><p className="text-xs font-medium text-white">Derivative</p><p className="text-[9px] text-gray-500">Allow derivatives</p></div>
+                  <button onClick={() => setDerivativeAllowed(!derivativeAllowed)} className={`relative w-9 h-5 rounded-full transition-colors ${derivativeAllowed ? 'bg-cyan-500' : 'bg-white/15'}`}>
                     <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${derivativeAllowed ? 'translate-x-4' : 'translate-x-0'}`} />
                   </button>
                 </div>
                 <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${promptVisibility === 'public' ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-white/[0.06]'}`}>
-                  <div>
-                    <p className="text-xs font-medium text-white">Prompt</p>
-                    <p className="text-[9px] text-gray-500">{promptVisibility === 'public' ? 'Visible' : 'Hidden'}</p>
-                  </div>
-                  <button onClick={() => setPromptVisibility(promptVisibility === 'public' ? 'private' : 'public')}
-                    className={`relative w-9 h-5 rounded-full transition-colors ${promptVisibility === 'public' ? 'bg-cyan-500' : 'bg-white/15'}`}>
+                  <div><p className="text-xs font-medium text-white">Prompt</p><p className="text-[9px] text-gray-500">{promptVisibility === 'public' ? 'Visible' : 'Hidden'}</p></div>
+                  <button onClick={() => setPromptVisibility(promptVisibility === 'public' ? 'private' : 'public')} className={`relative w-9 h-5 rounded-full transition-colors ${promptVisibility === 'public' ? 'bg-cyan-500' : 'bg-white/15'}`}>
                     <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${promptVisibility === 'public' ? 'translate-x-4' : 'translate-x-0'}`} />
                   </button>
                 </div>
               </div>
 
-              {/* Contributors */}
+              {/* Credits & Contributors */}
               <SectionHeader icon={Users} label="Credits & Contributors" color="green" />
+              <div className="p-2 bg-green-500/5 border border-green-500/15 rounded-xl mb-2">
+                <p className="text-[10px] text-green-300/70">444 Radio is automatically credited as AI Producer &amp; Engineer on all releases.</p>
+              </div>
               {contributors.map((c, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input type="text" value={c.name} onChange={e => updateContributor(i, 'name', e.target.value)}
-                    placeholder="Name"
-                    className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
-                  <select value={c.role} onChange={e => updateContributor(i, 'role', e.target.value)}
-                    className="w-40 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
+                    placeholder={i === 0 ? '444 Radio' : '@username or name'} readOnly={i === 0}
+                    className={`flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all ${i === 0 ? 'opacity-70' : ''}`} />
+                  <select value={c.role} onChange={e => updateContributor(i, 'role', e.target.value)} disabled={i === 0}
+                    className={`w-40 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all ${i === 0 ? 'opacity-70' : ''}`}>
                     {CONTRIBUTOR_ROLES.map(r => <option key={r} value={r} className="bg-black">{r}</option>)}
                   </select>
-                  <button onClick={() => removeContributor(i)} className="p-2 hover:bg-red-500/10 rounded-lg transition-colors">
-                    <Trash2 size={14} className="text-red-400" />
-                  </button>
+                  {i > 0 && (
+                    <button onClick={() => removeContributor(i)} className="p-2 hover:bg-red-500/10 rounded-lg transition-colors">
+                      <Trash2 size={14} className="text-red-400" />
+                    </button>
+                  )}
                 </div>
               ))}
               <button onClick={addContributor}
                 className="flex items-center gap-1.5 px-3 py-2 bg-white/[0.03] border border-dashed border-white/10 rounded-lg text-xs text-gray-400 hover:text-white hover:border-white/20 transition-colors">
-                <Plus size={14} /> Add Contributor
+                <Plus size={14} /> Add Contributor / Tag Collaborator
               </button>
 
               {/* Rights & Legal */}
@@ -906,46 +964,23 @@ export default function TwoStepReleaseModal({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Copyright Holder</label>
-                  <input type="text" value={copyrightHolder} onChange={e => setCopyrightHolder(e.target.value)}
-                    placeholder="Your name or label"
+                  <input type="text" value={copyrightHolder} onChange={e => setCopyrightHolder(e.target.value)} placeholder="Your name (track owner)"
                     className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Copyright Year</label>
-                  <input type="number" value={copyrightYear} onChange={e => setCopyrightYear(e.target.value)}
-                    min="1950" max="2030"
+                  <input type="number" value={copyrightYear} onChange={e => setCopyrightYear(e.target.value)} min="1950" max="2030"
                     className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all" />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Record Label</label>
-                  <input type="text" value={recordLabel} onChange={e => setRecordLabel(e.target.value)}
-                    placeholder="Self-released"
-                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-white/[0.02] border border-white/[0.06] rounded-xl">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Record Label</p>
+                  <p className="text-sm text-cyan-400 font-medium mt-0.5">444 Radio</p>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Publisher</label>
-                  <input type="text" value={publisher} onChange={e => setPublisher(e.target.value)}
-                    placeholder="Publishing company"
-                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">PRO</label>
-                  <select value={proAffiliation} onChange={e => setProAffiliation(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all">
-                    <option value="" className="bg-black">None</option>
-                    <option value="ASCAP" className="bg-black">ASCAP</option>
-                    <option value="BMI" className="bg-black">BMI</option>
-                    <option value="SESAC" className="bg-black">SESAC</option>
-                    <option value="PRS" className="bg-black">PRS</option>
-                    <option value="SOCAN" className="bg-black">SOCAN</option>
-                    <option value="GEMA" className="bg-black">GEMA</option>
-                    <option value="SACEM" className="bg-black">SACEM</option>
-                    <option value="JASRAC" className="bg-black">JASRAC</option>
-                    <option value="KOMCA" className="bg-black">KOMCA</option>
-                    <option value="Other" className="bg-black">Other</option>
-                  </select>
+                <div className="p-3 bg-white/[0.02] border border-white/[0.06] rounded-xl">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">Publisher</p>
+                  <p className="text-sm text-cyan-400 font-medium mt-0.5">444 Radio</p>
                 </div>
               </div>
 
@@ -957,48 +992,87 @@ export default function TwoStepReleaseModal({
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider">Track ID</p>
                     <p className="text-sm font-mono text-cyan-400 mt-0.5">444-{new Date().getFullYear()}-XXXX-XXXXXX</p>
                   </div>
-                  <div className="px-2.5 py-1 bg-cyan-500/10 rounded-lg">
-                    <p className="text-[10px] text-cyan-400 font-medium">Auto-generated on publish</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 rounded-lg">
+                      <Fingerprint size={12} className="text-purple-400" />
+                      <p className="text-[10px] text-purple-400 font-medium">Audio DNA on mint</p>
+                    </div>
+                    <div className="px-2.5 py-1 bg-cyan-500/10 rounded-lg">
+                      <p className="text-[10px] text-cyan-400 font-medium">Auto-generated</p>
+                    </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Legacy Identifiers */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                    ISRC <span className="text-gray-600 font-normal">(legacy, optional)</span>
-                  </label>
-                  <input type="text" value={isrc} onChange={e => setIsrc(e.target.value)}
-                    placeholder="e.g. USXXXX2500001"
-                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all font-mono" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                    UPC <span className="text-gray-600 font-normal">(legacy, optional)</span>
-                  </label>
-                  <input type="text" value={upc} onChange={e => setUpc(e.target.value)}
-                    placeholder="e.g. 012345678901"
-                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all font-mono" />
                 </div>
               </div>
             </div>
           )}
         </div>
 
+        {/* Mint Confirmation Modal */}
+        {showMintConfirm && (
+          <div className="absolute inset-0 z-10 bg-black/90 backdrop-blur-sm flex items-center justify-center p-8">
+            <div className="bg-gray-950 border border-cyan-500/30 rounded-2xl p-8 max-w-md w-full shadow-2xl shadow-cyan-500/10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center">
+                  <Fingerprint size={24} className="text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Mint This Track</h3>
+                  <p className="text-xs text-gray-500">This action is permanent</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex items-start gap-2 text-sm text-gray-300">
+                  <Check size={16} className="text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span>A permanent <span className="text-cyan-400 font-mono">444 Track ID</span> will be assigned</span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-gray-300">
+                  <Check size={16} className="text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span>Original creator will be <span className="text-amber-400">permanently locked</span> to your account</span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-gray-300">
+                  <Check size={16} className="text-cyan-400 mt-0.5 flex-shrink-0" />
+                  <span>Audio fingerprint will detect any future re-uploads</span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-gray-300">
+                  <Check size={16} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <span>Release Strength: <span className={`font-mono font-bold ${strengthColor.text}`}>{metadataStrength}%</span></span>
+                </div>
+              </div>
+
+              {fingerprintStatus === 'clear' && (
+                <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-4">
+                  <Check size={14} className="text-emerald-400" />
+                  <p className="text-xs text-emerald-400">Audio fingerprint check passed — no duplicates found</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={() => setShowMintConfirm(false)}
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors">
+                  Back
+                </button>
+                <button onClick={handlePublish} disabled={isPublishing}
+                  className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-sm font-bold transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2">
+                  {isPublishing ? (
+                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Minting...</>
+                  ) : (
+                    <><Fingerprint size={16} /> Confirm Mint</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="px-6 py-4 border-t border-white/[0.06] flex items-center justify-between">
           {step === 1 ? (
             <>
-              <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white text-sm font-medium">
-                Cancel
-              </button>
-              <button
-                onClick={handleNextToStep2}
-                disabled={!selectedMusic || !selectedImage}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
-              >
-                Next: Details <ChevronRight size={16} />
+              <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white text-sm font-medium">Cancel</button>
+              <button onClick={handleNextToStep2} disabled={!selectedMusic || !selectedImage}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20">
+                Next: Sound DNA <ChevronRight size={16} />
               </button>
             </>
           ) : step === 2 ? (
@@ -1006,42 +1080,22 @@ export default function TwoStepReleaseModal({
               <button onClick={() => setStep(1)} className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white text-sm font-medium flex items-center gap-1">
                 <ChevronLeft size={16} /> Back
               </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePublish}
-                  disabled={isPublishing || !title.trim() || !genre || !mood}
-                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 transition-all text-white text-sm font-medium"
-                >
-                  Publish Now
-                </button>
-                <button
-                  onClick={handleNextToStep3}
-                  disabled={!title.trim() || !genre || !mood}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
-                >
-                  Add Distribution Info <ChevronRight size={16} />
-                </button>
-              </div>
+              <button onClick={handleNextToStep3} disabled={!title.trim() || !genre || !mood || !creationType}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20">
+                Release &amp; Rights <ChevronRight size={16} />
+              </button>
             </>
           ) : (
             <>
               <button onClick={() => setStep(2)} className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white text-sm font-medium flex items-center gap-1">
                 <ChevronLeft size={16} /> Back
               </button>
-              <button
-                onClick={handlePublish}
-                disabled={isPublishing || !title.trim() || !genre || !mood}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20"
-              >
-                {isPublishing ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Publishing...
-                  </>
+              <button onClick={handlePrePublishCheck} disabled={isPublishing || !title.trim() || !genre || !mood || fingerprintStatus === 'checking'}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20">
+                {fingerprintStatus === 'checking' ? (
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Checking Audio...</>
                 ) : (
-                  <>
-                    <Rocket size={16} /> Publish Release
-                  </>
+                  <><Fingerprint size={16} /> Mint Release</>
                 )}
               </button>
             </>
@@ -1080,10 +1134,7 @@ function ToggleSwitch({ label, value, onChange, description }: { label: string; 
         <p className="text-sm font-medium text-white">{label}</p>
         {description && <p className="text-[10px] text-gray-500 mt-0.5">{description}</p>}
       </div>
-      <button
-        onClick={() => onChange(!value)}
-        className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-cyan-500' : 'bg-white/15'}`}
-      >
+      <button onClick={() => onChange(!value)} className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-cyan-500' : 'bg-white/15'}`}>
         <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${value ? 'translate-x-5' : 'translate-x-0'}`} />
       </button>
     </div>

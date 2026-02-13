@@ -64,6 +64,21 @@ export async function POST(req: NextRequest) {
       plays: 0,
     }
 
+    // ─── Block purchased tracks from re-release ───
+    // Check if this audio_url was purchased from Earn
+    const { data: purchaseCheck } = await supabase
+      .from('music_library')
+      .select('prompt')
+      .eq('audio_url', audioUrl)
+      .eq('user_id', userId)
+      .single()
+    if (purchaseCheck?.prompt?.toLowerCase().includes('purchased from earn')) {
+      return NextResponse.json(
+        { error: 'Purchased tracks cannot be released. Only your original creations can be released on 444Radio.' },
+        { status: 403 }
+      )
+    }
+
     // Distribution-quality metadata (post-migration fields)
     // These are added conditionally - if column doesn't exist yet, the insert still works for core fields
     if (metadata?.secondary_genre) insertData.secondary_genre = metadata.secondary_genre
@@ -78,17 +93,29 @@ export async function POST(req: NextRequest) {
     if (metadata?.is_explicit !== undefined) insertData.is_explicit = metadata.is_explicit
     if (metadata?.is_cover !== undefined) insertData.is_cover = metadata.is_cover
     if (metadata?.lyrics) insertData.lyrics = metadata.lyrics
-    if (metadata?.isrc) insertData.isrc = metadata.isrc
-    if (metadata?.upc) insertData.upc = metadata.upc
     if (metadata?.copyright_holder) insertData.copyright_holder = metadata.copyright_holder
     if (metadata?.copyright_year) insertData.copyright_year = metadata.copyright_year
-    if (metadata?.record_label) insertData.record_label = metadata.record_label
-    if (metadata?.publisher) insertData.publisher = metadata.publisher
     if (metadata?.pro_affiliation) insertData.pro_affiliation = metadata.pro_affiliation
     if (metadata?.territories?.length) insertData.territories = metadata.territories
     if (metadata?.release_date) insertData.release_date = metadata.release_date
     if (metadata?.songwriters?.length) insertData.songwriters = metadata.songwriters
     if (metadata?.contributors?.length) insertData.contributors = metadata.contributors
+
+    // 444 Ownership Protocol — hardcode label/publisher + accept new fields
+    insertData.record_label = '444 Radio'
+    insertData.publisher = '444 Radio'
+    if (metadata?.energy_level != null) insertData.energy_level = metadata.energy_level
+    if (metadata?.danceability != null) insertData.danceability = metadata.danceability
+    if (metadata?.tempo_feel) insertData.tempo_feel = metadata.tempo_feel
+    if (metadata?.atmosphere) insertData.atmosphere = metadata.atmosphere
+    if (metadata?.era_vibe) insertData.era_vibe = metadata.era_vibe
+    if (metadata?.license_type_444) insertData.license_type_444 = metadata.license_type_444
+    if (metadata?.remix_allowed !== undefined) insertData.remix_allowed = metadata.remix_allowed
+    if (metadata?.derivative_allowed !== undefined) insertData.derivative_allowed = metadata.derivative_allowed
+    if (metadata?.prompt_visibility) insertData.prompt_visibility = metadata.prompt_visibility
+    if (metadata?.creation_type) insertData.creation_type = metadata.creation_type
+    if (metadata?.metadata_strength != null) insertData.metadata_strength = metadata.metadata_strength
+    if (metadata?.parent_track_id) insertData.parent_track_id = metadata.parent_track_id
 
     // Insert combined media into database with full metadata
     const { data, error } = await supabase

@@ -17,7 +17,7 @@ import { LibraryTabSkeleton } from '../components/LoadingSkeleton'
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
 const LyricsModal = lazy(() => import('../components/LyricsModal'))
 const CoverArtModal = lazy(() => import('../components/CoverArtModal'))
-const ReleaseModal = lazy(() => import('../components/ReleaseModal'))
+const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
 
 interface LibraryMusic {
   id: string
@@ -1268,24 +1268,16 @@ export default function LibraryPage() {
         )}
       </Suspense>
 
-      {/* Release Modal - Lazy Loaded */}
+      {/* Release Modal - Full 3-Step Flow */}
       <Suspense fallback={null}>
-        {selectedReleaseTrack && (
-          <ReleaseModal
-            isOpen={showReleaseModal}
-            onClose={() => {
-              setShowReleaseModal(false)
-              setSelectedReleaseTrack(null)
-            }}
-            musicItem={selectedReleaseTrack}
-            imageItems={imageItems}
-            onSuccess={() => {
-              setShowReleaseToast(true)
-              setTimeout(() => setShowReleaseToast(false), 3000)
-              fetchLibrary(true)
-            }}
-          />
-        )}
+        <TwoStepReleaseModal
+          isOpen={showReleaseModal}
+          onClose={() => {
+            setShowReleaseModal(false)
+            setSelectedReleaseTrack(null)
+          }}
+          preselectedMusic={selectedReleaseTrack?.id}
+        />
       </Suspense>
 
       {/* Release Success Toast */}
