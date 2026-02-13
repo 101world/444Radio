@@ -45,4 +45,6 @@ next-env.d.ts
 
 # JUCE plugin build artifacts
 444radio-plugin/build/
+444radio-plugin/packages/
+444radio-plugin/nuget.exe
 

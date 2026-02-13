@@ -9,7 +9,15 @@ static const juce::String kPluginUrl = "https://444radio.co.in/plugin";
 class BridgeWebView final : public juce::WebBrowserComponent
 {
 public:
-    explicit BridgeWebView (RadioPluginEditor& owner) : editor (owner) {}
+    explicit BridgeWebView (RadioPluginEditor& owner)
+        : juce::WebBrowserComponent (
+              juce::WebBrowserComponent::Options()
+                  .withBackend (juce::WebBrowserComponent::Options::Backend::webview2)
+                  .withKeepPageLoadedWhenBrowserIsHidden()
+          ),
+          editor (owner)
+    {
+    }
 
     bool pageAboutToLoad (const juce::String& url) override
     {

@@ -41,11 +41,16 @@ target_sources(RadioPlugin
 target_compile_definitions(RadioPlugin
     PUBLIC
         JUCE_WEB_BROWSER=1
+        JUCE_USE_WIN_WEBVIEW2=1
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DISPLAY_SPLASH_SCREEN=1
         JUCE_MODAL_LOOPS_PERMITTED=1
 )
+
+# ─── WebView2 SDK (needed for modern browser on Windows) ───
+set(WEBVIEW2_DIR "${CMAKE_CURRENT_SOURCE_DIR}/packages/Microsoft.Web.WebView2.1.0.2535.41/build/native")
+target_include_directories(RadioPlugin PRIVATE "${WEBVIEW2_DIR}/include")
 
 target_link_libraries(RadioPlugin
     PRIVATE
