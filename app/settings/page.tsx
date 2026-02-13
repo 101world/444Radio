@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info } from 'lucide-react'
+import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info, Plug, Copy, Trash2, Eye, EyeOff, Key } from 'lucide-react'
 import Link from 'next/link'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
 import { useCredits } from '../contexts/CreditsContext'
@@ -38,8 +38,8 @@ function SettingsPageInner() {
   const { user, isLoaded } = useUser()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialTab = (['profile', 'subscription', 'wallet'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'subscription') as 'profile' | 'subscription' | 'wallet'
-  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'wallet'>(initialTab)
+  const initialTab = (['profile', 'subscription', 'wallet', 'plugin'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'subscription') as 'profile' | 'subscription' | 'wallet' | 'plugin'
+  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'wallet' | 'plugin'>(initialTab)
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true)
   const { credits, isLoading: isLoadingCredits, refreshCredits } = useCredits()
@@ -59,6 +59,15 @@ function SettingsPageInner() {
   const [walletFilter, setWalletFilter] = useState('')
   const [walletCredits, setWalletCredits] = useState(0)
   const [expandedTx, setExpandedTx] = useState<string | null>(null)
+
+  // Plugin token state
+  const [pluginTokens, setPluginTokens] = useState<any[]>([])
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false)
+  const [newToken, setNewToken] = useState<string | null>(null)
+  const [tokenName, setTokenName] = useState('Ableton Plugin')
+  const [isCreatingToken, setIsCreatingToken] = useState(false)
+  const [copiedToken, setCopiedToken] = useState(false)
+  const [pluginError, setPluginError] = useState('')
 
   useEffect(() => {
     if (!isLoaded) return
@@ -239,6 +248,73 @@ function SettingsPageInner() {
     }
   }, [activeTab, user, walletPage, walletFilter, fetchWalletTransactions])
 
+  // Plugin token functions
+  const fetchPluginTokens = useCallback(async () => {
+    try {
+      setIsLoadingTokens(true)
+      const res = await fetch('/api/plugin/token')
+      const data = await res.json()
+      if (data.tokens) setPluginTokens(data.tokens)
+    } catch {
+      console.error('Failed to fetch plugin tokens')
+    } finally {
+      setIsLoadingTokens(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'plugin' && user) fetchPluginTokens()
+  }, [activeTab, user, fetchPluginTokens])
+
+  const createPluginToken = async () => {
+    try {
+      setIsCreatingToken(true)
+      setPluginError('')
+      setNewToken(null)
+      const res = await fetch('/api/plugin/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tokenName || 'Ableton Plugin' }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setNewToken(data.token)
+        fetchPluginTokens()
+      } else {
+        setPluginError(data.error || 'Failed to create token')
+      }
+    } catch {
+      setPluginError('Network error')
+    } finally {
+      setIsCreatingToken(false)
+    }
+  }
+
+  const revokePluginToken = async (tokenId: string) => {
+    try {
+      setPluginError('')
+      const res = await fetch('/api/plugin/token', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenId }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        fetchPluginTokens()
+      } else {
+        setPluginError(data.error || 'Failed to revoke token')
+      }
+    } catch {
+      setPluginError('Network error')
+    }
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedToken(true)
+    setTimeout(() => setCopiedToken(false), 2000)
+  }
+
   const txTypeLabel = (type: string) => {
     const map: Record<string, string> = {
       generation_music: 'Music Generation',
@@ -365,6 +441,20 @@ function SettingsPageInner() {
               <span>Profile</span>
             </div>
             {activeTab === 'profile' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('plugin')}
+            className={`pb-4 px-2 font-medium transition-colors relative ${
+              activeTab === 'plugin' ? 'text-cyan-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Plug className="w-5 h-5" />
+              <span>Plugin</span>
+            </div>
+            {activeTab === 'plugin' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
             )}
           </button>
@@ -730,6 +820,147 @@ function SettingsPageInner() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        ) : activeTab === 'plugin' ? (
+          <div className="space-y-6">
+            {/* Plugin Header */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 bg-opacity-20">
+                  <Plug className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">444 Radio Plugin</h2>
+                  <p className="text-sm text-gray-400">Generate music, effects, loops & stems directly inside Ableton</p>
+                </div>
+              </div>
+
+              <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4 mb-6">
+                <p className="text-sm text-purple-300">
+                  <strong>How it works:</strong> Generate a token below, paste it into the 444 Radio plugin inside Ableton, and start generating. All generations land in your library and Ableton timeline.
+                </p>
+              </div>
+
+              {/* Create new token */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                  <Key className="w-4 h-4" /> Generate Plugin Token
+                </h3>
+                <div className="flex gap-3">
+                  <input
+                    value={tokenName}
+                    onChange={(e) => setTokenName(e.target.value)}
+                    placeholder="Token name (e.g. Ableton Studio)"
+                    maxLength={50}
+                    className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  />
+                  <button
+                    onClick={createPluginToken}
+                    disabled={isCreatingToken}
+                    className="px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    {isCreatingToken ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Key className="w-4 h-4" />
+                    )}
+                    Generate
+                  </button>
+                </div>
+
+                {pluginError && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-red-400 flex items-center gap-2">
+                    <XCircle className="w-4 h-4 flex-shrink-0" /> {pluginError}
+                  </div>
+                )}
+
+                {/* Newly created token (shown ONCE) */}
+                {newToken && (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-green-400">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-sm font-semibold">Token created! Copy it now — it won't be shown again.</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-black/50 rounded-lg px-3 py-2 text-sm text-green-300 font-mono break-all select-all">
+                        {newToken}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(newToken)}
+                        className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm flex items-center gap-1 transition-colors"
+                      >
+                        {copiedToken ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copiedToken ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500">Paste this into your 444 Radio plugin settings in Ableton.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Existing tokens */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Key className="w-5 h-5 text-purple-400" /> Your Plugin Tokens
+              </h3>
+
+              {isLoadingTokens ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+                </div>
+              ) : pluginTokens.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Plug className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  <p>No tokens yet. Generate one above to get started.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pluginTokens.map((t) => (
+                    <div key={t.id} className={`flex items-center justify-between p-4 rounded-xl border ${
+                      t.is_active
+                        ? 'bg-white/5 border-white/10'
+                        : 'bg-white/2 border-white/5 opacity-50'
+                    }`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${t.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{t.name}</p>
+                          <p className="text-xs text-gray-500">
+                            Created {new Date(t.created_at).toLocaleDateString()}
+                            {t.last_used_at && ` · Last used ${new Date(t.last_used_at).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                      </div>
+                      {t.is_active && (
+                        <button
+                          onClick={() => revokePluginToken(t.id)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg text-xs font-medium transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="w-3 h-3" /> Revoke
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-gray-600 mt-4">Maximum 5 active tokens. Each token has a 100 requests/day rate limit.</p>
+            </div>
+
+            {/* Plugin download / info */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+              <h3 className="text-lg font-bold mb-3">Get the Plugin</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                The 444 Radio VST3 plugin works inside Ableton Live (Mac & Windows). One-time purchase, lifetime access — you only pay for generation credits.
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-br from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-bold text-lg">
+                  $25 <span className="text-sm font-normal opacity-80">one-time</span>
+                </div>
+                <span className="text-xs text-gray-500">Coming soon — plugin download will appear here</span>
+              </div>
             </div>
           </div>
         ) : (
