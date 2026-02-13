@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logOwnershipEvent, recordDownloadLineage } from '@/lib/ownership-engine'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Fetch track details
-    const trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=id,user_id,title,audio_url,downloads`)
+    const trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=id,user_id,title,audio_url,downloads,track_id_444,original_creator_id,license_type_444,remix_allowed,derivative_allowed`)
     const tracks = await trackRes.json()
     const track = tracks?.[0]
 
@@ -217,6 +218,35 @@ export async function POST(request: NextRequest) {
     // 9b. Log credit transactions for buyer and seller
     await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}`, metadata: { trackId, splitStems, sellerUsername: artist?.username || 'Unknown' } })
     await logCreditTransaction({ userId: track.user_id, amount: artistShare, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId, buyerUsername: buyer?.username || 'Unknown' } })
+
+    // 9c. Log 444 ownership lineage for the purchase
+    try {
+      await logOwnershipEvent({
+        trackId,
+        originalCreatorId: track.original_creator_id || track.user_id,
+        currentOwnerId: userId,
+        transactionType: 'purchase',
+        licenseType: track.license_type_444 || 'fully_ownable',
+        derivativeAllowed: track.derivative_allowed || false,
+        trackId444: track.track_id_444,
+        metadata: {
+          buyerUsername: buyerUsername,
+          price: totalCost,
+          splitStems: splitStems || false,
+        },
+      })
+      await recordDownloadLineage({
+        trackId,
+        downloadUserId: userId,
+        originalCreatorId: track.original_creator_id || track.user_id,
+        derivativeAllowed: track.derivative_allowed || false,
+        remixAllowed: track.remix_allowed || false,
+        licenseType: track.license_type_444 || 'download_only',
+        embeddedTrackId444: track.track_id_444,
+      })
+    } catch (e) {
+      console.error('Ownership lineage logging failed (non-critical):', e)
+    }
 
     // 10. Save to buyer's music_library so it appears in their Library
     try {

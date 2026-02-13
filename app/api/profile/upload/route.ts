@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
 import { uploadToR2 } from '@/lib/r2-upload'
+import { processNewTrack, validateUpload } from '@/lib/ownership-engine'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,10 +73,27 @@ export async function POST(req: NextRequest) {
       uploadData.audio_url = audioUpload.url
       uploadData.image_url = imageUpload.url
 
-      // Save to combined_media table
+      // Anti-reupload check: validate audio before saving
+      const audioBuffer = await audioFile.arrayBuffer()
+      const validation = await validateUpload(Buffer.from(audioBuffer), userId)
+      
+      if (!validation.allowed) {
+        return NextResponse.json({
+          success: false,
+          error: 'reupload_detected',
+          validation,
+        }, { status: 409 })
+      }
+
+      // Save to combined_media table (444 Track ID auto-assigned by DB trigger)
       const { data, error } = await supabase
         .from('combined_media')
-        .insert([uploadData])
+        .insert([{
+          ...uploadData,
+          creation_type: 'human_upload',
+          original_creator_id: userId,
+          license_type_444: 'fully_ownable',
+        }])
         .select()
 
       if (error) {
@@ -83,7 +101,27 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Failed to save to database' }, { status: 500 })
       }
 
-      return NextResponse.json({ success: true, data: data[0] })
+      // Register in ownership engine (fingerprint + lineage)
+      if (data?.[0]) {
+        try {
+          const ownershipResult = await processNewTrack({
+            trackId: data[0].id,
+            userId,
+            audioBuffer: Buffer.from(audioBuffer),
+            licenseType: 'fully_ownable',
+          })
+          console.log('✅ 444 Ownership registered:', ownershipResult.trackId444)
+        } catch (e) {
+          console.error('Ownership registration failed (non-critical):', e)
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: data[0],
+        trackId444: data[0]?.track_id_444,
+        validation: validation.isOriginal ? undefined : validation,
+      })
 
     } else if (type === 'music') {
       // Audio-only upload - just upload to R2, no database insert

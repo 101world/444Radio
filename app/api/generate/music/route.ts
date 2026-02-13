@@ -200,6 +200,24 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ Music generated:', permanentAudioUrl)
 
+    // Register in 444 Ownership Engine (fingerprint + lineage)
+    try {
+      const { processNewTrack } = await import('@/lib/ownership-engine')
+      const audioBuffer = await audioBlob.arrayBuffer()
+      const ownershipResult = await processNewTrack({
+        trackId: songId,
+        userId,
+        audioBuffer: Buffer.from(audioBuffer),
+        prompt: prompt,
+        model: modelName,
+        licenseType: 'fully_ownable',
+        trackMetadata: { title: songId, generationPrompt: prompt, generationModel: modelName },
+      })
+      console.log('✅ 444 Ownership registered:', ownershipResult.trackId444, 'Strength:', ownershipResult.metadataStrength)
+    } catch (e) {
+      console.error('444 Ownership registration failed (non-critical):', e)
+    }
+
     return NextResponse.json({ 
       success: true, 
       audioUrl: permanentAudioUrl,
