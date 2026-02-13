@@ -700,9 +700,12 @@ function SettingsPageInner() {
         <ProfileSettingsModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
-          currentUsername=""
+          currentUsername={user.username || user.firstName || ''}
           currentAvatar={user.imageUrl}
-          onUpdate={() => {}}
+          onUpdate={() => {
+            // Force refresh Clerk user data + credits
+            window.location.reload()
+          }}
         />
       )}
     </main>
