@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2 } from 'lucide-react'
+import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info } from 'lucide-react'
 import Link from 'next/link'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
 import { useCredits } from '../contexts/CreditsContext'
@@ -58,6 +58,7 @@ function SettingsPageInner() {
   const [isLoadingWallet, setIsLoadingWallet] = useState(false)
   const [walletFilter, setWalletFilter] = useState('')
   const [walletCredits, setWalletCredits] = useState(0)
+  const [expandedTx, setExpandedTx] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -252,6 +253,7 @@ function SettingsPageInner() {
       earn_purchase: 'Earn Purchase',
       earn_sale: 'Earn Sale',
       earn_admin: 'Platform Fee',
+      release: 'Release',
       credit_award: 'Credit Award',
       credit_refund: 'Refund',
       subscription_bonus: 'Subscription Bonus',
@@ -269,6 +271,7 @@ function SettingsPageInner() {
     if (type === 'generation_audio_boost') return <Volume2 className="w-4 h-4" />
     if (type === 'earn_purchase') return <ShoppingCart className="w-4 h-4" />
     if (type === 'earn_sale' || type === 'earn_list') return <Tag className="w-4 h-4" />
+    if (type === 'release') return <Send className="w-4 h-4" />
     if (type === 'credit_award' || type === 'subscription_bonus') return <Gift className="w-4 h-4" />
     if (type === 'credit_refund') return <RefreshCw className="w-4 h-4" />
     return <Zap className="w-4 h-4" />
@@ -287,6 +290,7 @@ function SettingsPageInner() {
     { value: 'earn_purchase', label: 'Purchases' },
     { value: 'earn_sale', label: 'Sales' },
     { value: 'earn_list', label: 'Listings' },
+    { value: 'release', label: 'Releases' },
     { value: 'credit_award', label: 'Awards' },
   ]
 
@@ -577,48 +581,116 @@ function SettingsPageInner() {
               ) : (
                 <div className="divide-y divide-white/5">
                   {transactions.map((tx: any) => (
-                    <div key={tx.id} className="flex items-center gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
-                      {/* Icon */}
-                      <div className={`p-2 rounded-lg flex-shrink-0 ${
-                        tx.amount > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                      }`}>
-                        {txTypeIcon(tx.type)}
-                      </div>
-
-                      {/* Info */}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{tx.description || txTypeLabel(tx.type)}</p>
-                        {tx.type === 'earn_sale' && tx.metadata?.buyerUsername && (
-                          <p className="text-xs text-cyan-400/80 truncate">Bought by @{tx.metadata.buyerUsername}</p>
-                        )}
-                        {tx.type === 'earn_purchase' && tx.metadata?.sellerUsername && (
-                          <p className="text-xs text-purple-400/80 truncate">From @{tx.metadata.sellerUsername}</p>
-                        )}
-                        <p className="text-xs text-gray-500">
-                          {txTypeLabel(tx.type)} &middot; {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-
-                      {/* Amount */}
-                      <div className="text-right flex-shrink-0">
-                        <p className={`text-sm font-bold ${
-                          tx.amount > 0 ? 'text-green-400' : 'text-red-400'
+                    <div key={tx.id}>
+                      <div className="flex items-center gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
+                        {/* Icon */}
+                        <div className={`p-2 rounded-lg flex-shrink-0 ${
+                          tx.type === 'release' ? 'bg-green-500/10 text-green-400' :
+                          tx.amount > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
                         }`}>
-                          {tx.amount > 0 ? '+' : ''}{tx.amount}
-                        </p>
-                        {tx.balance_after !== null && (
-                          <p className="text-xs text-gray-500">Bal: {tx.balance_after}</p>
+                          {txTypeIcon(tx.type)}
+                        </div>
+
+                        {/* Info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{tx.description || txTypeLabel(tx.type)}</p>
+                          {tx.type === 'earn_sale' && tx.metadata?.buyerUsername && (
+                            <p className="text-xs text-cyan-400/80 truncate">Bought by @{tx.metadata.buyerUsername}</p>
+                          )}
+                          {tx.type === 'earn_purchase' && tx.metadata?.sellerUsername && (
+                            <p className="text-xs text-purple-400/80 truncate">From @{tx.metadata.sellerUsername}</p>
+                          )}
+                          {tx.type === 'release' && tx.metadata?.trackId444 && (
+                            <p className="text-xs text-cyan-400/80 truncate font-mono">ID: {tx.metadata.trackId444}</p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            {txTypeLabel(tx.type)} &middot; {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+
+                        {/* Info button for releases */}
+                        {tx.type === 'release' && tx.metadata && (
+                          <button
+                            onClick={() => setExpandedTx(expandedTx === tx.id ? null : tx.id)}
+                            className={`p-2 rounded-lg flex-shrink-0 transition-colors ${
+                              expandedTx === tx.id ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                            }`}
+                            title="View release metadata"
+                          >
+                            <Info className="w-4 h-4" />
+                          </button>
                         )}
+
+                        {/* Amount */}
+                        <div className="text-right flex-shrink-0">
+                          <p className={`text-sm font-bold ${
+                            tx.type === 'release' ? 'text-green-400' :
+                            tx.amount > 0 ? 'text-green-400' : 'text-red-400'
+                          }`}>
+                            {tx.type === 'release' ? '✓' : (tx.amount > 0 ? '+' : '') + tx.amount}
+                          </p>
+                          {tx.balance_after !== null && tx.type !== 'release' && (
+                            <p className="text-xs text-gray-500">Bal: {tx.balance_after}</p>
+                          )}
+                        </div>
+
+                        {/* Status badge */}
+                        <div className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                          tx.status === 'success' ? 'bg-green-500/10 text-green-400' :
+                          tx.status === 'failed' ? 'bg-red-500/10 text-red-400' :
+                          'bg-yellow-500/10 text-yellow-400'
+                        }`}>
+                          {tx.status}
+                        </div>
                       </div>
 
-                      {/* Status badge */}
-                      <div className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                        tx.status === 'success' ? 'bg-green-500/10 text-green-400' :
-                        tx.status === 'failed' ? 'bg-red-500/10 text-red-400' :
-                        'bg-yellow-500/10 text-yellow-400'
-                      }`}>
-                        {tx.status}
-                      </div>
+                      {/* Expanded release metadata */}
+                      {tx.type === 'release' && expandedTx === tx.id && tx.metadata && (
+                        <div className="px-5 pb-4 -mt-1">
+                          <div className="ml-10 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5">
+                            {tx.metadata.trackId444 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Track ID</span>
+                                <span className="text-xs text-cyan-400 font-mono">{tx.metadata.trackId444}</span>
+                              </div>
+                            )}
+                            {tx.metadata.trackId && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">DB ID</span>
+                                <span className="text-[10px] text-gray-400 font-mono truncate">{tx.metadata.trackId}</span>
+                              </div>
+                            )}
+                            {tx.metadata.genre && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Genre</span>
+                                <span className="text-xs text-gray-300">{tx.metadata.genre}</span>
+                              </div>
+                            )}
+                            {tx.metadata.artist_name && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Artist</span>
+                                <span className="text-xs text-gray-300">{tx.metadata.artist_name}</span>
+                              </div>
+                            )}
+                            {tx.metadata.featured_artists?.length > 0 && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Featured</span>
+                                <span className="text-xs text-purple-400">{tx.metadata.featured_artists.join(', ')}</span>
+                              </div>
+                            )}
+                            {tx.metadata.contributors?.length > 0 && (
+                              <div className="flex items-start gap-2">
+                                <span className="text-[10px] text-gray-500 w-20 mt-0.5">Contributors</span>
+                                <div className="space-y-0.5">
+                                  {tx.metadata.contributors.map((c: any, idx: number) => (
+                                    <span key={idx} className="text-xs text-gray-300 block">{c.name} <span className="text-gray-500">({c.role})</span></span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

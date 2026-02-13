@@ -842,8 +842,11 @@ export default function TwoStepReleaseModal({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Artist Name</label>
-                  <input type="text" value={artistName} onChange={e => setArtistName(e.target.value)} placeholder="Your artist name"
-                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                  <UserMentionInput
+                    value={artistName}
+                    onChange={setArtistName}
+                    placeholder="Type @ to tag yourself or enter name"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Featured Artists</label>

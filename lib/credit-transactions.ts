@@ -21,6 +21,7 @@ export type CreditTransactionType =
   | 'credit_award'
   | 'credit_refund'
   | 'subscription_bonus'
+  | 'release'
   | 'code_claim'
   | 'other'
 

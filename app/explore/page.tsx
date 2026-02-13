@@ -27,6 +27,8 @@ interface CombinedMedia {
   secondary_genre?: string; is_explicit?: boolean; duration_seconds?: number; artist_name?: string
   featured_artists?: string[]; release_type?: string; track_id_444?: string
   record_label?: string; version_tag?: string
+  contributors?: { name: string; role: string }[]; songwriters?: { name: string; role: string }[]
+  copyright_holder?: string; copyright_year?: number; publisher?: string
 }
 interface Artist { username: string; user_id: string; avatar: string; trackCount: number }
 interface LiveStation {

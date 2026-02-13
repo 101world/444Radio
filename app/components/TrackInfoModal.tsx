@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Play, Heart, Download, Clock, Music, Disc3, Mic2, Hash, MapPin, Tag, Fingerprint } from 'lucide-react'
+import { X, Play, Heart, Download, Clock, Music, Disc3, Mic2, Hash, MapPin, Tag, Fingerprint, Users, Shield } from 'lucide-react'
 import Image from 'next/image'
 
 interface TrackInfo {
@@ -34,6 +34,11 @@ interface TrackInfo {
   record_label?: string
   version_tag?: string
   track_id_444?: string
+  contributors?: { name: string; role: string }[]
+  songwriters?: { name: string; role: string }[]
+  copyright_holder?: string
+  copyright_year?: number
+  publisher?: string
   users?: { username: string }
 }
 
@@ -149,7 +154,45 @@ export default function TrackInfoModal({ track, onClose, onPlay }: TrackInfoModa
             {track.created_at && (
               <MetaRow icon={<Clock size={12} />} label="Released" value={formatDate(track.created_at)} />
             )}
+            {track.copyright_holder && (
+              <MetaRow icon={<Shield size={12} />} label="Copyright" value={`© ${track.copyright_year || ''} ${track.copyright_holder}`.trim()} />
+            )}
+            {track.publisher && (
+              <MetaRow icon={<Tag size={12} />} label="Publisher" value={track.publisher} />
+            )}
           </div>
+
+          {/* Contributors */}
+          {track.contributors && track.contributors.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Credits &amp; Contributors</p>
+              <div className="space-y-1">
+                {track.contributors.map((c, idx) => (
+                  <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-white/[0.03] last:border-0">
+                    <Users size={10} className="text-green-400/60 flex-shrink-0" />
+                    <span className="text-xs text-white">{c.name}</span>
+                    <span className="text-[10px] text-gray-500 ml-auto">{c.role}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Songwriters (if separate from contributors) */}
+          {track.songwriters && track.songwriters.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Songwriters</p>
+              <div className="space-y-1">
+                {track.songwriters.map((s, idx) => (
+                  <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-white/[0.03] last:border-0">
+                    <Mic2 size={10} className="text-purple-400/60 flex-shrink-0" />
+                    <span className="text-xs text-white">{s.name}</span>
+                    <span className="text-[10px] text-gray-500 ml-auto">{s.role}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Tags */}
           {track.tags && track.tags.length > 0 && (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { supabase as supabaseClient } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 // Use service role for admin operations
 const supabase = createClient(
@@ -141,6 +142,23 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Log release as a transaction (0 cost — just for the record)
+    logCreditTransaction({
+      userId,
+      amount: 0,
+      type: 'release',
+      description: `Released: ${data.title || 'Untitled'}`,
+      metadata: {
+        trackId: data.id,
+        trackId444: data.track_id_444 || null,
+        title: data.title,
+        genre: data.genre,
+        artist_name: data.artist_name,
+        featured_artists: data.featured_artists,
+        contributors: data.contributors,
+      },
+    }).catch(() => {}) // fire-and-forget
 
     return NextResponse.json({
       success: true,
