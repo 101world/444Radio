@@ -90,11 +90,11 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics 
         isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/20' : 'ring-1 ring-white/[0.06] hover:ring-white/15'
       }`}>
         {media.image_url || media.imageUrl ? (
-          <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={300} height={300}
-            className="w-full h-full object-cover" loading="lazy" quality={75} unoptimized />
+          <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={180} height={180}
+            className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-            <Music size={32} className="text-gray-700" />
+            <Music size={24} className="text-gray-700" />
           </div>
         )}
         {/* Gradient overlay */}
@@ -103,12 +103,12 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics 
         <div className={`absolute inset-0 flex items-center justify-center transition-all ${
           isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}>
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md shadow-2xl transition-transform group-hover:scale-110 ${
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md shadow-2xl transition-transform group-hover:scale-110 ${
             isCurrentlyPlaying ? 'bg-cyan-400' : 'bg-white/90'
           }`}>
             {isCurrentlyPlaying && isPlaying
-              ? <Pause className="text-black" size={18} />
-              : <Play className="text-black ml-0.5" size={18} />}
+              ? <Pause className="text-black" size={14} />
+              : <Play className="text-black ml-0.5" size={14} />}
           </div>
         </div>
         {/* Now playing pulse */}
@@ -134,7 +134,7 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics 
       <div className="mt-2 px-0.5">
         <div className="flex items-start justify-between gap-1">
           <div className="min-w-0 flex-1">
-            <h3 className={`font-semibold text-[13px] truncate leading-tight ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>
+            <h3 className={`font-semibold text-[11px] truncate leading-tight ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>
               {media.title}
             </h3>
             {media.user_id && media.user_id !== 'undefined' ? (
@@ -149,7 +149,7 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics 
             <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={false} />
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-600">
+        <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-gray-600">
           <span className="flex items-center gap-0.5"><Headphones size={9} />{formatPlays(media.plays || 0)}</span>
           <span className="flex items-center gap-0.5"><Heart size={9} />{media.likes || 0}</span>
           {media.bpm && <span className="flex items-center gap-0.5"><Zap size={8} />{media.bpm}</span>}
@@ -414,6 +414,19 @@ function ExplorePageContent() {
 
       <main className="relative z-10 md:pl-[72px] pb-32">
 
+        {/* ═══ BANNER VIDEO ═══ */}
+        <div className="relative h-44 md:h-56 overflow-hidden">
+          <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
+            <source src="/1_1_thm2_rxl1.webm" type="video/webm" />
+          </video>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-black/50 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 px-4 md:px-6 pb-4">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-semibold">DISCOVER</span>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mt-0.5 tracking-tight">Explore Music</h1>
+            <p className="text-gray-400 text-xs mt-1">{combinedMedia.length} tracks &middot; {artists.length} artists</p>
+          </div>
+        </div>
+
         {/* ═══ TOP BAR — Title + Compact Search ═══ */}
         <div className="sticky top-0 z-40 bg-[#050507]/90 backdrop-blur-xl border-b border-white/[0.04]">
           <div className="flex items-center gap-3 px-4 md:px-6 h-14">
@@ -600,7 +613,7 @@ function ExplorePageContent() {
                     <p className="text-gray-600 text-xs">Try different keywords or filters</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                     {searchResults.map(media => (
                       <GridTrackCard key={media.id} media={media}
                         isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
@@ -645,7 +658,7 @@ function ExplorePageContent() {
                 {/* HOT RIGHT NOW — Grid */}
                 <section className="px-4 md:px-6 pt-3 pb-4">
                   <SectionHeader icon={Flame} label="Hot Right Now" iconColor="text-orange-400" gradientFrom="from-orange-500/20" gradientTo="to-red-500/20" />
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                     {hotTracks.map(media => (
                       <GridTrackCard key={media.id} media={media}
                         isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
@@ -679,7 +692,7 @@ function ExplorePageContent() {
                 {newReleases.length > 0 && (
                   <section className="px-4 md:px-6 py-4 border-t border-white/[0.03]">
                     <SectionHeader icon={Sparkles} label="New Releases" iconColor="text-green-400" gradientFrom="from-green-500/20" gradientTo="to-emerald-500/20" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                       {newReleases.map(media => (
                         <GridTrackCard key={`new-${media.id}`} media={media}
                           isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
@@ -693,7 +706,7 @@ function ExplorePageContent() {
                 {mostPlayed.length > 0 && (
                   <section className="px-4 md:px-6 py-4 border-t border-white/[0.03]">
                     <SectionHeader icon={Headphones} label="Most Played" iconColor="text-purple-400" gradientFrom="from-purple-500/20" gradientTo="to-pink-500/20" />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                       {mostPlayed.map(media => (
                         <GridTrackCard key={`top-${media.id}`} media={media}
                           isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
@@ -728,7 +741,7 @@ function ExplorePageContent() {
                     <p className="text-gray-600 text-xs">Genres appear as artists release tracks</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                     {genres.map(genre => {
                       const genreTracks = combinedMedia.filter(m => m.genre?.toLowerCase() === genre.toLowerCase())
                       const thumb = genreTracks[0]?.image_url
