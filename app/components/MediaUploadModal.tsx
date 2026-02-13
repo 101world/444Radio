@@ -1,20 +1,20 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors, Volume2, Zap } from 'lucide-react'
+import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors, Volume2, Zap, Layers } from 'lucide-react'
 
 interface MediaUploadModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: (result: any) => void
-  onStart?: (type: 'stem-split' | 'video-to-audio' | 'audio-boost') => void
+  onStart?: (type: 'stem-split' | 'video-to-audio' | 'audio-boost' | 'extract-video' | 'extract-audio') => void
   onError?: (error: string) => void
 }
 
 export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
-  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | null>(null)
+  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | null>(null)
   const [prompt, setPrompt] = useState('')
   const [useHQ, setUseHQ] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -24,6 +24,11 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioFileInputRef = useRef<HTMLInputElement>(null)
   const boostFileInputRef = useRef<HTMLInputElement>(null)
+  const extractVideoFileInputRef = useRef<HTMLInputElement>(null)
+  const extractAudioFileInputRef = useRef<HTMLInputElement>(null)
+
+  // Extract Audio parameters
+  const [extractStem, setExtractStem] = useState<'vocals' | 'bass' | 'drums' | 'piano' | 'other'>('vocals')
 
   // Audio Boost parameters
   const [bassBoost, setBassBoost] = useState(0)
@@ -34,7 +39,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const [boostFormat, setBoostFormat] = useState('mp3')
   const [boostBitrate, setBoostBitrate] = useState('192k')
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split' | 'audio-boost') => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio') => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -53,7 +58,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
     const isVideo = file.type.startsWith('video/')
     
     // Validate file type based on mode
-    if (mode === 'video-to-audio' && !isVideo) {
+    if ((mode === 'video-to-audio' || mode === 'extract-video') && !isVideo) {
       setError('Please select a video file')
       return
     }
@@ -64,6 +69,11 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
     }
 
     if (mode === 'audio-boost' && !isAudio) {
+      setError('Please select an audio file')
+      return
+    }
+
+    if (mode === 'extract-audio' && !isAudio) {
       setError('Please select an audio file')
       return
     }
@@ -288,6 +298,131 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         return
       }
 
+      // For extract video-to-audio, call the extract API (no prompt needed)
+      if (uploadMode === 'extract-video') {
+        onStart?.('extract-video')
+
+        setUploadProgress('Extracting audio from video...')
+        console.log('🎬 Extracting audio from video:', publicUrl)
+
+        const extractResponse = await fetch('/api/generate/extract-video-audio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoUrl: publicUrl,
+            trackTitle: selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Video',
+            audio_quality: 'high',
+            output_format: 'mp3',
+          })
+        })
+
+        const extractResult = await extractResponse.json()
+
+        if (!extractResponse.ok || extractResult.error) {
+          throw new Error(extractResult.error || 'Video audio extraction failed')
+        }
+
+        console.log('✅ Audio extracted from video:', extractResult)
+        onSuccess?.({ ...extractResult, type: 'extract-video' })
+        handleClose()
+        return
+      }
+
+      // For extract audio-to-audio stem, call the demucs API (streaming)
+      if (uploadMode === 'extract-audio') {
+        onStart?.('extract-audio')
+
+        // Wait for R2 propagation
+        setUploadProgress('Verifying file accessibility...')
+        await new Promise(resolve => setTimeout(resolve, 5000))
+
+        let retries = 0
+        const maxRetries = 3
+        let isAccessible = false
+        while (retries < maxRetries && !isAccessible) {
+          try {
+            const headResponse = await fetch(publicUrl, { method: 'HEAD' })
+            if (headResponse.ok) {
+              isAccessible = true
+            } else {
+              await new Promise(resolve => setTimeout(resolve, 2000))
+              retries++
+            }
+          } catch {
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            retries++
+          }
+        }
+
+        if (!isAccessible) {
+          throw new Error('Uploaded file is not yet accessible. Please try again in a moment.')
+        }
+
+        setUploadProgress(`Extracting ${extractStem}... This may take 1-3 minutes.`)
+        console.log('🎵 Extracting stem:', extractStem, 'from:', publicUrl)
+
+        const extractResponse = await fetch('/api/generate/extract-audio-stem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            audioUrl: publicUrl,
+            stem: extractStem,
+            trackTitle: selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Audio',
+            output_format: 'mp3',
+            mp3_bitrate: 320,
+          })
+        })
+
+        // Parse NDJSON stream
+        const reader = extractResponse.body?.getReader()
+        if (!reader) throw new Error('No response stream from extractor')
+
+        const decoder = new TextDecoder()
+        let streamBuffer = ''
+        let extractResult: any = null
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          streamBuffer += decoder.decode(value, { stream: true })
+          const lines = streamBuffer.split('\n')
+          streamBuffer = lines.pop() || ''
+          for (const line of lines) {
+            if (!line.trim()) continue
+            try {
+              const parsed = JSON.parse(line)
+              if (parsed.type === 'progress') {
+                setUploadProgress(`Extracting ${extractStem}... ${parsed.status} (${parsed.elapsed || 0}s)`)
+              } else if (parsed.type === 'result') {
+                extractResult = parsed
+              }
+            } catch { /* skip unparseable lines */ }
+          }
+        }
+        // Process remaining buffer
+        if (streamBuffer.trim()) {
+          for (const line of streamBuffer.split('\n')) {
+            if (!line.trim()) continue
+            try {
+              const parsed = JSON.parse(line)
+              if (parsed.type === 'result') extractResult = parsed
+            } catch { /* skip */ }
+          }
+        }
+        reader.releaseLock()
+
+        if (!extractResult || !extractResult.success) {
+          const errMsg = extractResult?.error || 'Audio extraction failed'
+          console.error('❌ Extract error:', errMsg)
+          throw new Error(errMsg)
+        }
+
+        console.log('✅ Stem extracted successfully:', extractResult)
+        onSuccess?.({ ...extractResult, type: 'extract-audio', requestedStem: extractStem })
+        handleClose()
+        return
+      }
+
       // Step 3: Generate audio/remix using the uploaded file URL (for video-to-audio only)
       setUploadProgress('Generating audio...')
       console.log('🎵 Step 3: Generating...')
@@ -455,6 +590,44 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 </div>
               </button>
 
+              {/* Extract: Video to Audio */}
+              <button
+                onClick={() => extractVideoFileInputRef.current?.click()}
+                className="w-full p-4 bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-2 border-emerald-500/30 hover:border-emerald-400/50 rounded-xl transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Film size={24} className="text-emerald-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="text-base font-semibold text-white mb-1">Extract: Video → Audio</h3>
+                    <p className="text-xs text-gray-400">Extract audio track from any video file</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-emerald-400">1 credit</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Extract: Audio to Audio (Stem) */}
+              <button
+                onClick={() => extractAudioFileInputRef.current?.click()}
+                className="w-full p-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-2 border-emerald-500/30 hover:border-emerald-400/50 rounded-xl transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Layers size={24} className="text-emerald-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="text-base font-semibold text-white mb-1">Extract: Audio → Stem</h3>
+                    <p className="text-xs text-gray-400">Extract vocals, bass, drums, piano, or other</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-emerald-400">1 credit</p>
+                  </div>
+                </div>
+              </button>
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -476,6 +649,20 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 onChange={(e) => handleFileSelect(e, 'audio-boost')}
                 className="hidden"
               />
+              <input
+                ref={extractVideoFileInputRef}
+                type="file"
+                accept="video/*"
+                onChange={(e) => handleFileSelect(e, 'extract-video')}
+                className="hidden"
+              />
+              <input
+                ref={extractAudioFileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={(e) => handleFileSelect(e, 'extract-audio')}
+                className="hidden"
+              />
             </div>
           )}
 
@@ -486,12 +673,16 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
               {/* Compact File Info */}
               <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  uploadMode === 'stem-split' ? 'bg-teal-500/20' : uploadMode === 'audio-boost' ? 'bg-orange-500/20' : 'bg-cyan-500/20'
+                  uploadMode === 'stem-split' ? 'bg-teal-500/20' : uploadMode === 'audio-boost' ? 'bg-orange-500/20' : uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'bg-emerald-500/20' : 'bg-cyan-500/20'
                 }`}>
                   {uploadMode === 'stem-split' ? (
                     <Scissors size={20} className="text-teal-400" />
                   ) : uploadMode === 'audio-boost' ? (
                     <Volume2 size={20} className="text-orange-400" />
+                  ) : uploadMode === 'extract-video' ? (
+                    <Film size={20} className="text-emerald-400" />
+                  ) : uploadMode === 'extract-audio' ? (
+                    <Layers size={20} className="text-emerald-400" />
                   ) : (
                     <Film size={20} className="text-cyan-400" />
                   )}
@@ -553,6 +744,30 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 </div>
               )}
 
+              {/* Video Preview for Extract Video */}
+              {previewUrl && fileType === 'video' && uploadMode === 'extract-video' && (
+                <div className="rounded-lg overflow-hidden bg-emerald-500/10 border border-emerald-500/20 p-4">
+                  <video 
+                    src={previewUrl} 
+                    controls 
+                    className="w-full h-40 object-contain rounded"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">Audio will be extracted from this video</p>
+                </div>
+              )}
+
+              {/* Audio Preview for Extract Audio Stem */}
+              {previewUrl && fileType === 'audio' && uploadMode === 'extract-audio' && (
+                <div className="rounded-lg overflow-hidden bg-emerald-500/10 border border-emerald-500/20 p-4">
+                  <audio 
+                    src={previewUrl} 
+                    controls 
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">Select a stem to extract below</p>
+                </div>
+              )}
+
               {/* Prompt - Only for video-to-audio */}
               {uploadMode === 'video-to-audio' && (
                 <div className="space-y-2">
@@ -606,6 +821,53 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                       <p className="text-teal-400 font-semibold mt-2">Cost: 5 credits</p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Extract Video Info - No parameters needed */}
+              {uploadMode === 'extract-video' && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Film className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="text-sm space-y-1">
+                      <p className="text-white font-semibold">Extract Audio from Video</p>
+                      <p className="text-gray-300 text-xs">The audio track will be extracted directly from your video file — no prompt needed.</p>
+                      <p className="text-emerald-400 font-semibold mt-2">Cost: 1 credit</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Extract Audio Stem Selector */}
+              {uploadMode === 'extract-audio' && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Layers className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">Choose a stem to extract</p>
+                      <p className="text-gray-400 text-xs mt-1">The AI will isolate the selected instrument from your audio</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['vocals', 'bass', 'drums', 'piano', 'other'] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setExtractStem(s)}
+                        className={`px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                          extractStem === s
+                            ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/30'
+                            : 'bg-white/5 text-gray-300 hover:bg-emerald-500/20 hover:text-emerald-300 border border-white/10'
+                        }`}
+                      >
+                        {s === 'vocals' ? '🎤 Vocals' :
+                         s === 'bass' ? '🎸 Bass' :
+                         s === 'drums' ? '🥁 Drums' :
+                         s === 'piano' ? '🎹 Piano' :
+                         '🎵 Other'}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-emerald-400 font-semibold text-xs">Cost: 1 credit</p>
                 </div>
               )}
 
@@ -713,14 +975,22 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-white/10 flex items-center gap-3 bg-black/40">
           <div className="flex-1 flex items-center gap-2 text-sm">
-            <span className={uploadMode === 'stem-split' ? 'text-teal-400' : uploadMode === 'audio-boost' ? 'text-orange-400' : useHQ ? 'text-yellow-400' : 'text-cyan-400'}>💰</span>
+            <span className={
+              uploadMode === 'stem-split' ? 'text-teal-400' : 
+              uploadMode === 'audio-boost' ? 'text-orange-400' : 
+              uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'text-emerald-400' :
+              useHQ ? 'text-yellow-400' : 'text-cyan-400'
+            }>💰</span>
             <span className={`font-semibold ${
               uploadMode === 'stem-split' ? 'text-teal-400' :
               uploadMode === 'audio-boost' ? 'text-orange-400' :
+              uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'text-emerald-400' :
               useHQ ? 'text-yellow-400' : 'text-cyan-400'
             }`}>
               {uploadMode === 'stem-split' ? '5 credits' :
                uploadMode === 'audio-boost' ? '1 credit' :
+               uploadMode === 'extract-video' ? '1 credit' :
+               uploadMode === 'extract-audio' ? '1 credit' :
                selectedFile && useHQ ? '10 credits' : '2 credits'}
             </span>
             {selectedFile && uploadMode === 'video-to-audio' && (
@@ -738,6 +1008,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 ? 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 shadow-teal-500/30'
                 : uploadMode === 'audio-boost'
                 ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-orange-500/30'
+                : uploadMode === 'extract-video' || uploadMode === 'extract-audio'
+                ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-emerald-500/30'
                 : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 shadow-cyan-500/30'
             }`}
           >
@@ -755,6 +1027,16 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
               <>
                 <Volume2 size={16} />
                 <span>Boost Audio</span>
+              </>
+            ) : uploadMode === 'extract-video' ? (
+              <>
+                <Film size={16} />
+                <span>Extract Audio</span>
+              </>
+            ) : uploadMode === 'extract-audio' ? (
+              <>
+                <Layers size={16} />
+                <span>Extract {extractStem.charAt(0).toUpperCase() + extractStem.slice(1)}</span>
               </>
             ) : (
               <>

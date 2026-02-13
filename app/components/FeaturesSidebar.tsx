@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2 } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2, Layers } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -24,6 +24,7 @@ interface FeaturesSidebarProps {
   onShowVideoToAudio: () => void
   onShowStemSplit: () => void
   onShowAudioBoost: () => void
+  onShowExtract: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -59,6 +60,7 @@ export default function FeaturesSidebar({
   onShowVideoToAudio,
   onShowStemSplit,
   onShowAudioBoost,
+  onShowExtract,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -141,6 +143,15 @@ export default function FeaturesSidebar({
       active: false,
       cost: 1,
       onClick: onShowAudioBoost,
+    },
+    {
+      icon: Layers,
+      label: 'Extract',
+      description: 'Extract audio from video/audio',
+      color: 'cyan',
+      active: false,
+      cost: 1,
+      onClick: onShowExtract,
     },
     {
       icon: Edit3,

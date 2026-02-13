@@ -249,6 +249,7 @@ function SettingsPageInner() {
       generation_cover_art: 'Cover Art',
       generation_stem_split: 'Stem Split',
       generation_audio_boost: 'Audio Boost',
+      generation_extract: 'Extract Audio',
       earn_list: 'Earn Listing',
       earn_purchase: 'Earn Purchase',
       earn_sale: 'Earn Sale',
@@ -269,6 +270,7 @@ function SettingsPageInner() {
     if (type === 'generation_effects') return <Sparkles className="w-4 h-4" />
     if (type === 'generation_stem_split') return <Scissors className="w-4 h-4" />
     if (type === 'generation_audio_boost') return <Volume2 className="w-4 h-4" />
+    if (type === 'generation_extract') return <Scissors className="w-4 h-4" />
     if (type === 'earn_purchase') return <ShoppingCart className="w-4 h-4" />
     if (type === 'earn_sale' || type === 'earn_list') return <Tag className="w-4 h-4" />
     if (type === 'release') return <Send className="w-4 h-4" />
@@ -287,6 +289,7 @@ function SettingsPageInner() {
     { value: 'generation_video_to_audio', label: 'Video' },
     { value: 'generation_stem_split', label: 'Stems' },
     { value: 'generation_audio_boost', label: 'Audio Boost' },
+    { value: 'generation_extract', label: 'Extract' },
     { value: 'earn_purchase', label: 'Purchases' },
     { value: 'earn_sale', label: 'Sales' },
     { value: 'earn_list', label: 'Listings' },

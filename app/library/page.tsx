@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -60,7 +60,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -69,6 +69,8 @@ export default function LibraryPage() {
   const [stemGroups, setStemGroups] = useState<any[]>([])
   const [mixmasterItems, setMixmasterItems] = useState<LibraryMusic[]>([])
   const [boughtItems, setBoughtItems] = useState<any[]>([])
+  const [extractGroups, setExtractGroups] = useState<any[]>([])
+  const [expandedExtracts, setExpandedExtracts] = useState<Set<number>>(new Set())
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -105,7 +107,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -116,7 +118,8 @@ export default function LibraryPage() {
         fetch('/api/library/liked'),
         fetch('/api/library/stems'),
         fetch('/api/library/mixmaster'),
-        fetch('/api/library/bought')
+        fetch('/api/library/bought'),
+        fetch('/api/library/extract')
       ])
 
       const musicData = await musicRes.json()
@@ -130,6 +133,7 @@ export default function LibraryPage() {
       const stemsData = await stemsRes.json()
       const mixmasterData = await mixmasterRes.json()
       const boughtData = await boughtRes.json()
+      const extractData = await extractRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -155,7 +159,7 @@ export default function LibraryPage() {
           (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
         )
         const nonStemMusic = uniqueMusic.filter((track: any) =>
-          track.genre !== 'stem' && track.genre !== 'boosted' &&
+          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' &&
           !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
           !boughtAudioUrls.has(track.audio_url)
         )
@@ -214,6 +218,10 @@ export default function LibraryPage() {
       if (boughtData.success && Array.isArray(boughtData.bought)) {
         setBoughtItems(boughtData.bought)
         console.log('🛒 Loaded', boughtData.bought.length, 'bought tracks')
+      }
+      if (extractData.success && Array.isArray(extractData.groups)) {
+        setExtractGroups(extractData.groups)
+        console.log('🎬 Loaded', extractData.groups.length, 'extract groups')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -630,6 +638,20 @@ export default function LibraryPage() {
               <ShoppingBag size={18} />
               <span>Bought</span>
               <span className="ml-1 text-xs opacity-60">({boughtItems.length})</span>
+            </button>
+
+            {/* Extract Tab */}
+            <button
+              onClick={() => setActiveTab('extract')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'extract'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-400 text-white shadow-lg shadow-emerald-500/30'
+                  : 'bg-white/5 text-emerald-400/60 hover:bg-emerald-500/10 hover:text-emerald-400'
+              }`}
+            >
+              <Layers size={18} />
+              <span>Extract</span>
+              <span className="ml-1 text-xs opacity-60">({extractGroups.length})</span>
             </button>
           </div>
         </div>
@@ -1345,6 +1367,143 @@ export default function LibraryPage() {
                             <Download size={14} className="text-yellow-300" />
                             <span className="text-xs text-yellow-300 font-medium">WAV</span>
                           </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Extract Tab */}
+        {!isLoading && activeTab === 'extract' && (
+          <div>
+            {extractGroups.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-400/10 border border-emerald-500/30 flex items-center justify-center">
+                  <Layers size={32} className="text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No extractions yet</h3>
+                <p className="text-emerald-400/50 mb-6 text-sm">Extract audio from video or isolate stems from audio</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-400 text-white rounded-xl font-bold hover:from-emerald-700 hover:to-teal-500 transition-all shadow-lg shadow-emerald-500/20">
+                  <Layers size={18} />
+                  Extract Audio
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {extractGroups.map((group: any, idx: number) => {
+                  const isExpanded = expandedExtracts.has(idx)
+                  return (
+                    <div key={idx} className="bg-black/40 backdrop-blur-xl border border-emerald-500/20 rounded-xl overflow-hidden hover:border-emerald-400/40 transition-all">
+                      {/* Parent track header — click to expand */}
+                      <button
+                        onClick={() => {
+                          setExpandedExtracts(prev => {
+                            const next = new Set(prev)
+                            if (next.has(idx)) next.delete(idx)
+                            else next.add(idx)
+                            return next
+                          })
+                        }}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-emerald-500/5 transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 to-teal-400/10 flex items-center justify-center">
+                          {group.parentImage ? (
+                            <Image src={group.parentImage} alt={group.parentTitle} width={56} height={56} className="w-full h-full object-cover" />
+                          ) : (
+                            <Layers size={24} className="text-emerald-400" />
+                          )}
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0 text-left">
+                          <h3 className="text-white font-semibold text-sm truncate">{group.parentTitle}</h3>
+                          <p className="text-emerald-400/60 text-xs mt-0.5">
+                            {group.extracts.length} extract{group.extracts.length !== 1 ? 's' : ''}
+                            {group.extracts[0]?.source === 'video-to-audio' ? ' • from video' : ' • stems'}
+                          </p>
+                        </div>
+                        {/* Play all extracts */}
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            const playlist = group.extracts.map((ex: any) => ({
+                              id: ex.id,
+                              audioUrl: ex.audioUrl,
+                              title: ex.title || ex.stemType || 'Extract',
+                              artist: user?.firstName || 'You'
+                            }))
+                            await setPlaylist(playlist)
+                            await playTrack(playlist[0])
+                          }}
+                          className="p-2.5 bg-emerald-500/20 rounded-lg hover:bg-emerald-500/40 transition-all hover:scale-105 border border-emerald-500/30 flex-shrink-0"
+                          title="Play all extracts"
+                        >
+                          <Play size={16} className="text-emerald-400" />
+                        </button>
+                        {/* Expand chevron */}
+                        <div className="flex-shrink-0">
+                          {isExpanded ? (
+                            <ChevronUp size={18} className="text-emerald-400/60" />
+                          ) : (
+                            <ChevronDown size={18} className="text-emerald-400/60" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expanded extracts list */}
+                      {isExpanded && (
+                        <div className="border-t border-emerald-500/10">
+                          {group.extracts.map((extract: any) => {
+                            const label = extract.stemType
+                              ? extract.stemType.charAt(0).toUpperCase() + extract.stemType.slice(1)
+                              : extract.source === 'video-to-audio' ? 'Full Audio' : 'Extract'
+                            const badgeColor = extract.stemType
+                              ? getStemColor(extract.stemType)
+                              : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            return (
+                              <div key={extract.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
+                                {/* Type badge */}
+                                <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${badgeColor}`}>
+                                  {label}
+                                </span>
+                                {/* Title */}
+                                <span className="flex-1 text-white/80 text-sm truncate">{extract.title}</span>
+                                {/* Play */}
+                                <button
+                                  onClick={async () => {
+                                    const track = {
+                                      id: extract.id,
+                                      audioUrl: extract.audioUrl,
+                                      title: extract.title || label,
+                                      artist: user?.firstName || 'You'
+                                    }
+                                    await setPlaylist([track])
+                                    await playTrack(track)
+                                  }}
+                                  className="p-2 rounded-lg hover:bg-emerald-500/20 transition-colors"
+                                  title={`Play ${label}`}
+                                >
+                                  {currentTrack?.id === extract.id && isPlaying ? (
+                                    <Pause size={14} className="text-emerald-400" />
+                                  ) : (
+                                    <Play size={14} className="text-emerald-400" />
+                                  )}
+                                </button>
+                                {/* Download */}
+                                <button
+                                  onClick={() => handleDownload(extract.audioUrl, `${extract.title || label}.mp3`)}
+                                  className="p-2 rounded-lg hover:bg-cyan-500/20 transition-colors"
+                                  title={`Download ${label}`}
+                                >
+                                  <Download size={14} className="text-cyan-400" />
+                                </button>
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>

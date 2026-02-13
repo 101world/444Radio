@@ -1667,6 +1667,7 @@ function CreatePageContent() {
           onShowVideoToAudio={() => setShowMediaUploadModal(true)}
           onShowStemSplit={() => setShowMediaUploadModal(true)}
           onShowAudioBoost={() => setShowMediaUploadModal(true)}
+          onShowExtract={() => setShowMediaUploadModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
@@ -3319,6 +3320,28 @@ function CreatePageContent() {
               setMessages(prev => [...prev, processingMessage])
               setShowMediaUploadModal(false)
             }
+            if (type === 'extract-video') {
+              const processingMessage: Message = {
+                id: `extract-video-${Date.now()}`,
+                type: 'assistant',
+                content: '🎬 Extracting audio from video... This should only take a moment.',
+                timestamp: new Date(),
+                isGenerating: true
+              }
+              setMessages(prev => [...prev, processingMessage])
+              setShowMediaUploadModal(false)
+            }
+            if (type === 'extract-audio') {
+              const processingMessage: Message = {
+                id: `extract-audio-${Date.now()}`,
+                type: 'assistant',
+                content: '🎵 Extracting stem from audio... This may take 1-2 minutes.',
+                timestamp: new Date(),
+                isGenerating: true
+              }
+              setMessages(prev => [...prev, processingMessage])
+              setShowMediaUploadModal(false)
+            }
           }}
           onError={(errorMessage) => {
             // Remove processing message
@@ -3363,6 +3386,41 @@ function CreatePageContent() {
                 timestamp: new Date()
               }
               setMessages(prev => [...prev, boostMessage])
+            } else if (result.extractType === 'video-to-audio') {
+              // Handle video→audio extraction
+              const extractMessage: Message = {
+                id: Date.now().toString(),
+                type: 'generation',
+                content: `✅ Audio extracted from video! Used ${result.creditsUsed || 1} credit. ${result.creditsRemaining || 0} credits remaining.`,
+                generationType: 'music',
+                result: {
+                  audioUrl: result.audioUrl,
+                  title: result.title || 'Extracted Audio',
+                  prompt: 'Video → Audio Extraction'
+                },
+                timestamp: new Date()
+              }
+              setMessages(prev => [...prev, extractMessage])
+            } else if (result.extractType === 'audio-stem') {
+              // Handle audio stem extraction (may have multiple stems)
+              const stemList = result.extracts?.map((ex: any) => ex.stemType || 'stem').join(', ') || result.stem || 'stem'
+              const extractMessage: Message = {
+                id: Date.now().toString(),
+                type: 'generation',
+                content: `✅ Stem extracted successfully! (${stemList}) Used ${result.creditsUsed || 1} credit. ${result.creditsRemaining || 0} credits remaining.`,
+                generationType: 'music',
+                result: {
+                  audioUrl: result.extracts?.[0]?.audioUrl || result.audioUrl,
+                  title: result.extracts?.[0]?.title || result.title || `${stemList} Extract`,
+                  prompt: `Audio Stem Extraction: ${stemList}`
+                },
+                stems: result.extracts?.map((ex: any) => ({
+                  name: ex.stemType || 'extract',
+                  url: ex.audioUrl
+                })),
+                timestamp: new Date()
+              }
+              setMessages(prev => [...prev, extractMessage])
             } else {
               // Handle video-to-audio results
               const resultMessage: Message = {
