@@ -847,8 +847,11 @@ export default function TwoStepReleaseModal({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Featured Artists</label>
-                  <input type="text" value={featuredArtists} onChange={e => setFeaturedArtists(e.target.value)} placeholder="@user_id or name, comma separated"
-                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
+                  <UserMentionInput
+                    value={featuredArtists}
+                    onChange={setFeaturedArtists}
+                    placeholder="Type @ to search 444Radio users..."
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
@@ -940,9 +943,17 @@ export default function TwoStepReleaseModal({
               </div>
               {contributors.map((c, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <input type="text" value={c.name} onChange={e => updateContributor(i, 'name', e.target.value)}
-                    placeholder={i === 0 ? '444 Radio' : '@username or name'} readOnly={i === 0}
-                    className={`flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all ${i === 0 ? 'opacity-70' : ''}`} />
+                  {i === 0 ? (
+                    <input type="text" value={c.name} readOnly
+                      className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm opacity-70" />
+                  ) : (
+                    <UserMentionInput
+                      value={c.name}
+                      onChange={(val) => updateContributor(i, 'name', val)}
+                      placeholder="Type @ to search users..."
+                      className="flex-1"
+                    />
+                  )}
                   <select value={c.role} onChange={e => updateContributor(i, 'role', e.target.value)} disabled={i === 0}
                     className={`w-40 px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/40 transition-all ${i === 0 ? 'opacity-70' : ''}`}>
                     {CONTRIBUTOR_ROLES.map(r => <option key={r} value={r} className="bg-black">{r}</option>)}
@@ -1137,6 +1148,125 @@ function ToggleSwitch({ label, value, onChange, description }: { label: string; 
       <button onClick={() => onChange(!value)} className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-cyan-500' : 'bg-white/15'}`}>
         <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${value ? 'translate-x-5' : 'translate-x-0'}`} />
       </button>
+    </div>
+  )
+}
+
+// ─── @ User Mention Input ───
+interface SearchUser {
+  id: string
+  username: string
+  avatar_url: string
+}
+
+function UserMentionInput({ value, onChange, placeholder, className }: {
+  value: string
+  onChange: (val: string) => void
+  placeholder?: string
+  className?: string
+}) {
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([])
+  const [searching, setSearching] = useState(false)
+  const [cursorPos, setCursorPos] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Find the @ query at cursor position
+  const getAtQuery = (text: string, cursor: number): string | null => {
+    const before = text.slice(0, cursor)
+    const match = before.match(/@(\w*)$/)
+    return match ? match[1] : null
+  }
+
+  const searchUsers = useCallback(async (query: string) => {
+    if (!query) { setSearchResults([]); return }
+    setSearching(true)
+    try {
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`)
+      const data = await res.json()
+      setSearchResults(data.users || [])
+    } catch {
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value
+    const cursor = e.target.selectionStart || 0
+    onChange(newVal)
+    setCursorPos(cursor)
+
+    const atQuery = getAtQuery(newVal, cursor)
+    if (atQuery !== null) {
+      setShowDropdown(true)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => searchUsers(atQuery), 250)
+    } else {
+      setShowDropdown(false)
+      setSearchResults([])
+    }
+  }
+
+  const handleSelect = (user: SearchUser) => {
+    const before = value.slice(0, cursorPos)
+    const after = value.slice(cursorPos)
+    const atStart = before.lastIndexOf('@')
+    const newValue = before.slice(0, atStart) + '@' + user.username + ' ' + after
+    onChange(newValue)
+    setShowDropdown(false)
+    setSearchResults([])
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+          inputRef.current && !inputRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className={`relative ${className || ''}`}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={handleChange}
+        onKeyUp={(e) => setCursorPos((e.target as HTMLInputElement).selectionStart || 0)}
+        onClick={(e) => setCursorPos((e.target as HTMLInputElement).selectionStart || 0)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all"
+      />
+      {showDropdown && (
+        <div ref={dropdownRef} className="absolute left-0 right-0 top-full mt-1 z-50 bg-gray-950 border border-white/10 rounded-xl shadow-2xl shadow-black/50 overflow-hidden max-h-48 overflow-y-auto">
+          {searching && (
+            <div className="px-3 py-2 text-xs text-gray-500">Searching...</div>
+          )}
+          {!searching && searchResults.length === 0 && (
+            <div className="px-3 py-2 text-xs text-gray-500">Type after @ to search users</div>
+          )}
+          {searchResults.map(u => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => handleSelect(u)}
+              className="flex items-center gap-2.5 w-full px-3 py-2 hover:bg-cyan-500/10 transition-colors text-left"
+            >
+              <img src={u.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover border border-white/10" />
+              <span className="text-sm text-white font-medium">@{u.username}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
