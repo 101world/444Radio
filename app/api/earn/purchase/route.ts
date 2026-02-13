@@ -77,6 +77,17 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Cannot purchase your own track' }, { status: 400 }))
     }
 
+    // Prevent duplicate purchase
+    try {
+      const dupRes = await supabaseRest(`earn_purchases?buyer_id=eq.${userId}&track_id=eq.${trackId}&select=id`)
+      if (dupRes.ok) {
+        const dups = await dupRes.json()
+        if (dups && dups.length > 0) {
+          return corsResponse(NextResponse.json({ error: 'You already own this track' }, { status: 400 }))
+        }
+      }
+    } catch { /* table may not exist yet */ }
+
     // 4. Calculate cost — 5 base + optional 5 for stems
     const baseCost = 5
     const artistShare = 1
@@ -145,7 +156,26 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ downloads: (track.downloads || 0) + 1 }),
     })
 
-    // 9. Record transaction
+    // 9. Record transaction + purchase record
+    // Fetch buyer username for transaction record
+    let buyerUsername = 'Unknown'
+    try {
+      const buyerInfoRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=username`)
+      if (buyerInfoRes.ok) {
+        const buyerInfos = await buyerInfoRes.json()
+        buyerUsername = buyerInfos?.[0]?.username || 'Unknown'
+      }
+    } catch { /* non-critical */ }
+
+    let sellerUsername = 'Unknown'
+    try {
+      const sellerInfoRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}&select=username`)
+      if (sellerInfoRes.ok) {
+        const sellerInfos = await sellerInfoRes.json()
+        sellerUsername = sellerInfos?.[0]?.username || 'Unknown'
+      }
+    } catch { /* non-critical */ }
+
     try {
       await supabaseRest('earn_transactions', {
         method: 'POST',
@@ -158,10 +188,30 @@ export async function POST(request: NextRequest) {
           artist_share: artistShare,
           admin_share: adminShare,
           split_stems: splitStems || false,
+          buyer_username: buyerUsername,
+          seller_username: sellerUsername,
+          track_title: track.title,
+          transaction_type: 'purchase',
         }),
       })
     } catch (e) {
       console.error('Failed to record earn transaction:', e)
+    }
+
+    // 9a. Record in earn_purchases (for re-release prevention)
+    try {
+      await supabaseRest('earn_purchases', {
+        method: 'POST',
+        body: JSON.stringify({
+          buyer_id: userId,
+          seller_id: track.user_id,
+          track_id: trackId,
+          track_title: track.title,
+          amount_paid: totalCost,
+        }),
+      })
+    } catch (e) {
+      console.error('Failed to record earn purchase (table may not exist):', e)
     }
 
     // 9b. Log credit transactions for buyer and seller

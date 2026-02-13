@@ -78,6 +78,17 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Track is already listed' }, { status: 400 }))
     }
 
+    // Prevent re-listing tracks purchased from Earn (unethical)
+    try {
+      const purchaseCheck = await supabaseRest(`earn_purchases?buyer_id=eq.${userId}&track_id=eq.${trackId}&select=id`)
+      if (purchaseCheck.ok) {
+        const purch = await purchaseCheck.json()
+        if (purch && purch.length > 0) {
+          return corsResponse(NextResponse.json({ error: 'Cannot list a track you purchased from the marketplace. Purchased tracks are for personal use only.' }, { status: 403 }))
+        }
+      }
+    } catch { /* table may not exist yet — allow */ }
+
     // 2. Fetch lister's credits
     const userRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=clerk_user_id,credits`)
     const users = await userRes.json()

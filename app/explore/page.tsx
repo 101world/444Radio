@@ -386,15 +386,15 @@ function ExplorePageContent() {
   const activeFilterCount = [searchFilters.genre, searchFilters.mood, searchFilters.key, searchFilters.vocals, searchFilters.bpm_min, searchFilters.bpm_max].filter(Boolean).length
 
   return (
-    <div className="min-h-screen bg-[#050507] text-white">
-      {/* 3D Background */}
+    <div className="min-h-screen text-white">
+      {/* 3D Holographic Background */}
       <div className="fixed inset-0 -z-10">
         <Suspense fallback={<div className="w-full h-full bg-gradient-to-b from-gray-950 via-gray-900 to-black" />}>
           <HolographicBackgroundClient />
         </Suspense>
       </div>
       {/* Subtle overlay so content stays readable */}
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-[0.5px] -z-[5] pointer-events-none" />
+      <div className="fixed inset-0 bg-black/15 backdrop-blur-[0.5px] -z-[5] pointer-events-none" />
 
       <div className="md:hidden"><CreditIndicator /></div>
       <FloatingMenu />
@@ -411,7 +411,7 @@ function ExplorePageContent() {
           <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover">
             <source src="/1_1_thm2_rxl1.webm" type="video/webm" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-black/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 px-4 md:px-6 pb-4">
             <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-semibold">DISCOVER</span>
             <h1 className="text-2xl md:text-3xl font-bold text-white mt-0.5 tracking-tight">Explore Music</h1>
@@ -420,7 +420,7 @@ function ExplorePageContent() {
         </div>
 
         {/* ═══ TOP BAR — Title + Compact Search ═══ */}
-        <div className="sticky top-0 z-40 bg-[#050507]/90 backdrop-blur-xl border-b border-white/[0.04]">
+        <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/[0.04]">
           <div className="flex items-center gap-3 px-4 md:px-6 h-14">
             {/* Title area */}
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -630,7 +630,7 @@ function ExplorePageContent() {
                       {liveStations.filter(s => s.owner.userId && s.owner.userId !== 'undefined').map(station => (
                         <Link key={station.id} href={`/profile/${station.owner.userId}`} className="flex-shrink-0 group">
                           <div className="flex flex-col items-center gap-1">
-                            <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-red-500/60 ring-offset-2 ring-offset-[#050507]">
+                            <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-red-500/60 ring-offset-2 ring-offset-black">
                               {station.owner.profileImage ? (
                                 <Image src={station.owner.profileImage} alt={station.owner.username} width={48} height={48} className="w-full h-full object-cover" unoptimized />
                               ) : (
@@ -798,7 +798,7 @@ function ExplorePageContent() {
                         <div className="bg-gradient-to-br from-red-950/20 to-pink-950/10 border border-red-500/15 rounded-xl p-4 hover:border-red-400/30 transition-all">
                           <div className="flex items-center gap-3">
                             <div className="relative">
-                              <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-red-500/50 ring-offset-2 ring-offset-[#050507]">
+                              <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-red-500/50 ring-offset-2 ring-offset-black">
                                 {station.owner.profileImage ? (
                                   <Image src={station.owner.profileImage} alt={station.owner.username} width={48} height={48} className="w-full h-full object-cover" unoptimized />
                                 ) : (
