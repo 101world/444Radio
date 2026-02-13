@@ -317,9 +317,9 @@ export default function TwoStepReleaseModal({
         })
         if (res.ok) {
           const data = await res.json()
-          if (data.blocked) {
+          if (data.allowed === false) {
             setFingerprintStatus('flagged')
-            alert('This audio matches an existing track by another creator. Release blocked.')
+            alert(data.blockReason || 'This audio matches an existing track by another creator. Release blocked.')
             return
           }
         }
