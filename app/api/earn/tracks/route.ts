@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get('q') || ''
 
     // Build query for tracks listed on earn marketplace
-    let query = `combined_media?listed_on_earn=eq.true&select=id,title,audio_url,image_url,user_id,genre,plays,likes,downloads,created_at,earn_price,artist_share,admin_share`
+    let query = `combined_media?listed_on_earn=eq.true&select=id,title,audio_url,image_url,user_id,genre,secondary_genre,plays,likes,downloads,created_at,earn_price,artist_share,admin_share,mood,bpm,key_signature,vocals,language,tags,description,instruments,is_explicit,duration_seconds`
 
     // Genre filter
     if (genre) {
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       // If listed_on_earn column doesn't exist yet, return all tracks as fallback
-      const fallbackQuery = `combined_media?select=id,title,audio_url,image_url,user_id,genre,plays,likes,downloads,created_at&is_public=eq.true&order=plays.desc.nullslast&limit=50`
+      const fallbackQuery = `combined_media?select=id,title,audio_url,image_url,user_id,genre,secondary_genre,plays,likes,downloads,created_at,mood,bpm,key_signature,vocals,language,tags,description,instruments,is_explicit,duration_seconds&is_public=eq.true&order=plays.desc.nullslast&limit=50`
       const fallbackRes = await supabaseRest(fallbackQuery)
       const fallbackTracks = await fallbackRes.json()
 

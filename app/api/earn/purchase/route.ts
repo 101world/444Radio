@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3. Fetch track details
-    const trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=id,user_id,title,audio_url,downloads,track_id_444,original_creator_id,license_type_444,remix_allowed,derivative_allowed`)
+    // 3. Fetch track details (include image_url + metadata for library save)
+    const trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=id,user_id,title,audio_url,image_url,genre,mood,bpm,key_signature,downloads,track_id_444,original_creator_id,license_type_444,remix_allowed,derivative_allowed`)
     const tracks = await trackRes.json()
     const track = tracks?.[0]
 
@@ -256,6 +256,8 @@ export async function POST(request: NextRequest) {
           clerk_user_id: userId,
           title: track.title,
           audio_url: track.audio_url,
+          image_url: track.image_url || null,
+          genre: track.genre || null,
           prompt: `Purchased from EARN marketplace`,
           status: 'ready',
         }),
