@@ -206,6 +206,34 @@ interface ExploreMedia {
 const GENRE_FILTERS = ['All', 'Lofi', 'Hip Hop', 'Jazz', 'R&B', 'Techno', 'Chill', 'Electronic', 'Ambient', 'Pop', 'Rock']
 const MOOD_FILTERS = ['All Vibes', 'Chill', 'Energetic', 'Sad', 'Happy', 'Dark', 'Dreamy', 'Aggressive', 'Romantic', 'Nostalgic']
 
+// Map display labels → all DB genre strings that should match
+const GENRE_ALIASES: Record<string, string[]> = {
+  'Lofi':       ['lofi', 'lo-fi', 'lo fi'],
+  'Hip Hop':    ['hiphop', 'hip-hop', 'hip hop', 'rap'],
+  'Jazz':       ['jazz'],
+  'R&B':        ['rnb', 'r&b', 'r and b', 'r+b'],
+  'Techno':     ['techno'],
+  'Chill':      ['chill'],
+  'Electronic': ['electronic', 'edm', 'electro'],
+  'Ambient':    ['ambient'],
+  'Pop':        ['pop'],
+  'Rock':       ['rock'],
+}
+
+function matchesGenre(genre: string | null | undefined, filterLabel: string): boolean {
+  if (filterLabel === 'All') return true
+  const g = (genre || '').toLowerCase().trim()
+  const aliases = GENRE_ALIASES[filterLabel]
+  if (!aliases) return g.includes(filterLabel.toLowerCase())
+  return aliases.some(alias => g === alias || g.includes(alias))
+}
+
+function matchesMood(mood: string | null | undefined, filterLabel: string): boolean {
+  if (filterLabel === 'All Vibes') return true
+  const m = (mood || '').toLowerCase().trim()
+  return m.includes(filterLabel.toLowerCase())
+}
+
 // ─── Main Player Component ──────────────────────────────────────
 export default function FloatingAudioPlayer() {
   const {
@@ -323,14 +351,8 @@ export default function FloatingAudioPlayer() {
   // Smart filtering: text + genre + mood
   const filteredExplore = useMemo(() => {
     return exploreSongs.filter(s => {
-      if (activeGenre !== 'All') {
-        const g = (s.genre || '').toLowerCase()
-        if (!g.includes(activeGenre.toLowerCase())) return false
-      }
-      if (activeMood !== 'All Vibes') {
-        const m = (s.mood || '').toLowerCase()
-        if (!m.includes(activeMood.toLowerCase())) return false
-      }
+      if (!matchesGenre(s.genre, activeGenre)) return false
+      if (!matchesMood(s.mood, activeMood)) return false
       if (exploreSearch.trim()) {
         const q = exploreSearch.toLowerCase()
         const searchable = [
@@ -797,7 +819,7 @@ export default function FloatingAudioPlayer() {
               const isActive = activeGenre === g
               const count = g === 'All'
                 ? exploreSongs.length
-                : exploreSongs.filter(s => (s.genre || '').toLowerCase().includes(g.toLowerCase())).length
+                : exploreSongs.filter(s => matchesGenre(s.genre, g)).length
               return (
                 <button
                   key={g}
