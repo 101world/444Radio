@@ -42,3 +42,7 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# JUCE plugin build artifacts
+444radio-plugin/build/
+
