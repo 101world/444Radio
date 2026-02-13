@@ -197,24 +197,21 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
       </div>
       {/* Title + artist */}
       <div className="flex-1 min-w-0">
-        <h3 className={`text-sm font-medium truncate ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>{media.title}</h3>
+        <h3 className={`text-sm font-semibold truncate ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>{media.title}</h3>
         <div className="flex items-center gap-1.5 mt-0.5">
           {media.user_id && media.user_id !== 'undefined' ? (
-            <Link href={`/profile/${media.user_id}`} className="text-[11px] text-gray-500 hover:text-cyan-400 transition-colors truncate" onClick={e => e.stopPropagation()}>
+            <Link href={`/profile/${media.user_id}`} className="text-[11px] text-gray-400 hover:text-cyan-400 transition-colors truncate" onClick={e => e.stopPropagation()}>
               {media.artist_name || media.users?.username || media.username || 'Unknown'}
             </Link>
           ) : (
-            <span className="text-[11px] text-gray-600 truncate">{media.users?.username || 'Unknown'}</span>
-          )}
-          {gs && (
-            <span className={`text-[9px] px-1.5 py-px rounded-full border font-medium ${gs.bg} ${gs.text} ${gs.border}`}>{media.genre}</span>
+            <span className="text-[11px] text-gray-500 truncate">{media.users?.username || 'Unknown'}</span>
           )}
         </div>
       </div>
       {/* Right side — plays + like + lyrics */}
       <div className="flex items-center gap-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
-        <span className="text-[11px] text-gray-500 flex items-center gap-1 tabular-nums">
-          <Headphones size={11} className="text-gray-600" />{formatPlays(media.plays || 0)}
+        <span className="text-xs text-gray-400 flex items-center gap-1 tabular-nums font-medium">
+          <Headphones size={12} className="text-gray-500" />{formatPlays(media.plays || 0)}
         </span>
         <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={true} />
         <button onClick={e => { e.stopPropagation(); onLyrics() }} className="p-1.5 hover:bg-purple-500/15 rounded-lg transition-colors opacity-0 group-hover:opacity-100" title="Lyrics">
@@ -430,8 +427,6 @@ function ExplorePageContent() {
         {/* ═══ TOP BAR — Compact Search ═══ */}
         <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/[0.04]">
           <div className="flex items-center gap-3 px-4 md:px-6 h-14">
-            {/* Track count */}
-            <span className="text-[10px] text-gray-500 hidden sm:block flex-shrink-0">{combinedMedia.length} tracks</span>
 
             {/* Search — compact, center-weighted */}
             <div className="relative flex-1 max-w-md mx-auto group">
@@ -526,23 +521,7 @@ function ExplorePageContent() {
             </div>
           )}
 
-          {/* Quick genre pills (only when not searching) */}
-          {!isSearchActive && !showFilters && activeTab === 'tracks' && (
-            <div className="flex items-center gap-1.5 px-4 md:px-6 pb-2.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-              {['lofi', 'hiphop', 'jazz', 'chill', 'rnb', 'techno', 'trap', 'ambient', 'electronic', 'pop', 'rock', 'house', 'phonk'].map(g => {
-                const style = getGenreStyle(g)
-                if (!style) return null
-                return (
-                  <button key={g}
-                    onClick={() => { const f = { ...searchFilters, genre: searchFilters.genre === g ? '' : g }; setSearchFilters(f); performSearch(searchQuery, f) }}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-all border ${
-                      searchFilters.genre === g ? `${style.bg} ${style.text} ${style.border}` : 'bg-white/[0.02] border-white/[0.05] text-gray-600 hover:text-gray-400 hover:border-white/10'
-                    }`}
-                  >{g}</button>
-                )
-              })}
-            </div>
-          )}
+
 
           {/* Mobile tabs */}
           {!isSearchActive && (
