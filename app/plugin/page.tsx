@@ -18,15 +18,27 @@ interface CreditInfo {
   costs: Record<string, number>
 }
 
+// ─── Detect JUCE host (plugin passes ?host=juce in URL) ───
+const isJuceHost = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('host') === 'juce'
+
 // ─── Plugin Bridge (sends messages to JUCE WebView host) ───
 function sendToPlugin(action: string, data: Record<string, unknown>) {
-  // JUCE WebView uses window.postMessage to communicate with C++ host
+  const payload = JSON.stringify({ source: '444radio-plugin', action, ...data })
   try {
-    window.parent?.postMessage({ source: '444radio-plugin', action, ...data }, '*')
-    // Also try the JUCE-specific bridge if available
+    // Method 1: JUCE 8+ native bridge (injected __juce__ object)
     if ((window as any).__juce__?.postMessage) {
-      (window as any).__juce__.postMessage(JSON.stringify({ action, ...data }))
+      (window as any).__juce__.postMessage(payload)
+      return
     }
+    // Method 2: JUCE 7+ URL scheme bridge (intercepted by pageAboutToLoad in C++)
+    // Only used when loaded inside JUCE WebView (detected via ?host=juce param)
+    if (isJuceHost) {
+      window.location.href = 'juce-bridge://' + encodeURIComponent(payload)
+      return
+    }
+    // Method 3: postMessage fallback (for iframe/Electron/testing)
+    window.parent?.postMessage(JSON.parse(payload), '*')
   } catch { /* not in plugin context */ }
 }
 
@@ -53,6 +65,15 @@ export default function PluginPage() {
 
   // ─── Auth ───
   useEffect(() => {
+    // Check URL params first (JUCE passes saved token via ?token=xxx)
+    const params = new URLSearchParams(window.location.search)
+    const urlToken = params.get('token')
+    if (urlToken && urlToken.startsWith('444r_')) {
+      setToken(urlToken)
+      verifyToken(urlToken)
+      return
+    }
+    // Fallback: check localStorage
     const saved = localStorage.getItem('444radio_plugin_token')
     if (saved) {
       setToken(saved)
@@ -70,7 +91,7 @@ export default function PluginPage() {
         setCredits(data)
         setIsAuthenticated(true)
         localStorage.setItem('444radio_plugin_token', t)
-        sendToPlugin('authenticated', { credits: data.credits })
+        sendToPlugin('authenticated', { credits: data.credits, token: t })
       } else {
         setIsAuthenticated(false)
         setError('Invalid token. Generate one from your 444 Radio profile.')
