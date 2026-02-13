@@ -30,6 +30,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Audio URL required' }, { status: 400 })
     }
 
+    // Try to find the parent track in combined_media by audio_url
+    const { data: parentTrack } = await supabase
+      .from('combined_media')
+      .select('id, title, image_url')
+      .eq('audio_url', audioUrl)
+      .maybeSingle()
+
     // Check credits
     const { data: userData, error: userError } = await supabase
       .from('users')
@@ -176,16 +183,22 @@ export async function POST(request: Request) {
               console.log(`[Stem Split] ✅ ${stemName} → R2:`, r2Result.url)
 
               // Save to combined_media so it appears in library
+              const stemTitle = parentTrack?.title 
+                ? `${parentTrack.title} — ${stemName.charAt(0).toUpperCase() + stemName.slice(1)}`
+                : `${stemName.charAt(0).toUpperCase() + stemName.slice(1)} (Stem)`
               const { data: saved, error: saveErr } = await supabase
                 .from('combined_media')
                 .insert({
                   user_id: userId,
                   type: 'audio',
-                  title: `${stemName.charAt(0).toUpperCase() + stemName.slice(1)} (Stem)`,
+                  title: stemTitle,
                   audio_url: r2Result.url,
-                  image_url: null,
+                  image_url: parentTrack?.image_url || null,
                   is_public: false,
                   genre: 'stem',
+                  stem_type: stemName.toLowerCase().replace(/\s+\d+$/, ''),
+                  parent_track_id: parentTrack?.id || null,
+                  description: `Stem split from: ${parentTrack?.title || audioUrl}`,
                 })
                 .select('id')
                 .single()

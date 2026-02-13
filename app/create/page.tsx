@@ -1569,6 +1569,21 @@ function CreatePageContent() {
       predictionIdsRef.current.delete(processingMessage.id)
       setIsSplittingStems(false)
       setSplitStemsMessageId(null)
+      
+      // Safety: ensure the processing message is never stuck in "generating" state
+      // This catches edge cases where stream closes without a result line
+      setMessages(prev => {
+        const msg = prev.find(m => m.id === processingMessage.id)
+        if (msg && msg.isGenerating) {
+          console.warn('[StemSplit] Processing message still in generating state — forcing completion')
+          return prev.map(m =>
+            m.id === processingMessage.id
+              ? { ...m, isGenerating: false, content: m.content.startsWith('❌') ? m.content : '✅ Stem split complete — check your Library > Stems tab.' }
+              : m
+          )
+        }
+        return prev
+      })
     }
   }
 

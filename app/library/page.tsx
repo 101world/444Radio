@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -60,12 +60,14 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
   const [releaseItems, setReleaseItems] = useState<LibraryCombined[]>([])
   const [likedItems, setLikedItems] = useState<LibraryCombined[]>([])
+  const [stemGroups, setStemGroups] = useState<any[]>([])
+  const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const supabaseClient = supabase
@@ -101,7 +103,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -109,7 +111,8 @@ export default function LibraryPage() {
         fetch('/api/library/videos'),
         fetch('/api/r2/list-videos'),
         fetch('/api/library/releases'),
-        fetch('/api/library/liked')
+        fetch('/api/library/liked'),
+        fetch('/api/library/stems')
       ])
 
       const musicData = await musicRes.json()
@@ -120,6 +123,7 @@ export default function LibraryPage() {
       const r2VideosData = await r2VideosRes.json()
       const releasesData = await releasesRes.json()
       const likedData = await likedRes.json()
+      const stemsData = await stemsRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -140,8 +144,10 @@ export default function LibraryPage() {
           console.warn(`⚠️ ${expiredWarningCount} tracks may have expired URLs (Replicate > 48h old)`)
         }
         
-        setMusicItems(uniqueMusic)
-        console.log('✅ Loaded', uniqueMusic.length, 'music tracks from database')
+        // Filter out stems from the music tab (they have their own tab)
+        const nonStemMusic = uniqueMusic.filter((track: any) => track.genre !== 'stem')
+        setMusicItems(nonStemMusic)
+        console.log('✅ Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems)')
       }
 
       // Merge database images with R2 images, deduplicate by image_url
@@ -181,6 +187,11 @@ export default function LibraryPage() {
       if (likedData.success && Array.isArray(likedData.liked)) {
         setLikedItems(likedData.liked)
         console.log('💚 Loaded', likedData.liked.length, 'liked tracks')
+      }
+      // Stem groups
+      if (stemsData.success && Array.isArray(stemsData.groups)) {
+        setStemGroups(stemsData.groups)
+        console.log('🎛️ Loaded', stemsData.groups.length, 'stem groups')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -337,6 +348,16 @@ export default function LibraryPage() {
     setTimeout(() => {
       setShowReleaseToast(false)
     }, 3000)
+  }
+
+  const getStemColor = (stemType: string) => {
+    switch (stemType?.toLowerCase()) {
+      case 'vocals': return 'bg-pink-500/20 text-pink-300 border border-pink-500/30'
+      case 'drums': return 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+      case 'bass': return 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+      case 'other': return 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+      default: return 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+    }
   }
 
   const handleDownload = async (url: string, filename: string, format: 'mp3' | 'wav' = 'mp3') => {
@@ -551,6 +572,18 @@ export default function LibraryPage() {
               <Heart size={18} />
               <span>Liked</span>
               <span className="ml-1 text-xs opacity-60">({likedItems.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('stems')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'stems'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-400 text-white shadow-lg shadow-orange-500/30'
+                  : 'bg-white/5 text-orange-400/60 hover:bg-orange-500/10 hover:text-orange-400'
+              }`}
+            >
+              <Scissors size={18} />
+              <span>Stems</span>
+              <span className="ml-1 text-xs opacity-60">({stemGroups.length})</span>
             </button>
           </div>
         </div>
@@ -968,6 +1001,136 @@ export default function LibraryPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Stems Tab */}
+        {!isLoading && activeTab === 'stems' && (
+          <div>
+            {stemGroups.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-orange-500/20 to-amber-400/10 border border-orange-500/30 flex items-center justify-center">
+                  <Scissors size={32} className="text-orange-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No stems yet</h3>
+                <p className="text-orange-400/50 mb-6 text-sm">Split a track into vocals, drums, bass & more</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-400 text-white rounded-xl font-bold hover:from-orange-700 hover:to-amber-500 transition-all shadow-lg shadow-orange-500/20">
+                  <Scissors size={18} />
+                  Split Stems
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {stemGroups.map((group: any, idx: number) => {
+                  const isExpanded = expandedStems.has(idx)
+                  return (
+                    <div key={idx} className="bg-black/40 backdrop-blur-xl border border-orange-500/20 rounded-xl overflow-hidden hover:border-orange-400/40 transition-all">
+                      {/* Parent track header — click to expand */}
+                      <button
+                        onClick={() => {
+                          setExpandedStems(prev => {
+                            const next = new Set(prev)
+                            if (next.has(idx)) next.delete(idx)
+                            else next.add(idx)
+                            return next
+                          })
+                        }}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-orange-500/5 transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-orange-500/30 bg-gradient-to-br from-orange-500/20 to-amber-400/10 flex items-center justify-center">
+                          {group.parentImage ? (
+                            <Image src={group.parentImage} alt={group.parentTitle} width={56} height={56} className="w-full h-full object-cover" />
+                          ) : (
+                            <Music size={24} className="text-orange-400" />
+                          )}
+                        </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0 text-left">
+                          <h3 className="text-white font-semibold text-sm truncate">{group.parentTitle}</h3>
+                          <p className="text-orange-400/60 text-xs mt-0.5">{group.stems.length} stems</p>
+                        </div>
+                        {/* Play all stems button */}
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            const playlist = group.stems.map((s: any) => ({
+                              id: s.id,
+                              audioUrl: s.audioUrl,
+                              title: s.title || s.stemType,
+                              artist: user?.firstName || 'You'
+                            }))
+                            await setPlaylist(playlist)
+                            await playTrack(playlist[0])
+                          }}
+                          className="p-2.5 bg-orange-500/20 rounded-lg hover:bg-orange-500/40 transition-all hover:scale-105 border border-orange-500/30 flex-shrink-0"
+                          title="Play all stems"
+                        >
+                          <Play size={16} className="text-orange-400" />
+                        </button>
+                        {/* Expand chevron */}
+                        <div className="flex-shrink-0">
+                          {isExpanded ? (
+                            <ChevronUp size={18} className="text-orange-400/60" />
+                          ) : (
+                            <ChevronDown size={18} className="text-orange-400/60" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expanded stems list */}
+                      {isExpanded && (
+                        <div className="border-t border-orange-500/10">
+                          {group.stems.map((stem: any) => {
+                            const stemLabel = (stem.stemType || 'unknown').charAt(0).toUpperCase() + (stem.stemType || 'unknown').slice(1)
+                            const stemColor = getStemColor(stem.stemType)
+                            return (
+                              <div key={stem.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
+                                {/* Stem type badge */}
+                                <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${stemColor}`}>
+                                  {stemLabel}
+                                </span>
+                                {/* Title */}
+                                <span className="flex-1 text-white/80 text-sm truncate">{stem.title}</span>
+                                {/* Play */}
+                                <button
+                                  onClick={async () => {
+                                    const track = {
+                                      id: stem.id,
+                                      audioUrl: stem.audioUrl,
+                                      title: stem.title || stemLabel,
+                                      artist: user?.firstName || 'You'
+                                    }
+                                    await setPlaylist([track])
+                                    await playTrack(track)
+                                  }}
+                                  className="p-2 rounded-lg hover:bg-orange-500/20 transition-colors"
+                                  title={`Play ${stemLabel}`}
+                                >
+                                  {currentTrack?.id === stem.id && isPlaying ? (
+                                    <Pause size={14} className="text-orange-400" />
+                                  ) : (
+                                    <Play size={14} className="text-orange-400" />
+                                  )}
+                                </button>
+                                {/* Download */}
+                                <button
+                                  onClick={() => handleDownload(stem.audioUrl, `${stem.title || stemLabel}.mp3`)}
+                                  className="p-2 rounded-lg hover:bg-cyan-500/20 transition-colors"
+                                  title={`Download ${stemLabel}`}
+                                >
+                                  <Download size={14} className="text-cyan-400" />
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
