@@ -48,6 +48,7 @@ function SettingsPageInner() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [cancelMessage, setCancelMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null)
 
   // Wallet state
   const [transactions, setTransactions] = useState<any[]>([])
@@ -64,6 +65,20 @@ function SettingsPageInner() {
       router.push('/sign-in')
     }
   }, [user, isLoaded, router])
+
+  // Fetch custom avatar from Supabase (R2 URL stored in avatar_url column)
+  useEffect(() => {
+    if (user) {
+      fetch(`/api/media/profile/${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.avatar_url) {
+            setCustomAvatarUrl(data.avatar_url)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [user])
 
   useEffect(() => {
     if (user) {
@@ -636,7 +651,7 @@ function SettingsPageInner() {
               <h2 className="text-xl font-bold mb-6">Profile Settings</h2>
               <div className="flex items-center gap-4 mb-6">
                 <img
-                  src={user.imageUrl}
+                  src={customAvatarUrl || user.imageUrl}
                   alt={user.firstName || 'User'}
                   className="w-16 h-16 rounded-full border-2 border-cyan-500/30"
                 />
@@ -701,7 +716,7 @@ function SettingsPageInner() {
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
           currentUsername={user.username || user.firstName || ''}
-          currentAvatar={user.imageUrl}
+          currentAvatar={customAvatarUrl || user.imageUrl}
           onUpdate={() => {
             // Force refresh Clerk user data + credits
             window.location.reload()
