@@ -83,14 +83,15 @@ export async function POST(request: Request) {
 
         await sendLine({ type: 'started', predictionId: prediction.id })
 
-        // Poll for result — send heartbeats to keep Vercel stream alive
+        // Poll for result — 60s hard timeout, cancel prediction if exceeded
         let finalPrediction = prediction
         let attempts = 0
+        const MAX_POLL_ATTEMPTS = 12 // 12 × 5s = 60s max
         while (
           finalPrediction.status !== 'succeeded' &&
           finalPrediction.status !== 'failed' &&
           finalPrediction.status !== 'canceled' &&
-          attempts < 60 // 5min at 5s intervals
+          attempts < MAX_POLL_ATTEMPTS
         ) {
           if (requestSignal.aborted) {
             console.log('[Stem Split] Client disconnected, cancelling:', prediction.id)
@@ -105,6 +106,18 @@ export async function POST(request: Request) {
           attempts++
           // Heartbeat every poll to prevent Vercel 504 gateway timeout
           await sendLine({ type: 'progress', status: finalPrediction.status, elapsed: attempts * 5 }).catch(() => {})
+        }
+
+        // If timed out (still processing after 60s), cancel the prediction to stop billing
+        if (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && finalPrediction.status !== 'canceled') {
+          console.log(`[Stem Split] ⏰ Timeout after ${attempts * 5}s, cancelling prediction:`, prediction.id)
+          try { await replicate.predictions.cancel(prediction.id) } catch (cancelErr) {
+            console.error('[Stem Split] Failed to cancel prediction:', cancelErr)
+          }
+          await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: 'Stem split timed out (60s limit)', metadata: { reason: 'timeout', predictionId: prediction.id } })
+          await sendLine({ type: 'result', success: false, error: 'Stem splitting timed out after 60 seconds. The model may be overloaded — please try again later.' })
+          await writer.close()
+          return
         }
 
         if (finalPrediction.status === 'canceled') {

@@ -144,9 +144,9 @@ export async function POST(request: Request) {
       }, { status: 503 }))
     }
 
-    // Poll for completion up to 240s (extended for demucs processing time)
+    // Poll for completion up to 60s — cancel prediction if exceeded to stop billing
     const start = Date.now()
-    const TIMEOUT_MS = 240000 // 4 minutes
+    const TIMEOUT_MS = 60000 // 60 seconds hard limit
     const POLL_INTERVAL_MS = 3000 // Poll every 3 seconds
     let result = prediction
     let pollAttempts = 0
@@ -156,10 +156,14 @@ export async function POST(request: Request) {
       const elapsed = Date.now() - start
       
       if (elapsed > TIMEOUT_MS) {
-        console.error(`❌ Stem separation timeout after ${elapsed}ms, ${pollAttempts} poll attempts`)
+        console.error(`❌ Stem separation timeout after ${elapsed}ms, cancelling prediction: ${result.id}`)
+        // Cancel the prediction to stop Replicate billing
+        try { await replicate.predictions.cancel(result.id) } catch (cancelErr) {
+          console.error('❌ Failed to cancel prediction:', cancelErr)
+        }
         return corsResponse(NextResponse.json({ 
           success: false, 
-          error: 'Stem separation timed out. The AI model may be experiencing high demand. Please try again in a few minutes.',
+          error: 'Stem separation timed out after 60 seconds. The AI model may be overloaded — please try again later.',
           predictionId: result.id
         }, { status: 408 }))
       }

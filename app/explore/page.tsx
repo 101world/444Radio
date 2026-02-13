@@ -200,9 +200,17 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
           <div className="w-full h-full bg-gray-900 flex items-center justify-center"><Music size={16} className="text-gray-700" /></div>
         )}
       </div>
-      {/* Info */}
+      {/* Info + metadata + actions — all flow together */}
       <div className="flex-1 min-w-0">
-        <h3 className={`text-sm font-medium truncate ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>{media.title}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className={`text-sm font-medium truncate ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>{media.title}</h3>
+          {/* Desktop metadata inline */}
+          <div className="hidden md:flex items-center gap-2 text-[10px] text-gray-600 flex-shrink-0">
+            {media.bpm && <span className="flex items-center gap-0.5"><Zap size={9} />{media.bpm}</span>}
+            {media.key_signature && <span className="flex items-center gap-0.5"><Hash size={9} />{media.key_signature}</span>}
+            {media.duration_seconds && <span><Clock size={9} className="inline mr-0.5" />{formatDuration(media.duration_seconds)}</span>}
+          </div>
+        </div>
         <div className="flex items-center gap-1.5 mt-0.5">
           {media.user_id && media.user_id !== 'undefined' ? (
             <Link href={`/profile/${media.user_id}`} className="text-[11px] text-gray-500 hover:text-cyan-400 transition-colors truncate" onClick={e => e.stopPropagation()}>
@@ -216,18 +224,11 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
           )}
         </div>
       </div>
-      {/* Desktop metadata */}
-      <div className="hidden md:flex items-center gap-3 text-[10px] text-gray-600 flex-shrink-0">
-        {media.bpm && <span className="flex items-center gap-0.5"><Zap size={9} />{media.bpm}</span>}
-        {media.key_signature && <span className="flex items-center gap-0.5"><Hash size={9} />{media.key_signature}</span>}
-        {media.duration_seconds && <span><Clock size={9} className="inline mr-0.5" />{formatDuration(media.duration_seconds)}</span>}
-      </div>
-      {/* Plays */}
-      <span className="text-[10px] text-gray-600 flex items-center gap-0.5 w-12 justify-end flex-shrink-0">
-        <Headphones size={9} />{formatPlays(media.plays || 0)}
-      </span>
-      {/* Actions */}
-      <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+      {/* Plays + Actions — tight group */}
+      <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <span className="text-[10px] text-gray-600 flex items-center gap-0.5">
+          <Headphones size={9} />{formatPlays(media.plays || 0)}
+        </span>
         <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={false} />
         <button onClick={e => { e.stopPropagation(); onLyrics() }} className="p-1.5 hover:bg-purple-500/15 rounded-lg transition-colors opacity-0 group-hover:opacity-100" title="Lyrics">
           <FileText size={12} className="text-purple-400/60" />
