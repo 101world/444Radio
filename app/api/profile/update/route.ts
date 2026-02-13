@@ -27,14 +27,24 @@ export async function POST(req: NextRequest) {
     if (contentType?.includes('multipart/form-data')) {
       const formData = await req.formData()
       username = formData.get('username') as string
-      avatarFile = formData.get('avatar') as File | null
+      const rawFile = formData.get('avatar')
+      
+      // FormData returns a File with size=0 when no file was selected
+      if (rawFile && rawFile instanceof File && rawFile.size > 0) {
+        avatarFile = rawFile
+        console.log(`[Profile Update] Avatar file: ${avatarFile.name}, size: ${avatarFile.size}, type: ${avatarFile.type}`)
+      }
 
       // Upload avatar to R2 if provided
       if (avatarFile) {
-        const avatarKey = `avatars/${userId}-${Date.now()}.${avatarFile.name.split('.').pop()}`
+        const ext = avatarFile.name.split('.').pop() || 'jpg'
+        const avatarKey = `avatars/${userId}-${Date.now()}.${ext}`
         const uploadResult = await uploadToR2(avatarFile, 'images', avatarKey)
         if (uploadResult.success && uploadResult.url) {
           avatar = uploadResult.url
+          console.log(`[Profile Update] Avatar uploaded: ${avatar}`)
+        } else {
+          console.error('[Profile Update] Avatar upload failed:', uploadResult.error)
         }
       }
     } else {
@@ -43,17 +53,19 @@ export async function POST(req: NextRequest) {
       avatar = body.avatar
     }
 
-    if (!username) {
+    if (!username || !username.trim()) {
       return NextResponse.json(
         { success: false, error: 'Username is required' },
         { status: 400 }
       )
     }
 
-    // Validate username format
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+    username = username.trim()
+
+    // Validate username format (3-30 chars, alphanumeric, underscores, hyphens, dots)
+    if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
       return NextResponse.json(
-        { success: false, error: 'Invalid username format' },
+        { success: false, error: 'Username must be 3-30 characters (letters, numbers, _ . -)' },
         { status: 400 }
       )
     }
@@ -72,18 +84,26 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Update Clerk user
+    // Update Clerk user — try username update, but don't fail entire request if Clerk rejects it
     const client = await clerkClient()
-    const clerkUpdateData: any = {
-      username: username
+    try {
+      const clerkUpdateData: any = { username }
+      if (avatar) {
+        clerkUpdateData.publicMetadata = { avatarUrl: avatar }
+      }
+      await client.users.updateUser(userId, clerkUpdateData)
+    } catch (clerkError: any) {
+      console.warn('[Profile Update] Clerk username update failed:', clerkError?.message || clerkError)
+      // Still update Supabase even if Clerk rejects the username format
+      // Try updating just the metadata if avatar was uploaded
+      if (avatar) {
+        try {
+          await client.users.updateUser(userId, { publicMetadata: { avatarUrl: avatar } })
+        } catch (e) {
+          console.warn('[Profile Update] Clerk metadata update also failed:', e)
+        }
+      }
     }
-    
-    // Store avatar URL in Clerk's publicMetadata for reference (we use R2 for storage)
-    if (avatar) {
-      clerkUpdateData.publicMetadata = { avatarUrl: avatar }
-    }
-    
-    await client.users.updateUser(userId, clerkUpdateData)
 
     // Update Supabase users table
     const updateData: any = {

@@ -3,11 +3,13 @@ import { auth } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { createClient } from '@supabase/supabase-js'
 
-// Use service role key to bypass RLS — auth is handled by Clerk
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Lazy-init service role client to avoid build-time env issues
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 /**
  * Like API - Toggle like/unlike with user_likes table tracking
@@ -25,6 +27,7 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const supabase = getSupabase()
     const body = await req.json()
     const releaseId = body.releaseId || body.mediaId
     
@@ -40,13 +43,15 @@ export async function POST(req: NextRequest) {
     // Check if user already liked this release
     const { data: existing, error: checkError } = await supabase
       .from('user_likes')
-      .select('*')
+      .select('id')
       .eq('user_id', userId)
       .eq('release_id', releaseId)
 
     if (checkError) {
       console.error('[Like API] Check error:', checkError)
-      throw new Error(`Failed to check like status: ${checkError.message}`)
+      return corsResponse(NextResponse.json({
+        success: false, error: `Check failed: ${checkError.message}`
+      }, { status: 500 }))
     }
 
     const isCurrentlyLiked = existing && existing.length > 0
@@ -61,75 +66,66 @@ export async function POST(req: NextRequest) {
 
       if (deleteError) {
         console.error('[Like API] Delete error:', deleteError)
-        throw new Error(`Failed to unlike: ${deleteError.message}`)
+        return corsResponse(NextResponse.json({
+          success: false, error: `Unlike failed: ${deleteError.message}`
+        }, { status: 500 }))
       }
 
-      console.log('[Like API] User unliked release')
-
-      // Recount total likes for this release
-      const { data: allLikes, error: countError } = await supabase
+      // Recount total likes
+      const { count } = await supabase
         .from('user_likes')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('release_id', releaseId)
 
-      const newCount = allLikes ? allLikes.length : 0
+      const newCount = count || 0
 
-      // Update combined_media likes count
+      // Update both likes columns (likes and likes_count may both exist)
       await supabase
         .from('combined_media')
-        .update({ likes: newCount })
+        .update({ likes: newCount, likes_count: newCount })
         .eq('id', releaseId)
 
       return corsResponse(NextResponse.json({
-        success: true,
-        liked: false,
-        likesCount: newCount
+        success: true, liked: false, likesCount: newCount
       }))
     } else {
       // Like: Insert into user_likes
       const { error: insertError } = await supabase
         .from('user_likes')
-        .insert({
-          user_id: userId,
-          release_id: releaseId
-        })
+        .insert({ user_id: userId, release_id: releaseId })
 
       if (insertError) {
         console.error('[Like API] Insert error:', insertError)
-        throw new Error(`Failed to like: ${insertError.message}`)
+        return corsResponse(NextResponse.json({
+          success: false, error: `Like failed: ${insertError.message}`
+        }, { status: 500 }))
       }
 
-      console.log('[Like API] User liked release')
-
-      // Recount total likes for this release
-      const { data: allLikes, error: countError } = await supabase
+      // Recount total likes
+      const { count } = await supabase
         .from('user_likes')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('release_id', releaseId)
 
-      const newCount = allLikes ? allLikes.length : 0
+      const newCount = count || 0
 
-      // Update combined_media likes count
+      // Update both likes columns
       await supabase
         .from('combined_media')
-        .update({ likes: newCount })
+        .update({ likes: newCount, likes_count: newCount })
         .eq('id', releaseId)
 
       return corsResponse(NextResponse.json({
-        success: true,
-        liked: true,
-        likesCount: newCount
+        success: true, liked: true, likesCount: newCount
       }))
     }
 
   } catch (error) {
     console.error('[Like API] Error:', error)
     return corsResponse(NextResponse.json(
-      { 
-        error: 'Failed to update like status',
+      { success: false, error: 'Failed to update like status',
         details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
+      }, { status: 500 }
     ))
   }
 }
@@ -142,6 +138,7 @@ export async function GET(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
+    const supabase = getSupabase()
     const { searchParams } = new URL(req.url)
     const releaseId = searchParams.get('releaseId')
     
@@ -153,16 +150,16 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if user liked this release
-    const { data: likes, error: likeError } = await supabase
+    const { data: likes } = await supabase
       .from('user_likes')
-      .select('*')
+      .select('id')
       .eq('user_id', userId)
       .eq('release_id', releaseId)
 
-    const liked = likes && likes.length > 0
+    const liked = !!(likes && likes.length > 0)
 
     // Get total likes count
-    const { data: countData, error: countError } = await supabase
+    const { data: countData } = await supabase
       .from('combined_media')
       .select('likes')
       .eq('id', releaseId)
@@ -171,9 +168,7 @@ export async function GET(req: NextRequest) {
     const likesCount = countData?.likes || 0
 
     return corsResponse(NextResponse.json({
-      success: true,
-      liked,
-      likesCount
+      success: true, liked, likesCount
     }))
 
   } catch (error) {
