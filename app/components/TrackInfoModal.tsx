@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Play, Heart, Download, Clock, Music, Disc3, Mic2, Hash, MapPin, Tag } from 'lucide-react'
+import { X, Play, Heart, Download, Clock, Music, Disc3, Mic2, Hash, MapPin, Tag, Fingerprint } from 'lucide-react'
 import Image from 'next/image'
 
 interface TrackInfo {
@@ -33,6 +33,7 @@ interface TrackInfo {
   featured_artists?: string[]
   record_label?: string
   version_tag?: string
+  track_id_444?: string
   users?: { username: string }
 }
 
@@ -109,6 +110,9 @@ export default function TrackInfoModal({ track, onClose, onPlay }: TrackInfoModa
 
           {/* Metadata grid */}
           <div className="mt-4 space-y-0">
+            {track.track_id_444 && (
+              <MetaRow icon={<Fingerprint size={12} />} label="Track ID" value={track.track_id_444} />
+            )}
             {track.genre && (
               <MetaRow icon={<Disc3 size={12} />} label="Genre" value={track.secondary_genre ? `${track.genre} / ${track.secondary_genre}` : track.genre} />
             )}

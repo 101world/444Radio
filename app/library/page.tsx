@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2 } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -60,7 +60,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -68,6 +68,7 @@ export default function LibraryPage() {
   const [likedItems, setLikedItems] = useState<LibraryCombined[]>([])
   const [stemGroups, setStemGroups] = useState<any[]>([])
   const [mixmasterItems, setMixmasterItems] = useState<LibraryMusic[]>([])
+  const [boughtItems, setBoughtItems] = useState<any[]>([])
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -104,7 +105,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -114,7 +115,8 @@ export default function LibraryPage() {
         fetch('/api/library/releases'),
         fetch('/api/library/liked'),
         fetch('/api/library/stems'),
-        fetch('/api/library/mixmaster')
+        fetch('/api/library/mixmaster'),
+        fetch('/api/library/bought')
       ])
 
       const musicData = await musicRes.json()
@@ -127,6 +129,7 @@ export default function LibraryPage() {
       const likedData = await likedRes.json()
       const stemsData = await stemsRes.json()
       const mixmasterData = await mixmasterRes.json()
+      const boughtData = await boughtRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -147,8 +150,15 @@ export default function LibraryPage() {
           console.warn(`⚠️ ${expiredWarningCount} tracks may have expired URLs (Replicate > 48h old)`)
         }
         
-        // Filter out stems and boosted tracks from the music tab (they have their own tabs)
-        const nonStemMusic = uniqueMusic.filter((track: any) => track.genre !== 'stem' && track.genre !== 'boosted')
+        // Filter out stems, boosted tracks, AND purchased tracks from the music tab
+        const boughtAudioUrls = new Set(
+          (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
+        )
+        const nonStemMusic = uniqueMusic.filter((track: any) =>
+          track.genre !== 'stem' && track.genre !== 'boosted' &&
+          !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
+          !boughtAudioUrls.has(track.audio_url)
+        )
         setMusicItems(nonStemMusic)
         console.log('✅ Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems/boosted)')
       }
@@ -200,6 +210,10 @@ export default function LibraryPage() {
       if (mixmasterData.success && Array.isArray(mixmasterData.tracks)) {
         setMixmasterItems(mixmasterData.tracks)
         console.log('🔊 Loaded', mixmasterData.tracks.length, 'mix & master tracks')
+      }
+      if (boughtData.success && Array.isArray(boughtData.bought)) {
+        setBoughtItems(boughtData.bought)
+        console.log('🛒 Loaded', boughtData.bought.length, 'bought tracks')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -604,6 +618,18 @@ export default function LibraryPage() {
               <Volume2 size={18} />
               <span>Mix & Master</span>
               <span className="ml-1 text-xs opacity-60">({mixmasterItems.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('bought')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'bought'
+                  ? 'bg-gradient-to-r from-yellow-600 to-amber-400 text-white shadow-lg shadow-yellow-500/30'
+                  : 'bg-white/5 text-yellow-400/60 hover:bg-yellow-500/10 hover:text-yellow-400'
+              }`}
+            >
+              <ShoppingBag size={18} />
+              <span>Bought</span>
+              <span className="ml-1 text-xs opacity-60">({boughtItems.length})</span>
             </button>
           </div>
         </div>
@@ -1224,6 +1250,103 @@ export default function LibraryPage() {
                       >
                         <Download size={16} className="text-cyan-400" />
                       </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bought / Downloaded Tab */}
+        {!isLoading && activeTab === 'bought' && (
+          <div>
+            {boughtItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-amber-400/10 border border-yellow-500/30 flex items-center justify-center">
+                  <ShoppingBag size={32} className="text-yellow-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No purchased tracks yet</h3>
+                <p className="text-yellow-400/50 mb-6 text-sm">Browse the Earn marketplace to discover tracks</p>
+                <Link href="/earn" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-600 to-amber-400 text-white rounded-xl font-bold hover:from-yellow-700 hover:to-amber-500 transition-all shadow-lg shadow-yellow-500/20">
+                  <ShoppingBag size={18} />
+                  Browse Earn
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {boughtItems.map((item: any) => {
+                  const isCurrentlyPlaying = currentTrack?.id === item.id && isPlaying
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-yellow-500/20 rounded-xl hover:border-yellow-400/40 transition-all group"
+                    >
+                      {/* Play button */}
+                      <button
+                        onClick={async () => {
+                          if (!item.audio_url) return
+                          const t = {
+                            id: item.id,
+                            audioUrl: item.audio_url,
+                            title: item.title || 'Untitled',
+                            artist: user?.firstName || 'You'
+                          }
+                          if (isCurrentlyPlaying) {
+                            togglePlayPause()
+                          } else {
+                            const allTracks = boughtItems.filter((b: any) => b.audio_url).map((b: any) => ({
+                              id: b.id,
+                              audioUrl: b.audio_url,
+                              title: b.title || 'Untitled',
+                              artist: user?.firstName || 'You'
+                            }))
+                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === item.id))
+                          }
+                        }}
+                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border border-yellow-500/30 flex items-center justify-center hover:scale-105 transition-transform"
+                      >
+                        {isCurrentlyPlaying ? (
+                          <Pause size={18} className="text-yellow-400" />
+                        ) : (
+                          <Play size={18} className="text-yellow-400 ml-0.5" />
+                        )}
+                      </button>
+
+                      {/* Track info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">{item.title || 'Untitled'}</h3>
+                        <p className="text-yellow-400/50 text-xs mt-0.5">
+                          Purchased{item.amount_paid ? ` • ${item.amount_paid} cr` : ''}{item.purchased_at ? ` • ${new Date(item.purchased_at).toLocaleDateString()}` : ''}
+                        </p>
+                      </div>
+
+                      {/* Badge - Purchased, no release */}
+                      <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-[10px] text-yellow-400 font-medium flex-shrink-0">
+                        Purchased
+                      </span>
+
+                      {/* Download only - NO release button */}
+                      {item.audio_url && (
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'mp3')}
+                            className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-yellow-500/30 hover:border-yellow-400 hover:bg-yellow-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                            title="Download MP3"
+                          >
+                            <Download size={14} className="text-yellow-400" />
+                            <span className="text-xs text-yellow-400 font-medium">MP3</span>
+                          </button>
+                          <button
+                            onClick={() => handleDownload(item.audio_url, `${item.title || 'track'}.mp3`, 'wav')}
+                            className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-yellow-500/30 hover:border-yellow-400 hover:bg-yellow-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                            title="Download WAV"
+                          >
+                            <Download size={14} className="text-yellow-300" />
+                            <span className="text-xs text-yellow-300 font-medium">WAV</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
