@@ -56,9 +56,9 @@ export async function GET() {
 
     // Fetch from 3 database tables
     const [combinedMediaResponse, combinedLibraryResponse, musicLibraryResponse] = await Promise.all([
-      // combined_media - has audio_url directly, uses user_id column
+      // combined_media - has audio_url directly, uses user_id column (exclude extracts)
       fetch(
-        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&order=created_at.desc`,
+        `${supabaseUrl}/rest/v1/combined_media?audio_url=not.is.null&user_id=eq.${userId}&genre=neq.extract&order=created_at.desc`,
         {
           headers: {
             'apikey': supabaseKey,
