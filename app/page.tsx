@@ -171,10 +171,8 @@ function HomePageContent() {
       {/* Minimal blur overlay - only 5% blur */}
       <div className="fixed inset-0 backdrop-blur-[0.5px] bg-black/10 -z-5"></div>
 
-      {/* Credit Indicator */}
-      <div className="fixed top-4 right-4 z-50">
-        <CreditIndicator />
-      </div>
+      {/* Credit Indicator + Notification Bell */}
+      <CreditIndicator />
 
       <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10 md:pl-24">
         {/* SEO Hero Section - Hidden but crawlable */}
