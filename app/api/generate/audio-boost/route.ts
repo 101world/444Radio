@@ -94,46 +94,49 @@ export async function POST(req: NextRequest) {
     console.log('🔊 Processing audio with Audio Boost...')
 
     try {
-      const prediction = await replicate.predictions.create({
-        model: "lucataco/audio-boost",
-        input: {
-          audio: audioUrl,
-          bass_boost,
-          treble_boost,
-          volume_boost,
-          normalize,
-          noise_reduction,
-          output_format,
-          bitrate,
+      const boostInput = {
+        audio: audioUrl,
+        bass_boost,
+        treble_boost,
+        volume_boost,
+        normalize,
+        noise_reduction,
+        output_format,
+        bitrate,
+      }
+
+      // Use replicate.run() for automatic version resolution + built-in polling
+      // Retry up to 2 times on transient "Director" errors
+      let output: unknown = null
+      let lastError: Error | null = null
+      const MAX_RETRIES = 2
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`🔄 Retry attempt ${attempt}/${MAX_RETRIES}...`)
+            await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
+          }
+          output = await replicate.run("lucataco/audio-boost", { input: boostInput })
+          lastError = null
+          break
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error(String(err))
+          console.error(`❌ Attempt ${attempt} failed:`, lastError.message)
+          // Only retry on transient Replicate infrastructure errors
+          if (!lastError.message.includes('Director') && !lastError.message.includes('E6716')) {
+            break
+          }
         }
-      })
-
-      console.log('🔊 Prediction created:', prediction.id)
-
-      // Poll until completed (audio boost is fast, usually <5s)
-      let finalPrediction = prediction
-      let pollAttempts = 0
-      const maxPollAttempts = 60 // 60 seconds max
-
-      while (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && pollAttempts < maxPollAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        finalPrediction = await replicate.predictions.get(prediction.id)
-        console.log(`🔊 Status: ${finalPrediction.status} (${pollAttempts}s elapsed)`)
-        pollAttempts++
       }
 
-      if (finalPrediction.status === 'failed') {
-        throw new Error(typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Audio boost failed')
+      if (lastError) {
+        throw lastError
       }
 
-      if (finalPrediction.status !== 'succeeded') {
-        throw new Error('Audio boost timed out')
-      }
+      const outputAudioUrl = typeof output === 'string' ? output : (output as Record<string, unknown>)?.url || (output as string[])?.[0]
 
-      const output = finalPrediction.output
-      const outputAudioUrl = typeof output === 'string' ? output : output?.url || output?.[0]
-
-      if (!outputAudioUrl) {
+      if (!outputAudioUrl || typeof outputAudioUrl !== 'string') {
         throw new Error('No output URL from Audio Boost')
       }
 
