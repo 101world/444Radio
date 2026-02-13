@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info, Plug, Copy, Trash2, Eye, EyeOff, Key } from 'lucide-react'
+import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info, Plug, Copy, Trash2, Eye, EyeOff, Key, Download, X, Monitor, HardDrive, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
 import { useCredits } from '../contexts/CreditsContext'
@@ -68,6 +68,7 @@ function SettingsPageInner() {
   const [isCreatingToken, setIsCreatingToken] = useState(false)
   const [copiedToken, setCopiedToken] = useState(false)
   const [pluginError, setPluginError] = useState('')
+  const [showInstallGuide, setShowInstallGuide] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -949,19 +950,142 @@ function SettingsPageInner() {
               <p className="text-xs text-gray-600 mt-4">Maximum 5 active tokens. Each token has a 100 requests/day rate limit.</p>
             </div>
 
-            {/* Plugin download / info */}
+            {/* Plugin download */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-              <h3 className="text-lg font-bold mb-3">Get the Plugin</h3>
+              <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                <Download className="w-5 h-5 text-cyan-400" /> Get the Plugin
+              </h3>
               <p className="text-sm text-gray-400 mb-4">
-                The 444 Radio VST3 plugin works inside Ableton Live (Mac & Windows). One-time purchase, lifetime access — you only pay for generation credits.
+                The 444 Radio VST3 plugin works inside Ableton Live, FL Studio, and any DAW that supports VST3 on Windows.
               </p>
-              <div className="flex items-center gap-4">
-                <div className="bg-gradient-to-br from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-bold text-lg">
-                  $25 <span className="text-sm font-normal opacity-80">one-time</span>
+
+              {subscription?.hasSubscription ? (
+                <div className="space-y-3">
+                  <a
+                    href="https://media.444radio.co.in/downloads/444Radio-Plugin-Windows.zip"
+                    download
+                    onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Plugin (Free)
+                  </a>
+                  <p className="text-xs text-gray-500">Windows VST3 · 1.7 MB · Requires WebView2 Runtime</p>
+                  <button
+                    onClick={() => setShowInstallGuide(true)}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                  >
+                    View install instructions
+                  </button>
                 </div>
-                <span className="text-xs text-gray-500">Coming soon — plugin download will appear here</span>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+                    <Crown className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-white">Subscriber Exclusive</p>
+                      <p className="text-xs text-gray-400">Subscribe to 444 Radio to download the plugin for free</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/subscribe"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm hover:from-purple-500 hover:to-pink-500 transition-all"
+                  >
+                    <Crown className="w-4 h-4" />
+                    Subscribe to Download
+                  </Link>
+                </div>
+              )}
             </div>
+
+            {/* Install Guide Popup */}
+            {showInstallGuide && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowInstallGuide(false)}>
+                <div className="bg-gray-900 border border-white/10 rounded-2xl p-8 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <Monitor className="w-5 h-5 text-cyan-400" />
+                      Install Guide
+                    </h3>
+                    <button onClick={() => setShowInstallGuide(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                      <X size={18} className="text-gray-400" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-5">
+                    {/* Step 1 */}
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">1</div>
+                      <div>
+                        <p className="font-semibold text-white text-sm">Extract the ZIP</p>
+                        <p className="text-xs text-gray-400 mt-1">Unzip <span className="text-cyan-400 font-mono">444Radio-Plugin-Windows.zip</span> — you&apos;ll see a folder called <span className="text-cyan-400 font-mono">444 Radio.vst3</span></p>
+                      </div>
+                    </div>
+
+                    {/* Step 2 */}
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">2</div>
+                      <div>
+                        <p className="font-semibold text-white text-sm">Copy to VST3 Folder</p>
+                        <p className="text-xs text-gray-400 mt-1">Move the <span className="text-cyan-400 font-mono">444 Radio.vst3</span> folder to:</p>
+                        <div className="mt-2 space-y-1.5">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg">
+                            <FolderOpen className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                            <code className="text-xs text-cyan-300 break-all">C:\Program Files\Common Files\VST3\</code>
+                          </div>
+                          <p className="text-[10px] text-gray-500">Or: <code className="text-gray-400">C:\Users\YourName\Documents\VST3\</code> (no admin needed)</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">3</div>
+                      <div>
+                        <p className="font-semibold text-white text-sm">Rescan in Your DAW</p>
+                        <p className="text-xs text-gray-400 mt-1"><strong className="text-white">Ableton:</strong> Preferences → Plug-ins → VST3 → Rescan</p>
+                        <p className="text-xs text-gray-400"><strong className="text-white">FL Studio:</strong> Options → Manage Plugins → Find more → Rescan</p>
+                        <p className="text-xs text-gray-400 mt-1">Look for <span className="text-cyan-400 font-semibold">&quot;444 Radio&quot;</span> under VST3 instruments</p>
+                      </div>
+                    </div>
+
+                    {/* Step 4 */}
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">4</div>
+                      <div>
+                        <p className="font-semibold text-white text-sm">Connect Your Token</p>
+                        <p className="text-xs text-gray-400 mt-1">Open the plugin → paste your token from above → hit <span className="text-cyan-400">Connect</span>. Your credits will appear and you can start generating!</p>
+                      </div>
+                    </div>
+
+                    {/* Step 5 */}
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs font-bold text-purple-400">5</div>
+                      <div>
+                        <p className="font-semibold text-white text-sm">Drag to Timeline</p>
+                        <p className="text-xs text-gray-400 mt-1">After generating, drag audio from the purple bar at the bottom of the plugin window straight onto your DAW timeline.</p>
+                      </div>
+                    </div>
+
+                    {/* WebView2 note */}
+                    <div className="mt-4 flex items-start gap-2 px-4 py-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                      <Info className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-yellow-300 font-medium">Requires Microsoft Edge WebView2</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Most Windows 10/11 PCs already have it. If the plugin window is blank, <a href="https://developer.microsoft.com/en-us/microsoft-edge/webview2/" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline">download WebView2 Runtime here</a>.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowInstallGuide(false)}
+                    className="w-full mt-6 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-gray-300 transition-colors"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
