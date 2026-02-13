@@ -199,9 +199,9 @@ export async function POST(request: NextRequest) {
       console.error('Failed to record earn transaction:', e)
     }
 
-    // 9a. Record in earn_purchases (for re-release prevention)
+    // 9a. Record in earn_purchases (for re-release prevention + bought tab)
     try {
-      await supabaseRest('earn_purchases', {
+      const purchaseInsertRes = await supabaseRest('earn_purchases', {
         method: 'POST',
         body: JSON.stringify({
           buyer_id: userId,
@@ -211,8 +211,14 @@ export async function POST(request: NextRequest) {
           amount_paid: totalCost,
         }),
       })
+      if (!purchaseInsertRes.ok) {
+        const errBody = await purchaseInsertRes.text().catch(() => 'unknown')
+        console.error('earn_purchases INSERT failed:', purchaseInsertRes.status, errBody)
+      } else {
+        console.log('✅ earn_purchases recorded for buyer', userId, 'track', trackId)
+      }
     } catch (e) {
-      console.error('Failed to record earn purchase (table may not exist):', e)
+      console.error('earn_purchases network error:', e)
     }
 
     // 9b. Log credit transactions for buyer and seller
@@ -250,7 +256,7 @@ export async function POST(request: NextRequest) {
 
     // 10. Save to buyer's music_library so it appears in their Library
     try {
-      await supabaseRest('music_library', {
+      const libRes = await supabaseRest('music_library', {
         method: 'POST',
         body: JSON.stringify({
           clerk_user_id: userId,
@@ -262,8 +268,14 @@ export async function POST(request: NextRequest) {
           status: 'ready',
         }),
       })
+      if (!libRes.ok) {
+        const errBody = await libRes.text().catch(() => 'unknown')
+        console.error('music_library INSERT failed:', libRes.status, errBody)
+      } else {
+        console.log('✅ music_library saved for buyer', userId)
+      }
     } catch (e) {
-      console.error('Failed to save to buyer library (non-critical):', e)
+      console.error('music_library network error:', e)
     }
 
     // 11. If split stems requested, queue the job

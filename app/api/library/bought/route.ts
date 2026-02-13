@@ -4,9 +4,10 @@ import { auth } from '@clerk/nextjs/server'
 /**
  * GET /api/library/bought
  * Get tracks the user purchased from the Earn marketplace.
- * Sources:
+ * Sources (checked in order, results merged):
  *   1. earn_purchases table (definitive)
- *   2. music_library where prompt contains "Purchased from EARN"
+ *   2. earn_transactions where buyer_id = user and transaction_type = 'purchase' (fallback)
+ *   3. music_library where prompt contains "Purchased from EARN" (legacy fallback)
  */
 export async function GET() {
   try {
@@ -23,23 +24,50 @@ export async function GET() {
       'Authorization': `Bearer ${supabaseKey}`,
     }
 
-    // 1. Get from earn_purchases for this buyer
-    const [purchasesRes, musicLibRes] = await Promise.all([
+    // 1. Fetch from all three sources in parallel
+    const [purchasesRes, transactionsRes, musicLibRes] = await Promise.all([
       fetch(
         `${supabaseUrl}/rest/v1/earn_purchases?buyer_id=eq.${userId}&order=created_at.desc&select=*`,
         { headers }
-      ),
+      ).catch(() => null),
+      fetch(
+        `${supabaseUrl}/rest/v1/earn_transactions?buyer_id=eq.${userId}&order=created_at.desc&select=track_id,seller_id,total_cost,created_at,track_title,seller_username,transaction_type`,
+        { headers }
+      ).catch(() => null),
       fetch(
         `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&prompt=ilike.*purchased*from*earn*&order=created_at.desc&select=*`,
         { headers }
-      ),
+      ).catch(() => null),
     ])
 
-    const purchases = purchasesRes.ok ? await purchasesRes.json() : []
-    const musicLib = musicLibRes.ok ? await musicLibRes.json() : []
+    const purchases = (purchasesRes?.ok ? await purchasesRes.json() : []) as any[]
+    const transactions = (transactionsRes?.ok ? await transactionsRes.json() : []) as any[]
+    const musicLib = (musicLibRes?.ok ? await musicLibRes.json() : []) as any[]
+
+    console.log(`[BOUGHT] Sources: earn_purchases=${Array.isArray(purchases) ? purchases.length : 0}, earn_transactions=${Array.isArray(transactions) ? transactions.length : 0}, music_library=${Array.isArray(musicLib) ? musicLib.length : 0}`)
+
+    // Merge: start with earn_purchases, fill gaps from earn_transactions
+    const purchaseTrackIds = new Set((Array.isArray(purchases) ? purchases : []).map((p: any) => p.track_id))
+    const allPurchases: any[] = [...(Array.isArray(purchases) ? purchases : [])]
+    
+    // Add any transactions NOT already covered by earn_purchases (purchases only, not listings)
+    for (const tx of (Array.isArray(transactions) ? transactions : [])) {
+      if (tx.track_id && !purchaseTrackIds.has(tx.track_id) && tx.transaction_type !== 'listing') {
+        allPurchases.push({
+          buyer_id: userId,
+          seller_id: tx.seller_id,
+          track_id: tx.track_id,
+          track_title: tx.track_title,
+          amount_paid: tx.total_cost,
+          created_at: tx.created_at,
+          _source: 'earn_transactions',
+        })
+        purchaseTrackIds.add(tx.track_id)
+      }
+    }
 
     // For each purchase, try to get the full track info from combined_media
-    const trackIds = Array.isArray(purchases) ? purchases.map((p: any) => p.track_id) : []
+    const trackIds = allPurchases.map((p: any) => p.track_id).filter(Boolean)
     let fullTracks: any[] = []
 
     if (trackIds.length > 0) {
@@ -60,7 +88,7 @@ export async function GET() {
     }
 
     // Resolve seller usernames
-    const sellerIds = [...new Set((Array.isArray(purchases) ? purchases : []).map((p: any) => p.seller_id).filter(Boolean))]
+    const sellerIds = [...new Set(allPurchases.map((p: any) => p.seller_id).filter(Boolean))]
     const sellerMap = new Map<string, string>()
     if (sellerIds.length > 0) {
       const idsParam = `(${sellerIds.join(',')})`
@@ -82,7 +110,7 @@ export async function GET() {
       if (m.audio_url) musicLibMap.set(m.audio_url, m)
     }
 
-    const boughtTracks = (Array.isArray(purchases) ? purchases : []).map((p: any) => {
+    const boughtTracks = allPurchases.map((p: any) => {
       const full = trackMap.get(p.track_id)
       return {
         id: p.track_id,
