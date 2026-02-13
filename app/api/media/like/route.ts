@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
-import { createClient } from '@supabase/supabase-js'
 
 /**
- * Like API - Toggle like/unlike with user_likes table tracking
- * Uses service role key to bypass RLS (auth via Clerk)
+ * Like API v4 — Uses raw Supabase REST (same pattern as working earn routes)
+ * Bypasses @supabase/supabase-js entirely to eliminate client library issues
  */
+
+const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+async function sb(path: string, options?: RequestInit) {
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+      ...(options?.headers || {}),
+    },
+  })
+  return res
+}
 
 export async function OPTIONS() {
   return handleOptions()
@@ -19,91 +35,84 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }))
     }
 
-    // Validate env
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('[Like API] Missing SUPABASE env vars')
-      return corsResponse(NextResponse.json({ success: false, error: 'Server config error' }, { status: 500 }))
+    let releaseId: string
+    try {
+      const body = await req.json()
+      releaseId = body.releaseId || body.mediaId
+    } catch {
+      return corsResponse(NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 }))
     }
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-
-    const body = await req.json()
-    const releaseId = body.releaseId || body.mediaId
     if (!releaseId) {
       return corsResponse(NextResponse.json({ success: false, error: 'Release ID is required' }, { status: 400 }))
     }
 
-    console.log('[Like API] POST user=', userId, 'release=', releaseId)
-
     // Step 1 — Check existing like
-    const { data: existing, error: checkErr } = await supabase
-      .from('user_likes')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('release_id', releaseId)
-
-    if (checkErr) {
-      console.error('[Like API] check error:', JSON.stringify(checkErr))
-      return corsResponse(NextResponse.json({ success: false, error: checkErr.message, code: checkErr.code }, { status: 500 }))
+    const checkRes = await sb(
+      `user_likes?user_id=eq.${userId}&release_id=eq.${releaseId}&select=id`
+    )
+    if (!checkRes.ok) {
+      const err = await checkRes.text()
+      console.error('[Like API] check failed:', checkRes.status, err)
+      return corsResponse(NextResponse.json({ success: false, error: 'DB check failed', detail: err }, { status: 500 }))
     }
 
-    const alreadyLiked = existing && existing.length > 0
+    const existing = await checkRes.json()
+    const alreadyLiked = Array.isArray(existing) && existing.length > 0
     let liked: boolean
 
     if (alreadyLiked) {
-      // Unlike — remove row
-      const { error: delErr } = await supabase
-        .from('user_likes')
-        .delete()
-        .eq('user_id', userId)
-        .eq('release_id', releaseId)
-
-      if (delErr) {
-        console.error('[Like API] delete error:', JSON.stringify(delErr))
-        return corsResponse(NextResponse.json({ success: false, error: delErr.message }, { status: 500 }))
+      // Unlike — delete row
+      const delRes = await sb(
+        `user_likes?user_id=eq.${userId}&release_id=eq.${releaseId}`,
+        { method: 'DELETE' }
+      )
+      if (!delRes.ok) {
+        const err = await delRes.text()
+        console.error('[Like API] delete failed:', delRes.status, err)
+        return corsResponse(NextResponse.json({ success: false, error: 'Unlike failed', detail: err }, { status: 500 }))
       }
       liked = false
     } else {
       // Like — insert row
-      const { error: insErr } = await supabase
-        .from('user_likes')
-        .insert({ user_id: userId, release_id: releaseId })
-
-      if (insErr) {
-        console.error('[Like API] insert error:', JSON.stringify(insErr))
-        return corsResponse(NextResponse.json({ success: false, error: insErr.message }, { status: 500 }))
+      const insRes = await sb('user_likes', {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId, release_id: releaseId }),
+      })
+      if (!insRes.ok) {
+        const err = await insRes.text()
+        console.error('[Like API] insert failed:', insRes.status, err)
+        return corsResponse(NextResponse.json({ success: false, error: 'Like failed', detail: err }, { status: 500 }))
       }
       liked = true
     }
 
-    // Step 2 — Recount likes from user_likes table
-    const { data: countRows, error: countErr } = await supabase
-      .from('user_likes')
-      .select('id')
-      .eq('release_id', releaseId)
+    // Step 2 — Count likes for this release
+    const countRes = await sb(
+      `user_likes?release_id=eq.${releaseId}&select=id`
+    )
+    const countRows = countRes.ok ? await countRes.json() : []
+    const newCount = Array.isArray(countRows) ? countRows.length : 0
 
-    const newCount = countErr ? 0 : (countRows?.length || 0)
-
-    // Step 3 — Update likes on combined_media (only the 'likes' column)
-    // The 'likes_count' column is maintained by a DB trigger automatically
-    const { error: updateErr } = await supabase
-      .from('combined_media')
-      .update({ likes: newCount })
-      .eq('id', releaseId)
-
-    if (updateErr) {
-      console.error('[Like API] combined_media update error:', JSON.stringify(updateErr))
-      // Don't fail — the like itself succeeded
+    // Step 3 — Update likes column on combined_media (non-fatal)
+    const upRes = await sb(
+      `combined_media?id=eq.${releaseId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ likes: newCount }),
+      }
+    )
+    if (!upRes.ok) {
+      console.warn('[Like API] combined_media update failed:', await upRes.text())
     }
 
-    console.log('[Like API] success: liked=', liked, 'count=', newCount)
     return corsResponse(NextResponse.json({ success: true, liked, likesCount: newCount }))
-
   } catch (error) {
-    console.error('[Like API] Unhandled POST error:', error)
+    console.error('[Like API] POST crash:', error)
     return corsResponse(NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack?.split('\n').slice(0, 3) : undefined,
     }, { status: 500 }))
   }
 }
@@ -115,40 +124,31 @@ export async function GET(req: NextRequest) {
       return corsResponse(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }))
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return corsResponse(NextResponse.json({ success: false, error: 'Server config error' }, { status: 500 }))
-    }
-
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-
     const releaseId = new URL(req.url).searchParams.get('releaseId')
     if (!releaseId) {
       return corsResponse(NextResponse.json({ success: false, error: 'Release ID required' }, { status: 400 }))
     }
 
     // Check user's like
-    const { data: likes } = await supabase
-      .from('user_likes')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('release_id', releaseId)
+    const checkRes = await sb(
+      `user_likes?user_id=eq.${userId}&release_id=eq.${releaseId}&select=id`
+    )
+    const rows = checkRes.ok ? await checkRes.json() : []
+    const liked = Array.isArray(rows) && rows.length > 0
 
-    const liked = !!(likes && likes.length > 0)
+    // Get total count from combined_media
+    const countRes = await sb(
+      `combined_media?id=eq.${releaseId}&select=likes`
+    )
+    const media = countRes.ok ? await countRes.json() : []
+    const likesCount = Array.isArray(media) && media.length > 0 ? (media[0].likes || 0) : 0
 
-    // Get total count
-    const { data: countData } = await supabase
-      .from('combined_media')
-      .select('likes')
-      .eq('id', releaseId)
-      .single()
-
-    return corsResponse(NextResponse.json({
-      success: true,
-      liked,
-      likesCount: countData?.likes || 0
-    }))
+    return corsResponse(NextResponse.json({ success: true, liked, likesCount }))
   } catch (error) {
-    console.error('[Like API] Unhandled GET error:', error)
-    return corsResponse(NextResponse.json({ success: false, error: 'Failed to get like status' }, { status: 500 }))
+    console.error('[Like API] GET crash:', error)
+    return corsResponse(NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    }, { status: 500 }))
   }
 }
