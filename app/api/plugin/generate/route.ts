@@ -44,7 +44,8 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   image: 1,
   effects: 2,
   loops: (p) => ((p.max_duration as number) || 8) <= 8 ? 6 : 7,
-  stems: 1,
+  stems: 5,
+  extract: 1,
   'audio-boost': 1,
 }
 
@@ -131,6 +132,9 @@ export async function POST(req: NextRequest) {
           break
         case 'audio-boost':
           result = await generateAudioBoost(userId, body, jobId)
+          break
+        case 'extract':
+          result = await generateStems(userId, body, jobId, requestSignal)
           break
         default:
           result = { success: false, error: 'Unknown type' }

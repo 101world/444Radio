@@ -28,7 +28,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const extractAudioFileInputRef = useRef<HTMLInputElement>(null)
 
   // Extract Audio parameters
-  const [extractStem, setExtractStem] = useState<'vocals' | 'bass' | 'drums' | 'piano' | 'other'>('vocals')
+  const [extractStem, setExtractStem] = useState<'vocals' | 'bass' | 'drums' | 'piano' | 'guitar' | 'other'>('vocals')
 
   // Audio Boost parameters
   const [bassBoost, setBassBoost] = useState(0)
@@ -849,7 +849,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    {(['vocals', 'bass', 'drums', 'piano', 'other'] as const).map((s) => (
+                    {(['vocals', 'bass', 'drums', 'piano', 'guitar', 'other'] as const).map((s) => (
                       <button
                         key={s}
                         onClick={() => setExtractStem(s)}
@@ -863,6 +863,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                          s === 'bass' ? '🎸 Bass' :
                          s === 'drums' ? '🥁 Drums' :
                          s === 'piano' ? '🎹 Piano' :
+                         s === 'guitar' ? '🎸 Guitar' :
                          '🎵 Other'}
                       </button>
                     ))}
