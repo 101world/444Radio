@@ -26,13 +26,13 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const boostFileInputRef = useRef<HTMLInputElement>(null)
 
   // Audio Boost parameters
-  const [bassBoost, setBassBoost] = useState(5)
-  const [trebleBoost, setTrebleBoost] = useState(5)
-  const [volumeBoost, setVolumeBoost] = useState(6)
-  const [boostNormalize, setBoostNormalize] = useState(false)
-  const [boostNoiseReduction, setBoostNoiseReduction] = useState(true)
+  const [bassBoost, setBassBoost] = useState(0)
+  const [trebleBoost, setTrebleBoost] = useState(0)
+  const [volumeBoost, setVolumeBoost] = useState(2)
+  const [boostNormalize, setBoostNormalize] = useState(true)
+  const [boostNoiseReduction, setBoostNoiseReduction] = useState(false)
   const [boostFormat, setBoostFormat] = useState('mp3')
-  const [boostBitrate, setBoostBitrate] = useState('320k')
+  const [boostBitrate, setBoostBitrate] = useState('192k')
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split' | 'audio-boost') => {
     const file = e.target.files?.[0]
@@ -615,13 +615,13 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                   {/* Quick Presets */}
                   <div className="grid grid-cols-3 gap-2">
                     <button
-                      onClick={() => { setBassBoost(5); setTrebleBoost(5); setVolumeBoost(6); setBoostNormalize(false); setBoostNoiseReduction(true); setBoostBitrate('320k') }}
+                      onClick={() => { setBassBoost(5); setTrebleBoost(5); setVolumeBoost(6); setBoostNormalize(true); setBoostNoiseReduction(true); setBoostBitrate('320k') }}
                       className="px-3 py-2 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 hover:border-orange-400/50 rounded-lg text-xs font-semibold text-orange-300 transition-all"
                     >
                       🔥 444 Mix
                     </button>
                     <button
-                      onClick={() => { setBassBoost(0); setTrebleBoost(0); setVolumeBoost(2); setBoostNormalize(true); setBoostNoiseReduction(false); setBoostBitrate('320k') }}
+                      onClick={() => { setBassBoost(0); setTrebleBoost(0); setVolumeBoost(2); setBoostNormalize(true); setBoostNoiseReduction(false); setBoostBitrate('192k') }}
                       className="px-3 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-lg text-xs font-semibold text-gray-300 transition-all"
                     >
                       🎧 Clean

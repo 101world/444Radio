@@ -14,13 +14,13 @@ interface AudioBoostModalProps {
 
 export default function AudioBoostModal({ isOpen, onClose, audioUrl, trackTitle, onSuccess, onError }: AudioBoostModalProps) {
   // Parameters with defaults matching the user's example
-  const [bassBoost, setBassBoost] = useState(5)
-  const [trebleBoost, setTrebleBoost] = useState(5)
-  const [volumeBoost, setVolumeBoost] = useState(6)
-  const [normalize, setNormalize] = useState(false)
-  const [noiseReduction, setNoiseReduction] = useState(true)
+  const [bassBoost, setBassBoost] = useState(0)
+  const [trebleBoost, setTrebleBoost] = useState(0)
+  const [volumeBoost, setVolumeBoost] = useState(2)
+  const [normalize, setNormalize] = useState(true)
+  const [noiseReduction, setNoiseReduction] = useState(false)
   const [outputFormat, setOutputFormat] = useState('mp3')
-  const [bitrate, setBitrate] = useState('320k')
+  const [bitrate, setBitrate] = useState('192k')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState('')
 
@@ -263,14 +263,14 @@ export default function AudioBoostModal({ isOpen, onClose, audioUrl, trackTitle,
             <label className="text-xs font-medium text-gray-400">Quick Presets</label>
             <div className="grid grid-cols-3 gap-2">
               <button
-                onClick={() => { setBassBoost(5); setTrebleBoost(5); setVolumeBoost(6); setNormalize(false); setNoiseReduction(true); setBitrate('320k') }}
+                onClick={() => { setBassBoost(5); setTrebleBoost(5); setVolumeBoost(6); setNormalize(true); setNoiseReduction(true); setBitrate('320k') }}
                 disabled={isProcessing}
                 className="px-3 py-2 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 hover:border-orange-400/50 rounded-lg text-xs font-semibold text-orange-300 transition-all disabled:opacity-50"
               >
                 🔥 444 Mix
               </button>
               <button
-                onClick={() => { setBassBoost(0); setTrebleBoost(0); setVolumeBoost(2); setNormalize(true); setNoiseReduction(false); setBitrate('320k') }}
+                onClick={() => { setBassBoost(0); setTrebleBoost(0); setVolumeBoost(2); setNormalize(true); setNoiseReduction(false); setBitrate('192k') }}
                 disabled={isProcessing}
                 className="px-3 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-lg text-xs font-semibold text-gray-300 transition-all disabled:opacity-50"
               >

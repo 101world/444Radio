@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 
 // Allow up to 2 minutes for audio boost processing
 export const maxDuration = 120
-
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_KEY_LATEST2!,
-})
 
 export async function OPTIONS() {
   return handleOptions()
@@ -28,13 +23,13 @@ export async function POST(req: NextRequest) {
     const {
       audioUrl,
       trackTitle,
-      bass_boost = 5,
-      treble_boost = 5,
-      volume_boost = 6,
-      normalize = false,
-      noise_reduction = true,
+      bass_boost = 0,
+      treble_boost = 0,
+      volume_boost = 2,
+      normalize = true,
+      noise_reduction = false,
       output_format = 'mp3',
-      bitrate = '320k',
+      bitrate = '192k',
     } = body
 
     if (!audioUrl) {
@@ -90,10 +85,11 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Audio Boost requires ${BOOST_COST} credit.`)
 
-    // Generate boosted audio using lucataco/audio-boost
+    // Generate boosted audio using lucataco/audio-boost via raw HTTP API
     console.log('🔊 Processing audio with Audio Boost...')
 
     try {
+      const REPLICATE_TOKEN = process.env.REPLICATE_API_KEY_LATEST2!
       const boostInput = {
         audio: audioUrl,
         bass_boost,
@@ -105,39 +101,60 @@ export async function POST(req: NextRequest) {
         bitrate,
       }
 
-      // Use replicate.run() for automatic version resolution + built-in polling
-      // Retry up to 2 times on transient "Director" errors
-      let output: unknown = null
-      let lastError: Error | null = null
-      const MAX_RETRIES = 2
+      console.log('🔊 Creating prediction via Replicate HTTP API...')
+      console.log('🎛️ Input:', JSON.stringify(boostInput))
 
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          if (attempt > 0) {
-            console.log(`🔄 Retry attempt ${attempt}/${MAX_RETRIES}...`)
-            await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
-          }
-          output = await replicate.run("lucataco/audio-boost", { input: boostInput })
-          lastError = null
-          break
-        } catch (err) {
-          lastError = err instanceof Error ? err : new Error(String(err))
-          console.error(`❌ Attempt ${attempt} failed:`, lastError.message)
-          // Only retry on transient Replicate infrastructure errors
-          if (!lastError.message.includes('Director') && !lastError.message.includes('E6716')) {
-            break
-          }
-        }
+      // Step 1: Create prediction
+      const createRes = await fetch('https://api.replicate.com/v1/models/lucataco/audio-boost/predictions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${REPLICATE_TOKEN}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'wait',  // Wait for completion (up to 60s)
+        },
+        body: JSON.stringify({ input: boostInput }),
+      })
+
+      let prediction = await createRes.json()
+      console.log('🔊 Prediction response status:', prediction.status, '| id:', prediction.id)
+
+      if (prediction.error) {
+        throw new Error(`Replicate error: ${typeof prediction.error === 'string' ? prediction.error : JSON.stringify(prediction.error)}`)
       }
 
-      if (lastError) {
-        throw lastError
+      // Step 2: Poll if not yet completed (Prefer: wait may timeout)
+      let pollAttempts = 0
+      const maxPollAttempts = 60
+
+      while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && prediction.status !== 'canceled' && pollAttempts < maxPollAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
+          headers: { 'Authorization': `Bearer ${REPLICATE_TOKEN}` },
+        })
+        prediction = await pollRes.json()
+        console.log(`🔊 Poll ${pollAttempts}: status=${prediction.status}`)
+        pollAttempts++
       }
 
-      const outputAudioUrl = typeof output === 'string' ? output : (output as Record<string, unknown>)?.url || (output as string[])?.[0]
+      if (prediction.status === 'failed' || prediction.status === 'canceled') {
+        const errMsg = typeof prediction.error === 'string' ? prediction.error : JSON.stringify(prediction.error) || 'Audio boost failed'
+        throw new Error(errMsg)
+      }
+
+      if (prediction.status !== 'succeeded') {
+        throw new Error(`Audio boost timed out after ${pollAttempts}s (status: ${prediction.status})`)
+      }
+
+      // Step 3: Extract output URL
+      const outputAudioUrl = typeof prediction.output === 'string'
+        ? prediction.output
+        : prediction.output?.url || prediction.output?.[0]
+
+      console.log('🔊 Raw output:', JSON.stringify(prediction.output))
+      console.log('🔊 Extracted URL:', outputAudioUrl)
 
       if (!outputAudioUrl || typeof outputAudioUrl !== 'string') {
-        throw new Error('No output URL from Audio Boost')
+        throw new Error(`No output URL from Audio Boost. Raw output: ${JSON.stringify(prediction.output)}`)
       }
 
       console.log('✅ Audio Boost output:', outputAudioUrl)
