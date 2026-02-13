@@ -14,13 +14,14 @@ export default function CreditIndicator() {
   if (!user) return null
 
   const isSubscribed = subscriptionStatus === 'active'
-  // Hide on mobile when player is active to prevent overlap
   const playerActive = !!currentTrack
 
   return (
     <Link href={isSubscribed ? '/pricing' : '/decrypt'}>
-      <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 backdrop-blur-2xl border rounded-full shadow-lg transition-all cursor-pointer group ${
-        playerActive ? 'md:flex hidden' : ''
+      <div className={`fixed z-50 flex items-center backdrop-blur-2xl border rounded-full shadow-lg transition-all duration-300 cursor-pointer group ${
+        playerActive
+          ? 'top-3 right-3 gap-1.5 px-3 py-2 scale-90 origin-top-right'
+          : 'top-6 right-6 gap-2 px-4 py-3'
       } ${
         isSubscribed 
           ? 'bg-gradient-to-r from-purple-900/60 to-cyan-900/60 border-purple-500/50 shadow-purple-500/30 hover:border-purple-400/70'

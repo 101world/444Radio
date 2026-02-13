@@ -464,12 +464,19 @@ export default function FloatingAudioPlayer() {
       <div
         className="fixed top-0 right-0 h-screen w-[104px] z-40 flex flex-col items-center py-2 transition-all duration-300 overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(13,13,16,0.92) 0%, rgba(8,8,11,0.96) 100%)',
-          borderLeft: '1px solid rgba(34, 211, 238, 0.05)',
+          background: 'linear-gradient(180deg, rgba(8,8,12,0.95) 0%, rgba(4,4,8,0.98) 100%)',
+          borderLeft: '1px solid rgba(34, 211, 238, 0.06)',
+          boxShadow: '-4px 0 30px rgba(0,0,0,0.5), -1px 0 10px rgba(34,211,238,0.02)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
         }}
       >
+        {/* Accent glow line at top */}
+        <div className="w-full h-[1px] flex-shrink-0 mb-2" style={{
+          background: isPlaying
+            ? 'linear-gradient(90deg, transparent, rgba(34,211,238,0.3) 50%, transparent)'
+            : 'linear-gradient(90deg, transparent, rgba(34,211,238,0.08) 50%, transparent)',
+        }} />
         {/* Album art — click to expand */}
         <div className="mb-3 cursor-pointer group/art" onClick={() => setExpanded(true)} title="Expand player">
           <div className="relative">
@@ -570,13 +577,20 @@ export default function FloatingAudioPlayer() {
     <div
       className="fixed top-0 right-0 h-screen w-[620px] z-40 flex flex-col transition-all duration-300"
       style={{
-        background: 'linear-gradient(180deg, rgba(10,10,13,0.97) 0%, rgba(6,6,9,0.99) 100%)',
-        borderLeft: '1px solid rgba(34, 211, 238, 0.04)',
-        boxShadow: '-12px 0 60px rgba(0,0,0,0.7)',
+        background: 'linear-gradient(180deg, rgba(8,8,12,0.98) 0%, rgba(4,4,8,0.99) 100%)',
+        borderLeft: '1px solid rgba(34, 211, 238, 0.06)',
+        boxShadow: '-12px 0 80px rgba(0,0,0,0.8), -2px 0 20px rgba(34,211,238,0.03)',
         backdropFilter: 'blur(40px)',
         WebkitBackdropFilter: 'blur(40px)',
       }}
     >
+      {/* Accent glow line at top */}
+      <div className="h-[1px] w-full flex-shrink-0" style={{
+        background: isPlaying
+          ? 'linear-gradient(90deg, transparent, rgba(34,211,238,0.4) 30%, rgba(20,184,166,0.5) 50%, rgba(34,211,238,0.4) 70%, transparent)'
+          : 'linear-gradient(90deg, transparent, rgba(34,211,238,0.1) 50%, transparent)',
+      }} />
+
       {/* ─── Header ─── */}
       <div className="flex items-center justify-between px-6 h-14 border-b border-white/[0.03] flex-shrink-0">
         <div className="flex items-center gap-2.5">
@@ -595,6 +609,11 @@ export default function FloatingAudioPlayer() {
       <div className="flex gap-5 px-6 pt-5 pb-3 flex-shrink-0">
         {/* Album art with progress ring */}
         <div className="relative w-32 h-32 flex-shrink-0">
+          {/* Ambient glow behind art */}
+          {isPlaying && (
+            <div className="absolute -inset-3 rounded-3xl opacity-30 blur-xl pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.2) 0%, rgba(20,184,166,0.1) 50%, transparent 70%)' }} />
+          )}
           <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1.5" />
             <circle cx="50" cy="50" r="46" fill="none" stroke="url(#progressGrad)" strokeWidth="2.5"
@@ -678,10 +697,14 @@ export default function FloatingAudioPlayer() {
 
       {/* ─── Horizontal Waveform ─── */}
       <div className="px-6 pb-1 flex-shrink-0">
-        <div className="w-full h-16 relative rounded-xl overflow-hidden cursor-pointer ring-1 ring-white/[0.03]" onClick={handleHorizontalSeek}
-          style={{ background: 'rgba(0,0,0,0.25)' }}
+        <div className="w-full h-16 relative rounded-xl overflow-hidden cursor-pointer ring-1 ring-white/[0.04]" onClick={handleHorizontalSeek}
+          style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.15) 100%)' }}
         >
           <HorizontalWaveform audioElement={audioEl} isPlaying={isPlaying} progress={progress} />
+          {/* Subtle scan-line overlay */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{
+            backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.5) 2px, rgba(255,255,255,0.5) 3px)',
+          }} />
         </div>
         <div className="flex justify-between mt-1 px-0.5">
           <span className="text-[10px] text-gray-500 font-mono">{formatTime(currentTime)}</span>
@@ -690,36 +713,36 @@ export default function FloatingAudioPlayer() {
       </div>
 
       {/* ─── Transport Controls ─── */}
-      <div className="px-6 py-2 flex items-center justify-center gap-6 flex-shrink-0">
-        <button onClick={toggleShuffle} className={`p-1.5 rounded-xl transition-all ${isShuffled ? 'text-teal-400' : 'text-gray-600 hover:text-gray-300'}`} title="Shuffle">
+      <div className="px-6 py-3 flex items-center justify-center gap-6 flex-shrink-0">
+        <button onClick={toggleShuffle} className={`p-2 rounded-xl transition-all ${isShuffled ? 'text-teal-400 bg-teal-500/10 shadow-sm shadow-teal-500/10' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Shuffle">
           <Shuffle size={15} />
         </button>
-        <button onClick={playPrevious} className="text-gray-400 hover:text-gray-200 p-1 transition-colors" title="Previous">
+        <button onClick={playPrevious} className="text-gray-400 hover:text-gray-200 p-1.5 rounded-xl hover:bg-white/[0.04] transition-all" title="Previous">
           <SkipBack size={20} />
         </button>
         <button
           onClick={togglePlayPause}
-          className="w-14 h-14 rounded-2xl flex items-center justify-center active:scale-95 transition-all"
+          className="w-16 h-16 rounded-[22px] flex items-center justify-center active:scale-95 transition-all relative"
           style={{
             background: 'linear-gradient(135deg, #0d9488, #22d3ee)',
             boxShadow: isPlaying
-              ? '0 0 30px rgba(34,211,238,0.2), inset 0 1px 0 rgba(255,255,255,0.15)'
-              : '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+              ? '0 0 40px rgba(34,211,238,0.25), 0 0 80px rgba(34,211,238,0.08), inset 0 1px 0 rgba(255,255,255,0.15)'
+              : '0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15)',
           }}
           title="Play/Pause (Space)"
         >
-          {isPlaying ? <Pause size={20} className="text-white" fill="currentColor" /> : <Play size={20} className="text-white ml-0.5" fill="currentColor" />}
+          {isPlaying ? <Pause size={22} className="text-white" fill="currentColor" /> : <Play size={22} className="text-white ml-0.5" fill="currentColor" />}
         </button>
-        <button onClick={playNext} className="text-gray-400 hover:text-gray-200 p-1 transition-colors" title="Next">
+        <button onClick={playNext} className="text-gray-400 hover:text-gray-200 p-1.5 rounded-xl hover:bg-white/[0.04] transition-all" title="Next">
           <SkipForward size={20} />
         </button>
-        <button onClick={toggleLoop} className={`p-1.5 rounded-xl transition-all ${isLooping ? 'text-teal-400' : 'text-gray-600 hover:text-gray-300'}`} title="Loop">
+        <button onClick={toggleLoop} className={`p-2 rounded-xl transition-all ${isLooping ? 'text-teal-400 bg-teal-500/10 shadow-sm shadow-teal-500/10' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[0.04]'}`} title="Loop">
           <Repeat size={15} />
         </button>
       </div>
 
       {/* ─── Volume — modern horizontal slider ─── */}
-      <div className="px-6 pb-3 flex items-center gap-3 flex-shrink-0">
+      <div className="px-6 pb-4 flex items-center gap-3 flex-shrink-0">
         <button onClick={() => setVolume(volume === 0 ? 0.7 : 0)} className="text-gray-500 hover:text-teal-400 transition-colors">
           {volume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
         </button>

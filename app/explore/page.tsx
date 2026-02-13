@@ -86,13 +86,13 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
 }) {
   const gs = getGenreStyle(media.genre)
   return (
-    <div className="group cursor-pointer w-[120px] flex-shrink-0" onClick={onPlay}>
-      <div className={`relative w-[120px] h-[120px] rounded-lg overflow-hidden transition-all duration-200 ${
-        isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/20' : 'ring-1 ring-white/[0.06] hover:ring-white/15'
+    <div className="group cursor-pointer w-[140px] flex-shrink-0" onClick={onPlay}>
+      <div className={`relative w-[140px] h-[140px] rounded-xl overflow-hidden transition-all duration-200 ${
+        isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/20' : 'ring-1 ring-white/[0.06] hover:ring-white/15 hover:shadow-lg hover:shadow-black/30'
       }`}>
         {media.image_url || media.imageUrl ? (
-          <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={120} height={120}
-            className="w-full h-full object-cover" loading="lazy" quality={65} unoptimized />
+          <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={140} height={140}
+            className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
             <Music size={20} className="text-gray-700" />
@@ -104,7 +104,7 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
         <div className={`absolute inset-0 flex items-center justify-center transition-all ${
           isCurrentlyPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}>
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md shadow-2xl transition-transform group-hover:scale-110 ${
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md shadow-2xl transition-transform group-hover:scale-110 ${
             isCurrentlyPlaying ? 'bg-cyan-400' : 'bg-white/90'
           }`}>
             {isCurrentlyPlaying && isPlaying
@@ -125,7 +125,7 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
         {/* Genre badge bottom-left */}
         {gs && (
           <div className="absolute bottom-2 left-2">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border backdrop-blur-sm ${gs.bg} ${gs.text} ${gs.border}`}>
+            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border backdrop-blur-sm ${gs.bg} ${gs.text} ${gs.border}`}>
               {media.genre}
             </span>
           </div>
@@ -133,15 +133,15 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
         {/* Info button top-left */}
         {onInfo && (
           <button onClick={e => { e.stopPropagation(); onInfo() }}
-            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-gray-400 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all z-10"
+            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-gray-400 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all z-10"
             title="Track info">
-            <Info size={9} />
+            <Info size={10} />
           </button>
         )}
       </div>
       {/* Info below card */}
-      <div className="mt-1.5 w-[120px]">
-        <h3 className={`font-semibold text-[10px] truncate leading-tight ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>
+      <div className="mt-1.5 w-[140px]">
+        <h3 className={`font-semibold text-[11px] truncate leading-tight ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>
           {media.title}
         </h3>
         {media.user_id && media.user_id !== 'undefined' ? (
@@ -151,7 +151,7 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
         ) : (
           <span className="text-[10px] text-gray-600 truncate block">{media.users?.username || 'Unknown'}</span>
         )}
-        <div className="flex items-center gap-1.5 mt-0.5 text-[8px] text-gray-600">
+        <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-gray-600">
           <span className="flex items-center gap-0.5"><Headphones size={8} />{formatPlays(media.plays || 0)}</span>
           <span className="flex items-center gap-0.5"><Heart size={8} />{media.likes || 0}</span>
         </div>
@@ -392,8 +392,17 @@ function ExplorePageContent() {
   }
 
   // ─── Derived ───
-  const hotTracks = [...combinedMedia].sort((a, b) => ((b.plays || 0) + (b.likes || 0) * 3) - ((a.plays || 0) + (a.likes || 0) * 3)).slice(0, 12)
-  const newReleases = [...combinedMedia].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 12)
+  const nonStemMedia = combinedMedia.filter(m => m.genre?.toLowerCase() !== 'stem')
+  const hotTracks = [...nonStemMedia].sort((a, b) => ((b.plays || 0) + (b.likes || 0) * 3) - ((a.plays || 0) + (a.likes || 0) * 3)).slice(0, 20)
+  const newReleases = [...nonStemMedia].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20)
+
+  // Per-genre horizontal rows — only genres with 3+ tracks
+  const genreRows = genres
+    .map(g => ({
+      genre: g,
+      tracks: nonStemMedia.filter(m => m.genre?.toLowerCase() === g.toLowerCase()),
+    }))
+    .filter(row => row.tracks.length >= 3)
   const activeFilterCount = [searchFilters.genre, searchFilters.mood, searchFilters.key, searchFilters.vocals, searchFilters.bpm_min, searchFilters.bpm_max].filter(Boolean).length
 
   return (
@@ -708,11 +717,53 @@ function ExplorePageContent() {
                   </div>
                 </section>
 
+                {/* PER-GENRE ROWS — Horizontal scroll per genre */}
+                {genreRows.map(({ genre, tracks }) => {
+                  const gs = getGenreStyle(genre)
+                  return (
+                    <section key={`genre-row-${genre}`} className="py-4 border-t border-white/[0.03]">
+                      <div className="px-4 md:px-6 flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${gs ? gs.bg : 'bg-cyan-500/20'}`}>
+                            <Disc3 size={12} className={gs ? gs.text : 'text-cyan-400'} />
+                          </div>
+                          <h2 className="text-sm font-bold text-white capitalize">{genre}</h2>
+                          <span className="text-[10px] text-gray-600">{tracks.length}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (tracks.length > 0) {
+                              const pl = tracks.map(m => ({
+                                id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url,
+                                imageUrl: m.imageUrl || m.image_url, artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id
+                              }))
+                              setPlaylist(pl)
+                              playTrack(pl[0])
+                            }
+                          }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium transition-all border ${
+                            gs ? `${gs.bg} ${gs.text} ${gs.border} hover:opacity-80` : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                          }`}
+                        >
+                          <Play size={10} /> Play All
+                        </button>
+                      </div>
+                      <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                        {tracks.map(media => (
+                          <GridTrackCard key={`${genre}-${media.id}`} media={media}
+                            isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
+                            onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
+                        ))}
+                      </div>
+                    </section>
+                  )
+                })}
+
                 {/* ALL TRACKS — List view */}
                 <section className="px-4 md:px-6 py-4 border-t border-white/[0.03]">
-                  <SectionHeader icon={Music} label={`All Tracks`} iconColor="text-cyan-400" gradientFrom="from-cyan-500/20" gradientTo="to-blue-500/20" count={combinedMedia.length} />
+                  <SectionHeader icon={Music} label={`All Tracks`} iconColor="text-cyan-400" gradientFrom="from-cyan-500/20" gradientTo="to-blue-500/20" count={nonStemMedia.length} />
                   <div className="space-y-0.5">
-                    {combinedMedia.map((media, i) => (
+                    {nonStemMedia.map((media, i) => (
                       <ListTrackRow key={media.id} media={media} index={i}
                         isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
                         onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} />
@@ -754,11 +805,11 @@ function ExplorePageContent() {
                               })
                             }
                           }}
-                          className={`flex-shrink-0 w-[120px] group cursor-pointer transition-all duration-200 hover:scale-[1.02] ${isGenrePlaying ? 'ring-2 ring-cyan-400 rounded-lg' : ''}`}
+                          className={`flex-shrink-0 w-[140px] group cursor-pointer transition-all duration-200 hover:scale-[1.02] ${isGenrePlaying ? 'ring-2 ring-cyan-400 rounded-xl' : ''}`}
                         >
-                          <div className="relative w-[120px] h-[120px] rounded-lg overflow-hidden border border-white/[0.06]">
+                          <div className="relative w-[140px] h-[140px] rounded-xl overflow-hidden border border-white/[0.06]">
                             {thumb ? (
-                              <Image src={thumb} alt={genre} width={120} height={120} className="w-full h-full object-cover" loading="lazy" quality={65} unoptimized />
+                              <Image src={thumb} alt={genre} width={140} height={140} className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center"><Disc3 size={24} className="text-gray-700" /></div>
                             )}
