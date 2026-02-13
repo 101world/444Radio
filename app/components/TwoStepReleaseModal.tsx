@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { X, Music, Image as ImageIcon, Rocket, ChevronRight, ChevronLeft, Check, Plus, Trash2, Info, Shield, Tag, Mic2, Users, Lock, Zap, AlertTriangle, Fingerprint } from 'lucide-react'
 import { calculateMetadataStrength, type Atmosphere, type EraVibe, type TempoFeel, type LicenseType444, type CreationType } from '@/lib/track-id-444'
 

@@ -19,25 +19,20 @@ export async function GET(req: NextRequest) {
     const offset = Number(searchParams.get('offset')) || 0
 
     // Fetch ONLY properly released tracks with cover art
-    // Excludes: tool outputs (effects, loops, stems, boosts, video-to-audio),
-    // unpublished items, and anything without a cover image
+    // The key filter: real releases always have both audio_url AND image_url
+    // Tool outputs (effects, boosts, stems, loops, video-to-audio) never have image_url
     const { data, error } = await supabase
       .from('combined_media')
       .select('*')
       // Must have audio
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
-      // Must have cover art (real releases always have image_url from the combine step)
+      // Must have cover art — this is the strongest signal of a proper release
+      // Tool/generation outputs (effects, boosts, stems, loops, video-to-audio) all set image_url: null
       .not('image_url', 'is', null)
       .neq('image_url', '')
-      // Exclude internal tool/generation output genres
+      // Exclude internal tool genres (safety net)
       .not('genre', 'in', '(stem,effects,loop,boosted)')
-      // Exclude tool content types
-      .not('type', 'in', '(effect,video,stem)')
-      // Exclude non-release content_types from studio
-      .not('content_type', 'in', '(effect,video)')
-      // Only publicly released tracks
-      .eq('is_public', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
