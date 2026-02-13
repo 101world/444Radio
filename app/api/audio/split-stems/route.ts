@@ -18,6 +18,20 @@ const supabase = createClient(
 
 const STEM_SPLIT_COST = 5
 
+// Helper to refund stem credits for failed earn purchases
+async function refundEarnStemCredits(userId: string, earnJobId: string, reason: string) {
+  try {
+    await supabase.from('earn_split_jobs').update({ status: 'failed' }).eq('id', earnJobId)
+    const { data: refundUser } = await supabase.from('users').select('credits').eq('clerk_user_id', userId).single()
+    const refundedCredits = (refundUser?.credits || 0) + STEM_SPLIT_COST
+    await supabase.from('users').update({ credits: refundedCredits }).eq('clerk_user_id', userId)
+    await logCreditTransaction({ userId, amount: STEM_SPLIT_COST, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split ${reason} — refunded ${STEM_SPLIT_COST} credits`, metadata: { earnJobId, reason } })
+    console.log(`[Stem Split] Refunded ${STEM_SPLIT_COST} credits to ${userId} (reason: ${reason})`)
+  } catch (refundErr) {
+    console.error('[Stem Split] Refund failed:', refundErr)
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const { userId } = await auth()
@@ -25,9 +39,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { audioUrl } = await request.json()
+    const { audioUrl, earnJobId } = await request.json()
     if (!audioUrl) {
       return NextResponse.json({ error: 'Audio URL required' }, { status: 400 })
+    }
+
+    // If earnJobId is provided, this was already paid for via earn purchase — skip credit deduction
+    let skipCreditDeduction = false
+    if (earnJobId) {
+      const { data: job, error: jobErr } = await supabase
+        .from('earn_split_jobs')
+        .select('id, user_id, status')
+        .eq('id', earnJobId)
+        .eq('user_id', userId)
+        .eq('status', 'queued')
+        .single()
+
+      if (jobErr || !job) {
+        return NextResponse.json({ error: 'Invalid or already processed stem split job' }, { status: 400 })
+      }
+
+      // Mark as processing so it can't be reused
+      await supabase.from('earn_split_jobs').update({ status: 'processing' }).eq('id', earnJobId)
+      skipCreditDeduction = true
     }
 
     // Try to find the parent track in combined_media by audio_url
@@ -48,7 +82,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    if (userData.credits < STEM_SPLIT_COST) {
+    if (!skipCreditDeduction && userData.credits < STEM_SPLIT_COST) {
       return NextResponse.json({ 
         error: `Insufficient credits. Need ${STEM_SPLIT_COST} credits but have ${userData.credits}` 
       }, { status: 402 })
@@ -103,8 +137,11 @@ export async function POST(request: Request) {
           if (requestSignal.aborted) {
             console.log('[Stem Split] Client disconnected, cancelling:', prediction.id)
             try { await replicate.predictions.cancel(prediction.id) } catch {}
+            if (skipCreditDeduction && earnJobId) {
+              await refundEarnStemCredits(userId, earnJobId, 'client_disconnected')
+            }
             await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: 'Stem split cancelled', metadata: { reason: 'client_disconnected' } })
-            await sendLine({ type: 'result', success: false, error: 'Stem split cancelled' }).catch(() => {})
+            await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: skipCreditDeduction }).catch(() => {})
             await writer.close().catch(() => {})
             return
           }
@@ -121,20 +158,29 @@ export async function POST(request: Request) {
           try { await replicate.predictions.cancel(prediction.id) } catch (cancelErr) {
             console.error('[Stem Split] Failed to cancel prediction:', cancelErr)
           }
+          if (skipCreditDeduction && earnJobId) {
+            await refundEarnStemCredits(userId, earnJobId, 'timeout')
+          }
           await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: 'Stem split timed out (60s limit)', metadata: { reason: 'timeout', predictionId: prediction.id } })
-          await sendLine({ type: 'result', success: false, error: 'Stem splitting timed out after 60 seconds. The model may be overloaded — please try again later.' })
+          await sendLine({ type: 'result', success: false, error: 'Stem splitting timed out after 60 seconds. The model may be overloaded — please try again later.', refunded: skipCreditDeduction })
           await writer.close()
           return
         }
 
         if (finalPrediction.status === 'canceled') {
-          await sendLine({ type: 'result', success: false, error: 'Stem split cancelled' })
+          if (skipCreditDeduction && earnJobId) {
+            await refundEarnStemCredits(userId, earnJobId, 'canceled')
+          }
+          await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: skipCreditDeduction })
           await writer.close()
           return
         }
 
         if (finalPrediction.status !== 'succeeded') {
-          await sendLine({ type: 'result', success: false, error: 'Stem split failed or timed out' })
+          if (skipCreditDeduction && earnJobId) {
+            await refundEarnStemCredits(userId, earnJobId, 'failed')
+          }
+          await sendLine({ type: 'result', success: false, error: 'Stem split failed or timed out', refunded: skipCreditDeduction })
           await writer.close()
           return
         }
@@ -218,29 +264,53 @@ export async function POST(request: Request) {
           }
         }
 
-        // Deduct credits after success
-        const { data: deductResultRaw } = await supabase
-          .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST })
-          .single()
+        // Deduct credits after success (skip if already paid via earn purchase)
+        let finalCredits = userData.credits
+        if (!skipCreditDeduction) {
+          const { data: deductResultRaw } = await supabase
+            .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST })
+            .single()
 
-        const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
+          const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
+          finalCredits = deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST)
 
-        await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST), type: 'generation_stem_split', description: `Stem split (${Object.keys(permanentStems).join(', ')})`, metadata: { stems: Object.keys(permanentStems), libraryIds: savedLibraryIds } })
+          await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: finalCredits, type: 'generation_stem_split', description: `Stem split (${Object.keys(permanentStems).join(', ')})`, metadata: { stems: Object.keys(permanentStems), libraryIds: savedLibraryIds } })
+        } else {
+          // Mark earn job as completed
+          if (earnJobId) {
+            await supabase.from('earn_split_jobs').update({ status: 'completed' }).eq('id', earnJobId)
+          }
+          await logCreditTransaction({ userId, amount: 0, balanceAfter: userData.credits, type: 'generation_stem_split', description: `Stem split via Earn (${Object.keys(permanentStems).join(', ')})`, metadata: { stems: Object.keys(permanentStems), libraryIds: savedLibraryIds, earnJobId } })
+        }
 
         await sendLine({
           type: 'result',
           success: true,
           stems: permanentStems,
           libraryIds: savedLibraryIds,
-          creditsUsed: STEM_SPLIT_COST,
-          creditsRemaining: deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST)
+          creditsUsed: skipCreditDeduction ? 0 : STEM_SPLIT_COST,
+          creditsRemaining: finalCredits
         })
         await writer.close()
       } catch (error) {
         console.error('[Stem Split] Stream error:', error)
+        // If this was an earn purchase, refund the stem cost and mark job failed
+        if (skipCreditDeduction && earnJobId) {
+          try {
+            await supabase.from('earn_split_jobs').update({ status: 'failed' }).eq('id', earnJobId)
+            // Refund the 5 stem credits to the buyer
+            const { data: refundUser } = await supabase.from('users').select('credits').eq('clerk_user_id', userId).single()
+            const refundedCredits = (refundUser?.credits || 0) + STEM_SPLIT_COST
+            await supabase.from('users').update({ credits: refundedCredits }).eq('clerk_user_id', userId)
+            await logCreditTransaction({ userId, amount: STEM_SPLIT_COST, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split failed — refunded ${STEM_SPLIT_COST} credits`, metadata: { earnJobId, error: String(error).substring(0, 200) } })
+            console.log(`[Stem Split] Refunded ${STEM_SPLIT_COST} credits to ${userId} for failed earn stem split`)
+          } catch (refundErr) {
+            console.error('[Stem Split] Refund failed:', refundErr)
+          }
+        }
         await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split failed`, metadata: { error: String(error).substring(0, 200) } })
         try {
-          await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes' })
+          await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes', refunded: skipCreditDeduction })
           await writer.close()
         } catch { /* stream may already be closed */ }
       }

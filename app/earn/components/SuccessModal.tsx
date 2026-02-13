@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { CheckCircle2, Scissors, ExternalLink, X, Sparkles } from 'lucide-react'
+import { CheckCircle2, Scissors, ExternalLink, X, Sparkles, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 
 interface EarnTrack {
@@ -14,10 +14,11 @@ interface EarnTrack {
 interface SuccessModalProps {
   track: EarnTrack
   splitJobId?: string
+  stemStatus?: 'splitting' | 'done' | 'failed' | 'refunded'
   onClose: () => void
 }
 
-export default function SuccessModal({ track, splitJobId, onClose }: SuccessModalProps) {
+export default function SuccessModal({ track, splitJobId, stemStatus, onClose }: SuccessModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -72,19 +73,57 @@ export default function SuccessModal({ track, splitJobId, onClose }: SuccessModa
         {/* Stem split info */}
         {splitJobId && (
           <div className="px-6 pb-4">
-            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Scissors size={16} className="text-purple-400" />
-                <span className="text-sm font-semibold text-purple-300">Stem Split Queued</span>
+            {stemStatus === 'splitting' && (
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Loader2 size={16} className="text-purple-400 animate-spin" />
+                  <span className="text-sm font-semibold text-purple-300">Splitting Stems...</span>
+                </div>
+                <p className="text-xs text-gray-400">Separating vocals, drums, bass, and melody. This can take up to 60 seconds.</p>
               </div>
-              <p className="text-xs text-gray-400">Your stems are being processed and will appear in your Create page chat.</p>
-              <Link
-                href="/create"
-                className="inline-flex items-center gap-1.5 mt-3 text-sm text-purple-400 hover:text-purple-300 font-medium transition"
-              >
-                Go to Create <ExternalLink size={12} />
-              </Link>
-            </div>
+            )}
+            {stemStatus === 'done' && (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 size={16} className="text-emerald-400" />
+                  <span className="text-sm font-semibold text-emerald-300">Stems Ready!</span>
+                </div>
+                <p className="text-xs text-gray-400">Your stems have been saved to your Library.</p>
+                <Link
+                  href="/library"
+                  className="inline-flex items-center gap-1.5 mt-3 text-sm text-emerald-400 hover:text-emerald-300 font-medium transition"
+                >
+                  View in Library <ExternalLink size={12} />
+                </Link>
+              </div>
+            )}
+            {stemStatus === 'refunded' && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <RefreshCw size={16} className="text-amber-400" />
+                  <span className="text-sm font-semibold text-amber-300">Stem Split Failed — Credits Refunded</span>
+                </div>
+                <p className="text-xs text-gray-400">The stem splitting service is temporarily overloaded. Your 5 stem credits have been refunded. You can try again from your Library.</p>
+              </div>
+            )}
+            {stemStatus === 'failed' && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle size={16} className="text-red-400" />
+                  <span className="text-sm font-semibold text-red-300">Stem Split Failed</span>
+                </div>
+                <p className="text-xs text-gray-400">Something went wrong with stem splitting. Please contact support if your credits were not refunded.</p>
+              </div>
+            )}
+            {!stemStatus && (
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Scissors size={16} className="text-purple-400" />
+                  <span className="text-sm font-semibold text-purple-300">Stem Split Queued</span>
+                </div>
+                <p className="text-xs text-gray-400">Your stems are being processed and will appear in your Library.</p>
+              </div>
+            )}
           </div>
         )}
 

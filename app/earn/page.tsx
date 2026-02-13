@@ -51,7 +51,7 @@ export default function EarnPage() {
   // Modals
   const [selectedArtist, setSelectedArtist] = useState<ArtistInfo | null>(null)
   const [downloadTrack, setDownloadTrack] = useState<EarnTrack | null>(null)
-  const [successData, setSuccessData] = useState<{ track: EarnTrack; splitJobId?: string } | null>(null)
+  const [successData, setSuccessData] = useState<{ track: EarnTrack; splitJobId?: string; stemStatus?: 'splitting' | 'done' | 'failed' | 'refunded' } | null>(null)
   const [showListModal, setShowListModal] = useState(false)
   const [infoTrack, setInfoTrack] = useState<EarnTrack | null>(null)
 
@@ -101,10 +101,67 @@ export default function EarnPage() {
         } catch (dlErr) { console.error('Auto-download failed:', dlErr) }
       }
       const track = tracks.find(t => t.id === trackId)
-      if (track) { setDownloadTrack(null); setSuccessData({ track, splitJobId: data.splitJobId }) }
+      if (track) {
+        setDownloadTrack(null)
+        setSuccessData({ track, splitJobId: data.splitJobId, stemStatus: splitStems ? 'splitting' : undefined })
+      }
+
+      // Actually trigger stem splitting if requested
+      if (splitStems && data.splitJobId && data.audioUrl) {
+        triggerStemSplit(data.audioUrl, data.splitJobId)
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Purchase failed'
       alert(message)
+      refreshCredits()
+    }
+  }
+
+  const triggerStemSplit = async (audioUrl: string, earnJobId: string) => {
+    try {
+      const res = await fetch('/api/audio/split-stems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioUrl, earnJobId }),
+      })
+
+      if (!res.ok || !res.body) {
+        setSuccessData(prev => prev ? { ...prev, stemStatus: 'failed' } : null)
+        refreshCredits()
+        return
+      }
+
+      // Read NDJSON stream
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const msg = JSON.parse(line)
+            if (msg.type === 'result') {
+              if (msg.success) {
+                setSuccessData(prev => prev ? { ...prev, stemStatus: 'done' } : null)
+              } else {
+                setSuccessData(prev => prev ? { ...prev, stemStatus: msg.refunded ? 'refunded' : 'failed' } : null)
+              }
+              refreshCredits()
+            }
+          } catch { /* skip malformed lines */ }
+        }
+      }
+    } catch (error) {
+      console.error('Stem split trigger failed:', error)
+      setSuccessData(prev => prev ? { ...prev, stemStatus: 'failed' } : null)
       refreshCredits()
     }
   }
@@ -274,7 +331,7 @@ export default function EarnPage() {
         <DownloadModal track={downloadTrack} userCredits={credits || 0} subscriptionStatus={subscriptionStatus || 'none'}
           onClose={() => setDownloadTrack(null)} onConfirm={(splitStems: boolean) => handlePurchase(downloadTrack.id, splitStems)} />
       )}
-      {successData && <SuccessModal track={successData.track} splitJobId={successData.splitJobId} onClose={() => setSuccessData(null)} />}
+      {successData && <SuccessModal track={successData.track} splitJobId={successData.splitJobId} stemStatus={successData.stemStatus} onClose={() => setSuccessData(null)} />}
       {showListModal && <ListTrackModal onClose={() => setShowListModal(false)} onListed={handleTrackListed} />}
       {infoTrack && (
         <TrackInfoModal
