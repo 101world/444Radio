@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Music, Image as ImageIcon, Rocket, ChevronRight, ChevronLeft, Check, Plus, Trash2, Info, Shield, Tag, Mic2, Users } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { X, Music, Image as ImageIcon, Rocket, ChevronRight, ChevronLeft, Check, Plus, Trash2, Info, Shield, Tag, Mic2, Users, Lock, Eye, EyeOff, Zap } from 'lucide-react'
+import { calculateMetadataStrength, type Atmosphere, type EraVibe, type TempoFeel, type LicenseType444 } from '@/lib/track-id-444'
 
 interface LibraryMusic {
   id: string
@@ -123,6 +124,50 @@ export default function TwoStepReleaseModal({
   // Release scheduling
   const [releaseDate, setReleaseDate] = useState('')
 
+  // ─── 444 Sonic DNA ───
+  const [energyLevel, setEnergyLevel] = useState<number | null>(null)
+  const [danceability, setDanceability] = useState<number | null>(null)
+  const [tempoFeel, setTempoFeel] = useState<TempoFeel | ''>('')
+  const [atmosphere, setAtmosphere] = useState<Atmosphere | ''>('')
+  const [eraVibe, setEraVibe] = useState<EraVibe | ''>('')
+  // ─── 444 Ownership ───
+  const [licenseType444, setLicenseType444] = useState<LicenseType444>('fully_ownable')
+  const [remixAllowed, setRemixAllowed] = useState(false)
+  const [derivativeAllowed, setDerivativeAllowed] = useState(false)
+  const [promptVisibility, setPromptVisibility] = useState<'public' | 'private'>('private')
+
+  // ─── Real-time Release Strength ───
+  const metadataStrength = useMemo(() => {
+    const musicItem = musicItems.find(m => m.id === selectedMusic)
+    return calculateMetadataStrength({
+      title: title || undefined,
+      description: description || undefined,
+      genre: genre || undefined,
+      mood: mood || undefined,
+      tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+      bpm: bpm ? parseInt(bpm) : undefined,
+      keySignature: keySignature || undefined,
+      imageUrl: selectedImage ? 'has-image' : undefined,
+      instruments: instruments.length > 0 ? instruments : undefined,
+      keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(Boolean) : undefined,
+      lyrics: lyrics || musicItem?.lyrics || undefined,
+      energyLevel: energyLevel ?? undefined,
+      danceability: danceability ?? undefined,
+      tempoFeel: (tempoFeel as TempoFeel) || undefined,
+      atmosphere: (atmosphere as Atmosphere) || undefined,
+      eraVibe: (eraVibe as EraVibe) || undefined,
+      licenseType444,
+      creationType: 'ai_generated',
+      generationPrompt: musicItem?.prompt || undefined,
+    })
+  }, [title, description, genre, mood, tags, bpm, keySignature, selectedImage, instruments, keywords, lyrics, energyLevel, danceability, tempoFeel, atmosphere, eraVibe, licenseType444, musicItems, selectedMusic])
+
+  const strengthColor = metadataStrength >= 80 ? { text: 'text-emerald-400', bg: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' }
+    : metadataStrength >= 60 ? { text: 'text-blue-400', bg: 'bg-blue-500', badge: 'bg-blue-500/15 text-blue-400 border-blue-500/30' }
+    : metadataStrength >= 40 ? { text: 'text-yellow-400', bg: 'bg-yellow-500', badge: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' }
+    : { text: 'text-red-400', bg: 'bg-red-500', badge: 'bg-red-500/15 text-red-400 border-red-500/30' }
+  const strengthLabel = metadataStrength >= 80 ? 'Excellent' : metadataStrength >= 60 ? 'Good' : metadataStrength >= 40 ? 'Fair' : 'Needs Work'
+
   useEffect(() => {
     if (isOpen) {
       fetchLibraryItems()
@@ -238,6 +283,18 @@ export default function TwoStepReleaseModal({
         upc: upc.trim() || null,
         contributors: contributors.filter(c => c.name.trim()),
         release_date: releaseDate || null,
+        // 444 Ownership Protocol
+        energy_level: energyLevel,
+        danceability: danceability,
+        tempo_feel: tempoFeel || null,
+        atmosphere: atmosphere || null,
+        era_vibe: eraVibe || null,
+        license_type_444: licenseType444,
+        remix_allowed: remixAllowed,
+        derivative_allowed: derivativeAllowed,
+        prompt_visibility: promptVisibility,
+        creation_type: 'ai_generated',
+        metadata_strength: metadataStrength,
       }
 
       const combineRes = await fetch('/api/media/combine', {
@@ -542,6 +599,27 @@ export default function TwoStepReleaseModal({
           {/* ═══ STEP 3: DISTRIBUTION & CREDITS ═══ */}
           {step === 3 && (
             <div className="p-6 space-y-5">
+              {/* Release Strength Meter */}
+              <div className="p-4 bg-gradient-to-r from-gray-900/80 to-gray-900/40 border border-white/[0.08] rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Zap size={14} className={strengthColor.text} />
+                    <span className="text-sm font-medium text-gray-300">Release Strength</span>
+                    <span className={`text-lg font-bold font-mono ${strengthColor.text}`}>{metadataStrength}%</span>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${strengthColor.badge}`}>
+                    {strengthLabel}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ease-out ${strengthColor.bg}`}
+                    style={{ width: `${Math.max(metadataStrength, 3)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-600 mt-1.5">Fill in more fields to improve discoverability and earn a higher release score</p>
+              </div>
+
               <div className="flex items-center gap-2 p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl">
                 <Info size={14} className="text-blue-400 flex-shrink-0" />
                 <p className="text-xs text-blue-300/80">
@@ -616,6 +694,192 @@ export default function TwoStepReleaseModal({
                   className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-cyan-500/40 transition-all" />
               </div>
 
+              {/* ─── 444 SONIC DNA ─── */}
+              <SectionHeader icon={Zap} label="Sonic DNA" color="purple" />
+              <div className="p-3 bg-purple-500/5 border border-purple-500/15 rounded-xl">
+                <p className="text-[10px] text-purple-300/70">
+                  Sonic DNA defines your track&apos;s unique character — it powers search, recommendations, and your Release Strength score.
+                </p>
+              </div>
+
+              {/* Energy & Danceability sliders */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-gray-400">Energy Level</label>
+                    <span className="text-xs font-mono text-purple-400">{energyLevel != null ? energyLevel : '—'}</span>
+                  </div>
+                  <input
+                    type="range" min="0" max="100" step="1"
+                    value={energyLevel ?? 50}
+                    onChange={e => setEnergyLevel(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-500/30"
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-600 mt-1">
+                    <span>Calm</span><span>Intense</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-medium text-gray-400">Danceability</label>
+                    <span className="text-xs font-mono text-purple-400">{danceability != null ? danceability : '—'}</span>
+                  </div>
+                  <input
+                    type="range" min="0" max="100" step="1"
+                    value={danceability ?? 50}
+                    onChange={e => setDanceability(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-purple-500/30"
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-600 mt-1">
+                    <span>Still</span><span>Groovy</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Atmosphere grid */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2">Atmosphere</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    { value: 'dark', emoji: '🌑', label: 'Dark' },
+                    { value: 'dreamy', emoji: '💭', label: 'Dreamy' },
+                    { value: 'uplifting', emoji: '☀️', label: 'Uplifting' },
+                    { value: 'aggressive', emoji: '🔥', label: 'Aggressive' },
+                    { value: 'calm', emoji: '🌊', label: 'Calm' },
+                    { value: 'melancholic', emoji: '🌧️', label: 'Melancholic' },
+                    { value: 'euphoric', emoji: '✨', label: 'Euphoric' },
+                    { value: 'mysterious', emoji: '🌀', label: 'Mysterious' },
+                  ] as const).map(a => (
+                    <button
+                      key={a.value}
+                      type="button"
+                      onClick={() => setAtmosphere(atmosphere === a.value ? '' : a.value as Atmosphere)}
+                      className={`flex flex-col items-center gap-0.5 py-2 rounded-lg border transition-all text-center ${
+                        atmosphere === a.value
+                          ? 'bg-purple-500/15 border-purple-500/40 text-white'
+                          : 'bg-white/[0.02] border-white/[0.06] text-gray-500 hover:border-purple-500/20'
+                      }`}
+                    >
+                      <span className="text-base">{a.emoji}</span>
+                      <span className="text-[10px] font-medium">{a.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Era Vibe + Tempo Feel */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">Era Vibe</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(['70s', '80s', '90s', '2000s', '2010s', 'futuristic', 'retro', 'timeless'] as const).map(era => (
+                      <button
+                        key={era}
+                        type="button"
+                        onClick={() => setEraVibe(eraVibe === era ? '' : era)}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                          eraVibe === era
+                            ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                            : 'bg-white/[0.03] text-gray-500 border-white/[0.06] hover:border-purple-500/20'
+                        }`}
+                      >
+                        {era === 'futuristic' ? '🚀 Future' : era === 'retro' ? '📼 Retro' : era === 'timeless' ? '♾️ Timeless' : era}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">Tempo Feel</label>
+                  <div className="flex gap-2">
+                    {([
+                      { value: 'slow' as const, label: '🐌 Slow', desc: '<90 BPM' },
+                      { value: 'mid' as const, label: '🚶 Mid', desc: '90-130' },
+                      { value: 'fast' as const, label: '⚡ Fast', desc: '130+' },
+                    ]).map(tf => (
+                      <button
+                        key={tf.value}
+                        type="button"
+                        onClick={() => setTempoFeel(tempoFeel === tf.value ? '' : tf.value)}
+                        className={`flex-1 py-2 rounded-lg border text-center transition-all ${
+                          tempoFeel === tf.value
+                            ? 'bg-purple-500/15 border-purple-500/40 text-white'
+                            : 'bg-white/[0.02] border-white/[0.06] text-gray-500 hover:border-purple-500/20'
+                        }`}
+                      >
+                        <p className="text-xs font-medium">{tf.label}</p>
+                        <p className="text-[10px] text-gray-600">{tf.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── 444 OWNERSHIP ─── */}
+              <SectionHeader icon={Lock} label="444 Ownership" color="cyan" />
+
+              {/* License Type */}
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2">License Type</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { value: 'fully_ownable', label: 'Fully Ownable', desc: 'Full rights transfer' },
+                    { value: 'non_exclusive', label: 'Non-Exclusive', desc: 'Multiple licenses' },
+                    { value: 'remix_allowed', label: 'Remix OK', desc: 'Remixes permitted' },
+                    { value: 'download_only', label: 'Download Only', desc: 'No redistribute' },
+                    { value: 'streaming_only', label: 'Stream Only', desc: 'No downloads' },
+                    { value: 'no_derivatives', label: 'No Derivatives', desc: 'No remixes' },
+                  ] as const).map(lt => (
+                    <button
+                      key={lt.value}
+                      type="button"
+                      onClick={() => setLicenseType444(lt.value as LicenseType444)}
+                      className={`p-2 rounded-lg border text-left transition-all ${
+                        licenseType444 === lt.value
+                          ? 'bg-cyan-500/15 border-cyan-500/40'
+                          : 'bg-white/[0.02] border-white/[0.06] hover:border-cyan-500/20'
+                      }`}
+                    >
+                      <p className={`text-[11px] font-medium ${licenseType444 === lt.value ? 'text-cyan-300' : 'text-gray-400'}`}>{lt.label}</p>
+                      <p className="text-[9px] text-gray-600 mt-0.5">{lt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Permission toggles + Prompt visibility */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${remixAllowed ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-white/[0.06]'}`}>
+                  <div>
+                    <p className="text-xs font-medium text-white">Remix</p>
+                    <p className="text-[9px] text-gray-500">Allow remixes</p>
+                  </div>
+                  <button onClick={() => setRemixAllowed(!remixAllowed)}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${remixAllowed ? 'bg-cyan-500' : 'bg-white/15'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${remixAllowed ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${derivativeAllowed ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-white/[0.06]'}`}>
+                  <div>
+                    <p className="text-xs font-medium text-white">Derivative</p>
+                    <p className="text-[9px] text-gray-500">Allow derivatives</p>
+                  </div>
+                  <button onClick={() => setDerivativeAllowed(!derivativeAllowed)}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${derivativeAllowed ? 'bg-cyan-500' : 'bg-white/15'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${derivativeAllowed ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                <div className={`flex items-center justify-between p-3 rounded-xl border transition-all ${promptVisibility === 'public' ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-white/[0.03] border-white/[0.06]'}`}>
+                  <div>
+                    <p className="text-xs font-medium text-white">Prompt</p>
+                    <p className="text-[9px] text-gray-500">{promptVisibility === 'public' ? 'Visible' : 'Hidden'}</p>
+                  </div>
+                  <button onClick={() => setPromptVisibility(promptVisibility === 'public' ? 'private' : 'public')}
+                    className={`relative w-9 h-5 rounded-full transition-colors ${promptVisibility === 'public' ? 'bg-cyan-500' : 'bg-white/15'}`}>
+                    <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${promptVisibility === 'public' ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+
               {/* Contributors */}
               <SectionHeader icon={Users} label="Credits & Contributors" color="green" />
               {contributors.map((c, i) => (
@@ -685,12 +949,25 @@ export default function TwoStepReleaseModal({
                 </div>
               </div>
 
-              {/* Identifiers */}
-              <SectionHeader icon={Tag} label="Identifiers" color="blue" />
+              {/* 444 Track ID */}
+              <SectionHeader icon={Tag} label="444 Track ID" color="blue" />
+              <div className="p-3 bg-gradient-to-r from-cyan-500/5 to-purple-500/5 border border-cyan-500/20 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Track ID</p>
+                    <p className="text-sm font-mono text-cyan-400 mt-0.5">444-{new Date().getFullYear()}-XXXX-XXXXXX</p>
+                  </div>
+                  <div className="px-2.5 py-1 bg-cyan-500/10 rounded-lg">
+                    <p className="text-[10px] text-cyan-400 font-medium">Auto-generated on publish</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Legacy Identifiers */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                    ISRC <span className="text-gray-600 font-normal">(optional)</span>
+                    ISRC <span className="text-gray-600 font-normal">(legacy, optional)</span>
                   </label>
                   <input type="text" value={isrc} onChange={e => setIsrc(e.target.value)}
                     placeholder="e.g. USXXXX2500001"
@@ -698,7 +975,7 @@ export default function TwoStepReleaseModal({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                    UPC <span className="text-gray-600 font-normal">(optional)</span>
+                    UPC <span className="text-gray-600 font-normal">(legacy, optional)</span>
                   </label>
                   <input type="text" value={upc} onChange={e => setUpc(e.target.value)}
                     placeholder="e.g. 012345678901"
