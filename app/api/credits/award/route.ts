@@ -7,18 +7,24 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// ──────────────────────────────────────────────
-// Hardcoded credit codes — ONE TIME USE PER USER
-// ──────────────────────────────────────────────
+// ──────────────────────────────────────────────────────
+// Hardcoded credit codes — per-code claim policies
+//   'lifetime'  = one claim ever, permanently blocked after
+//   'unlimited' = claim as many times as you want
+//   'monthly'   = one claim per calendar month
+// ──────────────────────────────────────────────────────
+type ClaimPolicy = 'lifetime' | 'unlimited' | 'monthly'
+
 interface CodeConfig {
   credits: number
   description: string
+  policy: ClaimPolicy
 }
 
 const VALID_CODES: Record<string, CodeConfig> = {
-  'FREE THE MUSIC': { credits: 20,  description: 'Decrypt puzzle — 20 credits' },
-  '444OG79RIZZ':    { credits: 444, description: 'Admin code — 444 credits' },
-  '444ISAHOMIE':    { credits: 100, description: 'Secret code — 100 credits' },
+  'FREE THE MUSIC': { credits: 20,  description: 'Decrypt puzzle — 20 credits',  policy: 'lifetime'  },
+  '444OG79RIZZ':    { credits: 444, description: 'Admin code — 444 credits',      policy: 'unlimited' },
+  '444ISAHOMIE':    { credits: 100, description: 'Secret code — 100 credits',     policy: 'monthly'   },
 }
 
 export async function POST(req: NextRequest) {
@@ -52,7 +58,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── Check if this user has EVER redeemed this code ──
+    // ── Check existing redemptions for this user + code ──
     const { data: existingRedemption, error: checkError } = await supabase
       .from('code_redemptions')
       .select('id, redeemed_at, redemption_count')
@@ -69,17 +75,50 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── HARD BLOCK: already redeemed = permanently blocked ──
+    const policy = codeConfig.policy
+
+    // ── Enforce claim policy ──
     if (existingRedemption) {
-      console.log(`⛔ Code "${normalizedCode}" already redeemed by ${userId} on ${existingRedemption.redeemed_at} (count: ${existingRedemption.redemption_count})`)
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'This code has already been claimed. Each code can only be used once per account — ever.',
-          alreadyClaimed: true,
-        },
-        { status: 400 }
-      )
+      if (policy === 'lifetime') {
+        // Permanently blocked — one claim ever
+        console.log(`⛔ Code "${normalizedCode}" already claimed (lifetime) by ${userId}`)
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'This code has already been claimed. Each code can only be used once per account — ever.',
+            alreadyClaimed: true,
+          },
+          { status: 400 }
+        )
+      }
+
+      if (policy === 'monthly') {
+        // Blocked if last claim was within the current calendar month
+        const lastClaim = new Date(existingRedemption.redeemed_at)
+        const now = new Date()
+        const sameMonth = lastClaim.getUTCFullYear() === now.getUTCFullYear()
+                       && lastClaim.getUTCMonth() === now.getUTCMonth()
+        if (sameMonth) {
+          console.log(`⛔ Code "${normalizedCode}" already claimed this month by ${userId}`)
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'This code can only be claimed once per month. Try again next month!',
+              alreadyClaimed: true,
+            },
+            { status: 400 }
+          )
+        }
+      }
+
+      // policy === 'unlimited' OR monthly cooldown passed → allow, update record
+      await supabase
+        .from('code_redemptions')
+        .update({
+          redeemed_at: new Date().toISOString(),
+          redemption_count: (existingRedemption.redemption_count || 0) + 1,
+        })
+        .eq('id', existingRedemption.id)
     }
 
     // ── Award credits ──
@@ -120,20 +159,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ── Record redemption (permanent, non-deletable) ──
-    const { error: insertError } = await supabase
-      .from('code_redemptions')
-      .insert({
-        clerk_user_id: userId,
-        code: normalizedCode,
-        credits_awarded: creditsToAward,
-        redeemed_at: new Date().toISOString(),
-        redemption_count: 1,
-      })
+    // ── Record redemption (only insert if first time) ──
+    if (!existingRedemption) {
+      const { error: insertError } = await supabase
+        .from('code_redemptions')
+        .insert({
+          clerk_user_id: userId,
+          code: normalizedCode,
+          credits_awarded: creditsToAward,
+          redeemed_at: new Date().toISOString(),
+          redemption_count: 1,
+        })
 
-    if (insertError) {
-      console.error('Error recording redemption:', insertError)
-      // Credits already awarded — log but don't fail
+      if (insertError) {
+        console.error('Error recording redemption:', insertError)
+        // Credits already awarded — log but don't fail
+      }
     }
 
     // ── Log to credit_transactions (wallet history) ──
