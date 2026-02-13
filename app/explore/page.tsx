@@ -85,16 +85,16 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics 
 }) {
   const gs = getGenreStyle(media.genre)
   return (
-    <div className="group cursor-pointer" onClick={onPlay}>
-      <div className={`relative aspect-square rounded-xl overflow-hidden transition-all duration-200 ${
+    <div className="group cursor-pointer w-[120px] flex-shrink-0" onClick={onPlay}>
+      <div className={`relative w-[120px] h-[120px] rounded-lg overflow-hidden transition-all duration-200 ${
         isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/20' : 'ring-1 ring-white/[0.06] hover:ring-white/15'
       }`}>
         {media.image_url || media.imageUrl ? (
-          <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={180} height={180}
-            className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
+          <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={120} height={120}
+            className="w-full h-full object-cover" loading="lazy" quality={65} unoptimized />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-            <Music size={24} className="text-gray-700" />
+            <Music size={20} className="text-gray-700" />
           </div>
         )}
         {/* Gradient overlay */}
@@ -131,28 +131,20 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics 
         )}
       </div>
       {/* Info below card */}
-      <div className="mt-2 px-0.5">
-        <div className="flex items-start justify-between gap-1">
-          <div className="min-w-0 flex-1">
-            <h3 className={`font-semibold text-[11px] truncate leading-tight ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>
-              {media.title}
-            </h3>
-            {media.user_id && media.user_id !== 'undefined' ? (
-              <Link href={`/profile/${media.user_id}`} className="text-[11px] text-gray-500 hover:text-cyan-400 transition-colors truncate block mt-0.5" onClick={e => e.stopPropagation()}>
-                {media.artist_name || media.users?.username || media.username || 'Unknown'}
-              </Link>
-            ) : (
-              <span className="text-[11px] text-gray-600 truncate block mt-0.5">{media.users?.username || 'Unknown'}</span>
-            )}
-          </div>
-          <div className="flex-shrink-0 mt-0.5" onClick={e => e.stopPropagation()}>
-            <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={false} />
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-gray-600">
-          <span className="flex items-center gap-0.5"><Headphones size={9} />{formatPlays(media.plays || 0)}</span>
-          <span className="flex items-center gap-0.5"><Heart size={9} />{media.likes || 0}</span>
-          {media.bpm && <span className="flex items-center gap-0.5"><Zap size={8} />{media.bpm}</span>}
+      <div className="mt-1.5 w-[120px]">
+        <h3 className={`font-semibold text-[10px] truncate leading-tight ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>
+          {media.title}
+        </h3>
+        {media.user_id && media.user_id !== 'undefined' ? (
+          <Link href={`/profile/${media.user_id}`} className="text-[10px] text-gray-500 hover:text-cyan-400 transition-colors truncate block" onClick={e => e.stopPropagation()}>
+            {media.artist_name || media.users?.username || media.username || 'Unknown'}
+          </Link>
+        ) : (
+          <span className="text-[10px] text-gray-600 truncate block">{media.users?.username || 'Unknown'}</span>
+        )}
+        <div className="flex items-center gap-1.5 mt-0.5 text-[8px] text-gray-600">
+          <span className="flex items-center gap-0.5"><Headphones size={8} />{formatPlays(media.plays || 0)}</span>
+          <span className="flex items-center gap-0.5"><Heart size={8} />{media.likes || 0}</span>
         </div>
       </div>
     </div>
@@ -613,7 +605,7 @@ function ExplorePageContent() {
                     <p className="text-gray-600 text-xs">Try different keywords or filters</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                  <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                     {searchResults.map(media => (
                       <GridTrackCard key={media.id} media={media}
                         isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
@@ -655,10 +647,12 @@ function ExplorePageContent() {
                   </div>
                 )}
 
-                {/* HOT RIGHT NOW — Grid */}
-                <section className="px-4 md:px-6 pt-3 pb-4">
-                  <SectionHeader icon={Flame} label="Hot Right Now" iconColor="text-orange-400" gradientFrom="from-orange-500/20" gradientTo="to-red-500/20" />
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                {/* HOT RIGHT NOW — Horizontal scroll */}
+                <section className="pt-3 pb-4">
+                  <div className="px-4 md:px-6">
+                    <SectionHeader icon={Flame} label="Hot Right Now" iconColor="text-orange-400" gradientFrom="from-orange-500/20" gradientTo="to-red-500/20" />
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                     {hotTracks.map(media => (
                       <GridTrackCard key={media.id} media={media}
                         isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
@@ -667,32 +661,36 @@ function ExplorePageContent() {
                   </div>
                 </section>
 
-                {/* ARTISTS */}
-                <section className="px-4 md:px-6 py-4 border-t border-white/[0.03]">
-                  <SectionHeader icon={Users} label="Artists" iconColor="text-cyan-400" gradientFrom="from-cyan-500/20" gradientTo="to-blue-500/20" />
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3">
+                {/* ARTISTS — Horizontal scroll */}
+                <section className="py-4 border-t border-white/[0.03]">
+                  <div className="px-4 md:px-6">
+                    <SectionHeader icon={Users} label="Artists" iconColor="text-cyan-400" gradientFrom="from-cyan-500/20" gradientTo="to-blue-500/20" />
+                  </div>
+                  <div className="flex gap-4 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                     {artists.map(artist => (
-                      <Link key={artist.user_id} href={`/profile/${artist.user_id}`} className="group">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <div className="w-14 h-14 rounded-full overflow-hidden ring-1 ring-white/[0.08] group-hover:ring-cyan-400/40 transition-all">
+                      <Link key={artist.user_id} href={`/profile/${artist.user_id}`} className="flex-shrink-0 group">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-12 h-12 rounded-full overflow-hidden ring-1 ring-white/[0.08] group-hover:ring-cyan-400/40 transition-all">
                             {artist.avatar ? (
-                              <Image src={artist.avatar} alt={artist.username} width={56} height={56} className="w-full h-full object-cover" loading="lazy" quality={60} unoptimized />
+                              <Image src={artist.avatar} alt={artist.username} width={48} height={48} className="w-full h-full object-cover" loading="lazy" quality={60} unoptimized />
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-cyan-800/40 to-blue-800/40 flex items-center justify-center"><Users size={20} className="text-white/40" /></div>
+                              <div className="w-full h-full bg-gradient-to-br from-cyan-800/40 to-blue-800/40 flex items-center justify-center"><Users size={16} className="text-white/40" /></div>
                             )}
                           </div>
-                          <p className="text-[10px] font-medium text-gray-400 group-hover:text-white truncate w-14 text-center transition-colors">{artist.username}</p>
+                          <p className="text-[9px] font-medium text-gray-400 group-hover:text-white truncate w-12 text-center transition-colors">{artist.username}</p>
                         </div>
                       </Link>
                     ))}
                   </div>
                 </section>
 
-                {/* NEW RELEASES — Grid */}
+                {/* NEW RELEASES — Horizontal scroll */}
                 {newReleases.length > 0 && (
-                  <section className="px-4 md:px-6 py-4 border-t border-white/[0.03]">
-                    <SectionHeader icon={Sparkles} label="New Releases" iconColor="text-green-400" gradientFrom="from-green-500/20" gradientTo="to-emerald-500/20" />
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                  <section className="py-4 border-t border-white/[0.03]">
+                    <div className="px-4 md:px-6">
+                      <SectionHeader icon={Sparkles} label="New Releases" iconColor="text-green-400" gradientFrom="from-green-500/20" gradientTo="to-emerald-500/20" />
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                       {newReleases.map(media => (
                         <GridTrackCard key={`new-${media.id}`} media={media}
                           isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
@@ -702,11 +700,13 @@ function ExplorePageContent() {
                   </section>
                 )}
 
-                {/* MOST PLAYED — Grid */}
+                {/* MOST PLAYED — Horizontal scroll */}
                 {mostPlayed.length > 0 && (
-                  <section className="px-4 md:px-6 py-4 border-t border-white/[0.03]">
-                    <SectionHeader icon={Headphones} label="Most Played" iconColor="text-purple-400" gradientFrom="from-purple-500/20" gradientTo="to-pink-500/20" />
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                  <section className="py-4 border-t border-white/[0.03]">
+                    <div className="px-4 md:px-6">
+                      <SectionHeader icon={Headphones} label="Most Played" iconColor="text-purple-400" gradientFrom="from-purple-500/20" gradientTo="to-pink-500/20" />
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                       {mostPlayed.map(media => (
                         <GridTrackCard key={`top-${media.id}`} media={media}
                           isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
@@ -741,7 +741,7 @@ function ExplorePageContent() {
                     <p className="text-gray-600 text-xs">Genres appear as artists release tracks</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                  <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                     {genres.map(genre => {
                       const genreTracks = combinedMedia.filter(m => m.genre?.toLowerCase() === genre.toLowerCase())
                       const thumb = genreTracks[0]?.image_url
@@ -762,21 +762,21 @@ function ExplorePageContent() {
                               })
                             }
                           }}
-                          className={`group cursor-pointer transition-all duration-200 hover:scale-[1.02] ${isGenrePlaying ? 'ring-2 ring-cyan-400 rounded-xl' : ''}`}
+                          className={`flex-shrink-0 w-[120px] group cursor-pointer transition-all duration-200 hover:scale-[1.02] ${isGenrePlaying ? 'ring-2 ring-cyan-400 rounded-lg' : ''}`}
                         >
-                          <div className="relative aspect-square rounded-xl overflow-hidden border border-white/[0.06]">
+                          <div className="relative w-[120px] h-[120px] rounded-lg overflow-hidden border border-white/[0.06]">
                             {thumb ? (
-                              <Image src={thumb} alt={genre} width={200} height={200} className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
+                              <Image src={thumb} alt={genre} width={120} height={120} className="w-full h-full object-cover" loading="lazy" quality={65} unoptimized />
                             ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center"><Disc3 size={36} className="text-gray-700" /></div>
+                              <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center"><Disc3 size={24} className="text-gray-700" /></div>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-3">
-                              {gs && <span className={`inline-block self-start text-[9px] px-2 py-0.5 rounded-full border ${gs.bg} ${gs.text} ${gs.border} font-medium mb-1`}>{count} tracks</span>}
-                              <h3 className="text-white font-bold text-sm capitalize">{genre}</h3>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-2">
+                              {gs && <span className={`inline-block self-start text-[8px] px-1.5 py-px rounded-full border ${gs.bg} ${gs.text} ${gs.border} font-medium mb-0.5`}>{count} tracks</span>}
+                              <h3 className="text-white font-bold text-[11px] capitalize">{genre}</h3>
                             </div>
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center shadow-xl">
-                                {isGenrePlaying ? <Pause className="text-black" size={20} /> : <Play className="text-black ml-0.5" size={20} />}
+                              <div className="w-9 h-9 bg-white/90 rounded-full flex items-center justify-center shadow-xl">
+                                {isGenrePlaying ? <Pause className="text-black" size={14} /> : <Play className="text-black ml-0.5" size={14} />}
                               </div>
                             </div>
                           </div>
