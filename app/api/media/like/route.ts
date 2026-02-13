@@ -165,6 +165,7 @@ export async function GET(req: NextRequest) {
     const likesCount = countData?.likes || 0
 
     return corsResponse(NextResponse.json({
+      success: true,
       liked,
       likesCount
     }))

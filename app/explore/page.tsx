@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
-import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, Zap, Clock, Hash, ChevronRight, Sparkles, Flame, Info } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
@@ -71,11 +71,6 @@ function formatPlays(n: number) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
   if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
   return n.toString()
-}
-
-function formatDuration(s?: number) {
-  if (!s) return null
-  return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`
 }
 
 // ═══════════════════════════════════════════════
@@ -169,7 +164,7 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
   const gs = getGenreStyle(media.genre)
   return (
     <div
-      className={`group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all ${
+      className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
         isCurrentlyPlaying ? 'bg-cyan-500/8 border border-cyan-500/20' : 'hover:bg-white/[0.03] border border-transparent'
       }`}
       onClick={onPlay}
@@ -200,17 +195,9 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
           <div className="w-full h-full bg-gray-900 flex items-center justify-center"><Music size={16} className="text-gray-700" /></div>
         )}
       </div>
-      {/* Info + metadata + actions — all flow together */}
+      {/* Title + artist */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className={`text-sm font-medium truncate ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>{media.title}</h3>
-          {/* Desktop metadata inline */}
-          <div className="hidden md:flex items-center gap-2 text-[10px] text-gray-600 flex-shrink-0">
-            {media.bpm && <span className="flex items-center gap-0.5"><Zap size={9} />{media.bpm}</span>}
-            {media.key_signature && <span className="flex items-center gap-0.5"><Hash size={9} />{media.key_signature}</span>}
-            {media.duration_seconds && <span><Clock size={9} className="inline mr-0.5" />{formatDuration(media.duration_seconds)}</span>}
-          </div>
-        </div>
+        <h3 className={`text-sm font-medium truncate ${isCurrentlyPlaying ? 'text-cyan-300' : 'text-white'}`}>{media.title}</h3>
         <div className="flex items-center gap-1.5 mt-0.5">
           {media.user_id && media.user_id !== 'undefined' ? (
             <Link href={`/profile/${media.user_id}`} className="text-[11px] text-gray-500 hover:text-cyan-400 transition-colors truncate" onClick={e => e.stopPropagation()}>
@@ -224,12 +211,12 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
           )}
         </div>
       </div>
-      {/* Plays + Actions — tight group */}
-      <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
-        <span className="text-[10px] text-gray-600 flex items-center gap-0.5">
-          <Headphones size={9} />{formatPlays(media.plays || 0)}
+      {/* Right side — plays + like + lyrics */}
+      <div className="flex items-center gap-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <span className="text-[11px] text-gray-500 flex items-center gap-1 tabular-nums">
+          <Headphones size={11} className="text-gray-600" />{formatPlays(media.plays || 0)}
         </span>
-        <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={false} />
+        <LikeButton releaseId={media.id} initialLikesCount={media.likes || 0} size="sm" showCount={true} />
         <button onClick={e => { e.stopPropagation(); onLyrics() }} className="p-1.5 hover:bg-purple-500/15 rounded-lg transition-colors opacity-0 group-hover:opacity-100" title="Lyrics">
           <FileText size={12} className="text-purple-400/60" />
         </button>
@@ -718,47 +705,7 @@ function ExplorePageContent() {
                   </div>
                 </section>
 
-                {/* PER-GENRE ROWS — Horizontal scroll per genre */}
-                {genreRows.map(({ genre, tracks }) => {
-                  const gs = getGenreStyle(genre)
-                  return (
-                    <section key={`genre-row-${genre}`} className="py-4 border-t border-white/[0.03]">
-                      <div className="px-4 md:px-6 flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${gs ? gs.bg : 'bg-cyan-500/20'}`}>
-                            <Disc3 size={12} className={gs ? gs.text : 'text-cyan-400'} />
-                          </div>
-                          <h2 className="text-sm font-bold text-white capitalize">{genre}</h2>
-                          <span className="text-[10px] text-gray-600">{tracks.length}</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            if (tracks.length > 0) {
-                              const pl = tracks.map(m => ({
-                                id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url,
-                                imageUrl: m.imageUrl || m.image_url, artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id
-                              }))
-                              setPlaylist(pl)
-                              playTrack(pl[0])
-                            }
-                          }}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium transition-all border ${
-                            gs ? `${gs.bg} ${gs.text} ${gs.border} hover:opacity-80` : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                          }`}
-                        >
-                          <Play size={10} /> Play All
-                        </button>
-                      </div>
-                      <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                        {tracks.map(media => (
-                          <GridTrackCard key={`${genre}-${media.id}`} media={media}
-                            isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
-                            onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
-                        ))}
-                      </div>
-                    </section>
-                  )
-                })}
+                {/* PER-GENRE ROWS removed from tracks tab — shown in genres tab */}
 
                 {/* ALL TRACKS — List view */}
                 <section className="px-4 md:px-6 py-4 border-t border-white/[0.03]">
@@ -776,8 +723,10 @@ function ExplorePageContent() {
 
             {/* ═══ GENRES TAB ═══ */}
             {activeTab === 'genres' && !isSearchActive && (
-              <div className="px-4 md:px-6 pt-4">
-                <SectionHeader icon={Disc3} label="Browse by Genre" iconColor="text-violet-400" gradientFrom="from-violet-500/20" gradientTo="to-purple-500/20" />
+              <div className="pt-4">
+                <div className="px-4 md:px-6">
+                  <SectionHeader icon={Disc3} label="Browse by Genre" iconColor="text-violet-400" gradientFrom="from-violet-500/20" gradientTo="to-purple-500/20" />
+                </div>
                 {genres.length === 0 ? (
                   <div className="text-center py-16">
                     <div className="text-4xl mb-3">🎸</div>
@@ -785,46 +734,45 @@ function ExplorePageContent() {
                     <p className="text-gray-600 text-xs">Genres appear as artists release tracks</p>
                   </div>
                 ) : (
-                  <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                  <div className="space-y-0">
                     {genres.map(genre => {
-                      const genreTracks = combinedMedia.filter(m => m.genre?.toLowerCase() === genre.toLowerCase())
-                      const thumb = genreTracks[0]?.image_url
-                      const count = genreTracks.length
+                      const genreTracks = nonStemMedia.filter(m => m.genre?.toLowerCase() === genre.toLowerCase())
+                      if (genreTracks.length === 0) return null
                       const gs = getGenreStyle(genre)
-                      const isGenrePlaying = genreTracks.some(t => t.id === playingId && isPlaying)
                       return (
-                        <div key={genre}
-                          onClick={() => {
-                            if (genreTracks.length > 0) {
-                              setPlaylist(genreTracks.map(m => ({
-                                id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url,
-                                imageUrl: m.imageUrl || m.image_url, artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id
-                              })))
-                              playTrack({
-                                id: genreTracks[0].id, title: genreTracks[0].title, audioUrl: genreTracks[0].audioUrl || genreTracks[0].audio_url,
-                                imageUrl: genreTracks[0].imageUrl || genreTracks[0].image_url, artist: genreTracks[0].artist_name || genreTracks[0].users?.username || genreTracks[0].username || 'Unknown Artist', userId: genreTracks[0].user_id
-                              })
-                            }
-                          }}
-                          className={`flex-shrink-0 w-[140px] group cursor-pointer transition-all duration-200 hover:scale-[1.02] ${isGenrePlaying ? 'ring-2 ring-cyan-400 rounded-xl' : ''}`}
-                        >
-                          <div className="relative w-[140px] h-[140px] rounded-xl overflow-hidden border border-white/[0.06]">
-                            {thumb ? (
-                              <Image src={thumb} alt={genre} width={140} height={140} className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
-                            ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center"><Disc3 size={24} className="text-gray-700" /></div>
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-2">
-                              {gs && <span className={`inline-block self-start text-[8px] px-1.5 py-px rounded-full border ${gs.bg} ${gs.text} ${gs.border} font-medium mb-0.5`}>{count} tracks</span>}
-                              <h3 className="text-white font-bold text-[11px] capitalize">{genre}</h3>
-                            </div>
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-9 h-9 bg-white/90 rounded-full flex items-center justify-center shadow-xl">
-                                {isGenrePlaying ? <Pause className="text-black" size={14} /> : <Play className="text-black ml-0.5" size={14} />}
+                        <section key={`genre-section-${genre}`} className="py-4 border-t border-white/[0.03]">
+                          <div className="px-4 md:px-6 flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${gs ? gs.bg : 'bg-cyan-500/20'}`}>
+                                <Disc3 size={12} className={gs ? gs.text : 'text-cyan-400'} />
                               </div>
+                              <h2 className="text-sm font-bold text-white capitalize">{genre}</h2>
+                              <span className="text-[10px] text-gray-600">{genreTracks.length} tracks</span>
                             </div>
+                            <button
+                              onClick={() => {
+                                const pl = genreTracks.map(m => ({
+                                  id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url,
+                                  imageUrl: m.imageUrl || m.image_url, artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id
+                                }))
+                                setPlaylist(pl)
+                                playTrack(pl[0])
+                              }}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-medium transition-all border ${
+                                gs ? `${gs.bg} ${gs.text} ${gs.border} hover:opacity-80` : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                              }`}
+                            >
+                              <Play size={10} /> Play All
+                            </button>
                           </div>
-                        </div>
+                          <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                            {genreTracks.map(media => (
+                              <GridTrackCard key={`genre-${genre}-${media.id}`} media={media}
+                                isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
+                                onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
+                            ))}
+                          </div>
+                        </section>
                       )
                     })}
                   </div>
