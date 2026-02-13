@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logBoostGeneration, updateBoostLog } from '@/lib/boost-logs'
 
 // Allow up to 2 minutes for audio boost processing
 export const maxDuration = 120
@@ -88,6 +89,21 @@ export async function POST(req: NextRequest) {
     // Generate boosted audio using lucataco/audio-boost via raw HTTP API
     console.log('🔊 Processing audio with Audio Boost...')
 
+    // Log initial pending state
+    const boostLogId = await logBoostGeneration({
+      userId,
+      status: 'pending',
+      sourceAudioUrl: audioUrl,
+      trackTitle,
+      bassBoost: bass_boost,
+      trebleBoost: treble_boost,
+      volumeBoost: volume_boost,
+      normalize,
+      noiseReduction: noise_reduction,
+      outputFormat: output_format,
+      bitrate,
+    })
+
     try {
       const REPLICATE_TOKEN = process.env.REPLICATE_API_KEY_LATEST2!
       const boostInput = {
@@ -118,6 +134,11 @@ export async function POST(req: NextRequest) {
       let prediction = await createRes.json()
       console.log('🔊 Prediction response status:', prediction.status, '| id:', prediction.id)
 
+      // Update log with prediction ID
+      if (boostLogId && prediction.id) {
+        await updateBoostLog(boostLogId, { predictionId: prediction.id, status: 'processing' })
+      }
+
       if (prediction.error) {
         throw new Error(`Replicate error: ${typeof prediction.error === 'string' ? prediction.error : JSON.stringify(prediction.error)}`)
       }
@@ -138,30 +159,41 @@ export async function POST(req: NextRequest) {
 
       if (prediction.status === 'failed' || prediction.status === 'canceled') {
         const errMsg = typeof prediction.error === 'string' ? prediction.error : JSON.stringify(prediction.error) || 'Audio boost failed'
+        if (boostLogId) {
+          await updateBoostLog(boostLogId, { status: prediction.status as 'failed' | 'canceled', errorMessage: errMsg })
+        }
         throw new Error(errMsg)
       }
 
       if (prediction.status !== 'succeeded') {
-        throw new Error(`Audio boost timed out after ${pollAttempts}s (status: ${prediction.status})`)
+        const errMsg = `Audio boost timed out after ${pollAttempts}s (status: ${prediction.status})`
+        if (boostLogId) {
+          await updateBoostLog(boostLogId, { status: 'failed', errorMessage: errMsg })
+        }
+        throw new Error(errMsg)
       }
 
       // Step 3: Extract output URL
-      const outputAudioUrl = typeof prediction.output === 'string'
+      const replicateOutputUrl = typeof prediction.output === 'string'
         ? prediction.output
         : prediction.output?.url || prediction.output?.[0]
 
       console.log('🔊 Raw output:', JSON.stringify(prediction.output))
-      console.log('🔊 Extracted URL:', outputAudioUrl)
+      console.log('🔊 Extracted URL:', replicateOutputUrl)
 
-      if (!outputAudioUrl || typeof outputAudioUrl !== 'string') {
-        throw new Error(`No output URL from Audio Boost. Raw output: ${JSON.stringify(prediction.output)}`)
+      if (!replicateOutputUrl || typeof replicateOutputUrl !== 'string') {
+        const errMsg = `No output URL from Audio Boost. Raw output: ${JSON.stringify(prediction.output)}`
+        if (boostLogId) {
+          await updateBoostLog(boostLogId, { status: 'failed', errorMessage: errMsg })
+        }
+        throw new Error(errMsg)
       }
 
-      console.log('✅ Audio Boost output:', outputAudioUrl)
+      console.log('✅ Audio Boost output:', replicateOutputUrl)
 
       // Download and re-upload to R2 for permanent storage
       console.log('📥 Downloading boosted audio...')
-      const downloadRes = await fetch(outputAudioUrl)
+      const downloadRes = await fetch(replicateOutputUrl)
       if (!downloadRes.ok) {
         throw new Error('Failed to download boosted audio')
       }
@@ -258,6 +290,20 @@ export async function POST(req: NextRequest) {
         await logCreditTransaction({ userId, amount: -BOOST_COST, balanceAfter: deductResult.new_credits, type: 'generation_audio_boost', description: `Audio Boost`, metadata: { bass_boost, treble_boost, volume_boost, bitrate, output_format } })
       }
 
+      // Final boost log update — succeeded with all details
+      if (boostLogId) {
+        await updateBoostLog(boostLogId, {
+          status: 'succeeded',
+          replicateOutputUrl,
+          outputAudioUrl: outputR2Result.url,
+          libraryId: libraryId ?? undefined,
+          creditsCharged: BOOST_COST,
+          creditsRemaining: deductResult?.new_credits ?? undefined,
+          replicatePredictTime: prediction.metrics?.predict_time ?? undefined,
+          replicateTotalTime: prediction.metrics?.total_time ?? undefined,
+        })
+      }
+
       console.log('✅ Audio Boost complete')
 
       return corsResponse(NextResponse.json({
@@ -275,7 +321,11 @@ export async function POST(req: NextRequest) {
 
     } catch (genError) {
       console.error('❌ Audio Boost generation failed:', genError)
-      await logCreditTransaction({ userId, amount: 0, type: 'generation_audio_boost', status: 'failed', description: `Audio Boost failed`, metadata: { error: String(genError).substring(0, 200) } })
+      const errStr = String(genError).substring(0, 500)
+      if (boostLogId) {
+        await updateBoostLog(boostLogId, { status: 'failed', errorMessage: errStr })
+      }
+      await logCreditTransaction({ userId, amount: 0, type: 'generation_audio_boost', status: 'failed', description: `Audio Boost failed`, metadata: { error: errStr } })
       throw genError
     }
 
