@@ -17,8 +17,8 @@ interface CodeConfig {
 
 const VALID_CODES: Record<string, CodeConfig> = {
   'FREE THE MUSIC': { credits: 20,  description: 'Decrypt puzzle — 20 credits' },
-  '444':            { credits: 444, description: 'Admin code — 444 credits' },
-  'PORSCHE':        { credits: 100, description: 'Secret code — 100 credits' },
+  '444OG79RIZZ':    { credits: 444, description: 'Admin code — 444 credits' },
+  '444ISAHOMIE':    { credits: 100, description: 'Secret code — 100 credits' },
 }
 
 export async function POST(req: NextRequest) {
