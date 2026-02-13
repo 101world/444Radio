@@ -392,7 +392,8 @@ function ExplorePageContent() {
   }
 
   // ─── Derived ───
-  const nonStemMedia = combinedMedia.filter(m => m.genre?.toLowerCase() !== 'stem')
+  const INTERNAL_GENRES = ['stem', 'effects', 'loop', 'sfx']
+  const nonStemMedia = combinedMedia.filter(m => !INTERNAL_GENRES.includes(m.genre?.toLowerCase() || ''))
   const hotTracks = [...nonStemMedia].sort((a, b) => ((b.plays || 0) + (b.likes || 0) * 3) - ((a.plays || 0) + (a.likes || 0) * 3)).slice(0, 20)
   const newReleases = [...nonStemMedia].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 20)
 

@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
             prompt: prompt,
             audio_url: url,
             image_url: null,
-            is_public: true,
+            is_public: false,
             genre: 'loop',
             metadata: JSON.stringify({
               bpm: bpm,

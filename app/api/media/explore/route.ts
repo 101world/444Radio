@@ -26,9 +26,8 @@ export async function GET(req: NextRequest) {
       // Filter out tracks with NULL or empty audio_url
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
-      // Exclude stems from main explore feed
-      .neq('genre', 'stem')
-      // NO .eq('is_public', true) - shows everything
+      // Exclude internal content from public explore feed
+      .not('genre', 'in', '(stem,effects,loop)')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
           prompt: prompt,
           audio_url: outputR2Result.url,
           image_url: null, // Explicitly set to null for audio-only content
-          is_public: true,
+          is_public: false,
           genre: 'effects'
         }
         
