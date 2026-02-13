@@ -177,26 +177,43 @@ export async function POST(request: NextRequest) {
       }
     } catch { /* non-critical */ }
 
+    // earn_transactions insert — use base columns only, then try extra columns separately
     try {
-      await supabaseRest('earn_transactions', {
+      const txBase: Record<string, unknown> = {
+        buyer_id: userId,
+        seller_id: track.user_id,
+        admin_id: admin?.clerk_user_id || null,
+        track_id: trackId,
+        total_cost: totalCost,
+        artist_share: artistShare,
+        admin_share: adminShare,
+        split_stems: splitStems || false,
+      }
+      // Try with extended columns first (migration 1013)
+      let txRes = await supabaseRest('earn_transactions', {
         method: 'POST',
         body: JSON.stringify({
-          buyer_id: userId,
-          seller_id: track.user_id,
-          admin_id: admin?.clerk_user_id || null,
-          track_id: trackId,
-          total_cost: totalCost,
-          artist_share: artistShare,
-          admin_share: adminShare,
-          split_stems: splitStems || false,
+          ...txBase,
           buyer_username: buyerUsername,
           seller_username: sellerUsername,
           track_title: track.title,
           transaction_type: 'purchase',
         }),
       })
+      if (!txRes.ok) {
+        // Fallback: use base columns only (extra columns may not exist yet)
+        console.warn('earn_transactions extended INSERT failed, trying base columns only')
+        txRes = await supabaseRest('earn_transactions', {
+          method: 'POST',
+          body: JSON.stringify(txBase),
+        })
+        if (!txRes.ok) {
+          const errBody = await txRes.text().catch(() => 'unknown')
+          console.error('earn_transactions INSERT failed even with base columns:', txRes.status, errBody)
+        }
+      }
     } catch (e) {
-      console.error('Failed to record earn transaction:', e)
+      console.error('earn_transactions network error:', e)
     }
 
     // 9a. Record in earn_purchases (for re-release prevention + bought tab)
@@ -255,6 +272,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 10. Save to buyer's music_library so it appears in their Library
+    //     NOTE: music_library table does NOT have image_url or genre columns
     try {
       const libRes = await supabaseRest('music_library', {
         method: 'POST',
@@ -262,9 +280,7 @@ export async function POST(request: NextRequest) {
           clerk_user_id: userId,
           title: track.title,
           audio_url: track.audio_url,
-          image_url: track.image_url || null,
-          genre: track.genre || null,
-          prompt: `Purchased from EARN marketplace`,
+          prompt: `Purchased from EARN marketplace | seller:${track.user_id} | track:${trackId}`,
           status: 'ready',
         }),
       })

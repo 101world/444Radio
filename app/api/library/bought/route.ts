@@ -24,18 +24,24 @@ export async function GET() {
       'Authorization': `Bearer ${supabaseKey}`,
     }
 
-    // 1. Fetch from all three sources in parallel
-    const [purchasesRes, transactionsRes, musicLibRes] = await Promise.all([
+    // 1. Fetch from all sources in parallel
+    //    earn_transactions query uses ONLY base columns (extended columns may not exist)
+    //    credit_transactions is the most reliable fallback (always written by logCreditTransaction)
+    const [purchasesRes, transactionsRes, musicLibRes, creditTxRes] = await Promise.all([
       fetch(
         `${supabaseUrl}/rest/v1/earn_purchases?buyer_id=eq.${userId}&order=created_at.desc&select=*`,
         { headers }
       ).catch(() => null),
       fetch(
-        `${supabaseUrl}/rest/v1/earn_transactions?buyer_id=eq.${userId}&order=created_at.desc&select=track_id,seller_id,total_cost,created_at,track_title,seller_username,transaction_type`,
+        `${supabaseUrl}/rest/v1/earn_transactions?buyer_id=eq.${userId}&order=created_at.desc&select=track_id,seller_id,total_cost,created_at`,
         { headers }
       ).catch(() => null),
       fetch(
         `${supabaseUrl}/rest/v1/music_library?clerk_user_id=eq.${userId}&prompt=ilike.*purchased*from*earn*&order=created_at.desc&select=*`,
+        { headers }
+      ).catch(() => null),
+      fetch(
+        `${supabaseUrl}/rest/v1/credit_transactions?user_id=eq.${userId}&type=eq.earn_purchase&status=eq.success&order=created_at.desc&select=metadata,created_at`,
         { headers }
       ).catch(() => null),
     ])
@@ -43,26 +49,45 @@ export async function GET() {
     const purchases = (purchasesRes?.ok ? await purchasesRes.json() : []) as any[]
     const transactions = (transactionsRes?.ok ? await transactionsRes.json() : []) as any[]
     const musicLib = (musicLibRes?.ok ? await musicLibRes.json() : []) as any[]
+    const creditTxs = (creditTxRes?.ok ? await creditTxRes.json() : []) as any[]
 
-    console.log(`[BOUGHT] Sources: earn_purchases=${Array.isArray(purchases) ? purchases.length : 0}, earn_transactions=${Array.isArray(transactions) ? transactions.length : 0}, music_library=${Array.isArray(musicLib) ? musicLib.length : 0}`)
+    console.log(`[BOUGHT] Sources: earn_purchases=${Array.isArray(purchases) ? purchases.length : 0}, earn_transactions=${Array.isArray(transactions) ? transactions.length : 0}, music_library=${Array.isArray(musicLib) ? musicLib.length : 0}, credit_transactions=${Array.isArray(creditTxs) ? creditTxs.length : 0}`)
 
     // Merge: start with earn_purchases, fill gaps from earn_transactions
     const purchaseTrackIds = new Set((Array.isArray(purchases) ? purchases : []).map((p: any) => p.track_id))
     const allPurchases: any[] = [...(Array.isArray(purchases) ? purchases : [])]
     
-    // Add any transactions NOT already covered by earn_purchases (purchases only, not listings)
+    // Add any transactions NOT already covered by earn_purchases
+    // Filter: exclude rows where user is the seller (those are listing fees, not purchases)
     for (const tx of (Array.isArray(transactions) ? transactions : [])) {
-      if (tx.track_id && !purchaseTrackIds.has(tx.track_id) && tx.transaction_type !== 'listing') {
+      if (tx.track_id && !purchaseTrackIds.has(tx.track_id) && tx.seller_id !== userId) {
         allPurchases.push({
           buyer_id: userId,
           seller_id: tx.seller_id,
           track_id: tx.track_id,
-          track_title: tx.track_title,
+          track_title: null,
           amount_paid: tx.total_cost,
           created_at: tx.created_at,
           _source: 'earn_transactions',
         })
         purchaseTrackIds.add(tx.track_id)
+      }
+    }
+
+    // Add any credit_transactions NOT already covered (ultimate fallback)
+    for (const ctx of (Array.isArray(creditTxs) ? creditTxs : [])) {
+      const trackId = ctx.metadata?.trackId
+      if (trackId && !purchaseTrackIds.has(trackId)) {
+        allPurchases.push({
+          buyer_id: userId,
+          seller_id: null,
+          track_id: trackId,
+          track_title: null,
+          amount_paid: null,
+          created_at: ctx.created_at,
+          _source: 'credit_transactions',
+        })
+        purchaseTrackIds.add(trackId)
       }
     }
 
