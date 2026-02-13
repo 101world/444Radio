@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2 } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -60,13 +60,14 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
   const [releaseItems, setReleaseItems] = useState<LibraryCombined[]>([])
   const [likedItems, setLikedItems] = useState<LibraryCombined[]>([])
   const [stemGroups, setStemGroups] = useState<any[]>([])
+  const [mixmasterItems, setMixmasterItems] = useState<LibraryMusic[]>([])
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -103,7 +104,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -112,7 +113,8 @@ export default function LibraryPage() {
         fetch('/api/r2/list-videos'),
         fetch('/api/library/releases'),
         fetch('/api/library/liked'),
-        fetch('/api/library/stems')
+        fetch('/api/library/stems'),
+        fetch('/api/library/mixmaster')
       ])
 
       const musicData = await musicRes.json()
@@ -124,6 +126,7 @@ export default function LibraryPage() {
       const releasesData = await releasesRes.json()
       const likedData = await likedRes.json()
       const stemsData = await stemsRes.json()
+      const mixmasterData = await mixmasterRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -144,10 +147,10 @@ export default function LibraryPage() {
           console.warn(`⚠️ ${expiredWarningCount} tracks may have expired URLs (Replicate > 48h old)`)
         }
         
-        // Filter out stems from the music tab (they have their own tab)
-        const nonStemMusic = uniqueMusic.filter((track: any) => track.genre !== 'stem')
+        // Filter out stems and boosted tracks from the music tab (they have their own tabs)
+        const nonStemMusic = uniqueMusic.filter((track: any) => track.genre !== 'stem' && track.genre !== 'boosted')
         setMusicItems(nonStemMusic)
-        console.log('✅ Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems)')
+        console.log('✅ Loaded', nonStemMusic.length, 'music tracks from database (excluded', uniqueMusic.length - nonStemMusic.length, 'stems/boosted)')
       }
 
       // Merge database images with R2 images, deduplicate by image_url
@@ -192,6 +195,11 @@ export default function LibraryPage() {
       if (stemsData.success && Array.isArray(stemsData.groups)) {
         setStemGroups(stemsData.groups)
         console.log('🎛️ Loaded', stemsData.groups.length, 'stem groups')
+      }
+      // Mix & Master tracks
+      if (mixmasterData.success && Array.isArray(mixmasterData.tracks)) {
+        setMixmasterItems(mixmasterData.tracks)
+        console.log('🔊 Loaded', mixmasterData.tracks.length, 'mix & master tracks')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -584,6 +592,18 @@ export default function LibraryPage() {
               <Scissors size={18} />
               <span>Stems</span>
               <span className="ml-1 text-xs opacity-60">({stemGroups.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('mixmaster')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'mixmaster'
+                  ? 'bg-gradient-to-r from-orange-600 to-red-500 text-white shadow-lg shadow-orange-500/30'
+                  : 'bg-white/5 text-orange-400/60 hover:bg-orange-500/10 hover:text-orange-400'
+              }`}
+            >
+              <Volume2 size={18} />
+              <span>Mix & Master</span>
+              <span className="ml-1 text-xs opacity-60">({mixmasterItems.length})</span>
             </button>
           </div>
         </div>
@@ -1128,6 +1148,82 @@ export default function LibraryPage() {
                           })}
                         </div>
                       )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mix & Master Tab */}
+        {!isLoading && activeTab === 'mixmaster' && (
+          <div>
+            {mixmasterItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/10 border border-orange-500/30 flex items-center justify-center">
+                  <Volume2 size={32} className="text-orange-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No mix & master tracks yet</h3>
+                <p className="text-orange-400/50 mb-6 text-sm">Boost your audio — mix & master any track for 1 credit</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-500 text-white rounded-xl font-bold hover:from-orange-700 hover:to-red-600 transition-all shadow-lg shadow-orange-500/20">
+                  <Volume2 size={18} />
+                  Boost a Track
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {mixmasterItems.map((track: any) => {
+                  const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying
+                  return (
+                    <div
+                      key={track.id}
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-orange-500/20 rounded-xl hover:border-orange-400/40 transition-all group"
+                    >
+                      {/* Play button */}
+                      <button
+                        onClick={async () => {
+                          const t = {
+                            id: track.id,
+                            audioUrl: track.audioUrl || track.audio_url,
+                            title: track.title || 'Boosted Audio',
+                            artist: user?.firstName || 'You'
+                          }
+                          await setPlaylist([t])
+                          if (isCurrentlyPlaying) {
+                            togglePlayPause()
+                          } else {
+                            await playTrack(t)
+                          }
+                        }}
+                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-orange-500/20 to-red-500/10 border border-orange-500/30 flex items-center justify-center hover:scale-105 transition-transform"
+                      >
+                        {isCurrentlyPlaying ? (
+                          <Pause size={18} className="text-orange-400" />
+                        ) : (
+                          <Play size={18} className="text-orange-400 ml-0.5" />
+                        )}
+                      </button>
+
+                      {/* Track info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">{track.title || 'Boosted Audio'}</h3>
+                        <p className="text-orange-400/50 text-xs mt-0.5 truncate">{track.prompt || 'Mix & Master'}</p>
+                      </div>
+
+                      {/* Date */}
+                      <span className="text-[10px] text-gray-500 flex-shrink-0 hidden sm:block">
+                        {new Date(track.created_at).toLocaleDateString()}
+                      </span>
+
+                      {/* Download */}
+                      <button
+                        onClick={() => handleDownload(track.audioUrl || track.audio_url, `${track.title || 'boosted'}.mp3`)}
+                        className="p-2 rounded-lg hover:bg-cyan-500/20 transition-colors flex-shrink-0"
+                        title="Download"
+                      >
+                        <Download size={16} className="text-cyan-400" />
+                      </button>
                     </div>
                   )
                 })}

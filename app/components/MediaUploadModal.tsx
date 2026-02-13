@@ -1,20 +1,20 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors } from 'lucide-react'
+import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors, Volume2, Zap } from 'lucide-react'
 
 interface MediaUploadModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: (result: any) => void
-  onStart?: (type: 'stem-split' | 'video-to-audio') => void
+  onStart?: (type: 'stem-split' | 'video-to-audio' | 'audio-boost') => void
   onError?: (error: string) => void
 }
 
 export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
-  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | null>(null)
+  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | null>(null)
   const [prompt, setPrompt] = useState('')
   const [useHQ, setUseHQ] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -23,8 +23,18 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioFileInputRef = useRef<HTMLInputElement>(null)
+  const boostFileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split') => {
+  // Audio Boost parameters
+  const [bassBoost, setBassBoost] = useState(5)
+  const [trebleBoost, setTrebleBoost] = useState(5)
+  const [volumeBoost, setVolumeBoost] = useState(6)
+  const [boostNormalize, setBoostNormalize] = useState(false)
+  const [boostNoiseReduction, setBoostNoiseReduction] = useState(true)
+  const [boostFormat, setBoostFormat] = useState('mp3')
+  const [boostBitrate, setBoostBitrate] = useState('320k')
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split' | 'audio-boost') => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -49,6 +59,11 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
     }
     
     if (mode === 'stem-split' && !isAudio) {
+      setError('Please select an audio file')
+      return
+    }
+
+    if (mode === 'audio-boost' && !isAudio) {
       setError('Please select an audio file')
       return
     }
@@ -135,8 +150,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         console.log('✅ Direct R2 upload complete:', publicUrl)
       }
 
-      // For stem splitting, verify URL is accessible before proceeding
-      if (uploadMode === 'stem-split') {
+      // For stem splitting or audio boost, verify URL is accessible before proceeding
+      if (uploadMode === 'stem-split' || uploadMode === 'audio-boost') {
         setUploadProgress('Verifying file accessibility...')
         
         // Wait for R2 to propagate (increased from 2s to 5s)
@@ -234,6 +249,41 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
 
         console.log('✅ Stems split successfully:', splitResult)
         onSuccess?.(splitResult)
+        handleClose()
+        return
+      }
+
+      // For audio boost, call the audio-boost API
+      if (uploadMode === 'audio-boost') {
+        onStart?.('audio-boost')
+
+        setUploadProgress('Boosting audio... This may take a few seconds.')
+        console.log('🔊 Boosting audio from:', publicUrl)
+
+        const boostResponse = await fetch('/api/generate/audio-boost', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            audioUrl: publicUrl,
+            trackTitle: selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Uploaded Audio',
+            bass_boost: bassBoost,
+            treble_boost: trebleBoost,
+            volume_boost: volumeBoost,
+            normalize: boostNormalize,
+            noise_reduction: boostNoiseReduction,
+            output_format: boostFormat,
+            bitrate: boostBitrate,
+          })
+        })
+
+        const boostResult = await boostResponse.json()
+
+        if (!boostResponse.ok || boostResult.error) {
+          throw new Error(boostResult.error || 'Audio boost failed')
+        }
+
+        console.log('✅ Audio boosted successfully:', boostResult)
+        onSuccess?.({ ...boostResult, type: 'audio-boost' })
         handleClose()
         return
       }
@@ -386,6 +436,25 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 </div>
               </button>
 
+              {/* Audio Boost Button */}
+              <button
+                onClick={() => boostFileInputRef.current?.click()}
+                className="w-full p-4 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-2 border-orange-500/30 hover:border-orange-400/50 rounded-xl transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Volume2 size={24} className="text-orange-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="text-base font-semibold text-white mb-1">Audio Boost</h3>
+                    <p className="text-xs text-gray-400">Mix & master your track — bass, treble, volume & more</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-orange-400">1 credit</p>
+                  </div>
+                </div>
+              </button>
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -400,6 +469,13 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 onChange={(e) => handleFileSelect(e, 'stem-split')}
                 className="hidden"
               />
+              <input
+                ref={boostFileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={(e) => handleFileSelect(e, 'audio-boost')}
+                className="hidden"
+              />
             </div>
           )}
 
@@ -410,10 +486,12 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
               {/* Compact File Info */}
               <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  uploadMode === 'stem-split' ? 'bg-teal-500/20' : 'bg-cyan-500/20'
+                  uploadMode === 'stem-split' ? 'bg-teal-500/20' : uploadMode === 'audio-boost' ? 'bg-orange-500/20' : 'bg-cyan-500/20'
                 }`}>
                   {uploadMode === 'stem-split' ? (
                     <Scissors size={20} className="text-teal-400" />
+                  ) : uploadMode === 'audio-boost' ? (
+                    <Volume2 size={20} className="text-orange-400" />
                   ) : (
                     <Film size={20} className="text-cyan-400" />
                   )}
@@ -460,6 +538,18 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                     className="w-full"
                   />
                   <p className="text-xs text-gray-400 mt-2">Preview your audio before splitting stems</p>
+                </div>
+              )}
+
+              {/* Audio Preview for Boost */}
+              {previewUrl && fileType === 'audio' && uploadMode === 'audio-boost' && (
+                <div className="rounded-lg overflow-hidden bg-orange-500/10 border border-orange-500/20 p-4">
+                  <audio 
+                    src={previewUrl} 
+                    controls 
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">Preview your audio before boosting</p>
                 </div>
               )}
 
@@ -518,6 +608,86 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                   </div>
                 </div>
               )}
+
+              {/* Audio Boost Parameters - Only for audio-boost mode */}
+              {uploadMode === 'audio-boost' && (
+                <div className="space-y-3">
+                  {/* Quick Presets */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => { setBassBoost(5); setTrebleBoost(5); setVolumeBoost(6); setBoostNormalize(false); setBoostNoiseReduction(true); setBoostBitrate('320k') }}
+                      className="px-3 py-2 bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 hover:border-orange-400/50 rounded-lg text-xs font-semibold text-orange-300 transition-all"
+                    >
+                      🔥 444 Mix
+                    </button>
+                    <button
+                      onClick={() => { setBassBoost(0); setTrebleBoost(0); setVolumeBoost(2); setBoostNormalize(true); setBoostNoiseReduction(false); setBoostBitrate('320k') }}
+                      className="px-3 py-2 bg-white/5 border border-white/10 hover:border-white/30 rounded-lg text-xs font-semibold text-gray-300 transition-all"
+                    >
+                      🎧 Clean
+                    </button>
+                    <button
+                      onClick={() => { setBassBoost(10); setTrebleBoost(3); setVolumeBoost(8); setBoostNormalize(false); setBoostNoiseReduction(true); setBoostBitrate('320k') }}
+                      className="px-3 py-2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 hover:border-purple-400/50 rounded-lg text-xs font-semibold text-purple-300 transition-all"
+                    >
+                      💎 Heavy
+                    </button>
+                  </div>
+
+                  {/* Bass */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-gray-400">Bass</label>
+                      <span className="text-xs font-bold text-orange-400">{bassBoost > 0 ? '+' : ''}{bassBoost} dB</span>
+                    </div>
+                    <input type="range" min={-20} max={20} step={0.5} value={bassBoost} onChange={(e) => setBassBoost(Number(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500" />
+                  </div>
+
+                  {/* Treble */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-gray-400">Treble</label>
+                      <span className="text-xs font-bold text-cyan-400">{trebleBoost > 0 ? '+' : ''}{trebleBoost} dB</span>
+                    </div>
+                    <input type="range" min={-20} max={20} step={0.5} value={trebleBoost} onChange={(e) => setTrebleBoost(Number(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                  </div>
+
+                  {/* Volume */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-gray-400">Volume</label>
+                      <span className="text-xs font-bold text-yellow-400">{volumeBoost}x</span>
+                    </div>
+                    <input type="range" min={0} max={10} step={0.5} value={volumeBoost} onChange={(e) => setVolumeBoost(Number(e.target.value))} className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+                  </div>
+
+                  {/* Toggles + Format */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex items-center gap-2 p-2 bg-white/5 border border-white/10 rounded-lg cursor-pointer">
+                      <input type="checkbox" checked={boostNormalize} onChange={(e) => setBoostNormalize(e.target.checked)} className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 text-orange-500" />
+                      <span className="text-xs text-gray-300">Normalize</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 bg-white/5 border border-white/10 rounded-lg cursor-pointer">
+                      <input type="checkbox" checked={boostNoiseReduction} onChange={(e) => setBoostNoiseReduction(e.target.checked)} className="w-3.5 h-3.5 rounded border-white/20 bg-white/5 text-orange-500" />
+                      <span className="text-xs text-gray-300">Denoise</span>
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={boostFormat} onChange={(e) => setBoostFormat(e.target.value)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-orange-500/50 appearance-none cursor-pointer">
+                      <option value="mp3" className="bg-gray-900">MP3</option>
+                      <option value="wav" className="bg-gray-900">WAV</option>
+                      <option value="aac" className="bg-gray-900">AAC</option>
+                      <option value="ogg" className="bg-gray-900">OGG</option>
+                    </select>
+                    <select value={boostBitrate} onChange={(e) => setBoostBitrate(e.target.value)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-orange-500/50 appearance-none cursor-pointer">
+                      <option value="128k" className="bg-gray-900">128k</option>
+                      <option value="192k" className="bg-gray-900">192k</option>
+                      <option value="256k" className="bg-gray-900">256k</option>
+                      <option value="320k" className="bg-gray-900">320k</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -543,12 +713,14 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-white/10 flex items-center gap-3 bg-black/40">
           <div className="flex-1 flex items-center gap-2 text-sm">
-            <span className={uploadMode === 'stem-split' ? 'text-teal-400' : useHQ ? 'text-yellow-400' : 'text-cyan-400'}>💰</span>
+            <span className={uploadMode === 'stem-split' ? 'text-teal-400' : uploadMode === 'audio-boost' ? 'text-orange-400' : useHQ ? 'text-yellow-400' : 'text-cyan-400'}>💰</span>
             <span className={`font-semibold ${
               uploadMode === 'stem-split' ? 'text-teal-400' :
+              uploadMode === 'audio-boost' ? 'text-orange-400' :
               useHQ ? 'text-yellow-400' : 'text-cyan-400'
             }`}>
               {uploadMode === 'stem-split' ? '5 credits' :
+               uploadMode === 'audio-boost' ? '1 credit' :
                selectedFile && useHQ ? '10 credits' : '2 credits'}
             </span>
             {selectedFile && uploadMode === 'video-to-audio' && (
@@ -564,6 +736,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
             className={`px-5 py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-lg disabled:opacity-40 disabled:cursor-not-allowed min-w-[120px] ${
               uploadMode === 'stem-split'
                 ? 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 shadow-teal-500/30'
+                : uploadMode === 'audio-boost'
+                ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-orange-500/30'
                 : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 shadow-cyan-500/30'
             }`}
           >
@@ -576,6 +750,11 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
               <>
                 <Scissors size={16} />
                 <span>Split Stems</span>
+              </>
+            ) : uploadMode === 'audio-boost' ? (
+              <>
+                <Volume2 size={16} />
+                <span>Boost Audio</span>
               </>
             ) : (
               <>

@@ -13,6 +13,7 @@ export type CreditTransactionType =
   | 'generation_video_to_audio'
   | 'generation_cover_art'
   | 'generation_stem_split'
+  | 'generation_audio_boost'
   | 'earn_list'
   | 'earn_purchase'
   | 'earn_sale'

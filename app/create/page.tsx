@@ -14,6 +14,7 @@ const LoopersGenerationModal = lazy(() => import('../components/LoopersGeneratio
 const CombineMediaModal = lazy(() => import('../components/CombineMediaModal'))
 const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
 const MediaUploadModal = lazy(() => import('../components/MediaUploadModal'))
+const AudioBoostModal = lazy(() => import('../components/AudioBoostModal'))
 const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
@@ -93,6 +94,9 @@ function CreatePageContent() {
   const [showCombineModal, setShowCombineModal] = useState(false)
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false)
+  const [showAudioBoostModal, setShowAudioBoostModal] = useState(false)
+  const [boostAudioUrl, setBoostAudioUrl] = useState('')
+  const [boostTrackTitle, setBoostTrackTitle] = useState('')
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
   const [preselectedImageId, setPreselectedImageId] = useState<string | undefined>()
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -1662,6 +1666,7 @@ function CreatePageContent() {
           onShowUpload={() => setShowMediaUploadModal(true)}
           onShowVideoToAudio={() => setShowMediaUploadModal(true)}
           onShowStemSplit={() => setShowMediaUploadModal(true)}
+          onShowAudioBoost={() => setShowMediaUploadModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
@@ -1874,6 +1879,19 @@ function CreatePageContent() {
                         <Sparkles size={18} />
                         <span>Split Stems</span>
                         <span className="text-xs text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">5</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setBoostAudioUrl(message.result!.audioUrl!)
+                          setBoostTrackTitle(message.result!.title || 'Generated Track')
+                          setShowAudioBoostModal(true)
+                        }}
+                        className="w-full px-6 py-4 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-red-500/10 border-t border-white/10 text-sm font-medium text-orange-400 flex items-center justify-center gap-2 transition-all"
+                        title="Mix & master your track"
+                      >
+                        <Zap size={18} />
+                        <span>Boost Audio</span>
+                        <span className="text-xs text-orange-400/60 bg-orange-500/10 px-2 py-0.5 rounded-full">1</span>
                       </button>
                     </div>
                   </div>
@@ -3290,6 +3308,17 @@ function CreatePageContent() {
               // Close the modal so user sees the chat
               setShowMediaUploadModal(false)
             }
+            if (type === 'audio-boost') {
+              const processingMessage: Message = {
+                id: `audio-boost-${Date.now()}`,
+                type: 'assistant',
+                content: '🔊 Boosting audio... Mix & mastering your track.',
+                timestamp: new Date(),
+                isGenerating: true
+              }
+              setMessages(prev => [...prev, processingMessage])
+              setShowMediaUploadModal(false)
+            }
           }}
           onError={(errorMessage) => {
             // Remove processing message
@@ -3319,6 +3348,21 @@ function CreatePageContent() {
                 timestamp: new Date()
               }
               setMessages(prev => [...prev, stemMessage])
+            } else if (result.type === 'audio-boost') {
+              // Handle audio boost results
+              const boostMessage: Message = {
+                id: Date.now().toString(),
+                type: 'generation',
+                content: `✅ Audio boosted successfully! Used ${result.creditsUsed || 1} credit. ${result.creditsRemaining || 0} credits remaining.`,
+                generationType: 'music',
+                result: {
+                  audioUrl: result.audioUrl,
+                  title: 'Boosted Audio',
+                  prompt: `Audio Boost: bass=${result.settings?.bass_boost}dB, treble=${result.settings?.treble_boost}dB, vol=${result.settings?.volume_boost}x`
+                },
+                timestamp: new Date()
+              }
+              setMessages(prev => [...prev, boostMessage])
             } else {
               // Handle video-to-audio results
               const resultMessage: Message = {
@@ -3342,6 +3386,52 @@ function CreatePageContent() {
             } else {
               refreshCredits()
             }
+          }}
+        />
+      </Suspense>
+
+      {/* Audio Boost Modal - For boosting generated tracks */}
+      <Suspense fallback={null}>
+        <AudioBoostModal
+          isOpen={showAudioBoostModal}
+          onClose={() => {
+            setShowAudioBoostModal(false)
+            setBoostAudioUrl('')
+            setBoostTrackTitle('')
+          }}
+          audioUrl={boostAudioUrl}
+          trackTitle={boostTrackTitle}
+          onSuccess={(result) => {
+            setShowAudioBoostModal(false)
+            // Add boosted audio result to chat
+            const boostMessage: Message = {
+              id: Date.now().toString(),
+              type: 'generation',
+              content: `✅ Audio boosted! Used ${result.creditsUsed || 1} credit. ${result.creditsRemaining || 0} credits remaining.`,
+              generationType: 'music',
+              result: {
+                audioUrl: result.audioUrl,
+                title: boostTrackTitle ? `${boostTrackTitle} (Boosted)` : 'Boosted Audio',
+                prompt: `Audio Boost: bass=${result.settings?.bass_boost}dB, treble=${result.settings?.treble_boost}dB, vol=${result.settings?.volume_boost}x`
+              },
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, boostMessage])
+            // Update credits
+            if (result.creditsRemaining !== undefined) {
+              setUserCredits(result.creditsRemaining)
+            } else {
+              refreshCredits()
+            }
+          }}
+          onError={(errorMessage) => {
+            const errorMsg: Message = {
+              id: Date.now().toString(),
+              type: 'assistant',
+              content: `❌ Audio Boost Error: ${errorMessage}`,
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, errorMsg])
           }}
         />
       </Suspense>

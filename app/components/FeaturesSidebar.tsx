@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors, Lightbulb, ChevronLeft, Plus } from 'lucide-react'
+import { Music, Sparkles, Repeat, Image as ImageIcon, Edit3, Rocket, Upload, X, RotateCcw, Mic, Zap, Send, Film, Scissors, Lightbulb, ChevronLeft, Plus, Volume2 } from 'lucide-react'
 import { useState } from 'react'
 
 interface FeaturesSidebarProps {
@@ -23,6 +23,7 @@ interface FeaturesSidebarProps {
   onShowUpload: () => void
   onShowVideoToAudio: () => void
   onShowStemSplit: () => void
+  onShowAudioBoost: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -57,6 +58,7 @@ export default function FeaturesSidebar({
   onShowUpload,
   onShowVideoToAudio,
   onShowStemSplit,
+  onShowAudioBoost,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -130,6 +132,15 @@ export default function FeaturesSidebar({
       active: false,
       cost: 5,
       onClick: onShowStemSplit,
+    },
+    {
+      icon: Volume2,
+      label: 'Audio Boost',
+      description: 'Mix & master your track',
+      color: 'orange',
+      active: false,
+      cost: 1,
+      onClick: onShowAudioBoost,
     },
     {
       icon: Edit3,
@@ -442,6 +453,9 @@ export default function FeaturesSidebar({
               purple: feature.active
                 ? 'bg-gradient-to-r from-purple-600/30 to-pink-500/20 border-purple-400 text-purple-300'
                 : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/50',
+              orange: feature.active
+                ? 'bg-gradient-to-r from-orange-600/30 to-red-500/20 border-orange-400 text-orange-300'
+                : 'border-orange-500/30 text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/50',
             }
 
             return (
