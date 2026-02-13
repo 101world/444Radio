@@ -2112,6 +2112,18 @@ function CreatePageContent() {
                               <button
                                 onClick={() => {
                                   if (!url) return
+                                  setBoostAudioUrl(url)
+                                  setBoostTrackTitle(def.title)
+                                  setShowAudioBoostModal(true)
+                                }}
+                                className="p-2 bg-orange-500/20 rounded-lg hover:bg-orange-500/40 transition-colors border border-orange-500/30"
+                                title="Boost this stem"
+                              >
+                                <Zap size={14} className="text-orange-400" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (!url) return
                                   // Create clean filename with "444 - " prefix
                                   const stemName = key.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_')
                                   const filename = `444_${stemName}.mp3`

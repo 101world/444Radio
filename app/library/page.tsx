@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -60,7 +60,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -70,6 +70,8 @@ export default function LibraryPage() {
   const [mixmasterItems, setMixmasterItems] = useState<LibraryMusic[]>([])
   const [boughtItems, setBoughtItems] = useState<any[]>([])
   const [extractGroups, setExtractGroups] = useState<any[]>([])
+  const [loopsItems, setLoopsItems] = useState<any[]>([])
+  const [effectsItems, setEffectsItems] = useState<any[]>([])
   const [expandedExtracts, setExpandedExtracts] = useState<Set<number>>(new Set())
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -107,7 +109,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -119,7 +121,9 @@ export default function LibraryPage() {
         fetch('/api/library/stems'),
         fetch('/api/library/mixmaster'),
         fetch('/api/library/bought'),
-        fetch('/api/library/extract')
+        fetch('/api/library/extract'),
+        fetch('/api/library/loops'),
+        fetch('/api/library/effects')
       ])
 
       const musicData = await musicRes.json()
@@ -134,6 +138,8 @@ export default function LibraryPage() {
       const mixmasterData = await mixmasterRes.json()
       const boughtData = await boughtRes.json()
       const extractData = await extractRes.json()
+      const loopsData = await loopsRes.json()
+      const effectsData = await effectsRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -159,7 +165,7 @@ export default function LibraryPage() {
           (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
         )
         const nonStemMusic = uniqueMusic.filter((track: any) =>
-          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' &&
+          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' &&
           !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
           !boughtAudioUrls.has(track.audio_url)
         )
@@ -222,6 +228,14 @@ export default function LibraryPage() {
       if (extractData.success && Array.isArray(extractData.groups)) {
         setExtractGroups(extractData.groups)
         console.log('🎬 Loaded', extractData.groups.length, 'extract groups')
+      }
+      if (loopsData.success && Array.isArray(loopsData.loops)) {
+        setLoopsItems(loopsData.loops)
+        console.log('🔄 Loaded', loopsData.loops.length, 'loops')
+      }
+      if (effectsData.success && Array.isArray(effectsData.effects)) {
+        setEffectsItems(effectsData.effects)
+        console.log('🎵 Loaded', effectsData.effects.length, 'effects/SFX')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -652,6 +666,34 @@ export default function LibraryPage() {
               <Layers size={18} />
               <span>Extract</span>
               <span className="ml-1 text-xs opacity-60">({extractGroups.length})</span>
+            </button>
+
+            {/* Loops Tab */}
+            <button
+              onClick={() => setActiveTab('loops')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'loops'
+                  ? 'bg-gradient-to-r from-indigo-600 to-blue-400 text-white shadow-lg shadow-indigo-500/30'
+                  : 'bg-white/5 text-indigo-400/60 hover:bg-indigo-500/10 hover:text-indigo-400'
+              }`}
+            >
+              <Repeat size={18} />
+              <span>Loops</span>
+              <span className="ml-1 text-xs opacity-60">({loopsItems.length})</span>
+            </button>
+
+            {/* Effects Tab */}
+            <button
+              onClick={() => setActiveTab('effects')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'effects'
+                  ? 'bg-gradient-to-r from-pink-600 to-rose-400 text-white shadow-lg shadow-pink-500/30'
+                  : 'bg-white/5 text-pink-400/60 hover:bg-pink-500/10 hover:text-pink-400'
+              }`}
+            >
+              <Radio size={18} />
+              <span>SFX</span>
+              <span className="ml-1 text-xs opacity-60">({effectsItems.length})</span>
             </button>
           </div>
         </div>
@@ -1505,6 +1547,170 @@ export default function LibraryPage() {
                             )
                           })}
                         </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Loops Tab */}
+        {!isLoading && activeTab === 'loops' && (
+          <div>
+            {loopsItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-blue-400/10 border border-indigo-500/30 flex items-center justify-center">
+                  <Repeat size={32} className="text-indigo-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No loops yet</h3>
+                <p className="text-indigo-400/50 mb-6 text-sm">Generate fixed BPM loops to build tracks</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-400 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-blue-500 transition-all shadow-lg shadow-indigo-500/20">
+                  <Repeat size={18} />
+                  Generate Loops
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {loopsItems.map((loop: any) => {
+                  const isCurrentlyPlaying = currentTrack?.id === loop.id && isPlaying
+                  return (
+                    <div
+                      key={loop.id}
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-indigo-500/20 rounded-xl hover:border-indigo-400/40 transition-all group"
+                    >
+                      {/* Play button */}
+                      <button
+                        onClick={async () => {
+                          if (!loop.audioUrl) return
+                          const t = {
+                            id: loop.id,
+                            audioUrl: loop.audioUrl,
+                            title: loop.title || 'Untitled Loop',
+                            artist: user?.firstName || 'You'
+                          }
+                          if (isCurrentlyPlaying) {
+                            togglePlayPause()
+                          } else {
+                            const allTracks = loopsItems.filter((l: any) => l.audioUrl).map((l: any) => ({
+                              id: l.id,
+                              audioUrl: l.audioUrl,
+                              title: l.title || 'Untitled Loop',
+                              artist: user?.firstName || 'You'
+                            }))
+                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === loop.id))
+                          }
+                        }}
+                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-indigo-500/20 to-blue-500/10 border border-indigo-500/30 flex items-center justify-center hover:scale-105 transition-transform"
+                      >
+                        {isCurrentlyPlaying ? (
+                          <Pause size={18} className="text-indigo-400" />
+                        ) : (
+                          <Play size={18} className="text-indigo-400 ml-0.5" />
+                        )}
+                      </button>
+
+                      {/* Track info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">{loop.title || 'Untitled Loop'}</h3>
+                        <p className="text-indigo-400/50 text-xs mt-0.5">
+                          {loop.prompt ? `${loop.prompt.substring(0, 50)}${loop.prompt.length > 50 ? '...' : ''}` : 'Fixed BPM Loop'}
+                        </p>
+                      </div>
+
+                      {/* Download */}
+                      {loop.audioUrl && (
+                        <button
+                          onClick={() => handleDownload(loop.audioUrl, `${loop.title || 'loop'}.mp3`, 'mp3')}
+                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                          title="Download MP3"
+                        >
+                          <Download size={14} className="text-indigo-400" />
+                          <span className="text-xs text-indigo-400 font-medium">MP3</span>
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Effects/SFX Tab */}
+        {!isLoading && activeTab === 'effects' && (
+          <div>
+            {effectsItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-pink-500/20 to-rose-400/10 border border-pink-500/30 flex items-center justify-center">
+                  <Radio size={32} className="text-pink-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No sound effects yet</h3>
+                <p className="text-pink-400/50 mb-6 text-sm">Generate custom audio effects and SFX</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-600 to-rose-400 text-white rounded-xl font-bold hover:from-pink-700 hover:to-rose-500 transition-all shadow-lg shadow-pink-500/20">
+                  <Radio size={18} />
+                  Generate SFX
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {effectsItems.map((effect: any) => {
+                  const isCurrentlyPlaying = currentTrack?.id === effect.id && isPlaying
+                  return (
+                    <div
+                      key={effect.id}
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-pink-500/20 rounded-xl hover:border-pink-400/40 transition-all group"
+                    >
+                      {/* Play button */}
+                      <button
+                        onClick={async () => {
+                          if (!effect.audioUrl) return
+                          const t = {
+                            id: effect.id,
+                            audioUrl: effect.audioUrl,
+                            title: effect.title || 'Untitled SFX',
+                            artist: user?.firstName || 'You'
+                          }
+                          if (isCurrentlyPlaying) {
+                            togglePlayPause()
+                          } else {
+                            const allTracks = effectsItems.filter((e: any) => e.audioUrl).map((e: any) => ({
+                              id: e.id,
+                              audioUrl: e.audioUrl,
+                              title: e.title || 'Untitled SFX',
+                              artist: user?.firstName || 'You'
+                            }))
+                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === effect.id))
+                          }
+                        }}
+                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/30 flex items-center justify-center hover:scale-105 transition-transform"
+                      >
+                        {isCurrentlyPlaying ? (
+                          <Pause size={18} className="text-pink-400" />
+                        ) : (
+                          <Play size={18} className="text-pink-400 ml-0.5" />
+                        )}
+                      </button>
+
+                      {/* Track info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">{effect.title || 'Untitled SFX'}</h3>
+                        <p className="text-pink-400/50 text-xs mt-0.5">
+                          {effect.prompt ? `${effect.prompt.substring(0, 50)}${effect.prompt.length > 50 ? '...' : ''}` : 'Sound Effect'}
+                        </p>
+                      </div>
+
+                      {/* Download */}
+                      {effect.audioUrl && (
+                        <button
+                          onClick={() => handleDownload(effect.audioUrl, `${effect.title || 'effect'}.mp3`, 'mp3')}
+                          className="px-3 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-pink-500/30 hover:border-pink-400 hover:bg-pink-500/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                          title="Download MP3"
+                        >
+                          <Download size={14} className="text-pink-400" />
+                          <span className="text-xs text-pink-400 font-medium">MP3</span>
+                        </button>
                       )}
                     </div>
                   )
