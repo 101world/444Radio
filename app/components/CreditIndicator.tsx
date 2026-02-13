@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { Zap, Crown } from 'lucide-react'
 import Link from 'next/link'
+import { useAudioPlayer } from '@/app/contexts/AudioPlayerContext'
 
 export default function CreditIndicator() {
   const { user } = useUser()
+  const { currentTrack } = useAudioPlayer()
   const [credits, setCredits] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none')
@@ -42,10 +44,14 @@ export default function CreditIndicator() {
   if (!user) return null
 
   const isSubscribed = subscriptionStatus === 'active'
+  // Hide on mobile when player is active to prevent overlap
+  const playerActive = !!currentTrack
 
   return (
     <Link href={isSubscribed ? '/pricing' : '/decrypt'}>
       <div className={`fixed top-6 right-6 z-50 flex items-center gap-2 px-4 py-3 backdrop-blur-2xl border rounded-full shadow-lg transition-all cursor-pointer group ${
+        playerActive ? 'md:flex hidden' : ''
+      } ${
         isSubscribed 
           ? 'bg-gradient-to-r from-purple-900/60 to-cyan-900/60 border-purple-500/50 shadow-purple-500/30 hover:border-purple-400/70'
           : 'bg-black/60 border-cyan-500/30 shadow-cyan-500/20 hover:bg-black/70 hover:border-cyan-500/50'

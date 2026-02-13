@@ -7,12 +7,13 @@ import { useRouter } from 'next/navigation'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
-import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, Zap, Clock, Hash, ChevronRight, Sparkles, Flame } from 'lucide-react'
+import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, Zap, Clock, Hash, ChevronRight, Sparkles, Flame, Info } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
 import { ExploreGridSkeleton } from '../components/LoadingSkeleton'
 import LikeButton from '../components/LikeButton'
 import ErrorBoundary from '../components/ErrorBoundary'
+import TrackInfoModal from '../components/TrackInfoModal'
 
 const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
 const LyricsModal = lazy(() => import('../components/LyricsModal'))
@@ -80,8 +81,8 @@ function formatDuration(s?: number) {
 // ═══════════════════════════════════════════════
 // GRID TRACK CARD — Square cover art, stacked info
 // ═══════════════════════════════════════════════
-function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics }: {
-  media: CombinedMedia; isCurrentlyPlaying: boolean; isPlaying: boolean; onPlay: () => void; onLyrics: () => void
+function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics, onInfo }: {
+  media: CombinedMedia; isCurrentlyPlaying: boolean; isPlaying: boolean; onPlay: () => void; onLyrics: () => void; onInfo?: () => void
 }) {
   const gs = getGenreStyle(media.genre)
   return (
@@ -128,6 +129,14 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics 
               {media.genre}
             </span>
           </div>
+        )}
+        {/* Info button top-left */}
+        {onInfo && (
+          <button onClick={e => { e.stopPropagation(); onInfo() }}
+            className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-gray-400 hover:text-cyan-400 opacity-0 group-hover:opacity-100 transition-all z-10"
+            title="Track info">
+            <Info size={9} />
+          </button>
         )}
       </div>
       {/* Info below card */}
@@ -250,6 +259,7 @@ function ExplorePageContent() {
   const [showLyricsModal, setShowLyricsModal] = useState(false)
   const [selectedLyricsId, setSelectedLyricsId] = useState<string | null>(null)
   const [selectedLyricsTitle, setSelectedLyricsTitle] = useState<string | null>(null)
+  const [infoMedia, setInfoMedia] = useState<CombinedMedia | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { currentTrack: globalCurrentTrack, isPlaying: globalIsPlaying, playTrack, togglePlayPause, setPlaylist } = useAudioPlayer()
@@ -368,7 +378,8 @@ function ExplorePageContent() {
       const sourceList = isSearchActive && searchResults.length > 0 ? searchResults : combinedMedia
       const playlistTracks = sourceList.map(m => ({
         id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url, imageUrl: m.imageUrl || m.image_url,
-        artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id
+        artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id,
+        genre: m.genre || undefined, mood: m.mood || undefined, tags: m.tags || undefined
       }))
       const startIndex = sourceList.findIndex(m => m.id === media.id)
       setPlaylist(playlistTracks, startIndex >= 0 ? startIndex : 0)
@@ -382,7 +393,6 @@ function ExplorePageContent() {
   // ─── Derived ───
   const hotTracks = [...combinedMedia].sort((a, b) => ((b.plays || 0) + (b.likes || 0) * 3) - ((a.plays || 0) + (a.likes || 0) * 3)).slice(0, 12)
   const newReleases = [...combinedMedia].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 12)
-  const mostPlayed = [...combinedMedia].sort((a, b) => (b.plays || 0) - (a.plays || 0)).filter(m => (m.plays || 0) > 0).slice(0, 12)
   const activeFilterCount = [searchFilters.genre, searchFilters.mood, searchFilters.key, searchFilters.vocals, searchFilters.bpm_min, searchFilters.bpm_max].filter(Boolean).length
 
   return (
@@ -419,14 +429,11 @@ function ExplorePageContent() {
           </div>
         </div>
 
-        {/* ═══ TOP BAR — Title + Compact Search ═══ */}
+        {/* ═══ TOP BAR — Compact Search ═══ */}
         <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/[0.04]">
           <div className="flex items-center gap-3 px-4 md:px-6 h-14">
-            {/* Title area */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <h1 className="text-lg font-bold text-white tracking-tight hidden sm:block">Explore</h1>
-              <span className="text-[10px] text-gray-600 hidden sm:block">{combinedMedia.length} tracks</span>
-            </div>
+            {/* Track count */}
+            <span className="text-[10px] text-gray-500 hidden sm:block flex-shrink-0">{combinedMedia.length} tracks</span>
 
             {/* Search — compact, center-weighted */}
             <div className="relative flex-1 max-w-md mx-auto group">
@@ -647,19 +654,21 @@ function ExplorePageContent() {
                   </div>
                 )}
 
-                {/* HOT RIGHT NOW — Horizontal scroll */}
-                <section className="pt-3 pb-4">
-                  <div className="px-4 md:px-6">
-                    <SectionHeader icon={Flame} label="Hot Right Now" iconColor="text-orange-400" gradientFrom="from-orange-500/20" gradientTo="to-red-500/20" />
-                  </div>
-                  <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                    {hotTracks.map(media => (
-                      <GridTrackCard key={media.id} media={media}
-                        isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
-                        onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} />
-                    ))}
-                  </div>
-                </section>
+                {/* NEW RELEASES — Horizontal scroll */}
+                {newReleases.length > 0 && (
+                  <section className="pt-3 pb-4">
+                    <div className="px-4 md:px-6">
+                      <SectionHeader icon={Sparkles} label="New Releases" iconColor="text-green-400" gradientFrom="from-green-500/20" gradientTo="to-emerald-500/20" />
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                      {newReleases.map(media => (
+                        <GridTrackCard key={`new-${media.id}`} media={media}
+                          isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
+                          onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
+                      ))}
+                    </div>
+                  </section>
+                )}
 
                 {/* ARTISTS — Horizontal scroll */}
                 <section className="py-4 border-t border-white/[0.03]">
@@ -684,37 +693,19 @@ function ExplorePageContent() {
                   </div>
                 </section>
 
-                {/* NEW RELEASES — Horizontal scroll */}
-                {newReleases.length > 0 && (
-                  <section className="py-4 border-t border-white/[0.03]">
-                    <div className="px-4 md:px-6">
-                      <SectionHeader icon={Sparkles} label="New Releases" iconColor="text-green-400" gradientFrom="from-green-500/20" gradientTo="to-emerald-500/20" />
-                    </div>
-                    <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                      {newReleases.map(media => (
-                        <GridTrackCard key={`new-${media.id}`} media={media}
-                          isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
-                          onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} />
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* MOST PLAYED — Horizontal scroll */}
-                {mostPlayed.length > 0 && (
-                  <section className="py-4 border-t border-white/[0.03]">
-                    <div className="px-4 md:px-6">
-                      <SectionHeader icon={Headphones} label="Most Played" iconColor="text-purple-400" gradientFrom="from-purple-500/20" gradientTo="to-pink-500/20" />
-                    </div>
-                    <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                      {mostPlayed.map(media => (
-                        <GridTrackCard key={`top-${media.id}`} media={media}
-                          isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
-                          onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} />
-                      ))}
-                    </div>
-                  </section>
-                )}
+                {/* HOT RIGHT NOW — Horizontal scroll */}
+                <section className="py-4 border-t border-white/[0.03]">
+                  <div className="px-4 md:px-6">
+                    <SectionHeader icon={Flame} label="Hot Right Now" iconColor="text-orange-400" gradientFrom="from-orange-500/20" gradientTo="to-red-500/20" />
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                    {hotTracks.map(media => (
+                      <GridTrackCard key={media.id} media={media}
+                        isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
+                        onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
+                    ))}
+                  </div>
+                </section>
 
                 {/* ALL TRACKS — List view */}
                 <section className="px-4 md:px-6 py-4 border-t border-white/[0.03]">
@@ -842,6 +833,14 @@ function ExplorePageContent() {
           />
         )}
       </Suspense>
+
+      {infoMedia && (
+        <TrackInfoModal
+          track={infoMedia}
+          onClose={() => setInfoMedia(null)}
+          onPlay={() => { handlePlay(infoMedia); setInfoMedia(null) }}
+        />
+      )}
     </div>
   )
 }

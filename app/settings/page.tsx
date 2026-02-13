@@ -587,6 +587,12 @@ function SettingsPageInner() {
                       {/* Info */}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{tx.description || txTypeLabel(tx.type)}</p>
+                        {tx.type === 'earn_sale' && tx.metadata?.buyerUsername && (
+                          <p className="text-xs text-cyan-400/80 truncate">Bought by @{tx.metadata.buyerUsername}</p>
+                        )}
+                        {tx.type === 'earn_purchase' && tx.metadata?.sellerUsername && (
+                          <p className="text-xs text-purple-400/80 truncate">From @{tx.metadata.sellerUsername}</p>
+                        )}
                         <p className="text-xs text-gray-500">
                           {txTypeLabel(tx.type)} &middot; {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>

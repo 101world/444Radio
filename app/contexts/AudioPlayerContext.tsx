@@ -11,6 +11,9 @@ interface Track {
   artist?: string
   imageUrl?: string
   userId?: string
+  genre?: string
+  mood?: string
+  tags?: string[]
 }
 
 interface AudioPlayerContextType {

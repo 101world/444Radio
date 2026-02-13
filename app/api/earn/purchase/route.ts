@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'trackId required' }, { status: 400 }))
     }
 
-    // 1. Fetch buyer — need credits + subscription_status
-    const buyerRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=clerk_user_id,credits,subscription_status`)
+    // 1. Fetch buyer — need credits + subscription_status + username
+    const buyerRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=clerk_user_id,credits,subscription_status,username`)
     const buyers = await buyerRes.json()
     const buyer = buyers?.[0]
 
@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Insufficient credits' }, { status: 402 }))
     }
 
-    // 5. Fetch artist's credits
-    const artistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}&select=clerk_user_id,credits`)
+    // 5. Fetch artist's credits + username
+    const artistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}&select=clerk_user_id,credits,username`)
     const artists = await artistRes.json()
     const artist = artists?.[0]
 
@@ -215,8 +215,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 9b. Log credit transactions for buyer and seller
-    await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}`, metadata: { trackId, splitStems } })
-    await logCreditTransaction({ userId: track.user_id, amount: artistShare, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId } })
+    await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}`, metadata: { trackId, splitStems, sellerUsername: artist?.username || 'Unknown' } })
+    await logCreditTransaction({ userId: track.user_id, amount: artistShare, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId, buyerUsername: buyer?.username || 'Unknown' } })
 
     // 10. Save to buyer's music_library so it appears in their Library
     try {

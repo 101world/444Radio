@@ -605,6 +605,20 @@ export default function FloatingAudioPlayer() {
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <p className="text-gray-100 font-bold text-[15px] truncate leading-tight tracking-tight">{currentTrack.title}</p>
           {currentTrack.artist && <p className="text-gray-500 text-[13px] truncate mt-1">{currentTrack.artist}</p>}
+          {/* Genre / Mood / Tags chips */}
+          {(currentTrack.genre || currentTrack.mood || (currentTrack.tags && currentTrack.tags.length > 0)) && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {currentTrack.genre && (
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/15 font-medium">{currentTrack.genre}</span>
+              )}
+              {currentTrack.mood && (
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/15 font-medium">{currentTrack.mood}</span>
+              )}
+              {currentTrack.tags?.map((tag, i) => (
+                <span key={i} className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.04] text-gray-500 border border-white/[0.06] font-medium">{tag}</span>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-1.5 mt-3">
             <button onClick={() => setLiked(!liked)}
               className={`p-2 rounded-xl transition-all ${liked ? 'text-pink-400 bg-pink-500/10 shadow-sm shadow-pink-500/10' : 'text-gray-600 hover:text-pink-400 hover:bg-white/[0.04]'}`}
