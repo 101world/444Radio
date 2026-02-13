@@ -20,6 +20,7 @@ export type CreditTransactionType =
   | 'credit_award'
   | 'credit_refund'
   | 'subscription_bonus'
+  | 'code_claim'
   | 'other'
 
 export interface LogTransactionParams {

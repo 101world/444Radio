@@ -12,6 +12,8 @@ export default function DecryptPage() {
   const [showMessage, setShowMessage] = useState(false)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [creditsAwarded, setCreditsAwarded] = useState(0)
+  const [alreadyClaimed, setAlreadyClaimed] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const router = useRouter()
   
@@ -94,40 +96,39 @@ export default function DecryptPage() {
     
     // Prevent multiple submissions
     if (isSubmitting) return
+    if (!password.trim()) return
     
-    if (password.toLowerCase() === 'free the music') {
-      setError('')
-      setIsSubmitting(true)
+    setError('')
+    setIsSubmitting(true)
+    setAlreadyClaimed(false)
+    
+    try {
+      const response = await fetch('/api/credits/award', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: password.trim() })
+      })
       
-      try {
-        const response = await fetch('/api/credits/award', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: 'FREE THE MUSIC' })
-        })
-        
-        const data = await response.json()
-        
-        if (data.success) {
-          // Successfully awarded credits
-          setIsUnlocked(true)
-          setTimeout(() => setShowMessage(true), 500)
-        } else if (data.error && data.error.includes('already redeemed')) {
-          // Code already used - still show unlock screen but with message
-          setIsUnlocked(true)
-          setTimeout(() => setShowMessage(true), 500)
-        } else {
-          setError(data.error || 'Failed to unlock. Try again.')
-          setIsSubmitting(false)
-        }
-      } catch (err) {
-        console.error('Failed to award credits:', err)
-        setError('Connection failed. Please try again.')
+      const data = await response.json()
+      
+      if (data.success) {
+        setCreditsAwarded(data.awarded || 0)
+        setIsUnlocked(true)
+        setTimeout(() => setShowMessage(true), 500)
+      } else if (data.alreadyClaimed) {
+        // Code valid but already used — show friendly message
+        setAlreadyClaimed(true)
+        setError('This code has already been claimed on your account.')
         setIsSubmitting(false)
+      } else {
+        setError(data.error || 'Invalid code. Try again.')
+        setIsSubmitting(false)
+        setPassword('')
       }
-    } else {
-      setError('Access Denied. Seek the truth.')
-      setPassword('')
+    } catch (err) {
+      console.error('Failed to award credits:', err)
+      setError('Connection failed. Please try again.')
+      setIsSubmitting(false)
     }
   }
 
@@ -176,7 +177,7 @@ export default function DecryptPage() {
                     autoFocus
                   />
                   {error && (
-                    <p className="mt-2 text-red-400 text-sm font-mono animate-pulse">
+                    <p className={`mt-2 text-sm font-mono animate-pulse ${alreadyClaimed ? 'text-yellow-400' : 'text-red-400'}`}>
                       {error}
                     </p>
                   )}
@@ -214,7 +215,7 @@ export default function DecryptPage() {
               <div className="text-center mb-8">
                 <div className="inline-block px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full shadow-lg shadow-cyan-500/50">
                   <p className="text-black font-bold text-lg">
-                    +20 CREDITS UNLOCKED
+                    +{creditsAwarded} CREDITS UNLOCKED
                   </p>
                 </div>
               </div>
