@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import CreditIndicator from '../components/CreditIndicator'
 import FloatingNavButton from '../components/FloatingNavButton'
@@ -18,6 +18,7 @@ const HolographicBackgroundClient = lazy(() => import('../components/Holographic
 const LyricsModal = lazy(() => import('../components/LyricsModal'))
 const CoverArtModal = lazy(() => import('../components/CoverArtModal'))
 const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
+const TrackInfoModal = lazy(() => import('../components/TrackInfoModal'))
 
 interface LibraryMusic {
   id: string
@@ -88,6 +89,7 @@ export default function LibraryPage() {
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [selectedReleaseTrack, setSelectedReleaseTrack] = useState<LibraryMusic | null>(null)
   const [showReleaseToast, setShowReleaseToast] = useState(false)
+  const [boughtInfoTrack, setBoughtInfoTrack] = useState<any | null>(null)
 
   // ESC key handler for desktop navigation to profile
   useEffect(() => {
@@ -1354,7 +1356,8 @@ export default function LibraryPage() {
                             id: item.id,
                             audioUrl: item.audio_url,
                             title: item.title || 'Untitled',
-                            artist: user?.firstName || 'You'
+                            artist: item.seller_username || item.username || user?.firstName || 'Artist',
+                            imageUrl: item.image_url || undefined,
                           }
                           if (isCurrentlyPlaying) {
                             togglePlayPause()
@@ -1363,7 +1366,8 @@ export default function LibraryPage() {
                               id: b.id,
                               audioUrl: b.audio_url,
                               title: b.title || 'Untitled',
-                              artist: user?.firstName || 'You'
+                              artist: b.seller_username || b.username || user?.firstName || 'Artist',
+                              imageUrl: b.image_url || undefined,
                             }))
                             await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === item.id))
                           }
@@ -1380,10 +1384,19 @@ export default function LibraryPage() {
                       {/* Track info */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-white font-semibold text-sm truncate">{item.title || 'Untitled'}</h3>
-                        <p className="text-yellow-400/50 text-xs mt-0.5">
-                          Purchased{item.amount_paid ? ` • ${item.amount_paid} cr` : ''}{item.purchased_at ? ` • ${new Date(item.purchased_at).toLocaleDateString()}` : ''}
+                        <p className="text-yellow-400/50 text-xs mt-0.5 truncate">
+                          {item.seller_username ? `@${item.seller_username}` : 'Purchased'}{item.genre ? ` • ${item.genre}` : ''}{item.amount_paid ? ` • ${item.amount_paid} cr` : ''}{item.purchased_at ? ` • ${new Date(item.purchased_at).toLocaleDateString()}` : ''}
                         </p>
                       </div>
+
+                      {/* Info button */}
+                      <button
+                        onClick={() => setBoughtInfoTrack(item)}
+                        className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-yellow-500/30 hover:border-yellow-400 hover:bg-yellow-500/20 flex items-center justify-center transition-all active:scale-95 flex-shrink-0"
+                        title="Track info"
+                      >
+                        <Info size={14} className="text-yellow-400" />
+                      </button>
 
                       {/* Badge - Purchased, no release */}
                       <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-[10px] text-yellow-400 font-medium flex-shrink-0">
@@ -1767,6 +1780,33 @@ export default function LibraryPage() {
           preselectedMusic={selectedReleaseTrack?.id}
         />
       </Suspense>
+
+      {/* Bought Track Info Modal */}
+      {boughtInfoTrack && (
+        <Suspense fallback={null}>
+          <TrackInfoModal
+            track={{
+              ...boughtInfoTrack,
+              imageUrl: boughtInfoTrack.image_url,
+              audioUrl: boughtInfoTrack.audio_url,
+              username: boughtInfoTrack.seller_username || boughtInfoTrack.username || 'Unknown',
+            }}
+            onClose={() => setBoughtInfoTrack(null)}
+            onPlay={() => {
+              if (boughtInfoTrack.audio_url) {
+                const t = {
+                  id: boughtInfoTrack.id,
+                  audioUrl: boughtInfoTrack.audio_url,
+                  title: boughtInfoTrack.title || 'Untitled',
+                  artist: boughtInfoTrack.seller_username || 'Artist',
+                }
+                setPlaylist([t], 0)
+              }
+              setBoughtInfoTrack(null)
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Release Success Toast */}
       {showReleaseToast && (

@@ -59,6 +59,23 @@ export async function GET() {
       trackMap.set(t.id, t)
     }
 
+    // Resolve seller usernames
+    const sellerIds = [...new Set((Array.isArray(purchases) ? purchases : []).map((p: any) => p.seller_id).filter(Boolean))]
+    const sellerMap = new Map<string, string>()
+    if (sellerIds.length > 0) {
+      const idsParam = `(${sellerIds.join(',')})`
+      const sellersRes = await fetch(
+        `${supabaseUrl}/rest/v1/users?clerk_user_id=in.${idsParam}&select=clerk_user_id,username`,
+        { headers }
+      )
+      if (sellersRes.ok) {
+        const sellers = await sellersRes.json()
+        for (const s of sellers) {
+          if (s.clerk_user_id && s.username) sellerMap.set(s.clerk_user_id, s.username)
+        }
+      }
+    }
+
     // Combine: prefer full track info, fall back to purchase record + music_library
     const musicLibMap = new Map<string, any>()
     for (const m of (Array.isArray(musicLib) ? musicLib : [])) {
@@ -73,12 +90,27 @@ export async function GET() {
         audio_url: full?.audio_url || null,
         image_url: full?.image_url || null,
         genre: full?.genre || null,
+        secondary_genre: full?.secondary_genre || null,
         mood: full?.mood || null,
         bpm: full?.bpm || null,
+        key_signature: full?.key_signature || null,
+        vocals: full?.vocals || null,
+        language: full?.language || null,
+        tags: full?.tags || null,
+        description: full?.description || null,
+        instruments: full?.instruments || null,
+        is_explicit: full?.is_explicit || false,
+        duration_seconds: full?.duration_seconds || null,
+        plays: full?.plays || 0,
+        likes: full?.likes || 0,
+        downloads: full?.downloads || 0,
+        created_at: full?.created_at || p.created_at,
+        user_id: full?.user_id || p.seller_id,
+        username: full?.username || null,
+        seller_username: sellerMap.get(p.seller_id) || null,
         seller_id: p.seller_id,
         amount_paid: p.amount_paid,
         purchased_at: p.created_at,
-        created_at: p.created_at,
         source: 'earn_purchase',
       }
     })
@@ -93,12 +125,27 @@ export async function GET() {
           audio_url: m.audio_url,
           image_url: null,
           genre: null,
+          secondary_genre: null,
           mood: null,
           bpm: null,
+          key_signature: null,
+          vocals: null,
+          language: null,
+          tags: null,
+          description: null,
+          instruments: null,
+          is_explicit: false,
+          duration_seconds: null,
+          plays: 0,
+          likes: 0,
+          downloads: 0,
+          created_at: m.created_at,
+          user_id: null,
+          username: null,
+          seller_username: null,
           seller_id: null,
           amount_paid: null,
           purchased_at: m.created_at,
-          created_at: m.created_at,
           source: 'music_library',
         })
       }
