@@ -7,6 +7,7 @@ import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Set
 import { usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import ProfileSettingsModal from './ProfileSettingsModal'
+import { useCredits } from '@/app/contexts/CreditsContext'
 
 interface FloatingNavButtonProps {
   onTogglePrompt?: () => void
@@ -19,7 +20,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
-  const [credits, setCredits] = useState<number | null>(null)
+  const { credits } = useCredits()
   const pathname = usePathname()
   const { user } = useUser()
 
@@ -30,10 +31,6 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   useEffect(() => {
     if (user) {
       fetchUserProfile()
-      fetch('/api/credits')
-        .then(res => res.json())
-        .then(data => setCredits(data.credits || 0))
-        .catch(() => setCredits(0))
     }
   }, [user])
 

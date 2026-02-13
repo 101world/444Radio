@@ -1,45 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { Zap, Crown } from 'lucide-react'
 import Link from 'next/link'
 import { useAudioPlayer } from '@/app/contexts/AudioPlayerContext'
+import { useCredits } from '@/app/contexts/CreditsContext'
 
 export default function CreditIndicator() {
   const { user } = useUser()
   const { currentTrack } = useAudioPlayer()
-  const [credits, setCredits] = useState<number | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none')
-  const [subscriptionPlan, setSubscriptionPlan] = useState<string>('creator')
-
-  // Fetch real credits and subscription status from API
-  useEffect(() => {
-    if (user) {
-      const fetchCredits = () => {
-        fetch('/api/credits')
-          .then(res => res.json())
-          .then(data => {
-            setCredits(data.credits || 0)
-            setSubscriptionStatus(data.subscription_status || 'none')
-            setSubscriptionPlan(data.subscription_plan || 'creator')
-            setIsLoading(false)
-          })
-          .catch(err => {
-            console.error('Failed to fetch credits:', err)
-            setCredits(0)
-            setIsLoading(false)
-          })
-      }
-
-      fetchCredits()
-
-      // Refresh credits every 30 seconds
-      const interval = setInterval(fetchCredits, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [user])
+  const { credits, subscriptionStatus, subscriptionPlan, isLoading } = useCredits()
 
   if (!user) return null
 

@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { X, Sparkles, Loader2, Music2 } from 'lucide-react';
+import { useCredits } from '@/app/contexts/CreditsContext';
 
 interface SongGenerationModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface SongGenerationModalProps {
 }
 
 export default function SongGenerationModal({ isOpen, onClose, onGenerate }: SongGenerationModalProps) {
+  const { refreshCredits } = useCredits();
   const [prompt, setPrompt] = useState('');
   const [genre, setGenre] = useState('');
   const [title, setTitle] = useState('');
@@ -100,25 +102,14 @@ export default function SongGenerationModal({ isOpen, onClose, onGenerate }: Son
       }
 
       setProgress('Song generated successfully!');
-      // Inform studio to refresh credits
-      try {
-        const res = await fetch('/api/credits');
-        const c = await res.json();
-        if (typeof c?.credits === 'number') {
-          window.dispatchEvent(new CustomEvent('credits:update', { detail: { credits: c.credits } }));
-        }
-      } catch {}
+      // Refresh credits via shared context
+      refreshCredits();
       // Pass audioUrl and metadata object
       onGenerate(data.audioUrl, {
         title: title || prompt,
         imageUrl: data.imageUrl,
         lyrics: lyrics?.trim(),
       });
-
-      // Refresh credits (POST /api/credits) so UI can update elsewhere
-      try {
-        fetch('/api/credits', { method: 'POST' });
-      } catch {}
 
       setTimeout(() => {
         onClose();

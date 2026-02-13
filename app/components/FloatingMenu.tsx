@@ -5,33 +5,16 @@ import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { Menu, X, Home, Zap, Library, Compass, BarChart3, User, LogIn, UserPlus, Unlock, CreditCard, Settings, DollarSign } from 'lucide-react'
 import ProfileSettingsModal from './ProfileSettingsModal'
+import { useCredits } from '@/app/contexts/CreditsContext'
 
 export default function FloatingMenu() {
   const { user } = useUser()
   const [isOpen, setIsOpen] = useState(false)
-  const [credits, setCredits] = useState<number | null>(null)
-  const [isLoadingCredits, setIsLoadingCredits] = useState(true)
+  const { credits, isLoading: isLoadingCredits } = useCredits()
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
   const [isLoadingUsername, setIsLoadingUsername] = useState(true)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-
-  // Fetch real credits from API
-  useEffect(() => {
-    if (user) {
-      fetch('/api/credits')
-        .then(res => res.json())
-        .then(data => {
-          setCredits(data.credits || 0)
-          setIsLoadingCredits(false)
-        })
-        .catch(err => {
-          console.error('Failed to fetch credits:', err)
-          setCredits(0)
-          setIsLoadingCredits(false)
-        })
-    }
-  }, [user])
 
   // Fetch username from Supabase (source of truth)
   useEffect(() => {

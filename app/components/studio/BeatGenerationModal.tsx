@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { X, Sparkles, Loader2, Radio } from 'lucide-react';
+import { useCredits } from '@/app/contexts/CreditsContext';
 
 interface BeatGenerationModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface BeatGenerationModalProps {
 }
 
 export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: BeatGenerationModalProps) {
+  const { refreshCredits } = useCredits();
   const [prompt, setPrompt] = useState('');
   const [duration, setDuration] = useState(30);
   const [bpm, setBpm] = useState(120);
@@ -62,14 +64,8 @@ export default function BeatGenerationModal({ isOpen, onClose, onGenerate }: Bea
       }
 
       setProgress('Beat generated successfully!');
-      // Inform studio to refresh credits
-      try {
-        const res = await fetch('/api/credits');
-        const c = await res.json();
-        if (typeof c?.credits === 'number') {
-          window.dispatchEvent(new CustomEvent('credits:update', { detail: { credits: c.credits } }));
-        }
-      } catch {}
+      // Refresh credits via shared context
+      refreshCredits();
       onGenerate(data.audioUrl, {
         prompt,
         duration,

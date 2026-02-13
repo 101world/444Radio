@@ -39,6 +39,7 @@ import KeyboardHelpModal from '@/app/components/studio/KeyboardHelpModal'
 const EffectsGenerationModal = lazy(() => import('@/app/components/EffectsGenerationModal'))
 const LoopersGenerationModal = lazy(() => import('@/app/components/LoopersGenerationModal'))
 const MediaUploadModal = lazy(() => import('@/app/components/MediaUploadModal'))
+import { useCredits } from '@/app/contexts/CreditsContext'
 
 // ============================================================
 // TYPES
@@ -261,6 +262,7 @@ function DAWContent({ tracks, setTracks, resetProvider }: ContentProps) {
 
   const [credits, setCredits] = useState<number | null>(null)
   const [creditsLoading, setCreditsLoading] = useState(true)
+  const { credits: contextCredits, refreshCredits, isLoading: contextCreditsLoading } = useCredits()
 
   const [showGen, setShowGen] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -339,17 +341,13 @@ function DAWContent({ tracks, setTracks, resetProvider }: ContentProps) {
     }
   }, [])
 
-  // ---- credits ----
-  const fetchCredits = useCallback(async () => {
-    try {
-      const d = await fetch('/api/credits').then((r) => r.json())
-      setCredits(d.credits || 0)
-    } catch {
-      setCredits(0)
-    } finally {
+  // ---- credits synced from shared context ----
+  useEffect(() => {
+    if (contextCredits !== null) {
+      setCredits(contextCredits)
       setCreditsLoading(false)
     }
-  }, [])
+  }, [contextCredits])
 
   // ---- projects ----
   const fetchProjects = useCallback(async () => {
@@ -363,12 +361,9 @@ function DAWContent({ tracks, setTracks, resetProvider }: ContentProps) {
   useEffect(() => {
     if (user) {
       loadLibrary()
-      fetchCredits()
       fetchProjects()
-      const iv = setInterval(fetchCredits, 30_000)
-      return () => clearInterval(iv)
     }
-  }, [user, loadLibrary, fetchCredits, fetchProjects])
+  }, [user, loadLibrary, fetchProjects])
 
   // ---- add audio to track ----
   const addAudio = useCallback(
@@ -633,7 +628,7 @@ function DAWContent({ tracks, setTracks, resetProvider }: ContentProps) {
       await addAudio(audioUrl, title)
       await loadLibrary()
       if (data.creditsRemaining != null) setCredits(data.creditsRemaining)
-      else fetchCredits()
+      else refreshCredits()
       notify(`✓ "${title}" generated!`, 'success')
     } catch (e: any) {
       notify(e.message || 'Generation failed', 'error')
@@ -642,7 +637,7 @@ function DAWContent({ tracks, setTracks, resetProvider }: ContentProps) {
       setGenProg(0)
       setGenStep('')
     }
-  }, [generating, prompt, genTitle, genGenre, genBpm, genInst, genLyrics, bpm, addAudio, loadLibrary, fetchCredits, notify])
+  }, [generating, prompt, genTitle, genGenre, genBpm, genInst, genLyrics, bpm, addAudio, loadLibrary, refreshCredits, notify])
 
   // ---- stem splitting ----
   const handleSplit = useCallback(
@@ -664,7 +659,7 @@ function DAWContent({ tracks, setTracks, resetProvider }: ContentProps) {
         if (d.success && d.stems) {
           setStemResults(d.stems)
           if (d.creditsRemaining !== undefined) setCredits(d.creditsRemaining)
-          else fetchCredits()
+          else refreshCredits()
           for (const [type, sUrl] of Object.entries(d.stems) as [string, string][]) {
             await addAudio(sUrl, type.charAt(0).toUpperCase() + type.slice(1))
           }
@@ -676,16 +671,16 @@ function DAWContent({ tracks, setTracks, resetProvider }: ContentProps) {
         setSplitting(false)
       }
     },
-    [stemAudio, credits, addAudio, fetchCredits, notify],
+    [stemAudio, credits, addAudio, refreshCredits, notify],
   )
 
   const addResult = useCallback(
     async (url: string, title: string) => {
       await addAudio(url, title)
       await loadLibrary()
-      fetchCredits()
+      refreshCredits()
     },
-    [addAudio, loadLibrary, fetchCredits],
+    [addAudio, loadLibrary, refreshCredits],
   )
 
   // ---- filtered library ----

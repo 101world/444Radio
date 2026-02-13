@@ -11,6 +11,7 @@ import DockedSidebar from './components/DockedSidebar';
 import FloatingNavButton from './components/FloatingNavButton';
 import CreditBadge from './components/CreditBadge';
 import PlayerAwareMain from './components/PlayerAwareMain';
+import { CreditsProvider } from './contexts/CreditsContext';
 import SkipToContent from './components/SkipToContent';
 import StructuredData from './components/StructuredData';
 import ConsoleBlocker from './components/ConsoleBlocker';
@@ -52,6 +53,7 @@ export default function RootLayout({
         <ConsoleBlocker />
         <ClerkProvider>
           <AudioPlayerProvider>
+            <CreditsProvider>
             <GenerationQueueProvider>
               <SkipToContent />
               <Toaster position="top-right" richColors closeButton />
@@ -64,6 +66,7 @@ export default function RootLayout({
               <ConditionalGlobalPlayer />
               <GenerationMonitor />
             </GenerationQueueProvider>
+            </CreditsProvider>
           </AudioPlayerProvider>
         </ClerkProvider>
       </body>

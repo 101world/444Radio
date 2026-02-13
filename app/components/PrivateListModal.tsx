@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, MapPin, Calendar, Users, CreditCard } from 'lucide-react'
 import { useUser } from '@clerk/nextjs'
+import { useCredits } from '@/app/contexts/CreditsContext'
 
 interface PrivateList {
   id: string
@@ -33,7 +34,7 @@ export default function PrivateListModal({ isOpen, onClose, artistId, isOwnProfi
   const [lists, setLists] = useState<PrivateList[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [userCredits, setUserCredits] = useState(0)
+  const { credits: userCredits, refreshCredits } = useCredits()
   const [selectedList, setSelectedList] = useState<PrivateList | null>(null)
 
   // Create list form state
@@ -53,23 +54,8 @@ export default function PrivateListModal({ isOpen, onClose, artistId, isOwnProfi
   useEffect(() => {
     if (isOpen) {
       fetchLists()
-      if (user && !isOwnProfile) {
-        fetchUserCredits()
-      }
     }
   }, [isOpen, artistId])
-
-  const fetchUserCredits = async () => {
-    try {
-      const response = await fetch('/api/credits')
-      if (response.ok) {
-        const data = await response.json()
-        setUserCredits(data.credits || 0)
-      }
-    } catch (error) {
-      console.error('Error fetching credits:', error)
-    }
-  }
 
   const fetchLists = async () => {
     try {
@@ -141,8 +127,8 @@ export default function PrivateListModal({ isOpen, onClose, artistId, isOwnProfi
   }
 
   const joinList = async (listId: string, priceCredits: number) => {
-    if (priceCredits > userCredits) {
-      alert(`Not enough credits! You need ${priceCredits} credits but only have ${userCredits}`)
+    if (priceCredits > (userCredits || 0)) {
+      alert(`Not enough credits! You need ${priceCredits} credits but only have ${userCredits || 0}`)
       return
     }
 
@@ -156,7 +142,7 @@ export default function PrivateListModal({ isOpen, onClose, artistId, isOwnProfi
 
       if (response.ok) {
         fetchLists()
-        fetchUserCredits()
+        refreshCredits()
       } else {
         const error = await response.json()
         alert(error.error || 'Failed to join list')
@@ -180,10 +166,7 @@ export default function PrivateListModal({ isOpen, onClose, artistId, isOwnProfi
 
       if (response.ok) {
         fetchLists()
-        const refundedList = lists.find(l => l.id === listId)
-        if (refundedList) {
-          setUserCredits(prev => prev + refundedList.price_credits)
-        }
+        refreshCredits()
       } else {
         const error = await response.json()
         alert(error.error || 'Failed to leave list')

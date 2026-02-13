@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors } from 'lucide-react'
 import Link from 'next/link'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
+import { useCredits } from '../contexts/CreditsContext'
 
 type SubscriptionStatus = {
   hasSubscription: boolean
@@ -41,8 +42,7 @@ function SettingsPageInner() {
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'wallet'>(initialTab)
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true)
-  const [credits, setCredits] = useState<number | null>(null)
-  const [isLoadingCredits, setIsLoadingCredits] = useState(true)
+  const { credits, isLoading: isLoadingCredits, refreshCredits } = useCredits()
   const [isCanceling, setIsCanceling] = useState(false)
   const [isReactivating, setIsReactivating] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
@@ -68,25 +68,8 @@ function SettingsPageInner() {
   useEffect(() => {
     if (user) {
       fetchSubscriptionStatus()
-      fetchCredits()
     }
   }, [user])
-
-  const fetchCredits = async () => {
-    try {
-      setIsLoadingCredits(true)
-      const response = await fetch('/api/credits')
-      const data = await response.json()
-      
-      if (data.credits !== undefined) {
-        setCredits(data.credits)
-      }
-    } catch (error) {
-      console.error('Failed to fetch credits:', error)
-    } finally {
-      setIsLoadingCredits(false)
-    }
-  }
 
   const fetchSubscriptionStatus = async () => {
     try {
@@ -131,7 +114,7 @@ function SettingsPageInner() {
         setShowCancelConfirm(false)
         setTimeout(() => {
           fetchSubscriptionStatus()
-          fetchCredits()
+          refreshCredits()
         }, 1000)
       } else {
         setCancelMessage({
@@ -172,7 +155,7 @@ function SettingsPageInner() {
         })
         setTimeout(() => {
           fetchSubscriptionStatus()
-          fetchCredits()
+          refreshCredits()
         }, 1000)
       } else {
         setCancelMessage({

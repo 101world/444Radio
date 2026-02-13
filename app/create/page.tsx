@@ -21,6 +21,7 @@ import GenerationRecovery from '../components/GenerationRecovery'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
+import { useCredits } from '../contexts/CreditsContext'
 
 const HolographicBackground = lazy(() => import('../components/HolographicBackgroundClient'))
 
@@ -375,7 +376,7 @@ function CreatePageContent() {
     })
     setGenerationQueue(prev => prev.filter(id => id !== messageId))
     // Re-check if any still active
-    fetchCredits()
+    refreshCredits()
   }
 
   // Sync generation queue results with messages on mount and when generations change
@@ -445,24 +446,16 @@ function CreatePageContent() {
     })
   }, [generations])
 
-  // Fetch user credits function
-  const fetchCredits = async () => {
-    try {
-      const res = await fetch('/api/credits')
-      const data = await res.json()
-      setUserCredits(data.credits || 0)
-    } catch (error) {
-      console.error('Failed to fetch credits:', error)
-      setUserCredits(0)
-    } finally {
+  // Fetch user credits function — synced from shared context
+  const { credits: contextCredits, refreshCredits } = useCredits()
+
+  // Sync credits from shared context (removes mount-time fetch)
+  useEffect(() => {
+    if (contextCredits !== null) {
+      setUserCredits(contextCredits)
       setIsLoadingCredits(false)
     }
-  }
-
-  // Fetch user credits on mount
-  useEffect(() => {
-    fetchCredits()
-  }, [])
+  }, [contextCredits])
 
   // Auto-hide top nav after 2 seconds or on interaction
   useEffect(() => {
@@ -1013,7 +1006,7 @@ function CreatePageContent() {
       } else {
         // Refetch credits to ensure sync
         console.log('[Generation] Refetching credits after generation')
-        fetchCredits()
+        refreshCredits()
       }
 
       // Update persistent generation queue with result
@@ -1085,7 +1078,7 @@ function CreatePageContent() {
       ))
       
       // Refetch credits in case of error
-      fetchCredits()
+      refreshCredits()
     } finally {
       // Clean up abort controller
       abortControllersRef.current.delete(messageId)
@@ -3332,7 +3325,7 @@ function CreatePageContent() {
             if (result.creditsRemaining !== undefined) {
               setUserCredits(result.creditsRemaining)
             } else {
-              fetchCredits()
+              refreshCredits()
             }
           }}
         />

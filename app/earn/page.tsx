@@ -8,6 +8,7 @@ import {
   X, Sparkles, ChevronDown, Users, Zap, ArrowLeft, Info
 } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
+import { useCredits } from '../contexts/CreditsContext'
 import FloatingMenu from '../components/FloatingMenu'
 import FloatingNavButton from '../components/FloatingNavButton'
 import TrackInfoModal from '../components/TrackInfoModal'
@@ -40,8 +41,7 @@ export default function EarnPage() {
 
   const [tracks, setTracks] = useState<EarnTrack[]>([])
   const [loading, setLoading] = useState(true)
-  const [credits, setCredits] = useState(0)
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('none')
+  const { credits, subscriptionStatus, refreshCredits } = useCredits()
   const isSubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
   const [filter, setFilter] = useState<FilterType>('trending')
   const [selectedGenre, setSelectedGenre] = useState('All')
@@ -69,17 +69,7 @@ export default function EarnPage() {
     finally { setLoading(false) }
   }, [filter, selectedGenre, searchQuery])
 
-  const fetchCredits = useCallback(async () => {
-    try {
-      const res = await fetch('/api/credits')
-      const data = await res.json()
-      setCredits(data.credits || 0)
-      setSubscriptionStatus(data.subscription_status || 'none')
-    } catch { setCredits(0) }
-  }, [])
-
   useEffect(() => { fetchTracks() }, [fetchTracks])
-  useEffect(() => { if (isSignedIn) fetchCredits() }, [isSignedIn, fetchCredits])
 
   const handlePlay = useCallback((track: EarnTrack) => {
     const toAudioTrack = (t: EarnTrack) => ({
@@ -99,7 +89,7 @@ export default function EarnPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Purchase failed')
       setTracks(prev => prev.map(t => t.id === trackId ? { ...t, downloads: (t.downloads || 0) + 1 } : t))
-      setCredits(prev => prev - (5 + (splitStems ? 5 : 0)))
+      refreshCredits()
       if (data.audioUrl) {
         try {
           const dlRes = await fetch(data.audioUrl)
@@ -115,7 +105,7 @@ export default function EarnPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Purchase failed'
       alert(message)
-      fetchCredits()
+      refreshCredits()
     }
   }
 
@@ -127,7 +117,7 @@ export default function EarnPage() {
     } catch { console.error('Failed to load artist') }
   }, [])
 
-  const handleTrackListed = () => { setShowListModal(false); fetchTracks(); fetchCredits() }
+  const handleTrackListed = () => { setShowListModal(false); fetchTracks(); refreshCredits() }
 
   const handleUnlist = async (trackId: string) => {
     if (!confirm('Remove this track from the marketplace? The listing fee is non-refundable.')) return
@@ -281,7 +271,7 @@ export default function EarnPage() {
       {/* Modals */}
       {selectedArtist && <ArtistProfileModal artist={selectedArtist} onClose={() => setSelectedArtist(null)} />}
       {downloadTrack && (
-        <DownloadModal track={downloadTrack} userCredits={credits} subscriptionStatus={subscriptionStatus}
+        <DownloadModal track={downloadTrack} userCredits={credits || 0} subscriptionStatus={subscriptionStatus || 'none'}
           onClose={() => setDownloadTrack(null)} onConfirm={(splitStems: boolean) => handlePurchase(downloadTrack.id, splitStems)} />
       )}
       {successData && <SuccessModal track={successData.track} splitJobId={successData.splitJobId} onClose={() => setSuccessData(null)} />}

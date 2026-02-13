@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
 import { Home, Zap, Library, Compass, User, Unlock, CreditCard, Settings, LogIn, UserPlus, LayoutGrid, DollarSign } from 'lucide-react'
+import { useCredits } from '@/app/contexts/CreditsContext'
 
 interface MenuItem {
   icon: any
@@ -20,19 +21,9 @@ export default function DockedSidebar() {
   const { user } = useUser()
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(false)
-  const [credits, setCredits] = useState<number | null>(null)
+  const { credits } = useCredits()
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
-
-  // Fetch credits
-  useEffect(() => {
-    if (user) {
-      fetch('/api/credits')
-        .then(res => res.json())
-        .then(data => setCredits(data.credits || 0))
-        .catch(() => setCredits(0))
-    }
-  }, [user])
 
   // Fetch user profile
   useEffect(() => {

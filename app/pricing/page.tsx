@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Youtube, Mail, Instagram, X, ArrowLeft, Shield } from 'lucide-react'
 import Link from 'next/link'
 import FloatingMenu from '../components/FloatingMenu'
+import { useCredits } from '../contexts/CreditsContext'
 import Script from 'next/script'
 
 // Discord SVG icon component
@@ -55,20 +56,16 @@ export default function Pricing() {
   // Calculate credits based on amount (buy credits on demand)
   const creditsFromDollars = Math.floor(creditAmount / buyRate)
   
-  // Fetch user subscription status
+  // Get subscription status from shared context
+  const { subscriptionStatus, subscriptionPlan } = useCredits()
   useEffect(() => {
-    fetch('/api/credits')
-      .then(res => res.json())
-      .then(data => {
-        if (data.subscription_status === 'active') {
-          setUserSubscription({
-            status: data.subscription_status,
-            plan: data.subscription_plan || 'creator'
-          })
-        }
+    if (subscriptionStatus === 'active') {
+      setUserSubscription({
+        status: subscriptionStatus,
+        plan: subscriptionPlan || 'creator'
       })
-      .catch(err => console.error('Failed to fetch subscription:', err))
-  }, [])
+    }
+  }, [subscriptionStatus, subscriptionPlan])
   
   // ESC key handler to go back to explore
   useEffect(() => {
