@@ -13,6 +13,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/songs/track-play',
   '/api/media/explore(.*)',
   '/api/explore/genre-summary(.*)',
+  '/api/plugin/(.*)',  // Plugin API uses Bearer token auth, not Clerk sessions
+  '/plugin',           // Plugin WebView page (auth via token, not Clerk)
   '/manifest.json',
   '/explore',
   '/sitemap.xml',
