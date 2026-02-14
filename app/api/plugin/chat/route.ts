@@ -7,8 +7,14 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticatePlugin } from '@/lib/plugin-auth'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { corsResponse, handleOptions } from '@/lib/cors'
+
+// Use service role key to bypass RLS (server-side only)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export function OPTIONS() {
   return handleOptions()

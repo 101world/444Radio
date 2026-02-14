@@ -16,6 +16,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/explore/genre-summary(.*)',
   '/api/plugin/(.*)',  // Plugin API uses Bearer token auth, not Clerk sessions
   '/plugin',           // Plugin WebView page (auth via token, not Clerk)
+  '/api/generate/atom-(.*)',   // Used by plugin page (hybrid auth: Clerk or Bearer token)
+  '/api/generate/prompt-idea', // Used by plugin page (hybrid auth: Clerk or Bearer token)
   '/manifest.json',
   '/explore',
   '/sitemap.xml',

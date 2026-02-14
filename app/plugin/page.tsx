@@ -558,7 +558,7 @@ export default function PluginPage() {
     try {
       const response = await fetch('/api/generate/prompt-idea', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ genre: ideaGenre, promptType: selectedPromptType })
       })
       const data = await response.json()
@@ -590,7 +590,7 @@ export default function PluginPage() {
   const autoFillTitle = async (prompt: string): Promise<string> => {
     try {
       const res = await fetch('/api/generate/atom-title', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ prompt })
       })
       const data = await res.json()
@@ -602,7 +602,7 @@ export default function PluginPage() {
   const autoFillLyrics = async (prompt: string): Promise<string> => {
     try {
       const res = await fetch('/api/generate/atom-lyrics', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ prompt })
       })
       const data = await res.json()
@@ -614,7 +614,7 @@ export default function PluginPage() {
   const autoFillGenre = async (prompt: string): Promise<string> => {
     try {
       const res = await fetch('/api/generate/atom-genre', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
         body: JSON.stringify({ prompt })
       })
       const data = await res.json()
@@ -2279,7 +2279,7 @@ export default function PluginPage() {
                         setIsGeneratingAtomLyrics(true)
                         try {
                           const res = await fetch('/api/generate/atom-lyrics', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
                             body: JSON.stringify({ prompt: input })
                           })
                           const data = await res.json()

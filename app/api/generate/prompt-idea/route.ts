@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getAuthUserId } from '@/lib/hybrid-auth'
 import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
@@ -13,7 +13,7 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth()
+    const userId = await getAuthUserId(request)
     if (!userId) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
