@@ -25,9 +25,6 @@ export default function DockedSidebar() {
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
 
-  // Hide on /plugin — plugin uses its own token-based auth, not Clerk
-  if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
-
   // Fetch user profile
   useEffect(() => {
     if (user) {
@@ -42,6 +39,9 @@ export default function DockedSidebar() {
         .catch(() => {})
     }
   }, [user])
+
+  // Hide on /plugin — plugin uses its own token-based auth, not Clerk
+  if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
 
   // Hide on home page and pricing pages
   const hiddenPages = ['/', '/pricing', '/subscription']

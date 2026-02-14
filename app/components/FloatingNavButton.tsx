@@ -28,9 +28,6 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
   const isGlobalInstance = !showPromptToggle && !onTogglePrompt
   const shouldHide = isGlobalInstance && pathname === '/create'
 
-  // Always hide on /plugin — plugin uses its own token-based auth, not Clerk
-  if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
-
   useEffect(() => {
     if (user) {
       fetchUserProfile()
@@ -73,6 +70,8 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
     { href: user?.id ? `/profile/${user.id}` : '/profile', icon: User, label: 'My Profile', highlight: 'cyan' as const, badge: '🎤' },
   ]
 
+  // Always hide on /plugin — plugin uses its own token-based auth, not Clerk
+  if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
   if (shouldHide) return null
 
   return (
