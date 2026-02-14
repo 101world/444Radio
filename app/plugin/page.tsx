@@ -257,13 +257,21 @@ export default function PluginPage() {
       setToken(urlToken)
     } else {
       const saved = localStorage.getItem(TOKEN_KEY)
-      if (saved) setToken(saved)
+      if (saved) {
+        setToken(saved)
+      } else {
+        // No token found — stop loading so auth screen shows
+        setIsLoadingCredits(false)
+      }
     }
   }, [])
 
   // ═══ AUTH: Verify token on mount ═══
   useEffect(() => {
-    if (!token) return
+    if (!token) {
+      setIsLoadingCredits(false)
+      return
+    }
     ;(async () => {
       try {
         const res = await fetch('/api/plugin/credits', {
