@@ -1370,25 +1370,62 @@ export default function PluginPage() {
   if (!isAuthenticated && !isLoadingCredits) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <div className="text-4xl">🔒</div>
-          <h1 className="text-xl font-bold text-white">Plugin Authentication Required</h1>
-          <p className="text-gray-400 text-sm max-w-md">
-            Please open this page from within the 444 Radio VST plugin, or enter your plugin token.
-          </p>
-          <div className="flex gap-2 justify-center mt-4">
-            <input
-              type="text"
-              placeholder="Enter plugin token..."
-              className="px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/50"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const val = (e.target as HTMLInputElement).value.trim()
-                  if (val) { localStorage.setItem(TOKEN_KEY, val); setToken(val) }
-                }
-              }}
-            />
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+          .auth-card { animation: fadeIn 0.5s ease-out; }
+        `}} />
+        <div className="auth-card text-center space-y-5 max-w-md w-full">
+          <div className="text-5xl">🔐</div>
+          <h1 className="text-2xl font-bold text-white">Connect to 444 Radio</h1>
+
+          {/* Step 1: Get token */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-left space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">1</span>
+              <p className="text-sm font-semibold text-white">Get your plugin token</p>
+            </div>
+            <p className="text-xs text-gray-400 ml-8">Sign in on the website → Settings → Plugin tab → Generate Token</p>
+            <button
+              onClick={() => window.open('https://444radio.co.in/settings?tab=plugin', '_blank')}
+              className="ml-8 mt-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-lg text-sm font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all"
+            >
+              Open Settings → Get Token
+            </button>
           </div>
+
+          {/* Step 2: Paste token */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-left space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">2</span>
+              <p className="text-sm font-semibold text-white">Paste your token below</p>
+            </div>
+            <div className="flex gap-2 ml-8 mt-1">
+              <input
+                id="plugin-token-input"
+                type="text"
+                placeholder="444r_..."
+                className="flex-1 px-3 py-2 bg-black/50 border border-white/20 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-cyan-500/50"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = (e.target as HTMLInputElement).value.trim()
+                    if (val) { localStorage.setItem(TOKEN_KEY, val); setToken(val) }
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  const input = document.getElementById('plugin-token-input') as HTMLInputElement
+                  const val = input?.value?.trim()
+                  if (val) { localStorage.setItem(TOKEN_KEY, val); setToken(val) }
+                }}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white text-sm font-semibold transition-all"
+              >
+                Connect
+              </button>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-gray-600">Token is saved locally — you only need to do this once per device</p>
         </div>
       </div>
     )
