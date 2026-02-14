@@ -431,6 +431,21 @@ export default function PluginPage() {
     setPlayingId(messageId)
   }
 
+  // ═══ DAW BRIDGE HELPERS ═══
+  const isInDAW = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('host') === 'juce'
+
+  const sendBridgeMessage = (payload: Record<string, unknown>) => {
+    try {
+      const msg = JSON.stringify(payload)
+      ;(window as any).__juce__?.postMessage?.(msg)
+      window.location.href = `juce-bridge://${encodeURIComponent(msg)}`
+    } catch {}
+  }
+
+  const sendToDAW = (url: string, title: string) => {
+    sendBridgeMessage({ action: 'import_audio', url, title })
+  }
+
   // ═══ DOWNLOAD (with auth token for /api/plugin/download) ═══
   const handleDownload = async (url: string, filename: string, format: 'mp3' | 'wav' = 'mp3') => {
     try {
@@ -467,11 +482,7 @@ export default function PluginPage() {
         URL.revokeObjectURL(wavUrl)
       }
       // JUCE bridge: notify for DAW import
-      try {
-        const msg = JSON.stringify({ type: 'import_audio', url, title: filename })
-        ;(window as any).__juce__?.postMessage?.(msg)
-        window.location.href = `juce-bridge://${encodeURIComponent(msg)}`
-      } catch {}
+      sendBridgeMessage({ action: 'import_audio', url, title: filename })
     } catch (err) {
       console.error('Download error:', err)
       alert('Download failed. Please try again.')
