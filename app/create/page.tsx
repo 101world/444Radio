@@ -284,7 +284,7 @@ function CreatePageContent() {
     scrollToBottom()
   }, [messages])
 
-  // Load chat from localStorage on mount
+  // Load chat from localStorage on mount, then try server sync
   useEffect(() => {
     try {
       const savedChat = localStorage.getItem('444radio-chat-messages')
@@ -300,15 +300,48 @@ function CreatePageContent() {
     } catch (error) {
       console.error('Failed to load chat from localStorage:', error)
     }
+    // Also try loading from server (for plugin<->website sync)
+    fetch('/api/chat/messages').then(r => r.json()).then(data => {
+      if (data.success && data.messages && data.messages.length > 0) {
+        const localCount = JSON.parse(localStorage.getItem('444radio-chat-messages') || '[]').length
+        // Use server data if it has more messages (plugin may have synced)
+        if (data.messages.length > localCount) {
+          const serverMessages = data.messages.map((msg: Message) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+          setMessages(serverMessages)
+        }
+      }
+    }).catch(() => {/* ignore fetch errors */})
   }, [])
 
-  // Save chat to localStorage whenever messages change
+  // Save chat to localStorage + debounced server sync whenever messages change
+  const chatSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     try {
       localStorage.setItem('444radio-chat-messages', JSON.stringify(messages))
     } catch (error) {
       console.error('Failed to save chat to localStorage:', error)
     }
+    // Debounced server sync (3s after last message change)
+    if (chatSyncTimerRef.current) clearTimeout(chatSyncTimerRef.current)
+    chatSyncTimerRef.current = setTimeout(() => {
+      if (messages.length <= 1) return // Don't sync just the welcome message
+      const syncPayload = messages.map(m => ({
+        type: m.type,
+        content: m.content,
+        generationType: m.generationType || null,
+        generationId: m.generationId || null,
+        result: m.result || null,
+        timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
+      }))
+      fetch('/api/chat/messages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: syncPayload })
+      }).catch(() => {/* ignore sync errors */})
+    }, 3000)
   }, [messages])
 
   // Centralized clear-chat handler: archive → reset messages → purge completed generations

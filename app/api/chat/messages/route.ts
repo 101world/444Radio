@@ -127,6 +127,65 @@ export async function DELETE() {
   }
 }
 
+/**
+ * PUT /api/chat/messages
+ * Bulk sync: replace all chat messages with the provided array
+ * Body: { messages: Array<{ type, content, generationType?, generationId?, result?, timestamp? }> }
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const body = await request.json()
+    const { messages } = body
+
+    if (!Array.isArray(messages)) {
+      return corsResponse(NextResponse.json({ error: 'messages must be an array' }, { status: 400 }))
+    }
+
+    // Delete existing messages
+    const { error: deleteError } = await supabase
+      .from('chat_messages')
+      .delete()
+      .eq('clerk_user_id', userId)
+
+    if (deleteError) {
+      console.error('Error clearing old messages:', deleteError)
+      return corsResponse(NextResponse.json({ error: 'Failed to clear old messages' }, { status: 500 }))
+    }
+
+    // Insert all new messages
+    if (messages.length > 0) {
+      const rows = messages.map((msg: { type: string; content: string; generationType?: string; generationId?: string; result?: Record<string, unknown>; timestamp?: string }) => ({
+        clerk_user_id: userId,
+        message_type: msg.type,
+        content: msg.content,
+        generation_type: msg.generationType || null,
+        generation_id: msg.generationId || null,
+        result: msg.result || null,
+        timestamp: msg.timestamp || new Date().toISOString()
+      }))
+
+      const { error: insertError } = await supabase
+        .from('chat_messages')
+        .insert(rows)
+
+      if (insertError) {
+        console.error('Error inserting messages:', insertError)
+        return corsResponse(NextResponse.json({ error: 'Failed to save messages' }, { status: 500 }))
+      }
+    }
+
+    return corsResponse(NextResponse.json({ success: true, count: messages.length }))
+  } catch (error) {
+    console.error('Error in chat messages PUT:', error)
+    return corsResponse(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
+  }
+}
+
 export function OPTIONS() {
   return handleOptions()
 }

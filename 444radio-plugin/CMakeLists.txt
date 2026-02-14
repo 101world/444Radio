@@ -26,7 +26,7 @@ juce_add_plugin(RadioPlugin
     IS_MIDI_EFFECT            FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD   FALSE
-    FORMATS                   VST3 Standalone
+    FORMATS                   VST3 AU Standalone
     PRODUCT_NAME              "444 Radio"
     BUNDLE_ID                 "co.in.444radio.plugin"
     VST3_CATEGORIES           "Tools"
@@ -49,8 +49,10 @@ target_compile_definitions(RadioPlugin
 )
 
 # ─── WebView2 SDK (needed for modern browser on Windows) ───
-set(WEBVIEW2_DIR "${CMAKE_CURRENT_SOURCE_DIR}/packages/Microsoft.Web.WebView2.1.0.2535.41/build/native")
-target_include_directories(RadioPlugin PRIVATE "${WEBVIEW2_DIR}/include")
+if(WIN32)
+    set(WEBVIEW2_DIR "${CMAKE_CURRENT_SOURCE_DIR}/packages/Microsoft.Web.WebView2.1.0.2535.41/build/native")
+    target_include_directories(RadioPlugin PRIVATE "${WEBVIEW2_DIR}/include")
+endif()
 
 target_link_libraries(RadioPlugin
     PRIVATE

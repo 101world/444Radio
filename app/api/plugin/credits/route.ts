@@ -29,9 +29,11 @@ export async function GET(req: NextRequest) {
         effects: 2,
         loops_short: 6,
         loops_long: 7,
-        stems: 1,
+        stems: 5,
         audio_boost: 1,
         cover_art: 1,
+        extract: 1,
+        video_to_audio: 2,
       }
     }))
   } catch (error) {

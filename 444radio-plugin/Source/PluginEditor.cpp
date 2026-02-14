@@ -12,7 +12,9 @@ public:
     explicit BridgeWebView (RadioPluginEditor& owner)
         : juce::WebBrowserComponent (
               juce::WebBrowserComponent::Options()
+#if JUCE_WINDOWS
                   .withBackend (juce::WebBrowserComponent::Options::Backend::webview2)
+#endif
                   .withKeepPageLoadedWhenBrowserIsHidden()
           ),
           editor (owner)

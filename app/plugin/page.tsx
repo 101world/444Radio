@@ -1,38 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
 import {
-  Music, Sparkles, Repeat, Image as ImageIcon, Scissors, Volume2,
-  Zap, Lightbulb, X, ChevronLeft, Send, Film, Layers, Edit3,
-  Play, Pause, Download, Trash2, CheckCircle, Clock, AlertCircle,
-  ChevronDown, ChevronUp, Upload, FileAudio, Loader2, Settings2,
-  Save, FolderOpen, RefreshCw, PlusCircle, Mic, Plus, RotateCcw,
-  Rocket, Square, FileText
+  Music, Image as ImageIcon, Send, Loader2, Download, Play, Pause,
+  Sparkles, Zap, X, Rocket, PlusCircle, Globe, Mic, MicOff,
+  Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
+  Layers, Film, Scissors, Volume2, ChevronLeft, Lightbulb, Settings,
+  RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink
 } from 'lucide-react'
+import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 
-// ─── Types ──────────────────────────────────────────────────────
-interface GenerationJob {
-  id: string
-  type: string
-  status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled'
-  prompt?: string
-  title?: string
-  result?: Record<string, unknown>
-  error?: string
-  createdAt: number
-}
-
-interface CreditInfo {
-  credits: number
-  totalGenerated: number
-  costs: Record<string, number>
-}
+// ─── Types (mirrored from create page) ──────────────────────────
+type MessageType = 'user' | 'assistant' | 'generation'
+type GenerationType = 'music' | 'image' | 'video' | 'effects'
 
 interface Message {
   id: string
-  type: 'user' | 'assistant' | 'generation'
+  type: MessageType
   content: string
-  generationType?: string
+  generationType?: GenerationType | string
+  generationId?: string
   result?: {
     url?: string
     audioUrl?: string
@@ -47,378 +34,677 @@ interface Message {
 }
 
 // ─── localStorage persistence ──────────────────────────────────
-const LIBRARY_KEY = '444radio_plugin_library'
 const CHAT_KEY = '444radio_plugin_chat'
+const CHAT_ARCHIVES_KEY = '444radio_plugin_chat_archives'
+const LIBRARY_KEY = '444radio_plugin_library'
+const TOKEN_KEY = '444radio_plugin_token'
 
-function loadLibrary(): GenerationJob[] {
-  try { return JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]') } catch { return [] }
-}
-function saveLibrary(jobs: GenerationJob[]) {
-  try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(jobs.filter(j => j.status === 'completed' || j.status === 'failed'))) } catch {}
-}
-function loadChat(): Message[] {
-  try {
-    const raw = localStorage.getItem(CHAT_KEY)
-    if (!raw) return []
-    return JSON.parse(raw).map((m: Message) => ({ ...m, timestamp: new Date(m.timestamp) }))
-  } catch { return [] }
-}
-function saveChat(msgs: Message[]) {
-  try { localStorage.setItem(CHAT_KEY, JSON.stringify(msgs)) } catch {}
+// ─── Stem display helper (same as create page) ─────────────────
+function getStemDisplay(stemName: string): { label: string; color: string; emoji: string } {
+  const n = stemName.toLowerCase()
+  if (n.includes('vocal') || n.includes('voice')) return { label: 'Vocals', color: 'text-pink-400', emoji: '🎤' }
+  if (n.includes('drum') || n.includes('percussion')) return { label: 'Drums', color: 'text-orange-400', emoji: '🥁' }
+  if (n.includes('bass')) return { label: 'Bass', color: 'text-purple-400', emoji: '🎸' }
+  if (n.includes('guitar')) return { label: 'Guitar', color: 'text-yellow-400', emoji: '🎸' }
+  if (n.includes('piano') || n.includes('keys')) return { label: 'Piano', color: 'text-blue-400', emoji: '🎹' }
+  if (n.includes('other') || n.includes('inst')) return { label: 'Other', color: 'text-cyan-400', emoji: '🎶' }
+  return { label: stemName, color: 'text-gray-400', emoji: '🎵' }
 }
 
-// ─── Detect JUCE host ──────────────────────────────────────────
-const isJuceHost = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('host') === 'juce'
-
-function sendToPlugin(action: string, data: Record<string, unknown>) {
-  const payload = JSON.stringify({ source: '444radio-plugin', action, ...data })
-  try {
-    if ((window as any).__juce__?.postMessage) { (window as any).__juce__.postMessage(payload); return }
-    if (isJuceHost) { window.location.href = 'juce-bridge://' + encodeURIComponent(payload); return }
-    window.parent?.postMessage(JSON.parse(payload), '*')
-  } catch {}
+// ─── WAV conversion (same as create page) ──────────────────────
+function audioBufferToWav(buffer: AudioBuffer): Blob {
+  const length = buffer.length * buffer.numberOfChannels * 2 + 44
+  const arrayBuffer = new ArrayBuffer(length)
+  const view = new DataView(arrayBuffer)
+  let pos = 0
+  const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2 }
+  const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4 }
+  setUint32(0x46464952)
+  setUint32(length - 8)
+  setUint32(0x45564157)
+  setUint32(0x20746d66)
+  setUint32(16)
+  setUint16(1)
+  setUint16(buffer.numberOfChannels)
+  setUint32(buffer.sampleRate)
+  setUint32(buffer.sampleRate * 2 * buffer.numberOfChannels)
+  setUint16(buffer.numberOfChannels * 2)
+  setUint16(16)
+  setUint32(0x61746164)
+  setUint32(length - pos - 4)
+  for (let i = 0; i < buffer.length; i++) {
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      let sample = buffer.getChannelData(ch)[i]
+      sample = Math.max(-1, Math.min(1, sample))
+      view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true)
+      pos += 2
+    }
+  }
+  return new Blob([arrayBuffer], { type: 'audio/wav' })
 }
 
-function saveFileLocally(url: string, fileName: string, subfolder?: string) {
-  sendToPlugin('save_to_local', { url, fileName: fileName.replace(/[<>:"/\\|?*]/g, '-'), folder: '444radio-generations', subfolder: subfolder || '' })
-}
-
-// ─── Constants ─────────────────────────────────────────────────
+// ─── Quick Tags (same as create page sidebar) ──────────────────
 const QUICK_TAGS = [
-  'upbeat','chill','energetic','melancholic','ambient','electronic','acoustic','jazz','rock','hip-hop',
-  'heavy bass','soft piano','guitar solo','synthwave','lo-fi beats','orchestral','dreamy','aggressive',
-  'trap','drill','phonk','vaporwave','future bass','drum & bass','dubstep','house','techno','trance',
-  'indie','folk','blues','soul','funk','disco','reggae','latin','afrobeat','k-pop','anime',
-  'cinematic','epic','dark','bright','nostalgic','romantic','sad','happy','mysterious','powerful',
-  'soft vocals','no vocals','female vocals','male vocals','synth lead','strings','brass','flute','violin',
-]
-const IDEA_GENRES = [
-  'electronic','hip-hop','rock','jazz','ambient','trap','drill','phonk','house','techno',
-  'lo-fi beats','synthwave','indie','folk','blues','soul','funk','reggae','latin','afrobeat',
-  'orchestral','cinematic','acoustic','vaporwave','k-pop',
-]
-const GENRES = ['lofi','hiphop','jazz','chill','rnb','techno','pop','rock','ambient','classical','trap','drill','phonk']
-const LANGUAGES = ['English','Chinese','Japanese','Korean','Spanish','French','Hindi','German','Portuguese','Arabic','Italian']
-const STEM_TYPES = ['vocals','drums','bass','piano','guitar','other'] as const
-const MIN_PROMPT_LENGTH = 10
-const MAX_PROMPT_LENGTH = 300
-
-const BOOST_PRESETS = [
-  { label: '444 Mix', bass: 3, treble: 2, volume: 4, normalize: true, noise_reduction: false },
-  { label: 'Clean', bass: 0, treble: 1, volume: 2, normalize: true, noise_reduction: true },
-  { label: 'Heavy', bass: 8, treble: 5, volume: 6, normalize: true, noise_reduction: false },
+  'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
+  'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
+  'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
+  'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+  'trap', 'drill', 'phonk', 'vaporwave', 'future bass',
+  'drum & bass', 'dubstep', 'house', 'techno', 'trance',
+  'indie', 'folk', 'blues', 'soul', 'funk', 'disco',
+  'reggae', 'latin', 'afrobeat', 'k-pop', 'anime',
+  'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
+  'romantic', 'sad', 'happy', 'mysterious', 'powerful',
+  'soft vocals', 'no vocals', 'female vocals', 'male vocals',
+  'synth lead', 'strings', 'brass', 'flute', 'violin'
 ]
 
-// Feature definitions — matches FeaturesSidebar exactly
-const ALL_FEATURES = [
-  { id: 'music',          icon: Music,     label: 'Music',          desc: 'Generate AI music',          color: 'cyan',   cost: 2,  needsFile: false },
-  { id: 'effects',        icon: Sparkles,  label: 'Effects',        desc: 'Sound effects',              color: 'purple', cost: 2,  needsFile: false },
-  { id: 'loops',          icon: Repeat,    label: 'Loops',          desc: 'Fixed BPM loops',            color: 'cyan',   cost: 6,  needsFile: false },
-  { id: 'image',          icon: ImageIcon, label: 'Cover Art',      desc: 'AI album artwork',           color: 'cyan',   cost: 1,  needsFile: false },
-  { id: 'video-to-audio', icon: Film,      label: 'Video to Audio', desc: 'Synced SFX from video',      color: 'cyan',   cost: 2,  needsFile: true  },
-  { id: 'stems',          icon: Scissors,  label: 'Split Stems',    desc: 'Vocals, drums, bass & more', color: 'purple', cost: 5,  needsFile: true  },
-  { id: 'audio-boost',    icon: Volume2,   label: 'Audio Boost',    desc: 'Mix & master your track',    color: 'orange', cost: 1,  needsFile: true  },
-  { id: 'extract',        icon: Layers,    label: 'Extract',        desc: 'Extract individual stem',    color: 'cyan',   cost: 1,  needsFile: true  },
+const GENRE_OPTIONS = [
+  'electronic', 'hip-hop', 'rock', 'jazz', 'ambient',
+  'trap', 'drill', 'phonk', 'house', 'techno',
+  'lo-fi beats', 'synthwave', 'indie', 'folk', 'blues',
+  'soul', 'funk', 'reggae', 'latin', 'afrobeat',
+  'orchestral', 'cinematic', 'acoustic', 'vaporwave', 'k-pop'
 ]
 
-// Stem display config (matches create page exactly)
-function getStemDisplay(key: string) {
-  const k = key.toLowerCase()
-  if (k.includes('vocal')) return { title: '🎤 Vocals', description: 'Isolated vocal track', gradient: 'from-purple-600 to-purple-400', border: 'border-purple-500/30', hover: 'hover:border-purple-400/50', hoverBg: 'hover:bg-purple-500/20', text: 'text-purple-400' }
-  if (k.includes('instrumental') || k.includes('accompaniment')) return { title: '🎹 Instrumental', description: 'Music without vocals', gradient: 'from-cyan-600 to-cyan-400', border: 'border-cyan-500/30', hover: 'hover:border-cyan-400/50', hoverBg: 'hover:bg-cyan-500/20', text: 'text-cyan-400' }
-  if (k.includes('drum')) return { title: '🥁 Drums', description: 'Percussion only', gradient: 'from-amber-600 to-amber-400', border: 'border-amber-500/30', hover: 'hover:border-amber-400/50', hoverBg: 'hover:bg-amber-500/20', text: 'text-amber-300' }
-  if (k.includes('bass')) return { title: '🪕 Bass', description: 'Low-end bassline', gradient: 'from-emerald-600 to-emerald-400', border: 'border-emerald-500/30', hover: 'hover:border-emerald-400/50', hoverBg: 'hover:bg-emerald-500/20', text: 'text-emerald-300' }
-  if (k.includes('guitar')) return { title: '🎸 Guitar', description: 'Isolated guitar', gradient: 'from-orange-600 to-orange-400', border: 'border-orange-500/30', hover: 'hover:border-orange-400/50', hoverBg: 'hover:bg-orange-500/20', text: 'text-orange-300' }
-  if (k.includes('piano')) return { title: '🎹 Piano', description: 'Isolated keys', gradient: 'from-indigo-600 to-indigo-400', border: 'border-indigo-500/30', hover: 'hover:border-indigo-400/50', hoverBg: 'hover:bg-indigo-500/20', text: 'text-indigo-300' }
-  return { title: `✨ ${key.charAt(0).toUpperCase() + key.slice(1).replace(/[_-]/g, ' ')}`, description: 'Isolated audio track', gradient: 'from-slate-600 to-slate-400', border: 'border-slate-500/30', hover: 'hover:border-slate-400/50', hoverBg: 'hover:bg-slate-500/20', text: 'text-slate-200' }
-}
+// ─── Features list (same as FeaturesSidebar) ───────────────────
+const FEATURES = [
+  { key: 'music', icon: Music, label: 'Music', desc: 'Generate AI music', color: 'cyan', cost: 2 },
+  { key: 'effects', icon: Sparkles, label: 'Effects', desc: 'Sound effects', color: 'purple', cost: 2 },
+  { key: 'loops', icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops', color: 'cyan', cost: 6 },
+  { key: 'image', icon: ImageIcon, label: 'Cover Art', desc: 'AI album artwork', color: 'cyan', cost: 1 },
+  { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 2 },
+  { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 5 },
+  { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
+  { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1 },
+  { key: 'lyrics', icon: Edit3, label: 'Lyrics', desc: 'Write & edit lyrics', color: 'cyan', cost: 0, conditionalMusic: true },
+  { key: 'upload', icon: Upload, label: 'Upload', desc: 'Upload audio/video', color: 'purple', cost: 0 },
+  { key: 'release', icon: Rocket, label: 'Release', desc: 'Publish to feed', color: 'cyan', cost: 0 },
+]
 
 // ═══════════════════════════════════════════════════════════════
+//  MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════
 export default function PluginPage() {
-  // ─── Auth state ───────────────────────────────────────────
-  const [token, setToken] = useState('')
+  // ── Auth ──
+  const [token, setToken] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [credits, setCredits] = useState<CreditInfo | null>(null)
-  const [isLoadingCredits, setIsLoadingCredits] = useState(true)
-  const [authError, setAuthError] = useState('')
 
-  // ─── Core state ───────────────────────────────────────────
-  const [selectedType, setSelectedType] = useState<string>('music')
-  const [input, setInput] = useState('')
+  // ── Layout ──
+  const [isMobile, setIsMobile] = useState(false)
+  const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
+  const [showBottomDock, setShowBottomDock] = useState(true)
+
+  // ── Chat ──
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', type: 'assistant', content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?', timestamp: new Date() }
   ])
+  const [input, setInput] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // ── Generation state ──
+  const [selectedType, setSelectedType] = useState<GenerationType>('music')
   const [isGenerating, setIsGenerating] = useState(false)
   const [activeGenerations, setActiveGenerations] = useState<Set<string>>(new Set())
-  const [jobs, setJobs] = useState<GenerationJob[]>([])
-  const [isInstrumental, setIsInstrumental] = useState(false)
+  const [generationQueue, setGenerationQueue] = useState<string[]>([])
 
-  // ─── Sidebar state ────────────────────────────────────────
-  const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
-  const [showIdeas, setShowIdeas] = useState(false)
-  const [ideasView, setIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
-  const [promptType, setPromptType] = useState<'song' | 'beat'>('song')
+  // ── Credits ──
+  const [userCredits, setUserCredits] = useState<number | null>(null)
+  const [isLoadingCredits, setIsLoadingCredits] = useState(true)
 
-  // ─── Bottom dock state ────────────────────────────────────
-  const [showAdvancedButtons, setShowAdvancedButtons] = useState(false)
-  const [showPromptSuggestions, setShowPromptSuggestions] = useState(false)
-  const [showIdeasFlow, setShowIdeasFlow] = useState(false)
-  const [ideasStep, setIdeasStep] = useState<'type' | 'genre' | 'generating'>('type')
+  // ── Prompt validation ──
+  const MIN_PROMPT_LENGTH = 10
+  const MAX_PROMPT_LENGTH = 300
 
-  // ─── Generation form state ────────────────────────────────
-  const [customTitle, setCustomTitle] = useState('')
+  // ── Advanced parameters (same as create) ──
   const [customLyrics, setCustomLyrics] = useState('')
+  const [customTitle, setCustomTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [bpm, setBpm] = useState('')
   const [songDuration, setSongDuration] = useState<'short' | 'medium' | 'long'>('long')
-  const [language, setLanguage] = useState('English')
   const [generateCoverArt, setGenerateCoverArt] = useState(false)
+  const [isInstrumental, setIsInstrumental] = useState(false)
+
+  // ── ACE-Step params ──
+  const [audioLengthInSeconds, setAudioLengthInSeconds] = useState(45)
+  const [numInferenceSteps, setNumInferenceSteps] = useState(50)
+  const [guidanceScale, setGuidanceScale] = useState(7.0)
+  const [denoisingStrength, setDenoisingStrength] = useState(0.8)
+
+  // ── Modal/UI states ──
   const [showLyricsModal, setShowLyricsModal] = useState(false)
+  const [showAdvancedButtons, setShowAdvancedButtons] = useState(false)
+  const [showDeletedChatsModal, setShowDeletedChatsModal] = useState(false)
+  const [selectedLanguage, setSelectedLanguage] = useState('English')
+  const [isRecording, setIsRecording] = useState(false)
+  const [mediaRecorder, setMediaRecorder] = useState<unknown | null>(null)
   const [isGeneratingAtomLyrics, setIsGeneratingAtomLyrics] = useState(false)
   const [showTitleError, setShowTitleError] = useState(false)
 
-  // ─── File upload state ────────────────────────────────────
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploadedFileUrl, setUploadedFileUrl] = useState('')
-  const [uploadedFileName, setUploadedFileName] = useState('')
-  const [isUploading, setIsUploading] = useState(false)
+  // ── Prompt Ideas ──
+  const [showPromptSuggestions, setShowPromptSuggestions] = useState(false)
+  const [showIdeasFlow, setShowIdeasFlow] = useState(false)
+  const [ideasStep, setIdeasStep] = useState<'type' | 'genre' | 'generating'>('type')
+  const [selectedPromptType, setSelectedPromptType] = useState<'song' | 'beat'>('song')
+  const [generatingIdea, setGeneratingIdea] = useState(false)
+
+  // ── Sidebar Ideas ──
+  const [showSidebarIdeas, setShowSidebarIdeas] = useState(false)
+  const [sidebarIdeasView, setSidebarIdeasView] = useState<'tags' | 'type' | 'genre' | 'generating'>('tags')
+  const [sidebarPromptType, setSidebarPromptType] = useState<'song' | 'beat'>('song')
+
+  // ── Audio player ──
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
+
+  // ── Stem splitting ──
+  const [isSplittingStems, setIsSplittingStems] = useState(false)
+
+  // ── Upload Media Modal (mirrors MediaUploadModal from create page) ──
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | null>(null)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadFilePreview, setUploadFilePreview] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState('')
   const [uploadProgress, setUploadProgress] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
 
-  // ─── Extract / Boost / Loops / Effects params ─────────────
-  const [extractStem, setExtractStem] = useState<string>('vocals')
-  const [bassBoost, setBassBoost] = useState(0)
-  const [trebleBoost, setTrebleBoost] = useState(0)
-  const [volumeBoost, setVolumeBoost] = useState(2)
-  const [normalizeAudio, setNormalizeAudio] = useState(true)
-  const [noiseReduction, setNoiseReduction] = useState(false)
-  const [boostOutputFormat, setBoostOutputFormat] = useState('wav')
-  const [boostBitrate, setBoostBitrate] = useState('320k')
-  const [effectDuration, setEffectDuration] = useState(5)
-  const [loopMaxDuration, setLoopMaxDuration] = useState(8)
-  const [loopVariations, setLoopVariations] = useState(2)
-  const [v2aQuality, setV2aQuality] = useState<'standard' | 'hq'>('standard')
+  // Audio Boost settings (mirrors MediaUploadModal)
+  const [boostBass, setBoostBass] = useState(0)
+  const [boostTreble, setBoostTreble] = useState(0)
+  const [boostVolume, setBoostVolume] = useState(2)
+  const [boostNormalize, setBoostNormalize] = useState(true)
+  const [boostNoiseReduction, setBoostNoiseReduction] = useState(false)
+  const [boostFormat, setBoostFormat] = useState('mp3')
+  const [boostBitrate, setBoostBitrate] = useState('192k')
 
-  // Audio player
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [playingUrl, setPlayingUrl] = useState<string | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Extract Audio stem picker
+  const [extractStem, setExtractStem] = useState<'vocals' | 'bass' | 'drums' | 'piano' | 'guitar' | 'other'>('vocals')
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  // Video-to-Audio settings
+  const [videoPrompt, setVideoPrompt] = useState('')
+  const [videoHQ, setVideoHQ] = useState(false)
 
-  // ─── Scroll to bottom on new messages ─────────────────────
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  // File input refs per mode (correct accept types)
+  const uploadVideoRef = useRef<HTMLInputElement>(null)
+  const uploadAudioRef = useRef<HTMLInputElement>(null)
+  const uploadBoostRef = useRef<HTMLInputElement>(null)
+  const uploadExtractVideoRef = useRef<HTMLInputElement>(null)
+  const uploadExtractAudioRef = useRef<HTMLInputElement>(null)
 
-  // ─── Load persisted data on mount ─────────────────────────
-  useEffect(() => {
-    const savedJobs = loadLibrary()
-    if (savedJobs.length > 0) setJobs(savedJobs)
-    const savedChat = loadChat()
-    if (savedChat.length > 0) setMessages(savedChat)
-  }, [])
+  // Legacy refs (kept for sidebar triggerFeatureUpload)
+  const [showFileUpload, setShowFileUpload] = useState(false)
+  const [fileUploadType, setFileUploadType] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ─── Persist on changes ───────────────────────────────────
-  useEffect(() => { saveLibrary(jobs) }, [jobs])
-  useEffect(() => { saveChat(messages) }, [messages])
+  // ── Release modal ──
+  const [showReleaseModal, setShowReleaseModal] = useState(false)
 
-  // ─── Audio Player ─────────────────────────────────────────
-  const togglePlay = (url: string) => {
-    if (playingUrl === url) { audioRef.current?.pause(); setPlayingUrl(null) }
-    else {
-      if (audioRef.current) audioRef.current.pause()
-      const audio = new Audio(url); audioRef.current = audio
-      audio.play(); audio.onended = () => setPlayingUrl(null); setPlayingUrl(url)
-    }
-  }
+  // ── Chat sync ──
+  const [isSyncingChat, setIsSyncingChat] = useState(false)
+  const chatSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ─── Auth ─────────────────────────────────────────────────
+  // ── Abort controllers ──
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
+  const pendingCancelsRef = useRef<Set<string>>(new Set())
+
+  // ═══ AUTH: Extract token from URL or localStorage ═══
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const urlToken = params.get('token')
-    if (urlToken?.startsWith('444r_')) { setToken(urlToken); verifyToken(urlToken); return }
-    const saved = localStorage.getItem('444radio_plugin_token')
-    if (saved) { setToken(saved); verifyToken(saved) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (urlToken) {
+      localStorage.setItem(TOKEN_KEY, urlToken)
+      setToken(urlToken)
+    } else {
+      const saved = localStorage.getItem(TOKEN_KEY)
+      if (saved) setToken(saved)
+    }
   }, [])
 
-  const verifyToken = useCallback(async (t: string) => {
-    try {
-      const res = await fetch(`${baseUrl}/api/plugin/credits`, { headers: { Authorization: `Bearer ${t}` } })
-      if (res.ok) {
-        const data = await res.json()
-        setCredits(data); setIsAuthenticated(true); setIsLoadingCredits(false)
-        localStorage.setItem('444radio_plugin_token', t)
-        sendToPlugin('authenticated', { credits: data.credits, token: t })
-      } else { setIsAuthenticated(false); setAuthError('Invalid token. Generate one from Settings → Plugin.') }
-    } catch { setAuthError('Connection failed. Check your internet.') }
-  }, [baseUrl])
+  // ═══ AUTH: Verify token on mount ═══
+  useEffect(() => {
+    if (!token) return
+    ;(async () => {
+      try {
+        const res = await fetch('/api/plugin/credits', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setUserCredits(data.credits)
+          setIsLoadingCredits(false)
+          setIsAuthenticated(true)
+          // Notify JUCE bridge
+          try {
+            (window as any).__juce__?.postMessage?.('authenticated')
+          } catch {}
+        } else {
+          setIsAuthenticated(false)
+          setIsLoadingCredits(false)
+        }
+      } catch {
+        setIsAuthenticated(false)
+        setIsLoadingCredits(false)
+      }
+    })()
+  }, [token])
 
+  // ═══ LAYOUT: detect mobile ═══
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // ═══ CHAT: load from localStorage ═══
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CHAT_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        setMessages(parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })))
+      }
+    } catch {}
+  }, [])
+
+  // ═══ CHAT: save to localStorage ═══
+  useEffect(() => {
+    try { localStorage.setItem(CHAT_KEY, JSON.stringify(messages)) } catch {}
+  }, [messages])
+
+  // ═══ CHAT: scroll to bottom ═══
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // ═══ CREDITS: refresh helper ═══
   const refreshCredits = useCallback(async () => {
     if (!token) return
     try {
-      const res = await fetch(`${baseUrl}/api/plugin/credits`, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.ok) { const d = await res.json(); setCredits(d); setIsLoadingCredits(false) }
+      const res = await fetch('/api/plugin/credits', { headers: { 'Authorization': `Bearer ${token}` } })
+      if (res.ok) {
+        const data = await res.json()
+        setUserCredits(data.credits)
+      }
     } catch {}
-  }, [token, baseUrl])
+  }, [token])
 
-  // ─── File Upload ──────────────────────────────────────────
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !token) return
-    if (file.size > 100 * 1024 * 1024) { alert('File must be under 100MB'); return }
-    setIsUploading(true); setUploadProgress('Getting upload URL...')
-    try {
-      const presignRes = await fetch(`${baseUrl}/api/plugin/upload`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size }),
-      })
-      if (!presignRes.ok) throw new Error((await presignRes.json().catch(() => ({}))).error || 'Upload setup failed')
-      const { presignedUrl, publicUrl } = await presignRes.json()
-      setUploadProgress(`Uploading ${(file.size / (1024 * 1024)).toFixed(1)} MB...`)
-      const uploadRes = await fetch(presignedUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
-      if (!uploadRes.ok) throw new Error('Upload to storage failed')
-      setUploadProgress('Processing...')
-      await new Promise(r => setTimeout(r, 3000))
-      setUploadedFileUrl(publicUrl); setUploadedFileName(file.name); setUploadProgress('')
-      if (!customTitle) setCustomTitle(file.name.replace(/\.[^.]+$/, ''))
-    } catch (err: unknown) {
-      alert((err as Error).message || 'Upload failed'); setUploadProgress('')
-    } finally {
-      setIsUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-  }, [token, baseUrl, customTitle])
-
-  const clearUpload = () => { setUploadedFileUrl(''); setUploadedFileName(''); if (fileInputRef.current) fileInputRef.current.value = '' }
-
-  // ─── Clear chat ───────────────────────────────────────────
+  // ═══ NEW CHAT (archive + clear) ═══
   const handleClearChat = () => {
-    setMessages([{ id: '1', type: 'assistant', content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?', timestamp: new Date() }])
+    if (!confirm('Start a new chat? Your current session will be saved to Chat History.')) return
+    try {
+      const archives = localStorage.getItem(CHAT_ARCHIVES_KEY)
+      const list = archives ? JSON.parse(archives) : []
+      list.unshift({ id: `chat-${Date.now()}`, messages, archivedAt: new Date(), messageCount: messages.length })
+      localStorage.setItem(CHAT_ARCHIVES_KEY, JSON.stringify(list.slice(0, 50)))
+    } catch {}
+    setMessages([
+      { id: '1', type: 'assistant', content: '👋 Hey! I\'m your AI music studio assistant. What would you like to create today?', timestamp: new Date() }
+    ])
   }
 
-  // ─── Tag / Idea helpers ───────────────────────────────────
-  const addTag = (tag: string) => {
-    const newInput = input ? `${input}, ${tag}` : tag
-    setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
+  // ═══ CANCEL generation ═══
+  const handleCancelGeneration = (messageId: string) => {
+    const controller = abortControllersRef.current.get(messageId)
+    if (controller) { controller.abort(); abortControllersRef.current.delete(messageId) }
+    // Mark message cancelled
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, isGenerating: false, content: '⏹ Generation cancelled.' } : msg
+    ))
+    setActiveGenerations(prev => { const s = new Set(prev); s.delete(messageId); return s })
+    setGenerationQueue(prev => prev.filter(id => id !== messageId))
+    refreshCredits()
   }
 
-  const generateIdea = (g: string) => {
-    const moods = ['dark','uplifting','chill','energetic','melodic','dreamy','nostalgic','powerful']
-    const mood = moods[Math.floor(Math.random() * moods.length)]
-    const type = promptType === 'song' ? 'song with catchy vocals and lyrics' : 'instrumental beat'
-    setInput(`${mood} ${g} ${type}, modern production, professional mix`)
-    if (promptType === 'beat') setIsInstrumental(true)
-    setShowIdeas(false); setIdeasView('tags')
-    setShowIdeasFlow(false); setIdeasStep('type'); setShowPromptSuggestions(false)
+  // ═══ PLAY/PAUSE ═══
+  const handlePlayPause = (messageId: string, audioUrl: string) => {
+    if (playingId === messageId && audioElement) {
+      audioElement.pause()
+      setPlayingId(null)
+      return
+    }
+    if (audioElement) { audioElement.pause(); audioElement.src = '' }
+    const audio = new Audio(audioUrl)
+    audio.play().catch(() => {})
+    audio.onended = () => setPlayingId(null)
+    setAudioElement(audio)
+    setPlayingId(messageId)
   }
 
-  // ─── GENERATION — mirrors create page flow exactly ────────
-  const handleGenerate = useCallback(async () => {
+  // ═══ DOWNLOAD (with auth token for /api/plugin/download) ═══
+  const handleDownload = async (url: string, filename: string, format: 'mp3' | 'wav' = 'mp3') => {
+    try {
+      if (format === 'mp3') {
+        // Use fetch with auth header (can't use <a> tag because it won't send Bearer token)
+        const downloadUrl = `/api/plugin/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
+        const response = await fetch(downloadUrl, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        })
+        if (!response.ok) throw new Error(`Download failed: ${response.status}`)
+        const blob = await response.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(blobUrl)
+      } else {
+        // WAV: fetch source audio, decode, convert to WAV
+        const response = await fetch(url)
+        const arrayBuffer = await response.arrayBuffer()
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+        const wavBlob = audioBufferToWav(audioBuffer)
+        const wavUrl = URL.createObjectURL(wavBlob)
+        const link = document.createElement('a')
+        link.href = wavUrl
+        link.download = filename.replace(/\.\w+$/, '.wav')
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(wavUrl)
+      }
+      // JUCE bridge: notify for DAW import
+      try {
+        const msg = JSON.stringify({ type: 'import_audio', url, title: filename })
+        ;(window as any).__juce__?.postMessage?.(msg)
+        window.location.href = `juce-bridge://${encodeURIComponent(msg)}`
+      } catch {}
+    } catch (err) {
+      console.error('Download error:', err)
+      alert('Download failed. Please try again.')
+    }
+  }
+
+  // ═══ VOICE RECORDING (same as create) ═══
+  const startRecording = async () => {
+    try {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('Speech recognition is not supported in your browser.')
+        return
+      }
+      const SR = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
+      const recognition = new SR()
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.lang = selectedLanguage === 'English' ? 'en-US' :
+        selectedLanguage === 'Spanish' ? 'es-ES' :
+        selectedLanguage === 'French' ? 'fr-FR' :
+        selectedLanguage === 'German' ? 'de-DE' :
+        selectedLanguage === 'Italian' ? 'it-IT' :
+        selectedLanguage === 'Portuguese' ? 'pt-PT' :
+        selectedLanguage === 'Russian' ? 'ru-RU' :
+        selectedLanguage === 'Japanese' ? 'ja-JP' :
+        selectedLanguage === 'Korean' ? 'ko-KR' :
+        selectedLanguage === 'Chinese' ? 'zh-CN' : 'en-US'
+      recognition.onresult = (event: any) => {
+        let transcript = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) transcript += event.results[i][0].transcript
+        }
+        if (transcript) setInput(prev => prev + (prev ? ' ' : '') + transcript)
+      }
+      recognition.onerror = () => setIsRecording(false)
+      recognition.onend = () => setIsRecording(false)
+      recognition.start()
+      setMediaRecorder(recognition)
+      setIsRecording(true)
+    } catch {
+      alert('Could not access microphone.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      try { (mediaRecorder as any).stop() } catch {}
+      setIsRecording(false)
+      setMediaRecorder(null)
+    }
+  }
+
+  // ═══ PROMPT IDEAS (same as create) ═══
+  const handleGeneratePromptIdea = async (ideaGenre: string) => {
+    setGeneratingIdea(true)
+    setIdeasStep('generating')
+    setSidebarIdeasView('generating')
+    try {
+      const response = await fetch('/api/generate/prompt-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ genre: ideaGenre, promptType: selectedPromptType })
+      })
+      const data = await response.json()
+      if (data.success && data.prompt) {
+        setInput(data.prompt.slice(0, MAX_PROMPT_LENGTH))
+        setShowIdeasFlow(false)
+        setShowPromptSuggestions(false)
+        setIdeasStep('type')
+        setShowSidebarIdeas(false)
+        setSidebarIdeasView('tags')
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(), type: 'assistant',
+          content: `✨ AI generated a ${ideaGenre} ${selectedPromptType} prompt for you!`,
+          timestamp: new Date()
+        }])
+      } else {
+        throw new Error(data.error)
+      }
+    } catch {
+      alert('Failed to generate prompt idea.')
+      setIdeasStep('genre')
+      setSidebarIdeasView('genre')
+    } finally {
+      setGeneratingIdea(false)
+    }
+  }
+
+  // ═══ ATOM AUTO-FILL HELPERS ═══
+  const autoFillTitle = async (prompt: string): Promise<string> => {
+    try {
+      const res = await fetch('/api/generate/atom-title', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      })
+      const data = await res.json()
+      if (data.success && data.title) return data.title
+    } catch {}
+    return prompt.split(' ').slice(0, 2).join(' ')
+  }
+
+  const autoFillLyrics = async (prompt: string): Promise<string> => {
+    try {
+      const res = await fetch('/api/generate/atom-lyrics', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      })
+      const data = await res.json()
+      if (data.success && data.lyrics) return data.lyrics
+    } catch {}
+    return ''
+  }
+
+  const autoFillGenre = async (prompt: string): Promise<string> => {
+    try {
+      const res = await fetch('/api/generate/atom-genre', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      })
+      const data = await res.json()
+      if (data.success && data.genre) return data.genre
+    } catch {}
+    return 'pop'
+  }
+
+  // ═══ NDJSON STREAM PARSER ═══
+  const parseNDJSON = async (
+    response: Response,
+    onStarted: (data: any) => void,
+    onResult: (data: any) => void,
+    signal?: AbortSignal
+  ) => {
+    const reader = response.body?.getReader()
+    if (!reader) throw new Error('No response stream')
+    const decoder = new TextDecoder()
+    let buffer = ''
+    try {
+      while (true) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          try {
+            const parsed = JSON.parse(line)
+            if (parsed.type === 'started') onStarted(parsed)
+            else if (parsed.type === 'result') onResult(parsed)
+          } catch {}
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          const parsed = JSON.parse(buffer)
+          if (parsed.type === 'started') onStarted(parsed)
+          else if (parsed.type === 'result') onResult(parsed)
+        } catch {}
+      }
+    } finally { reader.releaseLock() }
+  }
+
+  // ═══ MAIN GENERATE (full auto-fill pipeline like create page) ═══
+  const handleGenerate = async () => {
     if (!input.trim() || !token) return
-    const trimmed = input.trim()
-    if (trimmed.length < MIN_PROMPT_LENGTH) { alert(`Prompt must be at least ${MIN_PROMPT_LENGTH} characters`); return }
-    if (trimmed.length > MAX_PROMPT_LENGTH) { alert(`Prompt must be ${MAX_PROMPT_LENGTH} characters or less`); return }
 
-    // Title validation for vocal music
+    // Validate prompt
+    const trimmed = input.trim()
+    if (trimmed.length < MIN_PROMPT_LENGTH) { alert(`❌ Prompt must be at least ${MIN_PROMPT_LENGTH} characters`); return }
+    if (trimmed.length > MAX_PROMPT_LENGTH) { alert(`❌ Prompt must be ${MAX_PROMPT_LENGTH} characters or less`); return }
+
+    // Validate title if provided
     if (selectedType === 'music' && !isInstrumental && customTitle.trim()) {
       if (customTitle.trim().length < 3 || customTitle.trim().length > 100) {
-        setShowLyricsModal(true); setShowTitleError(true)
-        setTimeout(() => setShowTitleError(false), 5000); return
+        setShowLyricsModal(true)
+        setShowTitleError(true)
+        setTimeout(() => setShowTitleError(false), 5000)
+        return
       }
     }
     setShowTitleError(false)
 
-    // ─── Handle file-based features via modals/inline ───────
-    if (selectedType === 'stems' || selectedType === 'extract' || selectedType === 'audio-boost') {
-      if (!uploadedFileUrl) { fileInputRef.current?.click(); return }
-      return processFileFeature()
-    }
+    // Credit check
+    const creditsNeeded = selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : 0
+    try {
+      const res = await fetch('/api/plugin/credits', { headers: { 'Authorization': `Bearer ${token}` } })
+      const data = await res.json()
+      const current = data.credits || 0
+      const pending = activeGenerations.size * 2
+      if (current - pending < creditsNeeded) {
+        alert(`⚡ Insufficient credits! Need ${creditsNeeded}, have ${current} (${pending} reserved).`)
+        return
+      }
+      setUserCredits(current)
+    } catch { return }
 
-    if (selectedType === 'video-to-audio') {
-      if (!uploadedFileUrl) { fileInputRef.current?.click(); return }
-      return processFileFeature()
-    }
+    // Close modals
+    setShowLyricsModal(false)
 
-    // ─── Music generation flow (carbon copy of create page) ─
+    // ── MUSIC GENERATION ──
     if (selectedType === 'music') {
       const messageId = Date.now().toString()
       const genMsgId = (Date.now() + 1).toString()
 
-      const userMsg: Message = {
+      const userMessage: Message = {
         id: messageId, type: 'user',
         content: isInstrumental ? `🎹 Generate instrumental: "${input}"` : `🎵 Generate music: "${input}"`,
         timestamp: new Date()
       }
-      const genMsg: Message = {
+      const generatingMessage: Message = {
         id: genMsgId, type: 'generation',
         content: activeGenerations.size > 0 ? '⏳ Queued - will start soon...' : `🎵 Generating your ${isInstrumental ? 'instrumental ' : ''}track...`,
         generationType: 'music', isGenerating: true, timestamp: new Date()
       }
-      setMessages(prev => [...prev, userMsg, genMsg])
+
+      setMessages(prev => [...prev, userMessage, generatingMessage])
+      setGenerationQueue(prev => [...prev, genMsgId])
       setActiveGenerations(prev => new Set(prev).add(genMsgId))
+
+      const earlyAbort = new AbortController()
+      abortControllersRef.current.set(genMsgId, earlyAbort)
 
       let originalPrompt = input
       setInput('')
 
-      // Instrumental cleanup
+      // Instrumental mode: strip vocal words
       if (isInstrumental) {
         originalPrompt = originalPrompt
-          .replace(/\b(vocals?|voices?|singing|singer|sung|sing|vox|choir|choral|humming|chant(?:ing)?|whisper(?:ed)?|falsetto|a\s*capella)\b/gi, '')
+          .replace(/\b(vocals?|voices?|singing|singer|sung|sing|vox|choir|choral|humming|chant(?:ing)?|whisper(?:ed)?|falsetto|a\s*capella|acapella)\b/gi, '')
           .replace(/\s+/g, ' ').replace(/,\s*,+/g, ',').replace(/,\s*$/, '').replace(/^\s*,/, '').trim()
         if (!originalPrompt.toLowerCase().includes('no vocals')) {
-          originalPrompt = originalPrompt.trimEnd().slice(0, 300 - 30) + ', no vocals, instrumental only'
+          const tag = ', no vocals, instrumental only'
+          originalPrompt = originalPrompt.trimEnd().slice(0, 300 - tag.length) + tag
         }
-      } else {
-        originalPrompt = originalPrompt.slice(0, 300)
       }
+      originalPrompt = originalPrompt.slice(0, 300)
 
-      // Smart auto-fill
-      let finalTitle = customTitle, finalLyrics = customLyrics, finalGenre = genre, finalBpm = bpm
+      // ── Smart auto-fill (LLM, same as create page) ──
+      let finalTitle = customTitle
+      let finalLyrics = customLyrics
+      let finalGenre = genre
+      let finalBpm = bpm
       let wasAutoFilled = false
+      const wasCancelled = () => earlyAbort.signal.aborted
 
-      if (!finalTitle.trim()) {
+      // Auto-fill title
+      if (!finalTitle.trim() && !wasCancelled()) {
         wasAutoFilled = true
-        const autoMsg: Message = { id: (Date.now() + 2).toString(), type: 'assistant', content: '🤖 Auto-generating title...', timestamp: new Date() }
-        setMessages(prev => [...prev, autoMsg])
-        try {
-          const res = await fetch(`${baseUrl}/api/generate/atom-title`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: originalPrompt }) })
-          const d = await res.json()
-          if (d.success && d.title) { finalTitle = d.title; setCustomTitle(finalTitle) }
-          await new Promise(r => setTimeout(r, 10000))
-        } catch { finalTitle = originalPrompt.split(' ').slice(0, 2).join(' '); setCustomTitle(finalTitle) }
+        finalTitle = await autoFillTitle(originalPrompt)
+        setCustomTitle(finalTitle)
+        await new Promise(r => setTimeout(r, 10000))
       }
+      if (wasCancelled()) return
 
+      // Auto-fill lyrics
       if (isInstrumental) {
-        finalLyrics = '[Instrumental]'; setCustomLyrics(finalLyrics)
-      } else if (!finalLyrics.trim()) {
+        finalLyrics = '[Instrumental]'
+        setCustomLyrics(finalLyrics)
+      } else if (!finalLyrics.trim() && !wasCancelled()) {
         wasAutoFilled = true
-        try {
-          const res = await fetch(`${baseUrl}/api/generate/atom-lyrics`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: originalPrompt }) })
-          const d = await res.json()
-          if (d.success && d.lyrics) { finalLyrics = d.lyrics; setCustomLyrics(finalLyrics) }
-          await new Promise(r => setTimeout(r, 10000))
-        } catch {}
+        finalLyrics = await autoFillLyrics(originalPrompt)
+        setCustomLyrics(finalLyrics)
+        await new Promise(r => setTimeout(r, 10000))
       }
+      if (wasCancelled()) return
 
-      if (!finalGenre.trim()) {
+      // Auto-fill genre
+      if (!finalGenre.trim() && !wasCancelled()) {
         wasAutoFilled = true
-        try {
-          const res = await fetch(`${baseUrl}/api/generate/atom-genre`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: originalPrompt }) })
-          const d = await res.json()
-          if (d.success && d.genre) { finalGenre = d.genre; setGenre(finalGenre) }
-          await new Promise(r => setTimeout(r, 10000))
-        } catch { finalGenre = 'pop'; setGenre(finalGenre) }
+        finalGenre = await autoFillGenre(originalPrompt)
+        setGenre(finalGenre)
+        await new Promise(r => setTimeout(r, 10000))
       }
+      if (wasCancelled()) return
 
+      // Auto-fill BPM
       if (!finalBpm.trim()) {
         const pl = originalPrompt.toLowerCase()
-        if (pl.includes('fast') || pl.includes('energetic')) finalBpm = '140'
-        else if (pl.includes('slow') || pl.includes('chill')) finalBpm = '80'
-        else if (finalGenre.includes('electronic')) finalBpm = '128'
-        else if (finalGenre.includes('hip-hop')) finalBpm = '90'
+        if (pl.includes('fast') || pl.includes('energetic') || pl.includes('upbeat')) finalBpm = '140'
+        else if (pl.includes('slow') || pl.includes('chill') || pl.includes('relaxing')) finalBpm = '80'
+        else if (pl.includes('medium') || pl.includes('moderate')) finalBpm = '110'
+        else if (finalGenre.includes('electronic') || finalGenre.includes('edm')) finalBpm = '128'
+        else if (finalGenre.includes('hip-hop') || finalGenre.includes('rap')) finalBpm = '90'
+        else if (finalGenre.includes('rock')) finalBpm = '120'
+        else if (finalGenre.includes('lofi') || finalGenre.includes('chill')) finalBpm = '85'
         else finalBpm = '110'
-        setBpm(finalBpm); wasAutoFilled = true
+        setBpm(finalBpm)
+        wasAutoFilled = true
       }
 
+      // Show auto-fill info
       if (wasAutoFilled) {
         const fields: string[] = []
         if (!customTitle.trim()) fields.push('Title')
@@ -426,304 +712,769 @@ export default function PluginPage() {
         if (isInstrumental) fields.push('Instrumental Mode')
         if (!genre.trim()) fields.push(`Genre (${finalGenre})`)
         if (!bpm.trim()) fields.push(`BPM (${finalBpm})`)
-        setMessages(prev => [...prev, { id: (Date.now() + 3).toString(), type: 'assistant', content: `✨ Auto-filled: ${fields.join(', ')}`, timestamp: new Date() }])
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 2).toString(), type: 'assistant',
+          content: `✨ Auto-filled: ${fields.join(', ')}`,
+          timestamp: new Date()
+        }])
       }
 
-      // Call plugin generate endpoint
-      setIsGenerating(true)
+      // ── Call plugin generate API with NDJSON ──
       try {
-        const payload: Record<string, unknown> = {
-          type: 'music', prompt: originalPrompt, title: finalTitle, lyrics: finalLyrics,
-          genre: finalGenre, bpm: finalBpm ? parseInt(finalBpm) : undefined, duration: songDuration,
-          language, generateCoverArt, audio_format: 'wav',
+        const body: any = {
+          type: 'music',
+          prompt: originalPrompt,
+          title: finalTitle || originalPrompt.substring(0, 50),
+          lyrics: finalLyrics || undefined,
+          duration: songDuration,
+          genre: finalGenre || undefined,
+          bpm: finalBpm ? parseInt(finalBpm) : undefined,
+          generateCoverArt,
+          language: selectedLanguage,
         }
-        const res = await fetch(`${baseUrl}/api/plugin/generate`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+        if (selectedLanguage.toLowerCase() !== 'english') {
+          body.audio_length_in_s = audioLengthInSeconds
+          body.num_inference_steps = numInferenceSteps
+          body.guidance_scale = guidanceScale
+          body.denoising_strength = denoisingStrength
+        }
+
+        const res = await fetch('/api/plugin/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(body),
+          signal: earlyAbort.signal
         })
-        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`) }
-        await processStream(res, genMsgId, 'music', finalTitle || originalPrompt)
-      } catch (err: unknown) {
-        setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ ${(err as Error).message}` } : m))
+
+        let result: any = null
+        await parseNDJSON(res,
+          (started) => { /* jobId received */ },
+          (r) => { result = r },
+          earlyAbort.signal
+        )
+
+        if (result?.success) {
+          setMessages(prev => prev.map(msg =>
+            msg.id === genMsgId ? {
+              ...msg, isGenerating: false, content: '✅ Track generated!',
+              result: { audioUrl: result.audioUrl, imageUrl: result.imageUrl, title: result.title || finalTitle, prompt: originalPrompt, lyrics: result.lyrics || finalLyrics }
+            } : msg
+          ))
+          if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
+          else refreshCredits()
+          // Save to local library
+          try {
+            const lib = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]')
+            lib.unshift({ id: Date.now(), type: 'music', title: result.title || finalTitle, audioUrl: result.audioUrl, imageUrl: result.imageUrl, prompt: originalPrompt, createdAt: new Date().toISOString() })
+            localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib.slice(0, 200)))
+          } catch {}
+          // Assistant follow-up
+          setMessages(prev => [...prev, {
+            id: (Date.now() + 3).toString(), type: 'assistant',
+            content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
+            timestamp: new Date()
+          }])
+        } else {
+          setMessages(prev => prev.map(msg =>
+            msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Generation failed'}` } : msg
+          ))
+          refreshCredits()
+        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return
+        setMessages(prev => prev.map(msg =>
+          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ Generation failed. Please try again.' } : msg
+        ))
+        refreshCredits()
       } finally {
-        setIsGenerating(false)
-        setActiveGenerations(prev => { const n = new Set(prev); n.delete(genMsgId); return n })
-        setCustomTitle(''); setCustomLyrics(''); setGenre(''); setBpm('')
-        setSongDuration('long'); setIsInstrumental(false); refreshCredits()
+        abortControllersRef.current.delete(genMsgId)
+        setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
+        setGenerationQueue(prev => prev.filter(id => id !== genMsgId))
+        // Clear params for next gen
+        setCustomTitle(''); setCustomLyrics(''); setGenre(''); setBpm(''); setSongDuration('long'); setIsInstrumental(false)
       }
       return
     }
 
-    // ─── Image generation ───────────────────────────────────
+    // ── IMAGE GENERATION ──
     if (selectedType === 'image') {
-      const userMsg: Message = { id: Date.now().toString(), type: 'user', content: `🎨 Generate cover art: "${input}"`, timestamp: new Date() }
       const genMsgId = (Date.now() + 1).toString()
-      const genMsg: Message = { id: genMsgId, type: 'generation', content: '🎨 Generating your cover art...', generationType: 'image', isGenerating: true, timestamp: new Date() }
-      setMessages(prev => [...prev, userMsg, genMsg])
+      setMessages(prev => [...prev,
+        { id: Date.now().toString(), type: 'user', content: input, timestamp: new Date() },
+        { id: genMsgId, type: 'generation', content: '🎨 Generating cover art...', generationType: 'image', isGenerating: true, timestamp: new Date() }
+      ])
       setActiveGenerations(prev => new Set(prev).add(genMsgId))
-      const prompt = input; setInput('')
-      setIsGenerating(true)
+      const prompt = input
+      setInput('')
+
       try {
-        const res = await fetch(`${baseUrl}/api/plugin/generate`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'image', prompt }),
+        const res = await fetch('/api/plugin/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ type: 'image', prompt })
         })
-        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`) }
-        await processStream(res, genMsgId, 'image', prompt)
-      } catch (err: unknown) {
-        setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ ${(err as Error).message}` } : m))
+        let result: any = null
+        await parseNDJSON(res, () => {}, (r) => { result = r })
+
+        if (result?.success) {
+          setMessages(prev => prev.map(msg =>
+            msg.id === genMsgId ? {
+              ...msg, isGenerating: false, content: '✅ Cover art generated!',
+              result: { imageUrl: result.imageUrl, title: prompt.substring(0, 50), prompt }
+            } : msg
+          ))
+          if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
+          else refreshCredits()
+          setMessages(prev => [...prev, {
+            id: (Date.now() + 2).toString(), type: 'assistant',
+            content: 'Cover art created! Want to combine it with a track?',
+            timestamp: new Date()
+          }])
+        } else {
+          setMessages(prev => prev.map(msg =>
+            msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Image generation failed'}` } : msg
+          ))
+          refreshCredits()
+        }
+      } catch {
+        setMessages(prev => prev.map(msg =>
+          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ Generation failed.' } : msg
+        ))
       } finally {
-        setIsGenerating(false); setActiveGenerations(prev => { const n = new Set(prev); n.delete(genMsgId); return n }); refreshCredits()
+        setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
       }
       return
     }
 
-    // ─── Effects generation ─────────────────────────────────
+    // ── EFFECTS generation via plugin API ──
     if (selectedType === 'effects') {
-      const userMsg: Message = { id: Date.now().toString(), type: 'user', content: `✨ Generate effects: "${input}"`, timestamp: new Date() }
       const genMsgId = (Date.now() + 1).toString()
-      const genMsg: Message = { id: genMsgId, type: 'generation', content: '✨ Generating sound effects...', generationType: 'effects', isGenerating: true, timestamp: new Date() }
-      setMessages(prev => [...prev, userMsg, genMsg])
+      setMessages(prev => [...prev,
+        { id: Date.now().toString(), type: 'user', content: `✨ Generate effect: "${input}"`, timestamp: new Date() },
+        { id: genMsgId, type: 'generation', content: '✨ Generating sound effect...', generationType: 'effects', isGenerating: true, timestamp: new Date() }
+      ])
       setActiveGenerations(prev => new Set(prev).add(genMsgId))
-      const prompt = input; setInput('')
-      setIsGenerating(true)
+      const prompt = input
+      setInput('')
+
       try {
-        const res = await fetch(`${baseUrl}/api/plugin/generate`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'effects', prompt, duration: effectDuration, output_format: 'wav' }),
+        const res = await fetch('/api/plugin/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ type: 'effects', prompt, duration: 5 })
         })
-        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`) }
-        await processStream(res, genMsgId, 'effects', prompt)
-      } catch (err: unknown) {
-        setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ ${(err as Error).message}` } : m))
+        let result: any = null
+        await parseNDJSON(res, () => {}, (r) => { result = r })
+
+        if (result?.success) {
+          setMessages(prev => prev.map(msg =>
+            msg.id === genMsgId ? {
+              ...msg, isGenerating: false, content: '✅ Effect generated!',
+              result: { audioUrl: result.audioUrl, title: `SFX: ${prompt.substring(0, 40)}`, prompt }
+            } : msg
+          ))
+          if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
+          else refreshCredits()
+        } else {
+          setMessages(prev => prev.map(msg =>
+            msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Failed'}` } : msg
+          ))
+        }
+      } catch {
+        setMessages(prev => prev.map(msg =>
+          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ Generation failed.' } : msg
+        ))
       } finally {
-        setIsGenerating(false); setActiveGenerations(prev => { const n = new Set(prev); n.delete(genMsgId); return n }); refreshCredits()
+        setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
+        refreshCredits()
       }
       return
     }
 
-    // ─── Loops generation ───────────────────────────────────
-    if (selectedType === 'loops') {
-      const userMsg: Message = { id: Date.now().toString(), type: 'user', content: `🔁 Generate loop: "${input}"`, timestamp: new Date() }
+    // ── LOOPS generation via plugin API ──
+    if (selectedType === 'loops' as any) {
       const genMsgId = (Date.now() + 1).toString()
-      const genMsg: Message = { id: genMsgId, type: 'generation', content: '🔁 Generating loops...', generationType: 'loops', isGenerating: true, timestamp: new Date() }
-      setMessages(prev => [...prev, userMsg, genMsg])
+      setMessages(prev => [...prev,
+        { id: Date.now().toString(), type: 'user', content: `🔄 Generate loops: "${input}"`, timestamp: new Date() },
+        { id: genMsgId, type: 'generation', content: '🔄 Generating fixed BPM loops...', generationType: 'music', isGenerating: true, timestamp: new Date() }
+      ])
       setActiveGenerations(prev => new Set(prev).add(genMsgId))
-      const prompt = input; setInput('')
-      setIsGenerating(true)
+      const prompt = input
+      setInput('')
+
       try {
-        const res = await fetch(`${baseUrl}/api/plugin/generate`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'loops', prompt, bpm: bpm ? parseInt(bpm) : 120, max_duration: loopMaxDuration, variations: loopVariations, output_format: 'wav' }),
+        const res = await fetch('/api/plugin/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ type: 'loops', prompt, bpm: bpm ? parseInt(bpm) : 120 })
         })
-        if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`) }
-        await processStream(res, genMsgId, 'loops', prompt)
-      } catch (err: unknown) {
-        setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ ${(err as Error).message}` } : m))
+        let result: any = null
+        await parseNDJSON(res, () => {}, (r) => { result = r })
+
+        if (result?.success) {
+          // Loops may return multiple variations
+          const variations = result.variations || [{ url: result.audioUrl, variation: 1 }]
+          // Remove generating message
+          setMessages(prev => prev.filter(m => m.id !== genMsgId))
+          // Add each variation
+          variations.forEach((v: any, idx: number) => {
+            setMessages(prev => [...prev, {
+              id: `loop-${Date.now()}-${idx}`,
+              type: 'assistant' as MessageType,
+              content: `✅ Loop Variation ${v.variation || idx + 1} generated!`,
+              result: { audioUrl: v.url || result.audioUrl, title: `Loop: ${prompt.substring(0, 40)} (v${v.variation || idx + 1})`, prompt },
+              timestamp: new Date(Date.now() + idx * 1000)
+            }])
+          })
+          if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
+          else refreshCredits()
+        } else {
+          setMessages(prev => prev.map(msg =>
+            msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Loops generation failed'}` } : msg
+          ))
+        }
+      } catch {
+        setMessages(prev => prev.map(msg =>
+          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ Loops generation failed.' } : msg
+        ))
       } finally {
-        setIsGenerating(false); setActiveGenerations(prev => { const n = new Set(prev); n.delete(genMsgId); return n }); refreshCredits()
+        setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
+        refreshCredits()
       }
       return
     }
-  }, [input, token, selectedType, isInstrumental, customTitle, customLyrics, genre, bpm, songDuration, language, generateCoverArt, uploadedFileUrl, effectDuration, loopMaxDuration, loopVariations, baseUrl, activeGenerations.size, refreshCredits])
 
-  // ─── File-based feature processing (stems, extract, boost, v2a) ─
-  const processFileFeature = useCallback(async () => {
-    if (!uploadedFileUrl || !token) return
-    const genMsgId = (Date.now() + 1).toString()
-    const labels: Record<string, string> = { stems: '✂️ Splitting stems...', extract: '🎯 Extracting stem...', 'audio-boost': '🔊 Boosting audio...', 'video-to-audio': '🎬 Generating synced audio...' }
-    const userLabels: Record<string, string> = { stems: `✂️ Split stems: "${uploadedFileName}"`, extract: `🎯 Extract ${extractStem}: "${uploadedFileName}"`, 'audio-boost': `🔊 Boost: "${uploadedFileName}"`, 'video-to-audio': `🎬 Video to Audio: "${input}"` }
-
-    const userMsg: Message = { id: Date.now().toString(), type: 'user', content: userLabels[selectedType] || selectedType, timestamp: new Date() }
-    const genMsg: Message = { id: genMsgId, type: 'generation', content: labels[selectedType] || 'Processing...', generationType: selectedType, isGenerating: true, timestamp: new Date() }
-    setMessages(prev => [...prev, userMsg, genMsg])
-    setActiveGenerations(prev => new Set(prev).add(genMsgId))
-    setIsGenerating(true)
-
-    const payload: Record<string, unknown> = { type: selectedType }
-    if (selectedType === 'stems') {
-      payload.audioUrl = uploadedFileUrl; payload.trackTitle = customTitle || uploadedFileName; payload.output_format = 'wav'
-    } else if (selectedType === 'extract') {
-      payload.audioUrl = uploadedFileUrl; payload.stem = extractStem; payload.trackTitle = customTitle || `${extractStem} extract`; payload.output_format = 'wav'
-    } else if (selectedType === 'audio-boost') {
-      payload.audioUrl = uploadedFileUrl; payload.trackTitle = customTitle || uploadedFileName
-      payload.bass_boost = bassBoost; payload.treble_boost = trebleBoost; payload.volume_boost = volumeBoost
-      payload.normalize = normalizeAudio; payload.noise_reduction = noiseReduction
-      payload.output_format = boostOutputFormat; payload.bitrate = boostBitrate
-    } else if (selectedType === 'video-to-audio') {
-      payload.videoUrl = uploadedFileUrl; payload.prompt = input; payload.quality = v2aQuality
+    // ── File-based features: trigger upload dialog ──
+    if (['stems', 'audio-boost', 'extract', 'video-to-audio'].includes(selectedType as string)) {
+      triggerFeatureUpload(selectedType as string)
+      return
     }
+  }
+
+  // ═══ STEM SPLITTING ═══
+  const handleSplitStems = async (audioUrl: string, messageId: string) => {
+    if (userCredits !== null && userCredits < 5) {
+      alert(`⚡ Need 5 credits for stems, have ${userCredits}.`)
+      return
+    }
+    setIsSplittingStems(true)
+    const processingId = `${messageId}-stems`
+    setMessages(prev => [...prev, {
+      id: processingId, type: 'assistant',
+      content: '🎵 Splitting stems... This may take 1-2 minutes.',
+      timestamp: new Date(), isGenerating: true
+    }])
+    const abort = new AbortController()
+    abortControllersRef.current.set(processingId, abort)
 
     try {
-      const res = await fetch(`${baseUrl}/api/plugin/generate`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const res = await fetch('/api/plugin/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ type: 'stems', audioUrl }),
+        signal: abort.signal
       })
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`) }
-      await processStream(res, genMsgId, selectedType, customTitle || uploadedFileName || selectedType)
-    } catch (err: unknown) {
-      setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ ${(err as Error).message}` } : m))
+      let result: any = null
+      await parseNDJSON(res, () => {}, (r) => { result = r }, abort.signal)
+
+      if (result?.success && result.stems) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === processingId ? {
+            ...msg, isGenerating: false,
+            content: `✅ Stems separated! Used ${result.creditsDeducted || 5} credits.`,
+            stems: result.stems
+          } : msg
+        ))
+        if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
+      } else {
+        setMessages(prev => prev.map(msg =>
+          msg.id === processingId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Stem splitting failed'}` } : msg
+        ))
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return
+      setMessages(prev => prev.map(msg =>
+        msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ Stem splitting failed.' } : msg
+      ))
     } finally {
-      setIsGenerating(false); clearUpload(); setInput('')
-      setActiveGenerations(prev => { const n = new Set(prev); n.delete(genMsgId); return n }); refreshCredits()
+      abortControllersRef.current.delete(processingId)
+      setIsSplittingStems(false)
+      refreshCredits()
     }
-  }, [uploadedFileUrl, uploadedFileName, token, selectedType, customTitle, extractStem, bassBoost, trebleBoost, volumeBoost, normalizeAudio, noiseReduction, boostOutputFormat, boostBitrate, v2aQuality, input, baseUrl, refreshCredits])
+  }
 
-  // ─── NDJSON stream processor ──────────────────────────────
-  const processStream = async (res: Response, genMsgId: string, genType: string, title: string) => {
-    const reader = res.body?.getReader()
-    if (!reader) throw new Error('No response stream')
-    const decoder = new TextDecoder()
-    let buffer = ''
+  // ═══ AUDIO BOOST ═══
+  const handleAudioBoost = async (audioUrl: string, title: string) => {
+    if (userCredits !== null && userCredits < 1) {
+      alert('⚡ Need 1 credit for audio boost.')
+      return
+    }
+    const processingId = `boost-${Date.now()}`
+    setMessages(prev => [...prev, {
+      id: processingId, type: 'assistant',
+      content: '🔊 Boosting audio... Mix & mastering your track.',
+      timestamp: new Date(), isGenerating: true
+    }])
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
+    try {
+      const res = await fetch('/api/plugin/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ type: 'audio-boost', audioUrl })
+      })
+      let result: any = null
+      await parseNDJSON(res, () => {}, (r) => { result = r })
 
-      for (const line of lines) {
-        if (!line.trim()) continue
+      if (result?.success) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === processingId ? {
+            ...msg, isGenerating: false,
+            content: `✅ Audio boosted! Used 1 credit.`,
+            result: { audioUrl: result.audioUrl, title: `${title} (Boosted)`, prompt: 'Audio Boost' }
+          } : msg
+        ))
+        if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
+      } else {
+        setMessages(prev => prev.map(msg =>
+          msg.id === processingId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Boost failed'}` } : msg
+        ))
+      }
+    } catch {
+      setMessages(prev => prev.map(msg =>
+        msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ Boost failed.' } : msg
+      ))
+    } finally { refreshCredits() }
+  }
+
+  // ═══ FILE UPLOAD HANDLER (for sidebar features: stems, boost, extract, video-to-audio) ═══
+  const handleFileUploadForFeature = async (file: File, featureType: string, extraParams?: Record<string, unknown>) => {
+    if (!token) return
+    const processingId = `${featureType}-${Date.now()}`
+    const labels: Record<string, string> = {
+      'stems': '🎵 Splitting stems... This may take 1-2 minutes.',
+      'audio-boost': '🔊 Boosting audio... Mix & mastering your track.',
+      'extract': '🎵 Extracting audio stem...',
+      'extract-video': '🎬 Extracting audio from video...',
+      'video-to-audio': '🎬 Generating synced audio from video...'
+    }
+    setMessages(prev => [...prev, {
+      id: processingId, type: 'assistant',
+      content: labels[featureType] || '⏳ Processing...',
+      timestamp: new Date(), isGenerating: true
+    }])
+
+    try {
+      // Step 1: Get presigned URL from plugin upload API
+      const uploadRes = await fetch('/api/plugin/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size })
+      })
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}))
+        throw new Error(err.error || 'Upload setup failed')
+      }
+      const { presignedUrl, publicUrl } = await uploadRes.json()
+
+      // Step 2: PUT file directly to R2 via presigned URL
+      const putRes = await fetch(presignedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file
+      })
+      if (!putRes.ok) throw new Error('File upload to storage failed')
+
+      // Step 3: Wait for R2 propagation (5s + 3 retries, matching create page)
+      await new Promise(r => setTimeout(r, 5000))
+      let accessible = false
+      for (let i = 0; i < 3; i++) {
         try {
-          const msg = JSON.parse(line)
-          if (msg.type === 'started' && msg.jobId) {
-            setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, content: `⚡ Processing...` } : m))
-          }
-          if (msg.type === 'result') {
-            if (msg.success) {
-              const result = { audioUrl: msg.audioUrl, imageUrl: msg.imageUrl, url: msg.audioUrl || msg.videoUrl, title: msg.title || title, prompt: msg.prompt, lyrics: msg.lyrics }
-              const stems = msg.stems || undefined
-              const content = genType === 'music' ? '✅ Track generated!' : genType === 'image' ? '✅ Image generated!' : genType === 'effects' ? '✅ Effects generated!' : genType === 'stems' ? `✅ Stems separated!` : genType === 'loops' ? '✅ Loops generated!' : '✅ Complete!'
-
-              setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content, result, stems, generationType: genType } : m))
-
-              // Save to jobs library
-              const job: GenerationJob = { id: msg.jobId || genMsgId, type: genType, status: 'completed', title: msg.title || title, result: msg, createdAt: Date.now() }
-              setJobs(prev => [job, ...prev])
-
-              // JUCE bridge + local save
-              if (msg.audioUrl) {
-                const fname = `${(msg.title || title).substring(0, 60).replace(/[<>:"/\\|?*]/g, '-')}.wav`
-                sendToPlugin('import_audio', { url: msg.audioUrl, title: msg.title || title, type: genType, format: 'wav' })
-                saveFileLocally(msg.audioUrl, fname, genType)
-              }
-              if (msg.stems) {
-                sendToPlugin('import_stems', { stems: msg.stems, title, format: 'wav' })
-                for (const [sn, su] of Object.entries(msg.stems as Record<string, string>)) {
-                  saveFileLocally(su, `${title.substring(0, 40)}-${sn}.wav`, 'stems')
-                }
-              }
-              if (msg.imageUrl) sendToPlugin('cover_art', { url: msg.imageUrl })
-              if (msg.creditsRemaining !== undefined) setCredits(prev => prev ? { ...prev, credits: msg.creditsRemaining } : prev)
-            } else {
-              setMessages(prev => prev.map(m => m.id === genMsgId ? { ...m, isGenerating: false, content: `❌ ${msg.error || 'Failed'}` } : m))
-              const job: GenerationJob = { id: msg.jobId || genMsgId, type: genType, status: 'failed', title, error: msg.error, createdAt: Date.now() }
-              setJobs(prev => [job, ...prev])
-            }
-          }
+          const headRes = await fetch(publicUrl, { method: 'HEAD' })
+          if (headRes.ok) { accessible = true; break }
         } catch {}
+        await new Promise(r => setTimeout(r, 2000))
+      }
+      if (!accessible) console.warn('R2 propagation check failed, proceeding anyway')
+
+      // Step 4: Build request body with full params (matching /api/plugin/generate expectations)
+      const apiType = featureType === 'stem-split' ? 'stems'
+        : featureType === 'extract-audio' ? 'extract'
+        : featureType === 'extract-video' ? 'extract'
+        : featureType
+      const body: any = { type: apiType, ...(extraParams || {}) }
+
+      if (['stems', 'stem-split'].includes(featureType)) {
+        body.audioUrl = publicUrl
+        body.stem = extraParams?.stem || 'vocals'
+        body.trackTitle = file.name
+      } else if (featureType === 'audio-boost') {
+        body.audioUrl = publicUrl
+        body.bass_boost = extraParams?.bass_boost ?? 0
+        body.treble_boost = extraParams?.treble_boost ?? 0
+        body.volume_boost = extraParams?.volume_boost ?? 2
+        body.normalize = extraParams?.normalize !== false
+        body.noise_reduction = extraParams?.noise_reduction === true
+        body.output_format = extraParams?.output_format || 'mp3'
+        body.bitrate = extraParams?.bitrate || '192k'
+        body.trackTitle = file.name
+      } else if (featureType === 'extract-audio') {
+        body.audioUrl = publicUrl
+        body.stem = extraParams?.stem || 'vocals'
+        body.trackTitle = file.name
+      } else if (featureType === 'extract-video') {
+        body.type = 'extract'
+        body.audioUrl = publicUrl
+        body.trackTitle = file.name
+      } else if (featureType === 'video-to-audio') {
+        body.videoUrl = publicUrl
+        body.prompt = extraParams?.prompt || ''
+        body.quality = extraParams?.quality || 'standard'
+      } else if (featureType === 'extract') {
+        body.audioUrl = publicUrl
+      }
+
+      const res = await fetch('/api/plugin/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(body)
+      })
+      let result: any = null
+      await parseNDJSON(res, () => {}, (r) => { result = r })
+
+      if (result?.success) {
+        if (['stems', 'stem-split', 'extract', 'extract-audio', 'extract-video'].includes(featureType) && result.stems) {
+          setMessages(prev => prev.map(msg =>
+            msg.id === processingId ? {
+              ...msg, isGenerating: false,
+              content: `✅ ${featureType === 'stems' || featureType === 'stem-split' ? 'Stems separated' : 'Audio extracted'}! Used ${result.creditsDeducted || 0} credits.`,
+              stems: result.stems
+            } : msg
+          ))
+        } else if (featureType === 'video-to-audio') {
+          setMessages(prev => prev.map(msg =>
+            msg.id === processingId ? {
+              ...msg, isGenerating: false, generationType: 'video',
+              content: `✅ Video audio generated! Used ${result.creditsDeducted || 0} credits.`,
+              result: { audioUrl: result.audioUrl || result.videoUrl, url: result.videoUrl, title: result.title || file.name, prompt: extraParams?.prompt as string || 'Video to Audio' }
+            } : msg
+          ))
+        } else {
+          setMessages(prev => prev.map(msg =>
+            msg.id === processingId ? {
+              ...msg, isGenerating: false,
+              content: `✅ ${featureType === 'audio-boost' ? 'Audio boosted' : 'Processing complete'}! Used ${result.creditsDeducted || 0} credits.`,
+              result: { audioUrl: result.audioUrl, title: result.title || file.name, prompt: featureType }
+            } : msg
+          ))
+        }
+        if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
+      } else {
+        setMessages(prev => prev.map(msg =>
+          msg.id === processingId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Processing failed'}` } : msg
+        ))
+      }
+    } catch (err: any) {
+      setMessages(prev => prev.map(msg =>
+        msg.id === processingId ? { ...msg, isGenerating: false, content: `❌ ${err?.message || 'Processing failed'}` } : msg
+      ))
+    } finally { refreshCredits() }
+  }
+
+  // ═══ UPLOAD MODAL HELPERS ═══
+  const openUploadModal = (mode?: typeof uploadMode) => {
+    setShowUploadModal(true)
+    setUploadMode(mode || null)
+    setUploadFile(null)
+    setUploadFilePreview(null)
+    setUploadError('')
+    setUploadProgress('')
+    setIsUploading(false)
+  }
+
+  const closeUploadModal = () => {
+    setShowUploadModal(false)
+    setUploadMode(null)
+    setUploadFile(null)
+    if (uploadFilePreview) URL.revokeObjectURL(uploadFilePreview)
+    setUploadFilePreview(null)
+    setUploadError('')
+    setUploadProgress('')
+    setIsUploading(false)
+  }
+
+  const handleUploadFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: typeof uploadMode) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError('')
+    setUploadMode(mode)
+
+    // Size check (100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      setUploadError('File size must be under 100MB')
+      return
+    }
+
+    const isAudio = file.type.startsWith('audio/')
+    const isVideo = file.type.startsWith('video/')
+
+    // Type validation per mode
+    if ((mode === 'video-to-audio' || mode === 'extract-video') && !isVideo) {
+      setUploadError('Please select a video file')
+      return
+    }
+    if ((mode === 'stem-split' || mode === 'audio-boost' || mode === 'extract-audio') && !isAudio) {
+      setUploadError('Please select an audio file')
+      return
+    }
+
+    setUploadFile(file)
+    const objectUrl = URL.createObjectURL(file)
+    setUploadFilePreview(objectUrl)
+
+    // Duration validation (async, warning only)
+    const media = document.createElement(isVideo ? 'video' : 'audio') as HTMLVideoElement | HTMLAudioElement
+    media.onloadedmetadata = () => {
+      const duration = media.duration
+      if (isVideo && duration > 5.5) {
+        setUploadError(`⚠️ Video is ${duration.toFixed(1)}s. Max recommended is 5s. May be truncated.`)
+      }
+      if (isAudio && mode === 'stem-split' && duration > 600) {
+        setUploadError(`⚠️ Audio is ${(duration / 60).toFixed(1)} min. Very long files may time out.`)
       }
     }
+    media.src = objectUrl
+    // Reset input
+    e.target.value = ''
   }
 
-  // ─── Download helper ──────────────────────────────────────
-  const handleDownload = async (url: string, filename: string) => {
+  const handleUploadModalProcess = async () => {
+    if (!uploadFile || !uploadMode || isUploading) return
+
+    // Validate video-to-audio prompt
+    if (uploadMode === 'video-to-audio' && !videoPrompt.trim()) {
+      setUploadError('Please describe the sounds you want generated')
+      return
+    }
+
+    setIsUploading(true)
+    setUploadProgress('Uploading file...')
+
+    // Build extra params based on mode
+    const extraParams: Record<string, unknown> = {}
+    if (uploadMode === 'audio-boost') {
+      extraParams.bass_boost = boostBass
+      extraParams.treble_boost = boostTreble
+      extraParams.volume_boost = boostVolume
+      extraParams.normalize = boostNormalize
+      extraParams.noise_reduction = boostNoiseReduction
+      extraParams.output_format = boostFormat
+      extraParams.bitrate = boostBitrate
+    } else if (uploadMode === 'extract-audio') {
+      extraParams.stem = extractStem
+    } else if (uploadMode === 'video-to-audio') {
+      extraParams.prompt = videoPrompt
+      extraParams.quality = videoHQ ? 'hq' : 'standard'
+    }
+
+    // Map mode to featureType
+    const featureType = uploadMode === 'stem-split' ? 'stems'
+      : uploadMode === 'extract-video' ? 'extract-video'
+      : uploadMode === 'extract-audio' ? 'extract-audio'
+      : uploadMode
+
+    closeUploadModal()
+    await handleFileUploadForFeature(uploadFile, featureType, extraParams)
+  }
+
+  // ═══ TRIGGER FILE UPLOAD for sidebar features (opens modal with pre-selected mode) ═══
+  const triggerFeatureUpload = (featureType: string) => {
+    const modeMap: Record<string, typeof uploadMode> = {
+      'stems': 'stem-split',
+      'audio-boost': 'audio-boost',
+      'extract': 'extract-audio',
+      'video-to-audio': 'video-to-audio',
+    }
+    openUploadModal(modeMap[featureType] || null)
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && fileUploadType) {
+      handleFileUploadForFeature(file, fileUploadType)
+    }
+    // Reset
+    e.target.value = ''
+    setFileUploadType('')
+  }
+
+  // ═══ Update isGenerating from active set ═══
+  useEffect(() => { setIsGenerating(activeGenerations.size > 0) }, [activeGenerations])
+
+  // ═══ CHAT SYNC: Save to server when messages change (debounced) ═══
+  const syncChatToServer = useCallback(async (msgs: Message[]) => {
+    if (!token || msgs.length <= 1) return
     try {
-      const res = await fetch(url); const blob = await res.blob()
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click()
-      URL.revokeObjectURL(a.href)
-    } catch { window.open(url, '_blank') }
+      setIsSyncingChat(true)
+      await fetch('/api/plugin/chat', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ messages: msgs.filter(m => !m.isGenerating) })
+      })
+    } catch (err) {
+      console.warn('[chat-sync] Failed to sync:', err)
+    } finally {
+      setIsSyncingChat(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    if (chatSyncTimerRef.current) clearTimeout(chatSyncTimerRef.current)
+    chatSyncTimerRef.current = setTimeout(() => syncChatToServer(messages), 3000)
+    return () => { if (chatSyncTimerRef.current) clearTimeout(chatSyncTimerRef.current) }
+  }, [messages, syncChatToServer])
+
+  // Load synced chat on mount (after auth)
+  useEffect(() => {
+    if (!token || !isAuthenticated) return
+    ;(async () => {
+      try {
+        const res = await fetch('/api/plugin/chat', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.messages && data.messages.length > 0) {
+          const serverMsgs = data.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+          // Use server messages if they have more content than local
+          const localStr = localStorage.getItem(CHAT_KEY)
+          const localMsgs = localStr ? JSON.parse(localStr) : []
+          if (serverMsgs.length >= localMsgs.length) {
+            setMessages(serverMsgs)
+          }
+        }
+      } catch {} // server unreachable — use local
+    })()
+  }, [token, isAuthenticated])
+
+  // ═══ RELEASE: Open in browser (plugin can't host the full release modal) ═══
+  const handleOpenRelease = () => {
+    window.open('https://444radio.co.in/create', '_blank')
+    setMessages(prev => [...prev, {
+      id: `release-${Date.now()}`, type: 'assistant',
+      content: '🚀 Opening 444 Radio in your browser to release your track. Select your track from the library in the Release tab on the website.',
+      timestamp: new Date()
+    }])
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // LOGIN SCREEN (unchanged)
-  // ═══════════════════════════════════════════════════════════
-  if (!isAuthenticated) {
+  // ═══ UNAUTHENTICATED STATE ═══
+  if (!isAuthenticated && !isLoadingCredits) {
     return (
-      <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-8">
-        <div className="w-full max-w-sm space-y-8">
-          <div className="text-center space-y-3">
-            <div className="flex items-center justify-center mb-4">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="text-cyan-400"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2" /><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2" /><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2" /><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2" /></svg>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight">444 RADIO</h1>
-            <span className="inline-block text-[10px] bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg font-bold tracking-wider">PLUGIN</span>
-            <p className="text-sm text-gray-500 pt-2">Connect your account to start creating</p>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs text-gray-400 mb-2 font-medium">Plugin Token</label>
-              <input type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="444r_..."
-                className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
-                onKeyDown={e => { if (e.key === 'Enter') verifyToken(token) }} />
-            </div>
-            <button onClick={() => verifyToken(token)} disabled={!token}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-xl text-black text-sm font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed">Connect</button>
-            {authError && <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-sm text-red-400 text-center">{authError}</div>}
-            <p className="text-xs text-gray-600 text-center">Generate a token at <a href="https://444radio.co.in/settings" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline">Settings → Plugin</a></p>
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="text-4xl">🔒</div>
+          <h1 className="text-xl font-bold text-white">Plugin Authentication Required</h1>
+          <p className="text-gray-400 text-sm max-w-md">
+            Please open this page from within the 444 Radio VST plugin, or enter your plugin token.
+          </p>
+          <div className="flex gap-2 justify-center mt-4">
+            <input
+              type="text"
+              placeholder="Enter plugin token..."
+              className="px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/50"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = (e.target as HTMLInputElement).value.trim()
+                  if (val) { localStorage.setItem(TOKEN_KEY, val); setToken(val) }
+                }
+              }}
+            />
           </div>
         </div>
       </div>
     )
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // MAIN UI — Carbon copy of Create Page layout
-  // ═══════════════════════════════════════════════════════════
-  return (
-    <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-300 ${showFeaturesSidebar ? 'pl-96' : ''}`}>
-      <input ref={fileInputRef} type="file" accept="audio/*,video/*" className="hidden" onChange={handleFileSelect} />
+  if (isLoadingCredits) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="text-cyan-400 animate-spin" size={32} />
+      </div>
+    )
+  }
 
-      {/* ═══ FEATURES SIDEBAR — Carbon copy of FeaturesSidebar.tsx ═══ */}
+  // ═══════════════════════════════════════════════════════════════
+  //  RENDER — Carbon copy of create page layout
+  // ═══════════════════════════════════════════════════════════════
+  return (
+    <div className={`min-h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
+
+      {/* Hidden file input for sidebar feature uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*,video/*"
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
+
+      {/* ── Features Sidebar (desktop: docked, mobile: fullscreen overlay) ── */}
       {showFeaturesSidebar && (
         <>
           {/* Mobile backdrop */}
           <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={() => setShowFeaturesSidebar(false)} />
 
-          <div className="fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen md:w-96 bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col animate-slideInLeft">
+          <div className="fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen md:w-[420px] bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col" style={{ animation: 'slideInLeft 0.3s ease-out' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 h-20 border-b border-white/10">
               <div className="flex items-center gap-3">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-cyan-400"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-cyan-400">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                </svg>
                 <span className="text-white font-bold text-lg">Features</span>
               </div>
-              <button onClick={() => setShowFeaturesSidebar(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors"><X size={18} className="text-gray-400" /></button>
+              <button onClick={() => setShowFeaturesSidebar(false)} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <X size={18} className="text-gray-400" />
+              </button>
             </div>
 
             {/* Credits */}
             <div className="px-5 py-4 border-b border-white/10">
               <div className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
                 <Zap size={16} className="text-cyan-400" />
-                <span className="text-white font-bold text-sm">{isLoadingCredits ? '...' : credits?.credits} credits</span>
+                <span className="text-white font-bold text-sm">{isLoadingCredits ? '...' : userCredits} credits</span>
               </div>
             </div>
 
             {/* Mode Toggle */}
             <div className="px-5 py-3 border-b border-white/10">
               <div className="flex gap-2">
-                <button onClick={() => setIsInstrumental(false)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${!isInstrumental ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30' : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                  Vocal
+                <button onClick={() => setIsInstrumental(false)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${!isInstrumental ? 'bg-cyan-500 text-black shadow-lg shadow-cyan-500/30' : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`}>
+                  <Mic size={14} /> Vocal
                 </button>
-                <button onClick={() => setIsInstrumental(true)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${isInstrumental ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="8" x2="8" y1="4" y2="14"/><line x1="16" x2="16" y1="4" y2="14"/><line x1="12" x2="12" y1="4" y2="14"/></svg>
-                  Inst
+                <button onClick={() => setIsInstrumental(true)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${isInstrumental ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30' : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'}`}>
+                  <Music size={14} /> Inst
                 </button>
               </div>
             </div>
 
-            {/* Prompt Input in Sidebar */}
+            {/* Prompt Input */}
             <div className="px-5 py-4 border-b border-white/10">
               <div className="relative">
-                <textarea value={input} onChange={e => setInput(e.target.value)} placeholder="Describe your music..." rows={5}
+                <textarea value={input} onChange={(e) => setInput(e.target.value)}
+                  placeholder="Describe your music..."
                   className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50 transition-colors"
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate() } }} />
+                  rows={5}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate() } }}
+                />
                 <div className="flex items-center justify-between mt-2">
-                  <div className="w-6" />
-                  <button onClick={() => handleGenerate()} disabled={isGenerating || !input.trim()}
+                  <button onClick={isRecording ? stopRecording : startRecording}
+                    className={`p-2 rounded-full transition-all ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-white/10 hover:bg-white/20'}`}>
+                    <Mic size={14} className={isRecording ? 'text-white' : 'text-gray-400'} />
+                  </button>
+                  <button onClick={handleGenerate} disabled={isGenerating || !input.trim()}
                     className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-xl text-black text-xs font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                     <Send size={12} /> Generate
                   </button>
@@ -731,65 +1482,68 @@ export default function PluginPage() {
               </div>
             </div>
 
-            {/* Ideas & Tags Panel */}
-            {showIdeas && (
-              <div className="px-4 py-4 border-b border-white/10 max-h-[40vh] overflow-y-auto scrollbar-thin">
-                {ideasView === 'tags' && (
+            {/* Ideas / Tags Panel */}
+            {showSidebarIdeas && (
+              <div className="px-4 py-4 border-b border-white/10 max-h-[40vh] overflow-y-auto">
+                {sidebarIdeasView === 'tags' && (
                   <>
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" /></svg>
-                        <span className="text-sm font-bold text-white">Quick Tags</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setIdeasView('type')} className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 hover:text-purple-200 transition-all hover:scale-105 shadow-lg shadow-purple-500/20">✨ IDEAS</button>
-                        <button onClick={() => setShowIdeas(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
+                      <span className="text-sm font-bold text-white flex items-center gap-2"><Lightbulb size={14} className="text-yellow-400" /> Quick Tags</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => setSidebarIdeasView('type')} className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 hover:text-purple-200 transition-all">✨ IDEAS</button>
+                        <button onClick={() => setShowSidebarIdeas(false)} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {QUICK_TAGS.map(tag => (
-                        <button key={tag} onClick={() => addTag(tag)} className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-lg text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105">{tag}</button>
+                        <button key={tag} onClick={() => setInput(prev => prev + (prev ? ', ' : '') + tag)}
+                          className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-lg text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105">
+                          {tag}
+                        </button>
                       ))}
                     </div>
                   </>
                 )}
-                {ideasView === 'type' && (
+                {sidebarIdeasView === 'type' && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-lg font-bold text-white">✨ AI Prompt Ideas</h3>
-                      <button onClick={() => setIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
+                      <button onClick={() => setSidebarIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                     </div>
-                    <p className="text-xs text-gray-400 text-center">What would you like to create?</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => { setPromptType('song'); setIdeasView('genre') }} className="group p-5 bg-gradient-to-br from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30 border-2 border-purple-400/40 hover:border-purple-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-purple-500/30">
-                        <div className="text-3xl mb-2">🎤</div><div className="text-sm font-bold text-white mb-1">Song</div><div className="text-[10px] text-gray-400">With vocals & lyrics</div>
+                      <button onClick={() => { setSidebarPromptType('song'); setSelectedPromptType('song'); setSidebarIdeasView('genre') }}
+                        className="p-5 bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400/40 rounded-2xl hover:scale-105 transition-all">
+                        <div className="text-3xl mb-2">🎤</div><div className="text-sm font-bold text-white">Song</div><div className="text-[10px] text-gray-400">With vocals & lyrics</div>
                       </button>
-                      <button onClick={() => { setPromptType('beat'); setIdeasView('genre') }} className="group p-5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border-2 border-cyan-400/40 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-105 shadow-lg hover:shadow-cyan-500/30">
-                        <div className="text-3xl mb-2">🎹</div><div className="text-sm font-bold text-white mb-1">Beat</div><div className="text-[10px] text-gray-400">Instrumental only</div>
+                      <button onClick={() => { setSidebarPromptType('beat'); setSelectedPromptType('beat'); setIsInstrumental(true); setSidebarIdeasView('genre') }}
+                        className="p-5 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400/40 rounded-2xl hover:scale-105 transition-all">
+                        <div className="text-3xl mb-2">🎹</div><div className="text-sm font-bold text-white">Beat</div><div className="text-[10px] text-gray-400">Instrumental only</div>
                       </button>
                     </div>
                   </div>
                 )}
-                {ideasView === 'genre' && (
+                {sidebarIdeasView === 'genre' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <button onClick={() => setIdeasView('type')} className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"><ChevronLeft size={14} /> Back</button>
+                      <button onClick={() => setSidebarIdeasView('type')} className="text-xs text-cyan-400 flex items-center gap-1"><ChevronLeft size={14} /> Back</button>
                       <h3 className="text-sm font-bold text-white">🎵 Select Genre</h3>
-                      <button onClick={() => setIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg transition-colors"><X className="w-4 h-4 text-gray-400" /></button>
+                      <button onClick={() => setSidebarIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                     </div>
-                    <p className="text-[10px] text-gray-400 text-center">Choose a style for your {promptType}</p>
                     <div className="grid grid-cols-3 gap-1.5">
-                      {IDEA_GENRES.map(g => (
-                        <button key={g} onClick={() => { setIdeasView('generating'); generateIdea(g); setTimeout(() => setIdeasView('tags'), 3000) }}
-                          className="px-2 py-2 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105">{g}</button>
+                      {GENRE_OPTIONS.map(g => (
+                        <button key={g} onClick={() => handleGeneratePromptIdea(g)} disabled={generatingIdea}
+                          className="px-2 py-2 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all disabled:opacity-50">
+                          {g}
+                        </button>
                       ))}
                     </div>
                   </div>
                 )}
-                {ideasView === 'generating' && (
-                  <div className="space-y-4 text-center py-6">
-                    <div className="relative"><div className="w-12 h-12 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div><div className="absolute inset-0 flex items-center justify-center"><span className="text-xl">🎨</span></div></div>
-                    <div><h3 className="text-base font-bold text-white mb-1">Creating Amazing Prompt...</h3><p className="text-xs text-gray-400">AI is crafting the perfect description</p></div>
+                {sidebarIdeasView === 'generating' && (
+                  <div className="text-center py-6">
+                    <div className="w-12 h-12 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin mb-4" />
+                    <h3 className="text-base font-bold text-white">Creating Amazing Prompt...</h3>
+                    <p className="text-xs text-gray-400">AI is crafting the perfect description</p>
                   </div>
                 )}
               </div>
@@ -797,29 +1551,60 @@ export default function PluginPage() {
 
             {/* Feature Buttons */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              <button onClick={() => { setShowIdeas(!showIdeas); setIdeasView('tags') }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all group mb-3 ${showIdeas ? 'bg-gradient-to-r from-yellow-600/30 to-amber-400/20 border-yellow-400 text-yellow-300' : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-400/50'}`}>
-                <div className={`p-2 rounded-lg ${showIdeas ? 'bg-white/10' : 'bg-white/5'}`}><Lightbulb size={18} /></div>
+              {/* Generation Queue Notification (shows when generations are active) */}
+              {activeGenerations.size > 0 && (
+                <div className="mb-3 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-center gap-2 animate-pulse">
+                  <Loader2 size={16} className="text-cyan-400 animate-spin" />
+                  <span className="text-xs text-cyan-300 font-medium">
+                    {activeGenerations.size} generation{activeGenerations.size > 1 ? 's' : ''} in progress
+                  </span>
+                </div>
+              )}
+
+              {/* Ideas Lightbulb */}
+              <button onClick={() => { setShowSidebarIdeas(!showSidebarIdeas); setSidebarIdeasView('tags') }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all mb-3 ${showSidebarIdeas ? 'bg-gradient-to-r from-yellow-600/30 to-amber-400/20 border-yellow-400 text-yellow-300' : 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10'}`}>
+                <div className={`p-2 rounded-lg ${showSidebarIdeas ? 'bg-white/10' : 'bg-white/5'}`}><Lightbulb size={18} /></div>
                 <div className="flex-1 text-left"><div className="text-sm font-semibold">Ideas & Tags</div><div className="text-[10px] text-gray-500">AI prompts & quick tags</div></div>
                 <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">AI</span>
               </button>
 
               <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-3 px-1">Creation Tools</p>
               <div className="space-y-2">
-                {ALL_FEATURES.map(f => {
+                {FEATURES.filter(f => {
+                  // Hide lyrics when not in music vocal mode
+                  if ((f as any).conditionalMusic && (selectedType !== 'music' || isInstrumental)) return false
+                  return true
+                }).map(f => {
                   const Icon = f.icon
-                  const isActive = selectedType === f.id
-                  const colorClass: Record<string, string> = {
-                    cyan: isActive ? 'bg-gradient-to-r from-cyan-600/30 to-cyan-400/20 border-cyan-400 text-cyan-300' : 'border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-400/50',
-                    purple: isActive ? 'bg-gradient-to-r from-purple-600/30 to-pink-500/20 border-purple-400 text-purple-300' : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:border-purple-400/50',
-                    orange: isActive ? 'bg-gradient-to-r from-orange-600/30 to-red-500/20 border-orange-400 text-orange-300' : 'border-orange-500/30 text-orange-400 hover:bg-orange-500/10 hover:border-orange-400/50',
+                  const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm))
+                  const colorMap: Record<string, string> = {
+                    cyan: isActive ? 'bg-gradient-to-r from-cyan-600/30 to-cyan-400/20 border-cyan-400 text-cyan-300' : 'border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10',
+                    purple: isActive ? 'bg-gradient-to-r from-purple-600/30 to-pink-500/20 border-purple-400 text-purple-300' : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/10',
+                    orange: isActive ? 'bg-gradient-to-r from-orange-600/30 to-red-500/20 border-orange-400 text-orange-300' : 'border-orange-500/30 text-orange-400 hover:bg-orange-500/10',
                   }
                   return (
-                    <button key={f.id} onClick={() => { setSelectedType(f.id); if (f.needsFile && !uploadedFileUrl) fileInputRef.current?.click() }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all group ${colorClass[f.color]}`}>
+                    <button key={f.key} onClick={() => {
+                      // File-based features: open upload modal
+                      if (['stems', 'audio-boost', 'extract', 'video-to-audio'].includes(f.key)) {
+                        triggerFeatureUpload(f.key)
+                      } else if (f.key === 'lyrics') {
+                        setShowLyricsModal(true)
+                      } else if (f.key === 'upload') {
+                        openUploadModal()
+                      } else if (f.key === 'release') {
+                        handleOpenRelease()
+                      } else {
+                        setSelectedType(f.key as GenerationType)
+                      }
+                    }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${colorMap[f.color]}`}>
                       <div className={`p-2 rounded-lg ${isActive ? 'bg-white/10' : 'bg-white/5'}`}><Icon size={18} /></div>
-                      <div className="flex-1 text-left"><div className="text-sm font-semibold">{f.label}</div><div className="text-[10px] text-gray-500">{f.desc}</div></div>
-                      <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">-{f.cost}</span>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-semibold">{f.label}</div>
+                        <div className="text-[10px] text-gray-500">{f.desc}</div>
+                      </div>
+                      {f.cost > 0 && <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">-{f.cost}</span>}
                     </button>
                   )
                 })}
@@ -828,7 +1613,16 @@ export default function PluginPage() {
               {/* Utilities */}
               <div className="mt-6 pt-4 border-t border-white/10">
                 <div className="flex items-center gap-2 px-1">
-                  <button onClick={handleClearChat} className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 hover:border-green-400/50 transition-all" title="New Chat"><Plus size={16} /></button>
+                  <button onClick={() => setShowDeletedChatsModal(true)} className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all" title="Chat History">
+                    <RotateCcw size={16} />
+                  </button>
+                  <button onClick={handleClearChat} className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all" title="New Chat">
+                    <Plus size={16} />
+                  </button>
+                  <a href="https://444radio.co.in/explore" target="_blank" rel="noopener noreferrer"
+                    className="p-2.5 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Explore 444 Radio">
+                    <Compass size={16} />
+                  </a>
                 </div>
               </div>
             </div>
@@ -836,403 +1630,962 @@ export default function PluginPage() {
         </>
       )}
 
-      {/* ═══ CHAT AREA — Glassmorphism, carbon copy ═══ */}
-      <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 md:px-8 lg:px-16 xl:px-24 py-6 pb-40 w-full scrollbar-thin scroll-smooth">
-        <div className="relative p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-sm bg-white/[0.01] border border-white/10 shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5 rounded-3xl pointer-events-none"></div>
-          <div className="relative space-y-3 max-w-6xl mx-auto">
-            {messages.map(message => (
-              <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[75%] md:max-w-2xl ${message.type === 'user' ? 'items-end' : 'items-start'} space-y-2`}>
-                  {/* Text bubble */}
-                  {message.content && (
-                    <div className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}>
-                      <div className={`inline-block px-4 py-2.5 rounded-2xl backdrop-blur-xl ${message.type === 'user'
-                        ? 'bg-gradient-to-br from-cyan-500/15 via-cyan-600/10 to-blue-500/15 border border-cyan-400/40 shadow-lg shadow-cyan-500/10'
-                        : 'bg-gradient-to-br from-white/8 to-white/4 border border-white/20 shadow-lg shadow-black/20'}`}>
-                        <p className={`text-sm leading-relaxed break-words font-light ${message.type === 'user' ? 'text-cyan-100' : 'text-gray-200'}`}>{message.content}</p>
-                      </div>
-                      <p className="text-[10px] text-gray-500/80 mt-1.5 font-mono">{message.timestamp.toLocaleTimeString()}</p>
-                    </div>
-                  )}
-
-                  {/* Music Result */}
-                  {message.result?.audioUrl && message.generationType !== 'video' && (
-                    <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-3xl overflow-hidden group hover:border-cyan-400/50 transition-all">
-                      <div className="flex items-center gap-3 p-4 border-b border-white/10">
-                        <button onClick={() => togglePlay(message.result!.audioUrl!)}
-                          className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/30 transition-all active:scale-95 hover:scale-105">
-                          {playingUrl === message.result.audioUrl ? <Pause size={20} className="text-black" /> : <Play size={20} className="text-black ml-0.5" />}
-                        </button>
-                        <div className="flex-1 min-w-0"><h4 className="text-lg font-bold text-white truncate">{message.result.title}</h4></div>
-                      </div>
-                      {message.result.lyrics && (
-                        <details className="border-t border-white/10">
-                          <summary className="px-6 py-3 text-sm text-cyan-400 cursor-pointer hover:bg-white/5 transition-colors font-medium">📝 View Lyrics</summary>
-                          <pre className="px-6 pb-4 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{message.result.lyrics}</pre>
-                        </details>
-                      )}
-                      <div className="flex border-t border-white/10">
-                        <button onClick={() => handleDownload(message.result!.audioUrl!, `${message.result!.title}.wav`)}
-                          className="flex-1 px-4 py-4 hover:bg-white/10 text-sm font-medium text-cyan-400 flex items-center justify-center gap-2 transition-colors border-r border-white/5">
-                          <Download size={18} /> WAV
-                        </button>
-                        <button onClick={() => { setSelectedType('stems'); setUploadedFileUrl(message.result!.audioUrl!); setUploadedFileName(message.result!.title || 'track'); setCustomTitle(message.result!.title || ''); setShowFeaturesSidebar(true) }}
-                          className="flex-1 px-4 py-4 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-all">
-                          <Sparkles size={18} /> Split Stems <span className="text-xs text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">5</span>
-                        </button>
-                      </div>
-                      <button onClick={() => { setSelectedType('audio-boost'); setUploadedFileUrl(message.result!.audioUrl!); setUploadedFileName(message.result!.title || 'track'); setCustomTitle(message.result!.title || ''); setShowFeaturesSidebar(true) }}
-                        className="w-full px-6 py-4 hover:bg-gradient-to-r hover:from-orange-500/10 hover:to-red-500/10 border-t border-white/10 text-sm font-medium text-orange-400 flex items-center justify-center gap-2 transition-all">
-                        <Zap size={18} /> Boost Audio <span className="text-xs text-orange-400/60 bg-orange-500/10 px-2 py-0.5 rounded-full">1</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Image Result */}
-                  {message.result?.imageUrl && (
-                    <div className="backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/60 via-black/50 to-black/60 border-2 border-cyan-500/30 rounded-2xl overflow-hidden group hover:border-cyan-400/50 transition-all max-w-xs mx-auto hover:scale-105 cursor-pointer">
-                      <div className="relative" onClick={() => window.open(message.result!.imageUrl!, '_blank')}>
-                        <img src={message.result.imageUrl} alt={message.result.title} className="w-full h-auto aspect-square object-cover" />
-                      </div>
-                      <div className="p-3 border-t border-white/10"><h4 className="text-sm font-bold text-white mb-0.5 line-clamp-1">{message.result.title}</h4></div>
-                      <div className="flex border-t border-white/10">
-                        <button onClick={() => handleDownload(message.result!.imageUrl!, `${message.result!.title}.webp`)}
-                          className="flex-1 px-3 py-2 hover:bg-white/10 text-xs font-medium text-cyan-400 flex items-center justify-center gap-1.5 transition-colors"><Download size={14} /> Save</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Stems Result — Dynamic display matching create page exactly */}
-                  {message.stems && Object.keys(message.stems).length > 0 && (
-                    <div className="space-y-3 max-w-md mx-auto">
-                      {Object.entries(message.stems).filter(([, url]) => url && typeof url === 'string' && url.length > 0).map(([key, url]) => {
-                        const def = getStemDisplay(key)
-                        return (
-                          <div key={key} className={`backdrop-blur-sm md:backdrop-blur-xl bg-gradient-to-br from-black/50 via-black/50 to-black/60 border-2 ${def.border} rounded-2xl overflow-hidden ${def.hover} transition-all`}>
-                            <div className="p-4">
-                              <div className="flex items-center gap-3">
-                                <button onClick={() => togglePlay(url)}
-                                  className={`flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br ${def.gradient} flex items-center justify-center hover:scale-110 transition-transform`}>
-                                  {playingUrl === url ? <Pause size={20} className="text-white" /> : <Play size={20} className="text-white ml-0.5" />}
-                                </button>
-                                <div className="flex-1"><h4 className="text-sm font-bold text-white">{def.title}</h4><p className="text-xs text-gray-400">{def.description}</p></div>
-                                <button onClick={() => { setSelectedType('audio-boost'); setUploadedFileUrl(url); setUploadedFileName(def.title); setCustomTitle(def.title); setShowFeaturesSidebar(true) }}
-                                  className="p-2 bg-orange-500/20 rounded-lg hover:bg-orange-500/40 transition-colors border border-orange-500/30" title="Boost this stem"><Zap size={14} className="text-orange-400" /></button>
-                                <button onClick={() => handleDownload(url, `444_${key}.wav`)} className={`p-2.5 ${def.hoverBg} rounded-lg transition-colors`}><Download size={18} className={def.text} /></button>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Loading */}
-                  {message.isGenerating && (
-                    <div className="flex items-center gap-2 px-4 py-3 backdrop-blur-xl bg-cyan-500/10 border border-cyan-400/20 rounded-2xl">
-                      <Loader2 className="animate-spin text-cyan-400" size={16} />
-                      <span className="text-xs text-cyan-300 flex-1">Generating...</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
+      {/* ── Main Chat Area ── */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Chat Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/50 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-cyan-400">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+                <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
+              </svg>
+            </button>
+            <span className="text-white font-bold text-sm">444 Radio</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-full">
+              <Zap size={12} className="text-cyan-400" />
+              <span className="text-cyan-300 text-xs font-bold">{userCredits ?? '...'}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ═══ BOTTOM DOCK — Carbon copy of Create Page ═══ */}
-      {!showFeaturesSidebar && (
-        <div className="fixed bottom-0 left-0 right-0 px-4 sm:px-6 lg:px-8 pb-4 md:pb-8 z-20 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 transition-all duration-300 ease-out">
-          <div className="w-full md:max-w-xl lg:max-w-3xl mx-auto">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 chat-scroll-container" style={{ paddingBottom: showBottomDock ? '200px' : '100px' }}>
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] md:max-w-[70%] ${
+                msg.type === 'user'
+                  ? 'bg-cyan-500/20 border border-cyan-500/30 rounded-2xl rounded-br-md px-4 py-3'
+                  : 'bg-white/5 border border-white/10 rounded-2xl rounded-bl-md px-4 py-3'
+              }`}>
+                {/* Text content */}
+                <p className="text-sm text-white whitespace-pre-wrap">{msg.content}</p>
 
-            {/* Icon Row Above Prompt */}
-            <div className="flex items-center gap-2 sm:gap-3 mb-3 md:mb-4 overflow-x-auto no-scrollbar px-1 sm:justify-center">
-              {showAdvancedButtons && (
-                <button onClick={() => setSelectedType('music')}
-                  className={`flex-shrink-0 group relative p-2.5 rounded-2xl transition-all duration-300 ${selectedType === 'music' ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110' : 'bg-black/40 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'}`} title="Generate Music">
-                  <Music size={18} className={`${selectedType === 'music' ? 'text-black' : 'text-cyan-400'} drop-shadow-[0_0_12px_rgba(34,211,238,0.9)]`} />
-                  {selectedType === 'music' && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>}
-                </button>
-              )}
-              {showAdvancedButtons && (
-                <button onClick={() => setSelectedType('effects')}
-                  className={`flex-shrink-0 group relative p-2.5 rounded-2xl transition-all duration-300 ${selectedType === 'effects' ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-purple-400 shadow-lg shadow-purple-500/50 scale-110' : 'bg-black/40 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105'}`} title="Sound Effects">
-                  <Sparkles size={18} className={`${selectedType === 'effects' ? 'text-black' : 'text-purple-400'} drop-shadow-[0_0_12px_rgba(168,85,247,0.9)]`} />
-                </button>
-              )}
-              {showAdvancedButtons && (
-                <button onClick={() => setSelectedType('loops')}
-                  className="flex-shrink-0 group relative p-2.5 rounded-2xl transition-all duration-300 bg-black/40 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105" title="Loops">
-                  <Repeat size={18} className="text-cyan-400 drop-shadow-[0_0_12px_rgba(34,211,238,0.9)]" />
-                </button>
-              )}
-              {showAdvancedButtons && (
-                <button onClick={() => setSelectedType('image')}
-                  className={`flex-shrink-0 group relative p-2.5 rounded-2xl transition-all duration-300 ${selectedType === 'image' ? 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-lg shadow-cyan-500/50 scale-110' : 'bg-black/40 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'}`} title="Cover Art">
-                  <ImageIcon size={18} className={`${selectedType === 'image' ? 'text-black' : 'text-cyan-400'} drop-shadow-[0_0_12px_rgba(34,211,238,0.9)]`} />
-                  {selectedType === 'image' && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-black rounded-full"></div>}
-                </button>
-              )}
-              {showAdvancedButtons && <div className="flex-shrink-0 w-px h-8 bg-cyan-500/30"></div>}
-              {showAdvancedButtons && selectedType === 'music' && !isInstrumental && (
+                {/* Loading spinner + cancel */}
+                {msg.isGenerating && (
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
+                    <span className="text-xs text-gray-400">Generating...</span>
+                    <button onClick={() => handleCancelGeneration(msg.id)}
+                      className="p-1 hover:bg-white/10 rounded transition-colors" title="Cancel">
+                      <Square size={14} className="text-red-400" />
+                    </button>
+                  </div>
+                )}
+
+                {/* ── MUSIC RESULT CARD ── */}
+                {msg.result?.audioUrl && !msg.isGenerating && (
+                  <div className="mt-3 space-y-3">
+                    {/* Play + Title */}
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => handlePlayPause(msg.id, msg.result!.audioUrl!)}
+                        className="w-10 h-10 flex-shrink-0 bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full flex items-center justify-center hover:scale-105 transition-transform">
+                        {playingId === msg.id ? <Pause size={16} className="text-black" /> : <Play size={16} className="text-black ml-0.5" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{msg.result.title || 'AI Track'}</p>
+                        {msg.result.prompt && <p className="text-xs text-gray-400 truncate">{msg.result.prompt}</p>}
+                      </div>
+                    </div>
+
+                    {/* Details dialog (same as create page) */}
+                    <details className="group">
+                      <summary className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-cyan-400 cursor-pointer transition-colors">
+                        <FileText size={12} /> Details
+                      </summary>
+                      <div className="mt-2 p-3 bg-black/40 rounded-lg space-y-2 text-xs">
+                        {msg.result.title && <div><span className="text-gray-500">Title:</span> <span className="text-white">{msg.result.title}</span></div>}
+                        {msg.result.prompt && <div><span className="text-gray-500">Prompt:</span> <span className="text-white">{msg.result.prompt}</span></div>}
+                        {msg.result.lyrics && (
+                          <details>
+                            <summary className="text-gray-500 cursor-pointer hover:text-cyan-400">View Lyrics</summary>
+                            <pre className="mt-1 text-gray-300 whitespace-pre-wrap text-[10px] max-h-40 overflow-y-auto">{msg.result.lyrics}</pre>
+                          </details>
+                        )}
+                      </div>
+                    </details>
+
+                    {/* Action buttons row */}
+                    <div className="flex flex-wrap gap-2">
+                      {/* MP3 Download */}
+                      <button onClick={() => handleDownload(msg.result!.audioUrl!, `${msg.result!.title || 'track'}.mp3`, 'mp3')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                        <Download size={12} /> MP3
+                      </button>
+                      {/* WAV Download */}
+                      <button onClick={() => handleDownload(msg.result!.audioUrl!, `${msg.result!.title || 'track'}.wav`, 'wav')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                        <Download size={12} /> WAV
+                      </button>
+                      {/* Split Stems */}
+                      <button onClick={() => handleSplitStems(msg.result!.audioUrl!, msg.id)} disabled={isSplittingStems}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50">
+                        <Scissors size={12} /> Stems <span className="text-[10px] text-gray-500">(-5)</span>
+                      </button>
+                      {/* Audio Boost */}
+                      <button onClick={() => handleAudioBoost(msg.result!.audioUrl!, msg.result!.title || 'Track')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
+                        <Volume2 size={12} /> Boost <span className="text-[10px] text-gray-500">(-1)</span>
+                      </button>
+                      {/* Open in browser (library) */}
+                      <a href="https://444radio.co.in/library" target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                        <Layers size={12} /> Library
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── IMAGE RESULT CARD ── */}
+                {msg.result?.imageUrl && !msg.result?.audioUrl && !msg.isGenerating && (
+                  <div className="mt-3 space-y-3">
+                    <div className="relative group rounded-xl overflow-hidden">
+                      <img src={msg.result.imageUrl} alt={msg.result.title || 'Generated image'} className="w-full rounded-xl" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <span className="text-white text-sm font-medium bg-black/60 px-3 py-1.5 rounded-full">🔍 Click to expand</span>
+                      </div>
+                    </div>
+                    {msg.result.prompt && <p className="text-xs text-gray-400">{msg.result.prompt}</p>}
+                    <div className="flex gap-2">
+                      <a href={msg.result.imageUrl} download={`${msg.result.title || 'cover-art'}.jpg`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                        <Download size={12} /> Save
+                      </a>
+                      <a href="https://444radio.co.in/library" target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                        <Layers size={12} /> Library
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── VIDEO RESULT CARD (same as create page) ── */}
+                {msg.generationType === 'video' && msg.result?.url && !msg.isGenerating && (
+                  <div className="mt-3 space-y-3">
+                    <div className="relative rounded-xl overflow-hidden bg-black">
+                      <video
+                        src={msg.result.url}
+                        controls
+                        autoPlay
+                        playsInline
+                        className="w-full aspect-video object-contain rounded-xl"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleDownload(msg.result!.url!, `${msg.result!.title || 'video'}.mp4`, 'mp3')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all">
+                        <Download size={12} /> Download
+                      </button>
+                      <a href="https://444radio.co.in/library?tab=videos" target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                        <Layers size={12} /> Library
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEMS RESULT CARD ── */}
+                {msg.stems && Object.keys(msg.stems).length > 0 && !msg.isGenerating && (
+                  <div className="mt-3 space-y-2">
+                    {Object.entries(msg.stems).map(([name, url]) => {
+                      const display = getStemDisplay(name)
+                      return (
+                        <div key={name} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                          <span className="text-lg">{display.emoji}</span>
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-xs font-bold ${display.color}`}>{display.label}</span>
+                          </div>
+                          <button onClick={() => handlePlayPause(`stem-${name}-${msg.id}`, url as string)}
+                            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                            {playingId === `stem-${name}-${msg.id}` ? <Pause size={12} className="text-white" /> : <Play size={12} className="text-white" />}
+                          </button>
+                          <button onClick={() => handleDownload(url as string, `${name}.wav`, 'wav')}
+                            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                            <Download size={12} className="text-white" />
+                          </button>
+                          <button onClick={() => handleAudioBoost(url as string, display.label)}
+                            className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-full transition-colors" title="Boost this stem">
+                            <Volume2 size={12} className="text-orange-400" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* ── Bottom Dock (same as create page) ── */}
+        {showBottomDock && (
+          <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-6 pb-4 px-4 z-30">
+            {/* Icon Row */}
+            <div className="flex items-center justify-center gap-1 mb-3 flex-wrap">
+              {/* Music */}
+              <button onClick={() => { setSelectedType('music'); setShowAdvancedButtons(!showAdvancedButtons) }}
+                className={`p-2 rounded-xl transition-all ${selectedType === 'music' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                title="Music"><Music size={18} /></button>
+              {/* Effects */}
+              <button onClick={() => setSelectedType('effects')}
+                className={`p-2 rounded-xl transition-all ${selectedType === 'effects' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                title="Effects"><Sparkles size={18} /></button>
+              {/* Loops */}
+              <button onClick={() => setSelectedType('loops' as GenerationType)}
+                className={`p-2 rounded-xl transition-all ${(selectedType as string) === 'loops' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                title="Loops"><Repeat size={18} /></button>
+              {/* Image */}
+              <button onClick={() => setSelectedType('image')}
+                className={`p-2 rounded-xl transition-all ${selectedType === 'image' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                title="Cover Art"><ImageIcon size={18} /></button>
+              
+              <div className="w-px h-6 bg-white/10 mx-1" />
+
+              {/* Lyrics / Settings */}
+              {selectedType === 'music' && !isInstrumental && (
                 <button onClick={() => setShowLyricsModal(true)}
-                  className={`flex-shrink-0 group relative p-2.5 rounded-2xl transition-all duration-300 ${customTitle || genre || customLyrics || bpm ? 'bg-gradient-to-r from-cyan-600/20 via-cyan-500/20 to-cyan-400/20 border-2 border-cyan-400 scale-105' : 'bg-black/40 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 hover:scale-105'}`} title="Lyrics & Settings">
-                  <Edit3 size={18} className={`${customTitle || genre || customLyrics || bpm ? 'text-cyan-300' : 'text-cyan-400'} drop-shadow-[0_0_12px_rgba(34,211,238,0.9)]`} />
-                </button>
+                  className={`p-2 rounded-xl transition-all ${(customTitle || genre || customLyrics || bpm) ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                  title="Lyrics & Settings"><Edit3 size={18} /></button>
               )}
-              {showAdvancedButtons && (
-                <button onClick={() => fileInputRef.current?.click()}
-                  className="flex-shrink-0 group relative p-2.5 rounded-2xl transition-all duration-300 bg-black/40 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105" title="Upload Audio/Video">
-                  <Upload size={18} className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)]" />
-                </button>
-              )}
-              {showAdvancedButtons && (
-                <button onClick={handleClearChat}
-                  className="flex-shrink-0 group relative p-2.5 rounded-2xl transition-all duration-300 bg-black/40 backdrop-blur-xl border-2 border-green-500/30 hover:border-green-400/60 hover:scale-105" title="New Chat">
-                  <Plus size={18} className="text-green-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.9)]" />
-                </button>
-              )}
-              {/* Credits Display */}
-              <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
-                <Zap size={14} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)]" />
-                <span className="text-xs md:text-sm font-bold text-white">{isLoadingCredits ? '...' : credits?.credits}</span>
-                <span className="hidden sm:inline text-xs text-cyan-400/60 font-mono">
-                  {selectedType === 'music' ? '(-2)' : selectedType === 'image' ? '(-1)' : selectedType === 'effects' ? '(-2)' : ''}
+
+              {/* Upload */}
+              <button onClick={() => openUploadModal()}
+                className="p-2 rounded-xl text-purple-400 hover:bg-purple-500/10 transition-all" title="Upload Media">
+                <Upload size={18} />
+              </button>
+
+              {/* New Chat */}
+              <button onClick={handleClearChat}
+                className="p-2 rounded-xl text-green-400 hover:bg-green-500/10 transition-all" title="New Chat">
+                <Plus size={18} />
+              </button>
+
+              {/* Restore Chat */}
+              <button onClick={() => setShowDeletedChatsModal(true)}
+                className="p-2 rounded-xl text-green-400 hover:bg-green-500/10 transition-all" title="Chat History">
+                <RotateCcw size={18} />
+              </button>
+
+              {/* Credits */}
+              <div className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded-lg ml-1">
+                <Zap size={12} className="text-cyan-400" />
+                <span className="text-xs text-cyan-300 font-bold">{userCredits ?? '...'}</span>
+                <span className="text-[10px] text-gray-500">
+                  (-{selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : (selectedType as string) === 'loops' ? 6 : 0})
                 </span>
               </div>
             </div>
 
             {/* Instrumental mode info */}
             {isInstrumental && selectedType === 'music' && (
-              <div className="px-4 md:px-0 mb-2">
-                <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg backdrop-blur-sm">
-                  <p className="text-xs text-purple-300/80 text-center">💰 <span className="font-bold">2 credits</span></p>
-                </div>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-xs text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+                  🎹 Instrumental Mode — No vocals will be generated
+                </span>
               </div>
             )}
 
-            {/* Upload indicator */}
-            {uploadedFileUrl && (
-              <div className="flex items-center gap-2 mb-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
-                <FileAudio size={14} className="text-cyan-400" />
-                <span className="text-xs text-white truncate flex-1">{uploadedFileName}</span>
-                <button onClick={clearUpload} className="p-0.5 hover:bg-white/10 rounded"><X size={12} className="text-gray-400" /></button>
-              </div>
-            )}
-
-            {/* Main Prompt Box */}
-            <div className="group relative active:scale-95 md:hover:scale-105 transition-transform duration-200">
-              <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 blur-xl opacity-30 group-hover:opacity-70 transition-opacity duration-300 hidden md:block"></div>
-              <div className="relative flex gap-2.5 md:gap-4 items-center bg-black/60 md:bg-black/20 backdrop-blur-sm md:backdrop-blur-3xl px-4 md:px-6 py-3.5 md:py-5 border-2 border-cyan-500/30 group-active:border-cyan-400/60 md:group-hover:border-cyan-400/60 transition-colors duration-200 shadow-lg md:shadow-2xl">
+            {/* Prompt Input Bar */}
+            <div className="relative">
+              <div className="flex items-end gap-2 bg-white/5 border border-white/20 rounded-2xl px-3 py-2 backdrop-blur-sm focus-within:border-cyan-500/50 transition-colors"
+                style={input.trim().length >= MIN_PROMPT_LENGTH ? { boxShadow: '0 0 20px rgba(6, 182, 212, 0.15)' } : {}}>
                 
-                {/* Plus toggle */}
-                <button onClick={() => setShowAdvancedButtons(!showAdvancedButtons)}
-                  className={`relative flex-shrink-0 p-2.5 rounded-full transition-all duration-300 ${showAdvancedButtons ? 'bg-cyan-500 shadow-lg shadow-cyan-500/50 scale-110' : 'bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 hover:border-cyan-400 hover:scale-110'}`}>
-                  <PlusCircle size={16} className={`${showAdvancedButtons ? 'text-black rotate-45' : 'text-cyan-400'} transition-transform duration-300`} />
+                {/* Toggle sidebar */}
+                <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
+                  className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors mb-0.5">
+                  <PlusCircle size={20} className="text-gray-400" />
                 </button>
 
-                {/* Instrumental toggle */}
+                {/* Record button */}
+                <button onClick={isRecording ? stopRecording : startRecording}
+                  className={`flex-shrink-0 p-1.5 rounded-full transition-all mb-0.5 ${isRecording ? 'bg-red-500 animate-pulse' : 'hover:bg-white/10'}`}>
+                  <Mic size={18} className={isRecording ? 'text-white' : 'text-gray-400'} />
+                </button>
+
+                {/* INST toggle */}
                 {selectedType === 'music' && (
                   <button onClick={() => setIsInstrumental(!isInstrumental)}
-                    className={`relative flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${isInstrumental ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50' : 'bg-purple-500/20 border border-purple-500/40 text-purple-400 hover:bg-purple-500/30 hover:border-purple-400'}`}>
+                    className={`flex-shrink-0 px-2 py-1 rounded-full text-[10px] font-bold transition-all mb-0.5 ${isInstrumental ? 'bg-purple-500 text-white' : 'bg-white/10 text-gray-400'}`}>
                     INST
                   </button>
                 )}
 
                 {/* Input */}
-                <div className="flex-1 text-center md:text-left">
-                  <input type="text" value={input} onChange={e => setInput(e.target.value)}
-                    onKeyPress={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate() } }}
-                    placeholder={selectedType === 'music' ? 'Describe your sound...' : selectedType === 'image' ? 'Describe your cover art...' : selectedType === 'effects' ? 'Describe sound effects...' : selectedType === 'loops' ? 'Describe the loop...' : 'Describe what you want...'}
-                    className="w-full bg-transparent text-sm md:text-lg font-light text-gray-200 placeholder-gray-400/60 tracking-wide focus:outline-none" />
-                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                    <div className="text-xs text-cyan-400/60 font-mono hidden md:block">
-                      {activeGenerations.size > 0 ? `Creating (${activeGenerations.size} active)...` : 'Press Enter to create'}
+                <div className="flex-1 min-w-0">
+                  <textarea value={input} onChange={(e) => setInput(e.target.value.slice(0, MAX_PROMPT_LENGTH))}
+                    placeholder={selectedType === 'music' ? 'Describe your track...' : selectedType === 'image' ? 'Describe your cover art...' : 'Describe the effect...'}
+                    className="w-full bg-transparent text-white text-sm placeholder-gray-500 resize-none focus:outline-none min-h-[24px] max-h-[120px]"
+                    rows={1}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate() } }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement
+                      target.style.height = 'auto'
+                      target.style.height = Math.min(target.scrollHeight, 120) + 'px'
+                    }}
+                  />
+                  {/* Character counter */}
+                  {input.length > 0 && (
+                    <div className={`text-right text-[10px] mt-0.5 ${
+                      input.trim().length < MIN_PROMPT_LENGTH ? 'text-red-400' :
+                      input.length > 270 ? 'text-yellow-400' : 'text-gray-500'
+                    }`}>
+                      {input.length}/{MAX_PROMPT_LENGTH}
                     </div>
-                    <div className={`text-xs font-mono ${input.length < MIN_PROMPT_LENGTH ? 'text-red-400' : input.length > MAX_PROMPT_LENGTH ? 'text-red-400' : input.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-yellow-400' : 'text-gray-500'}`}>{input.length}/{MAX_PROMPT_LENGTH}</div>
-                  </div>
+                  )}
                 </div>
 
-                {/* Prompt suggestions lightbulb */}
-                {selectedType === 'music' && (
-                  <div className="relative">
-                    <button onClick={() => setShowPromptSuggestions(!showPromptSuggestions)}
-                      className={`p-2.5 rounded-xl transition-all duration-300 ${showPromptSuggestions ? 'bg-yellow-500/20 border-2 border-yellow-400/60 shadow-lg shadow-yellow-500/30' : 'bg-yellow-500/10 border-2 border-yellow-500/30 hover:bg-yellow-500/20 hover:border-yellow-400/50'}`}>
-                      <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" /></svg>
-                    </button>
-                    {showPromptSuggestions && (
-                      <>
-                        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={() => setShowPromptSuggestions(false)} />
-                        <div className="fixed left-1/2 -translate-x-1/2 bottom-24 w-[calc(100vw-2rem)] max-w-md bg-black/95 backdrop-blur-2xl border-2 border-cyan-500/30 rounded-2xl shadow-2xl shadow-cyan-500/20 p-4 z-50 max-h-[55vh] overflow-hidden flex flex-col">
-                          {!showIdeasFlow ? (
-                            <>
-                              <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2"><svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" /></svg><span className="text-sm font-bold text-white">Quick Tags</span></div>
-                                <div className="flex items-center gap-2">
-                                  <button onClick={() => setShowIdeasFlow(true)} className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 transition-all hover:scale-105 shadow-lg shadow-purple-500/20">✨ IDEAS</button>
-                                  <button onClick={() => setShowPromptSuggestions(false)} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-2 overflow-y-auto scrollbar-thin pr-2 flex-1">
-                                {QUICK_TAGS.map(tag => (
-                                  <button key={tag} onClick={() => addTag(tag)} className="px-3.5 py-2 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 hover:from-cyan-500/30 hover:to-cyan-500/40 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl text-sm font-medium text-cyan-200 hover:text-white transition-all duration-200 hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30">{tag}</button>
-                                ))}
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              {ideasStep === 'type' && (
-                                <div className="space-y-6">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-xl font-bold text-white">✨ AI Prompt Ideas</h3>
-                                    <button onClick={() => { setShowIdeasFlow(false); setIdeasStep('type') }} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
-                                  </div>
-                                  <p className="text-sm text-gray-400 text-center">What would you like to create?</p>
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <button onClick={() => { setPromptType('song'); setIdeasStep('genre') }} className="group p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400/40 rounded-2xl transition-all hover:scale-105 shadow-lg">
-                                      <div className="text-4xl mb-3">🎤</div><div className="text-lg font-bold text-white mb-1">Song</div><div className="text-xs text-gray-400">With vocals & lyrics</div>
-                                    </button>
-                                    <button onClick={() => { setPromptType('beat'); setIsInstrumental(true); setIdeasStep('genre') }} className="group p-6 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400/40 rounded-2xl transition-all hover:scale-105 shadow-lg">
-                                      <div className="text-4xl mb-3">🎹</div><div className="text-lg font-bold text-white mb-1">Beat</div><div className="text-xs text-gray-400">Instrumental only</div>
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                              {ideasStep === 'genre' && (
-                                <div className="space-y-4">
-                                  <div className="flex items-center justify-between"><button onClick={() => setIdeasStep('type')} className="text-sm text-cyan-400 flex items-center gap-1">← Back</button><h3 className="text-lg font-bold text-white">🎵 Select Genre</h3><button onClick={() => { setShowIdeasFlow(false); setIdeasStep('type') }} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button></div>
-                                  <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto scrollbar-thin pr-2">
-                                    {IDEA_GENRES.map(g => (
-                                      <button key={g} onClick={() => generateIdea(g)} className="px-3 py-2.5 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 border border-cyan-500/30 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105">{g}</button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                {/* Prompt suggestions */}
+                <button onClick={() => { setShowPromptSuggestions(!showPromptSuggestions); setShowIdeasFlow(false); setIdeasStep('type') }}
+                  className={`flex-shrink-0 p-1.5 rounded-full transition-all mb-0.5 ${showPromptSuggestions ? 'bg-yellow-500/20 text-yellow-400' : 'hover:bg-white/10 text-gray-400'}`}>
+                  <Lightbulb size={18} />
+                </button>
 
                 {/* Send button */}
-                <button onClick={() => handleGenerate()} disabled={!input.trim() && !uploadedFileUrl}
-                  className="relative flex-shrink-0 w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/50 active:scale-95">
-                  {activeGenerations.size > 0 && <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">{activeGenerations.size}</div>}
-                  {activeGenerations.size > 0 ? <Loader2 className="text-black animate-spin" size={20} /> : <Send className="text-black ml-0.5" size={20} />}
+                <button onClick={handleGenerate} disabled={!input.trim() || input.trim().length < MIN_PROMPT_LENGTH}
+                  className="relative flex-shrink-0 w-10 h-10 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all disabled:opacity-50 shadow-lg shadow-cyan-500/50 active:scale-95 mb-0.5">
+                  {activeGenerations.size > 0 && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">{activeGenerations.size}</div>
+                  )}
+                  {activeGenerations.size > 0 ? <Loader2 className="text-black animate-spin" size={18} /> : <Send className="text-black ml-0.5" size={18} />}
                 </button>
               </div>
             </div>
 
+            {/* Prompt Suggestions Dropdown */}
+            {showPromptSuggestions && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 mx-4 p-4 bg-black/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl max-h-[50vh] overflow-y-auto z-40">
+                {!showIdeasFlow ? (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-bold text-white flex items-center gap-2">
+                        <Lightbulb size={14} className="text-yellow-400" /> Quick Tags
+                      </span>
+                      <div className="flex gap-2">
+                        <button onClick={() => setShowIdeasFlow(true)} className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/40 rounded-lg text-xs font-bold text-purple-300 hover:text-purple-200 transition-all">✨ IDEAS</button>
+                        <button onClick={() => setShowPromptSuggestions(false)} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {QUICK_TAGS.map(tag => (
+                        <button key={tag} onClick={() => { setInput(prev => prev + (prev ? ', ' : '') + tag); setShowPromptSuggestions(false) }}
+                          className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-lg text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105">
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {ideasStep === 'type' && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-xl font-bold text-white">✨ AI Prompt Ideas</h3>
+                          <button onClick={() => { setShowIdeasFlow(false); setIdeasStep('type') }} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
+                        </div>
+                        <p className="text-sm text-gray-400 text-center">What would you like to create?</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <button onClick={() => { setSelectedPromptType('song'); setIdeasStep('genre') }}
+                            className="p-6 bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400/40 rounded-2xl hover:scale-105 transition-all shadow-lg">
+                            <div className="text-4xl mb-3">🎤</div><div className="text-lg font-bold text-white mb-1">Song</div><div className="text-xs text-gray-400">With vocals & lyrics</div>
+                          </button>
+                          <button onClick={() => { setSelectedPromptType('beat'); setIsInstrumental(true); setIdeasStep('genre') }}
+                            className="p-6 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-2 border-cyan-400/40 rounded-2xl hover:scale-105 transition-all shadow-lg">
+                            <div className="text-4xl mb-3">🎹</div><div className="text-lg font-bold text-white mb-1">Beat</div><div className="text-xs text-gray-400">Instrumental only</div>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {ideasStep === 'genre' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <button onClick={() => setIdeasStep('type')} className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1">← Back</button>
+                          <h3 className="text-lg font-bold text-white">🎵 Select Genre</h3>
+                          <button onClick={() => { setShowIdeasFlow(false); setIdeasStep('type') }} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto pr-2">
+                          {GENRE_OPTIONS.map(g => (
+                            <button key={g} onClick={() => handleGeneratePromptIdea(g)} disabled={generatingIdea}
+                              className="px-3 py-2.5 bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 border border-cyan-500/30 rounded-xl text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105 disabled:opacity-50">
+                              {g}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {ideasStep === 'generating' && (
+                      <div className="text-center py-8">
+                        <div className="relative">
+                          <div className="w-16 h-16 mx-auto border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin" />
+                          <div className="absolute inset-0 flex items-center justify-center"><span className="text-2xl">🎨</span></div>
+                        </div>
+                        <h3 className="text-xl font-bold text-white mt-4 mb-2">Creating Amazing Prompt...</h3>
+                        <p className="text-sm text-gray-400">AI is crafting the perfect description</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Quick Info */}
-            <div className="flex items-center justify-center gap-2 mt-2 text-xs md:text-sm">
+            <div className="flex items-center justify-center gap-2 mt-2 text-xs">
               <span className="text-cyan-400/60 font-mono tracking-wider">
-                {activeGenerations.size > 0 ? `⚡ ${activeGenerations.size} generation${activeGenerations.size > 1 ? 's' : ''} in progress • You can queue more`
-                  : `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : selectedType === 'effects' ? 'Generate Text to SFX' : selectedType === 'loops' ? 'Generate loops' : 'Process audio'}`}
+                {activeGenerations.size > 0
+                  ? `⚡ ${activeGenerations.size} generation${activeGenerations.size > 1 ? 's' : ''} in progress`
+                  : `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : selectedType === 'effects' ? 'Generate Text to SFX' : 'Coming soon'}`}
               </span>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* ═══ LYRICS & SETTINGS MODAL ═══ */}
+      {/* ── Lyrics & Settings Modal (same as create page) ── */}
       {showLyricsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLyricsModal(false)} />
-          <div className="relative w-full max-w-md max-h-[80vh] bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="relative w-full max-w-md max-h-[80vh] md:aspect-square bg-black/90 backdrop-blur-2xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+
+            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-              <h3 className="text-base font-bold text-white flex items-center gap-2"><Edit3 size={18} className="text-cyan-400" /> Lyrics & Settings</h3>
-              <button onClick={() => setShowLyricsModal(false)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10"><X size={16} className="text-gray-400" /></button>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Edit3 size={18} className="text-cyan-400" /> Lyrics & Settings
+              </h3>
+              <button onClick={() => setShowLyricsModal(false)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                <X size={16} className="text-gray-400" />
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+            {/* Content */}
+            <div id="parameters-section" className="flex-1 overflow-y-auto p-5 space-y-4">
+
+              {/* Lyrics (hidden in instrumental) */}
               {!isInstrumental && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-red-400 uppercase tracking-wide">Lyrics *</label>
-                    <button onClick={async () => {
-                      if (!input?.trim()) { alert('Enter a prompt first!'); return }
-                      if (isGeneratingAtomLyrics) return
-                      setIsGeneratingAtomLyrics(true)
-                      try {
-                        const res = await fetch('/api/generate/atom-lyrics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: input }) })
-                        const d = await res.json()
-                        if (d.success && d.lyrics) setCustomLyrics(d.lyrics)
-                        else alert('Failed to generate lyrics')
-                      } catch { alert('Failed to generate. Try again.') }
-                      finally { setIsGeneratingAtomLyrics(false) }
-                    }} disabled={isGeneratingAtomLyrics} className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 disabled:opacity-50">
-                      {isGeneratingAtomLyrics ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                    <button type="button" disabled={isGeneratingAtomLyrics}
+                      onClick={async (e) => {
+                        e.preventDefault()
+                        if (!input.trim()) { alert('⚠️ Enter a prompt first!'); return }
+                        if (isGeneratingAtomLyrics) return
+                        setIsGeneratingAtomLyrics(true)
+                        try {
+                          const res = await fetch('/api/generate/atom-lyrics', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prompt: input })
+                          })
+                          const data = await res.json()
+                          if (data.success && data.lyrics) setCustomLyrics(data.lyrics)
+                          else alert('❌ ' + (data.error || 'Failed'))
+                        } catch { alert('❌ Failed to generate lyrics.') }
+                        finally { setIsGeneratingAtomLyrics(false) }
+                      }}
+                      className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 disabled:opacity-50">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isGeneratingAtomLyrics ? 'animate-spin' : ''}>
+                        <circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="10" strokeDasharray="4 4"/>
+                      </svg>
                       {isGeneratingAtomLyrics ? 'Generating...' : 'Create with Atom'}
                     </button>
                   </div>
-                  <textarea value={customLyrics} onChange={e => setCustomLyrics(e.target.value)} placeholder="Add lyrics or leave empty for AI auto-fill..." rows={8}
-                    className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 resize-none focus:outline-none focus:border-cyan-500/50" />
+                  <div className="relative">
+                    <textarea value={customLyrics} onChange={(e) => setCustomLyrics(e.target.value)}
+                      placeholder="Enter custom lyrics (required)..."
+                      className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 resize-none"
+                      rows={6} />
+                    {/* Dice */}
+                    <button type="button" onClick={async (e) => {
+                      e.preventDefault()
+                      try {
+                        const hook = getLanguageHook(selectedLanguage.toLowerCase())
+                        if (hook && selectedLanguage.toLowerCase() !== 'english') {
+                          setCustomLyrics(getLyricsStructureForLanguage(selectedLanguage.toLowerCase()))
+                          if (hook.genres.length > 0 && !genre) setGenre(hook.genres[Math.floor(Math.random() * hook.genres.length)])
+                        } else {
+                          const params = new URLSearchParams()
+                          if (input.trim()) params.append('description', input)
+                          const res = await fetch(`/api/lyrics/random${params.toString() ? '?' + params : ''}`)
+                          const data = await res.json()
+                          if (data.success && data.lyrics) {
+                            setCustomLyrics(data.lyrics.lyrics)
+                            if (!genre) setGenre(data.lyrics.genre)
+                            if (!customTitle) setCustomTitle(data.lyrics.title)
+                          } else {
+                            setCustomLyrics("[verse]\nWalking down this empty street\nNeon lights guide my way\n\n[chorus]\nLost in the rhythm of the night")
+                          }
+                        }
+                      } catch {
+                        setCustomLyrics("[verse]\nStaring at the stars above\nDreaming of tomorrow\n\n[chorus]\nHold me close, don't let me go")
+                      }
+                    }} className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/40 hover:bg-black/60 opacity-30 hover:opacity-100 transition-all" title="Randomize lyrics">
+                      <Dices size={14} className="text-cyan-400" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
                 </div>
               )}
+
+              {/* Language */}
               <div className="space-y-1.5">
-                <label className={`text-xs font-semibold uppercase tracking-wide ${showTitleError ? 'text-red-400' : 'text-cyan-400'}`}>Title {showTitleError && '(3-100 chars)'}</label>
-                <input type="text" value={customTitle} onChange={e => setCustomTitle(e.target.value)} placeholder="Leave empty for AI auto-fill..."
-                  className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none ${showTitleError ? 'border-red-500' : 'border-white/20 focus:border-cyan-500/50'}`} />
+                <label className="text-xs font-semibold text-red-400 uppercase tracking-wide flex items-center gap-2">
+                  <Globe size={14} className="text-cyan-400" /> Language *
+                </label>
+                <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500/50 appearance-none cursor-pointer"
+                  style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(34,211,238,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}>
+                  <option value="English">English</option>
+                  <option value="chinese">中文 Chinese</option>
+                  <option value="japanese">日本語 Japanese</option>
+                  <option value="korean">한국어 Korean</option>
+                  <option value="spanish">Español Spanish</option>
+                  <option value="french">Français French</option>
+                  <option value="hindi">हिन्दी Hindi</option>
+                  <option value="german">Deutsch German</option>
+                  <option value="portuguese">Português Portuguese</option>
+                  <option value="arabic">العربية Arabic</option>
+                  <option value="italian">Italiano Italian</option>
+                </select>
+                {(() => {
+                  const hook = getLanguageHook(selectedLanguage.toLowerCase())
+                  return hook && (
+                    <div className="p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                      <p className="text-[10px] text-cyan-300 mb-1 font-semibold">💡 Popular Genres:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {hook.genres.slice(0, 4).map((g, i) => (
+                          <span key={i} className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-300 text-[9px] rounded">{g}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-cyan-400 uppercase tracking-wide">Genre</label>
-                  <select value={genre} onChange={e => setGenre(e.target.value)} className="w-full bg-gray-900 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500/50">
-                    <option value="">Auto-detect</option>
-                    {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
+
+              {/* ACE-Step Parameters (non-English) */}
+              {selectedLanguage.toLowerCase() !== 'english' && (
+                <div className="space-y-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                  <span className="text-purple-400 font-semibold text-[10px] uppercase tracking-wide">🎵 ACE-Step Model Parameters</span>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Audio Length</span><span className="text-purple-400">{audioLengthInSeconds}s</span></label>
+                    <input type="range" min="15" max="90" step="5" value={audioLengthInSeconds} onChange={e => setAudioLengthInSeconds(parseInt(e.target.value))} className="w-full accent-purple-500 h-1" />
+                    <div className="flex justify-between text-[9px] text-gray-600"><span>15s</span><span>90s</span></div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Inference Steps</span><span className="text-purple-400">{numInferenceSteps}</span></label>
+                    <input type="range" min="25" max="100" step="5" value={numInferenceSteps} onChange={e => setNumInferenceSteps(parseInt(e.target.value))} className="w-full accent-purple-500 h-1" />
+                    <div className="flex justify-between text-[9px] text-gray-600"><span>25</span><span>100</span></div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Guidance Scale</span><span className="text-purple-400">{guidanceScale.toFixed(1)}</span></label>
+                    <input type="range" min="1" max="15" step="0.5" value={guidanceScale} onChange={e => setGuidanceScale(parseFloat(e.target.value))} className="w-full accent-purple-500 h-1" />
+                    <div className="flex justify-between text-[9px] text-gray-600"><span>1</span><span>15</span></div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Denoising</span><span className="text-purple-400">{denoisingStrength.toFixed(2)}</span></label>
+                    <input type="range" min="0.5" max="1.0" step="0.05" value={denoisingStrength} onChange={e => setDenoisingStrength(parseFloat(e.target.value))} className="w-full accent-purple-500 h-1" />
+                    <div className="flex justify-between text-[9px] text-gray-600"><span>0.5</span><span>1.0</span></div>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-cyan-400 uppercase tracking-wide">BPM</label>
-                  <input type="number" value={bpm} onChange={e => setBpm(e.target.value)} placeholder="Auto" min={60} max={200}
-                    className="w-full bg-white/5 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50" />
+              )}
+
+              {/* Quick Tags in Modal */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Prompt Tags</label>
+                <div className="flex flex-wrap gap-1">
+                  {['upbeat', 'chill', 'energetic', 'melancholic', 'ambient', 'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop', 'heavy bass', 'soft piano', 'synthwave', 'lo-fi beats', 'dreamy', 'trap', 'drill', 'phonk'].map(tag => (
+                    <button key={tag} onClick={() => setInput(prev => prev + (prev ? ', ' : '') + tag)}
+                      className="px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 rounded-md text-[10px] text-cyan-200 hover:text-white transition-all">
+                      {tag}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-cyan-400 uppercase tracking-wide">Duration</label>
-                  <select value={songDuration} onChange={e => setSongDuration(e.target.value as any)} className="w-full bg-gray-900 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500/50">
-                    <option value="short">Short</option><option value="medium">Medium</option><option value="long">Long</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-cyan-400 uppercase tracking-wide">Language</label>
-                  <select value={language} onChange={e => setLanguage(e.target.value)} className="w-full bg-gray-900 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500/50">
-                    {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
+
+              {/* Genre */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Genre</label>
+                <input type="text" value={genre} onChange={e => setGenre(e.target.value)} placeholder="e.g. hip-hop, lo-fi, electronic..."
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50" />
+              </div>
+
+              {/* Title */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Title</label>
+                <input type="text" value={customTitle} onChange={e => setCustomTitle(e.target.value)} placeholder="Auto-generated if empty"
+                  className={`w-full px-3 py-2 bg-white/5 border rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 transition-all ${showTitleError ? 'border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'border-white/10'}`} />
+                {showTitleError && <p className="text-xs text-red-400">Title must be 3-100 characters</p>}
+              </div>
+
+              {/* Song Duration */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Song Duration</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'short' as const, label: 'Short', size: '~60-90s' },
+                    { value: 'medium' as const, label: 'Medium', size: '~90-150s' },
+                    { value: 'long' as const, label: 'Long', size: '~150-240s' },
+                  ].map(opt => (
+                    <button key={opt.value} onClick={() => setSongDuration(opt.value)}
+                      className={`p-3 rounded-xl border text-center transition-all ${songDuration === opt.value ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300' : 'border-white/10 text-gray-400 hover:bg-white/5'}`}>
+                      <div className="text-sm font-bold">{opt.label}</div>
+                      <div className="text-[10px] text-gray-500">{opt.size}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={generateCoverArt} onChange={e => setGenerateCoverArt(e.target.checked)} className="w-4 h-4 rounded accent-cyan-500" />
-                <span className="text-sm text-gray-400">Generate cover art (+1 cr)</span>
-              </label>
-              <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl px-4 py-2 text-xs text-cyan-400">⚡ Output: WAV format (DAW-ready)</div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-white/10">
+              <button onClick={() => setShowLyricsModal(false)}
+                className="w-full py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black font-bold rounded-xl hover:from-cyan-500 hover:to-cyan-300 transition-all">
+                Done
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Features sidebar toggle — when sidebar closed, show floating button */}
-      {!showFeaturesSidebar && (
-        <button onClick={() => setShowFeaturesSidebar(true)}
-          className="fixed top-4 left-4 z-30 p-3 bg-black/60 backdrop-blur-xl border-2 border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl transition-all hover:scale-110 shadow-lg shadow-cyan-500/20" title="Open Features">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-cyan-400"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/></svg>
-        </button>
+      {/* ── Chat History Modal ── */}
+      {showDeletedChatsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDeletedChatsModal(false)} />
+          <div className="relative w-full max-w-md max-h-[70vh] bg-black/90 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h3 className="text-base font-bold text-white flex items-center gap-2"><RotateCcw size={18} className="text-green-400" /> Chat History</h3>
+              <button onClick={() => setShowDeletedChatsModal(false)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10"><X size={16} className="text-gray-400" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {(() => {
+                try {
+                  const archives = JSON.parse(localStorage.getItem(CHAT_ARCHIVES_KEY) || '[]')
+                  if (archives.length === 0) return <p className="text-center text-gray-500 text-sm py-8">No chat history yet.</p>
+                  return archives.map((archive: any, idx: number) => (
+                    <button key={archive.id || idx}
+                      onClick={() => {
+                        const restored = archive.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+                        // Archive current first
+                        try {
+                          if (messages.length > 1) {
+                            const list = JSON.parse(localStorage.getItem(CHAT_ARCHIVES_KEY) || '[]')
+                            list.unshift({ id: `chat-${Date.now()}`, messages, archivedAt: new Date(), messageCount: messages.length })
+                            localStorage.setItem(CHAT_ARCHIVES_KEY, JSON.stringify(list.slice(0, 50)))
+                          }
+                        } catch {}
+                        setMessages(restored)
+                        setShowDeletedChatsModal(false)
+                      }}
+                      className="w-full text-left p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-white font-medium">{archive.messageCount} messages</span>
+                        <span className="text-[10px] text-gray-500">{new Date(archive.archivedAt).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 truncate">
+                        {archive.messages?.find((m: any) => m.type === 'user')?.content || 'Chat session'}
+                      </p>
+                    </button>
+                  ))
+                } catch { return <p className="text-center text-gray-500 text-sm py-8">Error loading history.</p> }
+              })()}
+            </div>
+          </div>
+        </div>
       )}
 
-      <style jsx>{`
+      {/* ── Upload Media Modal (mirrors create page's MediaUploadModal) ── */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeUploadModal} />
+          <div className="relative w-full max-w-lg max-h-[85vh] bg-black/90 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Upload size={18} className="text-purple-400" /> Upload Media
+              </h3>
+              <button onClick={closeUploadModal} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10">
+                <X size={16} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Mode Selector (if no mode selected yet) */}
+              {!uploadMode && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-400">Choose a processing mode:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Video to Audio */}
+                    <button onClick={() => setUploadMode('video-to-audio')}
+                      className="p-4 bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/40 rounded-xl transition-all text-left">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Film size={16} className="text-cyan-400" />
+                        <span className="text-sm font-bold text-white">Video to Audio</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500">Generate synced SFX from video</p>
+                      <span className="text-[9px] text-cyan-400 mt-1 inline-block">-2 to -10 credits</span>
+                    </button>
+
+                    {/* Split Stems */}
+                    <button onClick={() => setUploadMode('stem-split')}
+                      className="p-4 bg-white/5 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/40 rounded-xl transition-all text-left">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Scissors size={16} className="text-purple-400" />
+                        <span className="text-sm font-bold text-white">Split Stems</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500">Separate vocals, drums, bass & more</p>
+                      <span className="text-[9px] text-purple-400 mt-1 inline-block">-5 credits</span>
+                    </button>
+
+                    {/* Audio Boost */}
+                    <button onClick={() => setUploadMode('audio-boost')}
+                      className="p-4 bg-white/5 hover:bg-orange-500/10 border border-white/10 hover:border-orange-500/40 rounded-xl transition-all text-left">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Volume2 size={16} className="text-orange-400" />
+                        <span className="text-sm font-bold text-white">Audio Boost</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500">Mix & master with bass/treble/volume</p>
+                      <span className="text-[9px] text-orange-400 mt-1 inline-block">-1 credit</span>
+                    </button>
+
+                    {/* Extract: Video → Audio */}
+                    <button onClick={() => setUploadMode('extract-video')}
+                      className="p-4 bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/40 rounded-xl transition-all text-left">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Layers size={16} className="text-cyan-400" />
+                        <span className="text-sm font-bold text-white">Extract: Video</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500">Extract audio track from video</p>
+                      <span className="text-[9px] text-cyan-400 mt-1 inline-block">-1 credit</span>
+                    </button>
+
+                    {/* Extract: Audio → Stem */}
+                    <button onClick={() => setUploadMode('extract-audio')}
+                      className="p-4 bg-white/5 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/40 rounded-xl transition-all text-left col-span-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Layers size={16} className="text-purple-400" />
+                        <span className="text-sm font-bold text-white">Extract: Audio Stem</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500">Extract specific stem (vocals, bass, drums, piano, guitar) from audio</p>
+                      <span className="text-[9px] text-purple-400 mt-1 inline-block">-1 credit</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Selected mode content */}
+              {uploadMode && (
+                <div className="space-y-4">
+                  {/* Back + mode title */}
+                  <button onClick={() => { setUploadMode(null); setUploadFile(null); setUploadFilePreview(null); setUploadError('') }}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors">
+                    <ChevronLeft size={14} /> Back to modes
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {uploadMode === 'video-to-audio' && <><Film size={18} className="text-cyan-400" /><span className="font-bold text-white">Video to Audio</span></>}
+                    {uploadMode === 'stem-split' && <><Scissors size={18} className="text-purple-400" /><span className="font-bold text-white">Split Stems</span></>}
+                    {uploadMode === 'audio-boost' && <><Volume2 size={18} className="text-orange-400" /><span className="font-bold text-white">Audio Boost</span></>}
+                    {uploadMode === 'extract-video' && <><Layers size={18} className="text-cyan-400" /><span className="font-bold text-white">Extract: Video → Audio</span></>}
+                    {uploadMode === 'extract-audio' && <><Layers size={18} className="text-purple-400" /><span className="font-bold text-white">Extract: Audio Stem</span></>}
+                  </div>
+
+                  {/* File select */}
+                  {!uploadFile ? (
+                    <div>
+                      <input ref={uploadMode === 'video-to-audio' ? uploadVideoRef : uploadMode === 'extract-video' ? uploadExtractVideoRef : uploadMode === 'stem-split' ? uploadAudioRef : uploadMode === 'audio-boost' ? uploadBoostRef : uploadExtractAudioRef}
+                        type="file"
+                        accept={uploadMode === 'video-to-audio' || uploadMode === 'extract-video' ? 'video/*' : 'audio/*'}
+                        className="hidden"
+                        onChange={(e) => handleUploadFileSelect(e, uploadMode)} />
+                      <button
+                        onClick={() => {
+                          const ref = uploadMode === 'video-to-audio' ? uploadVideoRef : uploadMode === 'extract-video' ? uploadExtractVideoRef : uploadMode === 'stem-split' ? uploadAudioRef : uploadMode === 'audio-boost' ? uploadBoostRef : uploadExtractAudioRef
+                          ref.current?.click()
+                        }}
+                        className="w-full py-8 border-2 border-dashed border-white/20 hover:border-cyan-500/50 rounded-xl transition-all flex flex-col items-center gap-2 text-gray-400 hover:text-white">
+                        <Upload size={24} />
+                        <span className="text-sm font-medium">
+                          {uploadMode === 'video-to-audio' || uploadMode === 'extract-video' ? 'Select Video File' : 'Select Audio File'}
+                        </span>
+                        <span className="text-[10px] text-gray-500">Max 100MB</span>
+                      </button>
+                    </div>
+                  ) : (
+                    /* File preview */
+                    <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {uploadFile.type.startsWith('video/') ? <Film size={16} className="text-cyan-400 flex-shrink-0" /> : <Music size={16} className="text-purple-400 flex-shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white truncate">{uploadFile.name}</p>
+                            <p className="text-[10px] text-gray-500">{(uploadFile.size / (1024 * 1024)).toFixed(1)} MB</p>
+                          </div>
+                        </div>
+                        <button onClick={() => { setUploadFile(null); if (uploadFilePreview) URL.revokeObjectURL(uploadFilePreview); setUploadFilePreview(null); setUploadError('') }}
+                          className="p-1 hover:bg-white/10 rounded-lg"><X size={14} className="text-gray-400" /></button>
+                      </div>
+                      {/* Audio/Video preview */}
+                      {uploadFilePreview && (
+                        <div className="mt-2">
+                          {uploadFile.type.startsWith('video/') ? (
+                            <video src={uploadFilePreview} controls className="w-full max-h-32 rounded-lg" />
+                          ) : (
+                            <audio src={uploadFilePreview} controls className="w-full" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Mode-specific settings ── */}
+
+                  {/* Video to Audio: prompt + HQ toggle */}
+                  {uploadMode === 'video-to-audio' && uploadFile && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Sound Description *</label>
+                        <textarea value={videoPrompt} onChange={e => setVideoPrompt(e.target.value)}
+                          placeholder="Describe the sounds you want (e.g. 'footsteps on gravel, birds chirping, wind')"
+                          rows={3}
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyan-500/50 resize-none" />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl">
+                        <div>
+                          <p className="text-sm font-medium text-white">HQ Mode</p>
+                          <p className="text-[10px] text-gray-500">Higher quality, slower generation (10 credits)</p>
+                        </div>
+                        <button onClick={() => setVideoHQ(!videoHQ)}
+                          className={`relative w-10 h-5 rounded-full transition-colors ${videoHQ ? 'bg-cyan-500' : 'bg-white/20'}`}>
+                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${videoHQ ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Audio Boost: sliders + toggles */}
+                  {uploadMode === 'audio-boost' && uploadFile && (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-gray-400 flex justify-between">
+                            <span>Bass Boost</span><span className="text-orange-400">{boostBass > 0 ? '+' : ''}{boostBass} dB</span>
+                          </label>
+                          <input type="range" min="-10" max="10" step="1" value={boostBass} onChange={e => setBoostBass(parseInt(e.target.value))}
+                            className="w-full accent-orange-500 h-1" />
+                          <div className="flex justify-between text-[9px] text-gray-600"><span>-10</span><span>0</span><span>+10</span></div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-gray-400 flex justify-between">
+                            <span>Treble Boost</span><span className="text-orange-400">{boostTreble > 0 ? '+' : ''}{boostTreble} dB</span>
+                          </label>
+                          <input type="range" min="-10" max="10" step="1" value={boostTreble} onChange={e => setBoostTreble(parseInt(e.target.value))}
+                            className="w-full accent-orange-500 h-1" />
+                          <div className="flex justify-between text-[9px] text-gray-600"><span>-10</span><span>0</span><span>+10</span></div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-gray-400 flex justify-between">
+                            <span>Volume Boost</span><span className="text-orange-400">{boostVolume}x</span>
+                          </label>
+                          <input type="range" min="1" max="5" step="0.5" value={boostVolume} onChange={e => setBoostVolume(parseFloat(e.target.value))}
+                            className="w-full accent-orange-500 h-1" />
+                          <div className="flex justify-between text-[9px] text-gray-600"><span>1x</span><span>3x</span><span>5x</span></div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button onClick={() => setBoostNormalize(!boostNormalize)}
+                          className={`flex-1 p-2.5 rounded-xl border text-xs font-medium transition-all ${boostNormalize ? 'bg-orange-500/20 border-orange-500/40 text-orange-300' : 'bg-white/5 border-white/10 text-gray-400'}`}>
+                          Normalize {boostNormalize ? '✓' : ''}
+                        </button>
+                        <button onClick={() => setBoostNoiseReduction(!boostNoiseReduction)}
+                          className={`flex-1 p-2.5 rounded-xl border text-xs font-medium transition-all ${boostNoiseReduction ? 'bg-orange-500/20 border-orange-500/40 text-orange-300' : 'bg-white/5 border-white/10 text-gray-400'}`}>
+                          Noise Reduction {boostNoiseReduction ? '✓' : ''}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-gray-400">Format</label>
+                          <select value={boostFormat} onChange={e => setBoostFormat(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-orange-500/50">
+                            <option value="mp3">MP3</option>
+                            <option value="wav">WAV</option>
+                            <option value="flac">FLAC</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-medium text-gray-400">Bitrate</label>
+                          <select value={boostBitrate} onChange={e => setBoostBitrate(e.target.value)}
+                            className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-orange-500/50">
+                            <option value="128k">128k</option>
+                            <option value="192k">192k</option>
+                            <option value="256k">256k</option>
+                            <option value="320k">320k</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extract Audio: stem picker */}
+                  {uploadMode === 'extract-audio' && uploadFile && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Select Stem to Extract</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([
+                          { value: 'vocals' as const, label: '🎤 Vocals', active: 'bg-pink-500/20 border-pink-500/40 text-pink-300', inactive: 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10' },
+                          { value: 'bass' as const, label: '🎸 Bass', active: 'bg-purple-500/20 border-purple-500/40 text-purple-300', inactive: 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10' },
+                          { value: 'drums' as const, label: '🥁 Drums', active: 'bg-orange-500/20 border-orange-500/40 text-orange-300', inactive: 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10' },
+                          { value: 'piano' as const, label: '🎹 Piano', active: 'bg-blue-500/20 border-blue-500/40 text-blue-300', inactive: 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10' },
+                          { value: 'guitar' as const, label: '🎸 Guitar', active: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-300', inactive: 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10' },
+                          { value: 'other' as const, label: '🎶 Other', active: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300', inactive: 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10' },
+                        ] as const).map(stem => (
+                          <button key={stem.value} onClick={() => setExtractStem(stem.value)}
+                            className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center ${extractStem === stem.value ? stem.active : stem.inactive}`}>
+                            {stem.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error display */}
+                  {uploadError && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2">
+                      <AlertCircle size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-red-300">{uploadError}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer: Process button */}
+            {uploadMode && uploadFile && (
+              <div className="px-5 py-4 border-t border-white/10">
+                <button onClick={handleUploadModalProcess} disabled={isUploading || (uploadMode === 'video-to-audio' && !videoPrompt.trim())}
+                  className="w-full py-3 bg-gradient-to-r from-purple-600 to-cyan-500 text-white font-bold rounded-xl hover:from-purple-500 hover:to-cyan-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                  {isUploading ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : <><Zap size={16} /> Process File</>}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Global Styles (no style jsx — regular style tag) ── */}
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .animate-slideInLeft { animation: slideInLeft 0.3s ease-out; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-      `}</style>
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .chat-scroll-container::-webkit-scrollbar { width: 4px; }
+        .chat-scroll-container::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .chat-scroll-container::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        select option { background: #111; color: white; }
+      `}} />
     </div>
   )
 }
