@@ -6,7 +6,7 @@ import {
   Sparkles, Zap, X, Rocket, PlusCircle, Globe, Mic, MicOff,
   Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
   Layers, Film, Scissors, Volume2, ChevronLeft, Lightbulb, Settings,
-  RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink
+  RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink, Home
 } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 
@@ -1619,10 +1619,14 @@ export default function PluginPage() {
                   <button onClick={handleClearChat} className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all" title="New Chat">
                     <Plus size={16} />
                   </button>
-                  <a href="https://444radio.co.in/explore" target="_blank" rel="noopener noreferrer"
+                  <button onClick={() => window.open('https://444radio.co.in/explore', '_blank')}
                     className="p-2.5 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Explore 444 Radio">
                     <Compass size={16} />
-                  </a>
+                  </button>
+                  <button onClick={() => window.location.href = '/plugin'}
+                    className="p-2.5 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Plugin Home">
+                    <Home size={16} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -1733,10 +1737,10 @@ export default function PluginPage() {
                         <Volume2 size={12} /> Boost <span className="text-[10px] text-gray-500">(-1)</span>
                       </button>
                       {/* Open in browser (library) */}
-                      <a href="https://444radio.co.in/library" target="_blank" rel="noopener noreferrer"
+                      <button onClick={() => window.open('https://444radio.co.in/library', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library
-                      </a>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1756,10 +1760,10 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Download size={12} /> Save
                       </a>
-                      <a href="https://444radio.co.in/library" target="_blank" rel="noopener noreferrer"
+                      <button onClick={() => window.open('https://444radio.co.in/library', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library
-                      </a>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1781,10 +1785,10 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all">
                         <Download size={12} /> Download
                       </button>
-                      <a href="https://444radio.co.in/library?tab=videos" target="_blank" rel="noopener noreferrer"
+                      <button onClick={() => window.open('https://444radio.co.in/library?tab=videos', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library
-                      </a>
+                      </button>
                     </div>
                   </div>
                 )}

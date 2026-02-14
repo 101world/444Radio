@@ -23,6 +23,7 @@ public:
 
     bool pageAboutToLoad (const juce::String& url) override
     {
+        // Intercept juce-bridge:// messages from the web page
         if (url.startsWith ("juce-bridge://"))
         {
             auto encoded = url.fromFirstOccurrenceOf ("juce-bridge://", false, false);
@@ -30,6 +31,18 @@ public:
             editor.handleWebMessage (json);
             return false;   // cancel navigation — page stays intact
         }
+
+        // Allow the plugin page and its subpaths
+        if (url.startsWith (kPluginUrl) || url.startsWith ("about:blank"))
+            return true;
+
+        // External links (library, explore, etc.) → open in system browser, don't navigate WebView
+        if (url.startsWith ("http://") || url.startsWith ("https://"))
+        {
+            juce::URL (url).launchInDefaultBrowser();
+            return false;   // cancel — keep plugin page loaded
+        }
+
         return true;
     }
 

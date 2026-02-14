@@ -25,6 +25,9 @@ export default function DockedSidebar() {
   const [username, setUsername] = useState<string>('')
   const [avatarUrl, setAvatarUrl] = useState<string>('')
 
+  // Hide on /plugin — plugin uses its own token-based auth, not Clerk
+  if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
+
   // Fetch user profile
   useEffect(() => {
     if (user) {
