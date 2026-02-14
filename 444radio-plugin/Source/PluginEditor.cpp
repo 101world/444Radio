@@ -1,7 +1,8 @@
 #include "PluginEditor.h"
 
 // The URL loaded inside the plugin WebView
-static const juce::String kPluginUrl = "https://444radio.co.in/plugin";
+static const juce::String kPluginUrl  = "https://444radio.co.in/plugin";
+static const juce::String kSiteOrigin = "https://444radio.co.in";
 
 //==============================================================================
 //  Helper: writable WebView2 data folder under %LOCALAPPDATA%\444Radio\WebView2
@@ -41,6 +42,8 @@ public:
 
     bool pageAboutToLoad (const juce::String& url) override
     {
+        DBG ("444 Radio: pageAboutToLoad — " + url);
+
         // Intercept juce-bridge:// messages from the web page
         if (url.startsWith ("juce-bridge://"))
         {
@@ -50,18 +53,35 @@ public:
             return false;   // cancel navigation — page stays intact
         }
 
-        // Allow the plugin page and its subpaths
-        if (url.startsWith (kPluginUrl) || url.startsWith ("about:blank"))
-            return true;
+        // Allow ALL http/https navigation inside the WebView.
+        // The plugin page handles its own auth and routing.
+        // External links are opened via the juce-bridge from JS, not via
+        // browser navigation.
+        return true;
+    }
 
-        // External links (library, explore, etc.) → open in system browser, don't navigate WebView
-        if (url.startsWith ("http://") || url.startsWith ("https://"))
+    void newWindowAttemptingToLoad (const juce::String& url) override
+    {
+        DBG ("444 Radio: newWindowAttemptingToLoad — " + url);
+
+        // New-window requests (target="_blank", window.open, etc.)
+        // Same-origin: navigate the current WebView there instead
+        if (url.startsWith (kSiteOrigin) || url.startsWith ("about:blank"))
         {
-            juce::URL (url).launchInDefaultBrowser();
-            return false;   // cancel — keep plugin page loaded
+            goToURL (url);
+            return;
         }
 
-        return true;
+        // Clerk auth domains — allow in WebView
+        if (url.contains ("clerk."))
+        {
+            goToURL (url);
+            return;
+        }
+
+        // Truly external URLs → system browser
+        if (url.startsWith ("http://") || url.startsWith ("https://"))
+            juce::URL (url).launchInDefaultBrowser();
     }
 
     void pageFinishedLoading (const juce::String& url) override
@@ -226,22 +246,72 @@ RadioPluginEditor::~RadioPluginEditor()
 }
 
 //==============================================================================
-//  Timer → deferred WebView creation
+//  Timer → deferred WebView creation (with retry on failure)
 //==============================================================================
 void RadioPluginEditor::timerCallback()
 {
     stopTimer();
-    createWebView();
+
+    if (webViewCreated)
+        return;
+
+    // Wait until the editor is actually showing on screen
+    if (! isShowing())
+    {
+        if (webViewRetries < kMaxWebViewRetries)
+        {
+            ++webViewRetries;
+            startTimer (500);
+        }
+        else
+        {
+            DBG ("444 Radio: gave up waiting for editor to show");
+        }
+        return;
+    }
+
+    if (createWebView())
+        return;   // success
+
+    // Retry with back-off (500 ms intervals, up to kMaxWebViewRetries)
+    if (webViewRetries < kMaxWebViewRetries)
+    {
+        ++webViewRetries;
+        DBG ("444 Radio: WebView creation failed — retry "
+             + juce::String (webViewRetries) + "/" + juce::String (kMaxWebViewRetries));
+        startTimer (500);
+    }
+    else
+    {
+        DBG ("444 Radio: WebView creation failed after all retries");
+    }
 }
 
-void RadioPluginEditor::createWebView()
+bool RadioPluginEditor::createWebView()
 {
-    if (webViewCreated) return;
-    webViewCreated = true;
+    if (webViewCreated)
+        return true;
 
-    webView = std::make_unique<BridgeWebView> (*this);
+    try
+    {
+        webView = std::make_unique<BridgeWebView> (*this);
+    }
+    catch (const std::exception& e)
+    {
+        DBG ("444 Radio: BridgeWebView constructor threw — " + juce::String (e.what()));
+        webView.reset();
+        return false;
+    }
+    catch (...)
+    {
+        DBG ("444 Radio: BridgeWebView constructor threw unknown exception");
+        webView.reset();
+        return false;
+    }
+
+    webViewCreated = true;   // only set AFTER successful creation
     addAndMakeVisible (*webView);
-    resized();   // lay out the new component
+    resized();
 
     // Build URL: ?host=juce so the page enables the native bridge
     juce::String url = kPluginUrl + "?host=juce";
@@ -252,6 +322,7 @@ void RadioPluginEditor::createWebView()
     webView->goToURL (url);
 
     DBG ("444 Radio: WebView navigating to " + url);
+    return true;
 }
 
 //==============================================================================
@@ -297,6 +368,10 @@ void RadioPluginEditor::handleWebMessage (const juce::String& jsonData)
     if (! json.isObject()) return;
 
     auto action = json["action"].toString();
+
+    // Fallback: some JS code uses "type" instead of "action"
+    if (action.isEmpty())
+        action = json["type"].toString();
 
     // ── Audio / loops import ──
     if (action == "import_audio" || action == "import_loops")

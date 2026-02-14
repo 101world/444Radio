@@ -27,7 +27,7 @@ public:
 private:
     // Timer: deferred WebView creation (WebView2 crashes if created too early)
     void timerCallback() override;
-    void createWebView();
+    bool createWebView();   // returns true on success
 
     // ─── Drag bar: user drags generated file into DAW timeline ───
     class DragBar final : public juce::Component
@@ -77,6 +77,8 @@ private:
     std::unique_ptr<AudioDownloader>           downloader;
     juce::File                                 downloadDir;
     bool                                       webViewCreated = false;
+    int                                        webViewRetries = 0;
+    static constexpr int kMaxWebViewRetries = 20;
 
     static constexpr int kWidth         = 480;
     static constexpr int kHeight        = 740;

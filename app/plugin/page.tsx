@@ -305,6 +305,57 @@ export default function PluginPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // ═══ FILE DRAG-IN DETECTION: open upload modal when user drags a file into the plugin ═══
+  const [isDraggingFileOver, setIsDraggingFileOver] = useState(false)
+  useEffect(() => {
+    let dragCounter = 0
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault()
+      dragCounter++
+      if (e.dataTransfer?.types.includes('Files')) setIsDraggingFileOver(true)
+    }
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault()
+      dragCounter--
+      if (dragCounter <= 0) { dragCounter = 0; setIsDraggingFileOver(false) }
+    }
+    const handleDragOver = (e: DragEvent) => { e.preventDefault() }
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault()
+      dragCounter = 0
+      setIsDraggingFileOver(false)
+      const files = e.dataTransfer?.files
+      if (files && files.length > 0) {
+        const file = files[0]
+        const ext = file.name.toLowerCase()
+        const isAudio = file.type.startsWith('audio/') || /\.(mp3|wav|flac|aac|ogg|m4a|wma|aiff)$/.test(ext)
+        const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|mpeg|mpg|avi|mkv|webm|wmv)$/.test(ext)
+        if (isAudio || isVideo) {
+          setUploadFile(file)
+          setUploadFilePreview(URL.createObjectURL(file))
+          setUploadError('')
+          // Smart default mode based on file type
+          if (isVideo) {
+            setUploadMode('video-to-audio')
+          } else {
+            setUploadMode('stem-split')
+          }
+          setShowUploadModal(true)
+        }
+      }
+    }
+    document.addEventListener('dragenter', handleDragEnter)
+    document.addEventListener('dragleave', handleDragLeave)
+    document.addEventListener('dragover', handleDragOver)
+    document.addEventListener('drop', handleDrop)
+    return () => {
+      document.removeEventListener('dragenter', handleDragEnter)
+      document.removeEventListener('dragleave', handleDragLeave)
+      document.removeEventListener('dragover', handleDragOver)
+      document.removeEventListener('drop', handleDrop)
+    }
+  }, [])
+
   // ═══ CHAT: load from localStorage ═══
   useEffect(() => {
     try {
@@ -1394,7 +1445,7 @@ export default function PluginPage() {
             </div>
             <p className="text-xs text-gray-400 ml-8">Sign in on the website → Settings → Plugin tab → Generate Token</p>
             <button
-              onClick={() => window.open('https://444radio.co.in/settings?tab=plugin', '_blank')}
+              onClick={() => window.location.href = 'https://444radio.co.in/settings?tab=plugin'}
               className="ml-8 mt-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-lg text-sm font-bold hover:from-cyan-500 hover:to-cyan-300 transition-all"
             >
               Open Settings → Get Token
@@ -1696,6 +1747,11 @@ export default function PluginPage() {
             <span className="text-white font-bold text-sm">444 Radio</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Back to Plugin Home — always visible */}
+            <button onClick={() => { window.location.href = '/plugin?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Back to Plugin Home">
+              <Home size={16} className="text-cyan-400" />
+            </button>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-full">
               <Zap size={12} className="text-cyan-400" />
               <span className="text-cyan-300 text-xs font-bold">{userCredits ?? '...'}</span>
@@ -1776,6 +1832,13 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50">
                         <Scissors size={12} /> Stems <span className="text-[10px] text-gray-500">(-5)</span>
                       </button>
+                      {/* Import to DAW */}
+                      {isInDAW && (
+                        <button onClick={() => sendToDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold">
+                          <Download size={12} /> Import to DAW
+                        </button>
+                      )}
                       {/* Audio Boost */}
                       <button onClick={() => handleAudioBoost(msg.result!.audioUrl!, msg.result!.title || 'Track')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
@@ -2621,6 +2684,17 @@ export default function PluginPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Drag-in file overlay ── */}
+      {isDraggingFileOver && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <div className="border-2 border-dashed border-cyan-400/60 rounded-3xl p-12 text-center space-y-3">
+            <Upload size={48} className="text-cyan-400 mx-auto" />
+            <p className="text-xl font-bold text-white">Drop file to process</p>
+            <p className="text-sm text-gray-400">Audio or video files — stems, boost, effects & more</p>
           </div>
         </div>
       )}
