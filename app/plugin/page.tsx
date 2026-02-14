@@ -240,6 +240,21 @@ export default function PluginPage() {
   // ── Release modal ──
   const [showReleaseModal, setShowReleaseModal] = useState(false)
 
+  // ── Effects params ──
+  const [showEffectsParams, setShowEffectsParams] = useState(false)
+  const [effectsDuration, setEffectsDuration] = useState(5)
+  const [effectsGuidance, setEffectsGuidance] = useState(3)
+  const [effectsTemperature, setEffectsTemperature] = useState(1)
+
+  // ── Loops params ──
+  const [showLoopsParams, setShowLoopsParams] = useState(false)
+  const [loopsBpm, setLoopsBpm] = useState(120)
+  const [loopsMaxDuration, setLoopsMaxDuration] = useState(8)
+  const [loopsVariations, setLoopsVariations] = useState(2)
+
+  // ── Boost params modal (for result card boost button) ──
+  const [showBoostParamsFor, setShowBoostParamsFor] = useState<{ audioUrl: string; title: string } | null>(null)
+
   // ── Chat sync ──
   const [isSyncingChat, setIsSyncingChat] = useState(false)
   const chatSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -931,7 +946,7 @@ export default function PluginPage() {
         const res = await fetch('/api/plugin/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ type: 'effects', prompt, duration: 5 })
+          body: JSON.stringify({ type: 'effects', prompt, duration: effectsDuration, classifier_free_guidance: effectsGuidance, temperature: effectsTemperature })
         })
         let result: any = null
         await parseNDJSON(res, () => {}, (r) => { result = r })
@@ -976,14 +991,14 @@ export default function PluginPage() {
         const res = await fetch('/api/plugin/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ type: 'loops', prompt, bpm: bpm ? parseInt(bpm) : 120 })
+          body: JSON.stringify({ type: 'loops', prompt, bpm: loopsBpm, max_duration: loopsMaxDuration, variations: loopsVariations })
         })
         let result: any = null
         await parseNDJSON(res, () => {}, (r) => { result = r })
 
         if (result?.success) {
           // Loops may return multiple variations
-          const variations = result.variations || [{ url: result.audioUrl, variation: 1 }]
+          const variations = result.loops || result.variations || [{ url: result.audioUrl, variation: 1 }]
           // Remove generating message
           setMessages(prev => prev.filter(m => m.id !== genMsgId))
           // Add each variation
@@ -1074,7 +1089,7 @@ export default function PluginPage() {
   }
 
   // ═══ AUDIO BOOST ═══
-  const handleAudioBoost = async (audioUrl: string, title: string) => {
+  const handleAudioBoost = async (audioUrl: string, title: string, params?: { bass: number; treble: number; volume: number; normalize: boolean; noiseReduction: boolean; format: string; bitrate: string }) => {
     if (userCredits !== null && userCredits < 1) {
       alert('⚡ Need 1 credit for audio boost.')
       return
@@ -1090,7 +1105,17 @@ export default function PluginPage() {
       const res = await fetch('/api/plugin/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ type: 'audio-boost', audioUrl })
+        body: JSON.stringify({
+          type: 'audio-boost', audioUrl,
+          bass_boost: params?.bass ?? boostBass,
+          treble_boost: params?.treble ?? boostTreble,
+          volume_boost: params?.volume ?? boostVolume,
+          normalize: params?.normalize ?? boostNormalize,
+          noise_reduction: params?.noiseReduction ?? boostNoiseReduction,
+          output_format: params?.format ?? boostFormat,
+          bitrate: params?.bitrate ?? boostBitrate,
+          trackTitle: title
+        })
       })
       let result: any = null
       await parseNDJSON(res, () => {}, (r) => { result = r })
@@ -1851,7 +1876,7 @@ export default function PluginPage() {
                         </button>
                       )}
                       {/* Audio Boost */}
-                      <button onClick={() => handleAudioBoost(msg.result!.audioUrl!, msg.result!.title || 'Track')}
+                      <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
                         <Volume2 size={12} /> Boost <span className="text-[10px] text-gray-500">(-1)</span>
                       </button>
@@ -1931,7 +1956,13 @@ export default function PluginPage() {
                             className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
                             <Download size={12} className="text-white" />
                           </button>
-                          <button onClick={() => handleAudioBoost(url as string, display.label)}
+                          {isInDAW && (
+                            <button onClick={() => sendToDAW(url as string, `${display.label} Stem`)}
+                              className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-full transition-colors" title="Import to DAW">
+                              <Download size={12} className="text-cyan-400" />
+                            </button>
+                          )}
+                          <button onClick={() => setShowBoostParamsFor({ audioUrl: url as string, title: display.label })}
                             className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-full transition-colors" title="Boost this stem">
                             <Volume2 size={12} className="text-orange-400" />
                           </button>
@@ -2011,6 +2042,54 @@ export default function PluginPage() {
                 <span className="text-xs text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
                   🎹 Instrumental Mode — No vocals will be generated
                 </span>
+              </div>
+            )}
+
+            {/* ── Effects Params Panel ── */}
+            {selectedType === 'effects' && (
+              <div className="flex items-center justify-center gap-4 mb-2 flex-wrap px-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] text-gray-400">Duration</label>
+                  <input type="range" min={1} max={10} value={effectsDuration} onChange={e => setEffectsDuration(Number(e.target.value))}
+                    className="w-20 h-1 accent-purple-500" />
+                  <span className="text-[10px] text-purple-300 w-5 text-center">{effectsDuration}s</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] text-gray-400">Guidance</label>
+                  <input type="range" min={1} max={10} step={0.5} value={effectsGuidance} onChange={e => setEffectsGuidance(Number(e.target.value))}
+                    className="w-16 h-1 accent-purple-500" />
+                  <span className="text-[10px] text-purple-300 w-4 text-center">{effectsGuidance}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] text-gray-400">Temp</label>
+                  <input type="range" min={0.1} max={2} step={0.1} value={effectsTemperature} onChange={e => setEffectsTemperature(Number(e.target.value))}
+                    className="w-16 h-1 accent-purple-500" />
+                  <span className="text-[10px] text-purple-300 w-5 text-center">{effectsTemperature}</span>
+                </div>
+              </div>
+            )}
+
+            {/* ── Loops Params Panel ── */}
+            {(selectedType as string) === 'loops' && (
+              <div className="flex items-center justify-center gap-4 mb-2 flex-wrap px-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] text-gray-400">BPM</label>
+                  <input type="number" min={60} max={300} value={loopsBpm} onChange={e => setLoopsBpm(Number(e.target.value))}
+                    className="w-14 bg-white/10 border border-white/20 rounded px-1.5 py-0.5 text-[11px] text-white text-center" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] text-gray-400">Duration</label>
+                  <input type="range" min={1} max={20} value={loopsMaxDuration} onChange={e => setLoopsMaxDuration(Number(e.target.value))}
+                    className="w-20 h-1 accent-cyan-500" />
+                  <span className="text-[10px] text-cyan-300 w-5 text-center">{loopsMaxDuration}s</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] text-gray-400">Variations</label>
+                  <button onClick={() => setLoopsVariations(loopsVariations === 1 ? 2 : 1)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${loopsVariations === 2 ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40' : 'bg-white/10 text-gray-400 border border-white/10'}`}>
+                    {loopsVariations}x
+                  </button>
+                </div>
               </div>
             )}
 
@@ -2096,7 +2175,7 @@ export default function PluginPage() {
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {QUICK_TAGS.map(tag => (
-                        <button key={tag} onClick={() => { setInput(prev => prev + (prev ? ', ' : '') + tag); setShowPromptSuggestions(false) }}
+                        <button key={tag} onClick={() => { setInput(prev => prev + (prev ? ', ' : '') + tag) }}
                           className="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 rounded-lg text-xs font-medium text-cyan-200 hover:text-white transition-all hover:scale-105">
                           {tag}
                         </button>
@@ -2695,6 +2774,81 @@ export default function PluginPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Audio Boost Params Modal ── */}
+      {showBoostParamsFor && (
+        <div className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-sm flex items-center justify-center" onClick={() => setShowBoostParamsFor(null)}>
+          <div className="bg-gray-900 border border-orange-500/30 rounded-2xl p-6 w-[380px] max-w-[90vw] space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-orange-300 flex items-center gap-2"><Volume2 size={18} /> Audio Boost</h3>
+              <button onClick={() => setShowBoostParamsFor(null)} className="text-gray-500 hover:text-white transition-colors"><X size={18} /></button>
+            </div>
+            <p className="text-xs text-gray-400 truncate">Track: {showBoostParamsFor.title}</p>
+
+            {/* Bass Boost */}
+            <div className="space-y-1">
+              <label className="text-xs text-gray-300 flex justify-between"><span>Bass Boost</span><span className="text-orange-400">{(document.getElementById('boost-bass') as HTMLInputElement)?.value || '0'} dB</span></label>
+              <input id="boost-bass" type="range" min="-10" max="10" defaultValue="0" className="w-full accent-orange-500 h-1.5" onChange={() => {}} />
+            </div>
+
+            {/* Treble Boost */}
+            <div className="space-y-1">
+              <label className="text-xs text-gray-300 flex justify-between"><span>Treble Boost</span><span className="text-orange-400">{(document.getElementById('boost-treble') as HTMLInputElement)?.value || '0'} dB</span></label>
+              <input id="boost-treble" type="range" min="-10" max="10" defaultValue="0" className="w-full accent-orange-500 h-1.5" onChange={() => {}} />
+            </div>
+
+            {/* Volume Boost */}
+            <div className="space-y-1">
+              <label className="text-xs text-gray-300 flex justify-between"><span>Volume Boost</span><span className="text-orange-400">{(document.getElementById('boost-volume') as HTMLInputElement)?.value || '2'}</span></label>
+              <input id="boost-volume" type="range" min="0" max="10" defaultValue="2" step="0.5" className="w-full accent-orange-500 h-1.5" onChange={() => {}} />
+            </div>
+
+            {/* Toggles row */}
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                <input id="boost-normalize" type="checkbox" defaultChecked className="accent-orange-500" /> Normalize
+              </label>
+              <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                <input id="boost-noise" type="checkbox" className="accent-orange-500" /> Noise Reduction
+              </label>
+            </div>
+
+            {/* Format & Bitrate */}
+            <div className="flex gap-3">
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-gray-400">Format</label>
+                <select id="boost-format" defaultValue="mp3" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                  <option value="mp3">MP3</option><option value="wav">WAV</option>
+                </select>
+              </div>
+              <div className="flex-1 space-y-1">
+                <label className="text-xs text-gray-400">Bitrate</label>
+                <select id="boost-bitrate" defaultValue="192k" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                  <option value="128k">128k</option><option value="192k">192k</option><option value="320k">320k</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Apply Button */}
+            <button
+              onClick={() => {
+                const bass = parseInt((document.getElementById('boost-bass') as HTMLInputElement)?.value || '0');
+                const treble = parseInt((document.getElementById('boost-treble') as HTMLInputElement)?.value || '0');
+                const volume = parseFloat((document.getElementById('boost-volume') as HTMLInputElement)?.value || '2');
+                const normalize = (document.getElementById('boost-normalize') as HTMLInputElement)?.checked ?? true;
+                const noiseReduction = (document.getElementById('boost-noise') as HTMLInputElement)?.checked ?? false;
+                const format = (document.getElementById('boost-format') as HTMLSelectElement)?.value || 'mp3';
+                const bitrate = (document.getElementById('boost-bitrate') as HTMLSelectElement)?.value || '192k';
+                handleAudioBoost(showBoostParamsFor.audioUrl, showBoostParamsFor.title, { bass, treble, volume, normalize, noiseReduction, format, bitrate });
+                setShowBoostParamsFor(null);
+              }}
+              className="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+            >
+              <Volume2 size={14} /> Apply Boost <span className="text-xs opacity-70">(-1 credit)</span>
+            </button>
           </div>
         </div>
       )}
