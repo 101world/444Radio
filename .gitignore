@@ -48,3 +48,6 @@ next-env.d.ts
 444radio-plugin/packages/
 444radio-plugin/nuget.exe
 
+
+# Local v2 plugin distribution folder
+444 Radio Plugin v2/

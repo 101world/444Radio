@@ -4,6 +4,20 @@
 static const juce::String kPluginUrl = "https://444radio.co.in/plugin";
 
 //==============================================================================
+//  Helper: writable WebView2 data folder under %LOCALAPPDATA%\444Radio\WebView2
+//  This avoids permission issues when loaded inside DAWs whose exe lives in
+//  restricted directories (e.g. Ableton in C:\ProgramData, Premiere Pro, etc.)
+//==============================================================================
+#if JUCE_WINDOWS
+static juce::File getWebView2DataFolder()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+               .getChildFile ("444Radio")
+               .getChildFile ("WebView2");
+}
+#endif
+
+//==============================================================================
 //  BridgeWebView — file-local subclass that intercepts juce-bridge:// URLs
 //==============================================================================
 class BridgeWebView final : public juce::WebBrowserComponent
@@ -14,6 +28,10 @@ public:
               juce::WebBrowserComponent::Options()
 #if JUCE_WINDOWS
                   .withBackend (juce::WebBrowserComponent::Options::Backend::webview2)
+                  .withWinWebView2Options (
+                      juce::WebBrowserComponent::Options::WinWebView2()
+                          .withUserDataFolder (getWebView2DataFolder())
+                  )
 #endif
                   .withKeepPageLoadedWhenBrowserIsHidden()
           ),

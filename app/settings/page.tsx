@@ -962,15 +962,15 @@ function SettingsPageInner() {
               {subscription?.hasSubscription ? (
                 <div className="space-y-3">
                   <a
-                    href="https://media.444radio.co.in/downloads/444Radio-Plugin-Windows.zip"
+                    href="https://media.444radio.co.in/downloads/444Radio-Plugin-v2-Windows.zip"
                     download
                     onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
                   >
                     <Download className="w-4 h-4" />
-                    Download Plugin (Free)
+                    Download Plugin v2 (Free)
                   </a>
-                  <p className="text-xs text-gray-500">Windows VST3 · 1.7 MB · Requires WebView2 Runtime</p>
+                  <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
                   <button
                     onClick={() => setShowInstallGuide(true)}
                     className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
@@ -1018,7 +1018,7 @@ function SettingsPageInner() {
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">1</div>
                       <div>
                         <p className="font-semibold text-white text-sm">Extract the ZIP</p>
-                        <p className="text-xs text-gray-400 mt-1">Unzip <span className="text-cyan-400 font-mono">444Radio-Plugin-Windows.zip</span> — you&apos;ll see a folder called <span className="text-cyan-400 font-mono">444 Radio.vst3</span></p>
+                        <p className="text-xs text-gray-400 mt-1">Unzip <span className="text-cyan-400 font-mono">444Radio-Plugin-v2-Windows.zip</span> — you&apos;ll find <span className="text-cyan-400 font-mono">444 Radio v2.exe</span> (standalone) and <span className="text-cyan-400 font-mono">444 Radio v2.vst3</span> (plugin)</p>
                       </div>
                     </div>
 
@@ -1027,7 +1027,7 @@ function SettingsPageInner() {
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">2</div>
                       <div>
                         <p className="font-semibold text-white text-sm">Copy to VST3 Folder</p>
-                        <p className="text-xs text-gray-400 mt-1">Move the <span className="text-cyan-400 font-mono">444 Radio.vst3</span> folder to:</p>
+                        <p className="text-xs text-gray-400 mt-1">Move the <span className="text-cyan-400 font-mono">444 Radio v2.vst3</span> folder to:</p>
                         <div className="mt-2 space-y-1.5">
                           <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg">
                             <FolderOpen className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
@@ -1045,7 +1045,7 @@ function SettingsPageInner() {
                         <p className="font-semibold text-white text-sm">Rescan in Your DAW</p>
                         <p className="text-xs text-gray-400 mt-1"><strong className="text-white">Ableton:</strong> Preferences → Plug-ins → VST3 → Rescan</p>
                         <p className="text-xs text-gray-400"><strong className="text-white">FL Studio:</strong> Options → Manage Plugins → Find more → Rescan</p>
-                        <p className="text-xs text-gray-400 mt-1">Look for <span className="text-cyan-400 font-semibold">&quot;444 Radio&quot;</span> under VST3 instruments</p>
+                        <p className="text-xs text-gray-400 mt-1">Look for <span className="text-cyan-400 font-semibold">&quot;444 Radio v2&quot;</span> under VST3 instruments</p>
                       </div>
                     </div>
 

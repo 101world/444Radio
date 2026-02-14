@@ -15,9 +15,9 @@ async function upload() {
     },
   })
 
-  const zipPath = path.join(__dirname, '444Radio-Plugin-Windows.zip')
+  const zipPath = path.join(__dirname, '444Radio-Plugin-v2-Windows.zip')
   const buffer = fs.readFileSync(zipPath)
-  const key = 'downloads/444Radio-Plugin-Windows.zip'
+  const key = 'downloads/444Radio-Plugin-v2-Windows.zip'
 
   console.log(`Uploading ${(buffer.length / 1024 / 1024).toFixed(2)} MB to R2...`)
 
@@ -26,7 +26,7 @@ async function upload() {
     Key: key,
     Body: buffer,
     ContentType: 'application/zip',
-    ContentDisposition: 'attachment; filename="444Radio-Plugin-Windows.zip"',
+    ContentDisposition: 'attachment; filename="444Radio-Plugin-v2-Windows.zip"',
   }))
 
   const url = `https://media.444radio.co.in/${key}`
