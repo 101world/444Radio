@@ -47,6 +47,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   stems: 5,
   extract: 1,
   'audio-boost': 1,
+  'video-to-audio': (p) => ((p.quality as string) === 'hq' ? 10 : 2),
 }
 
 function getCreditCost(type: string, params: Record<string, unknown>): number {
@@ -135,6 +136,9 @@ export async function POST(req: NextRequest) {
           break
         case 'extract':
           result = await generateStems(userId, body, jobId, requestSignal)
+          break
+        case 'video-to-audio':
+          result = await generateVideoToAudio(userId, body, jobId, requestSignal)
           break
         default:
           result = { success: false, error: 'Unknown type' }
@@ -659,6 +663,113 @@ async function generateAudioBoost(userId: string, body: Record<string, unknown>,
   })
 
   return { success: true, audioUrl: r2.url, settings: { bass_boost, treble_boost, volume_boost, normalize, noise_reduction, output_format, bitrate } }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// VIDEO TO AUDIO  (mirrors /api/generate/video-to-audio)
+// ──────────────────────────────────────────────────────────────────
+async function generateVideoToAudio(userId: string, body: Record<string, unknown>, jobId: string, signal: AbortSignal) {
+  const videoUrl = body.videoUrl as string
+  if (!videoUrl) return { success: false, error: 'videoUrl required' }
+
+  const prompt = (body.prompt as string || '').trim()
+  if (!prompt) return { success: false, error: 'prompt required — describe the sounds you want' }
+
+  const quality = (body.quality as string) || 'standard'
+  const isHQ = quality === 'hq'
+
+  try {
+    const urlObj = new URL(videoUrl)
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      return { success: false, error: 'Video URL must use HTTP or HTTPS' }
+    }
+  } catch {
+    return { success: false, error: 'Invalid video URL' }
+  }
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  const maxRetries = 3
+  let output: any = null
+  let lastError: string = ''
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    if (signal.aborted) return { success: false, error: 'Cancelled' }
+
+    try {
+      let prediction: any
+
+      if (isHQ) {
+        prediction = await replicate.predictions.create({
+          model: 'tencent/hunyuanvideo-foley',
+          version: '88045928bb97971cffefabfc05a4e55e5bb1c96d475ad4ecc3d229d9169758ae',
+          input: { video: videoUrl, prompt, return_audio: false, guidance_scale: 4.5, num_inference_steps: 50 },
+        })
+      } else {
+        prediction = await replicate.predictions.create({
+          model: 'zsxkib/mmaudio',
+          version: '62871fb59889b2d7c13777f08deb3b36bdff88f7e1d53a50ad7694548a41b484',
+          input: { video: videoUrl, prompt, duration: 8, num_steps: 25, cfg_strength: 4.5, negative_prompt: 'music', seed: -1 },
+        })
+      }
+
+      await updatePluginJob(jobId, { replicatePredictionId: prediction.id })
+
+      let final = prediction
+      let pollAttempts = 0
+      const maxPoll = isHQ ? 120 : 60
+
+      while (final.status !== 'succeeded' && final.status !== 'failed' && final.status !== 'canceled' && pollAttempts < maxPoll) {
+        if (signal.aborted) {
+          try { await replicate.predictions.cancel(prediction.id) } catch {}
+          return { success: false, error: 'Cancelled' }
+        }
+        await new Promise(r => setTimeout(r, 1000))
+        final = await replicate.predictions.get(prediction.id)
+        pollAttempts++
+      }
+
+      if (final.status === 'failed') throw new Error(typeof final.error === 'string' ? final.error : 'Generation failed')
+      if (final.status !== 'succeeded') throw new Error('Timed out')
+
+      output = final.output
+      break
+    } catch (err: any) {
+      lastError = err.message || 'Generation failed'
+      const is502 = lastError.includes('502') || lastError.includes('Bad Gateway')
+      if (is502 && attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, attempt * 3000))
+        continue
+      }
+      if (attempt === maxRetries) return { success: false, error: lastError }
+    }
+  }
+
+  if (!output) return { success: false, error: lastError || 'No output' }
+
+  const outputUrl = typeof output === 'string' ? output : output?.url || output?.[0]
+  if (!outputUrl) return { success: false, error: 'No output URL from model' }
+
+  // Download and upload to R2
+  const dlRes = await fetch(outputUrl)
+  if (!dlRes.ok) return { success: false, error: 'Failed to download generated audio' }
+  const buffer = Buffer.from(await dlRes.arrayBuffer())
+  const r2Key = `${userId}/synced-${Date.now()}.mp4`
+  const r2 = await uploadToR2(buffer, 'audio-files', r2Key, 'video/mp4')
+  if (!r2.success) return { success: false, error: 'Failed to save to storage' }
+
+  // Save to combined_media
+  await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+    method: 'POST',
+    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId, type: 'video',
+      title: `${isHQ ? '[HQ] ' : ''}Video SFX: ${prompt.substring(0, 50)}`,
+      prompt, audio_url: r2.url, media_url: r2.url, is_public: false,
+    }),
+  })
+
+  return { success: true, audioUrl: r2.url, videoUrl: r2.url, prompt, quality, title: `Video SFX: ${prompt.substring(0, 50)}` }
 }
 
 // ==================================================================
