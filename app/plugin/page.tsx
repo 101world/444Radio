@@ -2790,29 +2790,29 @@ export default function PluginPage() {
 
             {/* Bass Boost */}
             <div className="space-y-1">
-              <label className="text-xs text-gray-300 flex justify-between"><span>Bass Boost</span><span className="text-orange-400">{(document.getElementById('boost-bass') as HTMLInputElement)?.value || '0'} dB</span></label>
-              <input id="boost-bass" type="range" min="-10" max="10" defaultValue="0" className="w-full accent-orange-500 h-1.5" onChange={() => {}} />
+              <label className="text-xs text-gray-300 flex justify-between"><span>Bass Boost</span><span className="text-orange-400">{boostBass} dB</span></label>
+              <input type="range" min={-10} max={10} value={boostBass} onChange={e => setBoostBass(Number(e.target.value))} className="w-full accent-orange-500 h-1.5" />
             </div>
 
             {/* Treble Boost */}
             <div className="space-y-1">
-              <label className="text-xs text-gray-300 flex justify-between"><span>Treble Boost</span><span className="text-orange-400">{(document.getElementById('boost-treble') as HTMLInputElement)?.value || '0'} dB</span></label>
-              <input id="boost-treble" type="range" min="-10" max="10" defaultValue="0" className="w-full accent-orange-500 h-1.5" onChange={() => {}} />
+              <label className="text-xs text-gray-300 flex justify-between"><span>Treble Boost</span><span className="text-orange-400">{boostTreble} dB</span></label>
+              <input type="range" min={-10} max={10} value={boostTreble} onChange={e => setBoostTreble(Number(e.target.value))} className="w-full accent-orange-500 h-1.5" />
             </div>
 
             {/* Volume Boost */}
             <div className="space-y-1">
-              <label className="text-xs text-gray-300 flex justify-between"><span>Volume Boost</span><span className="text-orange-400">{(document.getElementById('boost-volume') as HTMLInputElement)?.value || '2'}</span></label>
-              <input id="boost-volume" type="range" min="0" max="10" defaultValue="2" step="0.5" className="w-full accent-orange-500 h-1.5" onChange={() => {}} />
+              <label className="text-xs text-gray-300 flex justify-between"><span>Volume Boost</span><span className="text-orange-400">{boostVolume}</span></label>
+              <input type="range" min={0} max={10} step={0.5} value={boostVolume} onChange={e => setBoostVolume(Number(e.target.value))} className="w-full accent-orange-500 h-1.5" />
             </div>
 
             {/* Toggles row */}
             <div className="flex gap-4">
               <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
-                <input id="boost-normalize" type="checkbox" defaultChecked className="accent-orange-500" /> Normalize
+                <input type="checkbox" checked={boostNormalize} onChange={e => setBoostNormalize(e.target.checked)} className="accent-orange-500" /> Normalize
               </label>
               <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
-                <input id="boost-noise" type="checkbox" className="accent-orange-500" /> Noise Reduction
+                <input type="checkbox" checked={boostNoiseReduction} onChange={e => setBoostNoiseReduction(e.target.checked)} className="accent-orange-500" /> Noise Reduction
               </label>
             </div>
 
@@ -2820,13 +2820,13 @@ export default function PluginPage() {
             <div className="flex gap-3">
               <div className="flex-1 space-y-1">
                 <label className="text-xs text-gray-400">Format</label>
-                <select id="boost-format" defaultValue="mp3" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                <select value={boostFormat} onChange={e => setBoostFormat(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
                   <option value="mp3">MP3</option><option value="wav">WAV</option>
                 </select>
               </div>
               <div className="flex-1 space-y-1">
                 <label className="text-xs text-gray-400">Bitrate</label>
-                <select id="boost-bitrate" defaultValue="192k" className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+                <select value={boostBitrate} onChange={e => setBoostBitrate(e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
                   <option value="128k">128k</option><option value="192k">192k</option><option value="320k">320k</option>
                 </select>
               </div>
@@ -2835,14 +2835,11 @@ export default function PluginPage() {
             {/* Apply Button */}
             <button
               onClick={() => {
-                const bass = parseInt((document.getElementById('boost-bass') as HTMLInputElement)?.value || '0');
-                const treble = parseInt((document.getElementById('boost-treble') as HTMLInputElement)?.value || '0');
-                const volume = parseFloat((document.getElementById('boost-volume') as HTMLInputElement)?.value || '2');
-                const normalize = (document.getElementById('boost-normalize') as HTMLInputElement)?.checked ?? true;
-                const noiseReduction = (document.getElementById('boost-noise') as HTMLInputElement)?.checked ?? false;
-                const format = (document.getElementById('boost-format') as HTMLSelectElement)?.value || 'mp3';
-                const bitrate = (document.getElementById('boost-bitrate') as HTMLSelectElement)?.value || '192k';
-                handleAudioBoost(showBoostParamsFor.audioUrl, showBoostParamsFor.title, { bass, treble, volume, normalize, noiseReduction, format, bitrate });
+                handleAudioBoost(showBoostParamsFor.audioUrl, showBoostParamsFor.title, {
+                  bass: boostBass, treble: boostTreble, volume: boostVolume,
+                  normalize: boostNormalize, noiseReduction: boostNoiseReduction,
+                  format: boostFormat, bitrate: boostBitrate
+                });
                 setShowBoostParamsFor(null);
               }}
               className="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
