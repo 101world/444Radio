@@ -962,8 +962,7 @@ function SettingsPageInner() {
               {subscription?.hasSubscription ? (
                 <div className="space-y-3">
                   <a
-                    href="https://media.444radio.co.in/downloads/444Radio-Plugin-v2-Windows.zip"
-                    download
+                    href="/api/plugin/download-installer"
                     onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
                   >
