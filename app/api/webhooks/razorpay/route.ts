@@ -1,18 +1,67 @@
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { logCreditTransaction } from '@/lib/credit-transactions'
+
+// ─────────────────────────────────────────────────────────────
+// CANONICAL Razorpay webhook handler (consolidated Feb 2026)
+// All Razorpay webhook traffic should point to /api/webhooks/razorpay
+// ─────────────────────────────────────────────────────────────
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// ── Plan → credits mapping (fallback when notes.credits is missing) ──
+const PLAN_CREDITS: Record<string, { credits: number; label: string }> = {
+  // Creator plans
+  'plan_S2DGVK6J270rtt': { credits: 167, label: 'Creator Monthly' },
+  'plan_S2DGkl8VQJiZvV': { credits: 1667, label: 'Creator Annual' },
+  'plan_S2DJv0bFnWoNLS': { credits: 1667, label: 'Creator Annual (alt)' },
+  // Pro plans
+  'plan_S2DHUGo7n1m6iv': { credits: 535, label: 'Pro Monthly' },
+  'plan_S2DNEvy1YzYWNh': { credits: 5167, label: 'Pro Annual' },
+  // Studio plans
+  'plan_S2DIdCKNcV6TtA': { credits: 1235, label: 'Studio Monthly' },
+  'plan_S2DOABOeGedJHk': { credits: 11967, label: 'Studio Annual' },
+}
+
+// Detect human-readable plan type from plan ID
+function detectPlanType(planId: string): string {
+  const id = (planId || '').toUpperCase()
+  if (id.includes('S2DI') || id.includes('S2DO')) return 'studio'
+  if (id.includes('S2DH') || id.includes('S2DN')) return 'pro'
+  if (id.includes('S2DG') || id.includes('S2DJ')) return 'creator'
+  return 'creator' // safe default
+}
+
+// ── Idempotency: check if we already processed this event ──
+async function isAlreadyProcessed(razorpayId: string, eventType: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('credit_transactions')
+      .select('id')
+      .eq('type', 'subscription_bonus')
+      .contains('metadata', { razorpay_id: razorpayId, event_type: eventType })
+      .limit(1)
+
+    if (error) {
+      console.error('[Razorpay] Idempotency check failed:', error)
+      return false // fail open — better to risk double than block
+    }
+
+    return (data?.length ?? 0) > 0
+  } catch (err) {
+    console.error('[Razorpay] Idempotency check error:', err)
+    return false
+  }
+}
+
 export async function POST(req: Request) {
   console.log('[Razorpay Webhook] POST request received')
   try {
     const body = await req.text()
     const signature = req.headers.get('x-razorpay-signature')
-
-    console.log('[Razorpay Webhook] Processing webhook, signature:', signature ? 'present' : 'missing')
 
     if (!signature) {
       console.error('[Razorpay Webhook] No signature provided')
@@ -31,32 +80,20 @@ export async function POST(req: Request) {
     }
 
     const event = JSON.parse(body)
-    console.log('[Razorpay Webhook] Event received:', event.event)
+    console.log('[Razorpay Webhook] Event:', event.event)
 
-    // Razorpay webhook payload structure:
-    // {
-    //   event: "subscription.activated",
-    //   payload: {
-    //     subscription: { id, customer_id, plan_id, status, start_at, end_at, ... }
-    //     payment: { id, amount, status, customer_id, ... }
-    //   }
-    // }
-    // Note: Direct access - no .entity nested object
-    
-    // Handle different event types
     switch (event.event) {
-      // Payment completed - deliver credits immediately
       case 'payment.captured':
-        await handlePaymentCaptured(event.payload.payment)
+        await handlePaymentCaptured(event.payload.payment, event.event)
         break
 
       case 'payment.authorized':
-        await handlePaymentSuccess(event.payload.payment)
+        console.log('[Razorpay] Payment authorized (no credit action)')
         break
 
       case 'subscription.activated':
       case 'subscription.charged':
-        await handleSubscriptionSuccess(event.payload.subscription)
+        await handleSubscriptionSuccess(event.payload.subscription, event.event)
         break
 
       case 'subscription.paused':
@@ -97,122 +134,144 @@ export async function POST(req: Request) {
   }
 }
 
-async function handleSubscriptionSuccess(subscription: any) {
-  console.log('[Razorpay] Subscription activated:', subscription.id)
-
-  const customerId = subscription.customer_id
-  const planId = subscription.plan_id
-
-  // First try: Find user by Razorpay customer ID
+// ── Resolve user from Razorpay customer ID (shared helper) ──
+async function resolveUser(customerId: string) {
+  // First try: direct lookup by customer ID
   let { data: user, error } = await supabaseAdmin
     .from('users')
     .select('*')
     .eq('razorpay_customer_id', customerId)
     .single()
 
-  // Second try: If not found by customer ID, fetch customer email from Razorpay and match
-  if (error || !user) {
-    console.log('[Razorpay] User not found by customer ID, fetching from Razorpay API')
-    
-    try {
-      // Fetch customer details from Razorpay
-      const razorpayAuth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64')
-      const customerResponse = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
-        headers: {
-          'Authorization': `Basic ${razorpayAuth}`
-        }
-      })
+  if (!error && user) return user
 
-      if (customerResponse.ok) {
-        const customer = await customerResponse.json()
-        const email = customer.email
+  // Second try: fetch customer email from Razorpay API
+  try {
+    const razorpayAuth = Buffer.from(
+      `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
+    ).toString('base64')
+    const res = await fetch(`https://api.razorpay.com/v1/customers/${customerId}`, {
+      headers: { Authorization: `Basic ${razorpayAuth}` },
+    })
+    if (res.ok) {
+      const customer = await res.json()
+      const { data: userByEmail, error: emailError } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('email', customer.email)
+        .single()
 
-        console.log('[Razorpay] Customer email:', email)
-
-        // Find user by email
-        const { data: userByEmail, error: emailError } = await supabaseAdmin
+      if (!emailError && userByEmail) {
+        // Store customer ID for future lookups
+        await supabaseAdmin
           .from('users')
-          .select('*')
-          .eq('email', email)
-          .single()
-
-        if (!emailError && userByEmail) {
-          user = userByEmail
-          console.log('[Razorpay] Found user by email:', email)
-          
-          // Store the customer ID for future lookups
-          await supabaseAdmin
-            .from('users')
-            .update({ razorpay_customer_id: customerId })
-            .eq('clerk_user_id', user.clerk_user_id)
-        }
+          .update({ razorpay_customer_id: customerId })
+          .eq('clerk_user_id', userByEmail.clerk_user_id)
+        return userByEmail
       }
-    } catch (fetchError) {
-      console.error('[Razorpay] Failed to fetch customer from Razorpay:', fetchError)
     }
+  } catch (e) {
+    console.error('[Razorpay] Failed to fetch customer from API:', e)
   }
 
+  return null
+}
+
+async function handleSubscriptionSuccess(subscription: any, eventType: string) {
+  const subscriptionEntity = subscription.entity || subscription
+  console.log('[Razorpay] Subscription event:', eventType, subscriptionEntity.id)
+
+  const customerId = subscriptionEntity.customer_id
+  const planId = subscriptionEntity.plan_id
+  const idempotencyKey = `${subscriptionEntity.id}_${eventType}`
+
+  // ── Idempotency check ──
+  if (await isAlreadyProcessed(idempotencyKey, eventType)) {
+    console.log('[Razorpay] ⏭ Already processed:', idempotencyKey)
+    return
+  }
+
+  const user = await resolveUser(customerId)
   if (!user) {
     console.error('[Razorpay] User not found for customer:', customerId)
     return
   }
 
-  // Determine credits based on plan - read from notes first (set by checkout), then fallback to plan mapping
+  // ── Determine credits to add ──
   let creditsToAdd = 0
-  
-  // Try to get credits from order notes (most reliable - set by checkout route)
-  const orderNotesCredits = subscription.notes?.credits
+  let creditSource = 'unknown'
+
+  // Priority 1: notes.credits (set by our checkout route — most reliable)
+  const orderNotesCredits = subscriptionEntity.notes?.credits
   if (orderNotesCredits) {
     creditsToAdd = parseInt(orderNotesCredits, 10)
-    console.log('[Razorpay] Credits from order notes:', creditsToAdd)
+    creditSource = 'notes.credits'
   } else {
-    // Fallback: map plan ID to credits (for old subscriptions)
-    const planMapping: Record<string, number> = {
-      // Creator plans (monthly/annual)
-      'plan_S2DGVK6J270rtt': 167,  // Creator monthly
-      'plan_S2DGkl8VQJiZvV': 1667,  // Creator annual
-      // Pro plans (monthly/annual) 
-      'plan_Pro_Monthly': 535,     // Pro monthly (update with actual plan ID)
-      'plan_Pro_Annual': 5167,     // Pro annual (update with actual plan ID)
-      // Studio plans (monthly/annual)
-      'plan_Studio_Monthly': 1235, // Studio monthly (update with actual plan ID)
-      'plan_Studio_Annual': 11967  // Studio annual (update with actual plan ID)
-    }
-    
-    creditsToAdd = planMapping[planId] || 0
-    console.log('[Razorpay] Credits from plan mapping:', creditsToAdd, 'for plan:', planId)
-    
-    if (creditsToAdd === 0) {
-      console.warn('[Razorpay] Unknown plan ID:', planId, '- using 0 credits')
+    // Priority 2: plan mapping
+    const plan = PLAN_CREDITS[planId]
+    if (plan) {
+      creditsToAdd = plan.credits
+      creditSource = `planMapping (${plan.label})`
+    } else {
+      console.warn('[Razorpay] Unknown plan ID:', planId, '— 0 credits')
     }
   }
 
-  console.log('[Razorpay] Adding', creditsToAdd, 'credits to user:', user.clerk_user_id)
+  if (creditsToAdd <= 0) {
+    console.warn('[Razorpay] No credits to award for subscription:', subscriptionEntity.id)
+    return
+  }
 
-  // Update user credits and subscription status
+  const planType = detectPlanType(planId)
+  const newBalance = (user.credits || 0) + creditsToAdd
+
+  console.log(`[Razorpay] Awarding ${creditsToAdd} credits (${creditSource}) to ${user.clerk_user_id}`)
+
+  // ── Update user ──
   const { error: updateError } = await supabaseAdmin
     .from('users')
     .update({
-      credits: user.credits + creditsToAdd,
+      credits: newBalance,
       subscription_status: 'active',
-      subscription_plan: planId,
-      subscription_id: subscription.id,
-      subscription_start: subscription.start_at,
-      subscription_end: subscription.end_at,
+      subscription_plan: planType,
+      subscription_id: subscriptionEntity.id,
+      subscription_start: subscriptionEntity.start_at,
+      subscription_end: subscriptionEntity.end_at,
       razorpay_customer_id: customerId,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
     .eq('clerk_user_id', user.clerk_user_id)
 
   if (updateError) {
     console.error('[Razorpay] Failed to update user:', updateError)
-  } else {
-    console.log('[Razorpay] Successfully added', creditsToAdd, 'credits to user:', user.clerk_user_id)
+    return
   }
+
+  // ── Log transaction (idempotency record) ──
+  await logCreditTransaction({
+    userId: user.clerk_user_id,
+    amount: creditsToAdd,
+    balanceAfter: newBalance,
+    type: 'subscription_bonus',
+    status: 'success',
+    description: `Subscription ${eventType}: +${creditsToAdd} credits (${planType})`,
+    metadata: {
+      razorpay_id: idempotencyKey,
+      event_type: eventType,
+      plan_id: planId,
+      plan_type: planType,
+      subscription_id: subscriptionEntity.id,
+      credit_source: creditSource,
+      previous_balance: user.credits || 0,
+    },
+  })
+
+  console.log(`[Razorpay] ✅ ${creditsToAdd} credits → ${user.clerk_user_id} (${user.credits || 0} → ${newBalance})`)
 }
 
 async function handleSubscriptionEnd(subscription: any) {
-  console.log('[Razorpay] Subscription ended:', subscription.id)
+  const entity = subscription.entity || subscription
+  console.log('[Razorpay] Subscription ended:', entity.id)
 
   const { error } = await supabaseAdmin
     .from('users')
@@ -220,15 +279,14 @@ async function handleSubscriptionEnd(subscription: any) {
       subscription_status: 'cancelled',
       updated_at: new Date().toISOString()
     })
-    .eq('subscription_id', subscription.id)
+    .eq('subscription_id', entity.id)
 
-  if (error) {
-    console.error('[Razorpay] Failed to update subscription status:', error)
-  }
+  if (error) console.error('[Razorpay] Failed to cancel subscription:', error)
 }
 
 async function handleSubscriptionPaused(subscription: any) {
-  console.log('[Razorpay] Subscription paused:', subscription.id)
+  const entity = subscription.entity || subscription
+  console.log('[Razorpay] Subscription paused:', entity.id)
 
   const { error } = await supabaseAdmin
     .from('users')
@@ -236,15 +294,14 @@ async function handleSubscriptionPaused(subscription: any) {
       subscription_status: 'paused',
       updated_at: new Date().toISOString()
     })
-    .eq('subscription_id', subscription.id)
+    .eq('subscription_id', entity.id)
 
-  if (error) {
-    console.error('[Razorpay] Failed to update subscription status:', error)
-  }
+  if (error) console.error('[Razorpay] Failed to pause subscription:', error)
 }
 
 async function handleSubscriptionResumed(subscription: any) {
-  console.log('[Razorpay] Subscription resumed:', subscription.id)
+  const entity = subscription.entity || subscription
+  console.log('[Razorpay] Subscription resumed:', entity.id)
 
   const { error } = await supabaseAdmin
     .from('users')
@@ -252,104 +309,103 @@ async function handleSubscriptionResumed(subscription: any) {
       subscription_status: 'active',
       updated_at: new Date().toISOString()
     })
-    .eq('subscription_id', subscription.id)
+    .eq('subscription_id', entity.id)
 
-  if (error) {
-    console.error('[Razorpay] Failed to update subscription status:', error)
-  }
+  if (error) console.error('[Razorpay] Failed to resume subscription:', error)
 }
 
 async function handleSubscriptionUpdated(subscription: any) {
-  console.log('[Razorpay] Subscription updated:', subscription.id)
+  const entity = subscription.entity || subscription
+  console.log('[Razorpay] Subscription updated:', entity.id)
 
   const { error } = await supabaseAdmin
     .from('users')
     .update({
-      subscription_plan: subscription.plan_id,
-      subscription_end: subscription.end_at,
+      subscription_plan: detectPlanType(entity.plan_id),
+      subscription_end: entity.end_at,
       updated_at: new Date().toISOString()
     })
-    .eq('subscription_id', subscription.id)
+    .eq('subscription_id', entity.id)
 
-  if (error) {
-    console.error('[Razorpay] Failed to update subscription:', error)
-  }
+  if (error) console.error('[Razorpay] Failed to update subscription:', error)
 }
 
-async function handlePaymentSuccess(payment: any) {
-  console.log('[Razorpay] Payment authorized:', payment.id)
-  // Additional payment handling logic if needed
-}
+async function handlePaymentCaptured(payment: any, eventType: string) {
+  // Razorpay sends payment.entity in webhook payloads
+  const entity = payment.entity || payment
+  const paymentId = entity.id
 
-async function handlePaymentCaptured(payment: any) {
-  // CRITICAL: Razorpay sends payment.entity in webhook, not just payment
-  const paymentEntity = payment.entity || payment
-  
-  console.log('[Razorpay] Payment captured:', paymentEntity.id, 'Amount:', paymentEntity.amount)
-  console.log('[Razorpay] Payment notes:', JSON.stringify(paymentEntity.notes))
-  console.log('[Razorpay] Payment email:', paymentEntity.email)
+  console.log('[Razorpay] Payment captured:', paymentId, 'Amount:', entity.amount)
 
-  // Check if this is a Creator subscription payment (₹45000 = ₹450)
-  if (paymentEntity.amount !== 45000) {
-    console.log('[Razorpay] Not a Creator subscription amount, skipping')
+  // ── Idempotency check ──
+  if (await isAlreadyProcessed(paymentId, eventType)) {
+    console.log('[Razorpay] ⏭ Payment already processed:', paymentId)
     return
   }
 
-  // Get user by notes (clerk_user_id should be in payment notes)
-  const notes = paymentEntity.notes || {}
+  const notes = entity.notes || {}
   const clerkUserId = notes.clerk_user_id
+  const creditsFromNotes = notes.credits ? parseInt(notes.credits, 10) : 0
 
-  console.log('[Razorpay] Extracted clerk_user_id:', clerkUserId)
-
-  if (!clerkUserId) {
-    console.error('[Razorpay] No clerk_user_id in payment notes')
-    console.error('[Razorpay] Available notes:', Object.keys(notes))
+  if (!clerkUserId || creditsFromNotes <= 0) {
+    console.log('[Razorpay] No clerk_user_id or credits in notes — skipping payment.captured')
     return
   }
 
-  console.log('[Razorpay] Fetching user from Supabase...')
-
-  // Get current credits
-  const { data: userData, error: fetchError } = await supabaseAdmin
+  // Get current user
+  const { data: user, error: fetchError } = await supabaseAdmin
     .from('users')
     .select('credits, email')
     .eq('clerk_user_id', clerkUserId)
     .single()
 
-  if (fetchError || !userData) {
-    console.error('[Razorpay] Failed to fetch user:', fetchError)
+  if (fetchError || !user) {
+    console.error('[Razorpay] User not found:', clerkUserId, fetchError)
     return
   }
 
-  console.log('[Razorpay] Found user:', userData.email, 'Current credits:', userData.credits)
+  const newBalance = (user.credits || 0) + creditsFromNotes
+  const planType = notes.plan_type || detectPlanType(notes.plan_id || '')
 
-  // Get credits from payment notes (set by checkout route)
-  const creditsToAdd = parseInt(notes.credits || '167', 10) // Default to Creator monthly (167)
-  console.log('[Razorpay] Credits from payment notes:', creditsToAdd)
-
-  // Deliver credits and activate subscription status
-  const { error } = await supabaseAdmin
+  // ── Update user ──
+  const { error: updateError } = await supabaseAdmin
     .from('users')
     .update({
-      credits: (userData.credits || 0) + creditsToAdd,
+      credits: newBalance,
       subscription_status: 'active',
-      subscription_plan: notes.plan_type || 'creator', // Use plan_type from notes
+      subscription_plan: planType,
       razorpay_customer_id: notes.customer_id,
       subscription_id: notes.subscription_id,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     })
     .eq('clerk_user_id', clerkUserId)
 
-  if (error) {
-    console.error('[Razorpay] Failed to deliver credits:', error)
-  } else {
-    console.log('[Razorpay] ✅ SUCCESS! Delivered', creditsToAdd, 'credits +', notes.plan_type || 'creator', 'status to:', userData.email)
-    console.log('[Razorpay] New credit balance:', (userData.credits || 0) + creditsToAdd)
+  if (updateError) {
+    console.error('[Razorpay] Failed to deliver credits:', updateError)
+    return
   }
+
+  // ── Log transaction (idempotency record) ──
+  await logCreditTransaction({
+    userId: clerkUserId,
+    amount: creditsFromNotes,
+    balanceAfter: newBalance,
+    type: 'subscription_bonus',
+    status: 'success',
+    description: `Payment captured: +${creditsFromNotes} credits (${planType})`,
+    metadata: {
+      razorpay_id: paymentId,
+      event_type: eventType,
+      plan_type: planType,
+      payment_amount: entity.amount,
+      previous_balance: user.credits || 0,
+    },
+  })
+
+  console.log(`[Razorpay] ✅ Payment ${paymentId}: +${creditsFromNotes} credits → ${user.email} (${user.credits || 0} → ${newBalance})`)
 }
 
 async function handlePaymentFailed(payment: any) {
-  console.log('[Razorpay] Payment failed:', payment.id)
-  console.log('[Razorpay] Error:', payment.error_code, payment.error_description)
-  // Optionally notify user about failed payment
+  const entity = payment.entity || payment
+  console.log('[Razorpay] Payment failed:', entity.id, entity.error_code, entity.error_description)
 }
