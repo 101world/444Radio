@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -25,6 +26,14 @@ export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {
     await auth.protect()
   }
+
+  // Pass the current pathname to server components via a request header.
+  // This lets the root layout render a bare shell for /plugin (DAW WebView).
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-pathname', request.nextUrl.pathname)
+  return NextResponse.next({
+    request: { headers: requestHeaders }
+  })
 })
 
 export const config = {
