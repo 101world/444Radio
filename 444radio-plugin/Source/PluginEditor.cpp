@@ -277,8 +277,8 @@ RadioPluginEditor::RadioPluginEditor (RadioPluginProcessor& p)
     setResizable (true, true);
     setResizeLimits (kMinWidth, kMinHeight, kMaxWidth, kMaxHeight);
 
-    // Downloads folder
-    downloadDir = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)
+    // Downloads folder — use LOCALAPPDATA to avoid OneDrive file-locking issues
+    downloadDir = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
                       .getChildFile ("444Radio")
                       .getChildFile ("Downloads");
     downloadDir.createDirectory();

@@ -599,7 +599,11 @@ export default function PluginPage() {
         showBridgeToast(`⏳ Checking WAV cache...`)
         let cachedWavUrl: string | null = null
         try {
-          const cacheRes = await fetch(`/api/media/wav-upload?audioUrl=${encodeURIComponent(sourceUrl)}`)
+          const cacheRes = await fetch('/api/media/wav-upload', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioUrl: sourceUrl })
+          })
           if (cacheRes.ok) {
             const cacheData = await cacheRes.json()
             cachedWavUrl = cacheData.wav_url || null

@@ -40,7 +40,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
   const fetchingRef = useRef(false)
 
   const refreshCredits = useCallback(async () => {
-    if (!user || fetchingRef.current) return
+    if (!user?.id || fetchingRef.current) return
     fetchingRef.current = true
     try {
       const res = await fetch('/api/credits')
@@ -55,15 +55,17 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
     } finally {
       fetchingRef.current = false
     }
-  }, [user])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   // Initial fetch + 30s polling
   useEffect(() => {
-    if (!user) return
+    if (!user?.id) return
     refreshCredits()
     const interval = setInterval(refreshCredits, 30_000)
     return () => clearInterval(interval)
-  }, [user, refreshCredits])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   return (
     <CreditsContext.Provider value={{ credits, totalGenerated, subscriptionStatus, subscriptionPlan, isLoading, refreshCredits }}>

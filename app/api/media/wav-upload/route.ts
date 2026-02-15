@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET: check if a cached WAV exists for an audioUrl
+// Supports both ?audioUrl= query param and POST JSON { audioUrl } via PUT method
 export async function GET(req: NextRequest) {
   try {
     const { userId } = await auth()
@@ -118,6 +119,32 @@ export async function GET(req: NextRequest) {
     }
 
     const audioUrl = req.nextUrl.searchParams.get('audioUrl')
+    if (!audioUrl) {
+      return corsResponse(NextResponse.json({ error: 'Missing audioUrl' }, { status: 400 }))
+    }
+
+    const { data } = await supabase
+      .from('wav_cache')
+      .select('wav_url')
+      .eq('audio_url', audioUrl)
+      .single()
+
+    return corsResponse(NextResponse.json({ wav_url: data?.wav_url || null }))
+  } catch {
+    return corsResponse(NextResponse.json({ wav_url: null }))
+  }
+}
+
+// PUT: check cache via JSON body (avoids URL length limits on Vercel)
+export async function PUT(req: NextRequest) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
+
+    const body = await req.json()
+    const audioUrl = body.audioUrl
     if (!audioUrl) {
       return corsResponse(NextResponse.json({ error: 'Missing audioUrl' }, { status: 400 }))
     }
