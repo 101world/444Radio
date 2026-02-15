@@ -15,7 +15,7 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   X, Download, Play, Pause, Scissors, Volume2, Rocket,
-  Loader2, Music, ArrowDownToLine, CheckCircle, Globe
+  Loader2, Music, CheckCircle
 } from 'lucide-react'
 
 // ── WAV conversion (same as plugin page) ─────────────────────
@@ -60,7 +60,7 @@ interface PluginPostGenModalProps {
   token: string | null
   userCredits: number | null
   isInDAW: boolean
-  onSendToDAW: (url: string, title: string, format: 'mp3' | 'wav') => void
+  onBridgeDownload: (url: string, title: string, format: 'mp3' | 'wav') => void
   onSplitStems: (audioUrl: string, messageId: string) => void
   onAudioBoost: (audioUrl: string, title: string) => void
   onCreditsChange: (credits: number) => void
@@ -70,7 +70,7 @@ interface PluginPostGenModalProps {
 
 export default function PluginPostGenModal({
   isOpen, onClose, result, token, userCredits,
-  isInDAW, onSendToDAW,
+  isInDAW, onBridgeDownload,
   onSplitStems, onAudioBoost, onCreditsChange,
   onPlayPause, playingId
 }: PluginPostGenModalProps) {
@@ -92,11 +92,10 @@ export default function PluginPostGenModal({
       setReleasing(false)
       setReleased(false)
       setReleaseError('')
-      // Pre-prepare the WAV blob for drag-and-drop
-      prepareWavBlob()
+      // Pre-prepare WAV blob only for browser context (drag-and-drop)
+      if (!isInDAW) prepareWavBlob()
     }
     return () => {
-      // Cleanup blob URL on unmount/close
       if (wavBlobUrl) { URL.revokeObjectURL(wavBlobUrl); setWavBlobUrl(null) }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,6 +132,12 @@ export default function PluginPostGenModal({
   // ── MP3 download ──
   async function handleDownloadMp3() {
     if (downloadingMp3 || !result) return
+    // In DAW context → send to C++ bridge for native download + drag bar
+    if (isInDAW) {
+      onBridgeDownload(result.audioUrl, result.title, 'mp3')
+      onClose()
+      return
+    }
     setDownloadingMp3(true)
     try {
       let response: Response
@@ -160,6 +165,12 @@ export default function PluginPostGenModal({
   // ── WAV download ──
   async function handleDownloadWav() {
     if (downloadingWav || !result) return
+    // In DAW context → send to C++ bridge for native download + WAV conversion + drag bar
+    if (isInDAW) {
+      onBridgeDownload(result.audioUrl, result.title, 'wav')
+      onClose()
+      return
+    }
     setDownloadingWav(true)
     try {
       if (wavBlobUrl) {
@@ -262,68 +273,7 @@ export default function PluginPostGenModal({
 
         {/* Content */}
         <div className="px-5 pt-5 pb-6 space-y-4">
-          {/* ═══ DAW Integration: Import to DAW ═══ */}
-          {isInDAW ? (
-            /* Inside JUCE plugin — format choice + send to DAW timeline */
-            <div className="space-y-2">
-              <p className="text-xs text-gray-400 text-center font-medium">Import to DAW Timeline</p>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => { onSendToDAW(result.audioUrl, result.title, 'wav'); onClose() }}
-                  className="flex items-center justify-center gap-2 px-4 py-4 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 hover:border-cyan-400/60 rounded-xl transition-all group"
-                >
-                  <ArrowDownToLine size={18} className="text-cyan-400 group-hover:scale-110 transition-transform" />
-                  <div className="text-left">
-                    <span className="text-sm font-bold text-white">WAV</span>
-                    <p className="text-[10px] text-cyan-300/70">Lossless · DAW ready</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => { onSendToDAW(result.audioUrl, result.title, 'mp3'); onClose() }}
-                  className="flex items-center justify-center gap-2 px-4 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-all group"
-                >
-                  <ArrowDownToLine size={18} className="text-gray-400 group-hover:scale-110 transition-transform" />
-                  <div className="text-left">
-                    <span className="text-sm font-bold text-white">MP3</span>
-                    <p className="text-[10px] text-gray-400/70">Compressed · smaller</p>
-                  </div>
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Browser context — draggable WAV chip */
-            <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl">
-              {preparingWav ? (
-                <div className="flex items-center gap-2 text-xs text-cyan-300">
-                  <Loader2 size={14} className="animate-spin" /> Preparing WAV for DAW...
-                </div>
-              ) : wavBlobUrl ? (
-                <>
-                  <a
-                    href={wavBlobUrl}
-                    download={wavFileName}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('DownloadURL', `audio/wav:${wavFileName}:${wavBlobUrl}`)
-                      e.dataTransfer.setData('text/plain', wavFileName)
-                      e.dataTransfer.effectAllowed = 'copy'
-                    }}
-                    className="flex items-center gap-2 px-3 py-2 bg-cyan-500/20 border border-cyan-400/50 rounded-xl cursor-grab active:cursor-grabbing hover:bg-cyan-500/30 transition-all no-underline flex-1 min-w-0"
-                  >
-                    <Music size={14} className="text-cyan-400 shrink-0 animate-pulse" />
-                    <span className="text-xs font-bold text-white truncate">{wavFileName}</span>
-                  </a>
-                  <span className="text-[10px] text-cyan-300/80 whitespace-nowrap shrink-0">← drag to DAW</span>
-                </>
-              ) : (
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Music size={14} /> WAV unavailable
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Download buttons */}
+          {/* Download buttons — in DAW these go through C++ bridge, in browser they do normal download */}
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={handleDownloadMp3}

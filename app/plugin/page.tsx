@@ -3476,9 +3476,11 @@ export default function PluginPage() {
         token={token}
         userCredits={userCredits}
         isInDAW={isInDAW}
-        onSendToDAW={(url, title, format) => {
+        onBridgeDownload={(url, title, format) => {
+          // Send to JUCE C++ bridge — downloads file, converts to WAV if needed, updates drag bar
           sendToDAW(url, title, format)
-          showBridgeToast(`🎵 Sending "${title}" as ${format.toUpperCase()} to DAW...`)
+          const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
+          showBridgeToast(`✅ Saving ${safeName}.${format} — drag from bar below ↓`)
         }}
         onSplitStems={(audioUrl, messageId) => {
           setShowPostGenModal(false)
