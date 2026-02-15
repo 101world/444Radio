@@ -33,13 +33,15 @@ export async function authenticatePlugin(req: NextRequest): Promise<PluginAuth> 
   const authHeader = req.headers.get('authorization')
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return { valid: false, error: 'Missing or invalid Authorization header. Use: Bearer <plugin_token>', status: 401 }
+    console.warn('[plugin-auth] No Bearer header present')
+    return { valid: false, error: 'No plugin token provided. Open Settings → Plugin tab to generate one.', status: 401 }
   }
   
   const token = authHeader.substring(7).trim()
   
   if (!token || token.length < 32) {
-    return { valid: false, error: 'Invalid token format', status: 401 }
+    console.warn('[plugin-auth] Token too short:', token.length, 'chars')
+    return { valid: false, error: 'Invalid token format. Generate a new token from Settings → Plugin tab.', status: 401 }
   }
   
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -66,7 +68,17 @@ export async function authenticatePlugin(req: NextRequest): Promise<PluginAuth> 
     const result = Array.isArray(rows) ? rows[0] : rows
     
     if (!result || !result.is_valid) {
-      return { valid: false, error: result?.error_message || 'Invalid token', status: 401 }
+      const errMsg = result?.error_message || 'Invalid token'
+      console.warn('[plugin-auth] Token validation failed:', errMsg)
+      // Map DB errors to user-friendly messages
+      const userError = errMsg.includes('revoked') 
+        ? 'Token has been revoked. Generate a new token from Settings → Plugin tab.'
+        : errMsg.includes('expired')
+        ? 'Token has expired. Generate a new token from Settings → Plugin tab.'
+        : errMsg.includes('rate limit')
+        ? errMsg
+        : 'Invalid or expired token. Generate a new one from Settings → Plugin tab.'
+      return { valid: false, error: userError, status: 401 }
     }
     
     return {

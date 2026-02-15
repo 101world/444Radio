@@ -1,7 +1,7 @@
 #include "PluginEditor.h"
 
 // The URL loaded inside the plugin WebView
-static const juce::String kPluginUrl  = "https://444radio.co.in/plugin";
+static const juce::String kPluginUrl  = "https://www.444radio.co.in/plugin";
 static const juce::String kSiteOrigin = "https://444radio.co.in";
 
 //==============================================================================

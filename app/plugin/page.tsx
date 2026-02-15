@@ -282,11 +282,13 @@ export default function PluginPage() {
   }, [])
 
   // ═══ AUTH: Verify token on mount ═══
+  const [authError, setAuthError] = useState<string | null>(null)
   useEffect(() => {
     if (!token) {
       setIsLoadingCredits(false)
       return
     }
+    setAuthError(null)
     ;(async () => {
       try {
         const res = await fetch('/api/plugin/credits', {
@@ -297,15 +299,28 @@ export default function PluginPage() {
           setUserCredits(data.credits)
           setIsLoadingCredits(false)
           setIsAuthenticated(true)
+          setAuthError(null)
           // Notify JUCE bridge
           try {
             (window as any).__juce__?.postMessage?.('authenticated')
           } catch {}
         } else {
+          // Parse error from API for user feedback
+          let errorMsg = 'Token rejected'
+          try {
+            const errData = await res.json()
+            errorMsg = errData.error || errorMsg
+          } catch {}
+          console.warn('[plugin] Auth failed:', res.status, errorMsg)
+          // Clear invalid token so user can re-enter
+          localStorage.removeItem(TOKEN_KEY)
+          setToken(null)
+          setAuthError(errorMsg)
           setIsAuthenticated(false)
           setIsLoadingCredits(false)
         }
       } catch {
+        setAuthError('Network error — could not reach server')
         setIsAuthenticated(false)
         setIsLoadingCredits(false)
       }
@@ -1472,6 +1487,14 @@ export default function PluginPage() {
         <div className="auth-card text-center space-y-5 max-w-md w-full">
           <div className="text-5xl">🔐</div>
           <h1 className="text-2xl font-bold text-white">Connect to 444 Radio</h1>
+
+          {/* Show auth error if token was rejected */}
+          {authError && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-left">
+              <p className="text-sm text-red-400 font-medium">⚠️ {authError}</p>
+              <p className="text-xs text-red-400/70 mt-1">Generate a new token from Settings → Plugin tab</p>
+            </div>
+          )}
 
           {/* Step 1: Get token */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-left space-y-2">

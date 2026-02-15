@@ -62,7 +62,14 @@ ALTER TABLE plugin_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plugin_purchases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE plugin_jobs ENABLE ROW LEVEL SECURITY;
 
--- Users can only see/manage their own tokens
+-- Users can only see/manage their own tokens (idempotent: drop if exists first)
+DO $$ BEGIN
+  DROP POLICY IF EXISTS plugin_tokens_select ON plugin_tokens;
+  DROP POLICY IF EXISTS plugin_tokens_insert ON plugin_tokens;
+  DROP POLICY IF EXISTS plugin_purchases_select ON plugin_purchases;
+  DROP POLICY IF EXISTS plugin_jobs_select ON plugin_jobs;
+END $$;
+
 CREATE POLICY plugin_tokens_select ON plugin_tokens FOR SELECT USING (clerk_user_id = current_setting('request.jwt.claims', true)::json->>'sub');
 CREATE POLICY plugin_tokens_insert ON plugin_tokens FOR INSERT WITH CHECK (clerk_user_id = current_setting('request.jwt.claims', true)::json->>'sub');
 
@@ -73,6 +80,7 @@ CREATE POLICY plugin_purchases_select ON plugin_purchases FOR SELECT USING (cler
 CREATE POLICY plugin_jobs_select ON plugin_jobs FOR SELECT USING (clerk_user_id = current_setting('request.jwt.claims', true)::json->>'sub');
 
 -- Function to validate plugin token and return user ID
+-- Using CREATE OR REPLACE so this is idempotent
 CREATE OR REPLACE FUNCTION validate_plugin_token(p_token TEXT)
 RETURNS TABLE (user_id TEXT, token_id UUID, is_valid BOOLEAN, error_message TEXT)
 LANGUAGE plpgsql
