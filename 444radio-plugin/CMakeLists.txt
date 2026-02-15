@@ -47,7 +47,7 @@ juce_add_plugin(RadioPlugin
     IS_MIDI_EFFECT            FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD   FALSE
-    FORMATS                   VST3 AU Standalone
+    FORMATS                   VST3 AU
     PRODUCT_NAME              "444 Radio"
     BUNDLE_ID                 "co.in.444radio.plugin"
     VST3_CATEGORIES           "Tools"
@@ -85,17 +85,9 @@ target_link_libraries(RadioPlugin
         juce::juce_recommended_warning_flags
 )
 
-# ─── Copy WebView2Loader.dll next to Standalone exe and VST3 binary ───
+# ─── Copy WebView2Loader.dll next to VST3 binary ───
 if(WIN32)
     set(WEBVIEW2_DLL "${CMAKE_CURRENT_SOURCE_DIR}/packages/Microsoft.Web.WebView2.1.0.2535.41/build/native/x64/WebView2Loader.dll")
-
-    # Standalone: copy DLL next to 444 Radio.exe
-    add_custom_command(TARGET RadioPlugin_Standalone POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${WEBVIEW2_DLL}"
-            "$<TARGET_FILE_DIR:RadioPlugin_Standalone>/WebView2Loader.dll"
-        COMMENT "Copying WebView2Loader.dll to Standalone output"
-    )
 
     # VST3: copy DLL next to the VST3 binary inside the bundle
     add_custom_command(TARGET RadioPlugin_VST3 POST_BUILD

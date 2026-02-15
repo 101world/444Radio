@@ -13,6 +13,7 @@ import {
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
 import PluginGenerationQueue from '@/app/components/PluginGenerationQueue'
+import PluginPostGenModal from '@/app/components/PluginPostGenModal'
 
 // ─── Types (mirrored from create page) ──────────────────────────
 type MessageType = 'user' | 'assistant' | 'generation'
@@ -283,6 +284,12 @@ export default function PluginPage() {
 
   // ── Boost params modal (for result card boost button) ──
   const [showBoostParamsFor, setShowBoostParamsFor] = useState<{ audioUrl: string; title: string } | null>(null)
+
+  // ── Post-generation modal ──
+  const [showPostGenModal, setShowPostGenModal] = useState(false)
+  const [postGenResult, setPostGenResult] = useState<{
+    audioUrl: string; imageUrl?: string; title: string; prompt?: string; lyrics?: string; messageId: string
+  } | null>(null)
 
   // ── Chat sync ──
   const [isSyncingChat, setIsSyncingChat] = useState(false)
@@ -1062,12 +1069,16 @@ export default function PluginPage() {
             lib.unshift({ id: Date.now(), type: 'music', title: result.title || finalTitle, audioUrl: result.audioUrl, imageUrl: result.imageUrl, prompt: originalPrompt, createdAt: new Date().toISOString() })
             localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib.slice(0, 200)))
           } catch {}
-          // Assistant follow-up
-          setMessages(prev => [...prev, {
-            id: (Date.now() + 3).toString(), type: 'assistant',
-            content: 'Your track is ready! Want to create cover art for it? Or generate another track?',
-            timestamp: new Date()
-          }])
+          // Show post-generation modal with download/stems/boost/release options
+          setPostGenResult({
+            audioUrl: result.audioUrl,
+            imageUrl: result.imageUrl,
+            title: result.title || finalTitle,
+            prompt: originalPrompt,
+            lyrics: result.lyrics || finalLyrics,
+            messageId: genMsgId,
+          })
+          setShowPostGenModal(true)
         } else {
           setMessages(prev => prev.map(msg =>
             msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Generation failed'}` } : msg
@@ -1169,6 +1180,14 @@ export default function PluginPage() {
           ))
           if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
           else refreshCredits()
+          // Show post-generation modal
+          setPostGenResult({
+            audioUrl: result.audioUrl,
+            title: `SFX: ${prompt.substring(0, 40)}`,
+            prompt,
+            messageId: genMsgId,
+          })
+          setShowPostGenModal(true)
         } else {
           setMessages(prev => prev.map(msg =>
             msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Failed'}` } : msg
@@ -1222,6 +1241,17 @@ export default function PluginPage() {
           })
           if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
           else refreshCredits()
+          // Show post-generation modal for the first variation
+          const firstUrl = variations[0]?.url || result.audioUrl
+          if (firstUrl) {
+            setPostGenResult({
+              audioUrl: firstUrl,
+              title: `Loop: ${prompt.substring(0, 40)}`,
+              prompt,
+              messageId: `loop-${Date.now()}-0`,
+            })
+            setShowPostGenModal(true)
+          }
         } else {
           setMessages(prev => prev.map(msg =>
             msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Loops generation failed'}` } : msg
@@ -3437,6 +3467,31 @@ export default function PluginPage() {
           </div>
         </div>
       )}
+
+      {/* ── Post-Generation Modal (downloads, stems, boost, release) ── */}
+      <PluginPostGenModal
+        isOpen={showPostGenModal}
+        onClose={() => setShowPostGenModal(false)}
+        result={postGenResult}
+        token={token}
+        userCredits={userCredits}
+        isInDAW={isInDAW}
+        onSendToDAW={(url, title) => {
+          sendToDAW(url, title)
+          showBridgeToast(`🎵 Sending "${title}" to DAW...`)
+        }}
+        onSplitStems={(audioUrl, messageId) => {
+          setShowPostGenModal(false)
+          handleSplitStems(audioUrl, messageId)
+        }}
+        onAudioBoost={(audioUrl, title) => {
+          setShowPostGenModal(false)
+          setShowBoostParamsFor({ audioUrl, title })
+        }}
+        onCreditsChange={(credits) => setUserCredits(credits)}
+        onPlayPause={(messageId, audioUrl, title, prompt) => handlePlayPause(messageId, audioUrl, title, prompt)}
+        playingId={playingId}
+      />
 
       {/* ── Global Styles (no style jsx — regular style tag) ── */}
       <style dangerouslySetInnerHTML={{ __html: `
