@@ -12,8 +12,26 @@
 -- Returns an extra column: access_tier TEXT
 --   'studio' | 'pro' | 'purchased' | 'denied_inactive' | 'denied_no_purchase'
 
--- Drop the old function first (return type changed — CREATE OR REPLACE can't handle that)
-DROP FUNCTION IF EXISTS validate_plugin_token(text);
+-- Ensure plugin_purchases table exists (needed by the function)
+CREATE TABLE IF NOT EXISTS plugin_purchases (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clerk_user_id   TEXT NOT NULL,
+  order_id        TEXT,
+  payment_id      TEXT,
+  amount          INTEGER DEFAULT 2500,  -- cents
+  currency        TEXT DEFAULT 'USD',
+  status          TEXT DEFAULT 'pending',
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Ensure plugin_tokens has the columns we need
+ALTER TABLE plugin_tokens ADD COLUMN IF NOT EXISTS requests_today INTEGER DEFAULT 0;
+ALTER TABLE plugin_tokens ADD COLUMN IF NOT EXISTS requests_reset_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE plugin_tokens ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ;
+
+-- Drop the old function completely (CASCADE handles any dependent objects)
+DROP FUNCTION IF EXISTS validate_plugin_token(text) CASCADE;
 
 CREATE OR REPLACE FUNCTION validate_plugin_token(p_token TEXT)
 RETURNS TABLE (
