@@ -489,7 +489,38 @@ export default function PluginPage() {
   }
 
   const sendToDAW = (url: string, title: string) => {
-    sendBridgeMessage({ action: 'import_audio', url, title })
+    sendBridgeMessage({ action: 'import_audio', url, title, format: 'wav' })
+  }
+
+  // ═══ WAV EXPORT helper (convert any audio URL to WAV blob URL) ═══
+  const [wavExporting, setWavExporting] = useState<string | null>(null)
+  const exportAsWav = async (sourceUrl: string, filename: string) => {
+    const exportId = `${sourceUrl}-${filename}`
+    if (wavExporting) return // prevent double-click
+    setWavExporting(exportId)
+    try {
+      // Fetch through proxy to avoid CORS
+      const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
+      const response = await fetch(proxyUrl)
+      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`)
+      const arrayBuffer = await response.arrayBuffer()
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      const wavBlob = audioBufferToWav(audioBuffer)
+      const wavUrl = URL.createObjectURL(wavBlob)
+      const link = document.createElement('a')
+      link.href = wavUrl
+      link.download = filename.replace(/\.\w+$/, '.wav')
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(wavUrl), 5000)
+    } catch (err) {
+      console.error('WAV export error:', err)
+      alert('WAV export failed. Try the MP3 download instead.')
+    } finally {
+      setWavExporting(null)
+    }
   }
 
   // ═══ DOWNLOAD (with auth token for /api/plugin/download) ═══
@@ -512,8 +543,10 @@ export default function PluginPage() {
         document.body.removeChild(link)
         URL.revokeObjectURL(blobUrl)
       } else {
-        // WAV: fetch source audio, decode, convert to WAV
-        const response = await fetch(url)
+        // WAV: fetch through proxy to avoid CORS, decode, convert to WAV
+        const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(url)}`
+        const response = await fetch(proxyUrl)
+        if (!response.ok) throw new Error(`WAV fetch failed: ${response.status}`)
         const arrayBuffer = await response.arrayBuffer()
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
@@ -525,7 +558,7 @@ export default function PluginPage() {
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-        URL.revokeObjectURL(wavUrl)
+        setTimeout(() => URL.revokeObjectURL(wavUrl), 5000)
       }
       // JUCE bridge: notify for DAW import
       sendBridgeMessage({ action: 'import_audio', url, title: filename })
@@ -2017,9 +2050,9 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Download size={12} /> MP3
                       </button>
-                      {/* WAV Download */}
+                      {/* WAV Download — highlighted for producers */}
                       <button onClick={() => handleDownload(msg.result!.audioUrl!, `${msg.result!.title || 'track'}.wav`, 'wav')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 rounded-lg text-xs text-emerald-300 hover:text-emerald-200 transition-all font-semibold">
                         <Download size={12} /> WAV
                       </button>
                       {/* Split Stems */}
