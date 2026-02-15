@@ -16,6 +16,23 @@ static juce::File getWebView2DataFolder()
                .getChildFile ("444Radio")
                .getChildFile ("WebView2");
 }
+
+//==============================================================================
+//  Check whether the WebView2 runtime is installed.
+//  We probe by trying to create a WebView2 environment with the loader DLL.
+//  If the runtime is missing, JUCE will silently fall back to IE/MSHTML which
+//  cannot run modern JavaScript.
+//==============================================================================
+static bool isWebView2RuntimeAvailable()
+{
+    auto opts = juce::WebBrowserComponent::Options()
+                    .withBackend (juce::WebBrowserComponent::Options::Backend::webview2)
+                    .withWinWebView2Options (
+                        juce::WebBrowserComponent::Options::WinWebView2()
+                            .withUserDataFolder (getWebView2DataFolder()));
+
+    return juce::WebBrowserComponent::areOptionsSupported (opts);
+}
 #endif
 
 //==============================================================================
@@ -273,6 +290,10 @@ void RadioPluginEditor::timerCallback()
     if (createWebView())
         return;   // success
 
+    // If WebView2 prompt is showing, don't retry — user needs to install runtime
+    if (showingWebView2Prompt)
+        return;
+
     // Retry with back-off (500 ms intervals, up to kMaxWebViewRetries)
     if (webViewRetries < kMaxWebViewRetries)
     {
@@ -291,6 +312,34 @@ bool RadioPluginEditor::createWebView()
 {
     if (webViewCreated)
         return true;
+
+#if JUCE_WINDOWS
+    // ─── Check for WebView2 runtime BEFORE creating the browser. ───
+    // Without it, JUCE silently falls back to IE/MSHTML which cannot parse
+    // modern JS and floods the user with "Script Error" dialogs.
+    if (! isWebView2RuntimeAvailable())
+    {
+        DBG ("444 Radio: WebView2 runtime not found — showing install prompt");
+        showingWebView2Prompt = true;
+        repaint();
+
+        // Ask the user to install it
+        auto result = juce::AlertWindow::showOkCancelBox (
+            juce::MessageBoxIconType::WarningIcon,
+            "444 Radio — WebView2 Required",
+            "Your system is missing the Microsoft WebView2 Runtime, which 444 Radio "
+            "needs to display its interface.\n\n"
+            "Click OK to open the download page. After installing, restart your DAW.",
+            "OK — Open Download",
+            "Cancel",
+            this);
+
+        if (result)
+            juce::URL ("https://go.microsoft.com/fwlink/p/?LinkId=2124703").launchInDefaultBrowser();
+
+        return false;
+    }
+#endif
 
     try
     {
@@ -340,9 +389,33 @@ void RadioPluginEditor::paint (juce::Graphics& g)
         g.drawText ("444 Radio", getLocalBounds().reduced (0, 60),
                     juce::Justification::centredTop);
 
-        g.setColour (juce::Colour (0xFF888888));
-        g.setFont (juce::Font (14.0f));
-        g.drawText ("Loading...", getLocalBounds(), juce::Justification::centred);
+        if (showingWebView2Prompt)
+        {
+            // WebView2 is missing — show an explanatory message
+            auto area = getLocalBounds().reduced (30, 0);
+
+            g.setColour (juce::Colour (0xFFFF4444));
+            g.setFont (juce::Font (16.0f).boldened());
+            g.drawText ("WebView2 Runtime Not Found",
+                        area.withY (120).withHeight (30),
+                        juce::Justification::centredTop);
+
+            g.setColour (juce::Colour (0xFFCCCCCC));
+            g.setFont (juce::Font (13.0f));
+            g.drawFittedText (
+                "444 Radio requires the Microsoft WebView2 Runtime to work.\n\n"
+                "Please install it from:\n"
+                "https://go.microsoft.com/fwlink/p/?LinkId=2124703\n\n"
+                "After installing, restart your DAW.",
+                area.withY (160).withHeight (200),
+                juce::Justification::centredTop, 8);
+        }
+        else
+        {
+            g.setColour (juce::Colour (0xFF888888));
+            g.setFont (juce::Font (14.0f));
+            g.drawText ("Loading...", getLocalBounds(), juce::Justification::centred);
+        }
     }
 }
 

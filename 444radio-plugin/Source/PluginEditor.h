@@ -77,6 +77,7 @@ private:
     std::unique_ptr<AudioDownloader>           downloader;
     juce::File                                 downloadDir;
     bool                                       webViewCreated = false;
+    bool                                       showingWebView2Prompt = false;
     int                                        webViewRetries = 0;
     static constexpr int kMaxWebViewRetries = 20;
 
