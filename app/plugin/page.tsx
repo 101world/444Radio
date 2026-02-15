@@ -574,7 +574,7 @@ export default function PluginPage() {
     sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format })
   }
 
-  // ═══ WAV for DAW — fetch → convert → draggable toast ═══
+  // ═══ Download + Toast — downloads file and shows draggable toast ═══
   const [dawDownloading, setDawDownloading] = useState<string | null>(null)
   const [dawReadyFile, setDawReadyFile] = useState<{ name: string; blobUrl: string } | null>(null)
 
@@ -585,49 +585,69 @@ export default function PluginPage() {
     }
   }
 
-  const downloadForDAW = async (sourceUrl: string, title: string) => {
-    const id = `${sourceUrl}-${title}`
+  const downloadAndToast = async (sourceUrl: string, title: string, format: 'mp3' | 'wav' = 'wav') => {
+    const id = `${sourceUrl}-${title}-${format}`
     if (dawDownloading) return
     setDawDownloading(id)
     dismissDawFile() // clear any previous toast
     try {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
-      const wavName = `${safeName}.wav`
+      const fileName = `${safeName}.${format}`
 
-      // Inside JUCE plugin → let the C++ side handle it
+      // Inside JUCE plugin → let the C++ side handle download + conversion + drag bar
       if (isInDAW) {
-        sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format: 'wav' })
-        showBridgeToast(`🎵 Sending to DAW...`)
+        const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
+        const fullProxyUrl = `${window.location.origin}${proxyUrl}`
+        sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title: safeName, format })
+        showBridgeToast(`✅ Saving ${fileName} — drag from bar below ↓`)
         return
       }
 
-      // Browser: fetch audio bytes directly from R2 CDN
-      showBridgeToast(`⏳ Converting to WAV...`)
-      let res: Response
-      try {
-        res = await fetch(sourceUrl)
-      } catch {
-        res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`)
+      // Browser context:
+      if (format === 'wav') {
+        // Convert to WAV
+        showBridgeToast(`⏳ Converting to WAV...`)
+        let res: Response
+        try {
+          res = await fetch(sourceUrl)
+        } catch {
+          res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`)
+        }
+        if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
+        const ct = res.headers.get('content-type') || ''
+        if (ct.includes('text/html')) throw new Error('Got HTML instead of audio — file URL may be invalid')
+        const ab = await res.arrayBuffer()
+        if (ab.byteLength < 1000) throw new Error('File too small — may be expired or invalid')
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const decoded = await ctx.decodeAudioData(ab)
+        const wavBlob = audioBufferToWav(decoded)
+        const blobUrl = URL.createObjectURL(wavBlob)
+        setDawReadyFile({ name: fileName, blobUrl })
+      } else {
+        // MP3 — fetch raw bytes, show in toast for drag
+        showBridgeToast(`⏳ Preparing MP3...`)
+        let res: Response
+        try {
+          res = await fetch(sourceUrl)
+          if (!res.ok) throw new Error('direct failed')
+        } catch {
+          res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`)
+        }
+        if (!res.ok) throw new Error(`Download failed: ${res.status}`)
+        const blob = await res.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        setDawReadyFile({ name: fileName, blobUrl })
       }
-      if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
-      const ct = res.headers.get('content-type') || ''
-      if (ct.includes('text/html')) throw new Error('Got HTML instead of audio — file URL may be invalid')
-      const ab = await res.arrayBuffer()
-      if (ab.byteLength < 1000) throw new Error('File too small — may be expired or invalid')
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const decoded = await ctx.decodeAudioData(ab)
-      const wavBlob = audioBufferToWav(decoded)
-      const blobUrl = URL.createObjectURL(wavBlob)
-
-      // Show draggable toast instead of auto-downloading
-      setDawReadyFile({ name: wavName, blobUrl })
     } catch (err: any) {
-      console.error('DAW download error:', err)
+      console.error('Download error:', err)
       showBridgeToast(`❌ ${err.message || 'Download failed'}`)
     } finally {
       setDawDownloading(null)
     }
   }
+
+  // Keep downloadForDAW as alias for backwards compat
+  const downloadForDAW = (sourceUrl: string, title: string) => downloadAndToast(sourceUrl, title, 'wav')
 
   // ═══ WAV EXPORT helper (convert any audio URL to WAV blob URL) ═══
   const [wavExporting, setWavExporting] = useState<string | null>(null)
@@ -2005,7 +2025,7 @@ export default function PluginPage() {
   return (
     <div className={`h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
 
-      {/* DAW WAV toast — drag this to your DAW timeline */}
+      {/* Download toast — drag this file to your DAW timeline */}
       {dawReadyFile && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 pl-3 pr-2 py-2 rounded-2xl select-none"
           style={{
@@ -2015,13 +2035,14 @@ export default function PluginPage() {
             boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(6,182,212,0.2)',
             animation: 'fadeIn 0.2s ease-out',
           }}>
-          {/* Draggable WAV chip */}
+          {/* Draggable file chip */}
           <a
             href={dawReadyFile.blobUrl}
             download={dawReadyFile.name}
             draggable
             onDragStart={(e) => {
-              e.dataTransfer.setData('DownloadURL', `audio/wav:${dawReadyFile.name}:${dawReadyFile.blobUrl}`)
+              const mime = dawReadyFile.name.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav'
+              e.dataTransfer.setData('DownloadURL', `${mime}:${dawReadyFile.name}:${dawReadyFile.blobUrl}`)
               e.dataTransfer.setData('text/plain', dawReadyFile.name)
               e.dataTransfer.effectAllowed = 'copy'
             }}
@@ -2418,28 +2439,22 @@ export default function PluginPage() {
 
                     {/* Action buttons row */}
                     <div className="flex flex-wrap gap-2">
-                      {/* MP3 Download */}
-                      <button onClick={() => handleDownload(msg.result!.audioUrl!, `${msg.result!.title || 'track'}.mp3`, 'mp3')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                      {/* MP3 Download → toast */}
+                      <button onClick={() => downloadAndToast(msg.result!.audioUrl!, msg.result!.title || 'track', 'mp3')}
+                        disabled={dawDownloading !== null}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all disabled:opacity-50">
                         <Download size={12} /> MP3
                       </button>
-                      {/* WAV Download — highlighted for producers */}
-                      <button onClick={() => handleDownload(msg.result!.audioUrl!, `${msg.result!.title || 'track'}.wav`, 'wav')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 rounded-lg text-xs text-emerald-300 hover:text-emerald-200 transition-all font-semibold">
+                      {/* WAV Download → toast */}
+                      <button onClick={() => downloadAndToast(msg.result!.audioUrl!, msg.result!.title || 'track', 'wav')}
+                        disabled={dawDownloading !== null}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 rounded-lg text-xs text-emerald-300 hover:text-emerald-200 transition-all font-semibold disabled:opacity-50">
                         <Download size={12} /> WAV
                       </button>
                       {/* Split Stems */}
                       <button onClick={() => handleSplitStems(msg.result!.audioUrl!, msg.id)} disabled={isSplittingStems}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50">
                         <Scissors size={12} /> Stems <span className="text-[10px] text-gray-500">(-5)</span>
-                      </button>
-                      {/* Download WAV for DAW */}
-                      <button
-                        onClick={() => downloadForDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
-                        disabled={dawDownloading !== null}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold disabled:opacity-50"
-                        title="Download WAV file for your DAW">
-                        {dawDownloading ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />} WAV for DAW
                       </button>
                       {/* Audio Boost */}
                       <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
