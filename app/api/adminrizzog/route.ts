@@ -37,13 +37,13 @@ export async function GET(req: NextRequest) {
         // Top users by credits
         supabase
           .from('users')
-          .select('clerk_user_id, username, email, credits, total_generated, subscription_status, subscription_plan, created_at')
+          .select('*')
           .order('credits', { ascending: false })
           .limit(10),
         // Active subscribers
         supabase
           .from('users')
-          .select('clerk_user_id, username, email, credits, subscription_status, subscription_plan, subscription_start, subscription_end')
+          .select('*')
           .neq('subscription_status', 'none')
           .order('subscription_start', { ascending: false })
       ])
@@ -78,13 +78,12 @@ export async function GET(req: NextRequest) {
     }
 
     if (tab === 'users') {
-      const query = supabase
+      const { data, count, error } = await supabase
         .from('users')
-        .select('clerk_user_id, username, email, full_name, credits, total_generated, subscription_status, subscription_plan, subscription_start, subscription_end, created_at', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
-      const { data, count, error } = await query
       if (error) throw error
 
       return NextResponse.json({ tab: 'users', data, total: count, page, limit })

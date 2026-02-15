@@ -155,8 +155,9 @@ export default function AdminBillingPage() {
       if (txnType) params.set('type', txnType)
       const res = await fetch(`/api/adminrizzog?${params}`)
       if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || `HTTP ${res.status}`)
+        let errMsg = `HTTP ${res.status}`
+        try { const err = await res.json(); errMsg = err.error || errMsg } catch {}
+        throw new Error(errMsg)
       }
       const json = await res.json()
       setData(json)

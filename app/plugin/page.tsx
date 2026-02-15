@@ -6,7 +6,8 @@ import {
   Sparkles, Zap, X, Rocket, PlusCircle, Globe, Mic, MicOff,
   Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
   Layers, Film, Scissors, Volume2, ChevronLeft, Lightbulb, Settings,
-  RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink, Home
+  RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink, Home,
+  BookOpen, ArrowDownToLine
 } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
@@ -406,8 +407,18 @@ export default function PluginPage() {
   }, [messages])
 
   // ═══ CHAT: scroll to bottom ═══
+  const hasScrolledOnLoad = useRef(false)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length > 0 && !hasScrolledOnLoad.current) {
+      // First load: instant scroll (no animation) after DOM renders
+      hasScrolledOnLoad.current = true
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
+      })
+    } else if (hasScrolledOnLoad.current) {
+      // Subsequent message changes: smooth scroll
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages])
 
   // ═══ CREDITS: refresh helper ═══
@@ -1923,6 +1934,11 @@ export default function PluginPage() {
             <span className="text-white font-bold text-sm">444 Radio</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Library */}
+            <button onClick={() => window.open('https://www.444radio.co.in/library' + (token ? '?host=juce&token=' + encodeURIComponent(token) : ''), '_blank')}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="My Library">
+              <BookOpen size={16} className="text-purple-400" />
+            </button>
             {/* Back to Plugin Home — always visible */}
             <button onClick={() => { window.location.href = '/plugin?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Back to Plugin Home">
@@ -2011,13 +2027,19 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50">
                         <Scissors size={12} /> Stems <span className="text-[10px] text-gray-500">(-5)</span>
                       </button>
-                      {/* Import to DAW */}
-                      {isInDAW && (
-                        <button onClick={() => sendToDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold">
-                          <Download size={12} /> Import to DAW
-                        </button>
-                      )}
+                      {/* Import to DAW — always visible */}
+                      <button
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/uri-list', msg.result!.audioUrl!)
+                          e.dataTransfer.setData('text/plain', msg.result!.audioUrl!)
+                          e.dataTransfer.effectAllowed = 'copy'
+                        }}
+                        onClick={() => sendToDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold cursor-grab active:cursor-grabbing"
+                        title="Click to import or drag to DAW">
+                        <ArrowDownToLine size={12} /> Import to DAW
+                      </button>
                       {/* Audio Boost */}
                       <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
@@ -2099,12 +2121,19 @@ export default function PluginPage() {
                             className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
                             <Download size={12} className="text-white" />
                           </button>
-                          {isInDAW && (
-                            <button onClick={() => sendToDAW(url as string, `${display.label} Stem`)}
-                              className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-full transition-colors" title="Import to DAW">
-                              <Download size={12} className="text-cyan-400" />
-                            </button>
-                          )}
+                          {/* Import stem to DAW — always visible */}
+                          <button
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/uri-list', url as string)
+                              e.dataTransfer.setData('text/plain', url as string)
+                              e.dataTransfer.effectAllowed = 'copy'
+                            }}
+                            onClick={() => sendToDAW(url as string, `${display.label} Stem`)}
+                            className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-full transition-colors cursor-grab active:cursor-grabbing"
+                            title={`Click to import ${display.label} or drag to DAW`}>
+                            <ArrowDownToLine size={12} className="text-cyan-400" />
+                          </button>
                           <button onClick={() => setShowBoostParamsFor({ audioUrl: url as string, title: display.label })}
                             className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-full transition-colors" title="Boost this stem">
                             <Volume2 size={12} className="text-orange-400" />
