@@ -27,10 +27,179 @@ function safeAudioUrl(url: string): string {
   return `/api/r2/proxy?url=${encodeURIComponent(url)}`
 }
 
+// ── Real-time Canvas Waveform using Web Audio API AnalyserNode ──
+function LiveWaveform({
+  audioElement,
+  isPlaying,
+  progress,
+  onSeek,
+}: {
+  audioElement: HTMLAudioElement | null
+  isPlaying: boolean
+  progress: number
+  onSeek: (ratio: number) => void
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const ctxRef = useRef<AudioContext | null>(null)
+  const rafRef = useRef<number>(0)
+  const connectedRef = useRef<HTMLAudioElement | null>(null)
+
+  // Connect Web Audio API analyser to the audio element
+  useEffect(() => {
+    if (!audioElement) return
+    if (connectedRef.current === audioElement) return
+
+    try {
+      if (!ctxRef.current) {
+        ctxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+      }
+      const ctx = ctxRef.current
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 256
+      analyser.smoothingTimeConstant = 0.78
+
+      const source = ctx.createMediaElementSource(audioElement)
+      source.connect(analyser)
+      analyser.connect(ctx.destination)
+
+      analyserRef.current = analyser
+      connectedRef.current = audioElement
+    } catch {
+      // Already connected or unsupported — fallback to idle animation
+      console.warn('[PluginWaveform] Web Audio connect failed — using fallback')
+    }
+  }, [audioElement])
+
+  // Canvas draw loop
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const c = canvas.getContext('2d')
+    if (!c) return
+
+    const analyser = analyserRef.current
+    const bufLen = analyser ? analyser.frequencyBinCount : 64
+    const data = new Uint8Array(bufLen)
+
+    const draw = () => {
+      rafRef.current = requestAnimationFrame(draw)
+
+      const dpr = window.devicePixelRatio || 1
+      const W = canvas.offsetWidth
+      const H = canvas.offsetHeight
+      if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
+        canvas.width = W * dpr
+        canvas.height = H * dpr
+        c.setTransform(dpr, 0, 0, dpr, 0, 0)
+      }
+      c.clearRect(0, 0, W, H)
+
+      // Get real frequency data if available, otherwise idle animation
+      if (analyser && isPlaying) {
+        analyser.getByteFrequencyData(data)
+      } else {
+        const t = Date.now() / 900
+        for (let i = 0; i < bufLen; i++) {
+          data[i] = Math.floor(12 + 10 * Math.sin(t + i * 0.35) + 5 * Math.cos(t * 0.7 + i * 0.6))
+        }
+      }
+
+      const barCount = Math.min(bufLen, 64)
+      const gap = 1.2
+      const barW = Math.max(1, (W - gap * (barCount - 1)) / barCount)
+      const midY = H / 2
+
+      // ── Draw mirrored bars (like the main site FloatingAudioPlayer) ──
+      for (let i = 0; i < barCount; i++) {
+        const v = data[i] / 255
+        const barH = Math.max(1.5, v * midY * 0.88)
+        const x = i * (barW + gap)
+        const pct = (i / barCount) * 100
+
+        // Played = vibrant cyan → unplayed = dim
+        if (pct <= progress) {
+          // Played bars — cyan to blue gradient
+          const intensity = 0.55 + v * 0.45
+          c.fillStyle = `rgba(0, 255, 255, ${intensity})`
+          c.shadowColor = 'rgba(0, 255, 255, 0.35)'
+          c.shadowBlur = v * 6
+        } else {
+          // Unplayed — dim glass
+          c.fillStyle = `rgba(0, 255, 255, ${0.06 + v * 0.1})`
+          c.shadowColor = 'transparent'
+          c.shadowBlur = 0
+        }
+
+        const r = Math.max(0, Math.min(barW / 2, 1.5))
+
+        // Top half (above center)
+        c.beginPath()
+        c.roundRect(x, midY - barH, barW, barH, r)
+        c.fill()
+
+        // Bottom half (mirror below center)
+        c.beginPath()
+        c.roundRect(x, midY + 0.5, barW, barH, r)
+        c.fill()
+      }
+      c.shadowBlur = 0
+
+      // ── Playhead line ──
+      const playX = (progress / 100) * W
+      const grad = c.createLinearGradient(playX, 0, playX, H)
+      grad.addColorStop(0, 'rgba(0, 255, 255, 0.1)')
+      grad.addColorStop(0.25, '#00ffff')
+      grad.addColorStop(0.5, 'rgba(0, 136, 255, 0.9)')
+      grad.addColorStop(0.75, '#00ffff')
+      grad.addColorStop(1, 'rgba(0, 255, 255, 0.1)')
+      c.fillStyle = grad
+      c.fillRect(playX - 0.75, 0, 1.5, H)
+
+      // Playhead glow
+      c.shadowColor = 'rgba(0, 255, 255, 0.8)'
+      c.shadowBlur = 8
+      c.fillStyle = '#00ffff'
+      c.beginPath()
+      c.arc(playX, midY, 2.5, 0, Math.PI * 2)
+      c.fill()
+      c.shadowBlur = 0
+
+      // ── Center line (subtle) ──
+      c.fillStyle = 'rgba(0, 255, 255, 0.06)'
+      c.fillRect(0, midY - 0.25, W, 0.5)
+
+      // ── Top glass reflection ──
+      const reflGrad = c.createLinearGradient(0, 0, 0, H * 0.35)
+      reflGrad.addColorStop(0, 'rgba(255, 255, 255, 0.04)')
+      reflGrad.addColorStop(1, 'transparent')
+      c.fillStyle = reflGrad
+      c.fillRect(0, 0, W, H * 0.35)
+    }
+
+    draw()
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [isPlaying, progress])
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    onSeek(ratio)
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="w-full h-full cursor-pointer"
+      onClick={handleClick}
+      style={{ display: 'block' }}
+    />
+  )
+}
+
 export default function PluginAudioPlayer({ track, playing, onClose, onPlayStateChange }: PluginAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const waveformRef = useRef<HTMLDivElement>(null)
-  const animFrameRef = useRef<number>(0)
   const shineRef = useRef<HTMLDivElement>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
@@ -40,36 +209,6 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   const [isMuted, setIsMuted] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pulse, setPulse] = useState(0)
-
-  const barCount = 80
-  const barsData = useRef<number[]>([])
-  if (barsData.current.length === 0) {
-    for (let i = 0; i < barCount; i++) {
-      barsData.current.push(
-        Math.sin(i * 0.35 + 1.7) * 0.22 +
-        Math.sin(i * 0.18 + 2.5) * 0.18 +
-        Math.cos(i * 0.28 + 0.9) * 0.15 +
-        Math.sin(i * 0.7 + 3.1) * 0.08 + 0.38
-      )
-    }
-  }
-
-  // Pulsating animation — smoother with time-based
-  useEffect(() => {
-    let frame = 0
-    const animate = () => {
-      frame++
-      setPulse(frame)
-      animFrameRef.current = requestAnimationFrame(animate)
-    }
-    if (isPlaying) {
-      animFrameRef.current = requestAnimationFrame(animate)
-    } else {
-      setPulse(0)
-    }
-    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current) }
-  }, [isPlaying])
 
   useEffect(() => {
     return () => {
@@ -91,6 +230,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
       audioRef.current.load()
     }
     const audio = new Audio()
+    audio.crossOrigin = 'anonymous' // Required for Web Audio API AnalyserNode
     audioRef.current = audio
     audio.volume = isMuted ? 0 : volume
     audio.preload = 'auto'
@@ -145,10 +285,8 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     isPlaying ? audioRef.current.pause() : audioRef.current.play().catch(() => {})
   }, [isPlaying])
 
-  const seekFromEvent = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!waveformRef.current || !audioRef.current || duration <= 0) return
-    const rect = waveformRef.current.getBoundingClientRect()
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  const handleSeek = useCallback((ratio: number) => {
+    if (!audioRef.current || duration <= 0) return
     audioRef.current.currentTime = ratio * duration
     setCurrentTime(ratio * duration)
   }, [duration])
@@ -309,17 +447,15 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
         )}
       </div>
 
-      {/* ── WAVEFORM — Glass node with diagonal shine ── */}
-      <div ref={waveformRef}
-        className="relative h-10 mx-3 mb-2 flex items-end gap-[0.4px] cursor-pointer rounded-xl overflow-hidden"
-        onClick={seekFromEvent}
+      {/* ── LIVE WAVEFORM — Canvas-based Web Audio API visualization ── */}
+      <div className="relative h-12 mx-3 mb-2 rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(0,255,255,0.03)',
+          background: 'rgba(0,255,255,0.02)',
           border: '1px solid rgba(0,255,255,0.1)',
           boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.5), 0 0 1px rgba(0,255,255,0.08)',
         }}>
 
-        {/* Waveform diagonal glass shine */}
+        {/* Glass diagonal shine overlay */}
         <div className="absolute inset-0 pointer-events-none z-[5] rounded-xl overflow-hidden">
           <div style={{
             position: 'absolute',
@@ -327,64 +463,18 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
             left: '-30%',
             width: '50%',
             height: '300%',
-            background: 'linear-gradient(105deg, transparent 40%, rgba(0,255,255,0.04) 45%, rgba(255,255,255,0.08) 50%, rgba(0,255,255,0.04) 55%, transparent 60%)',
+            background: 'linear-gradient(105deg, transparent 40%, rgba(0,255,255,0.03) 45%, rgba(255,255,255,0.06) 50%, rgba(0,255,255,0.03) 55%, transparent 60%)',
             transform: 'rotate(-20deg)',
           }} />
         </div>
 
-        {/* Playhead line */}
-        <div className="absolute top-0 bottom-0 w-[2px] z-[8] pointer-events-none"
-          style={{
-            left: `${progress}%`,
-            background: 'linear-gradient(to bottom, #00ffff, rgba(0,136,255,0.6), rgba(0,255,255,0.15))',
-            boxShadow: '0 0 8px rgba(0,255,255,0.6), 0 0 20px rgba(0,255,255,0.15)',
-            transition: 'left 0.08s linear',
-          }} />
-
-        {/* Playhead glow dot */}
-        <div className="absolute top-[-1px] w-2 h-2 rounded-full z-[9] pointer-events-none -translate-x-1/2"
-          style={{
-            left: `${progress}%`,
-            background: '#00ffff',
-            boxShadow: '0 0 8px rgba(0,255,255,0.9), 0 0 16px rgba(0,255,255,0.4)',
-            transition: 'left 0.08s linear',
-          }} />
-
-        {/* Bars */}
-        {barsData.current.map((val, i) => {
-          const t = i / barCount
-          const played = t <= progress / 100
-          const nearPlayhead = Math.abs(t - progress / 100) < 0.05
-          const pulseAmt = isPlaying
-            ? Math.sin((pulse * 0.05) + i * 0.5) * 0.12 +
-              Math.sin((pulse * 0.03) + i * 1.1) * 0.06 +
-              Math.cos((pulse * 0.07) + i * 0.3) * 0.04
-            : 0
-          const barH = Math.max(2, (val + pulseAmt) * 36)
-
-          return (
-            <div key={i} className="flex-1 rounded-t-sm relative z-[2]"
-              style={{
-                height: `${barH}px`,
-                background: played
-                  ? nearPlayhead && isPlaying
-                    ? '#00ffff'
-                    : `linear-gradient(to top, rgba(0,255,255,${isPlaying ? 0.9 : 0.5}), rgba(0,136,255,${isPlaying ? 0.6 : 0.25}))`
-                  : 'rgba(0,255,255,0.1)',
-                boxShadow: played && isPlaying
-                  ? nearPlayhead
-                    ? '0 0 6px rgba(0,255,255,0.6)'
-                    : '0 0 2px rgba(0,255,255,0.15)'
-                  : 'none',
-                transition: isPlaying ? 'height 50ms ease, background 80ms ease' : 'all 300ms ease',
-                opacity: played ? 1 : 0.5,
-              }} />
-          )
-        })}
-
-        {/* Inner top reflection */}
-        <div className="absolute top-0 left-0 right-0 h-[40%] pointer-events-none rounded-t-xl z-[3]"
-          style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent)' }} />
+        {/* Live canvas waveform */}
+        <LiveWaveform
+          audioElement={audioRef.current}
+          isPlaying={isPlaying}
+          progress={progress}
+          onSeek={handleSeek}
+        />
       </div>
 
       {/* CSS for pulse animation */}
