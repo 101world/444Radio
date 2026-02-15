@@ -234,6 +234,10 @@ export default function PluginPage() {
   })
   const [outputDirHandle, setOutputDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
   const [showOutputSettings, setShowOutputSettings] = useState(false)
+  const [hasSetupOutput, setHasSetupOutput] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem(OUTPUT_PATH_KEY) !== null
+    return false
+  })
 
   // ── Stem splitting ──
   const [isSplittingStems, setIsSplittingStems] = useState(false)
@@ -430,7 +434,10 @@ export default function PluginPage() {
       const saved = localStorage.getItem(CHAT_KEY)
       if (saved) {
         const parsed = JSON.parse(saved)
-        setMessages(parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })))
+        // Only restore if it has real content (not just the welcome message)
+        if (parsed.length > 1) {
+          setMessages(parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })))
+        }
       }
     } catch {}
   }, [])
@@ -598,6 +605,7 @@ export default function PluginPage() {
       setOutputDirHandle(handle)
       setOutputPath(handle.name)
       localStorage.setItem(OUTPUT_PATH_KEY, handle.name)
+      setHasSetupOutput(true)
       showBridgeToast(`📂 Output folder: ${handle.name}`)
     } catch (err: any) {
       if (err.name !== 'AbortError') {
@@ -620,6 +628,31 @@ export default function PluginPage() {
   const [dawImporting, setDawImporting] = useState<string | null>(null)
   const importToDAW = async (sourceUrl: string, title: string) => {
     if (dawImporting) return
+
+    // First-time setup: auto-prompt for output folder before first import
+    if (!hasSetupOutput && !isInDAW) {
+      try {
+        const handle = await (window as any).showDirectoryPicker?.({
+          id: '444radio-output',
+          mode: 'readwrite',
+          startIn: 'desktop',
+        })
+        if (handle) {
+          setOutputDirHandle(handle)
+          setOutputPath(handle.name)
+          localStorage.setItem(OUTPUT_PATH_KEY, handle.name)
+          setHasSetupOutput(true)
+          showBridgeToast(`📂 Output folder set: ${handle.name}`)
+        }
+      } catch (err: any) {
+        // User cancelled or API not available — continue with default Downloads
+        if (err.name !== 'AbortError') console.warn('Could not pick folder:', err)
+      }
+      // Mark setup done even if they cancelled (don't nag)
+      setHasSetupOutput(true)
+      localStorage.setItem(OUTPUT_PATH_KEY, outputPath)
+    }
+
     const importId = `${sourceUrl}-${title}`
     setDawImporting(importId)
     try {
@@ -1697,12 +1730,16 @@ export default function PluginPage() {
         })
         if (!res.ok) return
         const data = await res.json()
-        if (data.messages && data.messages.length > 0) {
+        if (data.messages && data.messages.length > 1) {
           const serverMsgs = data.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
-          // Use server messages if they have more content than local
+          // Only use server messages if they have real generation results
+          // (prevents old stale chats from overriding a fresh session)
+          const serverHasResults = serverMsgs.some((m: any) => m.result?.audioUrl || m.result?.imageUrl || m.result?.url)
           const localStr = localStorage.getItem(CHAT_KEY)
           const localMsgs = localStr ? JSON.parse(localStr) : []
-          if (serverMsgs.length >= localMsgs.length) {
+          const localHasResults = localMsgs.some((m: any) => m.result?.audioUrl || m.result?.imageUrl || m.result?.url)
+          // Only restore server chat if it has results and local doesn't, or server is strictly newer
+          if (serverHasResults && !localHasResults && serverMsgs.length > localMsgs.length) {
             setMessages(serverMsgs)
           }
         }
@@ -2701,9 +2738,9 @@ export default function PluginPage() {
               </div>
             </div>
 
-            {/* Prompt Suggestions Dropdown */}
+            {/* Prompt Suggestions Dropdown — fixed position so it's not clipped by dock containers */}
             {showPromptSuggestions && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 mx-4 p-4 bg-black/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl max-h-[50vh] overflow-y-auto z-40">
+              <div className="fixed bottom-20 left-4 right-4 p-4 bg-black/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl max-h-[50vh] overflow-y-auto z-[60]" style={{ animation: 'fadeIn 0.15s ease-out' }}>
                 {!showIdeasFlow ? (
                   <>
                     <div className="flex items-center justify-between mb-3">
