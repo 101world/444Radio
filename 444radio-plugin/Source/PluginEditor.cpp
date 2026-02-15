@@ -37,9 +37,19 @@ static juce::File getPluginBinaryDir()
 
 static juce::File getWebView2DataFolder()
 {
+    // Each host DAW gets its own WebView2 data subfolder to prevent lock conflicts
+    // e.g.  %APPDATA%/444Radio/WebView2_AbletonLive/
+    //       %APPDATA%/444Radio/WebView2_PremierePro/
+    //       %APPDATA%/444Radio/WebView2_Standalone/
+    auto hostExe = juce::File::getSpecialLocation (juce::File::currentExecutableFile)
+                       .getFileNameWithoutExtension()
+                       .replaceCharacters (" .-()[]{}", "________")
+                       .trim();
+    if (hostExe.isEmpty()) hostExe = "Unknown";
+
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
                .getChildFile ("444Radio")
-               .getChildFile ("WebView2");
+               .getChildFile ("WebView2_" + hostExe);
 }
 
 //==============================================================================
