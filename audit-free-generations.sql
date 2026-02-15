@@ -5,10 +5,11 @@
 -- ignored failures. Combined with the $1 wallet gate in deduct_credits(),
 -- users could generate for free when the deduction returned success=false.
 --
--- This query finds all failed deductions (status='failed') that correspond
--- to actual generations, showing how many free credits each user consumed.
+-- Result: 1 user, 3 free generations, 5 free credits total.
+--   user_34StnaXDJ3yZTYmz1Wmv3sYcqcB — 5 credits, 2026-02-15
 --
--- Run this AFTER applying migration 120 (which removes the wallet gate).
+-- POLICY: Everyone MUST have $1+ in wallet to generate. No exceptions.
+--         The $1 wallet gate in deduct_credits() (migration 119) stays.
 -- ============================================================================
 
 -- 1. See all failed deductions (these are the free generations)
@@ -22,7 +23,7 @@ SELECT
   metadata
 FROM credit_transactions
 WHERE status = 'failed'
-  AND amount < 0   -- Only actual deduction attempts (not $0 failed-gen logs)
+  AND amount < 0
 ORDER BY created_at DESC;
 
 -- 2. Summary: total free credits consumed per user
@@ -38,50 +39,20 @@ WHERE status = 'failed'
 GROUP BY user_id
 ORDER BY total_free_credits DESC;
 
--- 3. CLAWBACK: Deduct the stolen credits from each user's balance
--- ⚠️  REVIEW the output of query #2 first before running this!
--- This sets credits to max(0, credits - stolen) for each user.
-/*
-UPDATE users u
-SET credits = GREATEST(0, credits - stolen.total_free_credits::int)
-FROM (
-  SELECT 
-    user_id,
-    SUM(ABS(amount)) AS total_free_credits
-  FROM credit_transactions
-  WHERE status = 'failed'
-    AND amount < 0
-  GROUP BY user_id
-) stolen
-WHERE u.clerk_user_id = stolen.user_id
-  AND stolen.total_free_credits > 0;
-*/
+-- 3. CLAWBACK: Deduct the 5 stolen credits from user_34StnaXDJ3yZTYmz1Wmv3sYcqcB
+UPDATE users
+SET credits = GREATEST(0, credits - 5)
+WHERE clerk_user_id = 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB';
 
--- 4. Log the clawback transactions (run after the UPDATE above)
-/*
+-- 4. Log the clawback transaction
 INSERT INTO credit_transactions (user_id, amount, balance_after, type, status, description, metadata)
-SELECT 
-  stolen.user_id,
-  -stolen.total_free_credits::int,
-  GREATEST(0, u.credits - stolen.total_free_credits::int),
+SELECT
+  'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB',
+  -5,
+  GREATEST(0, credits - 5),
   'credit_clawback',
   'success',
-  'Clawback for free generations due to deduction bug (pre-2026-02-16 fix)',
-  jsonb_build_object(
-    'free_generations', stolen.free_gen_count,
-    'total_free_credits', stolen.total_free_credits,
-    'bug', 'deduct_after_generation_ignored_failure'
-  )
-FROM (
-  SELECT 
-    user_id,
-    COUNT(*) AS free_gen_count,
-    SUM(ABS(amount)) AS total_free_credits
-  FROM credit_transactions
-  WHERE status = 'failed'
-    AND amount < 0
-  GROUP BY user_id
-) stolen
-JOIN users u ON u.clerk_user_id = stolen.user_id
-WHERE stolen.total_free_credits > 0;
-*/
+  'Clawback: 5 free credits from 3 generations (deduction bug pre-2026-02-16)',
+  '{"free_generations": 3, "total_free_credits": 5, "bug": "deduct_after_generation_ignored_failure"}'::jsonb
+FROM users
+WHERE clerk_user_id = 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB';
