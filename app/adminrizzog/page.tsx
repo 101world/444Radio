@@ -313,13 +313,13 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
           </div>
           <div>
             <h2 className="text-lg font-black text-white tracking-tight">Admin Wallet</h2>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest">1 Billion Credits Allocation</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest">444 Billion Credits Allocation</p>
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <div className="bg-black/30 rounded-xl p-4 border border-cyan-500/10">
             <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Total Allocation</div>
-            <div className="text-2xl font-black text-white">{(adminWalletTotal || 1_000_000_000).toLocaleString()}</div>
+            <div className="text-2xl font-black text-white">{(adminWalletTotal || 444_000_000_000).toLocaleString()}</div>
           </div>
           <div className="bg-black/30 rounded-xl p-4 border border-emerald-500/10">
             <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Credits Distributed</div>
@@ -340,12 +340,12 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
         <div className="mt-4">
           <div className="flex justify-between text-[10px] text-gray-500 mb-1">
             <span>Distributed</span>
-            <span>{((totalCreditsAwarded || 0) / (adminWalletTotal || 1_000_000_000) * 100).toFixed(4)}%</span>
+            <span>{((totalCreditsAwarded || 0) / (adminWalletTotal || 444_000_000_000) * 100).toFixed(6)}%</span>
           </div>
           <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, ((totalCreditsAwarded || 0) / (adminWalletTotal || 1_000_000_000)) * 100)}%` }}
+              style={{ width: `${Math.min(100, ((totalCreditsAwarded || 0) / (adminWalletTotal || 444_000_000_000)) * 100)}%` }}
             />
           </div>
         </div>

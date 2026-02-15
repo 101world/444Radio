@@ -7,7 +7,7 @@ import {
   Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
   Layers, Film, Scissors, Volume2, ChevronLeft, ChevronDown, ChevronUp, Lightbulb, Settings,
   RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink, Home,
-  BookOpen, ArrowDownToLine
+  BookOpen, ArrowDownToLine, Pin, PinOff, Maximize2, Minimize2
 } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
@@ -41,6 +41,16 @@ const CHAT_KEY = '444radio_plugin_chat'
 const CHAT_ARCHIVES_KEY = '444radio_plugin_chat_archives'
 const LIBRARY_KEY = '444radio_plugin_library'
 const TOKEN_KEY = '444radio_plugin_token'
+const PIN_KEY = '444radio_plugin_pinned'
+const SIZE_KEY = '444radio_plugin_size'
+
+// ─── Window size presets for JUCE plugin ────────────────────────
+const WINDOW_SIZES = [
+  { label: 'Compact', w: 480, h: 600 },
+  { label: 'Default', w: 640, h: 800 },
+  { label: 'Wide',    w: 900, h: 700 },
+  { label: 'Full',    w: 1200, h: 900 },
+] as const
 
 // ─── Stem display helper (same as create page) ─────────────────
 function getStemDisplay(stemName: string): { label: string; color: string; emoji: string } {
@@ -137,6 +147,20 @@ export default function PluginPage() {
   const [isMobile, setIsMobile] = useState(false)
   const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
   const [showBottomDock, setShowBottomDock] = useState(true)
+
+  // ── Plugin window pin & resize ──
+  const [isPinned, setIsPinned] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem(PIN_KEY) === 'true'
+    return false
+  })
+  const [windowSizeIdx, setWindowSizeIdx] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(SIZE_KEY)
+      return stored ? parseInt(stored, 10) : 1 // default
+    }
+    return 1
+  })
+  const [showSizeMenu, setShowSizeMenu] = useState(false)
 
   // ── Chat ──
   const [messages, setMessages] = useState<Message[]>([
@@ -486,6 +510,32 @@ export default function PluginPage() {
       window.location.href = `juce-bridge://${encodeURIComponent(msg)}`
     } catch {}
   }
+
+  // ═══ WINDOW PIN / RESIZE HELPERS ═══
+  const togglePin = () => {
+    const next = !isPinned
+    setIsPinned(next)
+    localStorage.setItem(PIN_KEY, String(next))
+    sendBridgeMessage({ action: 'pin_window', pinned: next })
+  }
+
+  const setWindowSize = (idx: number) => {
+    setWindowSizeIdx(idx)
+    setShowSizeMenu(false)
+    localStorage.setItem(SIZE_KEY, String(idx))
+    const size = WINDOW_SIZES[idx]
+    sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
+  }
+
+  // Send persisted pin/size state to JUCE on mount
+  useEffect(() => {
+    if (isInDAW) {
+      if (isPinned) sendBridgeMessage({ action: 'pin_window', pinned: true })
+      const size = WINDOW_SIZES[windowSizeIdx]
+      sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInDAW])
 
   const sendToDAW = (url: string, title: string) => {
     // Send proxied URL so JUCE can fetch the actual audio file
@@ -1771,6 +1821,14 @@ export default function PluginPage() {
   return (
     <div className={`min-h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
 
+      {/* Pin status bar — shows when window is pinned */}
+      {isPinned && (
+        <div className="flex items-center justify-center gap-2 px-3 py-1 bg-cyan-500/10 border-b border-cyan-500/20 text-[10px] text-cyan-400 select-none shrink-0">
+          <Pin size={10} /> Window pinned — stays on top
+          <button onClick={togglePin} className="ml-2 underline hover:text-cyan-300 transition-colors">Unpin</button>
+        </div>
+      )}
+
       {/* Hidden file input for sidebar feature uploads */}
       <input
         ref={fileInputRef}
@@ -2014,6 +2072,34 @@ export default function PluginPage() {
             <span className="text-white font-bold text-sm">444 Radio</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* ── Pin window toggle ── */}
+            <button onClick={togglePin}
+              className={`p-2 rounded-lg transition-colors ${isPinned ? 'bg-cyan-500/20 text-cyan-400' : 'hover:bg-white/10 text-gray-500'}`}
+              title={isPinned ? 'Unpin window (window stays on top)' : 'Pin window on screen'}>
+              {isPinned ? <PinOff size={15} /> : <Pin size={15} />}
+            </button>
+            {/* ── Resize dropdown ── */}
+            <div className="relative">
+              <button onClick={() => setShowSizeMenu(!showSizeMenu)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400"
+                title="Resize plugin window">
+                <Maximize2 size={15} />
+              </button>
+              {showSizeMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSizeMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl py-1 min-w-[140px]">
+                    {WINDOW_SIZES.map((s, i) => (
+                      <button key={s.label} onClick={() => setWindowSize(i)}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${i === windowSizeIdx ? 'bg-cyan-500/15 text-cyan-400' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <span className="font-medium">{s.label}</span>
+                        <span className="text-[10px] text-gray-500">{s.w}×{s.h}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             {/* Library */}
             <button onClick={() => window.open('https://www.444radio.co.in/library' + (token ? '?host=juce&token=' + encodeURIComponent(token) : ''), '_blank')}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="My Library">
