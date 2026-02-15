@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
           .order('created_at', { ascending: false })
           .limit(50)
         pluginPurchases = ppData || []
-        pluginRevenue = pluginPurchases.reduce((sum: number, p: any) => sum + (p.amount_usd || p.amount || 0), 0)
+        pluginRevenue = pluginPurchases.reduce((sum: number, p: any) => sum + ((p.amount || 0) / 100), 0) // cents → dollars
       } catch {
         // Table may not exist yet (migration 023)
       }
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
         if (error) throw error
 
         const totalRevenue = (data || []).filter((p: any) => p.status === 'completed')
-          .reduce((sum: number, p: any) => sum + (p.amount_usd || p.amount || 0), 0)
+          .reduce((sum: number, p: any) => sum + ((p.amount || 0) / 100), 0) // cents → dollars
 
         return NextResponse.json({ tab: 'plugin-purchases', data, total: count, page, limit, totalRevenue })
       } catch (err: any) {

@@ -102,16 +102,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Insert into plugin_purchases table
+    // Insert into plugin_purchases table (schema: clerk_user_id, order_id, payment_id, amount (cents), currency, status)
     const { error: purchaseError } = await supabaseAdmin
       .from('plugin_purchases')
       .insert({
         clerk_user_id: userId,
+        order_id: razorpay_order_id,
         payment_id: razorpay_payment_id,
-        payment_method: 'razorpay',
-        amount_usd: 25.00,
+        amount: 2500,
+        currency: 'USD',
         status: 'completed',
-        platform: 'all',
       })
 
     if (purchaseError) {
