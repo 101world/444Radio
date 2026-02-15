@@ -552,7 +552,7 @@ export default function PluginPage() {
     sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format: 'mp3' })
   }
 
-  // ═══ Import as WAV to DAW — converts client-side then sends blob URL ═══
+  // ═══ Import as WAV to DAW — converts client-side then sends to JUCE bridge ═══
   const [dawImporting, setDawImporting] = useState<string | null>(null)
   const importWavToDAW = async (sourceUrl: string, title: string) => {
     if (dawImporting) return
@@ -570,27 +570,27 @@ export default function PluginPage() {
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       const wavBlob = audioBufferToWav(audioBuffer)
 
-      // 3. Create a downloadable URL and trigger download (JUCE picks up file downloads)
+      // 3. Create a blob URL for the WAV data
       const wavUrl = URL.createObjectURL(wavBlob)
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_')
-      const link = document.createElement('a')
-      link.href = wavUrl
-      link.download = `${safeName}.wav`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
 
-      // 4. Also notify DAW bridge with the blob URL
-      sendBridgeMessage({ action: 'import_audio', url: wavUrl, title, format: 'wav' })
+      // 4. Send to JUCE bridge — NO browser download, only DAW import
+      sendBridgeMessage({ action: 'import_audio', url: wavUrl, title: safeName, format: 'wav', size: wavBlob.size })
+
+      // Also try the full proxy URL as fallback for JUCE (blob URLs may not work in all WebViews)
+      const fullProxyUrl = `${window.location.origin}${proxyUrl}`
+      sendBridgeMessage({ action: 'download_complete', url: fullProxyUrl, title: safeName, format: 'wav' })
+
+      showBridgeToast(`🎵 Imported "${title}" to DAW as WAV`)
 
       // Cleanup after delay
-      setTimeout(() => URL.revokeObjectURL(wavUrl), 30000)
+      setTimeout(() => URL.revokeObjectURL(wavUrl), 60000)
     } catch (err) {
       console.error('DAW WAV import error:', err)
-      // Fallback: send raw proxy URL
+      // Fallback: send raw proxy URL as MP3
       const fallbackUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
       sendBridgeMessage({ action: 'import_audio', url: fallbackUrl, title, format: 'mp3' })
-      alert('WAV conversion failed — importing as MP3 instead.')
+      showBridgeToast(`🎵 Imported "${title}" to DAW as MP3`)
     } finally {
       setDawImporting(null)
     }
