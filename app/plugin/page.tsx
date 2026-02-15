@@ -554,13 +554,22 @@ export default function PluginPage() {
     sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format: 'wav' })
   }
 
-  // ═══ Download WAV for DAW — simple: fetch → convert → download ═══
+  // ═══ WAV for DAW — fetch → convert → draggable toast ═══
   const [dawDownloading, setDawDownloading] = useState<string | null>(null)
+  const [dawReadyFile, setDawReadyFile] = useState<{ name: string; blobUrl: string } | null>(null)
+
+  const dismissDawFile = () => {
+    if (dawReadyFile) {
+      URL.revokeObjectURL(dawReadyFile.blobUrl)
+      setDawReadyFile(null)
+    }
+  }
 
   const downloadForDAW = async (sourceUrl: string, title: string) => {
     const id = `${sourceUrl}-${title}`
     if (dawDownloading) return
     setDawDownloading(id)
+    dismissDawFile() // clear any previous toast
     try {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
       const wavName = `${safeName}.wav`
@@ -572,14 +581,12 @@ export default function PluginPage() {
         return
       }
 
-      // Browser: fetch audio bytes directly from R2 CDN (no proxy)
-      showBridgeToast(`⏳ Downloading ${wavName}...`)
+      // Browser: fetch audio bytes directly from R2 CDN
+      showBridgeToast(`⏳ Converting to WAV...`)
       let res: Response
       try {
-        // Try direct R2 CDN URL first (fastest, no middleman)
         res = await fetch(sourceUrl)
       } catch {
-        // CORS blocked → fall back to server proxy
         res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`)
       }
       if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
@@ -590,15 +597,10 @@ export default function PluginPage() {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
       const decoded = await ctx.decodeAudioData(ab)
       const wavBlob = audioBufferToWav(decoded)
-      const url = URL.createObjectURL(wavBlob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = wavName
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 3000)
-      showBridgeToast(`✅ ${wavName} downloaded — drag from Downloads into your DAW`)
+      const blobUrl = URL.createObjectURL(wavBlob)
+
+      // Show draggable toast instead of auto-downloading
+      setDawReadyFile({ name: wavName, blobUrl })
     } catch (err: any) {
       console.error('DAW download error:', err)
       showBridgeToast(`❌ ${err.message || 'Download failed'}`)
@@ -1858,8 +1860,40 @@ export default function PluginPage() {
   return (
     <div className={`h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
 
+      {/* DAW WAV toast — drag this to your DAW timeline */}
+      {dawReadyFile && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 pl-3 pr-2 py-2 rounded-2xl select-none"
+          style={{
+            background: 'linear-gradient(135deg, rgba(6,182,212,0.25), rgba(139,92,246,0.25))',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(6,182,212,0.6)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(6,182,212,0.2)',
+            animation: 'fadeIn 0.2s ease-out',
+          }}>
+          {/* Draggable WAV chip */}
+          <a
+            href={dawReadyFile.blobUrl}
+            download={dawReadyFile.name}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('DownloadURL', `audio/wav:${dawReadyFile.name}:${dawReadyFile.blobUrl}`)
+              e.dataTransfer.setData('text/plain', dawReadyFile.name)
+              e.dataTransfer.effectAllowed = 'copy'
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-xl cursor-grab active:cursor-grabbing hover:bg-cyan-500/30 transition-all no-underline"
+          >
+            <Music size={14} className="text-cyan-400 shrink-0 animate-pulse" />
+            <span className="text-xs font-bold text-white truncate max-w-[160px]">{dawReadyFile.name}</span>
+          </a>
+          <span className="text-[10px] text-cyan-300/80 whitespace-nowrap">← drag to DAW</span>
+          <button onClick={dismissDawFile} className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0">
+            <X size={14} className="text-gray-400" />
+          </button>
+        </div>
+      )}
+
       {/* Bridge action toast */}
-      {bridgeToast && (
+      {bridgeToast && !dawReadyFile && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-xl text-xs font-medium text-cyan-300 select-none pointer-events-none"
           style={{
             background: 'rgba(15,23,42,0.9)',
