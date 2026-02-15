@@ -554,8 +554,10 @@ export default function PluginPage() {
     setShowSizeMenu(false)
     localStorage.setItem(SIZE_KEY, String(idx))
     const size = WINDOW_SIZES[idx]
+    // Send to JUCE C++ bridge + try direct window resize as fallback
     sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
-    showBridgeToast(`↔ Resized to ${size.label} (${size.w}×${size.h})`)
+    try { window.resizeTo(size.w, size.h) } catch {}
+    showBridgeToast(`↔ ${size.label} (${size.w}×${size.h})`)
   }
 
   // Send persisted pin/size state to JUCE on mount
@@ -564,6 +566,7 @@ export default function PluginPage() {
       if (isPinned) sendBridgeMessage({ action: 'pin_window', pinned: true })
       const size = WINDOW_SIZES[windowSizeIdx]
       sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
+      try { window.resizeTo(size.w, size.h) } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInDAW])
@@ -1967,16 +1970,20 @@ export default function PluginPage() {
   //  RENDER — Carbon copy of create page layout
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className={`h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
+    <div className={`h-screen text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}
+      style={{
+        background: 'linear-gradient(160deg, #020617 0%, #0a0f1e 40%, #0d0b21 70%, #020617 100%)',
+      }}>
 
       {/* Bridge action toast */}
       {bridgeToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-xl text-xs font-medium text-cyan-300 select-none pointer-events-none"
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] px-5 py-2.5 rounded-2xl text-xs font-medium text-cyan-300 select-none pointer-events-none"
           style={{
-            background: 'rgba(15,23,42,0.9)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(6,182,212,0.3)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            background: 'rgba(2,6,23,0.85)',
+            backdropFilter: 'blur(30px) saturate(1.6)',
+            WebkitBackdropFilter: 'blur(30px) saturate(1.6)',
+            border: '1px solid rgba(6,182,212,0.2)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(6,182,212,0.06), inset 0 1px 0 rgba(255,255,255,0.04)',
             animation: 'fadeIn 0.2s ease-out',
           }}>
           {bridgeToast}
@@ -2006,7 +2013,7 @@ export default function PluginPage() {
           {/* Mobile backdrop */}
           <div className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={() => setShowFeaturesSidebar(false)} />
 
-          <div className="fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen md:w-[420px] bg-black/95 backdrop-blur-2xl md:border-r md:border-white/10 z-50 md:z-40 flex flex-col" style={{ animation: 'slideInLeft 0.3s ease-out' }}>
+          <div className="fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen md:w-[420px] z-50 md:z-40 flex flex-col" style={{ background: 'rgba(2,6,23,0.95)', backdropFilter: 'blur(40px) saturate(1.5)', WebkitBackdropFilter: 'blur(40px) saturate(1.5)', borderRight: '1px solid rgba(6,182,212,0.08)', animation: 'slideInLeft 0.3s ease-out' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 h-20 border-b border-white/10">
               <div className="flex items-center gap-3">
@@ -2219,8 +2226,14 @@ export default function PluginPage() {
 
       {/* ── Main Chat Area ── */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Chat Header */}
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/50 backdrop-blur-sm">
+        {/* Chat Header — glass morphism */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]"
+          style={{
+            background: 'rgba(2,6,23,0.7)',
+            backdropFilter: 'blur(30px) saturate(1.6)',
+            WebkitBackdropFilter: 'blur(30px) saturate(1.6)',
+            boxShadow: 'inset 0 -1px 0 rgba(6,182,212,0.06), 0 4px 20px rgba(0,0,0,0.3)',
+          }}>
           <div className="flex items-center gap-3">
             <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors">
@@ -2262,8 +2275,8 @@ export default function PluginPage() {
                 </>
               )}
             </div>
-            {/* Library */}
-            <button onClick={() => window.open('https://www.444radio.co.in/library' + (token ? '?host=juce&token=' + encodeURIComponent(token) : ''), '_blank')}
+            {/* Library — opens in-plugin, not browser */}
+            <button onClick={() => { window.location.href = '/library?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="My Library">
               <BookOpen size={16} className="text-purple-400" />
             </button>
@@ -2272,9 +2285,10 @@ export default function PluginPage() {
               className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Back to Plugin Home">
               <Home size={16} className="text-cyan-400" />
             </button>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/30 rounded-full">
-              <Zap size={12} className="text-cyan-400" />
-              <span className="text-cyan-300 text-xs font-bold">{userCredits ?? '...'}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
+              style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)' }}>
+              <Zap size={11} className="text-cyan-400" />
+              <span className="text-cyan-300 text-xs font-bold tabular-nums">{userCredits ?? '...'}</span>
             </div>
           </div>
         </div>
@@ -2293,11 +2307,22 @@ export default function PluginPage() {
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 chat-scroll-container" style={{ paddingBottom: showBottomDock ? '200px' : '100px' }}>
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] md:max-w-[70%] ${
-                msg.type === 'user'
-                  ? 'bg-cyan-500/20 border border-cyan-500/30 rounded-2xl rounded-br-md px-4 py-3'
-                  : 'bg-white/5 border border-white/10 rounded-2xl rounded-bl-md px-4 py-3'
-              }`}>
+              <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 ${
+                msg.type === 'user' ? 'rounded-br-md' : 'rounded-bl-md'
+              }`}
+                style={{
+                  background: msg.type === 'user'
+                    ? 'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(99,102,241,0.08))'
+                    : 'rgba(255,255,255,0.03)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: msg.type === 'user'
+                    ? '1px solid rgba(6,182,212,0.2)'
+                    : '1px solid rgba(255,255,255,0.06)',
+                  boxShadow: msg.type === 'user'
+                    ? '0 2px 16px rgba(6,182,212,0.06), inset 0 1px 0 rgba(255,255,255,0.04)'
+                    : '0 2px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.02)',
+                }}>
                 {/* Text content */}
                 <p className="text-sm text-white whitespace-pre-wrap">{msg.content}</p>
 
@@ -2349,44 +2374,54 @@ export default function PluginPage() {
                     </details>
 
                     {/* Action buttons row */}
-                    <div className="flex flex-wrap gap-2">
-                      {/* MP3 Download → toast */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {/* MP3 Download */}
                       <button onClick={() => downloadAndToast(msg.result!.audioUrl!, msg.result!.title || 'track', 'mp3')}
                         disabled={dawDownloading !== null}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all disabled:opacity-50">
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:text-white transition-all disabled:opacity-50"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                         <Download size={12} /> MP3
                       </button>
-                      {/* WAV Download → toast */}
+                      {/* WAV Download */}
                       <button onClick={() => downloadAndToast(msg.result!.audioUrl!, msg.result!.title || 'track', 'wav')}
                         disabled={dawDownloading !== null}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 rounded-lg text-xs text-emerald-300 hover:text-emerald-200 transition-all font-semibold disabled:opacity-50">
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-emerald-300 hover:text-emerald-200 transition-all font-semibold disabled:opacity-50"
+                        style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
                         <Download size={12} /> WAV
                       </button>
                       {/* Split Stems */}
                       <button onClick={() => handleSplitStems(msg.result!.audioUrl!, msg.id)} disabled={isSplittingStems}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50">
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50"
+                        style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', backdropFilter: 'blur(10px)' }}>
                         <Scissors size={12} /> Stems <span className="text-[10px] text-gray-500">(-5)</span>
                       </button>
-                      {/* Import to DAW — sends URL to C++ for native import to timeline */}
+                      {/* Import to DAW — sends URL to C++ for native timeline import */}
                       {isInDAW && (
                         <button onClick={() => {
                           const title = msg.result!.title || 'AI Track'
                           const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
                           sendBridgeMessage({ action: 'import_audio', url: msg.result!.audioUrl!, title: safeName, format: 'wav' })
-                          showBridgeToast(`✅ Importing ${safeName}.wav to timeline...`)
+                          showBridgeToast(`✅ Importing to timeline — ${safeName}.wav`)
                         }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold">
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(139,92,246,0.12))',
+                            border: '1px solid rgba(6,182,212,0.3)',
+                            boxShadow: '0 0 12px rgba(6,182,212,0.08)',
+                          }}>
                           <ArrowDownToLine size={12} /> Import to DAW
                         </button>
                       )}
                       {/* Audio Boost */}
                       <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all"
+                        style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}>
                         <Volume2 size={12} /> Boost <span className="text-[10px] text-gray-500">(-1)</span>
                       </button>
-                      {/* Open in browser (library) */}
-                      <button onClick={() => window.open('https://444radio.co.in/library?host=juce', '_blank')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
+                      {/* Library — opens in plugin */}
+                      <button onClick={() => { window.location.href = '/library?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:text-white transition-all"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                         <Layers size={12} /> Library
                       </button>
                     </div>
@@ -2483,20 +2518,20 @@ export default function PluginPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* ── Glassmorphism Bottom Dock — always visible, toggle to collapse ── */}
+        {/* ── Glass Morphism Bottom Dock ── */}
         <div className="sticky bottom-0 left-0 right-0 z-30">
-          {/* Toggle button — always visible */}
+          {/* Toggle button */}
           <div className="flex justify-center">
             <button
               onClick={() => setShowBottomDock(!showBottomDock)}
-              className="px-4 py-1 rounded-t-xl text-white/40 hover:text-white/80 transition-all duration-200"
+              className="px-4 py-1 rounded-t-xl text-white/30 hover:text-cyan-400/70 transition-all duration-200"
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                borderTop: '1px solid rgba(255,255,255,0.06)',
-                borderLeft: '1px solid rgba(255,255,255,0.06)',
-                borderRight: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(2,6,23,0.6)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderTop: '1px solid rgba(6,182,212,0.08)',
+                borderLeft: '1px solid rgba(6,182,212,0.06)',
+                borderRight: '1px solid rgba(6,182,212,0.06)',
               }}
               title={showBottomDock ? 'Hide prompt bar' : 'Show prompt bar'}
             >
@@ -2506,11 +2541,11 @@ export default function PluginPage() {
           <div
             className={`transition-all duration-300 ease-out ${showBottomDock ? 'max-h-[500px] opacity-100 overflow-visible' : 'max-h-0 opacity-0 overflow-hidden'}`}
             style={{
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.55) 100%)',
-              backdropFilter: 'blur(28px) saturate(1.3)',
-              WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
-              boxShadow: '0 -8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
+              background: 'linear-gradient(180deg, rgba(2,6,23,0.75) 0%, rgba(2,6,23,0.92) 100%)',
+              backdropFilter: 'blur(40px) saturate(1.6)',
+              WebkitBackdropFilter: 'blur(40px) saturate(1.6)',
+              borderTop: '1px solid rgba(6,182,212,0.08)',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)',
             }}
           >
           <div className="pt-4 pb-4 px-4">
@@ -2518,19 +2553,23 @@ export default function PluginPage() {
             <div className="flex items-center justify-center gap-1 mb-3 flex-wrap">
               {/* Music */}
               <button onClick={() => { setSelectedType('music'); setShowAdvancedButtons(!showAdvancedButtons) }}
-                className={`p-2 rounded-xl transition-all ${selectedType === 'music' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                className={`p-2 rounded-xl transition-all duration-200 ${selectedType === 'music' ? 'text-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
+                style={selectedType === 'music' ? { background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.25)', boxShadow: '0 0 10px rgba(6,182,212,0.08)' } : { border: '1px solid transparent' }}
                 title="Music"><Music size={18} /></button>
               {/* Effects */}
               <button onClick={() => setSelectedType('effects')}
-                className={`p-2 rounded-xl transition-all ${selectedType === 'effects' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                className={`p-2 rounded-xl transition-all duration-200 ${selectedType === 'effects' ? 'text-purple-400' : 'text-gray-500 hover:text-gray-300'}`}
+                style={selectedType === 'effects' ? { background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', boxShadow: '0 0 10px rgba(139,92,246,0.08)' } : { border: '1px solid transparent' }}
                 title="Effects"><Sparkles size={18} /></button>
               {/* Loops */}
               <button onClick={() => setSelectedType('loops' as GenerationType)}
-                className={`p-2 rounded-xl transition-all ${(selectedType as string) === 'loops' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                className={`p-2 rounded-xl transition-all duration-200 ${(selectedType as string) === 'loops' ? 'text-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
+                style={(selectedType as string) === 'loops' ? { background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.25)', boxShadow: '0 0 10px rgba(6,182,212,0.08)' } : { border: '1px solid transparent' }}
                 title="Loops"><Repeat size={18} /></button>
               {/* Image */}
               <button onClick={() => setSelectedType('image')}
-                className={`p-2 rounded-xl transition-all ${selectedType === 'image' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+                className={`p-2 rounded-xl transition-all duration-200 ${selectedType === 'image' ? 'text-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
+                style={selectedType === 'image' ? { background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.25)', boxShadow: '0 0 10px rgba(6,182,212,0.08)' } : { border: '1px solid transparent' }}
                 title="Cover Art"><ImageIcon size={18} /></button>
               
               <div className="w-px h-6 bg-white/10 mx-1" />
@@ -2561,10 +2600,11 @@ export default function PluginPage() {
               </button>
 
               {/* Credits */}
-              <div className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded-lg ml-1">
-                <Zap size={12} className="text-cyan-400" />
-                <span className="text-xs text-cyan-300 font-bold">{userCredits ?? '...'}</span>
-                <span className="text-[10px] text-gray-500">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg ml-1"
+                style={{ background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.12)' }}>
+                <Zap size={11} className="text-cyan-400" />
+                <span className="text-xs text-cyan-300 font-bold tabular-nums">{userCredits ?? '...'}</span>
+                <span className="text-[10px] text-gray-500/60">
                   (-{selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : (selectedType as string) === 'loops' ? 6 : 0})
                 </span>
               </div>
@@ -2629,13 +2669,17 @@ export default function PluginPage() {
 
             {/* Prompt Input Bar */}
             <div className="relative">
-              <div className="flex items-end gap-2 rounded-2xl px-3 py-2 transition-colors"
+              <div className="flex items-end gap-2 rounded-2xl px-3 py-2 transition-all duration-300"
                 style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  ...(input.trim().length >= MIN_PROMPT_LENGTH ? { boxShadow: '0 0 20px rgba(6, 182, 212, 0.12), inset 0 1px 0 rgba(255,255,255,0.06)' } : { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }),
+                  background: 'rgba(2,6,23,0.6)',
+                  backdropFilter: 'blur(30px) saturate(1.5)',
+                  WebkitBackdropFilter: 'blur(30px) saturate(1.5)',
+                  border: input.trim().length >= MIN_PROMPT_LENGTH
+                    ? '1px solid rgba(6,182,212,0.25)'
+                    : '1px solid rgba(255,255,255,0.06)',
+                  boxShadow: input.trim().length >= MIN_PROMPT_LENGTH
+                    ? '0 0 24px rgba(6,182,212,0.1), 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
+                    : '0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)',
                 }}>
                 
                 {/* Toggle sidebar */}
@@ -2690,10 +2734,10 @@ export default function PluginPage() {
 
                 {/* Send button */}
                 <button onClick={handleGenerate} disabled={!input.trim() || input.trim().length < MIN_PROMPT_LENGTH}
-                  className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-50 active:scale-95 mb-0.5"
+                  className="relative flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-30 active:scale-90 mb-0.5"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(34,211,238,0.8), rgba(34,211,238,0.5))',
-                    boxShadow: '0 0 20px rgba(6,182,212,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
+                    background: 'linear-gradient(135deg, rgba(34,211,238,0.85), rgba(99,102,241,0.6))',
+                    boxShadow: '0 0 16px rgba(6,182,212,0.25), 0 0 32px rgba(6,182,212,0.08), inset 0 1px 0 rgba(255,255,255,0.25)',
                   }}>
                   {activeGenerations.size > 0 && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">{activeGenerations.size}</div>
@@ -2705,7 +2749,7 @@ export default function PluginPage() {
 
             {/* Prompt Suggestions Dropdown — fixed position so it's not clipped by dock containers */}
             {showPromptSuggestions && (
-              <div className="fixed bottom-20 left-4 right-4 p-4 bg-black/95 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl max-h-[50vh] overflow-y-auto z-[60]" style={{ animation: 'fadeIn 0.15s ease-out' }}>
+              <div className="fixed bottom-20 left-4 right-4 p-4 rounded-2xl shadow-2xl max-h-[50vh] overflow-y-auto z-[60]" style={{ background: 'rgba(2,6,23,0.92)', backdropFilter: 'blur(30px) saturate(1.5)', WebkitBackdropFilter: 'blur(30px) saturate(1.5)', border: '1px solid rgba(6,182,212,0.1)', boxShadow: '0 12px 48px rgba(0,0,0,0.5)', animation: 'fadeIn 0.15s ease-out' }}>
                 {!showIdeasFlow ? (
                   <>
                     <div className="flex items-center justify-between mb-3">

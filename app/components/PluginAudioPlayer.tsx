@@ -17,24 +17,20 @@ interface PluginAudioPlayerProps {
   onPlayStateChange?: (playing: boolean) => void
 }
 
-/**
- * Bullet-proof proxy URL helper.
- * ALL external audio goes through /api/r2/proxy so there are zero CORS issues.
- * Same-origin URLs pass through unchanged.
- */
 function safeAudioUrl(url: string): string {
   if (!url) return url
   try {
     const u = new URL(url, window.location.origin)
-    if (u.pathname.startsWith('/api/')) return url          // already an API route
-    if (u.origin === window.location.origin) return url     // same-origin
-  } catch { /* fall through to proxy */ }
+    if (u.pathname.startsWith('/api/')) return url
+    if (u.origin === window.location.origin) return url
+  } catch {}
   return `/api/r2/proxy?url=${encodeURIComponent(url)}`
 }
 
 export default function PluginAudioPlayer({ track, playing, onClose, onPlayStateChange }: PluginAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const waveformRef = useRef<HTMLDivElement>(null)
+  const animFrameRef = useRef<number>(0)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -43,8 +39,36 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   const [isMuted, setIsMuted] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pulse, setPulse] = useState(0)
 
-  // ── Cleanup on unmount ──
+  const barCount = 64
+  const barsData = useRef<number[]>([])
+  if (barsData.current.length === 0) {
+    for (let i = 0; i < barCount; i++) {
+      barsData.current.push(
+        Math.sin(i * 0.4 + 1.3) * 0.25 +
+        Math.sin(i * 0.15 + 2.1) * 0.2 +
+        Math.cos(i * 0.3 + 0.7) * 0.15 + 0.4
+      )
+    }
+  }
+
+  // Pulsating animation
+  useEffect(() => {
+    let frame = 0
+    const animate = () => {
+      frame++
+      setPulse(frame)
+      animFrameRef.current = requestAnimationFrame(animate)
+    }
+    if (isPlaying) {
+      animFrameRef.current = requestAnimationFrame(animate)
+    } else {
+      setPulse(0)
+    }
+    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current) }
+  }, [isPlaying])
+
   useEffect(() => {
     return () => {
       if (audioRef.current) {
@@ -56,15 +80,9 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     }
   }, [])
 
-  // ── Load & play track ──
-  // IMPORTANT: No WebAudio createMediaElementSource — that hijacks audio output
-  // and causes silent playback when the AudioContext is suspended or misconfigured.
-  // Plain HTML5 Audio is rock-solid and works everywhere.
   useEffect(() => {
     if (!track) return
     setError(null)
-
-    // Create fresh audio element per track to avoid stale state
     if (audioRef.current) {
       audioRef.current.pause()
       audioRef.current.removeAttribute('src')
@@ -80,13 +98,10 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     const onEnded = () => { setIsPlaying(false); onPlayStateChange?.(false) }
     const onPlay = () => { setIsPlaying(true); onPlayStateChange?.(true) }
     const onPause = () => { setIsPlaying(false); onPlayStateChange?.(false) }
-    const onError = () => {
+    const onErr = () => {
       const code = audio.error?.code
       const msg = code === 4 ? 'Format not supported' : code === 2 ? 'Network error' : 'Playback failed'
-      console.error('[PluginPlayer] Audio error:', audio.error?.message, 'code:', code)
-      setError(msg)
-      setIsPlaying(false)
-      onPlayStateChange?.(false)
+      setError(msg); setIsPlaying(false); onPlayStateChange?.(false)
     }
 
     audio.addEventListener('loadedmetadata', onLoadedMeta)
@@ -94,14 +109,11 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     audio.addEventListener('ended', onEnded)
     audio.addEventListener('play', onPlay)
     audio.addEventListener('pause', onPause)
-    audio.addEventListener('error', onError)
+    audio.addEventListener('error', onErr)
 
-    // Set source via proxy and play
     audio.src = safeAudioUrl(track.audioUrl)
     audio.load()
-    audio.play().catch((e) => {
-      console.warn('[PluginPlayer] Autoplay blocked:', e.message)
-    })
+    audio.play().catch(() => {})
 
     return () => {
       audio.removeEventListener('loadedmetadata', onLoadedMeta)
@@ -109,36 +121,26 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
       audio.removeEventListener('ended', onEnded)
       audio.removeEventListener('play', onPlay)
       audio.removeEventListener('pause', onPause)
-      audio.removeEventListener('error', onError)
+      audio.removeEventListener('error', onErr)
       audio.pause()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track?.id, track?.audioUrl])
 
-  // ── External play/pause control ──
   useEffect(() => {
     if (playing === undefined || !audioRef.current) return
-    if (playing && !isPlaying) {
-      audioRef.current.play().catch(() => {})
-    } else if (!playing && isPlaying) {
-      audioRef.current.pause()
-    }
+    if (playing && !isPlaying) audioRef.current.play().catch(() => {})
+    else if (!playing && isPlaying) audioRef.current.pause()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing])
 
-  // ── Volume sync ──
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = isMuted ? 0 : volume
   }, [volume, isMuted])
 
-  // ── Controls ──
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return
-    if (isPlaying) {
-      audioRef.current.pause()
-    } else {
-      audioRef.current.play().catch(() => {})
-    }
+    isPlaying ? audioRef.current.pause() : audioRef.current.play().catch(() => {})
   }, [isPlaying])
 
   const seekFromEvent = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -150,139 +152,159 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   }, [duration])
 
   const skipBack = useCallback(() => {
-    if (!audioRef.current) return
-    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 5)
+    if (audioRef.current) audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 5)
   }, [])
 
   const skipFwd = useCallback(() => {
-    if (!audioRef.current) return
-    audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 5)
+    if (audioRef.current) audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 5)
   }, [duration])
-
-  const toggleMute = useCallback(() => {
-    setIsMuted(prev => !prev)
-  }, [])
-
-  const changeVolume = useCallback((v: number) => {
-    setVolume(v)
-    setIsMuted(false)
-  }, [])
 
   const fmt = (s: number) => {
     if (!s || !isFinite(s)) return '0:00'
-    const m = Math.floor(s / 60)
-    const sec = Math.floor(s % 60)
-    return `${m}:${sec.toString().padStart(2, '0')}`
+    return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`
   }
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
-
   if (!track) return null
 
-  // Deterministic waveform bars from seed (visual only — no WebAudio needed)
-  const barCount = 48
-  const bars: number[] = []
-  for (let i = 0; i < barCount; i++) {
-    bars.push(Math.sin(i * 0.5 + 1.3) * 0.3 + Math.sin(i * 0.2 + 0.5) * 0.2 + 0.35)
-  }
-
   return (
-    <div
-      className="w-full select-none transition-all duration-300 ease-out"
-      style={{
-        background: 'linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.88) 50%, rgba(30,27,75,0.90) 100%)',
-        backdropFilter: 'blur(28px) saturate(1.5)',
-        WebkitBackdropFilter: 'blur(28px) saturate(1.5)',
-        borderBottom: '1px solid rgba(6,182,212,0.2)',
-        boxShadow: '0 4px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-        animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}
-    >
-      {/* Main row */}
-      <div className="flex items-center gap-2 px-3 py-1.5">
-        <button onClick={skipBack} className="p-1 text-white/30 hover:text-white/80 transition flex-shrink-0">
-          <SkipBack size={12} />
+    <div className="w-full select-none relative overflow-hidden" style={{
+      background: 'linear-gradient(160deg, rgba(2,6,23,0.97) 0%, rgba(15,23,42,0.94) 50%, rgba(30,27,75,0.92) 100%)',
+      backdropFilter: 'blur(40px) saturate(1.8)',
+      WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+      borderBottom: '1px solid rgba(6,182,212,0.12)',
+      boxShadow: '0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04), 0 0 80px rgba(6,182,212,0.04)',
+    }}>
+      {/* Ambient tracking glow */}
+      {isPlaying && (
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: `radial-gradient(ellipse 40% 100% at ${progress}% 80%, rgba(6,182,212,0.1) 0%, transparent 70%)`,
+          transition: 'background 0.5s ease',
+        }} />
+      )}
+
+      {/* Top edge highlight */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(6,182,212,0.2), rgba(139,92,246,0.15), transparent)' }} />
+
+      {/* Controls row */}
+      <div className="relative flex items-center gap-1 px-2.5 pt-2 pb-0.5">
+        <button onClick={skipBack} className="p-1 text-white/20 hover:text-cyan-400/70 transition-all duration-200 flex-shrink-0 active:scale-90">
+          <SkipBack size={10} />
         </button>
 
         <button onClick={togglePlay}
-          className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 transition-transform flex-shrink-0"
+          className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0 relative group"
           style={{
-            background: 'linear-gradient(135deg, rgba(34,211,238,0.85), rgba(34,211,238,0.6))',
-            boxShadow: '0 0 12px rgba(34,211,238,0.25), inset 0 1px 0 rgba(255,255,255,0.2)',
+            background: isPlaying
+              ? 'linear-gradient(135deg, rgba(34,211,238,0.95), rgba(99,102,241,0.75))'
+              : 'linear-gradient(135deg, rgba(34,211,238,0.8), rgba(34,211,238,0.55))',
+            boxShadow: isPlaying
+              ? '0 0 16px rgba(34,211,238,0.45), 0 0 40px rgba(99,102,241,0.12), inset 0 1px 0 rgba(255,255,255,0.3)'
+              : '0 0 10px rgba(34,211,238,0.2), inset 0 1px 0 rgba(255,255,255,0.2)',
           }}>
-          {isPlaying ? <Pause size={11} className="text-black" /> : <Play size={11} className="text-black ml-0.5" />}
+          {/* Outer pulse ring */}
+          {isPlaying && <div className="absolute inset-0 rounded-full animate-ping opacity-20"
+            style={{ background: 'rgba(34,211,238,0.4)' }} />}
+          {isPlaying ? <Pause size={10} className="text-black relative z-10" /> : <Play size={10} className="text-black ml-0.5 relative z-10" />}
         </button>
 
-        <button onClick={skipFwd} className="p-1 text-white/30 hover:text-white/80 transition flex-shrink-0">
-          <SkipForward size={12} />
+        <button onClick={skipFwd} className="p-1 text-white/20 hover:text-cyan-400/70 transition-all duration-200 flex-shrink-0 active:scale-90">
+          <SkipForward size={10} />
         </button>
 
-        <span className="text-[9px] text-white/30 font-mono w-6 text-right flex-shrink-0">{fmt(currentTime)}</span>
+        <span className="text-[8px] text-cyan-400/40 font-mono w-6 text-right flex-shrink-0 tabular-nums tracking-tight">{fmt(currentTime)}</span>
 
-        {/* Waveform bars (pure CSS — no WebAudio dependency) */}
-        <div
-          ref={waveformRef}
-          className="flex-1 h-6 flex items-center gap-px cursor-pointer min-w-0 rounded"
-          onClick={seekFromEvent}
-        >
-          {bars.map((val, i) => {
-            const t = i / barCount
-            const played = t <= progress / 100
-            const barH = Math.max(3, val * 20)
-            return (
-              <div
-                key={i}
-                className="flex-1 rounded-sm transition-colors duration-150"
-                style={{
-                  height: `${barH}px`,
-                  backgroundColor: played
-                    ? (isPlaying ? 'rgba(34,211,238,0.85)' : 'rgba(34,211,238,0.7)')
-                    : 'rgba(100,116,139,0.25)',
-                }}
-              />
-            )
-          })}
-        </div>
-
-        <span className="text-[9px] text-white/30 font-mono w-6 flex-shrink-0">{fmt(duration)}</span>
-
-        <div className="flex-shrink min-w-0 max-w-[120px] hidden sm:block">
+        {/* Title */}
+        <div className="flex-1 min-w-0 px-1.5">
           {error ? (
-            <p className="text-[10px] font-semibold text-red-400 truncate">{error}</p>
+            <p className="text-[9px] font-medium text-red-400/90 truncate">{error}</p>
           ) : (
-            <p className="text-[10px] font-semibold text-white/80 truncate">{track.title || 'AI Track'}</p>
+            <p className="text-[9px] font-semibold text-white/60 truncate tracking-wider uppercase">{track.title || 'AI Track'}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-0.5 flex-shrink-0 relative">
-          <button onClick={toggleMute} onMouseEnter={() => setShowVolume(true)} className="p-1 text-white/30 hover:text-white/80 transition">
-            {isMuted || volume === 0 ? <VolumeX size={11} /> : <Volume2 size={11} />}
+        <span className="text-[8px] text-white/15 font-mono w-6 flex-shrink-0 tabular-nums tracking-tight">{fmt(duration)}</span>
+
+        {/* Volume */}
+        <div className="flex items-center flex-shrink-0 relative">
+          <button onClick={() => setIsMuted(p => !p)} onMouseEnter={() => setShowVolume(true)}
+            className="p-1 text-white/20 hover:text-cyan-400/50 transition-all">
+            {isMuted || volume === 0 ? <VolumeX size={10} /> : <Volume2 size={10} />}
           </button>
           {showVolume && (
-            <div
-              className="absolute top-full right-0 mt-1 rounded-lg p-2 z-50"
+            <div className="absolute top-full right-0 mt-1 rounded-xl p-2 z-50"
               style={{
-                background: 'rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                background: 'rgba(2,6,23,0.95)',
+                backdropFilter: 'blur(30px)',
+                border: '1px solid rgba(6,182,212,0.1)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
               }}
               onMouseLeave={() => setShowVolume(false)}>
-              <input
-                type="range" min="0" max="1" step="0.01"
-                value={isMuted ? 0 : volume}
-                onChange={e => changeVolume(parseFloat(e.target.value))}
-                className="w-20 h-1 accent-cyan-400 cursor-pointer"
-              />
+              <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume}
+                onChange={e => { setVolume(parseFloat(e.target.value)); setIsMuted(false) }}
+                className="w-16 h-0.5 accent-cyan-400 cursor-pointer" />
             </div>
           )}
         </div>
 
         {onClose && (
-          <button onClick={onClose} className="p-1 text-white/20 hover:text-white/70 hover:rotate-90 transition-all duration-200 flex-shrink-0">
-            <X size={12} />
+          <button onClick={onClose} className="p-0.5 text-white/10 hover:text-white/50 hover:rotate-90 transition-all duration-300 flex-shrink-0">
+            <X size={10} />
           </button>
         )}
+      </div>
+
+      {/* Futuristic waveform with pulsating bars */}
+      <div ref={waveformRef} className="relative h-8 mx-2.5 mb-1.5 flex items-end gap-[0.5px] cursor-pointer rounded-lg overflow-hidden"
+        onClick={seekFromEvent}
+        style={{
+          background: 'rgba(0,0,0,0.4)',
+          border: '1px solid rgba(6,182,212,0.06)',
+          boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3)',
+        }}>
+        {/* Playhead */}
+        <div className="absolute top-0 bottom-0 w-[1.5px] z-10 pointer-events-none"
+          style={{
+            left: `${progress}%`,
+            background: 'linear-gradient(to bottom, rgba(34,211,238,0.95), rgba(139,92,246,0.7), rgba(34,211,238,0.3))',
+            boxShadow: '0 0 6px rgba(34,211,238,0.5), 0 0 12px rgba(34,211,238,0.15)',
+            transition: 'left 0.1s ease',
+          }} />
+        {/* Playhead dot */}
+        <div className="absolute top-0 w-1.5 h-1.5 rounded-full z-10 pointer-events-none -translate-x-1/2"
+          style={{
+            left: `${progress}%`,
+            background: 'rgba(34,211,238,1)',
+            boxShadow: '0 0 6px rgba(34,211,238,0.8)',
+            transition: 'left 0.1s ease',
+          }} />
+
+        {barsData.current.map((val, i) => {
+          const t = i / barCount
+          const played = t <= progress / 100
+          const pulseAmt = isPlaying
+            ? Math.sin((pulse * 0.06) + i * 0.4) * 0.1 + Math.sin((pulse * 0.04) + i * 0.9) * 0.05
+            : 0
+          const barH = Math.max(1.5, (val + pulseAmt) * 28)
+
+          return (
+            <div key={i} className="flex-1 rounded-t-[1px]"
+              style={{
+                height: `${barH}px`,
+                background: played
+                  ? `linear-gradient(to top, rgba(34,211,238,${isPlaying ? 0.9 : 0.65}), rgba(139,92,246,${isPlaying ? 0.65 : 0.35}))`
+                  : 'rgba(100,116,139,0.1)',
+                boxShadow: played && isPlaying ? '0 0 3px rgba(34,211,238,0.2)' : 'none',
+                transition: isPlaying ? 'height 60ms ease, background 100ms ease' : 'all 200ms ease',
+                opacity: played ? 1 : 0.6,
+              }} />
+          )
+        })}
+
+        {/* Reflection / glass effect */}
+        <div className="absolute inset-0 pointer-events-none rounded-lg"
+          style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent 40%)' }} />
       </div>
     </div>
   )

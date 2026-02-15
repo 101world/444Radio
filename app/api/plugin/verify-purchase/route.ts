@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 import crypto from 'crypto'
 
 export async function OPTIONS() {
@@ -105,6 +106,22 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[plugin/verify-purchase] ✅ Purchase completed for user:', clerkUserId, 'order:', razorpay_order_id)
+
+    // Log in credit_transactions for wallet visibility + admin tracking
+    await logCreditTransaction({
+      userId: clerkUserId,
+      amount: 0, // No credits added — this is a product purchase, not credits
+      type: 'plugin_purchase',
+      status: 'success',
+      description: 'Plugin one-time purchase — $25 USD — unlimited access',
+      metadata: {
+        razorpay_order_id,
+        razorpay_payment_id,
+        amount_cents: 2500,
+        currency: 'USD',
+        product: 'plugin_unlimited',
+      },
+    })
 
     return corsResponse(NextResponse.json({
       success: true,
