@@ -10,7 +10,7 @@ import { auth } from '@clerk/nextjs/server'
 import { supabase } from '@/lib/supabase'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
-import { v4 as uuidv4 } from 'uuid'
+import crypto from 'crypto'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Upload WAV to R2
-    const key = `wav/${uuidv4()}.wav`
+    const key = `wav/${crypto.randomUUID()}.wav`
     const arrayBuffer = await wavFile.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
