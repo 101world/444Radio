@@ -60,7 +60,7 @@ interface PluginPostGenModalProps {
   token: string | null
   userCredits: number | null
   isInDAW: boolean
-  onSendToDAW: (url: string, title: string) => void
+  onSendToDAW: (url: string, title: string, format: 'mp3' | 'wav') => void
   onSplitStems: (audioUrl: string, messageId: string) => void
   onAudioBoost: (audioUrl: string, title: string) => void
   onCreditsChange: (credits: number) => void
@@ -262,19 +262,34 @@ export default function PluginPostGenModal({
 
         {/* Content */}
         <div className="px-5 pt-5 pb-6 space-y-4">
-          {/* ═══ DAW Integration: Send / Drag WAV ═══ */}
+          {/* ═══ DAW Integration: Import to DAW ═══ */}
           {isInDAW ? (
-            /* Inside JUCE plugin — one-click send to DAW timeline */
-            <button
-              onClick={() => { onSendToDAW(result.audioUrl, result.title); onClose() }}
-              className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 hover:border-cyan-400/60 rounded-xl transition-all group"
-            >
-              <ArrowDownToLine size={20} className="text-cyan-400 group-hover:scale-110 transition-transform" />
-              <div className="text-left">
-                <span className="text-sm font-bold text-white">Send to DAW Timeline</span>
-                <p className="text-[10px] text-cyan-300/70">Imports WAV directly into your project</p>
+            /* Inside JUCE plugin — format choice + send to DAW timeline */
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400 text-center font-medium">Import to DAW Timeline</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => { onSendToDAW(result.audioUrl, result.title, 'wav'); onClose() }}
+                  className="flex items-center justify-center gap-2 px-4 py-4 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 hover:border-cyan-400/60 rounded-xl transition-all group"
+                >
+                  <ArrowDownToLine size={18} className="text-cyan-400 group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <span className="text-sm font-bold text-white">WAV</span>
+                    <p className="text-[10px] text-cyan-300/70">Lossless · DAW ready</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { onSendToDAW(result.audioUrl, result.title, 'mp3'); onClose() }}
+                  className="flex items-center justify-center gap-2 px-4 py-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-all group"
+                >
+                  <ArrowDownToLine size={18} className="text-gray-400 group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <span className="text-sm font-bold text-white">MP3</span>
+                    <p className="text-[10px] text-gray-400/70">Compressed · smaller</p>
+                  </div>
+                </button>
               </div>
-            </button>
+            </div>
           ) : (
             /* Browser context — draggable WAV chip */
             <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl">

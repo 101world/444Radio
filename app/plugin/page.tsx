@@ -568,10 +568,10 @@ export default function PluginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInDAW])
 
-  const sendToDAW = (url: string, title: string) => {
+  const sendToDAW = (url: string, title: string, format: 'mp3' | 'wav' = 'wav') => {
     const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(url)}`
     const fullProxyUrl = `${window.location.origin}${proxyUrl}`
-    sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format: 'wav' })
+    sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format })
   }
 
   // ═══ WAV for DAW — fetch → convert → draggable toast ═══
@@ -3476,9 +3476,9 @@ export default function PluginPage() {
         token={token}
         userCredits={userCredits}
         isInDAW={isInDAW}
-        onSendToDAW={(url, title) => {
-          sendToDAW(url, title)
-          showBridgeToast(`🎵 Sending "${title}" to DAW...`)
+        onSendToDAW={(url, title, format) => {
+          sendToDAW(url, title, format)
+          showBridgeToast(`🎵 Sending "${title}" as ${format.toUpperCase()} to DAW...`)
         }}
         onSplitStems={(audioUrl, messageId) => {
           setShowPostGenModal(false)

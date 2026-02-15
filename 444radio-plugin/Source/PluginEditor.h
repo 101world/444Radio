@@ -65,7 +65,9 @@ private:
 
     // ─── Bridge message handling ───
     void handleWebMessage (const juce::String& jsonData);
-    void downloadAudio (const juce::String& url, const juce::String& title);
+    void downloadAudio (const juce::String& url, const juce::String& title,
+                        const juce::String& format = "wav");
+    static bool convertToWav (const juce::File& source, const juce::File& dest);
 
     // Allow the file-local BridgeWebView to call handleWebMessage
     friend class BridgeWebView;

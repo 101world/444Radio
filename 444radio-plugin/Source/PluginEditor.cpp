@@ -487,10 +487,12 @@ void RadioPluginEditor::handleWebMessage (const juce::String& jsonData)
     // ── Audio / loops import ──
     if (action == "import_audio" || action == "import_loops")
     {
-        auto url   = json["url"].toString();
-        auto title = json["title"].toString();
+        auto url    = json["url"].toString();
+        auto title  = json["title"].toString();
+        auto format = json["format"].toString();
         if (title.isEmpty()) title = json["type"].toString();
-        if (url.isNotEmpty()) downloadAudio (url, title);
+        if (format.isEmpty()) format = "wav";
+        if (url.isNotEmpty()) downloadAudio (url, title, format);
     }
 
     // ── Stems import (multiple files) ──
@@ -530,44 +532,143 @@ void RadioPluginEditor::handleWebMessage (const juce::String& jsonData)
 //==============================================================================
 //  Audio download → drag bar
 //==============================================================================
-void RadioPluginEditor::downloadAudio (const juce::String& url,
-                                       const juce::String& title)
+//==============================================================================
+//  Convert any audio file to WAV using JUCE AudioFormatManager
+//==============================================================================
+bool RadioPluginEditor::convertToWav (const juce::File& source,
+                                      const juce::File& dest)
 {
-    auto urlFileName = juce::URL (url).getFileName();
-    auto ext = urlFileName.fromLastOccurrenceOf (".", true, false);
-    if (ext.isEmpty() || ext.length() > 6) ext = ".wav";
+    juce::AudioFormatManager fmtMgr;
+    fmtMgr.registerBasicFormats();
+
+    std::unique_ptr<juce::AudioFormatReader> reader (
+        fmtMgr.createReaderFor (source));
+
+    if (reader == nullptr)
+    {
+        DBG ("444 Radio: could not create reader for " + source.getFullPathName());
+        return false;
+    }
+
+    juce::WavAudioFormat wavFormat;
+    dest.getParentDirectory().createDirectory();
+    std::unique_ptr<juce::FileOutputStream> outStream (
+        dest.createOutputStream());
+
+    if (outStream == nullptr)
+    {
+        DBG ("444 Radio: could not open output for " + dest.getFullPathName());
+        return false;
+    }
+
+    std::unique_ptr<juce::AudioFormatWriter> writer (
+        wavFormat.createWriterFor (outStream.get(),
+                                   reader->sampleRate,
+                                   reader->numChannels,
+                                   16, // 16-bit PCM
+                                   {}, 0));
+
+    if (writer == nullptr)
+    {
+        DBG ("444 Radio: could not create WAV writer");
+        return false;
+    }
+
+    outStream.release();  // writer now owns the stream
+
+    bool ok = writer->writeFromAudioReader (*reader, 0, reader->lengthInSamples);
+    writer.reset();  // flush & close
+
+    if (ok)
+        DBG ("444 Radio: converted to WAV — " + dest.getFullPathName());
+    else
+        DBG ("444 Radio: WAV conversion failed");
+
+    return ok;
+}
+
+void RadioPluginEditor::downloadAudio (const juce::String& url,
+                                       const juce::String& title,
+                                       const juce::String& format)
+{
+    // Determine desired extension based on format
+    auto desiredExt = format.equalsIgnoreCase ("mp3") ? juce::String (".mp3")
+                                                      : juce::String (".wav");
 
     auto safeName = title.replaceCharacters ("\\/:*?\"<>|", "_________")
                          .trimCharactersAtEnd (" ._");
     if (safeName.isEmpty()) safeName = "444radio-generation";
 
-    auto destFile = downloadDir.getChildFile (safeName + ext);
+    // Temp file for raw download (we may need to convert)
+    auto tempFile = downloadDir.getChildFile (".444radio-temp-download");
+    auto destFile = downloadDir.getChildFile (safeName + desiredExt);
 
     int counter = 1;
     while (destFile.existsAsFile())
         destFile = downloadDir.getChildFile (
-            safeName + " (" + juce::String (counter++) + ")" + ext);
+            safeName + " (" + juce::String (counter++) + ")" + desiredExt);
 
     DBG ("444 Radio: downloading " + url);
-    DBG ("           -> " + destFile.getFullPathName());
+    DBG ("           format=" + format + "  -> " + destFile.getFullPathName());
 
     downloader.reset();   // cancel any in-progress download
 
     auto displayName = safeName;
-    downloader = std::make_unique<AudioDownloader> (url, destFile,
-        [this, displayName] (bool success, juce::File file)
+    auto wantWav = format.equalsIgnoreCase ("wav");
+
+    downloader = std::make_unique<AudioDownloader> (url, tempFile,
+        [this, displayName, destFile, tempFile, wantWav] (bool success, juce::File downloaded)
         {
-            if (success)
+            if (! success)
             {
-                DBG ("444 Radio: download complete — " + file.getFullPathName());
+                DBG ("444 Radio: download failed");
+                tempFile.deleteFile();
                 if (dragBar != nullptr)
-                    dragBar->setFile (displayName, file);
+                    dragBar->clearFile();
+                return;
+            }
+
+            DBG ("444 Radio: download complete — " + downloaded.getFullPathName()
+                 + " (" + juce::String (downloaded.getSize() / 1024) + " KB)");
+
+            // Check if the downloaded data is already WAV
+            bool isAlreadyWav = false;
+            {
+                juce::FileInputStream peek (downloaded);
+                if (peek.openedOk() && peek.getTotalLength() >= 12)
+                {
+                    char header[4];
+                    peek.read (header, 4);
+                    isAlreadyWav = (memcmp (header, "RIFF", 4) == 0);
+                }
+            }
+
+            juce::File finalFile = destFile;
+
+            if (wantWav && ! isAlreadyWav)
+            {
+                // Convert MP3/OGG/whatever → WAV
+                DBG ("444 Radio: converting to WAV...");
+                if (convertToWav (downloaded, destFile))
+                {
+                    downloaded.deleteFile();  // remove temp
+                    finalFile = destFile;
+                }
+                else
+                {
+                    DBG ("444 Radio: WAV conversion failed — keeping original");
+                    downloaded.moveFileTo (destFile);
+                    finalFile = destFile;
+                }
             }
             else
             {
-                DBG ("444 Radio: download failed");
-                if (dragBar != nullptr)
-                    dragBar->clearFile();
+                // Already the right format — just rename
+                downloaded.moveFileTo (destFile);
+                finalFile = destFile;
             }
+
+            if (dragBar != nullptr)
+                dragBar->setFile (displayName, finalFile);
         });
 }
