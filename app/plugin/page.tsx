@@ -567,18 +567,26 @@ export default function PluginPage() {
 
       // Inside JUCE plugin → let the C++ side handle it
       if (isInDAW) {
-        const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
-        sendBridgeMessage({ action: 'import_audio', url: proxyUrl, title: safeName, format: 'wav' })
+        sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format: 'wav' })
         showBridgeToast(`🎵 Sending to DAW...`)
         return
       }
 
-      // Browser: fetch → decode → WAV → download
+      // Browser: fetch audio bytes directly from R2 CDN (no proxy)
       showBridgeToast(`⏳ Downloading ${wavName}...`)
-      const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
-      const res = await fetch(proxyUrl)
+      let res: Response
+      try {
+        // Try direct R2 CDN URL first (fastest, no middleman)
+        res = await fetch(sourceUrl)
+      } catch {
+        // CORS blocked → fall back to server proxy
+        res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`)
+      }
       if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
+      const ct = res.headers.get('content-type') || ''
+      if (ct.includes('text/html')) throw new Error('Got HTML instead of audio — file URL may be invalid')
       const ab = await res.arrayBuffer()
+      if (ab.byteLength < 1000) throw new Error('File too small — may be expired or invalid')
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
       const decoded = await ctx.decodeAudioData(ab)
       const wavBlob = audioBufferToWav(decoded)
@@ -590,7 +598,7 @@ export default function PluginPage() {
       a.click()
       document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 3000)
-      showBridgeToast(`✅ ${wavName} downloaded`)
+      showBridgeToast(`✅ ${wavName} downloaded — drag from Downloads into your DAW`)
     } catch (err: any) {
       console.error('DAW download error:', err)
       showBridgeToast(`❌ ${err.message || 'Download failed'}`)
@@ -606,9 +614,13 @@ export default function PluginPage() {
     if (wavExporting) return // prevent double-click
     setWavExporting(exportId)
     try {
-      // Fetch through proxy to avoid CORS
-      const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
-      const response = await fetch(proxyUrl)
+      // Fetch audio directly from R2 CDN, fallback to proxy
+      let response: Response
+      try {
+        response = await fetch(sourceUrl)
+      } catch {
+        response = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`)
+      }
       if (!response.ok) throw new Error(`Fetch failed: ${response.status}`)
       const arrayBuffer = await response.arrayBuffer()
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -634,11 +646,18 @@ export default function PluginPage() {
   const handleDownload = async (url: string, filename: string, format: 'mp3' | 'wav' = 'mp3') => {
     try {
       if (format === 'mp3') {
-        // Use fetch with auth header (can't use <a> tag because it won't send Bearer token)
-        const downloadUrl = `/api/plugin/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
-        const response = await fetch(downloadUrl, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        })
+        // Try direct R2 CDN download first (public URL, fastest)
+        let response: Response
+        try {
+          response = await fetch(url)
+          if (!response.ok) throw new Error('direct failed')
+        } catch {
+          // Fallback to plugin download endpoint with auth
+          const downloadUrl = `/api/plugin/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
+          response = await fetch(downloadUrl, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          })
+        }
         if (!response.ok) throw new Error(`Download failed: ${response.status}`)
         const blob = await response.blob()
         const blobUrl = URL.createObjectURL(blob)
@@ -650,9 +669,13 @@ export default function PluginPage() {
         document.body.removeChild(link)
         URL.revokeObjectURL(blobUrl)
       } else {
-        // WAV: fetch through proxy to avoid CORS, decode, convert to WAV
-        const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(url)}`
-        const response = await fetch(proxyUrl)
+        // WAV: fetch direct from R2 CDN, fallback to proxy
+        let response: Response
+        try {
+          response = await fetch(url)
+        } catch {
+          response = await fetch(`/api/r2/proxy?url=${encodeURIComponent(url)}`)
+        }
         if (!response.ok) throw new Error(`WAV fetch failed: ${response.status}`)
         const arrayBuffer = await response.arrayBuffer()
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -667,9 +690,8 @@ export default function PluginPage() {
         document.body.removeChild(link)
         setTimeout(() => URL.revokeObjectURL(wavUrl), 5000)
       }
-      // JUCE bridge: notify for DAW import (proxied URL so JUCE can fetch)
-      const proxiedUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(url)}`
-      sendBridgeMessage({ action: 'download_complete', url: proxiedUrl, title: filename, format })
+      // JUCE bridge: notify for DAW import (direct R2 URL)
+      sendBridgeMessage({ action: 'download_complete', url, title: filename, format })
     } catch (err) {
       console.error('Download error:', err)
       alert('Download failed. Please try again.')

@@ -16,6 +16,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/explore/genre-summary(.*)',
   '/api/plugin/(.*)',  // Plugin API uses Bearer token auth, not Clerk sessions
   '/plugin',           // Plugin WebView page (auth via token, not Clerk)
+  '/api/r2/proxy(.*)', // R2 file proxy — must be public so audio downloads work in plugin/DAW
   '/api/generate/atom-(.*)',   // Used by plugin page (hybrid auth: Clerk or Bearer token)
   '/api/generate/prompt-idea', // Used by plugin page (hybrid auth: Clerk or Bearer token)
   '/manifest.json',
