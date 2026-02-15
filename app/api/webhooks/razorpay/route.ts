@@ -92,8 +92,11 @@ export async function POST(req: Request) {
         break
 
       case 'subscription.activated':
+        await handleSubscriptionActivated(event.payload.subscription)
+        break
+
       case 'subscription.charged':
-        await handleSubscriptionSuccess(event.payload.subscription, event.event)
+        await handleSubscriptionCharged(event.payload.subscription, event.event)
         break
 
       case 'subscription.paused':
@@ -177,18 +180,118 @@ async function resolveUser(customerId: string) {
   return null
 }
 
-async function handleSubscriptionSuccess(subscription: any, eventType: string) {
+// ── Verify subscription status via Razorpay API ──
+async function verifySubscriptionWithRazorpay(subscriptionId: string): Promise<{ active: boolean; status: string; paidCount: number } | null> {
+  try {
+    const razorpayAuth = Buffer.from(
+      `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
+    ).toString('base64')
+    const res = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}`, {
+      headers: { Authorization: `Basic ${razorpayAuth}` },
+    })
+    if (!res.ok) {
+      console.error('[Razorpay] API verify failed:', res.status, await res.text())
+      return null
+    }
+    const sub = await res.json()
+    return {
+      active: sub.status === 'active' || sub.status === 'authenticated',
+      status: sub.status,
+      paidCount: sub.paid_count || 0,
+    }
+  } catch (e) {
+    console.error('[Razorpay] Failed to verify subscription via API:', e)
+    return null
+  }
+}
+
+// ── subscription.activated → status-only, NO credits ──
+// Credits are awarded ONLY via subscription.charged to prevent double-awarding
+async function handleSubscriptionActivated(subscription: any) {
+  const entity = subscription.entity || subscription
+  console.log('[Razorpay] Subscription activated (status-only, no credits):', entity.id)
+
+  const customerId = entity.customer_id
+  const user = await resolveUser(customerId)
+  if (!user) {
+    console.error('[Razorpay] User not found for customer:', customerId)
+    return
+  }
+
+  const planType = detectPlanType(entity.plan_id)
+
+  const { error } = await supabaseAdmin
+    .from('users')
+    .update({
+      subscription_status: 'active',
+      subscription_plan: planType,
+      subscription_id: entity.id,
+      subscription_start: entity.start_at,
+      subscription_end: entity.end_at,
+      razorpay_customer_id: customerId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('clerk_user_id', user.clerk_user_id)
+
+  if (error) console.error('[Razorpay] Failed to update subscription status:', error)
+  else console.log(`[Razorpay] ✅ Subscription ${entity.id} activated for ${user.clerk_user_id} (status-only)`)
+}
+
+// ── subscription.charged → validates + awards credits ──
+async function handleSubscriptionCharged(subscription: any, eventType: string) {
   const subscriptionEntity = subscription.entity || subscription
-  console.log('[Razorpay] Subscription event:', eventType, subscriptionEntity.id)
+  const paidCount = subscriptionEntity.paid_count || 0
+  console.log('[Razorpay] Subscription charged:', subscriptionEntity.id, 'paid_count:', paidCount)
 
   const customerId = subscriptionEntity.customer_id
   const planId = subscriptionEntity.plan_id
-  const idempotencyKey = `${subscriptionEntity.id}_${eventType}`
 
-  // ── Idempotency check ──
+  // ── Idempotency: include paid_count so monthly renewals each get processed ──
+  const idempotencyKey = `${subscriptionEntity.id}_charged_${paidCount}`
+
   if (await isAlreadyProcessed(idempotencyKey, eventType)) {
     console.log('[Razorpay] ⏭ Already processed:', idempotencyKey)
     return
+  }
+
+  // ── Verify subscription is actually active via Razorpay API ──
+  const verification = await verifySubscriptionWithRazorpay(subscriptionEntity.id)
+  if (verification) {
+    if (!verification.active) {
+      console.warn(`[Razorpay] ❌ Subscription ${subscriptionEntity.id} status is "${verification.status}" — NOT active. Skipping credit award.`)
+      // Log the blocked event for admin visibility
+      await logCreditTransaction({
+        userId: 'system',
+        amount: 0,
+        balanceAfter: 0,
+        type: 'subscription_bonus',
+        status: 'failed',
+        description: `BLOCKED: subscription.charged but status="${verification.status}" — credits NOT awarded`,
+        metadata: {
+          razorpay_id: idempotencyKey,
+          event_type: eventType,
+          subscription_id: subscriptionEntity.id,
+          subscription_status: verification.status,
+          plan_id: planId,
+          customer_id: customerId,
+          blocked_reason: 'subscription_not_active',
+        },
+      })
+      return
+    }
+    console.log(`[Razorpay] ✓ API verified: subscription is "${verification.status}", paid_count=${verification.paidCount}`)
+  } else {
+    // API verification failed — proceed cautiously with webhook data
+    console.warn('[Razorpay] ⚠ Could not verify via API, proceeding with webhook data')
+  }
+
+  // ── Check subscription end date hasn't passed ──
+  if (subscriptionEntity.end_at) {
+    const endDate = new Date(subscriptionEntity.end_at * 1000) // Razorpay uses Unix timestamps
+    if (endDate < new Date()) {
+      console.warn(`[Razorpay] ❌ Subscription ${subscriptionEntity.id} end_at (${endDate.toISOString()}) is in the past. Skipping credit award.`)
+      return
+    }
   }
 
   const user = await resolveUser(customerId)
@@ -197,17 +300,25 @@ async function handleSubscriptionSuccess(subscription: any, eventType: string) {
     return
   }
 
+  // ── Double-check user's subscription status in our DB ──
+  if (user.subscription_status === 'cancelled' || user.subscription_status === 'expired') {
+    console.warn(`[Razorpay] ⚠ User ${user.clerk_user_id} subscription_status="${user.subscription_status}" in DB but got charged event. Verifying...`)
+    // If API said active, trust the API and update status. Otherwise skip.
+    if (!verification?.active) {
+      console.warn(`[Razorpay] ❌ Both DB and API indicate inactive. Skipping credit award.`)
+      return
+    }
+  }
+
   // ── Determine credits to add ──
   let creditsToAdd = 0
   let creditSource = 'unknown'
 
-  // Priority 1: notes.credits (set by our checkout route — most reliable)
   const orderNotesCredits = subscriptionEntity.notes?.credits
   if (orderNotesCredits) {
     creditsToAdd = parseInt(orderNotesCredits, 10)
     creditSource = 'notes.credits'
   } else {
-    // Priority 2: plan mapping
     const plan = PLAN_CREDITS[planId]
     if (plan) {
       creditsToAdd = plan.credits
@@ -225,7 +336,7 @@ async function handleSubscriptionSuccess(subscription: any, eventType: string) {
   const planType = detectPlanType(planId)
   const newBalance = (user.credits || 0) + creditsToAdd
 
-  console.log(`[Razorpay] Awarding ${creditsToAdd} credits (${creditSource}) to ${user.clerk_user_id}`)
+  console.log(`[Razorpay] Awarding ${creditsToAdd} credits (${creditSource}) to ${user.clerk_user_id} [paid_count=${paidCount}]`)
 
   // ── Update user ──
   const { error: updateError } = await supabaseAdmin
@@ -254,7 +365,7 @@ async function handleSubscriptionSuccess(subscription: any, eventType: string) {
     balanceAfter: newBalance,
     type: 'subscription_bonus',
     status: 'success',
-    description: `Subscription ${eventType}: +${creditsToAdd} credits (${planType})`,
+    description: `Subscription charged (cycle #${paidCount}): +${creditsToAdd} credits (${planType})`,
     metadata: {
       razorpay_id: idempotencyKey,
       event_type: eventType,
@@ -263,10 +374,11 @@ async function handleSubscriptionSuccess(subscription: any, eventType: string) {
       subscription_id: subscriptionEntity.id,
       credit_source: creditSource,
       previous_balance: user.credits || 0,
+      paid_count: paidCount,
     },
   })
 
-  console.log(`[Razorpay] ✅ ${creditsToAdd} credits → ${user.clerk_user_id} (${user.credits || 0} → ${newBalance})`)
+  console.log(`[Razorpay] ✅ ${creditsToAdd} credits → ${user.clerk_user_id} (${user.credits || 0} → ${newBalance}) [cycle #${paidCount}]`)
 }
 
 async function handleSubscriptionEnd(subscription: any) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useUser } from '@clerk/nextjs'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 
 const ADMIN_ID = 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
@@ -476,11 +476,76 @@ function TransactionsTab({ data, page, onPage, typeFilter, setTypeFilter, onView
 
 // ═══════════ TRANSACTION TABLE (shared) ═══════════
 function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUser: (id: string) => void }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  // Extract human-readable detail from metadata
+  function metadataDetail(tx: Transaction): { label: string; details: { key: string; value: string }[] } | null {
+    const m = tx.metadata
+    if (!m || Object.keys(m).length === 0) return null
+
+    const details: { key: string; value: string }[] = []
+    const type = tx.type
+
+    // Code redemption
+    if (type === 'code_claim' || type === 'credit_award') {
+      if (m.code_name || m.code) details.push({ key: 'Code', value: String(m.code_name || m.code || '—') })
+      if (m.source === 'decrypt' || m.decrypt) details.push({ key: 'Source', value: '🔓 Decrypt Page' })
+      if (m.source) details.push({ key: 'Source', value: String(m.source) })
+    }
+
+    // Subscription
+    if (type === 'subscription_bonus') {
+      if (m.plan_type) details.push({ key: 'Plan', value: String(m.plan_type).toUpperCase() })
+      if (m.plan_id) details.push({ key: 'Plan ID', value: String(m.plan_id) })
+      if (m.credit_source) details.push({ key: 'Credit Source', value: String(m.credit_source) })
+      if (m.paid_count != null) details.push({ key: 'Billing Cycle', value: `#${m.paid_count}` })
+      if (m.subscription_id) details.push({ key: 'Sub ID', value: String(m.subscription_id) })
+      if (m.blocked_reason) details.push({ key: '⚠️ Blocked', value: String(m.blocked_reason) })
+    }
+
+    // Generation
+    if (type.startsWith('generation_')) {
+      if (m.generation_type) details.push({ key: 'Type', value: String(m.generation_type) })
+      if (m.prompt) details.push({ key: 'Prompt', value: String(m.prompt).slice(0, 80) })
+      if (m.model) details.push({ key: 'Model', value: String(m.model) })
+      if (m.duration) details.push({ key: 'Duration', value: `${m.duration}s` })
+    }
+
+    // Razorpay payment info
+    if (m.razorpay_id) details.push({ key: 'Razorpay ID', value: String(m.razorpay_id) })
+    if (m.payment_amount) details.push({ key: 'Payment', value: `₹${(Number(m.payment_amount) / 100).toFixed(2)}` })
+    if (m.event_type) details.push({ key: 'Event', value: String(m.event_type) })
+    if (m.previous_balance != null) details.push({ key: 'Prev Balance', value: String(m.previous_balance) })
+
+    // Generic metadata fallback — show any remaining keys
+    const shownKeys = new Set(details.map(d => d.key.toLowerCase()))
+    const skipKeys = new Set(['code_name', 'code', 'source', 'decrypt', 'plan_type', 'plan_id', 'credit_source', 'paid_count', 'subscription_id', 'blocked_reason', 'generation_type', 'prompt', 'model', 'duration', 'razorpay_id', 'payment_amount', 'event_type', 'previous_balance', 'subscription_status', 'customer_id'])
+    for (const [k, v] of Object.entries(m)) {
+      if (!skipKeys.has(k) && !shownKeys.has(k.toLowerCase()) && v != null && v !== '') {
+        details.push({ key: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), value: String(v).slice(0, 100) })
+      }
+    }
+
+    if (details.length === 0) return null
+
+    // Label
+    let label = 'Details'
+    if (type === 'code_claim' || (type === 'credit_award' && (m.code_name || m.code))) label = '🎟️ Code Redemption'
+    else if (type === 'credit_award' && m.source === 'decrypt') label = '🔓 Decrypt Unlock'
+    else if (type === 'subscription_bonus') label = '💳 Subscription'
+    else if (type.startsWith('generation_')) label = '🎵 Generation'
+    else if (type === 'credit_refund') label = '↩️ Refund'
+    else if (type === 'admin_adjustment') label = '⚙️ Admin Adjustment'
+
+    return { label, details }
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-gray-700/50 text-gray-500 uppercase tracking-wider">
+            <th className="text-left py-2 px-2 w-4"></th>
             <th className="text-left py-2 px-2">Date</th>
             <th className="text-left py-2 px-2">User</th>
             <th className="text-left py-2 px-2">Type</th>
@@ -491,29 +556,55 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
           </tr>
         </thead>
         <tbody>
-          {rows.map((tx) => (
-            <tr key={tx.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
-              <td className="py-2 px-2 text-gray-500 whitespace-nowrap">{formatDate(tx.created_at)}</td>
-              <td className="py-2 px-2">
-                <button onClick={() => onViewUser(tx.user_id)} className="text-cyan-400 hover:text-cyan-300 font-mono text-[10px]">
-                  {tx.user_id.slice(0, 16)}...
-                </button>
-              </td>
-              <td className="py-2 px-2">
-                <Badge text={tx.type} color={txnTypeBadge(tx.type)} />
-              </td>
-              <td className={`py-2 px-2 text-right font-bold ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {tx.amount >= 0 ? '+' : ''}{tx.amount}
-              </td>
-              <td className="py-2 px-2 text-right text-gray-400">{tx.balance_after ?? '—'}</td>
-              <td className="py-2 px-2 text-gray-400 max-w-[200px] truncate">{tx.description || '—'}</td>
-              <td className="py-2 px-2 text-center">
-                <Badge text={tx.status} color={tx.status === 'success' ? 'green' : tx.status === 'failed' ? 'red' : 'yellow'} />
-              </td>
-            </tr>
-          ))}
+          {rows.map((tx) => {
+            const detail = metadataDetail(tx)
+            const isExpanded = expandedId === tx.id
+            return (
+              <Fragment key={tx.id}>
+                <tr className={`border-b border-gray-800/50 hover:bg-gray-800/30 transition ${detail ? 'cursor-pointer' : ''}`}
+                    onClick={() => detail && setExpandedId(isExpanded ? null : tx.id)}>
+                  <td className="py-2 px-1 text-gray-600 text-center">
+                    {detail ? (isExpanded ? '▾' : '▸') : ''}
+                  </td>
+                  <td className="py-2 px-2 text-gray-500 whitespace-nowrap">{formatDate(tx.created_at)}</td>
+                  <td className="py-2 px-2">
+                    <button onClick={(e) => { e.stopPropagation(); onViewUser(tx.user_id) }} className="text-cyan-400 hover:text-cyan-300 font-mono text-[10px]">
+                      {tx.user_id.slice(0, 16)}...
+                    </button>
+                  </td>
+                  <td className="py-2 px-2">
+                    <Badge text={tx.type} color={txnTypeBadge(tx.type)} />
+                  </td>
+                  <td className={`py-2 px-2 text-right font-bold ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {tx.amount >= 0 ? '+' : ''}{tx.amount}
+                  </td>
+                  <td className="py-2 px-2 text-right text-gray-400">{tx.balance_after ?? '—'}</td>
+                  <td className="py-2 px-2 text-gray-400 max-w-[200px] truncate">{tx.description || '—'}</td>
+                  <td className="py-2 px-2 text-center">
+                    <Badge text={tx.status} color={tx.status === 'success' ? 'green' : tx.status === 'failed' ? 'red' : 'yellow'} />
+                  </td>
+                </tr>
+                {/* Expandable metadata row */}
+                {isExpanded && detail && (
+                  <tr className="bg-gray-800/40">
+                    <td colSpan={8} className="py-3 px-4">
+                      <div className="flex flex-wrap gap-x-6 gap-y-2 items-start">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{detail.label}</span>
+                        {detail.details.map(({ key, value }) => (
+                          <div key={key} className="flex gap-1.5 items-baseline">
+                            <span className="text-[10px] text-gray-500">{key}:</span>
+                            <span className="text-[11px] text-gray-300 font-mono">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )
+          })}
           {rows.length === 0 && (
-            <tr><td colSpan={7} className="py-8 text-center text-gray-600">No transactions found</td></tr>
+            <tr><td colSpan={8} className="py-8 text-center text-gray-600">No transactions found</td></tr>
           )}
         </tbody>
       </table>

@@ -184,6 +184,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     // setCurrentTrack(track)
     
     // Always use proxy for R2 and Replicate URLs to avoid CORS issues
+    // BUT: custom domain R2 URLs (audio.444radio.co.in etc.) are CDN-backed — play direct
     const computeUrl = (u: string) => {
       try {
         // Don't proxy blob URLs or relative paths
@@ -192,13 +193,20 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         }
         
         const target = new URL(u)
-        const r2Hosts: string[] = []
-        if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
-        if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
-        if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
-        const isR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com') || r2Hosts.includes(target.hostname)
+        
+        // Custom domain R2 hosts are CDN-backed with CORS — play directly
+        const r2CustomHosts: string[] = []
+        if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
+        if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
+        if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
+        if (r2CustomHosts.includes(target.hostname)) {
+          return u; // CDN URL — play direct, no proxy needed
+        }
+        
+        // Raw R2 bucket URLs (.r2.dev) and Replicate delivery need proxy
+        const isRawR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com')
         const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')
-        const needsProxy = isR2 || isReplicate
+        const needsProxy = isRawR2 || isReplicate
         return needsProxy ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
       } catch (err) { 
         console.error('❌ URL computation failed:', err, 'Original URL:', u);

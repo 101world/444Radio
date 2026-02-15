@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Calculate credit cost based on duration
-    // Up to 8s = 6 credits ($0.16), 9-20s = 7 credits ($0.20)
-    const creditCost = max_duration <= 8 ? 6 : 7
+    // Up to 10s = 6 credits, 11-20s = 7 credits
+    const creditCost = max_duration <= 10 ? 6 : 7
 
     console.log('🔄 Looper generation request')
     console.log('💬 Prompt:', prompt)

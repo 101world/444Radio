@@ -43,7 +43,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   music: 2,
   image: 1,
   effects: 2,
-  loops: (p) => ((p.max_duration as number) || 8) <= 8 ? 6 : 7,
+  loops: (p) => ((p.max_duration as number) || 8) <= 10 ? 6 : 7,
   stems: 5,
   extract: 1,
   'audio-boost': 1,

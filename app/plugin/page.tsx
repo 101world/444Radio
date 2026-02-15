@@ -9,6 +9,8 @@ import {
   RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink, Home
 } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
+import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
+import PluginGenerationQueue from '@/app/components/PluginGenerationQueue'
 
 // ─── Types (mirrored from create page) ──────────────────────────
 type MessageType = 'user' | 'assistant' | 'generation'
@@ -196,6 +198,7 @@ export default function PluginPage() {
   // ── Audio player ──
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
+  const [playerTrack, setPlayerTrack] = useState<{ id: string; audioUrl: string; title?: string; prompt?: string } | null>(null)
 
   // ── Stem splitting ──
   const [isSplittingStems, setIsSplittingStems] = useState(false)
@@ -447,18 +450,20 @@ export default function PluginPage() {
   }
 
   // ═══ PLAY/PAUSE ═══
-  const handlePlayPause = (messageId: string, audioUrl: string) => {
-    if (playingId === messageId && audioElement) {
-      audioElement.pause()
+  const handlePlayPause = (messageId: string, audioUrl: string, title?: string, prompt?: string) => {
+    if (playingId === messageId) {
+      // Toggle off — stop the player
+      if (audioElement) { audioElement.pause(); audioElement.src = '' }
       setPlayingId(null)
+      setPlayerTrack(null)
       return
     }
+    // Stop old audio
     if (audioElement) { audioElement.pause(); audioElement.src = '' }
-    const audio = new Audio(audioUrl)
-    audio.play().catch(() => {})
-    audio.onended = () => setPlayingId(null)
-    setAudioElement(audio)
+    // Open new track in waveform player
+    setPlayerTrack({ id: messageId, audioUrl, title, prompt })
     setPlayingId(messageId)
+    setAudioElement(null) // waveform player manages its own audio
   }
 
   // ═══ DAW BRIDGE HELPERS ═══
@@ -1942,15 +1947,18 @@ export default function PluginPage() {
                 {/* Text content */}
                 <p className="text-sm text-white whitespace-pre-wrap">{msg.content}</p>
 
-                {/* Loading spinner + cancel */}
+                {/* Futuristic generation queue card */}
                 {msg.isGenerating && (
-                  <div className="flex items-center gap-3 mt-3">
-                    <div className="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
-                    <span className="text-xs text-gray-400">Generating...</span>
-                    <button onClick={() => handleCancelGeneration(msg.id)}
-                      className="p-1 hover:bg-white/10 rounded transition-colors" title="Cancel">
-                      <Square size={14} className="text-red-400" />
-                    </button>
+                  <div className="mt-3">
+                    <PluginGenerationQueue
+                      jobs={[{
+                        id: msg.id,
+                        type: msg.generationType || 'music',
+                        startedAt: msg.timestamp instanceof Date ? msg.timestamp.getTime() : Date.now(),
+                        label: msg.generationType === 'image' ? 'Cover Art' : msg.generationType === 'effects' ? 'SFX' : msg.generationType === 'video' ? 'Video → Audio' : undefined,
+                      }]}
+                      onCancel={(id) => handleCancelGeneration(id)}
+                    />
                   </div>
                 )}
 
@@ -1959,7 +1967,7 @@ export default function PluginPage() {
                   <div className="mt-3 space-y-3">
                     {/* Play + Title */}
                     <div className="flex items-center gap-3">
-                      <button onClick={() => handlePlayPause(msg.id, msg.result!.audioUrl!)}
+                      <button onClick={() => handlePlayPause(msg.id, msg.result!.audioUrl!, msg.result!.title || 'AI Track', msg.result!.prompt)}
                         className="w-10 h-10 flex-shrink-0 bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full flex items-center justify-center hover:scale-105 transition-transform">
                         {playingId === msg.id ? <Pause size={16} className="text-black" /> : <Play size={16} className="text-black ml-0.5" />}
                       </button>
@@ -2083,7 +2091,7 @@ export default function PluginPage() {
                           <div className="flex-1 min-w-0">
                             <span className={`text-xs font-bold ${display.color}`}>{display.label}</span>
                           </div>
-                          <button onClick={() => handlePlayPause(`stem-${name}-${msg.id}`, url as string)}
+                          <button onClick={() => handlePlayPause(`stem-${name}-${msg.id}`, url as string, `${display.label} Stem`)}
                             className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
                             {playingId === `stem-${name}-${msg.id}` ? <Pause size={12} className="text-white" /> : <Play size={12} className="text-white" />}
                           </button>
@@ -2994,6 +3002,14 @@ export default function PluginPage() {
             <p className="text-sm text-gray-400">Audio or video files — stems, boost, effects & more</p>
           </div>
         </div>
+      )}
+
+      {/* ── Waveform Audio Player (fixed bottom) ── */}
+      {playerTrack && (
+        <PluginAudioPlayer
+          track={playerTrack}
+          onClose={() => { setPlayerTrack(null); setPlayingId(null) }}
+        />
       )}
 
       {/* ── Global Styles (no style jsx — regular style tag) ── */}
