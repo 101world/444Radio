@@ -171,9 +171,9 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
 
   return (
     <div className="w-full select-none relative overflow-hidden" style={{
-      background: '#000000',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
-      boxShadow: '0 12px 48px rgba(0,0,0,0.9), 0 0 1px rgba(255,255,255,0.1)',
+      background: 'linear-gradient(135deg, rgba(5,18,28,0.95), rgba(3,12,20,0.97))',
+      borderBottom: '1px solid rgba(0,255,255,0.1)',
+      boxShadow: '0 12px 48px rgba(0,0,0,0.9), 0 0 20px rgba(0,255,255,0.03)',
     }}>
       {/* ── Diagonal glass shine sweep ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" ref={shineRef}>
@@ -183,7 +183,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
           left: '-20%',
           width: '60%',
           height: '200%',
-          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 55%, transparent 60%)',
+          background: 'linear-gradient(105deg, transparent 38%, rgba(0,255,255,0.03) 43%, rgba(255,255,255,0.07) 50%, rgba(0,255,255,0.03) 57%, transparent 62%)',
           transform: 'rotate(-15deg)',
           pointerEvents: 'none',
         }} />
@@ -197,13 +197,13 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
         }} />
       )}
 
-      {/* ── Top edge highlight — white shine catch ── */}
+      {/* ── Top edge highlight — cyan shine catch ── */}
       <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none"
-        style={{ background: 'linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.12) 30%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.12) 70%, transparent 95%)' }} />
+        style={{ background: 'linear-gradient(90deg, transparent 5%, rgba(0,255,255,0.15) 30%, rgba(0,255,255,0.3) 50%, rgba(0,255,255,0.15) 70%, transparent 95%)' }} />
 
       {/* ── Bottom edge subtle glow ── */}
       <div className="absolute bottom-0 left-0 right-0 h-[1px] pointer-events-none"
-        style={{ background: 'linear-gradient(90deg, transparent 10%, rgba(0,255,255,0.08) 50%, transparent 90%)' }} />
+        style={{ background: 'linear-gradient(90deg, transparent 10%, rgba(0,255,255,0.12) 50%, transparent 90%)' }} />
 
       {/* ── Controls row ── */}
       <div className="relative flex items-center gap-1.5 px-3 pt-2.5 pb-1">
@@ -265,13 +265,13 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
             <p className="text-[9px] font-medium truncate" style={{ color: '#ff4444' }}>{error}</p>
           ) : (
             <p className="text-[9px] font-semibold truncate tracking-[0.15em] uppercase"
-              style={{ color: 'rgba(255,255,255,0.5)' }}>{track.title || 'AI Track'}</p>
+              style={{ color: 'rgba(255,255,255,0.65)' }}>{track.title || 'AI Track'}</p>
           )}
         </div>
 
         {/* Duration */}
         <span className="text-[9px] font-mono w-7 flex-shrink-0 tabular-nums tracking-tight"
-          style={{ color: 'rgba(255,255,255,0.15)' }}>{fmt(duration)}</span>
+          style={{ color: 'rgba(255,255,255,0.3)' }}>{fmt(duration)}</span>
 
         {/* Volume */}
         <div className="flex items-center flex-shrink-0 relative">
@@ -285,9 +285,9 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
           {showVolume && (
             <div className="absolute top-full right-0 mt-1 rounded-xl p-2.5 z-50"
               style={{
-                background: '#000000',
-                border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 16px 48px rgba(0,0,0,0.9), 0 0 1px rgba(255,255,255,0.1)',
+                background: 'linear-gradient(135deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))',
+                border: '1px solid rgba(0,255,255,0.12)',
+                boxShadow: '0 16px 48px rgba(0,0,0,0.9), 0 0 12px rgba(0,255,255,0.04)',
               }}
               onMouseLeave={() => setShowVolume(false)}>
               <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume}
@@ -314,9 +314,9 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
         className="relative h-10 mx-3 mb-2 flex items-end gap-[0.4px] cursor-pointer rounded-xl overflow-hidden"
         onClick={seekFromEvent}
         style={{
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.05)',
+          background: 'rgba(0,255,255,0.03)',
+          border: '1px solid rgba(0,255,255,0.1)',
+          boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.5), 0 0 1px rgba(0,255,255,0.08)',
         }}>
 
         {/* Waveform diagonal glass shine */}
@@ -327,7 +327,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
             left: '-30%',
             width: '50%',
             height: '300%',
-            background: 'linear-gradient(105deg, transparent 42%, rgba(255,255,255,0.04) 47%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 53%, transparent 58%)',
+            background: 'linear-gradient(105deg, transparent 40%, rgba(0,255,255,0.04) 45%, rgba(255,255,255,0.08) 50%, rgba(0,255,255,0.04) 55%, transparent 60%)',
             transform: 'rotate(-20deg)',
           }} />
         </div>
@@ -370,7 +370,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
                   ? nearPlayhead && isPlaying
                     ? '#00ffff'
                     : `linear-gradient(to top, rgba(0,255,255,${isPlaying ? 0.9 : 0.5}), rgba(0,136,255,${isPlaying ? 0.6 : 0.25}))`
-                  : 'rgba(255,255,255,0.06)',
+                  : 'rgba(0,255,255,0.1)',
                 boxShadow: played && isPlaying
                   ? nearPlayhead
                     ? '0 0 6px rgba(0,255,255,0.6)'

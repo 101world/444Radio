@@ -554,9 +554,16 @@ export default function PluginPage() {
     setShowSizeMenu(false)
     localStorage.setItem(SIZE_KEY, String(idx))
     const size = WINDOW_SIZES[idx]
-    // Send to JUCE C++ bridge + try direct window resize as fallback
+    // Send to JUCE C++ bridge
     sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
-    try { window.resizeTo(size.w, size.h) } catch {}
+    // Direct window resize fallback + force CSS dimensions for WebView2
+    try {
+      window.resizeTo(size.w, size.h)
+      document.documentElement.style.width = size.w + 'px'
+      document.documentElement.style.height = size.h + 'px'
+      document.body.style.width = size.w + 'px'
+      document.body.style.height = size.h + 'px'
+    } catch {}
     showBridgeToast(`↔ ${size.label} (${size.w}×${size.h})`)
   }
 
@@ -566,7 +573,13 @@ export default function PluginPage() {
       if (isPinned) sendBridgeMessage({ action: 'pin_window', pinned: true })
       const size = WINDOW_SIZES[windowSizeIdx]
       sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
-      try { window.resizeTo(size.w, size.h) } catch {}
+      try {
+        window.resizeTo(size.w, size.h)
+        document.documentElement.style.width = size.w + 'px'
+        document.documentElement.style.height = size.h + 'px'
+        document.body.style.width = size.w + 'px'
+        document.body.style.height = size.h + 'px'
+      } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInDAW])
@@ -1972,22 +1985,25 @@ export default function PluginPage() {
   return (
     <div className={`h-screen text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}
       style={{
-        background: '#000000',
+        background: '#050a0f',
       }}>
-      {/* ── Global ambient background glow ── */}
+      {/* ── Global ambient background glow — cyan tinted ── */}
       <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,255,255,0.02) 0%, transparent 50%)',
+        background: 'radial-gradient(ellipse 90% 50% at 50% 0%, rgba(0,255,255,0.06) 0%, rgba(0,136,255,0.02) 40%, transparent 70%)',
+      }} />
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0,255,255,0.03) 0%, transparent 50%), radial-gradient(ellipse 60% 40% at 20% 100%, rgba(0,136,255,0.03) 0%, transparent 50%)',
       }} />
 
       {/* Bridge action toast */}
       {bridgeToast && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl text-xs font-medium select-none pointer-events-none overflow-hidden"
           style={{
-            background: 'rgba(0,0,0,0.9)',
+            background: 'linear-gradient(135deg, rgba(0,30,40,0.9), rgba(5,15,25,0.95))',
             backdropFilter: 'blur(40px)',
             WebkitBackdropFilter: 'blur(40px)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 12px 48px rgba(0,0,0,0.8), 0 0 1px rgba(255,255,255,0.15), inset 0 1px 0 rgba(255,255,255,0.06)',
+            border: '1px solid rgba(0,255,255,0.2)',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.8), 0 0 20px rgba(0,255,255,0.08), inset 0 1px 0 rgba(0,255,255,0.1)',
             color: '#00ffff',
             animation: 'fadeIn 0.2s ease-out',
           }}>
@@ -2021,19 +2037,21 @@ export default function PluginPage() {
           {/* Mobile backdrop */}
           <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50" onClick={() => setShowFeaturesSidebar(false)} />
 
-          <div className="fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen md:w-[420px] z-50 md:z-40 flex flex-col relative overflow-hidden" style={{ background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderRight: '1px solid rgba(255,255,255,0.06)', boxShadow: '4px 0 40px rgba(0,0,0,0.5)', animation: 'slideInLeft 0.3s ease-out' }}>
+          <div className="fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen md:w-[420px] z-50 md:z-40 flex flex-col relative overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderRight: '1px solid rgba(0,255,255,0.12)', boxShadow: '4px 0 40px rgba(0,0,0,0.5), 0 0 30px rgba(0,255,255,0.03)', animation: 'slideInLeft 0.3s ease-out' }}>
             {/* Sidebar diagonal shine */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-50%',left:'-15%',width:'45%',height:'200%',background:'linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.02) 47%,rgba(255,255,255,0.05) 50%,rgba(255,255,255,0.02) 53%,transparent 58%)',transform:'rotate(-15deg)'}} /></div>
+            <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-50%',left:'-15%',width:'45%',height:'200%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.03) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.03) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
+            {/* Subtle cyan ambient overlay */}
+            <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 80% 30% at 50% 0%, rgba(0,255,255,0.04) 0%, transparent 60%)'}} />
             {/* Header */}
-            <div className="flex items-center justify-between px-5 h-20 relative z-10" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className="flex items-center justify-between px-5 h-20 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
               <div className="flex items-center gap-3">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{color:'#00ffff'}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{color:'#00ffff',filter:'drop-shadow(0 0 8px rgba(0,255,255,0.4))'}}>
                   <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
                   <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
                   <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
                   <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
                 </svg>
-                <span className="text-white font-bold text-lg tracking-wider" style={{textShadow:'0 0 20px rgba(0,255,255,0.1)'}}>Features</span>
+                <span className="text-white font-bold text-lg tracking-wider" style={{textShadow:'0 0 20px rgba(0,255,255,0.2)'}}>Features</span>
               </div>
               <button onClick={() => setShowFeaturesSidebar(false)} className="p-2 rounded-lg transition-colors" style={{color:'rgba(255,255,255,0.3)'}} onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.7)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.3)'}>
                 <X size={18} />
@@ -2041,36 +2059,47 @@ export default function PluginPage() {
             </div>
 
             {/* Credits */}
-            <div className="px-5 py-4 relative z-10" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl relative overflow-hidden" style={{background:'rgba(0,255,255,0.04)',border:'1px solid rgba(0,255,255,0.15)',boxShadow:'0 0 12px rgba(0,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.04)'}}>
+            <div className="px-5 py-4 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl relative overflow-hidden" style={{background:'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))',border:'1px solid rgba(0,255,255,0.25)',boxShadow:'0 0 20px rgba(0,255,255,0.08), inset 0 1px 0 rgba(0,255,255,0.15)'}}>
                 <Zap size={16} style={{color:'#00ffff'}} />
                 <span className="text-white font-bold text-sm">{isLoadingCredits ? '...' : userCredits} credits</span>
               </div>
             </div>
 
             {/* Mode Toggle */}
-            <div className="px-5 py-3 relative z-10" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className="px-5 py-3 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
               <div className="flex gap-2">
                 <button onClick={() => setIsInstrumental(false)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all`}
-                  style={!isInstrumental ? {background:'rgba(0,255,255,0.12)',color:'#00ffff',border:'1px solid rgba(0,255,255,0.25)',boxShadow:'0 0 16px rgba(0,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)'} : {background:'rgba(255,255,255,0.03)',color:'rgba(255,255,255,0.4)',border:'1px solid rgba(255,255,255,0.06)'}}>
+                  style={!isInstrumental ? {background:'linear-gradient(135deg, rgba(0,255,255,0.15), rgba(0,136,255,0.1))',color:'#00ffff',border:'1px solid rgba(0,255,255,0.35)',boxShadow:'0 0 20px rgba(0,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.1)'} : {background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.45)',border:'1px solid rgba(255,255,255,0.08)'}}>
                   <Mic size={14} /> Vocal
                 </button>
                 <button onClick={() => setIsInstrumental(true)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all`}
-                  style={isInstrumental ? {background:'rgba(160,80,255,0.12)',color:'rgba(180,130,255,0.9)',border:'1px solid rgba(160,80,255,0.25)',boxShadow:'0 0 16px rgba(160,80,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)'} : {background:'rgba(255,255,255,0.03)',color:'rgba(255,255,255,0.4)',border:'1px solid rgba(255,255,255,0.06)'}}>
+                  style={isInstrumental ? {background:'linear-gradient(135deg, rgba(160,80,255,0.15), rgba(120,60,200,0.1))',color:'rgba(200,160,255,0.95)',border:'1px solid rgba(160,80,255,0.35)',boxShadow:'0 0 20px rgba(160,80,255,0.12), inset 0 1px 0 rgba(255,255,255,0.1)'} : {background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.45)',border:'1px solid rgba(255,255,255,0.08)'}}>
                   <Music size={14} /> Inst
                 </button>
               </div>
             </div>
 
             {/* Prompt Input */}
-            <div className="px-5 py-4 relative z-10" style={{borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className="px-5 py-4 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
               <div className="relative">
                 <textarea value={input} onChange={(e) => setInput(e.target.value)}
                   placeholder="Describe your music..."
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white resize-none focus:outline-none transition-colors"
-                  style={{background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',caretColor:'#00ffff'}}
-                  onFocus={e => e.currentTarget.style.borderColor = 'rgba(0,255,255,0.2)'}
-                  onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white resize-none focus:outline-none transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(0,255,255,0.12)',
+                    caretColor: '#00ffff',
+                    boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3)',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(0,255,255,0.35)'
+                    e.currentTarget.style.boxShadow = 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 16px rgba(0,255,255,0.06)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(0,255,255,0.12)'
+                    e.currentTarget.style.boxShadow = 'inset 0 2px 8px rgba(0,0,0,0.3)'
+                  }}
                   rows={5}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate() } }}
                 />
@@ -2081,8 +2110,8 @@ export default function PluginPage() {
                     <Mic size={14} />
                   </button>
                   <button onClick={handleGenerate} disabled={isGenerating || !input.trim()}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-                    style={{background:'linear-gradient(135deg, #00ffff, #0088ff)',color:'#000000',boxShadow:'0 0 16px rgba(0,255,255,0.2), inset 0 1px 0 rgba(255,255,255,0.3)'}}>
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+                    style={{background:'linear-gradient(135deg, #00ffff, #0088ff)',color:'#000000',boxShadow:'0 0 24px rgba(0,255,255,0.3), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4)'}}>
                     <Send size={12} /> Generate
                   </button>
                 </div>
@@ -2160,7 +2189,7 @@ export default function PluginPage() {
             <div className="flex-1 overflow-y-auto px-4 py-4">
               {/* Generation Queue Notification (shows when generations are active) */}
               {activeGenerations.size > 0 && (
-                <div className="mb-3 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl flex items-center gap-2 animate-pulse">
+                <div className="mb-3 p-3 rounded-xl flex items-center gap-2 generating-glow" style={{background:'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))',border:'1px solid rgba(0,255,255,0.3)'}}>
                   <Loader2 size={16} className="text-cyan-400 animate-spin" />
                   <span className="text-xs text-cyan-300 font-medium">
                     {activeGenerations.size} generation{activeGenerations.size > 1 ? 's' : ''} in progress
@@ -2171,7 +2200,7 @@ export default function PluginPage() {
               {/* Ideas Lightbulb */}
               <button onClick={() => { setShowSidebarIdeas(!showSidebarIdeas); setSidebarIdeasView('tags') }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all mb-3 relative overflow-hidden"
-                style={showSidebarIdeas ? {background:'rgba(255,200,0,0.04)',border:'1px solid rgba(255,200,0,0.15)',color:'rgba(255,200,0,0.8)',boxShadow:'0 0 12px rgba(255,200,0,0.04), inset 0 1px 0 rgba(255,255,255,0.04)'} : {border:'1px solid rgba(255,200,0,0.1)',color:'rgba(255,200,0,0.6)'}}>
+                style={showSidebarIdeas ? {background:'linear-gradient(135deg, rgba(255,200,0,0.08), rgba(255,150,0,0.05))',border:'1px solid rgba(255,200,0,0.25)',color:'rgba(255,220,80,0.9)',boxShadow:'0 0 16px rgba(255,200,0,0.06), inset 0 1px 0 rgba(255,255,255,0.06)'} : {background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,200,0,0.12)',color:'rgba(255,200,0,0.7)'}}>
                 <div className="p-2 rounded-lg" style={{background:'rgba(255,255,255,0.03)'}}><Lightbulb size={18} /></div>
                 <div className="flex-1 text-left"><div className="text-sm font-semibold">Ideas & Tags</div><div className="text-[10px] text-gray-500">AI prompts & quick tags</div></div>
                 <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">AI</span>
@@ -2188,16 +2217,16 @@ export default function PluginPage() {
                   const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm))
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
-                      active: {background:'rgba(0,255,255,0.04)',border:'1px solid rgba(0,255,255,0.15)',color:'#00ffff',boxShadow:'0 0 12px rgba(0,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.04)'},
-                      inactive: {border:'1px solid rgba(0,255,255,0.08)',color:'rgba(0,255,255,0.5)'},
+                      active: {background:'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))',border:'1px solid rgba(0,255,255,0.3)',color:'#00ffff',boxShadow:'0 0 20px rgba(0,255,255,0.08), inset 0 1px 0 rgba(0,255,255,0.1)'},
+                      inactive: {background:'rgba(255,255,255,0.02)',border:'1px solid rgba(0,255,255,0.1)',color:'rgba(0,255,255,0.6)'},
                     },
                     purple: {
-                      active: {background:'rgba(160,80,255,0.04)',border:'1px solid rgba(160,80,255,0.15)',color:'rgba(180,130,255,0.9)',boxShadow:'0 0 12px rgba(160,80,255,0.04), inset 0 1px 0 rgba(255,255,255,0.04)'},
-                      inactive: {border:'1px solid rgba(160,80,255,0.08)',color:'rgba(180,130,255,0.5)'},
+                      active: {background:'linear-gradient(135deg, rgba(160,80,255,0.08), rgba(120,60,200,0.05))',border:'1px solid rgba(160,80,255,0.3)',color:'rgba(200,160,255,0.95)',boxShadow:'0 0 20px rgba(160,80,255,0.08), inset 0 1px 0 rgba(160,80,255,0.1)'},
+                      inactive: {background:'rgba(255,255,255,0.02)',border:'1px solid rgba(160,80,255,0.1)',color:'rgba(180,130,255,0.6)'},
                     },
                     orange: {
-                      active: {background:'rgba(255,140,0,0.04)',border:'1px solid rgba(255,140,0,0.15)',color:'rgba(255,180,80,0.9)',boxShadow:'0 0 12px rgba(255,140,0,0.04), inset 0 1px 0 rgba(255,255,255,0.04)'},
-                      inactive: {border:'1px solid rgba(255,140,0,0.08)',color:'rgba(255,180,80,0.5)'},
+                      active: {background:'linear-gradient(135deg, rgba(255,140,0,0.08), rgba(255,100,0,0.05))',border:'1px solid rgba(255,140,0,0.3)',color:'rgba(255,200,100,0.95)',boxShadow:'0 0 20px rgba(255,140,0,0.08), inset 0 1px 0 rgba(255,140,0,0.1)'},
+                      inactive: {background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,140,0,0.1)',color:'rgba(255,180,80,0.6)'},
                     },
                   }
                   return (
@@ -2220,7 +2249,7 @@ export default function PluginPage() {
                       <div className="p-2 rounded-lg" style={{background:'rgba(255,255,255,0.03)'}}><Icon size={18} /></div>
                       <div className="flex-1 text-left">
                         <div className="text-sm font-semibold">{f.label}</div>
-                        <div className="text-[10px]" style={{color:'rgba(255,255,255,0.25)'}}>{f.desc}</div>
+                        <div className="text-[10px]" style={{color:'rgba(255,255,255,0.35)'}}>{f.desc}</div>
                       </div>
                       {f.cost > 0 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(255,255,255,0.25)',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.04)'}}>-{f.cost}</span>}
                     </button>
@@ -2257,16 +2286,16 @@ export default function PluginPage() {
         {/* Chat Header — glass morphism */}
         <div className="shrink-0 flex items-center justify-between px-4 py-2.5 relative overflow-hidden"
           style={{
-            background: 'rgba(0,0,0,0.85)',
+            background: 'linear-gradient(135deg, rgba(5,18,28,0.9), rgba(3,12,20,0.92))',
             backdropFilter: 'blur(40px)',
             WebkitBackdropFilter: 'blur(40px)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.1)',
+            borderBottom: '1px solid rgba(0,255,255,0.1)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 20px rgba(0,255,255,0.03)',
           }}>
           {/* Glass shine sweep on header */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-100%',left:'-15%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.03) 47%,rgba(255,255,255,0.06) 50%,rgba(255,255,255,0.03) 53%,transparent 58%)',transform:'rotate(-15deg)'}} /></div>
-          {/* Top edge white shine */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 5%,rgba(255,255,255,0.1) 30%,rgba(255,255,255,0.18) 50%,rgba(255,255,255,0.1) 70%,transparent 95%)'}} />
+          <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-100%',left:'-15%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
+          {/* Top edge cyan shine */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 5%,rgba(0,255,255,0.15) 30%,rgba(0,255,255,0.3) 50%,rgba(0,255,255,0.15) 70%,transparent 95%)'}} />
           <div className="flex items-center gap-3 relative z-10">
             <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
               className="p-2 rounded-lg transition-all" style={{color:'#00ffff'}}
@@ -2305,9 +2334,9 @@ export default function PluginPage() {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowSizeMenu(false)} />
                   <div className="absolute right-0 top-full mt-1 z-50 rounded-xl py-1 min-w-[140px] overflow-hidden"
-                    style={{background:'rgba(0,0,0,0.95)',backdropFilter:'blur(40px)',border:'1px solid rgba(255,255,255,0.08)',boxShadow:'0 16px 60px rgba(0,0,0,0.9), 0 0 1px rgba(255,255,255,0.12)'}}>
+                    style={{background:'linear-gradient(135deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))',backdropFilter:'blur(40px)',border:'1px solid rgba(0,255,255,0.12)',boxShadow:'0 16px 60px rgba(0,0,0,0.9), 0 0 16px rgba(0,255,255,0.04)'}}>
                     {/* Glass shine */}
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"><div style={{position:'absolute',top:'-100%',left:'-25%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.03) 47%,rgba(255,255,255,0.07) 50%,rgba(255,255,255,0.03) 53%,transparent 58%)',transform:'rotate(-15deg)'}} /></div>
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"><div style={{position:'absolute',top:'-100%',left:'-25%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
                     {WINDOW_SIZES.map((s, i) => (
                       <button key={s.label} onClick={() => setWindowSize(i)}
                         className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors relative ${i === windowSizeIdx ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
@@ -2337,7 +2366,7 @@ export default function PluginPage() {
               <Home size={16} />
             </button>
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full relative overflow-hidden"
-              style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(0,255,255,0.15)', boxShadow: '0 0 12px rgba(0,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+              style={{ background: 'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))', border: '1px solid rgba(0,255,255,0.25)', boxShadow: '0 0 16px rgba(0,255,255,0.08), inset 0 1px 0 rgba(0,255,255,0.15)' }}>
               <Zap size={11} style={{color:'#00ffff'}} />
               <span className="text-xs font-bold tabular-nums" style={{color:'#00ffff'}}>{userCredits ?? '...'}</span>
             </div>
@@ -2363,19 +2392,19 @@ export default function PluginPage() {
               }`}
                 style={{
                   background: msg.type === 'user'
-                    ? 'rgba(0,255,255,0.04)'
-                    : 'rgba(255,255,255,0.02)',
+                    ? 'linear-gradient(135deg, rgba(0,255,255,0.06), rgba(0,136,255,0.03))'
+                    : 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)',
                   border: msg.type === 'user'
-                    ? '1px solid rgba(0,255,255,0.12)'
-                    : '1px solid rgba(255,255,255,0.06)',
+                    ? '1px solid rgba(0,255,255,0.2)'
+                    : '1px solid rgba(255,255,255,0.1)',
                   boxShadow: msg.type === 'user'
-                    ? '0 4px 24px rgba(0,0,0,0.4), 0 0 1px rgba(0,255,255,0.2), inset 0 1px 0 rgba(255,255,255,0.05)'
-                    : '0 4px 20px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.03)',
+                    ? '0 4px 24px rgba(0,0,0,0.4), 0 0 16px rgba(0,255,255,0.06), inset 0 1px 0 rgba(0,255,255,0.1)'
+                    : '0 4px 20px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)',
                 }}>
                 {/* Glass diagonal shine on each bubble */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"><div style={{position:'absolute',top:'-100%',left:msg.type==='user'?'-10%':'-30%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.02) 47%,rgba(255,255,255,0.05) 50%,rgba(255,255,255,0.02) 53%,transparent 58%)',transform:'rotate(-15deg)'}} /></div>
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"><div style={{position:'absolute',top:'-100%',left:msg.type==='user'?'-10%':'-30%',width:'45%',height:'300%',background:`linear-gradient(105deg,transparent 40%,${msg.type==='user'?'rgba(0,255,255,0.03)':'rgba(255,255,255,0.03)'} 45%,${msg.type==='user'?'rgba(0,255,255,0.06)':'rgba(255,255,255,0.06)'} 50%,${msg.type==='user'?'rgba(0,255,255,0.03)':'rgba(255,255,255,0.03)'} 55%,transparent 60%)`,transform:'rotate(-15deg)'}} /></div>
                 {/* Text content */}
                 <p className="text-sm text-white whitespace-pre-wrap">{msg.content}</p>
 
@@ -2432,22 +2461,22 @@ export default function PluginPage() {
                       <button onClick={() => downloadAndToast(msg.result!.audioUrl!, msg.result!.title || 'track', 'mp3')}
                         disabled={dawDownloading !== null}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-50 relative overflow-hidden group"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                        style={{ background: 'rgba(0,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
                         <Download size={12} /> MP3
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{background:'linear-gradient(135deg,rgba(0,255,255,0.06),transparent)',borderRadius:'inherit'}} />
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{background:'linear-gradient(135deg,rgba(0,255,255,0.1),transparent)',borderRadius:'inherit'}} />
                       </button>
                       {/* WAV Download */}
                       <button onClick={() => downloadAndToast(msg.result!.audioUrl!, msg.result!.title || 'track', 'wav')}
                         disabled={dawDownloading !== null}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all font-semibold disabled:opacity-50 relative overflow-hidden"
-                        style={{ background: 'rgba(0,255,180,0.04)', border: '1px solid rgba(0,255,180,0.12)', color: 'rgba(0,255,180,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 8px rgba(0,255,180,0.04), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                        style={{ background: 'rgba(0,255,180,0.07)', border: '1px solid rgba(0,255,180,0.2)', color: 'rgba(0,255,180,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(0,255,180,0.06), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
                         <Download size={12} /> WAV
                       </button>
                       {/* Split Stems */}
                       <button onClick={() => handleSplitStems(msg.result!.audioUrl!, msg.id)} disabled={isSplittingStems}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-50 relative overflow-hidden"
-                        style={{ background: 'rgba(160,80,255,0.04)', border: '1px solid rgba(160,80,255,0.12)', color: 'rgba(180,130,255,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 8px rgba(160,80,255,0.04), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-                        <Scissors size={12} /> Stems <span className="text-[10px]" style={{color:'rgba(255,255,255,0.25)'}}>(-5)</span>
+                        style={{ background: 'rgba(160,80,255,0.07)', border: '1px solid rgba(160,80,255,0.2)', color: 'rgba(200,160,255,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(160,80,255,0.06), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+                        <Scissors size={12} /> Stems <span className="text-[10px]" style={{color:'rgba(255,255,255,0.35)'}}>(-5)</span>
                       </button>
                       {/* Import to DAW — sends URL to C++ for native timeline import */}
                       {isInDAW && (
@@ -2459,25 +2488,25 @@ export default function PluginPage() {
                         }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all font-semibold relative overflow-hidden"
                           style={{
-                            background: 'rgba(0,255,255,0.06)',
-                            border: '1px solid rgba(0,255,255,0.2)',
+                            background: 'linear-gradient(135deg, rgba(0,255,255,0.1), rgba(0,136,255,0.06))',
+                            border: '1px solid rgba(0,255,255,0.3)',
                             color: '#00ffff',
-                            boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 12px rgba(0,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.06)',
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 20px rgba(0,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.1)',
                           }}>
-                          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"><div style={{position:'absolute',top:'-100%',left:'-20%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.04) 47%,rgba(0,255,255,0.08) 50%,rgba(255,255,255,0.04) 53%,transparent 58%)',transform:'rotate(-15deg)'}} /></div>
+                          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"><div style={{position:'absolute',top:'-100%',left:'-20%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.06) 45%,rgba(0,255,255,0.1) 50%,rgba(255,255,255,0.06) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
                           <ArrowDownToLine size={12} className="relative z-10" /> <span className="relative z-10">Import to DAW</span>
                         </button>
                       )}
                       {/* Audio Boost */}
                       <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all relative overflow-hidden"
-                        style={{ background: 'rgba(255,140,0,0.04)', border: '1px solid rgba(255,140,0,0.12)', color: 'rgba(255,180,80,0.8)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 8px rgba(255,140,0,0.04), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-                        <Volume2 size={12} /> Boost <span className="text-[10px]" style={{color:'rgba(255,255,255,0.25)'}}>(-1)</span>
+                        style={{ background: 'rgba(255,140,0,0.07)', border: '1px solid rgba(255,140,0,0.2)', color: 'rgba(255,200,100,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(255,140,0,0.06), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+                        <Volume2 size={12} /> Boost <span className="text-[10px]" style={{color:'rgba(255,255,255,0.35)'}}>(-1)</span>
                       </button>
                       {/* Library — opens in plugin */}
                       <button onClick={() => { window.location.href = '/library?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all relative overflow-hidden"
-                        style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)' }}>
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
                         <Layers size={12} /> Library
                       </button>
                     </div>
@@ -2582,16 +2611,16 @@ export default function PluginPage() {
               onClick={() => setShowBottomDock(!showBottomDock)}
               className="px-5 py-1 rounded-t-xl transition-all duration-200"
               style={{
-                background: 'rgba(0,0,0,0.8)',
+                background: 'rgba(5,18,28,0.85)',
                 backdropFilter: 'blur(30px)',
                 WebkitBackdropFilter: 'blur(30px)',
-                borderTop: '1px solid rgba(255,255,255,0.06)',
-                borderLeft: '1px solid rgba(255,255,255,0.04)',
-                borderRight: '1px solid rgba(255,255,255,0.04)',
-                color: 'rgba(255,255,255,0.2)',
+                borderTop: '1px solid rgba(0,255,255,0.1)',
+                borderLeft: '1px solid rgba(0,255,255,0.06)',
+                borderRight: '1px solid rgba(0,255,255,0.06)',
+                color: 'rgba(0,255,255,0.3)',
               }}
-              onMouseEnter={e => e.currentTarget.style.color = 'rgba(0,255,255,0.6)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.2)'}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,255,255,0.7)'; e.currentTarget.style.background = 'rgba(0,255,255,0.08)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(0,255,255,0.3)'; e.currentTarget.style.background = 'rgba(5,18,28,0.85)' }}
               title={showBottomDock ? 'Hide prompt bar' : 'Show prompt bar'}
             >
               {showBottomDock ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -2600,42 +2629,42 @@ export default function PluginPage() {
           <div
             className={`transition-all duration-300 ease-out relative overflow-hidden ${showBottomDock ? 'max-h-[500px] opacity-100 overflow-visible' : 'max-h-0 opacity-0 overflow-hidden'}`}
             style={{
-              background: 'rgba(0,0,0,0.9)',
+              background: 'linear-gradient(180deg, rgba(5,18,28,0.95), rgba(3,12,20,0.97))',
               backdropFilter: 'blur(40px)',
               WebkitBackdropFilter: 'blur(40px)',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
-              boxShadow: '0 -12px 48px rgba(0,0,0,0.7), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.04)',
+              borderTop: '1px solid rgba(0,255,255,0.1)',
+              boxShadow: '0 -12px 48px rgba(0,0,0,0.7), 0 0 20px rgba(0,255,255,0.03), inset 0 1px 0 rgba(0,255,255,0.08)',
             }}
           >
           {/* Dock diagonal shine */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-100%',left:'-10%',width:'40%',height:'300%',background:'linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.02) 47%,rgba(255,255,255,0.04) 50%,rgba(255,255,255,0.02) 53%,transparent 58%)',transform:'rotate(-15deg)'}} /></div>
-          {/* Top edge shine */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(255,255,255,0.08) 40%,rgba(255,255,255,0.14) 50%,rgba(255,255,255,0.08) 60%,transparent 90%)'}} />
+          <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-100%',left:'-10%',width:'40%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.05) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
+          {/* Top edge cyan shine */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(0,255,255,0.12) 40%,rgba(0,255,255,0.22) 50%,rgba(0,255,255,0.12) 60%,transparent 90%)'}} />
           <div className="pt-4 pb-4 px-4 relative z-10">
             {/* Icon Row */}
             <div className="flex items-center justify-center gap-1 mb-3 flex-wrap">
               {/* Music */}
               <button onClick={() => { setSelectedType('music'); setShowAdvancedButtons(!showAdvancedButtons) }}
                 className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'music' ? '' : 'text-gray-600 hover:text-gray-300'}`}
-                style={selectedType === 'music' ? { background: 'rgba(0,255,255,0.06)', border: '1px solid rgba(0,255,255,0.2)', color: '#00ffff', boxShadow: '0 0 12px rgba(0,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)' } : { border: '1px solid rgba(255,255,255,0.04)' }}
+                style={selectedType === 'music' ? { background: 'linear-gradient(135deg, rgba(0,255,255,0.1), rgba(0,136,255,0.06))', border: '1px solid rgba(0,255,255,0.3)', color: '#00ffff', boxShadow: '0 0 16px rgba(0,255,255,0.12), inset 0 1px 0 rgba(0,255,255,0.1)' } : { border: '1px solid rgba(255,255,255,0.06)' }}
                 title="Music"><Music size={18} /></button>
               {/* Effects */}
               <button onClick={() => setSelectedType('effects')}
                 className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'effects' ? '' : 'text-gray-600 hover:text-gray-300'}`}
-                style={selectedType === 'effects' ? { background: 'rgba(160,80,255,0.06)', border: '1px solid rgba(160,80,255,0.2)', color: 'rgba(180,130,255,0.9)', boxShadow: '0 0 12px rgba(160,80,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)' } : { border: '1px solid rgba(255,255,255,0.04)' }}
+                style={selectedType === 'effects' ? { background: 'linear-gradient(135deg, rgba(160,80,255,0.1), rgba(120,60,200,0.06))', border: '1px solid rgba(160,80,255,0.3)', color: 'rgba(200,160,255,0.95)', boxShadow: '0 0 16px rgba(160,80,255,0.12), inset 0 1px 0 rgba(160,80,255,0.1)' } : { border: '1px solid rgba(255,255,255,0.06)' }}
                 title="Effects"><Sparkles size={18} /></button>
               {/* Loops */}
               <button onClick={() => setSelectedType('loops' as GenerationType)}
                 className={`p-2.5 rounded-xl transition-all duration-200 ${(selectedType as string) === 'loops' ? '' : 'text-gray-600 hover:text-gray-300'}`}
-                style={(selectedType as string) === 'loops' ? { background: 'rgba(0,255,255,0.06)', border: '1px solid rgba(0,255,255,0.2)', color: '#00ffff', boxShadow: '0 0 12px rgba(0,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)' } : { border: '1px solid rgba(255,255,255,0.04)' }}
+                style={(selectedType as string) === 'loops' ? { background: 'linear-gradient(135deg, rgba(0,255,255,0.1), rgba(0,136,255,0.06))', border: '1px solid rgba(0,255,255,0.3)', color: '#00ffff', boxShadow: '0 0 16px rgba(0,255,255,0.12), inset 0 1px 0 rgba(0,255,255,0.1)' } : { border: '1px solid rgba(255,255,255,0.06)' }}
                 title="Loops"><Repeat size={18} /></button>
               {/* Image */}
               <button onClick={() => setSelectedType('image')}
                 className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'image' ? '' : 'text-gray-600 hover:text-gray-300'}`}
-                style={selectedType === 'image' ? { background: 'rgba(0,255,255,0.06)', border: '1px solid rgba(0,255,255,0.2)', color: '#00ffff', boxShadow: '0 0 12px rgba(0,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)' } : { border: '1px solid rgba(255,255,255,0.04)' }}
+                style={selectedType === 'image' ? { background: 'linear-gradient(135deg, rgba(0,255,255,0.1), rgba(0,136,255,0.06))', border: '1px solid rgba(0,255,255,0.3)', color: '#00ffff', boxShadow: '0 0 16px rgba(0,255,255,0.12), inset 0 1px 0 rgba(0,255,255,0.1)' } : { border: '1px solid rgba(255,255,255,0.06)' }}
                 title="Cover Art"><ImageIcon size={18} /></button>
               
-              <div className="w-px h-6 mx-1" style={{background:'rgba(255,255,255,0.06)'}} />
+              <div className="w-px h-6 mx-1" style={{background:'linear-gradient(to bottom, transparent, rgba(0,255,255,0.15), transparent)'}} />
 
               {/* Lyrics / Settings */}
               {selectedType === 'music' && !isInstrumental && (
@@ -2668,7 +2697,7 @@ export default function PluginPage() {
 
               {/* Credits */}
               <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl ml-1 relative overflow-hidden"
-                style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(0,255,255,0.12)', boxShadow: '0 0 8px rgba(0,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                style={{ background: 'linear-gradient(135deg, rgba(0,255,255,0.06), rgba(0,136,255,0.04))', border: '1px solid rgba(0,255,255,0.2)', boxShadow: '0 0 12px rgba(0,255,255,0.06), inset 0 1px 0 rgba(0,255,255,0.1)' }}>
                 <Zap size={11} style={{color:'#00ffff'}} />
                 <span className="text-xs font-bold tabular-nums" style={{color:'#00ffff'}}>{userCredits ?? '...'}</span>
                 <span className="text-[10px] text-gray-500/60">
@@ -2738,18 +2767,18 @@ export default function PluginPage() {
             <div className="relative">
               <div className="flex items-end gap-2 rounded-2xl px-3 py-2 transition-all duration-300 relative overflow-hidden"
                 style={{
-                  background: 'rgba(0,0,0,0.7)',
+                  background: 'linear-gradient(135deg, rgba(5,18,28,0.8), rgba(3,12,20,0.85))',
                   backdropFilter: 'blur(40px)',
                   WebkitBackdropFilter: 'blur(40px)',
                   border: input.trim().length >= MIN_PROMPT_LENGTH
-                    ? '1px solid rgba(0,255,255,0.2)'
-                    : '1px solid rgba(255,255,255,0.06)',
+                    ? '1px solid rgba(0,255,255,0.3)'
+                    : '1px solid rgba(0,255,255,0.1)',
                   boxShadow: input.trim().length >= MIN_PROMPT_LENGTH
-                    ? '0 0 24px rgba(0,255,255,0.08), 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 1px rgba(0,255,255,0.3)'
-                    : '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04), 0 0 1px rgba(255,255,255,0.08)',
+                    ? '0 0 24px rgba(0,255,255,0.1), 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,255,255,0.1), 0 0 1px rgba(0,255,255,0.4)'
+                    : '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,255,255,0.05), 0 0 1px rgba(0,255,255,0.1)',
                 }}>
                 {/* Prompt box diagonal shine */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-0"><div style={{position:'absolute',top:'-100%',left:'40%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.02) 47%,rgba(255,255,255,0.04) 50%,rgba(255,255,255,0.02) 53%,transparent 58%)',transform:'rotate(-15deg)'}} /></div>
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-0"><div style={{position:'absolute',top:'-100%',left:'40%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.05) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
                 
                 {/* Toggle sidebar */}
                 <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
@@ -2816,10 +2845,10 @@ export default function PluginPage() {
 
                 {/* Send button — Cyan glow node */}
                 <button onClick={handleGenerate} disabled={!input.trim() || input.trim().length < MIN_PROMPT_LENGTH}
-                  className="relative flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-20 active:scale-90 mb-0.5 z-10"
+                  className="relative flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-20 active:scale-90 hover:scale-110 mb-0.5 z-10"
                   style={{
                     background: 'linear-gradient(135deg, #00ffff, #0088ff)',
-                    boxShadow: '0 0 20px rgba(0,255,255,0.3), 0 0 48px rgba(0,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.35)',
+                    boxShadow: '0 0 28px rgba(0,255,255,0.4), 0 0 60px rgba(0,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.4)',
                   }}>
                   {activeGenerations.size > 0 && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">{activeGenerations.size}</div>
@@ -2831,9 +2860,9 @@ export default function PluginPage() {
 
             {/* Prompt Suggestions Dropdown — fixed position so it's not clipped by dock containers */}
             {showPromptSuggestions && (
-              <div className="fixed bottom-20 left-4 right-4 p-4 rounded-2xl max-h-[50vh] overflow-y-auto z-[60] relative" style={{ background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 16px 60px rgba(0,0,0,0.8), 0 0 1px rgba(255,255,255,0.12)', animation: 'fadeIn 0.15s ease-out' }}>
+              <div className="fixed bottom-20 left-4 right-4 p-4 rounded-2xl max-h-[50vh] overflow-y-auto z-[60] relative" style={{ background: 'linear-gradient(135deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', border: '1px solid rgba(0,255,255,0.15)', boxShadow: '0 16px 60px rgba(0,0,0,0.8), 0 0 20px rgba(0,255,255,0.04)', animation: 'fadeIn 0.15s ease-out' }}>
                 {/* Dropdown glass shine */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"><div style={{position:'absolute',top:'-100%',left:'-20%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 42%,rgba(255,255,255,0.03) 47%,rgba(255,255,255,0.06) 50%,rgba(255,255,255,0.03) 53%,transparent 58%)',transform:'rotate(-15deg)'}} /></div>
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"><div style={{position:'absolute',top:'-100%',left:'-20%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
                 {!showIdeasFlow ? (
                   <>
                     <div className="flex items-center justify-between mb-3">
@@ -2909,7 +2938,7 @@ export default function PluginPage() {
 
             {/* Quick Info */}
             <div className="flex items-center justify-center gap-2 mt-2 text-xs">
-              <span className="text-cyan-400/60 font-mono tracking-wider">
+              <span style={{color: activeGenerations.size > 0 ? 'rgba(0,255,255,0.8)' : 'rgba(0,255,255,0.5)', textShadow: activeGenerations.size > 0 ? '0 0 12px rgba(0,255,255,0.3)' : 'none'}} className="font-mono tracking-wider">
                 {activeGenerations.size > 0
                   ? `⚡ ${activeGenerations.size} generation${activeGenerations.size > 1 ? 's' : ''} in progress`
                   : `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : selectedType === 'effects' ? 'Generate Text to SFX' : 'Coming soon'}`}
@@ -3564,11 +3593,20 @@ export default function PluginPage() {
         @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes glowPulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(0,255,255,0.1), 0 0 40px rgba(0,255,255,0.05); }
+          50% { box-shadow: 0 0 30px rgba(0,255,255,0.2), 0 0 60px rgba(0,255,255,0.1), 0 0 80px rgba(0,255,255,0.05); }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
         .chat-scroll-container::-webkit-scrollbar { width: 4px; }
         .chat-scroll-container::-webkit-scrollbar-track { background: transparent; }
-        .chat-scroll-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        .chat-scroll-container::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-        select option { background: #111; color: white; }
+        .chat-scroll-container::-webkit-scrollbar-thumb { background: rgba(0,255,255,0.15); border-radius: 4px; }
+        .chat-scroll-container::-webkit-scrollbar-thumb:hover { background: rgba(0,255,255,0.3); }
+        select option { background: #0a1520; color: white; }
+        .generating-glow { animation: glowPulse 2s ease-in-out infinite; }
       `}} />
     </div>
   )
