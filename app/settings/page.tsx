@@ -969,7 +969,7 @@ function SettingsPageInner() {
                 </div>
               )}
 
-              <p className="text-xs text-gray-600 mt-4">Maximum 5 active tokens. Pro: 200 requests/day · Studio & Purchased: Unlimited.</p>
+              <p className="text-xs text-gray-600 mt-4">Maximum 5 active tokens. Pro: 200 generation queues/day · Studio & Purchased: Unlimited.</p>
             </div>
 
             {/* Plugin download */}
@@ -997,8 +997,8 @@ function SettingsPageInner() {
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
                         <span className="text-xs text-emerald-300">
                           {planName.includes('studio') || ['plan_S2DIdCKNcV6TtA', 'plan_S2DOABOeGedJHk'].includes(planId)
-                            ? 'Studio subscriber — unlimited requests/day'
-                            : 'Pro subscriber — 200 requests/day'}
+                            ? 'Studio subscriber — unlimited generation queues/day'
+                            : 'Pro subscriber — 200 generation queues/day (100 songs)'}
                         </span>
                       </div>
                       <a
@@ -1150,14 +1150,14 @@ function SettingsPageInner() {
                 <Info className="w-5 h-5 text-cyan-400" /> Plugin Access Tiers
               </h3>
               <p className="text-sm text-gray-400 mb-5">
-                Each generation in the plugin uses <span className="text-cyan-400 font-bold">1 request</span> + <span className="text-cyan-400 font-bold">2 credits</span>. One request = one instrumental.
+                Each song uses <span className="text-cyan-400 font-bold">2 generation queues</span> at <span className="text-cyan-400 font-bold">2 credits each</span>. When your daily queues run out, generation is locked for 24 hours.
               </p>
               <div className="overflow-hidden rounded-xl border border-white/10">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-white/5">
                       <th className="text-left px-4 py-3 text-gray-400 font-medium">Tier</th>
-                      <th className="text-center px-4 py-3 text-gray-400 font-medium">Requests/Day</th>
+                      <th className="text-center px-4 py-3 text-gray-400 font-medium">Queues/Day</th>
                       <th className="text-center px-4 py-3 text-gray-400 font-medium">Songs/Day</th>
                       <th className="text-center px-4 py-3 text-gray-400 font-medium">Cost</th>
                     </tr>
@@ -1169,7 +1169,7 @@ function SettingsPageInner() {
                         <span className="text-gray-500 text-xs ml-1">subscriber</span>
                       </td>
                       <td className="text-center px-4 py-3 text-white font-mono">200</td>
-                      <td className="text-center px-4 py-3 text-white font-mono">200</td>
+                      <td className="text-center px-4 py-3 text-white font-mono">100</td>
                       <td className="text-center px-4 py-3 text-emerald-400 text-xs">Free with Pro</td>
                     </tr>
                     <tr>
@@ -1184,7 +1184,7 @@ function SettingsPageInner() {
                     <tr>
                       <td className="px-4 py-3">
                         <span className="text-yellow-400 font-bold">Purchased</span>
-                        <span className="text-gray-500 text-xs ml-1">one-time</span>
+                        <span className="text-gray-500 text-xs ml-1">one-time $25</span>
                       </td>
                       <td className="text-center px-4 py-3 text-white font-mono">∞</td>
                       <td className="text-center px-4 py-3 text-white font-mono">∞</td>
@@ -1201,7 +1201,11 @@ function SettingsPageInner() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-gray-600 mt-3">Each instrumental costs 2 credits. Pro with 200 requests/day = up to 200 songs/day (400 credits). Credits are shared with web generations.</p>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-gray-500"><span className="text-cyan-400">▸</span> 1 song = 2 generation queues × 2 credits = <span className="text-white font-bold">4 credits per song</span></p>
+                <p className="text-xs text-gray-500"><span className="text-purple-400">▸</span> Pro: 200 queues/day = <span className="text-white font-bold">up to 100 songs/day</span> (400 credits). Once used, locked for 24hrs.</p>
+                <p className="text-xs text-gray-500"><span className="text-cyan-400">▸</span> Studio & Purchased: Unlimited queuing, no daily lock. Credits still required.</p>
+              </div>
             </div>
 
             {/* Install Guide Popup */}
