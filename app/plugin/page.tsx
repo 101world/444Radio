@@ -488,7 +488,54 @@ export default function PluginPage() {
   }
 
   const sendToDAW = (url: string, title: string) => {
-    sendBridgeMessage({ action: 'import_audio', url, title, format: 'wav' })
+    // Send proxied URL so JUCE can fetch the actual audio file
+    const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(url)}`
+    const fullProxyUrl = `${window.location.origin}${proxyUrl}`
+    sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format: 'mp3' })
+  }
+
+  // ═══ Import as WAV to DAW — converts client-side then sends blob URL ═══
+  const [dawImporting, setDawImporting] = useState<string | null>(null)
+  const importWavToDAW = async (sourceUrl: string, title: string) => {
+    if (dawImporting) return
+    const importId = `${sourceUrl}-${title}`
+    setDawImporting(importId)
+    try {
+      // 1. Fetch audio through proxy
+      const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
+      const res = await fetch(proxyUrl)
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+      const arrayBuffer = await res.arrayBuffer()
+
+      // 2. Decode and convert to WAV
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      const wavBlob = audioBufferToWav(audioBuffer)
+
+      // 3. Create a downloadable URL and trigger download (JUCE picks up file downloads)
+      const wavUrl = URL.createObjectURL(wavBlob)
+      const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_')
+      const link = document.createElement('a')
+      link.href = wavUrl
+      link.download = `${safeName}.wav`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // 4. Also notify DAW bridge with the blob URL
+      sendBridgeMessage({ action: 'import_audio', url: wavUrl, title, format: 'wav' })
+
+      // Cleanup after delay
+      setTimeout(() => URL.revokeObjectURL(wavUrl), 30000)
+    } catch (err) {
+      console.error('DAW WAV import error:', err)
+      // Fallback: send raw proxy URL
+      const fallbackUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
+      sendBridgeMessage({ action: 'import_audio', url: fallbackUrl, title, format: 'mp3' })
+      alert('WAV conversion failed — importing as MP3 instead.')
+    } finally {
+      setDawImporting(null)
+    }
   }
 
   // ═══ WAV EXPORT helper (convert any audio URL to WAV blob URL) ═══
@@ -559,8 +606,9 @@ export default function PluginPage() {
         document.body.removeChild(link)
         setTimeout(() => URL.revokeObjectURL(wavUrl), 5000)
       }
-      // JUCE bridge: notify for DAW import
-      sendBridgeMessage({ action: 'import_audio', url, title: filename })
+      // JUCE bridge: notify for DAW import (proxied URL so JUCE can fetch)
+      const proxiedUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(url)}`
+      sendBridgeMessage({ action: 'download_complete', url: proxiedUrl, title: filename, format })
     } catch (err) {
       console.error('Download error:', err)
       alert('Download failed. Please try again.')
@@ -2073,14 +2121,16 @@ export default function PluginPage() {
                       <button
                         draggable
                         onDragStart={(e) => {
-                          e.dataTransfer.setData('text/uri-list', msg.result!.audioUrl!)
-                          e.dataTransfer.setData('text/plain', msg.result!.audioUrl!)
+                          const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(msg.result!.audioUrl!)}`
+                          e.dataTransfer.setData('text/uri-list', proxyUrl)
+                          e.dataTransfer.setData('text/plain', proxyUrl)
                           e.dataTransfer.effectAllowed = 'copy'
                         }}
-                        onClick={() => sendToDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold cursor-grab active:cursor-grabbing"
-                        title="Click to import or drag to DAW">
-                        <ArrowDownToLine size={12} /> Import to DAW
+                        onClick={() => importWavToDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
+                        disabled={dawImporting !== null}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold cursor-grab active:cursor-grabbing disabled:opacity-50"
+                        title="Click to convert to WAV and import to DAW">
+                        {dawImporting ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />} Import to DAW
                       </button>
                       {/* Audio Boost */}
                       <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
@@ -2163,18 +2213,20 @@ export default function PluginPage() {
                             className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
                             <Download size={12} className="text-white" />
                           </button>
-                          {/* Import stem to DAW — always visible */}
+                          {/* Import stem to DAW — converts to WAV first */}
                           <button
                             draggable
                             onDragStart={(e) => {
-                              e.dataTransfer.setData('text/uri-list', url as string)
-                              e.dataTransfer.setData('text/plain', url as string)
+                              const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(url as string)}`
+                              e.dataTransfer.setData('text/uri-list', proxyUrl)
+                              e.dataTransfer.setData('text/plain', proxyUrl)
                               e.dataTransfer.effectAllowed = 'copy'
                             }}
-                            onClick={() => sendToDAW(url as string, `${display.label} Stem`)}
-                            className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-full transition-colors cursor-grab active:cursor-grabbing"
-                            title={`Click to import ${display.label} or drag to DAW`}>
-                            <ArrowDownToLine size={12} className="text-cyan-400" />
+                            onClick={() => importWavToDAW(url as string, `${display.label} Stem`)}
+                            disabled={dawImporting !== null}
+                            className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-full transition-colors cursor-grab active:cursor-grabbing disabled:opacity-50"
+                            title={`Convert ${display.label} to WAV and import to DAW`}>
+                            {dawImporting === `${url}-${display.label} Stem` ? <Loader2 size={12} className="text-cyan-400 animate-spin" /> : <ArrowDownToLine size={12} className="text-cyan-400" />}
                           </button>
                           <button onClick={() => setShowBoostParamsFor({ audioUrl: url as string, title: display.label })}
                             className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-full transition-colors" title="Boost this stem">
