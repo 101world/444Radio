@@ -1122,15 +1122,15 @@ function SettingsPageInner() {
                       <Crown className="w-5 h-5 text-purple-400 flex-shrink-0" />
                       <div>
                         <p className="text-sm font-medium text-white">Pro / Studio Subscribers</p>
-                        <p className="text-xs text-gray-400">Get the plugin included free — Pro (200/day) or Studio (unlimited)</p>
+                        <p className="text-xs text-gray-400">Get the plugin included free — Pro (200 queues/day) or Studio (unlimited)</p>
                       </div>
                     </div>
                     <Link
-                      href="/subscribe"
+                      href="/pricing"
                       className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm hover:from-purple-500 hover:to-pink-500 transition-all"
                     >
                       <Crown className="w-4 h-4" />
-                      Subscribe to Download
+                      View Pricing Plans
                     </Link>
                   </div>
                 )
@@ -1150,7 +1150,7 @@ function SettingsPageInner() {
                 <Info className="w-5 h-5 text-cyan-400" /> Plugin Access Tiers
               </h3>
               <p className="text-sm text-gray-400 mb-5">
-                Each song uses <span className="text-cyan-400 font-bold">2 generation queues</span> at <span className="text-cyan-400 font-bold">2 credits each</span>. When your daily queues run out, generation is locked for 24 hours.
+                Each song uses <span className="text-cyan-400 font-bold">2 generation queues</span> for <span className="text-cyan-400 font-bold">2 credits total</span>. Pro users: when your daily queues run out, generation is locked for 24 hours.
               </p>
               <div className="overflow-hidden rounded-xl border border-white/10">
                 <table className="w-full text-sm">
@@ -1202,9 +1202,10 @@ function SettingsPageInner() {
                 </table>
               </div>
               <div className="mt-4 space-y-2">
-                <p className="text-xs text-gray-500"><span className="text-cyan-400">▸</span> 1 song = 2 generation queues × 2 credits = <span className="text-white font-bold">4 credits per song</span></p>
-                <p className="text-xs text-gray-500"><span className="text-purple-400">▸</span> Pro: 200 queues/day = <span className="text-white font-bold">up to 100 songs/day</span> (400 credits). Once used, locked for 24hrs.</p>
+                <p className="text-xs text-gray-500"><span className="text-cyan-400">▸</span> 1 song = 2 generation queues per song for 2 credits = <span className="text-white font-bold">2 credits per song</span></p>
+                <p className="text-xs text-gray-500"><span className="text-purple-400">▸</span> Pro: 200 queues/day = <span className="text-white font-bold">up to 100 songs/day</span> (200 credits). Once used, locked for 24hrs.</p>
                 <p className="text-xs text-gray-500"><span className="text-cyan-400">▸</span> Studio & Purchased: Unlimited queuing, no daily lock. Credits still required.</p>
+                <p className="text-xs text-gray-500"><span className="text-yellow-400">▸</span> Pro/Studio with inactive subscription: plugin loads but won&apos;t generate. Website generation still works with remaining credits.</p>
               </div>
             </div>
 
