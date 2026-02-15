@@ -46,10 +46,11 @@ export async function GET() {
       )
     }
 
-    // Allow: active Pro/Studio subscribers OR one-time $25 purchasers
-    let hasAccess = false
+    // Allow: active Pro/Studio subscribers, one-time $25 purchasers, or admin
+    const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
+    let hasAccess = userId === ADMIN_CLERK_ID  // Admin always has access
 
-    if (user.subscription_status === 'active') {
+    if (!hasAccess && user.subscription_status === 'active') {
       const plan = (user.subscription_plan || '').toLowerCase()
       if (plan.includes('pro') || plan.includes('studio') ||
           ['plan_S2DHUGo7n1m6iv', 'plan_S2DNEvy1YzYWNh', 'plan_S2DIdCKNcV6TtA', 'plan_S2DOABOeGedJHk'].includes(user.subscription_plan || '')) {
