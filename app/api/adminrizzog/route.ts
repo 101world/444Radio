@@ -69,13 +69,29 @@ export async function GET(req: NextRequest) {
           .reduce((sum: number, t: { amount: number }) => sum + (t.amount || 0), 0)
       )
 
-      // Recent credit inflow transactions (subscription_bonus, credit_award, code_claim)
+      // Recent credit inflow transactions (subscription_bonus, credit_award, code_claim, plugin_purchase)
       const { data: recentAwards } = await supabase
         .from('credit_transactions')
         .select('*')
-        .in('type', ['subscription_bonus', 'credit_award', 'code_claim', 'credit_refund'])
+        .in('type', ['subscription_bonus', 'credit_award', 'code_claim', 'credit_refund', 'plugin_purchase'])
         .order('created_at', { ascending: false })
         .limit(50)
+
+      // Plugin purchases summary (graceful if table doesn't exist yet)
+      let pluginPurchases: any[] = []
+      let pluginRevenue = 0
+      try {
+        const { data: ppData } = await supabase
+          .from('plugin_purchases')
+          .select('*')
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .limit(50)
+        pluginPurchases = ppData || []
+        pluginRevenue = pluginPurchases.reduce((sum: number, p: any) => sum + (p.amount_usd || p.amount || 0), 0)
+      } catch {
+        // Table may not exist yet (migration 023)
+      }
 
       // Count by media type
       const { data: mediaCounts } = await supabase
@@ -101,6 +117,9 @@ export async function GET(req: NextRequest) {
         subscribers: subUsersRes.data || [],
         recentTransactions: recentTxnsRes.data || [],
         recentAwards: recentAwards || [],
+        pluginPurchases,
+        pluginRevenue,
+        totalPluginPurchases: pluginPurchases.length,
       })
     }
 
@@ -165,6 +184,36 @@ export async function GET(req: NextRequest) {
       if (error) throw error
 
       return NextResponse.json({ tab: 'generations', data, total: count, page, limit })
+    }
+
+    if (tab === 'plugin-purchases') {
+      try {
+        let query = supabase
+          .from('plugin_purchases')
+          .select('*', { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .range(offset, offset + limit - 1)
+
+        if (userFilter) {
+          query = query.eq('clerk_user_id', userFilter)
+        }
+
+        const statusFilter = searchParams.get('status')
+        if (statusFilter) {
+          query = query.eq('status', statusFilter)
+        }
+
+        const { data, count, error } = await query
+        if (error) throw error
+
+        const totalRevenue = (data || []).filter((p: any) => p.status === 'completed')
+          .reduce((sum: number, p: any) => sum + (p.amount_usd || p.amount || 0), 0)
+
+        return NextResponse.json({ tab: 'plugin-purchases', data, total: count, page, limit, totalRevenue })
+      } catch (err: any) {
+        // Table may not exist yet
+        return NextResponse.json({ tab: 'plugin-purchases', data: [], total: 0, page, limit, totalRevenue: 0, note: 'plugin_purchases table may not exist — run migration 023' })
+      }
     }
 
     if (tab === 'user-detail') {

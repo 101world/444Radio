@@ -121,11 +121,11 @@ export async function POST(request: Request) {
       )
     }
 
-    // Log to credit_transactions for audit trail
+    // Log to credit_transactions for audit trail (column is user_id, not clerk_user_id)
     const { error: txnError } = await supabaseAdmin
       .from('credit_transactions')
       .insert({
-        clerk_user_id: userId,
+        user_id: userId,
         type: 'plugin_purchase',
         amount: 0, // No credits involved — this is a feature unlock
         balance_after: 0,
