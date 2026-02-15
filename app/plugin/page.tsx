@@ -2289,7 +2289,6 @@ export default function PluginPage() {
                       <video
                         src={msg.result.url}
                         controls
-                        autoPlay
                         playsInline
                         className="w-full aspect-video object-contain rounded-xl"
                       />

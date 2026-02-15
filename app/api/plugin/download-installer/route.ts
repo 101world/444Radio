@@ -35,7 +35,7 @@ export async function GET() {
     // Check subscription status
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
-      .select('subscription_status')
+      .select('subscription_status, subscription_plan')
       .eq('clerk_user_id', userId)
       .single()
 
@@ -46,9 +46,35 @@ export async function GET() {
       )
     }
 
-    if (user.subscription_status !== 'active') {
+    // Allow: active Pro/Studio subscribers OR one-time $25 purchasers
+    let hasAccess = false
+
+    if (user.subscription_status === 'active') {
+      const plan = (user.subscription_plan || '').toLowerCase()
+      if (plan.includes('pro') || plan.includes('studio') ||
+          ['plan_S2DHUGo7n1m6iv', 'plan_S2DNEvy1YzYWNh', 'plan_S2DIdCKNcV6TtA', 'plan_S2DOABOeGedJHk'].includes(user.subscription_plan || '')) {
+        hasAccess = true
+      }
+    }
+
+    // Check for one-time plugin purchase ($25)
+    if (!hasAccess) {
+      const { data: purchase } = await supabaseAdmin
+        .from('plugin_purchases')
+        .select('id')
+        .eq('clerk_user_id', userId)
+        .eq('status', 'completed')
+        .limit(1)
+        .maybeSingle()
+
+      if (purchase) {
+        hasAccess = true
+      }
+    }
+
+    if (!hasAccess) {
       return NextResponse.json(
-        { error: 'An active subscription is required to download the plugin.' },
+        { error: 'Plugin access requires a Pro/Studio subscription or a $25 one-time purchase.' },
         { status: 403 }
       )
     }

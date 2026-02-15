@@ -846,19 +846,19 @@ export default function Pricing() {
                 {/* Plugin */}
                 <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="py-3 px-4 text-gray-300">🔌 VST3/AU Plugin <span className="text-gray-500">(DAW integration)</span></td>
-                  <td className="text-center py-3 text-gray-600">—</td>
-                  <td className="text-center py-3 text-gray-600">—</td>
-                  <td className="text-center py-3 text-cyan-400 font-bold">✓</td>
-                  <td className="text-center py-3 text-cyan-400 font-bold">✓</td>
+                  <td className="text-center py-3 text-yellow-400 text-[10px] font-semibold">$25 buy</td>
+                  <td className="text-center py-3 text-yellow-400 text-[10px] font-semibold">$25 buy</td>
+                  <td className="text-center py-3 text-cyan-400 font-bold">✓ <span className="text-gray-500 font-normal text-[10px]">200/day</span></td>
+                  <td className="text-center py-3 text-purple-400 font-bold">✓ <span className="text-gray-500 font-normal text-[10px]">Unlimited</span></td>
                 </tr>
 
                 {/* DAW Import */}
                 <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="py-3 px-4 text-gray-300">🎛️ DAW Drag & Drop Import</td>
-                  <td className="text-center py-3 text-gray-600">—</td>
-                  <td className="text-center py-3 text-gray-600">—</td>
+                  <td className="text-center py-3 text-yellow-400 text-[10px] font-semibold">$25 buy</td>
+                  <td className="text-center py-3 text-yellow-400 text-[10px] font-semibold">$25 buy</td>
                   <td className="text-center py-3 text-cyan-400 font-bold">✓</td>
-                  <td className="text-center py-3 text-cyan-400 font-bold">✓</td>
+                  <td className="text-center py-3 text-purple-400 font-bold">✓</td>
                 </tr>
 
                 {/* Enterprise */}
@@ -883,7 +883,7 @@ export default function Pricing() {
           </div>
 
           <p className="text-center text-cyan-400/40 text-[10px] mt-4">
-            All features available on web • Plugin requires Pro or Studio plan • Credits refresh monthly on subscription plans
+            All features available on web • Plugin: Pro (200 req/day) · Studio (Unlimited) · Free/Creator ($25 one-time, unlimited forever) • Credits refresh monthly
           </p>
         </div>
 
