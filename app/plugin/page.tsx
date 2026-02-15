@@ -198,7 +198,6 @@ export default function PluginPage() {
 
   // ── Audio player ──
   const [playingId, setPlayingId] = useState<string | null>(null)
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
   const [playerTrack, setPlayerTrack] = useState<{ id: string; audioUrl: string; title?: string; prompt?: string } | null>(null)
 
   // ── Stem splitting ──
@@ -463,18 +462,18 @@ export default function PluginPage() {
   // ═══ PLAY/PAUSE ═══
   const handlePlayPause = (messageId: string, audioUrl: string, title?: string, prompt?: string) => {
     if (playingId === messageId) {
-      // Toggle off — stop the player
-      if (audioElement) { audioElement.pause(); audioElement.src = '' }
+      // Same track playing → pause (keep player visible)
       setPlayingId(null)
-      setPlayerTrack(null)
       return
     }
-    // Stop old audio
-    if (audioElement) { audioElement.pause(); audioElement.src = '' }
-    // Open new track in waveform player
+    if (playerTrack?.id === messageId && !playingId) {
+      // Same track paused → resume
+      setPlayingId(messageId)
+      return
+    }
+    // Different track or no player → open new track
     setPlayerTrack({ id: messageId, audioUrl, title, prompt })
     setPlayingId(messageId)
-    setAudioElement(null) // waveform player manages its own audio
   }
 
   // ═══ DAW BRIDGE HELPERS ═══
@@ -1985,7 +1984,7 @@ export default function PluginPage() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 chat-scroll-container" style={{ paddingBottom: showBottomDock ? '200px' : '100px' }}>
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 chat-scroll-container" style={{ paddingBottom: showBottomDock ? (playerTrack ? '300px' : '200px') : (playerTrack ? '200px' : '100px') }}>
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] md:max-w-[70%] ${
@@ -3070,7 +3069,9 @@ export default function PluginPage() {
       {playerTrack && (
         <PluginAudioPlayer
           track={playerTrack}
+          playing={playingId === playerTrack.id}
           onClose={() => { setPlayerTrack(null); setPlayingId(null) }}
+          onPlayStateChange={(p) => setPlayingId(p ? playerTrack.id : null)}
         />
       )}
 

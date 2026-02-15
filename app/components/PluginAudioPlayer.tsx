@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Download } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, X } from 'lucide-react'
 
 interface PluginPlayerTrack {
   id: string
@@ -12,10 +12,29 @@ interface PluginPlayerTrack {
 
 interface PluginAudioPlayerProps {
   track: PluginPlayerTrack | null
+  playing?: boolean              // external play/pause control from parent
   onClose?: () => void
+  onPlayStateChange?: (playing: boolean) => void  // sync back to parent
 }
 
-export default function PluginAudioPlayer({ track, onClose }: PluginAudioPlayerProps) {
+// ── Proxy URL helper: route through server to avoid CORS in WebView ──
+function proxyUrl(url: string): string {
+  if (!url) return url
+  try {
+    const u = new URL(url, window.location.origin)
+    const host = u.hostname
+    // Custom-domain CDN hosts can play direct
+    if (host.endsWith('.444radio.co.in')) return url
+    // Already a proxy path
+    if (u.pathname.startsWith('/api/r2/proxy')) return url
+    // Everything else (raw R2, Replicate) → proxy
+    return `/api/r2/proxy?url=${encodeURIComponent(url)}`
+  } catch {
+    return `/api/r2/proxy?url=${encodeURIComponent(url)}`
+  }
+}
+
+export default function PluginAudioPlayer({ track, playing, onClose, onPlayStateChange }: PluginAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
@@ -29,7 +48,19 @@ export default function PluginAudioPlayer({ track, onClose }: PluginAudioPlayerP
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.8)
   const [isMuted, setIsMuted] = useState(false)
-  const [waveformData, setWaveformData] = useState<number[]>([])
+
+  // ── Cleanup on unmount: stop audio completely ──
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.src = ''
+        audioRef.current = null
+      }
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      connectedSrcRef.current = null
+    }
+  }, [])
 
   // ── Load track ──
   useEffect(() => {
@@ -42,7 +73,8 @@ export default function PluginAudioPlayer({ track, onClose }: PluginAudioPlayerP
 
     // Reset
     audio.pause()
-    audio.src = track.audioUrl
+    const src = proxyUrl(track.audioUrl)
+    audio.src = src
     audio.volume = isMuted ? 0 : volume
     audio.load()
     setCurrentTime(0)
@@ -51,9 +83,9 @@ export default function PluginAudioPlayer({ track, onClose }: PluginAudioPlayerP
 
     const onLoaded = () => setDuration(audio.duration)
     const onTimeUpdate = () => setCurrentTime(audio.currentTime)
-    const onEnded = () => setIsPlaying(false)
-    const onPlay = () => setIsPlaying(true)
-    const onPause = () => setIsPlaying(false)
+    const onEnded = () => { setIsPlaying(false); onPlayStateChange?.(false) }
+    const onPlay = () => { setIsPlaying(true); onPlayStateChange?.(true) }
+    const onPause = () => { setIsPlaying(false); onPlayStateChange?.(false) }
 
     audio.addEventListener('loadedmetadata', onLoaded)
     audio.addEventListener('timeupdate', onTimeUpdate)
@@ -73,6 +105,18 @@ export default function PluginAudioPlayer({ track, onClose }: PluginAudioPlayerP
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track?.id, track?.audioUrl])
+
+  // ── React to external play/pause from parent ──
+  useEffect(() => {
+    if (playing === undefined || !audioRef.current) return
+    if (playing && !isPlaying) {
+      if (ctxRef.current?.state === 'suspended') ctxRef.current.resume()
+      audioRef.current.play().catch(() => {})
+    } else if (!playing && isPlaying) {
+      audioRef.current.pause()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing])
 
   // ── Connect AnalyserNode (once per src) ──
   useEffect(() => {
@@ -237,7 +281,7 @@ export default function PluginAudioPlayer({ track, onClose }: PluginAudioPlayerP
   if (!track) return null
 
   return (
-    <div className="bg-gradient-to-r from-gray-900/95 via-black/95 to-gray-900/95 backdrop-blur-xl border-t border-cyan-500/20 px-4 py-3">
+    <div className="fixed bottom-0 left-0 right-0 z-[60] bg-gradient-to-r from-gray-900/98 via-black/98 to-gray-900/98 backdrop-blur-xl border-t border-cyan-500/30 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.6)]">
       {/* Title */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex-1 min-w-0">
@@ -245,7 +289,9 @@ export default function PluginAudioPlayer({ track, onClose }: PluginAudioPlayerP
           {track.prompt && <p className="text-[10px] text-gray-500 truncate">{track.prompt}</p>}
         </div>
         {onClose && (
-          <button onClick={onClose} className="ml-2 p-1 text-gray-500 hover:text-white transition">✕</button>
+          <button onClick={onClose} className="ml-2 p-1.5 text-gray-500 hover:text-white hover:bg-white/10 rounded-full transition">
+            <X size={14} />
+          </button>
         )}
       </div>
 
