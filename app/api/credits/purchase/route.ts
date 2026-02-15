@@ -11,7 +11,7 @@ export async function OPTIONS() {
 // Charges: amount_usd + 18% GST via Razorpay.
 // The pre-GST amount is deposited into wallet_balance by /verify or webhook.
 const GST_RATE = 0.18
-const INR_RATE = 85
+const INR_RATE = 91
 
 export async function POST(request: Request) {
   try {

@@ -96,6 +96,39 @@ export async function POST(req: NextRequest) {
   const jobId = randomUUID()
   await createPluginJob({ jobId, userId, type, creditsCost: creditCost, inputParams: body })
 
+  // ── Deduct credits atomically BEFORE generation ──
+  const txType = `generation_${type.replace('-', '_')}`
+  const txDesc = `Plugin: ${type} — ${(body.prompt as string || body.title as string || '').substring(0, 60)}`
+  const deduct = await deductPluginCredits(userId, creditCost, {
+    type: txType,
+    description: txDesc,
+    metadata: { source: 'plugin', jobId },
+  })
+  if (!deduct.success) {
+    await updatePluginJob(jobId, { status: 'failed', error: deduct.error || 'Credit deduction failed' })
+    await logCreditTransaction({
+      userId,
+      amount: -creditCost,
+      type: txType as any,
+      status: 'failed',
+      description: txDesc,
+      metadata: { source: 'plugin', jobId, error: deduct.error },
+    })
+    return corsResponse(NextResponse.json({
+      error: deduct.error || 'Insufficient credits or wallet balance',
+      creditsNeeded: creditCost,
+      creditsAvailable: credits,
+    }, { status: 402 }))
+  }
+  await logCreditTransaction({
+    userId,
+    amount: -creditCost,
+    balanceAfter: deduct.newCredits,
+    type: txType as any,
+    description: txDesc,
+    metadata: { source: 'plugin', jobId },
+  })
+
   // ── Kick off generation (runs to completion in this request) ──
   // We use a streaming response so the plugin gets the jobId immediately,
   // then final result when done.
@@ -144,26 +177,10 @@ export async function POST(req: NextRequest) {
           result = { success: false, error: 'Unknown type' }
       }
 
-      // ── Deduct credits on success ──
+      // ── Record result ──
       if (result.success) {
-        const txType = `generation_${type.replace('-', '_')}`
-        const txDesc = `Plugin: ${type} — ${(body.prompt as string || body.title as string || '').substring(0, 60)}`
-        const deduct = await deductPluginCredits(userId, creditCost, {
-          type: txType,
-          description: txDesc,
-          metadata: { source: 'plugin', jobId },
-        })
         result.creditsDeducted = creditCost
-        result.creditsRemaining = deduct.success ? deduct.newCredits : credits - creditCost
-
-        await logCreditTransaction({
-          userId,
-          amount: -creditCost,
-          balanceAfter: deduct.newCredits,
-          type: txType as any,
-          description: txDesc,
-          metadata: { source: 'plugin', jobId },
-        })
+        result.creditsRemaining = deduct.newCredits
 
         await updatePluginJob(jobId, { status: 'completed', output: result as Record<string, unknown> })
       } else {

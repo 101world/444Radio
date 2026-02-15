@@ -88,6 +88,23 @@ export async function POST(request: Request) {
       }, { status: 402 })
     }
 
+    // ✅ DEDUCT credits atomically BEFORE generation (skip if earn-purchased)
+    let deductResult: { success: boolean; new_credits: number; error_message?: string | null } | null = null
+    if (!skipCreditDeduction) {
+      const { data: deductResultRaw } = await supabase
+        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST, p_type: 'generation_stem_split', p_description: 'Stem split' })
+        .single()
+      deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
+      if (!deductResult?.success) {
+        const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+        console.error('❌ Credit deduction blocked:', errorMsg)
+        await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, type: 'generation_stem_split', status: 'failed', description: 'Stem split', metadata: {} })
+        return NextResponse.json({ error: errorMsg }, { status: 402 })
+      }
+      console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
+      await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: 'Stem split', metadata: {} })
+    }
+
     // Stream prediction ID to client for cancellation, then process result
     const encoder = new TextEncoder()
     const stream = new TransformStream()
@@ -264,33 +281,20 @@ export async function POST(request: Request) {
           }
         }
 
-        // Deduct credits after success (skip if already paid via earn purchase)
-        let finalCredits = userData.credits
-        if (!skipCreditDeduction) {
-          const { data: deductResultRaw } = await supabase
-            .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST, p_type: 'generation_stem_split', p_description: `Stem split (${Object.keys(permanentStems).join(', ')})` })
-            .single()
-
-          const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
-          finalCredits = deductResult?.new_credits ?? (userData.credits - STEM_SPLIT_COST)
-
-          await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: finalCredits, type: 'generation_stem_split', description: `Stem split (${Object.keys(permanentStems).join(', ')})`, metadata: { stems: Object.keys(permanentStems), libraryIds: savedLibraryIds } })
-        } else {
-          // Mark earn job as completed
-          if (earnJobId) {
-            await supabase.from('earn_split_jobs').update({ status: 'completed' }).eq('id', earnJobId)
-          }
-          await logCreditTransaction({ userId, amount: 0, balanceAfter: userData.credits, type: 'generation_stem_split', description: `Stem split via Earn (${Object.keys(permanentStems).join(', ')})`, metadata: { stems: Object.keys(permanentStems), libraryIds: savedLibraryIds, earnJobId } })
-        }
-
         await sendLine({
           type: 'result',
           success: true,
           stems: permanentStems,
           libraryIds: savedLibraryIds,
           creditsUsed: skipCreditDeduction ? 0 : STEM_SPLIT_COST,
-          creditsRemaining: finalCredits
+          creditsRemaining: skipCreditDeduction ? userData.credits : (deductResult?.new_credits ?? userData.credits)
         })
+
+        // Mark earn job completed if applicable
+        if (skipCreditDeduction && earnJobId) {
+          await supabase.from('earn_split_jobs').update({ status: 'completed' }).eq('id', earnJobId)
+        }
+
         await writer.close()
       } catch (error) {
         console.error('[Stem Split] Stream error:', error)

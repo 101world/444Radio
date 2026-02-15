@@ -28,7 +28,7 @@ import {
 
 // ── Constants ──
 const GST_RATE = 0.18
-const INR_RATE = 85
+const INR_RATE = 91
 const CREDIT_RATE = 0.035 // $0.035 per credit
 
 // ── Dollar deposit packs ──

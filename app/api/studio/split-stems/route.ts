@@ -8,6 +8,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { logCreditTransaction } from '@/lib/credit-transactions'
+import { createClient } from '@supabase/supabase-js'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -72,7 +74,46 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'outputFormat must be mp3 or wav' }, { status: 400 }))
     }
 
-    // Stem splitting is free - no credits required
+    // Check and deduct credits (stem split costs 5 credits)
+    const STEM_COST = 5
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('credits')
+      .eq('clerk_user_id', userId)
+      .single()
+
+    if (userError || !userData) {
+      return corsResponse(NextResponse.json({ success: false, error: 'User not found' }, { status: 404 }))
+    }
+
+    if (userData.credits < STEM_COST) {
+      return corsResponse(NextResponse.json({
+        success: false,
+        error: `Insufficient credits. Stem split requires ${STEM_COST} credits, you have ${userData.credits}.`,
+        creditsNeeded: STEM_COST,
+        creditsAvailable: userData.credits
+      }, { status: 402 }))
+    }
+
+    // ✅ DEDUCT credits atomically BEFORE generation
+    const { data: deductResultRaw } = await supabase
+      .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_COST, p_type: 'generation_stem_split', p_description: 'Studio stem split' })
+      .single()
+    const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
+    if (!deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -STEM_COST, type: 'generation_stem_split', status: 'failed', description: 'Studio stem split', metadata: {} })
+      return corsResponse(NextResponse.json({ success: false, error: errorMsg }, { status: 402 }))
+    }
+    console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -STEM_COST, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: 'Studio stem split', metadata: {} })
+
     console.log('🎵 Stem splitting requested by user:', userId)
 
     // Use cjwbw/demucs model - industry-standard stem separation
