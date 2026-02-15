@@ -6,7 +6,7 @@ import {
   Sparkles, Zap, X, Rocket, PlusCircle, Globe, Mic, MicOff,
   Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
   Layers, Film, Scissors, Volume2, ChevronLeft, ChevronDown, ChevronUp, Lightbulb, Settings,
-  RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink, Home,
+  RotateCw, Save, RefreshCw, AlertCircle, Compass, ExternalLink, Home,
   BookOpen, ArrowDownToLine, Pin, PinOff, Maximize2, Minimize2
 } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
@@ -43,8 +43,6 @@ const LIBRARY_KEY = '444radio_plugin_library'
 const TOKEN_KEY = '444radio_plugin_token'
 const PIN_KEY = '444radio_plugin_pinned'
 const SIZE_KEY = '444radio_plugin_size'
-const OUTPUT_PATH_KEY = '444radio_output_path'
-const DEFAULT_OUTPUT_FOLDER = '444RadioOutput'
 
 // ─── Window size presets for JUCE plugin ────────────────────────
 const WINDOW_SIZES = [
@@ -226,18 +224,6 @@ export default function PluginPage() {
   // ── Audio player ──
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [playerTrack, setPlayerTrack] = useState<{ id: string; audioUrl: string; title?: string; prompt?: string } | null>(null)
-
-  // ── Output folder for DAW exports ──
-  const [outputPath, setOutputPath] = useState<string>(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem(OUTPUT_PATH_KEY) || DEFAULT_OUTPUT_FOLDER
-    return DEFAULT_OUTPUT_FOLDER
-  })
-  const [outputDirHandle, setOutputDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
-  const [showOutputSettings, setShowOutputSettings] = useState(false)
-  const [hasSetupOutput, setHasSetupOutput] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem(OUTPUT_PATH_KEY) !== null
-    return false
-  })
 
   // ── Stem splitting ──
   const [isSplittingStems, setIsSplittingStems] = useState(false)
@@ -563,157 +549,65 @@ export default function PluginPage() {
   }, [isInDAW])
 
   const sendToDAW = (url: string, title: string) => {
-    // Send proxied URL so JUCE can fetch the actual audio file
     const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(url)}`
     const fullProxyUrl = `${window.location.origin}${proxyUrl}`
-    sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format: 'mp3' })
+    sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format: 'wav' })
   }
 
-  // ═══ Drag-to-DAW helper — builds DownloadURL for Chromium native file drag ═══
-  // Works with Ableton, FL Studio, Logic, Premiere Pro, DaVinci Resolve, etc.
-  // Browser downloads the file to a temp location and passes the real file path
-  // to the drop target, exactly like dragging from File Explorer.
+  // ═══ Drag-to-DAW — DownloadURL for Chromium native file drag ═══
+  // Chromium downloads to temp dir and hands native file to drop target (DAW/editor)
   const buildDragData = (e: React.DragEvent, sourceUrl: string, title: string) => {
     const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
     const filename = `${safeName}.mp3`
-    // Proxy URL serves the actual audio file with Content-Disposition header
     const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}`
-    // DownloadURL format: mime:filename:url — Chromium downloads to temp and hands native file to drop target
     e.dataTransfer.setData('DownloadURL', `audio/mpeg:${filename}:${proxyUrl}`)
     e.dataTransfer.setData('text/uri-list', proxyUrl)
     e.dataTransfer.setData('text/plain', proxyUrl)
     e.dataTransfer.effectAllowed = 'copy'
-    // Also tell JUCE bridge in case we're inside the plugin WebView
     sendBridgeMessage({ action: 'drag_start', url: proxyUrl, title: safeName, format: 'mp3' })
   }
 
-  // ═══ Output directory picker — lets users choose where files are saved ═══
-  const pickOutputDirectory = async () => {
-    if (isInDAW) {
-      // In JUCE plugin: ask bridge to open native folder picker
-      sendBridgeMessage({ action: 'pick_output_folder', currentPath: outputPath })
-      setShowOutputSettings(true)
-      return
-    }
-    try {
-      // File System Access API — lets user grant persistent write access to a folder
-      const handle = await (window as any).showDirectoryPicker({
-        id: '444radio-output',
-        mode: 'readwrite',
-        startIn: 'desktop',
-      })
-      setOutputDirHandle(handle)
-      setOutputPath(handle.name)
-      localStorage.setItem(OUTPUT_PATH_KEY, handle.name)
-      setHasSetupOutput(true)
-      showBridgeToast(`📂 Output folder: ${handle.name}`)
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        showBridgeToast('❌ Could not set output folder')
-      }
-    }
-  }
-
-  const updateOutputPath = (newPath: string) => {
-    setOutputPath(newPath)
-    localStorage.setItem(OUTPUT_PATH_KEY, newPath)
-    if (isInDAW) {
-      sendBridgeMessage({ action: 'set_output_path', path: newPath })
-    }
-  }
-
-  // ═══ Click-to-Import — downloads file to output folder ═══
-  // In JUCE: bridge saves to configured output path
-  // In browser: writes to picked directory via File System Access API, or falls back to Downloads
+  // ═══ Click-to-Import — fetches audio, converts to WAV, downloads ═══
   const [dawImporting, setDawImporting] = useState<string | null>(null)
   const importToDAW = async (sourceUrl: string, title: string) => {
     if (dawImporting) return
-
-    // First-time setup: auto-prompt for output folder before first import
-    if (!hasSetupOutput && !isInDAW) {
-      try {
-        const handle = await (window as any).showDirectoryPicker?.({
-          id: '444radio-output',
-          mode: 'readwrite',
-          startIn: 'desktop',
-        })
-        if (handle) {
-          setOutputDirHandle(handle)
-          setOutputPath(handle.name)
-          localStorage.setItem(OUTPUT_PATH_KEY, handle.name)
-          setHasSetupOutput(true)
-          showBridgeToast(`📂 Output folder set: ${handle.name}`)
-        }
-      } catch (err: any) {
-        // User cancelled or API not available — continue with default Downloads
-        if (err.name !== 'AbortError') console.warn('Could not pick folder:', err)
-      }
-      // Mark setup done even if they cancelled (don't nag)
-      setHasSetupOutput(true)
-      localStorage.setItem(OUTPUT_PATH_KEY, outputPath)
-    }
-
     const importId = `${sourceUrl}-${title}`
     setDawImporting(importId)
     try {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
-      const filename = `${safeName}.mp3`
 
-      // If running inside JUCE plugin, send bridge message — JUCE saves to outputPath natively
+      // Inside JUCE plugin — bridge handles native file save
       if (isInDAW) {
-        const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}`
-        sendBridgeMessage({
-          action: 'download_to_path',
-          url: proxyUrl,
-          filename,
-          outputPath,
-          title: safeName,
-          format: 'mp3',
-        })
-        showBridgeToast(`🎵 Saving "${filename}" → ${outputPath}`)
+        const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(safeName + '.wav')}`
+        sendBridgeMessage({ action: 'import_audio', url: proxyUrl, title: safeName, format: 'wav' })
+        showBridgeToast(`🎵 Importing "${safeName}" to DAW...`)
         return
       }
 
-      // Browser context: fetch the file
-      const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}`
+      // Browser — fetch, decode, convert to WAV, download
+      showBridgeToast(`⏳ Converting to WAV...`)
+      const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
       const res = await fetch(proxyUrl)
       if (!res.ok) {
         if (res.status === 404) throw new Error('File not found — may have expired. Try regenerating.')
         throw new Error(`Download failed: ${res.status}`)
       }
-      const blob = await res.blob()
-
-      // Try File System Access API first — writes directly to the user-chosen output folder
-      if (outputDirHandle) {
-        try {
-          const perm = await (outputDirHandle as any).queryPermission?.({ mode: 'readwrite' })
-          if (perm === 'granted' || !perm) {
-            const fileHandle = await outputDirHandle.getFileHandle(filename, { create: true })
-            const writable = await (fileHandle as any).createWritable()
-            await writable.write(blob)
-            await writable.close()
-            showBridgeToast(`✅ Saved "${filename}" → ${outputPath} — drag into DAW`)
-            return
-          }
-        } catch (fsErr) {
-          console.warn('FS Access write failed, falling back to download:', fsErr)
-          setOutputDirHandle(null)
-        }
-      }
-
-      // Fallback: regular browser download
-      const blobUrl = URL.createObjectURL(blob)
+      const arrayBuffer = await res.arrayBuffer()
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      const wavBlob = audioBufferToWav(audioBuffer)
+      const wavUrl = URL.createObjectURL(wavBlob)
       const link = document.createElement('a')
-      link.href = blobUrl
-      link.download = filename
+      link.href = wavUrl
+      link.download = `${safeName}.wav`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
-      showBridgeToast(`✅ Downloaded "${filename}" — drag from Downloads into DAW`)
+      setTimeout(() => URL.revokeObjectURL(wavUrl), 5000)
+      showBridgeToast(`✅ Downloaded "${safeName}.wav" — drag into your DAW timeline`)
     } catch (err: any) {
       console.error('DAW import error:', err)
-      showBridgeToast(`❌ ${err.message || 'Import failed'}`)
+      showBridgeToast(`❌ ${err.message || 'Could not convert to WAV'}`)
     } finally {
       setDawImporting(null)
     }
@@ -2254,56 +2148,6 @@ export default function PluginPage() {
               className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="My Library">
               <BookOpen size={16} className="text-purple-400" />
             </button>
-            {/* Output Folder Settings */}
-            <div className="relative">
-              <button onClick={() => setShowOutputSettings(!showOutputSettings)}
-                className={`p-2 rounded-lg transition-colors ${showOutputSettings ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-gray-500'}`}
-                title={`Output folder: ${outputPath}`}>
-                <FolderOpen size={15} />
-              </button>
-              {showOutputSettings && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowOutputSettings(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl p-4 min-w-[280px]">
-                    <div className="flex items-center gap-2 mb-3">
-                      <FolderOpen size={14} className="text-emerald-400" />
-                      <span className="text-xs font-bold text-white">DAW Output Folder</span>
-                    </div>
-                    <p className="text-[10px] text-gray-500 mb-3">Files saved here when you click "Import to DAW". Drag from this folder into your DAW/editor timeline.</p>
-                    <div className="flex items-center gap-2 mb-3">
-                      <input
-                        type="text"
-                        value={outputPath}
-                        onChange={(e) => updateOutputPath(e.target.value)}
-                        placeholder="e.g. 444RadioOutput"
-                        className="flex-1 bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={pickOutputDirectory}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 rounded-lg text-xs text-emerald-300 hover:text-emerald-200 transition-all font-semibold">
-                        <FolderOpen size={12} /> Browse
-                      </button>
-                      <button onClick={() => { updateOutputPath(DEFAULT_OUTPUT_FOLDER); showBridgeToast('Reset to default folder') }}
-                        className="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-400 hover:text-white transition-all">
-                        <RotateCcw size={12} /> Reset
-                      </button>
-                    </div>
-                    {outputDirHandle && (
-                      <div className="mt-2 flex items-center gap-1.5 text-[10px] text-emerald-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Writing directly to "{outputPath}"
-                      </div>
-                    )}
-                    {!outputDirHandle && !isInDAW && (
-                      <p className="mt-2 text-[10px] text-gray-600">Click Browse to grant write access. Otherwise files go to Downloads.</p>
-                    )}
-                    {isInDAW && (
-                      <p className="mt-2 text-[10px] text-gray-600">Plugin saves files to this path on your computer.</p>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
             {/* Back to Plugin Home — always visible */}
             <button onClick={() => { window.location.href = '/plugin?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Back to Plugin Home">
@@ -2402,14 +2246,14 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50">
                         <Scissors size={12} /> Stems <span className="text-[10px] text-gray-500">(-5)</span>
                       </button>
-                      {/* Import to DAW — click saves to output folder, drag for native file drop */}
+                      {/* Import to DAW — drag to timeline or click for WAV download */}
                       <button
                         draggable
                         onDragStart={(e) => buildDragData(e, msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
                         onClick={() => importToDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
                         disabled={dawImporting !== null}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold cursor-grab active:cursor-grabbing disabled:opacity-50"
-                        title={`Click to save to ${outputPath} or drag to DAW timeline`}>
+                        title="Drag to DAW timeline or click to download WAV">
                         {dawImporting ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />} Import to DAW
                       </button>
                       {/* Audio Boost */}
@@ -2492,14 +2336,14 @@ export default function PluginPage() {
                             className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
                             <Download size={12} className="text-white" />
                           </button>
-                          {/* Import stem to DAW — click saves to output folder, drag for native file drop */}
+                          {/* Import stem to DAW — drag to timeline or click for WAV download */}
                           <button
                             draggable
                             onDragStart={(e) => buildDragData(e, url as string, `${display.label} Stem`)}
                             onClick={() => importToDAW(url as string, `${display.label} Stem`)}
                             disabled={dawImporting !== null}
                             className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-lg transition-colors cursor-grab active:cursor-grabbing disabled:opacity-50"
-                            title={`Save ${display.label} to ${outputPath} or drag to DAW`}>
+                            title={`Drag ${display.label} to DAW or click for WAV`}>
                             {dawImporting === `${url}-${display.label} Stem` ? <Loader2 size={12} className="text-cyan-400 animate-spin" /> : <ArrowDownToLine size={12} className="text-cyan-400" />}
                             <span className="text-[9px] text-cyan-400/70 font-medium">DAW</span>
                           </button>
