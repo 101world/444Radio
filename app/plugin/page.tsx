@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
+import Script from 'next/script'
 import {
   Music, Image as ImageIcon, Send, Loader2, Download, Play, Pause,
   Sparkles, Zap, X, Rocket, PlusCircle, Globe, Mic, MicOff,
@@ -311,12 +312,15 @@ export default function PluginPage() {
 
   // ═══ AUTH: Verify token on mount ═══
   const [authError, setAuthError] = useState<string | null>(null)
+  const [needsPurchase, setNeedsPurchase] = useState(false)
+  const [buyingPlugin, setBuyingPlugin] = useState(false)
   useEffect(() => {
     if (!token) {
       setIsLoadingCredits(false)
       return
     }
     setAuthError(null)
+    setNeedsPurchase(false)
     ;(async () => {
       try {
         const res = await fetch('/api/plugin/credits', {
@@ -340,12 +344,21 @@ export default function PluginPage() {
             errorMsg = errData.error || errorMsg
           } catch {}
           console.warn('[plugin] Auth failed:', res.status, errorMsg)
-          // Clear invalid token so user can re-enter
-          localStorage.removeItem(TOKEN_KEY)
-          setToken(null)
-          setAuthError(errorMsg)
-          setIsAuthenticated(false)
-          setIsLoadingCredits(false)
+
+          // If denied because no purchase — keep token, show buy button
+          if (res.status === 403 && errorMsg.includes('$25')) {
+            setNeedsPurchase(true)
+            setAuthError(errorMsg)
+            setIsAuthenticated(false)
+            setIsLoadingCredits(false)
+          } else {
+            // Clear invalid token so user can re-enter
+            localStorage.removeItem(TOKEN_KEY)
+            setToken(null)
+            setAuthError(errorMsg)
+            setIsAuthenticated(false)
+            setIsLoadingCredits(false)
+          }
         }
       } catch {
         setAuthError('Network error — could not reach server')
@@ -1786,10 +1799,110 @@ export default function PluginPage() {
           <h1 className="text-2xl font-bold text-white">Connect to 444 Radio</h1>
 
           {/* Show auth error if token was rejected */}
-          {authError && (
+          {authError && !needsPurchase && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-left">
               <p className="text-sm text-red-400 font-medium">⚠️ {authError}</p>
               <p className="text-xs text-red-400/70 mt-1">Generate a new token from Settings → Plugin tab</p>
+            </div>
+          )}
+
+          {/* Plugin purchase required — $25 Razorpay button */}
+          {needsPurchase && (
+            <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5 text-left space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shrink-0">
+                  <Zap size={20} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">Unlock 444Radio Plugin</p>
+                  <p className="text-xs text-gray-400">One-time purchase • Unlimited access forever</p>
+                </div>
+              </div>
+              <div className="flex items-baseline gap-1 ml-[52px]">
+                <span className="text-3xl font-black text-white">$25</span>
+                <span className="text-xs text-gray-500">USD • one-time</span>
+              </div>
+              <ul className="ml-[52px] space-y-1 text-xs text-gray-300">
+                <li>✓ Unlimited AI generations in your DAW</li>
+                <li>✓ WAV export + drag to timeline</li>
+                <li>✓ Stem splitting, loops, SFX, cover art</li>
+                <li>✓ Works in Ableton, FL Studio, Logic, Premiere Pro</li>
+                <li>✓ No subscription needed</li>
+              </ul>
+              <button
+                onClick={async () => {
+                  if (buyingPlugin) return
+                  setBuyingPlugin(true)
+                  try {
+                    const res = await fetch('/api/plugin/purchase', {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${token}` },
+                    })
+                    const data = await res.json()
+                    if (!data.success || !data.orderId) {
+                      alert(data.error || 'Could not create payment')
+                      return
+                    }
+                    if (!(window as any).Razorpay) {
+                      alert('Payment SDK loading... please try again in a moment')
+                      return
+                    }
+                    const razorpay = new (window as any).Razorpay({
+                      key: data.keyId,
+                      amount: data.amount,
+                      currency: data.currency,
+                      name: '444Radio',
+                      description: 'Plugin — Unlimited Access',
+                      order_id: data.orderId,
+                      handler: async (response: any) => {
+                        try {
+                          const verifyRes = await fetch('/api/plugin/verify-purchase', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                              razorpay_order_id: response.razorpay_order_id,
+                              razorpay_payment_id: response.razorpay_payment_id,
+                              razorpay_signature: response.razorpay_signature,
+                            }),
+                          })
+                          const verifyData = await verifyRes.json()
+                          if (verifyData.success) {
+                            alert('✅ Plugin purchased! Refreshing...')
+                            window.location.reload()
+                          } else {
+                            alert('✅ Payment received! Access will activate within 1-2 minutes. Refresh the page.')
+                          }
+                        } catch {
+                          alert('✅ Payment received! Refresh the page to activate.')
+                        }
+                      },
+                      prefill: {
+                        email: data.customerEmail || '',
+                        name: data.customerName || '',
+                      },
+                      theme: { color: '#06b6d4' },
+                      modal: {
+                        ondismiss: () => setBuyingPlugin(false),
+                      },
+                    })
+                    razorpay.open()
+                  } catch (err: any) {
+                    console.error('Purchase error:', err)
+                    alert('Payment error: ' + (err.message || 'Unknown'))
+                  } finally {
+                    setBuyingPlugin(false)
+                  }
+                }}
+                disabled={buyingPlugin}
+                className="ml-[52px] w-[calc(100%-52px)] py-3 rounded-xl text-sm font-bold text-black bg-gradient-to-r from-cyan-400 to-cyan-300 hover:from-cyan-300 hover:to-cyan-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {buyingPlugin ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                {buyingPlugin ? 'Processing...' : 'Buy Plugin — $25'}
+              </button>
+              <p className="ml-[52px] text-[10px] text-gray-600">Or subscribe to Pro/Studio for plugin access included</p>
             </div>
           )}
 
@@ -1842,6 +1955,8 @@ export default function PluginPage() {
 
           <p className="text-[11px] text-gray-600">Token is saved locally — you only need to do this once per device</p>
         </div>
+        {/* Razorpay SDK for $25 plugin purchase */}
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </div>
     )
   }
