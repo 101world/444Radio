@@ -12,22 +12,19 @@ interface PluginPlayerTrack {
 
 interface PluginAudioPlayerProps {
   track: PluginPlayerTrack | null
-  playing?: boolean              // external play/pause control from parent
+  playing?: boolean
   onClose?: () => void
-  onPlayStateChange?: (playing: boolean) => void  // sync back to parent
+  onPlayStateChange?: (playing: boolean) => void
 }
 
-// ── Proxy URL helper: route through server to avoid CORS in WebView ──
+// ── Proxy URL helper ──
 function proxyUrl(url: string): string {
   if (!url) return url
   try {
     const u = new URL(url, window.location.origin)
     const host = u.hostname
-    // Custom-domain CDN hosts can play direct
     if (host.endsWith('.444radio.co.in')) return url
-    // Already a proxy path
     if (u.pathname.startsWith('/api/r2/proxy')) return url
-    // Everything else (raw R2, Replicate) → proxy
     return `/api/r2/proxy?url=${encodeURIComponent(url)}`
   } catch {
     return `/api/r2/proxy?url=${encodeURIComponent(url)}`
@@ -42,14 +39,16 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   const ctxRef = useRef<AudioContext | null>(null)
   const connectedSrcRef = useRef<string | null>(null)
   const rafRef = useRef<number>(0)
+  const progressBarRef = useRef<HTMLDivElement>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.8)
   const [isMuted, setIsMuted] = useState(false)
+  const [showVolume, setShowVolume] = useState(false)
 
-  // ── Cleanup on unmount: stop audio completely ──
+  // ── Cleanup on unmount ──
   useEffect(() => {
     return () => {
       if (audioRef.current) {
@@ -70,11 +69,8 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
       audioRef.current.crossOrigin = 'anonymous'
     }
     const audio = audioRef.current
-
-    // Reset
     audio.pause()
-    const src = proxyUrl(track.audioUrl)
-    audio.src = src
+    audio.src = proxyUrl(track.audioUrl)
     audio.volume = isMuted ? 0 : volume
     audio.load()
     setCurrentTime(0)
@@ -93,7 +89,6 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     audio.addEventListener('play', onPlay)
     audio.addEventListener('pause', onPause)
 
-    // Auto-play
     audio.play().catch(() => {})
 
     return () => {
@@ -106,7 +101,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track?.id, track?.audioUrl])
 
-  // ── React to external play/pause from parent ──
+  // ── External play/pause ──
   useEffect(() => {
     if (playing === undefined || !audioRef.current) return
     if (playing && !isPlaying) {
@@ -118,10 +113,10 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing])
 
-  // ── Connect AnalyserNode (once per src) ──
+  // ── Connect AnalyserNode ──
   useEffect(() => {
     if (!track || !audioRef.current) return
-    if (connectedSrcRef.current === track.audioUrl) return // already connected
+    if (connectedSrcRef.current === track.audioUrl) return
 
     try {
       if (!ctxRef.current) {
@@ -131,8 +126,8 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
       if (ctx.state === 'suspended') ctx.resume()
 
       const analyser = ctx.createAnalyser()
-      analyser.fftSize = 512
-      analyser.smoothingTimeConstant = 0.85
+      analyser.fftSize = 256
+      analyser.smoothingTimeConstant = 0.8
       const source = ctx.createMediaElementSource(audioRef.current)
       source.connect(analyser)
       analyser.connect(ctx.destination)
@@ -144,7 +139,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     }
   }, [track])
 
-  // ── Waveform draw loop ──
+  // ── Mini waveform draw loop (compact bars) ──
   useEffect(() => {
     if (!canvasRef.current) return
     const canvas = canvasRef.current
@@ -163,64 +158,35 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
       }
       c.clearRect(0, 0, W, H)
 
-      const barCount = 80
-      const gap = 1.5
+      const barCount = 48
+      const gap = 1
       const barW = (W - gap * (barCount - 1)) / barCount
       const analyser = analyserRef.current
-      const bufLen = analyser ? analyser.frequencyBinCount : 64
+      const bufLen = analyser ? analyser.frequencyBinCount : 32
       const freqData = new Uint8Array(bufLen)
       if (analyser && isPlaying) analyser.getByteFrequencyData(freqData)
 
-      // Progress ratio
       const progress = duration > 0 ? currentTime / duration : 0
 
       for (let i = 0; i < barCount; i++) {
         const t = i / barCount
-        // Map bar index to a frequency bin
         const binIdx = Math.min(Math.floor(t * bufLen * 0.6), bufLen - 1)
         const rawVal = freqData[binIdx] / 255
-
-        // Base height from pseudo-waveform (seeded from index for static shape)
-        const seed = Math.sin(i * 0.4 + 1.7) * 0.3 + Math.sin(i * 0.15 + 0.3) * 0.2 + 0.35
-        // When playing, blend in live frequency data
-        const val = isPlaying ? seed * 0.4 + rawVal * 0.6 : seed
-        const barH = Math.max(2, val * H * 0.85)
+        const seed = Math.sin(i * 0.5 + 1.3) * 0.3 + Math.sin(i * 0.2 + 0.5) * 0.2 + 0.35
+        const val = isPlaying ? seed * 0.3 + rawVal * 0.7 : seed
+        const barH = Math.max(2, val * H * 0.9)
         const x = i * (barW + gap)
         const y = (H - barH) / 2
 
-        // Color: played portion = cyan, future = gray
         if (t <= progress) {
-          const glow = isPlaying ? 0.7 + rawVal * 0.3 : 0.7
-          c.fillStyle = `rgba(34, 211, 238, ${glow})`
-          c.shadowColor = 'rgba(34, 211, 238, 0.5)'
-          c.shadowBlur = isPlaying ? rawVal * 6 : 2
+          c.fillStyle = `rgba(34, 211, 238, ${isPlaying ? 0.7 + rawVal * 0.3 : 0.7})`
         } else {
-          c.fillStyle = 'rgba(100, 116, 139, 0.35)'
-          c.shadowColor = 'transparent'
-          c.shadowBlur = 0
+          c.fillStyle = 'rgba(100, 116, 139, 0.25)'
         }
 
-        // Rounded bar
-        const r = Math.min(barW / 2, 1.5)
         c.beginPath()
-        c.moveTo(x + r, y)
-        c.lineTo(x + barW - r, y)
-        c.quadraticCurveTo(x + barW, y, x + barW, y + r)
-        c.lineTo(x + barW, y + barH - r)
-        c.quadraticCurveTo(x + barW, y + barH, x + barW - r, y + barH)
-        c.lineTo(x + r, y + barH)
-        c.quadraticCurveTo(x, y + barH, x, y + barH - r)
-        c.lineTo(x, y + r)
-        c.quadraticCurveTo(x, y, x + r, y)
+        c.roundRect(x, y, barW, barH, 1)
         c.fill()
-      }
-
-      // Playhead line
-      if (duration > 0) {
-        const px = progress * W
-        c.shadowBlur = 0
-        c.fillStyle = 'rgba(255, 255, 255, 0.9)'
-        c.fillRect(px - 0.5, 0, 1.5, H)
       }
     }
 
@@ -239,11 +205,20 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     }
   }, [isPlaying])
 
-  const seek = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current || !audioRef.current || duration <= 0) return
+    const rect = progressBarRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const ratio = Math.max(0, Math.min(1, x / rect.width))
+    audioRef.current.currentTime = ratio * duration
+    setCurrentTime(ratio * duration)
+  }, [duration])
+
+  const seekCanvas = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !audioRef.current || duration <= 0) return
     const rect = canvasRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
-    const ratio = x / rect.width
+    const ratio = Math.max(0, Math.min(1, x / rect.width))
     audioRef.current.currentTime = ratio * duration
     setCurrentTime(ratio * duration)
   }, [duration])
@@ -278,62 +253,86 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     return `${m}:${sec.toString().padStart(2, '0')}`
   }
 
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0
+
   if (!track) return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] bg-gradient-to-r from-gray-900/98 via-black/98 to-gray-900/98 backdrop-blur-xl border-t border-cyan-500/30 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.6)]">
-      {/* Title */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-white truncate">{track.title || 'AI Track'}</p>
-          {track.prompt && <p className="text-[10px] text-gray-500 truncate">{track.prompt}</p>}
+    <div className="w-full bg-black/90 backdrop-blur-xl border-b border-cyan-500/20 select-none"
+      style={{ animation: 'slideDown 0.25s ease-out' }}>
+      {/* Thin progress bar at very top */}
+      <div
+        ref={progressBarRef}
+        onClick={seek}
+        className="h-[3px] w-full bg-white/5 cursor-pointer group relative"
+      >
+        <div
+          className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-[width] duration-100 relative"
+          style={{ width: `${progress}%` }}
+        >
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
-        {onClose && (
-          <button onClick={onClose} className="ml-2 p-1.5 text-gray-500 hover:text-white hover:bg-white/10 rounded-full transition">
-            <X size={14} />
-          </button>
-        )}
       </div>
 
-      {/* Waveform progress bar */}
-      <canvas
-        ref={canvasRef}
-        onClick={seek}
-        className="w-full h-10 cursor-pointer rounded-lg mb-2"
-        style={{ imageRendering: 'pixelated' }}
-      />
+      {/* Main row: controls + waveform + title + volume + close */}
+      <div className="flex items-center gap-2 px-3 py-1.5">
+        {/* Skip back */}
+        <button onClick={skipBack} className="p-1 text-gray-500 hover:text-white transition flex-shrink-0">
+          <SkipBack size={12} />
+        </button>
 
-      {/* Time + Controls */}
-      <div className="flex items-center gap-3">
-        <span className="text-[10px] text-gray-400 font-mono w-8 text-right">{fmt(currentTime)}</span>
+        {/* Play/Pause */}
+        <button onClick={togglePlay}
+          className="w-7 h-7 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-cyan-500/25 flex-shrink-0">
+          {isPlaying ? <Pause size={11} className="text-black" /> : <Play size={11} className="text-black ml-0.5" />}
+        </button>
 
-        <div className="flex items-center gap-1">
-          <button onClick={skipBack} className="p-1.5 text-gray-400 hover:text-white transition">
-            <SkipBack size={14} />
-          </button>
-          <button onClick={togglePlay}
-            className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 flex items-center justify-center hover:scale-105 transition-transform shadow-lg shadow-cyan-500/30">
-            {isPlaying ? <Pause size={14} className="text-black" /> : <Play size={14} className="text-black ml-0.5" />}
-          </button>
-          <button onClick={skipFwd} className="p-1.5 text-gray-400 hover:text-white transition">
-            <SkipForward size={14} />
-          </button>
+        {/* Skip forward */}
+        <button onClick={skipFwd} className="p-1 text-gray-500 hover:text-white transition flex-shrink-0">
+          <SkipForward size={12} />
+        </button>
+
+        {/* Time */}
+        <span className="text-[9px] text-gray-500 font-mono w-6 text-right flex-shrink-0">{fmt(currentTime)}</span>
+
+        {/* Mini waveform visualizer */}
+        <canvas
+          ref={canvasRef}
+          onClick={seekCanvas}
+          className="flex-1 h-6 cursor-pointer rounded min-w-0"
+        />
+
+        <span className="text-[9px] text-gray-500 font-mono w-6 flex-shrink-0">{fmt(duration)}</span>
+
+        {/* Track title */}
+        <div className="flex-shrink min-w-0 max-w-[120px] hidden sm:block">
+          <p className="text-[10px] font-semibold text-white truncate">{track.title || 'AI Track'}</p>
         </div>
-
-        <span className="text-[10px] text-gray-400 font-mono w-8">{fmt(duration)}</span>
 
         {/* Volume */}
-        <div className="flex items-center gap-1 ml-auto">
-          <button onClick={toggleMute} className="p-1 text-gray-400 hover:text-white transition">
-            {isMuted || volume === 0 ? <VolumeX size={12} /> : <Volume2 size={12} />}
+        <div className="flex items-center gap-0.5 flex-shrink-0 relative">
+          <button onClick={toggleMute} onMouseEnter={() => setShowVolume(true)} className="p-1 text-gray-500 hover:text-white transition">
+            {isMuted || volume === 0 ? <VolumeX size={11} /> : <Volume2 size={11} />}
           </button>
-          <input
-            type="range" min="0" max="1" step="0.01"
-            value={isMuted ? 0 : volume}
-            onChange={e => changeVolume(parseFloat(e.target.value))}
-            className="w-14 h-1 accent-cyan-400 cursor-pointer"
-          />
+          {showVolume && (
+            <div className="absolute top-full right-0 mt-1 bg-gray-900/95 border border-white/10 rounded-lg p-2 z-50 shadow-xl"
+              onMouseLeave={() => setShowVolume(false)}>
+              <input
+                type="range" min="0" max="1" step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={e => changeVolume(parseFloat(e.target.value))}
+                className="w-20 h-1 accent-cyan-400 cursor-pointer"
+              />
+            </div>
+          )}
         </div>
+
+        {/* Close */}
+        {onClose && (
+          <button onClick={onClose} className="p-1 text-gray-600 hover:text-white transition flex-shrink-0">
+            <X size={12} />
+          </button>
+        )}
       </div>
     </div>
   )

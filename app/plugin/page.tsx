@@ -1983,8 +1983,18 @@ export default function PluginPage() {
           </div>
         </div>
 
+        {/* ── Sleek top-of-chat audio player ── */}
+        {playerTrack && (
+          <PluginAudioPlayer
+            track={playerTrack}
+            playing={playingId === playerTrack.id}
+            onClose={() => { setPlayerTrack(null); setPlayingId(null) }}
+            onPlayStateChange={(p) => setPlayingId(p ? playerTrack.id : null)}
+          />
+        )}
+
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 chat-scroll-container" style={{ paddingBottom: showBottomDock ? (playerTrack ? '300px' : '200px') : (playerTrack ? '200px' : '100px') }}>
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 chat-scroll-container" style={{ paddingBottom: showBottomDock ? '200px' : '100px' }}>
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] md:max-w-[70%] ${
@@ -3065,19 +3075,10 @@ export default function PluginPage() {
         </div>
       )}
 
-      {/* ── Waveform Audio Player (fixed bottom) ── */}
-      {playerTrack && (
-        <PluginAudioPlayer
-          track={playerTrack}
-          playing={playingId === playerTrack.id}
-          onClose={() => { setPlayerTrack(null); setPlayingId(null) }}
-          onPlayStateChange={(p) => setPlayingId(p ? playerTrack.id : null)}
-        />
-      )}
-
       {/* ── Global Styles (no style jsx — regular style tag) ── */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .chat-scroll-container::-webkit-scrollbar { width: 4px; }
         .chat-scroll-container::-webkit-scrollbar-track { background: transparent; }
