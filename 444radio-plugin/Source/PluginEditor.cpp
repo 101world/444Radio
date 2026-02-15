@@ -10,6 +10,31 @@ static const juce::String kSiteOrigin = "https://444radio.co.in";
 //  restricted directories (e.g. Ableton in C:\ProgramData, Premiere Pro, etc.)
 //==============================================================================
 #if JUCE_WINDOWS
+#include <windows.h>
+
+//==============================================================================
+//  Helper: find the directory containing THIS plugin binary (DLL/VST3).
+//  We can't rely on currentExecutableFile (that gives us the host DAW's exe).
+//  Instead we ask Windows which module our own code lives in.
+//==============================================================================
+static juce::File getPluginBinaryDir()
+{
+    HMODULE hModule = nullptr;
+    GetModuleHandleExW (
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        reinterpret_cast<LPCWSTR> (&getPluginBinaryDir),
+        &hModule);
+
+    if (hModule != nullptr)
+    {
+        wchar_t path[MAX_PATH];
+        if (GetModuleFileNameW (hModule, path, MAX_PATH) > 0)
+            return juce::File (juce::String (path)).getParentDirectory();
+    }
+
+    return {};
+}
+
 static juce::File getWebView2DataFolder()
 {
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
@@ -29,6 +54,7 @@ static bool isWebView2RuntimeAvailable()
                     .withBackend (juce::WebBrowserComponent::Options::Backend::webview2)
                     .withWinWebView2Options (
                         juce::WebBrowserComponent::Options::WinWebView2()
+                            .withDLLLocation (getPluginBinaryDir().getChildFile ("WebView2Loader.dll"))
                             .withUserDataFolder (getWebView2DataFolder()));
 
     return juce::WebBrowserComponent::areOptionsSupported (opts);
@@ -48,6 +74,7 @@ public:
                   .withBackend (juce::WebBrowserComponent::Options::Backend::webview2)
                   .withWinWebView2Options (
                       juce::WebBrowserComponent::Options::WinWebView2()
+                          .withDLLLocation (getPluginBinaryDir().getChildFile ("WebView2Loader.dll"))
                           .withUserDataFolder (getWebView2DataFolder())
                   )
 #endif
