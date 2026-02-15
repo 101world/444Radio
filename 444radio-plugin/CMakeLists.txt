@@ -50,7 +50,7 @@ juce_add_plugin(RadioPlugin
     FORMATS                   VST3 AU
     PRODUCT_NAME              "444 Radio"
     BUNDLE_ID                 "co.in.444radio.plugin"
-    VST3_CATEGORIES           "Tools"
+    VST3_CATEGORIES           "Fx" "Tools"
 )
 
 target_sources(RadioPlugin
