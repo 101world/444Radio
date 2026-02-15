@@ -14,6 +14,27 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(JUCE)
 
+# ─── Patch JUCE: suppress WebView2 script-error dialogs ───
+# Cracked/unusual DAW environments trigger JS errors that WebView2 shows as
+# modal "Script Error" dialogs.  This patch adds
+#   put_AreDefaultScriptDialogsEnabled(FALSE)
+# in the WebView2 settings initialisation so the dialogs never appear.
+set(_JUCE_WV2_SRC "${juce_SOURCE_DIR}/modules/juce_gui_extra/native/juce_WebBrowserComponent_windows.cpp")
+if(EXISTS "${_JUCE_WV2_SRC}")
+    file(READ "${_JUCE_WV2_SRC}" _WV2_CONTENTS)
+    string(FIND "${_WV2_CONTENTS}" "put_AreDefaultScriptDialogsEnabled" _PATCH_POS)
+    if(_PATCH_POS EQUAL -1)
+        string(REPLACE
+            "settings->put_IsBuiltInErrorPageEnabled (! preferences.getIsBuiltInErrorPageDisabled());"
+            "settings->put_IsBuiltInErrorPageEnabled (! preferences.getIsBuiltInErrorPageDisabled());\n            settings->put_AreDefaultScriptDialogsEnabled (FALSE);"
+            _WV2_PATCHED "${_WV2_CONTENTS}")
+        file(WRITE "${_JUCE_WV2_SRC}" "${_WV2_PATCHED}")
+        message(STATUS "444Radio: patched JUCE WebView2 to disable script error dialogs")
+    else()
+        message(STATUS "444Radio: JUCE WebView2 script-dialog patch already applied")
+    endif()
+endif()
+
 # ─── Plugin target ───
 juce_add_plugin(RadioPlugin
     COMPANY_NAME              "444Radio"
