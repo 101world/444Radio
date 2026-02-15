@@ -14,6 +14,7 @@
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.deduct_credits(TEXT, INTEGER);
+DROP FUNCTION IF EXISTS public.deduct_credits(TEXT, INTEGER, TEXT, TEXT, JSONB);
 
 CREATE FUNCTION public.deduct_credits(
   p_clerk_user_id TEXT,
