@@ -1427,58 +1427,33 @@ function CreatePageContent() {
         link.click()
         document.body.removeChild(link)
       } else {
-        // WAV: check R2 cache first
-        let cachedWavUrl: string | null = null
+        // WAV: fetch audio → decode → convert to WAV → download
         try {
-          const cacheRes = await fetch('/api/media/wav-upload', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audioUrl: url })
-          })
-          if (cacheRes.ok) {
-            const d = await cacheRes.json()
-            cachedWavUrl = d.wav_url || null
+          let response: Response
+          try {
+            response = await fetch(url)
+            if (!response.ok) throw new Error('direct failed')
+          } catch {
+            response = await fetch(`/api/r2/proxy?url=${encodeURIComponent(url)}`)
           }
-        } catch {}
-
-        if (cachedWavUrl) {
-          // Cache hit — download directly from R2
+          if (!response.ok) throw new Error(`Failed to fetch audio: ${response.status}`)
+          const arrayBuffer = await response.arrayBuffer()
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+          
+          const wavBlob = audioBufferToWav(audioBuffer)
+          const wavObjUrl = URL.createObjectURL(wavBlob)
+          
           const link = document.createElement('a')
-          link.href = `/api/download?url=${encodeURIComponent(cachedWavUrl)}&filename=${encodeURIComponent(filename.replace('.mp3', '.wav'))}`
+          link.href = wavObjUrl
           link.download = filename.replace('.mp3', '.wav')
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
-        } else {
-          // Cache miss — convert client-side, trigger download, then upload to R2
-          try {
-            const response = await fetch(url)
-            if (!response.ok) throw new Error(`Failed to fetch audio: ${response.status}`)
-            const arrayBuffer = await response.arrayBuffer()
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-            
-            const wavBlob = audioBufferToWav(audioBuffer)
-            const wavObjUrl = URL.createObjectURL(wavBlob)
-            
-            const link = document.createElement('a')
-            link.href = wavObjUrl
-            link.download = filename.replace('.mp3', '.wav')
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            URL.revokeObjectURL(wavObjUrl)
-
-            // Upload to R2 cache in background (non-blocking)
-            const safeName = filename.replace(/[^a-zA-Z0-9 _.-]/g, '_')
-            const formData = new FormData()
-            formData.append('wav', wavBlob, safeName.replace('.mp3', '.wav'))
-            formData.append('audioUrl', url)
-            fetch('/api/media/wav-upload', { method: 'POST', body: formData }).catch(() => {})
-          } catch (error) {
-            console.error('WAV conversion error:', error)
-            alert('Failed to convert to WAV. Please try MP3 download.')
-          }
+          URL.revokeObjectURL(wavObjUrl)
+        } catch (error) {
+          console.error('WAV conversion error:', error)
+          alert('Failed to convert to WAV. Please try MP3 download.')
         }
       }
     } catch (error) {

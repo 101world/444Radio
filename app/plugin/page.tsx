@@ -594,80 +594,40 @@ export default function PluginPage() {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
       const fileName = `${safeName}.${format}`
 
+      // Always proxy through same-domain to avoid CORS issues
+      const proxyFetch = async (url: string): Promise<Response> => {
+        try {
+          const u = new URL(url, window.location.origin)
+          if (u.origin === window.location.origin) return await fetch(url)
+        } catch {}
+        // Cross-origin → proxy
+        return await fetch(`/api/r2/proxy?url=${encodeURIComponent(url)}`)
+      }
+
+      showBridgeToast(`⏳ Preparing ${format.toUpperCase()}...`)
+
+      // Tell DAW bridge to start downloading natively too
+      if (isInDAW) {
+        sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format })
+      }
+
+      // Fetch the source audio
+      const res = await proxyFetch(sourceUrl)
+      if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
+      const ct = res.headers.get('content-type') || ''
+      if (ct.includes('text/html')) throw new Error('Got HTML instead of audio — file URL may be invalid')
+
       if (format === 'wav') {
-        // ── WAV: check R2 cache first ──
-        showBridgeToast(`⏳ Checking WAV cache...`)
-        let cachedWavUrl: string | null = null
-        try {
-          const cacheRes = await fetch('/api/media/wav-upload', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audioUrl: sourceUrl })
-          })
-          if (cacheRes.ok) {
-            const cacheData = await cacheRes.json()
-            cachedWavUrl = cacheData.wav_url || null
-          }
-        } catch { /* no cache — will convert */ }
-
-        if (cachedWavUrl) {
-          // ✅ Cache hit — use R2 WAV directly
-          showBridgeToast(`✅ WAV ready — loading...`)
-          if (isInDAW) {
-            sendBridgeMessage({ action: 'import_audio', url: cachedWavUrl, title: safeName, format: 'wav' })
-          }
-          let res: Response
-          try { res = await fetch(cachedWavUrl) } catch { res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(cachedWavUrl)}`) }
-          if (!res.ok) throw new Error(`Failed to load cached WAV: ${res.status}`)
-          const blob = await res.blob()
-          const blobUrl = URL.createObjectURL(blob)
-          setDawReadyFile({ name: fileName, blobUrl })
-        } else {
-          // ❌ Cache miss — convert client-side, upload to R2, then show toast
-          showBridgeToast(`⏳ Converting to WAV...`)
-          let res: Response
-          try { res = await fetch(sourceUrl) } catch { res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`) }
-          if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
-          const ct = res.headers.get('content-type') || ''
-          if (ct.includes('text/html')) throw new Error('Got HTML instead of audio — file URL may be invalid')
-          const ab = await res.arrayBuffer()
-          if (ab.byteLength < 1000) throw new Error('File too small — may be expired or invalid')
-          const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-          const decoded = await ctx.decodeAudioData(ab)
-          const wavBlob = audioBufferToWav(decoded)
-          const blobUrl = URL.createObjectURL(wavBlob)
-          setDawReadyFile({ name: fileName, blobUrl })
-
-          // Tell C++ bridge (send WAV blob URL — it will be converted internally too)
-          if (isInDAW) {
-            sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format: 'wav' })
-          }
-
-          // Upload WAV to R2 cache in background (non-blocking)
-          try {
-            const formData = new FormData()
-            formData.append('wav', wavBlob, `${safeName}.wav`)
-            formData.append('audioUrl', sourceUrl)
-            fetch('/api/media/wav-upload', { method: 'POST', body: formData })
-              .then(r => r.ok ? r.json() : null)
-              .then(d => d?.wav_url && console.log('✅ WAV cached to R2:', d.wav_url))
-              .catch(() => {}) // silent — caching is best-effort
-          } catch {}
-        }
+        // ── WAV: decode MP3 → convert to WAV blob ──
+        const ab = await res.arrayBuffer()
+        if (ab.byteLength < 1000) throw new Error('File too small — may be expired or invalid')
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const decoded = await ctx.decodeAudioData(ab)
+        const wavBlob = audioBufferToWav(decoded)
+        const blobUrl = URL.createObjectURL(wavBlob)
+        setDawReadyFile({ name: fileName, blobUrl })
       } else {
-        // ── MP3 — fetch raw bytes, show in toast for drag ──
-        showBridgeToast(`⏳ Preparing MP3...`)
-        if (isInDAW) {
-          sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format: 'mp3' })
-        }
-        let res: Response
-        try {
-          res = await fetch(sourceUrl)
-          if (!res.ok) throw new Error('direct failed')
-        } catch {
-          res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`)
-        }
-        if (!res.ok) throw new Error(`Download failed: ${res.status}`)
+        // ── MP3: use raw bytes directly ──
         const blob = await res.blob()
         const blobUrl = URL.createObjectURL(blob)
         setDawReadyFile({ name: fileName, blobUrl })

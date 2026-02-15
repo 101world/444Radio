@@ -17,14 +17,16 @@ interface PluginAudioPlayerProps {
   onPlayStateChange?: (playing: boolean) => void
 }
 
-// ── Proxy URL helper ──
+// ── Proxy URL helper — always proxy through same-domain to avoid CORS issues ──
 function proxyUrl(url: string): string {
   if (!url) return url
   try {
     const u = new URL(url, window.location.origin)
-    const host = u.hostname
-    if (host.endsWith('.444radio.co.in')) return url
+    // Already proxied → pass through
     if (u.pathname.startsWith('/api/r2/proxy')) return url
+    // Same-origin relative URL → pass through
+    if (u.origin === window.location.origin) return url
+    // Everything else (R2, Replicate, etc.) → proxy for CORS safety
     return `/api/r2/proxy?url=${encodeURIComponent(url)}`
   } catch {
     return `/api/r2/proxy?url=${encodeURIComponent(url)}`
@@ -66,7 +68,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     if (!track) return
     if (!audioRef.current) {
       audioRef.current = new Audio()
-      audioRef.current.crossOrigin = 'anonymous'
+      // No crossOrigin needed — audio is proxied through same-domain /api/r2/proxy
     }
     const audio = audioRef.current
     audio.pause()
