@@ -191,6 +191,8 @@ export async function POST(request: Request) {
     }
 
     // ── Log the deposit transaction with payment metadata ──
+    // Note: razorpay_id + order_id must match the keys used by the webhook
+    // handlers so cross-path idempotency checks work in both directions.
     await logCreditTransaction({
       userId,
       amount: creditsAdded,
@@ -199,6 +201,7 @@ export async function POST(request: Request) {
       status: 'success',
       description: `Wallet deposit: +$${depositUsd} → ${creditsAdded} credits`,
       metadata: {
+        razorpay_id: razorpay_payment_id,
         razorpay_payment_id,
         razorpay_order_id,
         order_id: razorpay_order_id,

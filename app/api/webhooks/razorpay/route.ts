@@ -216,6 +216,24 @@ async function handlePaymentCaptured(payment: any, eventType: string) {
     return
   }
 
+  // ── Cross-path idempotency: check if verify route (or order.paid) already deposited ──
+  const capturedOrderId = entity.order_id
+  if (capturedOrderId && clerkUserId) {
+    const { data: existingByOrder } = await supabaseAdmin
+      .from('credit_transactions')
+      .select('id')
+      .eq('user_id', clerkUserId)
+      .in('type', ['wallet_deposit', 'credit_award'])
+      .eq('status', 'success')
+      .contains('metadata', { order_id: capturedOrderId })
+      .limit(1)
+
+    if (existingByOrder && existingByOrder.length > 0) {
+      console.log('[Razorpay] ⏭ Already processed via verify route or order.paid:', capturedOrderId)
+      return
+    }
+  }
+
   // Get current user
   const user = await resolveUser(entity.customer_id, clerkUserId)
   if (!user) {
