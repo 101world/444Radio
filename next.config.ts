@@ -48,6 +48,13 @@ images: {
   minimumCacheTTL: 60,
 },
 
+  // Rewrite /favicon.ico to /icon.svg (browsers request .ico by default)
+  async rewrites() {
+    return [
+      { source: '/favicon.ico', destination: '/icon.svg' },
+    ]
+  },
+
 };
 
 export default nextConfig;
