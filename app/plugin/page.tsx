@@ -48,11 +48,20 @@ const SIZE_KEY = '444radio_plugin_size'
 
 // ─── Window size presets for JUCE plugin ────────────────────────
 const WINDOW_SIZES = [
-  { label: 'Compact', w: 480, h: 600 },
-  { label: 'Default', w: 640, h: 800 },
-  { label: 'Wide',    w: 900, h: 700 },
-  { label: 'Full',    w: 1200, h: 900 },
+  { label: 'Portrait',  w: 480, h: 720, icon: '▮', desc: 'Tall & narrow — side-dock friendly' },
+  { label: 'Square',    w: 600, h: 600, icon: '◼', desc: 'Balanced — works everywhere' },
+  { label: 'Wide',      w: 820, h: 520, icon: '▬', desc: 'Landscape — horizontal inserts' },
+  { label: 'Full',      w: 960, h: 740, icon: '⛶', desc: 'Large — premium workspace' },
 ] as const
+
+// Classify current aspect ratio for adaptive layout
+type LayoutMode = 'portrait' | 'square' | 'wide'
+function getLayoutMode(w: number, h: number): LayoutMode {
+  const ratio = w / h
+  if (ratio > 1.25) return 'wide'
+  if (ratio < 0.75) return 'portrait'
+  return 'square'
+}
 
 // ─── Stem display helper (same as create page) ─────────────────
 function getStemDisplay(stemName: string): { label: string; color: string; emoji: string } {
@@ -147,6 +156,7 @@ export default function PluginPage() {
 
   // ── Layout ──
   const [isMobile, setIsMobile] = useState(false)
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('portrait')
   const [showFeaturesSidebar, setShowFeaturesSidebar] = useState(false)
   const [showBottomDock, setShowBottomDock] = useState(true)
 
@@ -158,9 +168,9 @@ export default function PluginPage() {
   const [windowSizeIdx, setWindowSizeIdx] = useState(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(SIZE_KEY)
-      return stored ? parseInt(stored, 10) : 1 // default
+      return stored ? parseInt(stored, 10) : 0 // default to Portrait
     }
-    return 1
+    return 0
   })
   const [showSizeMenu, setShowSizeMenu] = useState(false)
   const [bridgeToast, setBridgeToast] = useState<string | null>(null)
@@ -375,9 +385,12 @@ export default function PluginPage() {
     })()
   }, [token])
 
-  // ═══ LAYOUT: detect mobile ═══
+  // ═══ LAYOUT: detect mobile + aspect ratio mode ═══
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
+    const check = () => {
+      setIsMobile(window.innerWidth < 768)
+      setLayoutMode(getLayoutMode(window.innerWidth, window.innerHeight))
+    }
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
@@ -554,6 +567,8 @@ export default function PluginPage() {
     setShowSizeMenu(false)
     localStorage.setItem(SIZE_KEY, String(idx))
     const size = WINDOW_SIZES[idx]
+    // Update layout mode immediately
+    setLayoutMode(getLayoutMode(size.w, size.h))
     // Send to JUCE C++ bridge
     sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
     // Direct window resize fallback + force CSS dimensions for WebView2
@@ -564,7 +579,7 @@ export default function PluginPage() {
       document.body.style.width = size.w + 'px'
       document.body.style.height = size.h + 'px'
     } catch {}
-    showBridgeToast(`↔ ${size.label} (${size.w}×${size.h})`)
+    showBridgeToast(`${size.icon} ${size.label} (${size.w}×${size.h})`)
   }
 
   // Send persisted pin/size state to JUCE on mount
@@ -1983,7 +1998,7 @@ export default function PluginPage() {
   //  RENDER — Carbon copy of create page layout
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className={`h-screen text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}
+    <div className={`h-screen text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? (layoutMode === 'wide' ? 'md:pl-[340px]' : 'md:pl-[320px]') : ''}`}
       style={{
         background: '#050a0f',
       }}>
@@ -2037,7 +2052,7 @@ export default function PluginPage() {
           {/* Mobile backdrop */}
           <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50" onClick={() => setShowFeaturesSidebar(false)} />
 
-          <div className="fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen md:w-[420px] z-50 md:z-40 flex flex-col relative overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderRight: '1px solid rgba(0,255,255,0.12)', boxShadow: '4px 0 40px rgba(0,0,0,0.5), 0 0 30px rgba(0,255,255,0.03)', animation: 'slideInLeft 0.3s ease-out' }}>
+          <div className={`fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen ${layoutMode === 'wide' ? 'md:w-[340px]' : 'md:w-[320px]'} z-50 md:z-40 flex flex-col relative overflow-hidden`} style={{ background: 'linear-gradient(180deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderRight: '1px solid rgba(0,255,255,0.12)', boxShadow: '4px 0 40px rgba(0,0,0,0.5), 0 0 30px rgba(0,255,255,0.03)', animation: 'slideInLeft 0.3s ease-out' }}>
             {/* Sidebar diagonal shine */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-50%',left:'-15%',width:'45%',height:'200%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.03) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.03) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
             {/* Subtle cyan ambient overlay */}
@@ -2284,7 +2299,7 @@ export default function PluginPage() {
       {/* ── Main Chat Area ── */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Chat Header — glass morphism */}
-        <div className="shrink-0 flex items-center justify-between px-4 py-2.5 relative overflow-hidden"
+        <div className={`shrink-0 flex items-center justify-between ${layoutMode === 'wide' ? 'px-3 py-1.5' : 'px-4 py-2.5'} relative overflow-hidden`}
           style={{
             background: 'linear-gradient(135deg, rgba(5,18,28,0.9), rgba(3,12,20,0.92))',
             backdropFilter: 'blur(40px)',
@@ -2333,16 +2348,23 @@ export default function PluginPage() {
               {showSizeMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowSizeMenu(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 rounded-xl py-1 min-w-[140px] overflow-hidden"
+                  <div className="absolute right-0 top-full mt-1 z-50 rounded-xl py-1 min-w-[200px] overflow-hidden"
                     style={{background:'linear-gradient(135deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))',backdropFilter:'blur(40px)',border:'1px solid rgba(0,255,255,0.12)',boxShadow:'0 16px 60px rgba(0,0,0,0.9), 0 0 16px rgba(0,255,255,0.04)'}}>
                     {/* Glass shine */}
                     <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"><div style={{position:'absolute',top:'-100%',left:'-25%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
                     {WINDOW_SIZES.map((s, i) => (
                       <button key={s.label} onClick={() => setWindowSize(i)}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors relative ${i === windowSizeIdx ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs transition-colors relative ${i === windowSizeIdx ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
                         style={i === windowSizeIdx ? {background:'rgba(0,255,255,0.08)',boxShadow:'inset 0 0 20px rgba(0,255,255,0.05)'} : {}}>
-                        <span className="font-medium">{s.label}</span>
-                        <span className="text-[10px] text-gray-500">{s.w}×{s.h}</span>
+                        <span className="text-base leading-none opacity-60">{s.icon}</span>
+                        <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-semibold">{s.label}</span>
+                            <span className="text-[9px] text-gray-500 tabular-nums">{s.w}×{s.h}</span>
+                          </div>
+                          <span className="text-[9px] text-gray-500 truncate w-full">{s.desc}</span>
+                        </div>
+                        {i === windowSizeIdx && <span className="text-cyan-400 text-[10px]">✓</span>}
                       </button>
                     ))}
                   </div>
@@ -2384,7 +2406,7 @@ export default function PluginPage() {
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 chat-scroll-container" style={{ paddingBottom: showBottomDock ? '200px' : '100px' }}>
+        <div className={`flex-1 overflow-y-auto ${layoutMode === 'wide' ? 'px-3 py-3' : 'px-4 py-6'} space-y-4 chat-scroll-container`} style={{ paddingBottom: showBottomDock ? (layoutMode === 'wide' ? '160px' : '200px') : '100px' }}>
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-3 relative overflow-hidden ${
@@ -2516,8 +2538,8 @@ export default function PluginPage() {
                 {/* ── IMAGE RESULT CARD ── */}
                 {msg.result?.imageUrl && !msg.result?.audioUrl && !msg.isGenerating && (
                   <div className="mt-3 space-y-3">
-                    <div className="relative group rounded-xl overflow-hidden">
-                      <img src={msg.result.imageUrl} alt={msg.result.title || 'Generated image'} className="w-full rounded-xl" />
+                    <div className="relative group rounded-xl overflow-hidden" style={{maxWidth: layoutMode === 'wide' ? '320px' : layoutMode === 'square' ? '280px' : '100%'}}>
+                      <img src={msg.result.imageUrl} alt={msg.result.title || 'Generated image'} className="w-full rounded-xl" style={{maxHeight: layoutMode === 'wide' ? '240px' : '360px', objectFit: 'cover'}} />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <span className="text-white text-sm font-medium bg-black/60 px-3 py-1.5 rounded-full">🔍 Click to expand</span>
                       </div>
@@ -2640,9 +2662,9 @@ export default function PluginPage() {
           <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-100%',left:'-10%',width:'40%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.05) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
           {/* Top edge cyan shine */}
           <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(0,255,255,0.12) 40%,rgba(0,255,255,0.22) 50%,rgba(0,255,255,0.12) 60%,transparent 90%)'}} />
-          <div className="pt-4 pb-4 px-4 relative z-10">
+          <div className="pt-3 pb-3 px-3 relative z-10">
             {/* Icon Row */}
-            <div className="flex items-center justify-center gap-1 mb-3 flex-wrap">
+            <div className={`flex items-center justify-center gap-1 mb-2 ${layoutMode === 'wide' ? 'gap-0.5' : 'gap-1'} flex-wrap`}>
               {/* Music */}
               <button onClick={() => { setSelectedType('music'); setShowAdvancedButtons(!showAdvancedButtons) }}
                 className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'music' ? '' : 'text-gray-600 hover:text-gray-300'}`}
@@ -2696,7 +2718,7 @@ export default function PluginPage() {
               </button>
 
               {/* Credits */}
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl ml-1 relative overflow-hidden"
+              <div className={`flex items-center gap-1 ${layoutMode === 'wide' ? 'px-2 py-0.5' : 'px-2.5 py-1'} rounded-xl ml-1 relative overflow-hidden`}
                 style={{ background: 'linear-gradient(135deg, rgba(0,255,255,0.06), rgba(0,136,255,0.04))', border: '1px solid rgba(0,255,255,0.2)', boxShadow: '0 0 12px rgba(0,255,255,0.06), inset 0 1px 0 rgba(0,255,255,0.1)' }}>
                 <Zap size={11} style={{color:'#00ffff'}} />
                 <span className="text-xs font-bold tabular-nums" style={{color:'#00ffff'}}>{userCredits ?? '...'}</span>
@@ -2765,7 +2787,7 @@ export default function PluginPage() {
 
             {/* Prompt Input Bar — Glass Node */}
             <div className="relative">
-              <div className="flex items-end gap-2 rounded-2xl px-3 py-2 transition-all duration-300 relative overflow-hidden"
+              <div className={`flex items-end gap-2 rounded-2xl ${layoutMode === 'wide' ? 'px-2 py-1.5' : 'px-3 py-2'} transition-all duration-300 relative overflow-hidden`}
                 style={{
                   background: 'linear-gradient(135deg, rgba(5,18,28,0.8), rgba(3,12,20,0.85))',
                   backdropFilter: 'blur(40px)',
@@ -2937,7 +2959,7 @@ export default function PluginPage() {
             )}
 
             {/* Quick Info */}
-            <div className="flex items-center justify-center gap-2 mt-2 text-xs">
+            <div className={`flex items-center justify-center gap-2 ${layoutMode === 'wide' ? 'mt-1' : 'mt-2'} text-xs`}>
               <span style={{color: activeGenerations.size > 0 ? 'rgba(0,255,255,0.8)' : 'rgba(0,255,255,0.5)', textShadow: activeGenerations.size > 0 ? '0 0 12px rgba(0,255,255,0.3)' : 'none'}} className="font-mono tracking-wider">
                 {activeGenerations.size > 0
                   ? `⚡ ${activeGenerations.size} generation${activeGenerations.size > 1 ? 's' : ''} in progress`
@@ -3601,12 +3623,33 @@ export default function PluginPage() {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
         }
+        /* Scrollbar styling */
         .chat-scroll-container::-webkit-scrollbar { width: 4px; }
         .chat-scroll-container::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll-container::-webkit-scrollbar-thumb { background: rgba(0,255,255,0.15); border-radius: 4px; }
         .chat-scroll-container::-webkit-scrollbar-thumb:hover { background: rgba(0,255,255,0.3); }
         select option { background: #0a1520; color: white; }
         .generating-glow { animation: glowPulse 2s ease-in-out infinite; }
+
+        /* ═══ Universal responsive plugin sizing ═══ */
+        html, body { 
+          width: 100% !important; 
+          height: 100% !important; 
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        /* Prevent content overflow — plugin must contain everything */
+        * { box-sizing: border-box; }
+        /* Compact text in small viewports */
+        @media (max-height: 550px) {
+          .chat-scroll-container { font-size: 13px; }
+        }
+        @media (max-width: 500px) {
+          .chat-scroll-container { font-size: 13px; }
+        }
+        /* Ensure images never overflow container */
+        img, video { max-width: 100%; height: auto; }
       `}} />
     </div>
   )
