@@ -17,6 +17,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { createClient } from '@supabase/supabase-js'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -109,6 +110,17 @@ export async function POST(req: NextRequest) {
         return corsResponse(NextResponse.json({ error: 'Failed to charge credits' }, { status: 500 }))
       }
 
+      // Log the credit deduction
+      await logCreditTransaction({
+        userId,
+        amount: -cost,
+        balanceAfter: userData.credits - cost,
+        type: generationType === 'create-song' || generationType === 'create-beat' ? 'generation_music' : generationType === 'stem-split' ? 'generation_stem_split' : generationType === 'auto-tune' ? 'generation_audio_boost' : 'generation_effects',
+        status: 'success',
+        description: `Studio ${generationType} generation`,
+        metadata: { generation_type: generationType, prompt: params.prompt?.slice(0, 100) },
+      })
+
       console.log(`💰 Charged ${cost} credits for ${generationType} (user: ${userId})`)
     }
 
@@ -141,6 +153,15 @@ export async function POST(req: NextRequest) {
             .from('users')
             .update({ credits: userData.credits + cost })
             .eq('clerk_user_id', userId)
+          await logCreditTransaction({
+            userId,
+            amount: cost,
+            balanceAfter: userData.credits + cost,
+            type: 'credit_refund',
+            status: 'success',
+            description: `Refund: studio ${generationType} job creation failed`,
+            metadata: { generation_type: generationType },
+          })
         }
       }
       return corsResponse(NextResponse.json({ error: 'Failed to create job' }, { status: 500 }))

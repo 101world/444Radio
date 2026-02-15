@@ -55,6 +55,28 @@ export async function GET(req: NextRequest) {
 
       const totalCreditsInSystem = (creditSum || []).reduce((sum: number, u: { credits: number }) => sum + (u.credits || 0), 0)
 
+      // Sum total credits ever awarded (positive transactions only)
+      const { data: awardedTxns } = await supabase
+        .from('credit_transactions')
+        .select('amount')
+        .gt('amount', 0)
+
+      const totalCreditsAwarded = (awardedTxns || []).reduce((sum: number, t: { amount: number }) => sum + (t.amount || 0), 0)
+
+      // Sum total credits spent (negative transactions)
+      const totalCreditsSpent = Math.abs(
+        ((await supabase.from('credit_transactions').select('amount').lt('amount', 0)).data || [])
+          .reduce((sum: number, t: { amount: number }) => sum + (t.amount || 0), 0)
+      )
+
+      // Recent credit inflow transactions (subscription_bonus, credit_award, code_claim)
+      const { data: recentAwards } = await supabase
+        .from('credit_transactions')
+        .select('*')
+        .in('type', ['subscription_bonus', 'credit_award', 'code_claim', 'credit_refund'])
+        .order('created_at', { ascending: false })
+        .limit(50)
+
       // Count by media type
       const { data: mediaCounts } = await supabase
         .from('combined_media')
@@ -70,10 +92,15 @@ export async function GET(req: NextRequest) {
         totalUsers: usersRes.count || 0,
         totalMedia: mediaRes.count || 0,
         totalCreditsInSystem,
+        totalCreditsAwarded,
+        totalCreditsSpent,
+        adminWalletTotal: 1_000_000_000,
+        adminWalletRemaining: 1_000_000_000 - totalCreditsAwarded,
         mediaByType,
         topUsers: topUsersRes.data || [],
         subscribers: subUsersRes.data || [],
         recentTransactions: recentTxnsRes.data || [],
+        recentAwards: recentAwards || [],
       })
     }
 

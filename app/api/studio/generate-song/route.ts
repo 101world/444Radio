@@ -9,6 +9,7 @@ import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToR2 } from '@/lib/r2-upload';
+import { logCreditTransaction } from '@/lib/credit-transactions';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -68,6 +69,17 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'Failed to deduct credits' }, { status: 500 }));
     }
 
+    // Log the credit deduction
+    await logCreditTransaction({
+      userId,
+      amount: -2,
+      balanceAfter: currentCredits - 2,
+      type: 'generation_music',
+      status: 'success',
+      description: 'Studio song generation (MiniMax Music 1.5)',
+      metadata: { generation_type: 'generate-song', prompt: prompt?.slice(0, 100), genre },
+    });
+
     console.log('🎤 Generating song with MiniMax Music 1.5:', { prompt, genre, output_format, hasLyrics: !!lyrics, title });
 
     // Ensure lyrics exist: if missing, generate with Atom (GPT-5 Nano on Replicate)
@@ -123,6 +135,15 @@ export async function POST(request: Request) {
         .from('users')
         .update({ credits: (currentCredits), updated_at: new Date().toISOString() })
         .eq('clerk_user_id', userId);
+      await logCreditTransaction({
+        userId,
+        amount: 2,
+        balanceAfter: currentCredits,
+        type: 'credit_refund',
+        status: 'success',
+        description: 'Refund: song generation failed',
+        metadata: { generation_type: 'generate-song' },
+      });
       return corsResponse(
         NextResponse.json({ 
           success: false, 

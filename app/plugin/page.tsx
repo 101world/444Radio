@@ -5,7 +5,7 @@ import {
   Music, Image as ImageIcon, Send, Loader2, Download, Play, Pause,
   Sparkles, Zap, X, Rocket, PlusCircle, Globe, Mic, MicOff,
   Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
-  Layers, Film, Scissors, Volume2, ChevronLeft, Lightbulb, Settings,
+  Layers, Film, Scissors, Volume2, ChevronLeft, ChevronDown, ChevronUp, Lightbulb, Settings,
   RotateCw, Save, FolderOpen, RefreshCw, AlertCircle, Compass, ExternalLink, Home,
   BookOpen, ArrowDownToLine
 } from 'lucide-react'
@@ -2220,13 +2220,17 @@ export default function PluginPage() {
                               const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(url as string)}`
                               e.dataTransfer.setData('text/uri-list', proxyUrl)
                               e.dataTransfer.setData('text/plain', proxyUrl)
+                              e.dataTransfer.setData('application/x-444radio-stem', JSON.stringify({ url: proxyUrl, name: display.label, format: 'wav' }))
                               e.dataTransfer.effectAllowed = 'copy'
+                              // Notify JUCE bridge about drag start
+                              sendBridgeMessage({ action: 'drag_start', url: proxyUrl, title: `${display.label} Stem`, format: 'wav' })
                             }}
                             onClick={() => importWavToDAW(url as string, `${display.label} Stem`)}
                             disabled={dawImporting !== null}
-                            className="p-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-full transition-colors cursor-grab active:cursor-grabbing disabled:opacity-50"
-                            title={`Convert ${display.label} to WAV and import to DAW`}>
+                            className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-lg transition-colors cursor-grab active:cursor-grabbing disabled:opacity-50"
+                            title={`Drag to DAW timeline or click to import ${display.label}`}>
                             {dawImporting === `${url}-${display.label} Stem` ? <Loader2 size={12} className="text-cyan-400 animate-spin" /> : <ArrowDownToLine size={12} className="text-cyan-400" />}
+                            <span className="text-[9px] text-cyan-400/70 font-medium">DAW</span>
                           </button>
                           <button onClick={() => setShowBoostParamsFor({ audioUrl: url as string, title: display.label })}
                             className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-full transition-colors" title="Boost this stem">
@@ -2243,9 +2247,37 @@ export default function PluginPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* ── Bottom Dock (same as create page) ── */}
-        {showBottomDock && (
-          <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-6 pb-4 px-4 z-30">
+        {/* ── Glassmorphism Bottom Dock — always visible, toggle to collapse ── */}
+        <div className="sticky bottom-0 left-0 right-0 z-30">
+          {/* Toggle button — always visible */}
+          <div className="flex justify-center">
+            <button
+              onClick={() => setShowBottomDock(!showBottomDock)}
+              className="px-4 py-1 rounded-t-xl text-white/40 hover:text-white/80 transition-all duration-200"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderTop: '1px solid rgba(255,255,255,0.06)',
+                borderLeft: '1px solid rgba(255,255,255,0.06)',
+                borderRight: '1px solid rgba(255,255,255,0.06)',
+              }}
+              title={showBottomDock ? 'Hide prompt bar' : 'Show prompt bar'}
+            >
+              {showBottomDock ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            </button>
+          </div>
+          <div
+            className={`transition-all duration-300 ease-out overflow-hidden ${showBottomDock ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
+            style={{
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 30%, rgba(0,0,0,0.55) 100%)',
+              backdropFilter: 'blur(28px) saturate(1.3)',
+              WebkitBackdropFilter: 'blur(28px) saturate(1.3)',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
+            }}
+          >
+          <div className="pt-4 pb-4 px-4">
             {/* Icon Row */}
             <div className="flex items-center justify-center gap-1 mb-3 flex-wrap">
               {/* Music */}
@@ -2361,8 +2393,14 @@ export default function PluginPage() {
 
             {/* Prompt Input Bar */}
             <div className="relative">
-              <div className="flex items-end gap-2 bg-white/5 border border-white/20 rounded-2xl px-3 py-2 backdrop-blur-sm focus-within:border-cyan-500/50 transition-colors"
-                style={input.trim().length >= MIN_PROMPT_LENGTH ? { boxShadow: '0 0 20px rgba(6, 182, 212, 0.15)' } : {}}>
+              <div className="flex items-end gap-2 rounded-2xl px-3 py-2 transition-colors"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  ...(input.trim().length >= MIN_PROMPT_LENGTH ? { boxShadow: '0 0 20px rgba(6, 182, 212, 0.12), inset 0 1px 0 rgba(255,255,255,0.06)' } : { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }),
+                }}>
                 
                 {/* Toggle sidebar */}
                 <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
@@ -2416,7 +2454,11 @@ export default function PluginPage() {
 
                 {/* Send button */}
                 <button onClick={handleGenerate} disabled={!input.trim() || input.trim().length < MIN_PROMPT_LENGTH}
-                  className="relative flex-shrink-0 w-10 h-10 bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 hover:from-cyan-700 hover:via-cyan-600 hover:to-cyan-500 rounded-full flex items-center justify-center transition-all disabled:opacity-50 shadow-lg shadow-cyan-500/50 active:scale-95 mb-0.5">
+                  className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all disabled:opacity-50 active:scale-95 mb-0.5"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(34,211,238,0.8), rgba(34,211,238,0.5))',
+                    boxShadow: '0 0 20px rgba(6,182,212,0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  }}>
                   {activeGenerations.size > 0 && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">{activeGenerations.size}</div>
                   )}
@@ -2510,7 +2552,8 @@ export default function PluginPage() {
               </span>
             </div>
           </div>
-        )}
+          </div>
+        </div>
       </div>
 
       {/* ── Lyrics & Settings Modal (same as create page) ── */}

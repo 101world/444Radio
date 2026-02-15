@@ -9,6 +9,7 @@ import { auth } from '@clerk/nextjs/server';
 import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
 import { createClient } from '@supabase/supabase-js';
+import { logCreditTransaction } from '@/lib/credit-transactions';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -67,6 +68,17 @@ export async function POST(request: Request) {
         NextResponse.json({ error: 'Credit deduction failed' }, { status: 500 })
       );
     }
+
+    // Log the credit deduction
+    await logCreditTransaction({
+      userId,
+      amount: -0.5,
+      balanceAfter: (userData.credits || 0) - 0.5,
+      type: 'generation_audio_boost',
+      status: 'success',
+      description: 'Studio auto-tune processing',
+      metadata: { generation_type: 'autotune', scale },
+    });
 
     // Initialize Replicate
     const replicate = new Replicate({

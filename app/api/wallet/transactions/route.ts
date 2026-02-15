@@ -41,7 +41,12 @@ export async function GET(req: NextRequest) {
     // Build query
     let queryPath = `credit_transactions?user_id=eq.${userId}&order=created_at.desc&offset=${offset}&limit=${limit}`
     if (typeFilter) {
-      queryPath += `&type=eq.${typeFilter}`
+      // "awards" is a compound filter covering all credit income types
+      if (typeFilter === 'awards') {
+        queryPath += `&type=in.(credit_award,subscription_bonus,code_claim)`
+      } else {
+        queryPath += `&type=eq.${typeFilter}`
+      }
     }
 
     // Fetch transactions + total count (Prefer: count=exact)

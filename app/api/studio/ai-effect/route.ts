@@ -8,6 +8,7 @@ import { auth } from '@clerk/nextjs/server';
 import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
 import { supabase } from '@/lib/supabase';
+import { logCreditTransaction } from '@/lib/credit-transactions';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -95,6 +96,17 @@ export async function POST(request: Request) {
 
     if (updateError) {
       console.error('Failed to deduct credits:', updateError);
+    } else {
+      // Log the credit deduction
+      await logCreditTransaction({
+        userId,
+        amount: -0.5,
+        balanceAfter: userData.credits - 0.5,
+        type: 'generation_effects',
+        status: 'success',
+        description: `AI effect generation: ${prompt?.slice(0, 50)}`,
+        metadata: { generation_type: 'ai-effect', prompt: prompt?.slice(0, 100), trackId, trackName },
+      });
     }
 
     // Save effect to combined_media table for library access

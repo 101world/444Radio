@@ -371,7 +371,9 @@ function SettingsPageInner() {
     { value: 'earn_sale', label: 'Sales' },
     { value: 'earn_list', label: 'Listings' },
     { value: 'release', label: 'Releases' },
-    { value: 'credit_award', label: 'Awards' },
+    { value: 'awards', label: 'Awards' },
+    { value: 'subscription_bonus', label: 'Subscriptions' },
+    { value: 'credit_refund', label: 'Refunds' },
   ]
 
   if (!isLoaded || !user) {

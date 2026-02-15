@@ -10,6 +10,7 @@ import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToR2 } from '@/lib/r2-upload';
+import { logCreditTransaction } from '@/lib/credit-transactions';
 
 export async function OPTIONS() {
   return handleOptions();
@@ -74,6 +75,17 @@ export async function POST(request: Request) {
         NextResponse.json({ error: 'Credit deduction failed' }, { status: 500 })
       );
     }
+
+    // Log the credit deduction
+    await logCreditTransaction({
+      userId,
+      amount: -creditsNeeded,
+      balanceAfter: (userData.credits || 0) - creditsNeeded,
+      type: 'generation_effects',
+      status: 'success',
+      description: `Studio effect generation (${duration}s)`,
+      metadata: { generation_type: 'generate-effect', prompt: prompt?.slice(0, 100), duration },
+    });
 
     // Initialize Replicate
     const replicate = new Replicate({

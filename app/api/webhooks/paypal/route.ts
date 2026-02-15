@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 import crypto from 'crypto'
 
 /**
@@ -154,6 +155,26 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
+        // ── Idempotency check: skip if this event was already processed ──
+        {
+          const idempotencyKey = `paypal_${body.id}`
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+          const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+          if (supabaseUrl && supabaseKey) {
+            const checkRes = await fetch(
+              `${supabaseUrl}/rest/v1/credit_transactions?user_id=eq.${userId}&metadata->>paypal_event_id=eq.${body.id}&limit=1`,
+              { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+            )
+            if (checkRes.ok) {
+              const existing = await checkRes.json()
+              if (existing.length > 0) {
+                console.log('⚠️ PayPal event already processed (idempotency):', body.id)
+                return NextResponse.json({ success: true, message: 'Already processed' })
+              }
+            }
+          }
+        }
+
         // Fetch current user data
         const { data: currentUser, error: fetchError } = await supabase
           .from('users')
@@ -185,6 +206,24 @@ export async function POST(req: NextRequest) {
           console.error('❌ Failed to update user:', updateError)
           return NextResponse.json({ error: 'Database update failed' }, { status: 500 })
         }
+
+        // ── Log the credit transaction ──
+        await logCreditTransaction({
+          userId,
+          amount: creditsToAdd,
+          balanceAfter: newCredits,
+          type: 'subscription_bonus',
+          status: 'success',
+          description: `PayPal subscription activated — Creator plan (+${creditsToAdd} credits)`,
+          metadata: {
+            paypal_event_id: body.id,
+            paypal_subscription_id: subscriptionId,
+            paypal_plan_id: planId,
+            plan_type: 'creator',
+            credit_source: 'paypal',
+            previous_balance: currentUser.credits || 0,
+          },
+        })
 
         console.log(`✅ Successfully added ${creditsToAdd} credits to user ${userId} (total: ${newCredits})`)
         break

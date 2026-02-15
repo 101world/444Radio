@@ -258,42 +258,59 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   if (!track) return null
 
   return (
-    <div className="w-full bg-black/90 backdrop-blur-xl border-b border-cyan-500/20 select-none"
-      style={{ animation: 'slideDown 0.25s ease-out' }}>
+    <div
+      className="w-full select-none transition-all duration-300 ease-out"
+      style={{
+        background: 'linear-gradient(135deg, rgba(6,182,212,0.08) 0%, rgba(0,0,0,0.35) 50%, rgba(139,92,246,0.06) 100%)',
+        backdropFilter: 'blur(24px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 4px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)',
+        animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+    >
       {/* Thin progress bar at very top */}
       <div
         ref={progressBarRef}
         onClick={seek}
-        className="h-[3px] w-full bg-white/5 cursor-pointer group relative"
+        className="h-[2px] w-full cursor-pointer group relative"
+        style={{ background: 'rgba(255,255,255,0.04)' }}
       >
         <div
-          className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 transition-[width] duration-100 relative"
-          style={{ width: `${progress}%` }}
+          className="h-full transition-[width] duration-100 relative"
+          style={{
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, rgba(34,211,238,0.9), rgba(139,92,246,0.8))',
+          }}
         >
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)] opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)] opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
       </div>
 
       {/* Main row: controls + waveform + title + volume + close */}
       <div className="flex items-center gap-2 px-3 py-1.5">
         {/* Skip back */}
-        <button onClick={skipBack} className="p-1 text-gray-500 hover:text-white transition flex-shrink-0">
+        <button onClick={skipBack} className="p-1 text-white/30 hover:text-white/80 transition flex-shrink-0">
           <SkipBack size={12} />
         </button>
 
         {/* Play/Pause */}
         <button onClick={togglePlay}
-          className="w-7 h-7 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 flex items-center justify-center hover:scale-110 transition-transform shadow-lg shadow-cyan-500/25 flex-shrink-0">
+          className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 transition-transform flex-shrink-0"
+          style={{
+            background: 'linear-gradient(135deg, rgba(34,211,238,0.85), rgba(34,211,238,0.6))',
+            boxShadow: '0 0 12px rgba(34,211,238,0.25), inset 0 1px 0 rgba(255,255,255,0.2)',
+          }}>
           {isPlaying ? <Pause size={11} className="text-black" /> : <Play size={11} className="text-black ml-0.5" />}
         </button>
 
         {/* Skip forward */}
-        <button onClick={skipFwd} className="p-1 text-gray-500 hover:text-white transition flex-shrink-0">
+        <button onClick={skipFwd} className="p-1 text-white/30 hover:text-white/80 transition flex-shrink-0">
           <SkipForward size={12} />
         </button>
 
         {/* Time */}
-        <span className="text-[9px] text-gray-500 font-mono w-6 text-right flex-shrink-0">{fmt(currentTime)}</span>
+        <span className="text-[9px] text-white/30 font-mono w-6 text-right flex-shrink-0">{fmt(currentTime)}</span>
 
         {/* Mini waveform visualizer */}
         <canvas
@@ -302,20 +319,28 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
           className="flex-1 h-6 cursor-pointer rounded min-w-0"
         />
 
-        <span className="text-[9px] text-gray-500 font-mono w-6 flex-shrink-0">{fmt(duration)}</span>
+        <span className="text-[9px] text-white/30 font-mono w-6 flex-shrink-0">{fmt(duration)}</span>
 
         {/* Track title */}
         <div className="flex-shrink min-w-0 max-w-[120px] hidden sm:block">
-          <p className="text-[10px] font-semibold text-white truncate">{track.title || 'AI Track'}</p>
+          <p className="text-[10px] font-semibold text-white/80 truncate">{track.title || 'AI Track'}</p>
         </div>
 
         {/* Volume */}
         <div className="flex items-center gap-0.5 flex-shrink-0 relative">
-          <button onClick={toggleMute} onMouseEnter={() => setShowVolume(true)} className="p-1 text-gray-500 hover:text-white transition">
+          <button onClick={toggleMute} onMouseEnter={() => setShowVolume(true)} className="p-1 text-white/30 hover:text-white/80 transition">
             {isMuted || volume === 0 ? <VolumeX size={11} /> : <Volume2 size={11} />}
           </button>
           {showVolume && (
-            <div className="absolute top-full right-0 mt-1 bg-gray-900/95 border border-white/10 rounded-lg p-2 z-50 shadow-xl"
+            <div
+              className="absolute top-full right-0 mt-1 rounded-lg p-2 z-50"
+              style={{
+                background: 'rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+              }}
               onMouseLeave={() => setShowVolume(false)}>
               <input
                 type="range" min="0" max="1" step="0.01"
@@ -329,7 +354,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
 
         {/* Close */}
         {onClose && (
-          <button onClick={onClose} className="p-1 text-gray-600 hover:text-white transition flex-shrink-0">
+          <button onClick={onClose} className="p-1 text-white/20 hover:text-white/70 transition flex-shrink-0 hover:rotate-90 transition-all duration-200">
             <X size={12} />
           </button>
         )}
