@@ -161,6 +161,7 @@ export default function PluginPage() {
     return 1
   })
   const [showSizeMenu, setShowSizeMenu] = useState(false)
+  const [bridgeToast, setBridgeToast] = useState<string | null>(null)
 
   // ── Chat ──
   const [messages, setMessages] = useState<Message[]>([
@@ -512,11 +513,17 @@ export default function PluginPage() {
   }
 
   // ═══ WINDOW PIN / RESIZE HELPERS ═══
+  const showBridgeToast = (msg: string) => {
+    setBridgeToast(msg)
+    setTimeout(() => setBridgeToast(null), 2000)
+  }
+
   const togglePin = () => {
     const next = !isPinned
     setIsPinned(next)
     localStorage.setItem(PIN_KEY, String(next))
     sendBridgeMessage({ action: 'pin_window', pinned: next })
+    showBridgeToast(next ? '📌 Window pinned — stays on top' : '📌 Window unpinned')
   }
 
   const setWindowSize = (idx: number) => {
@@ -525,6 +532,7 @@ export default function PluginPage() {
     localStorage.setItem(SIZE_KEY, String(idx))
     const size = WINDOW_SIZES[idx]
     sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
+    showBridgeToast(`↔ Resized to ${size.label} (${size.w}×${size.h})`)
   }
 
   // Send persisted pin/size state to JUCE on mount
@@ -1819,7 +1827,21 @@ export default function PluginPage() {
   //  RENDER — Carbon copy of create page layout
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className={`min-h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
+    <div className={`h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
+
+      {/* Bridge action toast */}
+      {bridgeToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-xl text-xs font-medium text-cyan-300 select-none pointer-events-none"
+          style={{
+            background: 'rgba(15,23,42,0.9)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(6,182,212,0.3)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            animation: 'fadeIn 0.2s ease-out',
+          }}>
+          {bridgeToast}
+        </div>
+      )}
 
       {/* Pin status bar — shows when window is pinned */}
       {isPinned && (
@@ -2058,7 +2080,7 @@ export default function PluginPage() {
       {/* ── Main Chat Area ── */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Chat Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/50 backdrop-blur-sm">
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/50 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors">

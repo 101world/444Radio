@@ -261,11 +261,11 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     <div
       className="w-full select-none transition-all duration-300 ease-out"
       style={{
-        background: 'linear-gradient(135deg, rgba(6,182,212,0.08) 0%, rgba(0,0,0,0.35) 50%, rgba(139,92,246,0.06) 100%)',
-        backdropFilter: 'blur(24px) saturate(1.4)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 4px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)',
+        background: 'linear-gradient(135deg, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.88) 50%, rgba(30,27,75,0.90) 100%)',
+        backdropFilter: 'blur(28px) saturate(1.5)',
+        WebkitBackdropFilter: 'blur(28px) saturate(1.5)',
+        borderBottom: '1px solid rgba(6,182,212,0.2)',
+        boxShadow: '0 4px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
         animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
