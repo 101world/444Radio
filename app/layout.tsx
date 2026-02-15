@@ -18,6 +18,8 @@ import ConsoleBlocker from './components/ConsoleBlocker';
 import { Toaster } from 'sonner';
 import { defaultMetadata } from '@/lib/metadata';
 import { headers } from 'next/headers';
+import { Suspense } from 'react';
+import PluginBackButton from './components/PluginBackButton';
 import "./globals.css";
 
 const poppins = Poppins({
@@ -88,6 +90,7 @@ export default async function RootLayout({
               </PlayerAwareMain>
               <ConditionalGlobalPlayer />
               <GenerationMonitor />
+              <Suspense fallback={null}><PluginBackButton /></Suspense>
             </GenerationQueueProvider>
             </CreditsProvider>
           </AudioPlayerProvider>

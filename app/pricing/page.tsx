@@ -666,6 +666,227 @@ export default function Pricing() {
           </div>
         </div>
 
+        {/* ══════════ Comprehensive Feature Comparison ══════════ */}
+        <div className="mb-24">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-3">Feature Breakdown</h2>
+            <p className="text-cyan-400/60 text-sm">What you can create with each plan</p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-cyan-500/30">
+                  <th className="text-left py-4 px-4 text-xs text-gray-400 font-semibold uppercase tracking-wider w-[40%]">Feature</th>
+                  <th className="text-center py-4 px-2 text-xs font-bold text-cyan-300 uppercase tracking-wider">Free</th>
+                  <th className="text-center py-4 px-2 text-xs font-bold text-cyan-300 uppercase tracking-wider">Creator</th>
+                  <th className="text-center py-4 px-2 text-xs font-bold text-cyan-300 uppercase tracking-wider">Pro</th>
+                  <th className="text-center py-4 px-2 text-xs font-bold text-purple-300 uppercase tracking-wider">Studio</th>
+                </tr>
+              </thead>
+              <tbody className="text-xs">
+                {/* Credits */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300 font-medium">Monthly Credits</td>
+                  <td className="text-center py-3 text-white font-bold">20<span className="text-gray-500 font-normal"> one-time</span></td>
+                  <td className="text-center py-3 text-white font-bold">167</td>
+                  <td className="text-center py-3 text-white font-bold">535</td>
+                  <td className="text-center py-3 text-white font-bold">1,235</td>
+                </tr>
+
+                {/* Generation - Songs */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🎵 AI Songs <span className="text-gray-500">(2 credits)</span></td>
+                  <td className="text-center py-3 text-gray-300">~10</td>
+                  <td className="text-center py-3 text-gray-300">~83</td>
+                  <td className="text-center py-3 text-gray-300">~267</td>
+                  <td className="text-center py-3 text-gray-300">~617</td>
+                </tr>
+
+                {/* Cover Art */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🎨 Cover Art <span className="text-gray-500">(1 credit)</span></td>
+                  <td className="text-center py-3 text-gray-300">~20</td>
+                  <td className="text-center py-3 text-gray-300">~167</td>
+                  <td className="text-center py-3 text-gray-300">~535</td>
+                  <td className="text-center py-3 text-gray-300">~1,235</td>
+                </tr>
+
+                {/* Stem Split */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">✂️ Split Stems <span className="text-gray-500">(5 credits)</span></td>
+                  <td className="text-center py-3 text-gray-300">~4</td>
+                  <td className="text-center py-3 text-gray-300">~33</td>
+                  <td className="text-center py-3 text-gray-300">~107</td>
+                  <td className="text-center py-3 text-gray-300">~247</td>
+                </tr>
+
+                {/* Loops */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🔁 Loops <span className="text-gray-500">(6-7 credits)</span></td>
+                  <td className="text-center py-3 text-gray-300">~3</td>
+                  <td className="text-center py-3 text-gray-300">~27</td>
+                  <td className="text-center py-3 text-gray-300">~89</td>
+                  <td className="text-center py-3 text-gray-300">~205</td>
+                </tr>
+
+                {/* Text to SFX */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">✨ Text to SFX <span className="text-gray-500">(2 credits)</span></td>
+                  <td className="text-center py-3 text-gray-300">~10</td>
+                  <td className="text-center py-3 text-gray-300">~83</td>
+                  <td className="text-center py-3 text-gray-300">~267</td>
+                  <td className="text-center py-3 text-gray-300">~617</td>
+                </tr>
+
+                {/* Video to Audio */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🎬 Video to Audio <span className="text-gray-500">(2-10 credits)</span></td>
+                  <td className="text-center py-3 text-gray-300">~10</td>
+                  <td className="text-center py-3 text-gray-300">~83</td>
+                  <td className="text-center py-3 text-gray-300">~267</td>
+                  <td className="text-center py-3 text-gray-300">~617</td>
+                </tr>
+
+                {/* Audio Boost */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🔊 Audio Boost <span className="text-gray-500">(1 credit)</span></td>
+                  <td className="text-center py-3 text-gray-300">~20</td>
+                  <td className="text-center py-3 text-gray-300">~167</td>
+                  <td className="text-center py-3 text-gray-300">~535</td>
+                  <td className="text-center py-3 text-gray-300">~1,235</td>
+                </tr>
+
+                {/* Audio Extract */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🎚️ Audio Extract <span className="text-gray-500">(1 credit)</span></td>
+                  <td className="text-center py-3 text-gray-300">~20</td>
+                  <td className="text-center py-3 text-gray-300">~167</td>
+                  <td className="text-center py-3 text-gray-300">~535</td>
+                  <td className="text-center py-3 text-gray-300">~1,235</td>
+                </tr>
+
+                {/* Section: Features */}
+                <tr className="bg-cyan-500/5">
+                  <td colSpan={5} className="py-3 px-4 text-cyan-400 font-bold text-xs uppercase tracking-wider">Platform Features</td>
+                </tr>
+
+                {/* Multi-language */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🌍 Multi-Language AI <span className="text-gray-500">(11 languages)</span></td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                </tr>
+
+                {/* AI Lyrics */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">📝 AI Lyrics Generation</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                </tr>
+
+                {/* Smart Lyrics */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🎤 Smart Lyrics Matching <span className="text-gray-500">(188 songs)</span></td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                </tr>
+
+                {/* Duration control */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">⏱️ Song Duration Control <span className="text-gray-500">(Short/Med/Long)</span></td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                </tr>
+
+                {/* Instrumental */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🎹 Instrumental Mode</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                </tr>
+
+                {/* Download */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">💾 MP3 + WAV Downloads</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                </tr>
+
+                {/* Social features */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">👥 Explore & Social Feed</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                </tr>
+
+                {/* Cloud Library */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">☁️ Cloud Library Storage</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                  <td className="text-center py-3 text-cyan-400">✓</td>
+                </tr>
+
+                {/* Plugin */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🔌 VST3/AU Plugin <span className="text-gray-500">(DAW integration)</span></td>
+                  <td className="text-center py-3 text-gray-600">—</td>
+                  <td className="text-center py-3 text-gray-600">—</td>
+                  <td className="text-center py-3 text-cyan-400 font-bold">✓</td>
+                  <td className="text-center py-3 text-cyan-400 font-bold">✓</td>
+                </tr>
+
+                {/* DAW Import */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🎛️ DAW Drag & Drop Import</td>
+                  <td className="text-center py-3 text-gray-600">—</td>
+                  <td className="text-center py-3 text-gray-600">—</td>
+                  <td className="text-center py-3 text-cyan-400 font-bold">✓</td>
+                  <td className="text-center py-3 text-cyan-400 font-bold">✓</td>
+                </tr>
+
+                {/* Enterprise */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">🏢 Enterprise License</td>
+                  <td className="text-center py-3 text-gray-600">—</td>
+                  <td className="text-center py-3 text-gray-600">—</td>
+                  <td className="text-center py-3 text-gray-600">—</td>
+                  <td className="text-center py-3 text-purple-400 font-bold">✓</td>
+                </tr>
+
+                {/* Support */}
+                <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4 text-gray-300">💬 Support Level</td>
+                  <td className="text-center py-3 text-gray-400">Community</td>
+                  <td className="text-center py-3 text-gray-300">Email</td>
+                  <td className="text-center py-3 text-cyan-300">Priority</td>
+                  <td className="text-center py-3 text-purple-300 font-bold">Dedicated</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-center text-cyan-400/40 text-[10px] mt-4">
+            All features available on web • Plugin requires Pro or Studio plan • Credits refresh monthly on subscription plans
+          </p>
+        </div>
+
         {/* Buy Credits Section */}
         <div className="mb-24">
           <div className="bg-black/60 border border-cyan-500/40 rounded-2xl p-8 shadow-xl shadow-cyan-500/20">

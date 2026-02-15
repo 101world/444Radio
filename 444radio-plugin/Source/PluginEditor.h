@@ -83,6 +83,10 @@ private:
 
     static constexpr int kWidth         = 480;
     static constexpr int kHeight        = 740;
+    static constexpr int kMinWidth      = 380;
+    static constexpr int kMinHeight     = 500;
+    static constexpr int kMaxWidth      = 1200;
+    static constexpr int kMaxHeight     = 1200;
     static constexpr int kDragBarHeight = 40;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RadioPluginEditor)

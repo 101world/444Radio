@@ -264,7 +264,8 @@ RadioPluginEditor::RadioPluginEditor (RadioPluginProcessor& p)
       processorRef (p)
 {
     setSize (kWidth, kHeight);
-    setResizable (false, false);
+    setResizable (true, true);
+    setResizeLimits (kMinWidth, kMinHeight, kMaxWidth, kMaxHeight);
 
     // Downloads folder
     downloadDir = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)

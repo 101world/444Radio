@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
           result = await generateAudioBoost(userId, body, jobId)
           break
         case 'extract':
-          result = await generateStems(userId, body, jobId, requestSignal)
+          result = await generateExtract(userId, body, jobId, requestSignal)
           break
         case 'video-to-audio':
           result = await generateVideoToAudio(userId, body, jobId, requestSignal)
@@ -503,9 +503,117 @@ async function generateLoops(userId: string, body: Record<string, unknown>, jobI
 }
 
 // ──────────────────────────────────────────────────────────────────
-// STEMS  (mirrors /api/generate/extract-audio-stem)
+// STEMS  (all-in-one split — mirrors /api/audio/split-stems)
+// Uses harmonix-all model to return ALL stems at once:
+// vocals, drums, bass, piano, guitar, other
 // ──────────────────────────────────────────────────────────────────
 async function generateStems(userId: string, body: Record<string, unknown>, jobId: string, signal: AbortSignal) {
+  const audioUrl = body.audioUrl as string
+  if (!audioUrl) return { success: false, error: 'audioUrl required' }
+
+  const trackTitle = (body.trackTitle as string) || 'Stem Split'
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  // Use the same all-in-one harmonix model as /api/audio/split-stems
+  const prediction = await replicate.predictions.create({
+    version: 'f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e',
+    input: {
+      music_input: audioUrl,
+      model: 'harmonix-all',
+      sonify: false,
+      visualize: false,
+      audioSeparator: true,
+      include_embeddings: false,
+      audioSeparatorModel: 'Kim_Vocal_2.onnx',
+      include_activations: false,
+    },
+  })
+
+  await updatePluginJob(jobId, { replicatePredictionId: prediction.id })
+
+  let final = prediction
+  let attempts = 0
+  const MAX_POLL = 36 // 36 × 5s = 180s max
+  while (final.status !== 'succeeded' && final.status !== 'failed' && final.status !== 'canceled' && attempts < MAX_POLL) {
+    if (signal.aborted) {
+      try { await replicate.predictions.cancel(prediction.id) } catch {}
+      return { success: false, error: 'Stem split cancelled' }
+    }
+    await new Promise(r => setTimeout(r, 5000))
+    final = await replicate.predictions.get(prediction.id)
+    attempts++
+  }
+
+  if (final.status !== 'succeeded') {
+    return { success: false, error: final.error || 'Stem splitting failed or timed out' }
+  }
+
+  // Parse output: grab every key that has an HTTP audio URL (skip nulls/json)
+  const raw = final.output ?? final
+  const stems: Record<string, string> = {}
+  const timestamp = Date.now()
+
+  for (const [key, value] of Object.entries(raw as Record<string, unknown> || {})) {
+    if (typeof value === 'string' && value.startsWith('http') && !value.includes('.json')) {
+      const name = key.replace(/^(demucs_|mdx_)/, '')
+      stems[name] = value
+    }
+  }
+
+  if (Object.keys(stems).length === 0) {
+    return { success: false, error: 'No stems returned. Try a different audio file.' }
+  }
+
+  // Download each stem from Replicate and upload to R2 for permanent storage
+  const permanentStems: Record<string, string> = {}
+
+  for (const [stemName, replicateUrl] of Object.entries(stems)) {
+    try {
+      const dlRes = await fetch(replicateUrl)
+      if (!dlRes.ok) { permanentStems[stemName] = replicateUrl; continue }
+      const buffer = Buffer.from(await dlRes.arrayBuffer())
+      const safeName = stemName.replace(/[^a-zA-Z0-9_-]/g, '-')
+      const r2Key = `${userId}/stems/${timestamp}-${safeName}.mp3`
+      const r2 = await uploadToR2(buffer, 'audio-files', r2Key, 'audio/mpeg')
+
+      if (r2.success && r2.url) {
+        permanentStems[stemName] = r2.url
+
+        // Save to combined_media so it appears in library
+        const stemTitle = trackTitle !== 'Stem Split'
+          ? `${trackTitle} — ${stemName.charAt(0).toUpperCase() + stemName.slice(1)}`
+          : `${stemName.charAt(0).toUpperCase() + stemName.slice(1)} (Stem)`
+
+        await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+          method: 'POST',
+          headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId, type: 'audio',
+            title: stemTitle,
+            audio_url: r2.url, is_public: false, genre: 'stem',
+            stem_type: stemName.toLowerCase().replace(/\s+\d+$/, ''),
+            description: `Stem split from: ${trackTitle}`,
+            metadata: JSON.stringify({ source: 'plugin', model: 'harmonix-all' }),
+          }),
+        })
+      } else {
+        permanentStems[stemName] = replicateUrl
+      }
+    } catch {
+      permanentStems[stemName] = replicateUrl
+    }
+  }
+
+  if (Object.keys(permanentStems).length === 0) return { success: false, error: 'No stems could be saved' }
+
+  return { success: true, stems: permanentStems, title: trackTitle }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// EXTRACT  (single-stem extraction via demucs — for "Extract Audio Stem")
+// ──────────────────────────────────────────────────────────────────
+async function generateExtract(userId: string, body: Record<string, unknown>, jobId: string, signal: AbortSignal) {
   const audioUrl = body.audioUrl as string
   if (!audioUrl) return { success: false, error: 'audioUrl required' }
 
@@ -567,8 +675,6 @@ async function generateStems(userId: string, body: Record<string, unknown>, jobI
 
       if (r2.success && r2.url) {
         stems[stemName] = r2.url
-
-        // Save to combined_media
         await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
           method: 'POST',
           headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
@@ -589,7 +695,6 @@ async function generateStems(userId: string, body: Record<string, unknown>, jobI
   }
 
   if (Object.keys(stems).length === 0) return { success: false, error: 'No stems extracted' }
-
   return { success: true, stems, requestedStem: stem, title: trackTitle }
 }
 

@@ -1,0 +1,196 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { createClient } from '@supabase/supabase-js'
+
+const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
+export async function GET(req: NextRequest) {
+  const { userId } = await auth()
+  if (!userId || userId !== ADMIN_CLERK_ID) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const supabase = getSupabase()
+  const { searchParams } = new URL(req.url)
+  const tab = searchParams.get('tab') || 'overview'
+  const page = parseInt(searchParams.get('page') || '1')
+  const limit = parseInt(searchParams.get('limit') || '50')
+  const userFilter = searchParams.get('userId') || null
+  const offset = (page - 1) * limit
+
+  try {
+    if (tab === 'overview') {
+      // Parallel fetch: totals
+      const [usersRes, mediaRes, txnSummaryRes, recentTxnsRes, topUsersRes, subUsersRes] = await Promise.all([
+        // Total users
+        supabase.from('users').select('id', { count: 'exact', head: true }),
+        // Total media
+        supabase.from('combined_media').select('id', { count: 'exact', head: true }),
+        // Placeholder for future RPC
+        Promise.resolve(null),
+        // Recent transactions (last 20)
+        supabase
+          .from('credit_transactions')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20),
+        // Top users by credits
+        supabase
+          .from('users')
+          .select('clerk_user_id, username, email, credits, total_generated, subscription_status, subscription_plan, created_at')
+          .order('credits', { ascending: false })
+          .limit(10),
+        // Active subscribers
+        supabase
+          .from('users')
+          .select('clerk_user_id, username, email, credits, subscription_status, subscription_plan, subscription_start, subscription_end')
+          .neq('subscription_status', 'none')
+          .order('subscription_start', { ascending: false })
+      ])
+
+      // Sum all credits in system
+      const { data: creditSum } = await supabase
+        .from('users')
+        .select('credits')
+
+      const totalCreditsInSystem = (creditSum || []).reduce((sum: number, u: { credits: number }) => sum + (u.credits || 0), 0)
+
+      // Count by media type
+      const { data: mediaCounts } = await supabase
+        .from('combined_media')
+        .select('type')
+
+      const mediaByType: Record<string, number> = {}
+      for (const m of mediaCounts || []) {
+        mediaByType[m.type] = (mediaByType[m.type] || 0) + 1
+      }
+
+      return NextResponse.json({
+        tab: 'overview',
+        totalUsers: usersRes.count || 0,
+        totalMedia: mediaRes.count || 0,
+        totalCreditsInSystem,
+        mediaByType,
+        topUsers: topUsersRes.data || [],
+        subscribers: subUsersRes.data || [],
+        recentTransactions: recentTxnsRes.data || [],
+      })
+    }
+
+    if (tab === 'users') {
+      const query = supabase
+        .from('users')
+        .select('clerk_user_id, username, email, full_name, credits, total_generated, subscription_status, subscription_plan, subscription_start, subscription_end, created_at', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      const { data, count, error } = await query
+      if (error) throw error
+
+      return NextResponse.json({ tab: 'users', data, total: count, page, limit })
+    }
+
+    if (tab === 'transactions') {
+      let query = supabase
+        .from('credit_transactions')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (userFilter) {
+        query = query.eq('user_id', userFilter)
+      }
+
+      const typeFilter = searchParams.get('type')
+      if (typeFilter) {
+        query = query.eq('type', typeFilter)
+      }
+
+      const { data, count, error } = await query
+      if (error) throw error
+
+      return NextResponse.json({ tab: 'transactions', data, total: count, page, limit })
+    }
+
+    if (tab === 'redemptions') {
+      const { data, count, error } = await supabase
+        .from('code_redemptions')
+        .select('*', { count: 'exact' })
+        .order('redeemed_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) throw error
+
+      return NextResponse.json({ tab: 'redemptions', data, total: count, page, limit })
+    }
+
+    if (tab === 'generations') {
+      let query = supabase
+        .from('plugin_jobs')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (userFilter) {
+        query = query.eq('clerk_user_id', userFilter)
+      }
+
+      const { data, count, error } = await query
+      if (error) throw error
+
+      return NextResponse.json({ tab: 'generations', data, total: count, page, limit })
+    }
+
+    if (tab === 'user-detail') {
+      if (!userFilter) return NextResponse.json({ error: 'userId required' }, { status: 400 })
+
+      const [userRes, txnRes, mediaRes, jobsRes, redemptionsRes] = await Promise.all([
+        supabase.from('users').select('*').eq('clerk_user_id', userFilter).single(),
+        supabase
+          .from('credit_transactions')
+          .select('*')
+          .eq('user_id', userFilter)
+          .order('created_at', { ascending: false })
+          .limit(100),
+        supabase
+          .from('combined_media')
+          .select('id, title, type, plays, likes, genre, created_at')
+          .eq('user_id', userFilter)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('plugin_jobs')
+          .select('*')
+          .eq('clerk_user_id', userFilter)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('code_redemptions')
+          .select('*')
+          .eq('clerk_user_id', userFilter)
+          .order('redeemed_at', { ascending: false })
+      ])
+
+      return NextResponse.json({
+        tab: 'user-detail',
+        user: userRes.data,
+        transactions: txnRes.data || [],
+        media: mediaRes.data || [],
+        pluginJobs: jobsRes.data || [],
+        redemptions: redemptionsRes.data || [],
+      })
+    }
+
+    return NextResponse.json({ error: 'Invalid tab' }, { status: 400 })
+  } catch (err: any) {
+    console.error('[adminrizzog] Error:', err)
+    return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 })
+  }
+}

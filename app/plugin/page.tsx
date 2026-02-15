@@ -1466,6 +1466,118 @@ export default function PluginPage() {
     })()
   }, [token, isAuthenticated])
 
+  // ═══ JOB RECOVERY: On mount, fetch completed jobs that might have finished ═══
+  // ═══ while the plugin was closed. Inject results into chat if not already there. ═══
+  useEffect(() => {
+    if (!token || !isAuthenticated) return
+    ;(async () => {
+      try {
+        const res = await fetch('/api/plugin/jobs?status=completed&limit=20', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!data.jobs || data.jobs.length === 0) return
+
+        setMessages(prev => {
+          // Collect all existing audio URLs and job references in current chat to avoid duplicates
+          const existingUrls = new Set<string>()
+          const existingContent = new Set<string>()
+          prev.forEach(msg => {
+            if (msg.result?.audioUrl) existingUrls.add(msg.result.audioUrl)
+            if (msg.result?.imageUrl) existingUrls.add(msg.result.imageUrl)
+            if (msg.stems) Object.values(msg.stems).forEach(u => existingUrls.add(u as string))
+            existingContent.add(msg.content)
+          })
+
+          const newMessages: Message[] = []
+          for (const job of data.jobs) {
+            if (!job.output?.success) continue
+            const output = job.output
+
+            // Check if this job's result is already in chat
+            let isDuplicate = false
+            if (output.audioUrl && existingUrls.has(output.audioUrl)) isDuplicate = true
+            if (output.imageUrl && existingUrls.has(output.imageUrl)) isDuplicate = true
+            if (output.stems) {
+              const stemUrls = Object.values(output.stems) as string[]
+              if (stemUrls.some(u => existingUrls.has(u))) isDuplicate = true
+            }
+            if (isDuplicate) continue
+
+            // Build recovered message based on job type
+            const timestamp = new Date(job.completedAt || job.createdAt)
+            if (job.type === 'music' && output.audioUrl) {
+              newMessages.push({
+                id: `recovered-${job.jobId}`,
+                type: 'assistant',
+                content: `✅ ${output.title || 'AI Track'} — recovered from previous session`,
+                result: {
+                  audioUrl: output.audioUrl,
+                  title: output.title || 'AI Track',
+                  prompt: output.prompt,
+                  lyrics: output.lyrics,
+                },
+                timestamp,
+              })
+            } else if (job.type === 'image' && output.imageUrl) {
+              newMessages.push({
+                id: `recovered-${job.jobId}`,
+                type: 'assistant',
+                content: `✅ Cover art — recovered from previous session`,
+                result: { imageUrl: output.imageUrl, title: output.title || 'Cover Art', prompt: output.prompt },
+                timestamp,
+              })
+            } else if ((job.type === 'stems' || job.type === 'extract') && output.stems) {
+              newMessages.push({
+                id: `recovered-${job.jobId}`,
+                type: 'assistant',
+                content: `✅ Stems — recovered from previous session`,
+                stems: output.stems,
+                timestamp,
+              })
+            } else if (job.type === 'audio-boost' && output.audioUrl) {
+              newMessages.push({
+                id: `recovered-${job.jobId}`,
+                type: 'assistant',
+                content: `✅ Audio Boost — recovered from previous session`,
+                result: { audioUrl: output.audioUrl, title: output.title || 'Boosted Audio', prompt: 'Audio Boost' },
+                timestamp,
+              })
+            } else if (job.type === 'effects' && output.audioUrl) {
+              newMessages.push({
+                id: `recovered-${job.jobId}`,
+                type: 'assistant',
+                content: `✅ Effect — recovered from previous session`,
+                result: { audioUrl: output.audioUrl, title: output.title || 'Effect', prompt: output.prompt },
+                timestamp,
+              })
+            } else if (job.type === 'loops' && output.loops) {
+              // Loops may have multiple results; pick first audio
+              const firstLoop = output.loops?.[0]
+              if (firstLoop?.audioUrl) {
+                newMessages.push({
+                  id: `recovered-${job.jobId}`,
+                  type: 'assistant',
+                  content: `✅ Loop — recovered from previous session`,
+                  result: { audioUrl: firstLoop.audioUrl, title: firstLoop.title || 'Loop', prompt: output.prompt },
+                  timestamp,
+                })
+              }
+            }
+          }
+
+          if (newMessages.length === 0) return prev
+          // Sort recovered messages by timestamp and append
+          newMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+          return [...prev, ...newMessages]
+        })
+      } catch (err) {
+        console.warn('[plugin] Job recovery failed:', err)
+      }
+    })()
+  }, [token, isAuthenticated])
+
   // ═══ RELEASE: Open in browser (plugin can't host the full release modal) ═══
   const handleOpenRelease = () => {
     window.open('https://444radio.co.in/create', '_blank')
@@ -1774,7 +1886,7 @@ export default function PluginPage() {
                   <button onClick={handleClearChat} className="p-2.5 rounded-xl border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all" title="New Chat">
                     <Plus size={16} />
                   </button>
-                  <button onClick={() => window.open('https://444radio.co.in/explore', '_blank')}
+                  <button onClick={() => window.open('https://444radio.co.in/explore?host=juce', '_blank')}
                     className="p-2.5 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Explore 444 Radio">
                     <Compass size={16} />
                   </button>
@@ -1904,7 +2016,7 @@ export default function PluginPage() {
                         <Volume2 size={12} /> Boost <span className="text-[10px] text-gray-500">(-1)</span>
                       </button>
                       {/* Open in browser (library) */}
-                      <button onClick={() => window.open('https://444radio.co.in/library', '_blank')}
+                      <button onClick={() => window.open('https://444radio.co.in/library?host=juce', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library
                       </button>
@@ -1927,7 +2039,7 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Download size={12} /> Save
                       </a>
-                      <button onClick={() => window.open('https://444radio.co.in/library', '_blank')}
+                      <button onClick={() => window.open('https://444radio.co.in/library?host=juce', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library
                       </button>
@@ -1952,7 +2064,7 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all">
                         <Download size={12} /> Download
                       </button>
-                      <button onClick={() => window.open('https://444radio.co.in/library?tab=videos', '_blank')}
+                      <button onClick={() => window.open('https://444radio.co.in/library?tab=videos&host=juce', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library
                       </button>
