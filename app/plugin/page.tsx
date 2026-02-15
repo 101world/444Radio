@@ -604,31 +604,42 @@ export default function PluginPage() {
 
       showBridgeToast(`⏳ Preparing ${format.toUpperCase()}...`)
 
-      // Tell JUCE bridge to download natively (C++ uses direct URL, no CORS issues)
+      // Tell JUCE bridge to import natively (C++ uses direct URL, no CORS issues)
       if (isInDAW) {
         sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format })
       }
 
-      // Fetch audio bytes via proxy
-      const res = await proxyFetch(sourceUrl)
-      if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
-
-      if (format === 'wav') {
-        // Decode audio → PCM WAV
+      if (format === 'mp3') {
+        // MP3: server-side proxy streams back with Content-Disposition: attachment
+        // Plain link click — works in all browsers including WebView2 (no fetch/blob/createObjectURL)
+        const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(fileName)}`
+        const link = document.createElement('a')
+        link.href = proxyUrl
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        showBridgeToast(`✅ ${fileName} downloading`)
+      } else {
+        // WAV: must decode in browser — proxy fetch → AudioContext → PCM WAV
+        const res = await proxyFetch(sourceUrl)
+        if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
         const ab = await res.arrayBuffer()
         if (ab.byteLength < 1000) throw new Error('File too small — may be expired')
         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
         const decoded = await audioCtx.decodeAudioData(ab)
         const wavBlob = audioBufferToWav(decoded)
         const blobUrl = URL.createObjectURL(wavBlob)
+        // Direct click-download (reliable in WebView2)
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        // Keep blob alive for drag-to-DAW toast (revoked on dismiss)
         setDawReadyFile({ name: fileName, blobUrl })
-        showBridgeToast(`✅ ${fileName} ready — drag to DAW or click to save`)
-      } else {
-        // MP3: raw bytes
-        const blob = await res.blob()
-        const blobUrl = URL.createObjectURL(blob)
-        setDawReadyFile({ name: fileName, blobUrl })
-        showBridgeToast(`✅ ${fileName} ready — drag to DAW or click to save`)
+        showBridgeToast(`✅ ${fileName} ready — drag to DAW`)
       }
     } catch (err: any) {
       console.error('Download error:', err)
@@ -674,18 +685,14 @@ export default function PluginPage() {
       if (format === 'wav') {
         return exportAsWav(url, filename)
       }
-      // MP3: fetch → blob → click-download
-      const res = await proxyFetch(url)
-      if (!res.ok) throw new Error(`Download failed: ${res.status}`)
-      const blob = await res.blob()
-      const blobUrl = URL.createObjectURL(blob)
+      // MP3: server-side proxy with Content-Disposition — no fetch/blob needed
+      const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
       const link = document.createElement('a')
-      link.href = blobUrl
+      link.href = proxyUrl
       link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(blobUrl)
       // Notify bridge
       sendBridgeMessage({ action: 'download_complete', url, title: filename, format })
     } catch (err) {
