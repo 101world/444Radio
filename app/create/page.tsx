@@ -1418,7 +1418,7 @@ function CreatePageContent() {
   const handleDownload = async (url: string, filename: string, format: 'mp3' | 'wav' = 'mp3') => {
     try {
       if (format === 'mp3') {
-        // Use download proxy to avoid CORS issues
+        // MP3: redirect-style download via /api/download
         const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
         const link = document.createElement('a')
         link.href = downloadUrl
@@ -1427,34 +1427,23 @@ function CreatePageContent() {
         link.click()
         document.body.removeChild(link)
       } else {
-        // WAV: fetch audio → decode → convert to WAV → download
-        try {
-          let response: Response
-          try {
-            response = await fetch(url)
-            if (!response.ok) throw new Error('direct failed')
-          } catch {
-            response = await fetch(`/api/r2/proxy?url=${encodeURIComponent(url)}`)
-          }
-          if (!response.ok) throw new Error(`Failed to fetch audio: ${response.status}`)
-          const arrayBuffer = await response.arrayBuffer()
-          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-          
-          const wavBlob = audioBufferToWav(audioBuffer)
-          const wavObjUrl = URL.createObjectURL(wavBlob)
-          
-          const link = document.createElement('a')
-          link.href = wavObjUrl
-          link.download = filename.replace('.mp3', '.wav')
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          URL.revokeObjectURL(wavObjUrl)
-        } catch (error) {
-          console.error('WAV conversion error:', error)
-          alert('Failed to convert to WAV. Please try MP3 download.')
-        }
+        // WAV: proxy fetch → decode → convert to PCM WAV → download
+        const res = await fetch(`/api/r2/proxy?url=${encodeURIComponent(url)}`)
+        if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`)
+        const arrayBuffer = await res.arrayBuffer()
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+        
+        const wavBlob = audioBufferToWav(audioBuffer)
+        const wavObjUrl = URL.createObjectURL(wavBlob)
+        
+        const link = document.createElement('a')
+        link.href = wavObjUrl
+        link.download = filename.replace('.mp3', '.wav')
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(wavObjUrl)
       }
     } catch (error) {
       console.error('Download error:', error)

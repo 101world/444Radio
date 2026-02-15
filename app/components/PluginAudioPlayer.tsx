@@ -17,31 +17,24 @@ interface PluginAudioPlayerProps {
   onPlayStateChange?: (playing: boolean) => void
 }
 
-// ── Proxy URL helper — always proxy through same-domain to avoid CORS issues ──
-function proxyUrl(url: string): string {
+/**
+ * Bullet-proof proxy URL helper.
+ * ALL external audio goes through /api/r2/proxy so there are zero CORS issues.
+ * Same-origin URLs pass through unchanged.
+ */
+function safeAudioUrl(url: string): string {
   if (!url) return url
   try {
     const u = new URL(url, window.location.origin)
-    // Already proxied → pass through
-    if (u.pathname.startsWith('/api/r2/proxy')) return url
-    // Same-origin relative URL → pass through
-    if (u.origin === window.location.origin) return url
-    // Everything else (R2, Replicate, etc.) → proxy for CORS safety
-    return `/api/r2/proxy?url=${encodeURIComponent(url)}`
-  } catch {
-    return `/api/r2/proxy?url=${encodeURIComponent(url)}`
-  }
+    if (u.pathname.startsWith('/api/')) return url          // already an API route
+    if (u.origin === window.location.origin) return url     // same-origin
+  } catch { /* fall through to proxy */ }
+  return `/api/r2/proxy?url=${encodeURIComponent(url)}`
 }
 
 export default function PluginAudioPlayer({ track, playing, onClose, onPlayStateChange }: PluginAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null)
-  const ctxRef = useRef<AudioContext | null>(null)
-  const connectedSrcRef = useRef<string | null>(null)
-  const rafRef = useRef<number>(0)
-  const progressBarRef = useRef<HTMLDivElement>(null)
+  const waveformRef = useRef<HTMLDivElement>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -49,65 +42,83 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   const [volume, setVolume] = useState(0.8)
   const [isMuted, setIsMuted] = useState(false)
   const [showVolume, setShowVolume] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // ── Cleanup on unmount ──
   useEffect(() => {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause()
-        audioRef.current.src = ''
+        audioRef.current.removeAttribute('src')
+        audioRef.current.load()
         audioRef.current = null
       }
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      connectedSrcRef.current = null
     }
   }, [])
 
-  // ── Load track ──
+  // ── Load & play track ──
+  // IMPORTANT: No WebAudio createMediaElementSource — that hijacks audio output
+  // and causes silent playback when the AudioContext is suspended or misconfigured.
+  // Plain HTML5 Audio is rock-solid and works everywhere.
   useEffect(() => {
     if (!track) return
-    if (!audioRef.current) {
-      audioRef.current = new Audio()
-      // No crossOrigin needed — audio is proxied through same-domain /api/r2/proxy
-    }
-    const audio = audioRef.current
-    audio.pause()
-    audio.src = proxyUrl(track.audioUrl)
-    audio.volume = isMuted ? 0 : volume
-    audio.load()
-    setCurrentTime(0)
-    setDuration(0)
-    setIsPlaying(false)
+    setError(null)
 
-    const onLoaded = () => setDuration(audio.duration)
+    // Create fresh audio element per track to avoid stale state
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.removeAttribute('src')
+      audioRef.current.load()
+    }
+    const audio = new Audio()
+    audioRef.current = audio
+    audio.volume = isMuted ? 0 : volume
+    audio.preload = 'auto'
+
+    const onLoadedMeta = () => setDuration(audio.duration)
     const onTimeUpdate = () => setCurrentTime(audio.currentTime)
     const onEnded = () => { setIsPlaying(false); onPlayStateChange?.(false) }
     const onPlay = () => { setIsPlaying(true); onPlayStateChange?.(true) }
     const onPause = () => { setIsPlaying(false); onPlayStateChange?.(false) }
+    const onError = () => {
+      const code = audio.error?.code
+      const msg = code === 4 ? 'Format not supported' : code === 2 ? 'Network error' : 'Playback failed'
+      console.error('[PluginPlayer] Audio error:', audio.error?.message, 'code:', code)
+      setError(msg)
+      setIsPlaying(false)
+      onPlayStateChange?.(false)
+    }
 
-    audio.addEventListener('loadedmetadata', onLoaded)
+    audio.addEventListener('loadedmetadata', onLoadedMeta)
     audio.addEventListener('timeupdate', onTimeUpdate)
     audio.addEventListener('ended', onEnded)
     audio.addEventListener('play', onPlay)
     audio.addEventListener('pause', onPause)
+    audio.addEventListener('error', onError)
 
-    audio.play().catch(() => {})
+    // Set source via proxy and play
+    audio.src = safeAudioUrl(track.audioUrl)
+    audio.load()
+    audio.play().catch((e) => {
+      console.warn('[PluginPlayer] Autoplay blocked:', e.message)
+    })
 
     return () => {
-      audio.removeEventListener('loadedmetadata', onLoaded)
+      audio.removeEventListener('loadedmetadata', onLoadedMeta)
       audio.removeEventListener('timeupdate', onTimeUpdate)
       audio.removeEventListener('ended', onEnded)
       audio.removeEventListener('play', onPlay)
       audio.removeEventListener('pause', onPause)
+      audio.removeEventListener('error', onError)
+      audio.pause()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track?.id, track?.audioUrl])
 
-  // ── External play/pause ──
+  // ── External play/pause control ──
   useEffect(() => {
     if (playing === undefined || !audioRef.current) return
     if (playing && !isPlaying) {
-      if (ctxRef.current?.state === 'suspended') ctxRef.current.resume()
       audioRef.current.play().catch(() => {})
     } else if (!playing && isPlaying) {
       audioRef.current.pause()
@@ -115,86 +126,10 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing])
 
-  // ── Connect AnalyserNode ──
+  // ── Volume sync ──
   useEffect(() => {
-    if (!track || !audioRef.current) return
-    if (connectedSrcRef.current === track.audioUrl) return
-
-    try {
-      if (!ctxRef.current) {
-        ctxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-      }
-      const ctx = ctxRef.current
-      if (ctx.state === 'suspended') ctx.resume()
-
-      const analyser = ctx.createAnalyser()
-      analyser.fftSize = 256
-      analyser.smoothingTimeConstant = 0.8
-      const source = ctx.createMediaElementSource(audioRef.current)
-      source.connect(analyser)
-      analyser.connect(ctx.destination)
-      analyserRef.current = analyser
-      sourceRef.current = source
-      connectedSrcRef.current = track.audioUrl
-    } catch {
-      console.warn('[PluginPlayer] Could not connect analyser')
-    }
-  }, [track])
-
-  // ── Mini waveform draw loop (compact bars) ──
-  useEffect(() => {
-    if (!canvasRef.current) return
-    const canvas = canvasRef.current
-
-    const draw = () => {
-      rafRef.current = requestAnimationFrame(draw)
-      const c = canvas.getContext('2d')
-      if (!c) return
-      const dpr = window.devicePixelRatio || 1
-      const W = canvas.offsetWidth
-      const H = canvas.offsetHeight
-      if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
-        canvas.width = W * dpr
-        canvas.height = H * dpr
-        c.setTransform(dpr, 0, 0, dpr, 0, 0)
-      }
-      c.clearRect(0, 0, W, H)
-
-      const barCount = 48
-      const gap = 1
-      const barW = (W - gap * (barCount - 1)) / barCount
-      const analyser = analyserRef.current
-      const bufLen = analyser ? analyser.frequencyBinCount : 32
-      const freqData = new Uint8Array(bufLen)
-      if (analyser && isPlaying) analyser.getByteFrequencyData(freqData)
-
-      const progress = duration > 0 ? currentTime / duration : 0
-
-      for (let i = 0; i < barCount; i++) {
-        const t = i / barCount
-        const binIdx = Math.min(Math.floor(t * bufLen * 0.6), bufLen - 1)
-        const rawVal = freqData[binIdx] / 255
-        const seed = Math.sin(i * 0.5 + 1.3) * 0.3 + Math.sin(i * 0.2 + 0.5) * 0.2 + 0.35
-        const val = isPlaying ? seed * 0.3 + rawVal * 0.7 : seed
-        const barH = Math.max(2, val * H * 0.9)
-        const x = i * (barW + gap)
-        const y = (H - barH) / 2
-
-        if (t <= progress) {
-          c.fillStyle = `rgba(34, 211, 238, ${isPlaying ? 0.7 + rawVal * 0.3 : 0.7})`
-        } else {
-          c.fillStyle = 'rgba(100, 116, 139, 0.25)'
-        }
-
-        c.beginPath()
-        c.roundRect(x, y, barW, barH, 1)
-        c.fill()
-      }
-    }
-
-    draw()
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [isPlaying, currentTime, duration])
+    if (audioRef.current) audioRef.current.volume = isMuted ? 0 : volume
+  }, [volume, isMuted])
 
   // ── Controls ──
   const togglePlay = useCallback(() => {
@@ -202,25 +137,14 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
     if (isPlaying) {
       audioRef.current.pause()
     } else {
-      if (ctxRef.current?.state === 'suspended') ctxRef.current.resume()
       audioRef.current.play().catch(() => {})
     }
   }, [isPlaying])
 
-  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || !audioRef.current || duration <= 0) return
-    const rect = progressBarRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const ratio = Math.max(0, Math.min(1, x / rect.width))
-    audioRef.current.currentTime = ratio * duration
-    setCurrentTime(ratio * duration)
-  }, [duration])
-
-  const seekCanvas = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !audioRef.current || duration <= 0) return
-    const rect = canvasRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const ratio = Math.max(0, Math.min(1, x / rect.width))
+  const seekFromEvent = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!waveformRef.current || !audioRef.current || duration <= 0) return
+    const rect = waveformRef.current.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
     audioRef.current.currentTime = ratio * duration
     setCurrentTime(ratio * duration)
   }, [duration])
@@ -236,16 +160,12 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   }, [duration])
 
   const toggleMute = useCallback(() => {
-    if (!audioRef.current) return
-    const next = !isMuted
-    setIsMuted(next)
-    audioRef.current.volume = next ? 0 : volume
-  }, [isMuted, volume])
+    setIsMuted(prev => !prev)
+  }, [])
 
   const changeVolume = useCallback((v: number) => {
     setVolume(v)
     setIsMuted(false)
-    if (audioRef.current) audioRef.current.volume = v
   }, [])
 
   const fmt = (s: number) => {
@@ -259,6 +179,13 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
 
   if (!track) return null
 
+  // Deterministic waveform bars from seed (visual only — no WebAudio needed)
+  const barCount = 48
+  const bars: number[] = []
+  for (let i = 0; i < barCount; i++) {
+    bars.push(Math.sin(i * 0.5 + 1.3) * 0.3 + Math.sin(i * 0.2 + 0.5) * 0.2 + 0.35)
+  }
+
   return (
     <div
       className="w-full select-none transition-all duration-300 ease-out"
@@ -271,32 +198,12 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
         animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
-      {/* Thin progress bar at very top */}
-      <div
-        ref={progressBarRef}
-        onClick={seek}
-        className="h-[2px] w-full cursor-pointer group relative"
-        style={{ background: 'rgba(255,255,255,0.04)' }}
-      >
-        <div
-          className="h-full transition-[width] duration-100 relative"
-          style={{
-            width: `${progress}%`,
-            background: 'linear-gradient(90deg, rgba(34,211,238,0.9), rgba(139,92,246,0.8))',
-          }}
-        >
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)] opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-      </div>
-
-      {/* Main row: controls + waveform + title + volume + close */}
+      {/* Main row */}
       <div className="flex items-center gap-2 px-3 py-1.5">
-        {/* Skip back */}
         <button onClick={skipBack} className="p-1 text-white/30 hover:text-white/80 transition flex-shrink-0">
           <SkipBack size={12} />
         </button>
 
-        {/* Play/Pause */}
         <button onClick={togglePlay}
           className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 transition-transform flex-shrink-0"
           style={{
@@ -306,29 +213,47 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
           {isPlaying ? <Pause size={11} className="text-black" /> : <Play size={11} className="text-black ml-0.5" />}
         </button>
 
-        {/* Skip forward */}
         <button onClick={skipFwd} className="p-1 text-white/30 hover:text-white/80 transition flex-shrink-0">
           <SkipForward size={12} />
         </button>
 
-        {/* Time */}
         <span className="text-[9px] text-white/30 font-mono w-6 text-right flex-shrink-0">{fmt(currentTime)}</span>
 
-        {/* Mini waveform visualizer */}
-        <canvas
-          ref={canvasRef}
-          onClick={seekCanvas}
-          className="flex-1 h-6 cursor-pointer rounded min-w-0"
-        />
+        {/* Waveform bars (pure CSS — no WebAudio dependency) */}
+        <div
+          ref={waveformRef}
+          className="flex-1 h-6 flex items-center gap-px cursor-pointer min-w-0 rounded"
+          onClick={seekFromEvent}
+        >
+          {bars.map((val, i) => {
+            const t = i / barCount
+            const played = t <= progress / 100
+            const barH = Math.max(3, val * 20)
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-sm transition-colors duration-150"
+                style={{
+                  height: `${barH}px`,
+                  backgroundColor: played
+                    ? (isPlaying ? 'rgba(34,211,238,0.85)' : 'rgba(34,211,238,0.7)')
+                    : 'rgba(100,116,139,0.25)',
+                }}
+              />
+            )
+          })}
+        </div>
 
         <span className="text-[9px] text-white/30 font-mono w-6 flex-shrink-0">{fmt(duration)}</span>
 
-        {/* Track title */}
         <div className="flex-shrink min-w-0 max-w-[120px] hidden sm:block">
-          <p className="text-[10px] font-semibold text-white/80 truncate">{track.title || 'AI Track'}</p>
+          {error ? (
+            <p className="text-[10px] font-semibold text-red-400 truncate">{error}</p>
+          ) : (
+            <p className="text-[10px] font-semibold text-white/80 truncate">{track.title || 'AI Track'}</p>
+          )}
         </div>
 
-        {/* Volume */}
         <div className="flex items-center gap-0.5 flex-shrink-0 relative">
           <button onClick={toggleMute} onMouseEnter={() => setShowVolume(true)} className="p-1 text-white/30 hover:text-white/80 transition">
             {isMuted || volume === 0 ? <VolumeX size={11} /> : <Volume2 size={11} />}
@@ -339,7 +264,6 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
               style={{
                 background: 'rgba(0,0,0,0.5)',
                 backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
                 border: '1px solid rgba(255,255,255,0.08)',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
               }}
@@ -354,9 +278,8 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
           )}
         </div>
 
-        {/* Close */}
         {onClose && (
-          <button onClick={onClose} className="p-1 text-white/20 hover:text-white/70 transition flex-shrink-0 hover:rotate-90 transition-all duration-200">
+          <button onClick={onClose} className="p-1 text-white/20 hover:text-white/70 hover:rotate-90 transition-all duration-200 flex-shrink-0">
             <X size={12} />
           </button>
         )}

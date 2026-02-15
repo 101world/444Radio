@@ -574,7 +574,16 @@ export default function PluginPage() {
     sendBridgeMessage({ action: 'import_audio', url, title: safeName, format })
   }
 
-  // ═══ Download + Toast — downloads file and shows draggable toast ═══
+  // ═══ PROXY FETCH — always go through same-domain proxy for CORS safety ═══
+  const proxyFetch = async (url: string): Promise<Response> => {
+    try {
+      const u = new URL(url, window.location.origin)
+      if (u.origin === window.location.origin) return await fetch(url)
+    } catch {}
+    return await fetch(`/api/r2/proxy?url=${encodeURIComponent(url)}`)
+  }
+
+  // ═══ Download + Toast — fetch file → show draggable toast chip ═══
   const [dawDownloading, setDawDownloading] = useState<string | null>(null)
   const [dawReadyFile, setDawReadyFile] = useState<{ name: string; blobUrl: string } | null>(null)
 
@@ -586,51 +595,40 @@ export default function PluginPage() {
   }
 
   const downloadAndToast = async (sourceUrl: string, title: string, format: 'mp3' | 'wav' = 'wav') => {
-    const id = `${sourceUrl}-${title}-${format}`
     if (dawDownloading) return
-    setDawDownloading(id)
-    dismissDawFile() // clear any previous toast
+    setDawDownloading(`${title}-${format}`)
+    dismissDawFile()
     try {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
       const fileName = `${safeName}.${format}`
 
-      // Always proxy through same-domain to avoid CORS issues
-      const proxyFetch = async (url: string): Promise<Response> => {
-        try {
-          const u = new URL(url, window.location.origin)
-          if (u.origin === window.location.origin) return await fetch(url)
-        } catch {}
-        // Cross-origin → proxy
-        return await fetch(`/api/r2/proxy?url=${encodeURIComponent(url)}`)
-      }
-
       showBridgeToast(`⏳ Preparing ${format.toUpperCase()}...`)
 
-      // Tell DAW bridge to start downloading natively too
+      // Tell JUCE bridge to download natively (C++ uses direct URL, no CORS issues)
       if (isInDAW) {
         sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format })
       }
 
-      // Fetch the source audio
+      // Fetch audio bytes via proxy
       const res = await proxyFetch(sourceUrl)
       if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
-      const ct = res.headers.get('content-type') || ''
-      if (ct.includes('text/html')) throw new Error('Got HTML instead of audio — file URL may be invalid')
 
       if (format === 'wav') {
-        // ── WAV: decode MP3 → convert to WAV blob ──
+        // Decode audio → PCM WAV
         const ab = await res.arrayBuffer()
-        if (ab.byteLength < 1000) throw new Error('File too small — may be expired or invalid')
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-        const decoded = await ctx.decodeAudioData(ab)
+        if (ab.byteLength < 1000) throw new Error('File too small — may be expired')
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const decoded = await audioCtx.decodeAudioData(ab)
         const wavBlob = audioBufferToWav(decoded)
         const blobUrl = URL.createObjectURL(wavBlob)
         setDawReadyFile({ name: fileName, blobUrl })
+        showBridgeToast(`✅ ${fileName} ready — drag to DAW or click to save`)
       } else {
-        // ── MP3: use raw bytes directly ──
+        // MP3: raw bytes
         const blob = await res.blob()
         const blobUrl = URL.createObjectURL(blob)
         setDawReadyFile({ name: fileName, blobUrl })
+        showBridgeToast(`✅ ${fileName} ready — drag to DAW or click to save`)
       }
     } catch (err: any) {
       console.error('Download error:', err)
@@ -640,27 +638,19 @@ export default function PluginPage() {
     }
   }
 
-  // Keep downloadForDAW as alias for backwards compat
   const downloadForDAW = (sourceUrl: string, title: string) => downloadAndToast(sourceUrl, title, 'wav')
 
-  // ═══ WAV EXPORT helper (convert any audio URL to WAV blob URL) ═══
+  // ═══ WAV EXPORT (download as file, no toast) ═══
   const [wavExporting, setWavExporting] = useState<string | null>(null)
   const exportAsWav = async (sourceUrl: string, filename: string) => {
-    const exportId = `${sourceUrl}-${filename}`
-    if (wavExporting) return // prevent double-click
-    setWavExporting(exportId)
+    if (wavExporting) return
+    setWavExporting(filename)
     try {
-      // Fetch audio directly from R2 CDN, fallback to proxy
-      let response: Response
-      try {
-        response = await fetch(sourceUrl)
-      } catch {
-        response = await fetch(`/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`)
-      }
-      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`)
-      const arrayBuffer = await response.arrayBuffer()
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      const res = await proxyFetch(sourceUrl)
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
+      const ab = await res.arrayBuffer()
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const audioBuffer = await audioCtx.decodeAudioData(ab)
       const wavBlob = audioBufferToWav(audioBuffer)
       const wavUrl = URL.createObjectURL(wavBlob)
       const link = document.createElement('a')
@@ -678,55 +668,25 @@ export default function PluginPage() {
     }
   }
 
-  // ═══ DOWNLOAD (with auth token for /api/plugin/download) ═══
+  // ═══ DOWNLOAD (save-to-disk flow) ═══
   const handleDownload = async (url: string, filename: string, format: 'mp3' | 'wav' = 'mp3') => {
     try {
-      if (format === 'mp3') {
-        // Try direct R2 CDN download first (public URL, fastest)
-        let response: Response
-        try {
-          response = await fetch(url)
-          if (!response.ok) throw new Error('direct failed')
-        } catch {
-          // Fallback to plugin download endpoint with auth
-          const downloadUrl = `/api/plugin/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
-          response = await fetch(downloadUrl, {
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-          })
-        }
-        if (!response.ok) throw new Error(`Download failed: ${response.status}`)
-        const blob = await response.blob()
-        const blobUrl = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = blobUrl
-        link.download = filename
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(blobUrl)
-      } else {
-        // WAV: fetch direct from R2 CDN, fallback to proxy
-        let response: Response
-        try {
-          response = await fetch(url)
-        } catch {
-          response = await fetch(`/api/r2/proxy?url=${encodeURIComponent(url)}`)
-        }
-        if (!response.ok) throw new Error(`WAV fetch failed: ${response.status}`)
-        const arrayBuffer = await response.arrayBuffer()
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-        const wavBlob = audioBufferToWav(audioBuffer)
-        const wavUrl = URL.createObjectURL(wavBlob)
-        const link = document.createElement('a')
-        link.href = wavUrl
-        link.download = filename.replace(/\.\w+$/, '.wav')
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        setTimeout(() => URL.revokeObjectURL(wavUrl), 5000)
+      if (format === 'wav') {
+        return exportAsWav(url, filename)
       }
-      // JUCE bridge: notify for DAW import (direct R2 URL)
+      // MP3: fetch → blob → click-download
+      const res = await proxyFetch(url)
+      if (!res.ok) throw new Error(`Download failed: ${res.status}`)
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(blobUrl)
+      // Notify bridge
       sendBridgeMessage({ action: 'download_complete', url, title: filename, format })
     } catch (err) {
       console.error('Download error:', err)

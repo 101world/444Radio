@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch the resource server-side and stream it back
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for large audio files
     
     const resp = await fetch(url, {
       headers: {
