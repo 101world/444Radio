@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
-
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
 
 export async function GET(req: NextRequest) {
   const { userId } = await auth()
@@ -17,7 +10,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const supabase = getSupabase()
+  const supabase = supabaseAdmin
   const { searchParams } = new URL(req.url)
   const tab = searchParams.get('tab') || 'overview'
   const page = parseInt(searchParams.get('page') || '1')
@@ -190,7 +183,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid tab' }, { status: 400 })
   } catch (err: any) {
-    console.error('[adminrizzog] Error:', err)
-    return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 })
+    console.error('[adminrizzog] Error:', JSON.stringify(err, null, 2))
+    const msg = err?.message || err?.error_description || (typeof err === 'string' ? err : 'Internal error')
+    return NextResponse.json({ error: msg, code: err?.code, details: err?.details, hint: err?.hint }, { status: 500 })
   }
 }
