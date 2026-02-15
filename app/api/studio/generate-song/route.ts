@@ -42,43 +42,21 @@ export async function POST(request: Request) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check and deduct credits (2 credits)
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('credits, total_generated')
-      .eq('clerk_user_id', userId)
-      .single();
-
-    if (userError) {
-      console.error('Credits fetch error:', userError);
-      return corsResponse(NextResponse.json({ success: false, error: 'Failed to fetch user credits' }, { status: 500 }));
-    }
-
-    const currentCredits = userData?.credits ?? 0;
-    if (currentCredits < 2) {
-      return corsResponse(NextResponse.json({ success: false, error: 'Insufficient credits (need 2)' }, { status: 402 }));
-    }
-
-    const deductResp = await supabase
-      .from('users')
-      .update({ credits: currentCredits - 2, updated_at: new Date().toISOString() })
-      .eq('clerk_user_id', userId);
-
-    if (deductResp.error) {
-      console.error('Credit deduction error:', deductResp.error);
-      return corsResponse(NextResponse.json({ success: false, error: 'Failed to deduct credits' }, { status: 500 }));
-    }
-
-    // Log the credit deduction
-    await logCreditTransaction({
-      userId,
-      amount: -2,
-      balanceAfter: currentCredits - 2,
-      type: 'generation_music',
-      status: 'success',
-      description: 'Studio song generation (MiniMax Music 1.5)',
-      metadata: { generation_type: 'generate-song', prompt: prompt?.slice(0, 100), genre },
+    // Deduct credits atomically (2 credits)
+    const { data: deductResult, error: deductErr } = await supabase.rpc('deduct_credits', {
+      p_clerk_user_id: userId,
+      p_amount: 2,
+      p_type: 'generation_music',
+      p_description: 'Studio song generation (MiniMax Music 1.5)',
+      p_metadata: { generation_type: 'generate-song', prompt: prompt?.slice(0, 100), genre }
     });
+
+    const deductRow = deductResult?.[0] || deductResult;
+    if (deductErr || !deductRow?.success) {
+      return corsResponse(NextResponse.json({ success: false, error: deductRow?.error_message || 'Insufficient credits (need 2)' }, { status: 402 }));
+    }
+
+    const creditsAfterDeduct = deductRow.new_credits;
 
     console.log('🎤 Generating song with MiniMax Music 1.5:', { prompt, genre, output_format, hasLyrics: !!lyrics, title });
 
@@ -133,12 +111,12 @@ export async function POST(request: Request) {
       // Rollback credits on failure
       await supabase
         .from('users')
-        .update({ credits: (currentCredits), updated_at: new Date().toISOString() })
+        .update({ credits: creditsAfterDeduct + 2, updated_at: new Date().toISOString() })
         .eq('clerk_user_id', userId);
       await logCreditTransaction({
         userId,
         amount: 2,
-        balanceAfter: currentCredits,
+        balanceAfter: creditsAfterDeduct + 2,
         type: 'credit_refund',
         status: 'success',
         description: 'Refund: song generation failed',
@@ -173,7 +151,7 @@ export async function POST(request: Request) {
       // Rollback credits if no usable output
       await supabase
         .from('users')
-        .update({ credits: (currentCredits), updated_at: new Date().toISOString() })
+        .update({ credits: creditsAfterDeduct + 2, updated_at: new Date().toISOString() })
         .eq('clerk_user_id', userId);
       return corsResponse(
         NextResponse.json({ success: false, error: 'No audio URL returned from model', raw: out }, { status: 502 })
@@ -237,12 +215,7 @@ export async function POST(request: Request) {
       console.error('⚠️ Database save error:', dbErr);
     }
 
-    // On success, increment total_generated
-    const newTotalGenerated = (userData?.total_generated ?? 0) + 1;
-    await supabase
-      .from('users')
-      .update({ total_generated: newTotalGenerated, updated_at: new Date().toISOString() })
-      .eq('clerk_user_id', userId);
+    // On success, increment total_generated (already done atomically by deduct_credits RPC)
 
     return corsResponse(
       NextResponse.json({
@@ -257,7 +230,7 @@ export async function POST(request: Request) {
           model: 'minimax-music-1.5',
           predictionId: result.id,
         },
-        remainingCredits: (currentCredits - 2)
+        remainingCredits: creditsAfterDeduct
       })
     );
 

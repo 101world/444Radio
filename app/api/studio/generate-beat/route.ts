@@ -31,6 +31,31 @@ export async function POST(request: Request) {
       );
     }
 
+    // Deduct credits atomically (2 credits for beat generation)
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: deductResult, error: deductErr } = await supabaseAdmin.rpc('deduct_credits', {
+      p_clerk_user_id: userId,
+      p_amount: 2,
+      p_type: 'generation_music',
+      p_description: `Studio beat generation: ${prompt?.slice(0, 50)}`,
+      p_metadata: { generation_type: 'generate-beat', prompt: prompt?.slice(0, 100) }
+    });
+
+    const row = deductResult?.[0] || deductResult;
+    if (deductErr || !row?.success) {
+      return corsResponse(
+        NextResponse.json({
+          error: row?.error_message || 'Insufficient credits (need 2)',
+          required: 2,
+          available: row?.new_credits ?? 0
+        }, { status: 402 })
+      );
+    }
+
     // Initialize Replicate
     const replicate = new Replicate({
       auth: process.env.REPLICATE_API_KEY_LATEST2!,

@@ -967,15 +967,6 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           </div>
         </div>
       )}
-
-      {/* Avatar Upload Modal */}
-      {showAvatarUpload && (
-        <ProfileUploadModal
-          isOpen={showAvatarUpload}
-          onClose={() => setShowAvatarUpload(false)}
-          onUploadComplete={handleAvatarSuccess}
-        />
-      )}
     </div>
   )
 }

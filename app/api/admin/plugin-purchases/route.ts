@@ -9,8 +9,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
-
-const ADMIN_USER_ID = 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
+import { ADMIN_CLERK_ID as ADMIN_USER_ID } from '@/lib/constants'
 
 export async function OPTIONS() {
   return handleOptions()

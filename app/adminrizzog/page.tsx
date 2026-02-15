@@ -3,8 +3,9 @@
 import { useUser } from '@clerk/nextjs'
 import { useEffect, useState, useCallback, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
+import { ADMIN_CLERK_ID } from '@/lib/constants'
 
-const ADMIN_ID = 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
+const ADMIN_ID = ADMIN_CLERK_ID
 
 type Tab = 'overview' | 'users' | 'transactions' | 'redemptions' | 'generations' | 'user-detail'
 

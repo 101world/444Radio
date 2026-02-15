@@ -8,8 +8,6 @@ import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
 import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
-import CreditIndicator from '../components/CreditIndicator'
-import FloatingNavButton from '../components/FloatingNavButton'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { LibraryTabSkeleton } from '../components/LoadingSkeleton'
 
@@ -497,11 +495,6 @@ export default function LibraryPage() {
       <Suspense fallback={null}>
         <HolographicBackgroundClient />
       </Suspense>
-      
-      {/* Credit Indicator - Mobile Only */}
-      <div className="md:hidden">
-        <CreditIndicator />
-      </div>
       
       {/* Floating Menu - Desktop Only */}
       <FloatingMenu />
@@ -1733,9 +1726,6 @@ export default function LibraryPage() {
           </div>
         )}
       </div>
-
-      {/* Floating Navigation Button */}
-      <FloatingNavButton />
 
       {/* Lyrics Modal - Lazy Loaded */}
       <Suspense fallback={null}>

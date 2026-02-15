@@ -3,12 +3,9 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Play, Pause, Shuffle, Repeat, Music2, SkipBack, SkipForward, X, Gift } from 'lucide-react'
 import FloatingMenu from './components/FloatingMenu'
-import DockedSidebar from './components/DockedSidebar'
 import SEOHeroSection from './components/SEOHeroSection'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAudioPlayer } from './contexts/AudioPlayerContext'
-import CreditIndicator from './components/CreditIndicator'
-import FloatingNavButton from './components/FloatingNavButton'
 import Link from 'next/link'
 
 // Lazy load heavy 3D components for better performance
@@ -151,9 +148,6 @@ function HomePageContent() {
 
   return (
     <>
-      {/* Docked Sidebar - Desktop Only */}
-      <DockedSidebar />
-
       {/* 3D Background with lazy loading */}
       <div className="fixed inset-0 -z-10">
         <Suspense fallback={<div className="w-full h-full bg-gradient-to-b from-gray-950 via-gray-900 to-black" />}>
@@ -170,9 +164,6 @@ function HomePageContent() {
 
       {/* Minimal blur overlay - only 5% blur */}
       <div className="fixed inset-0 backdrop-blur-[0.5px] bg-black/10 -z-5"></div>
-
-      {/* Credit Indicator + Notification Bell */}
-      <CreditIndicator />
 
       <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 z-10 md:pl-24">
         {/* SEO Hero Section - Hidden but crawlable */}
@@ -416,12 +407,6 @@ function HomePageContent() {
           </div>
         </div>
       </Link>
-
-      {/* Floating Navigation Button */}
-      <FloatingNavButton 
-        showPromptToggle={false}
-        onTogglePrompt={() => {}}        
-      />
 
       {/* Floating Menu */}
       <FloatingMenu />

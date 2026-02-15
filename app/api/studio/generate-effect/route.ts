@@ -45,47 +45,22 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Check user credits
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('credits')
-      .eq('clerk_user_id', userId)
-      .single();
-
-    if (userError || !userData) {
-      return corsResponse(
-        NextResponse.json({ error: 'User not found' }, { status: 404 })
-      );
-    }
-
-    if ((userData.credits || 0) < creditsNeeded) {
-      return corsResponse(
-        NextResponse.json({ error: `Insufficient credits (need ${creditsNeeded})` }, { status: 402 })
-      );
-    }
-
-    // Deduct credits
-    const { error: deductError } = await supabase
-      .from('users')
-      .update({ credits: (userData.credits || 0) - creditsNeeded, updated_at: new Date().toISOString() })
-      .eq('clerk_user_id', userId);
-
-    if (deductError) {
-      return corsResponse(
-        NextResponse.json({ error: 'Credit deduction failed' }, { status: 500 })
-      );
-    }
-
-    // Log the credit deduction
-    await logCreditTransaction({
-      userId,
-      amount: -creditsNeeded,
-      balanceAfter: (userData.credits || 0) - creditsNeeded,
-      type: 'generation_effects',
-      status: 'success',
-      description: `Studio effect generation (${duration}s)`,
-      metadata: { generation_type: 'generate-effect', prompt: prompt?.slice(0, 100), duration },
+    // Deduct credits atomically
+    const creditsNeededInt = Math.max(1, Math.ceil(creditsNeeded));
+    const { data: deductResult, error: deductErr } = await supabase.rpc('deduct_credits', {
+      p_clerk_user_id: userId,
+      p_amount: creditsNeededInt,
+      p_type: 'generation_effects',
+      p_description: `Studio effect generation (${duration}s)`,
+      p_metadata: { generation_type: 'generate-effect', prompt: prompt?.slice(0, 100), duration }
     });
+
+    const deductRow = deductResult?.[0] || deductResult;
+    if (deductErr || !deductRow?.success) {
+      return corsResponse(
+        NextResponse.json({ error: deductRow?.error_message || `Insufficient credits (need ${creditsNeededInt})` }, { status: 402 })
+      );
+    }
 
     // Initialize Replicate
     const replicate = new Replicate({
@@ -187,7 +162,7 @@ export async function POST(request: Request) {
       // Refund on failure to create prediction
       await supabase
         .from('users')
-        .update({ credits: (userData.credits || 0) })
+        .update({ credits: (deductRow.new_credits || 0) + creditsNeededInt })
         .eq('clerk_user_id', userId);
 
       const hint = configuredVersionEnv || configuredModel
@@ -210,7 +185,7 @@ export async function POST(request: Request) {
         // Refund credits on timeout
         await supabase
           .from('users')
-          .update({ credits: (userData.credits || 0) })
+          .update({ credits: (deductRow.new_credits || 0) + creditsNeededInt })
           .eq('clerk_user_id', userId);
         
         return corsResponse(
@@ -227,7 +202,7 @@ export async function POST(request: Request) {
       // Refund credits on failure
       await supabase
         .from('users')
-        .update({ credits: (userData.credits || 0) })
+        .update({ credits: (deductRow.new_credits || 0) + creditsNeededInt })
         .eq('clerk_user_id', userId);
       
       return corsResponse(
@@ -263,7 +238,7 @@ export async function POST(request: Request) {
       // Refund on missing output
       await supabase
         .from('users')
-        .update({ credits: (userData.credits || 0) })
+        .update({ credits: (deductRow.new_credits || 0) + creditsNeededInt })
         .eq('clerk_user_id', userId);
       
       return corsResponse(
@@ -319,7 +294,7 @@ export async function POST(request: Request) {
           NextResponse.json({
             success: true,
             audioUrl: upload.url,
-            remainingCredits: (userData.credits || 0) - creditsNeeded,
+            remainingCredits: deductRow.new_credits,
             metadata: {
               prompt,
               duration,
@@ -335,7 +310,7 @@ export async function POST(request: Request) {
           NextResponse.json({
             success: true,
             audioUrl: outputUrl,
-            remainingCredits: (userData.credits || 0) - creditsNeeded,
+            remainingCredits: deductRow.new_credits,
             metadata: {
               prompt,
               duration,
@@ -352,7 +327,7 @@ export async function POST(request: Request) {
         NextResponse.json({
           success: true,
           audioUrl: outputUrl,
-          remainingCredits: (userData.credits || 0) - creditsNeeded,
+          remainingCredits: deductRow.new_credits,
           metadata: {
             prompt,
             duration,

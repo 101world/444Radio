@@ -102,7 +102,8 @@ export async function POST(req: NextRequest) {
       }
       console.log('✅ Webhook signature verified')
     } else {
-      console.warn('⚠️  PAYPAL_WEBHOOK_ID not set - skipping signature verification (NOT RECOMMENDED FOR PRODUCTION)')
+      console.error('❌ PAYPAL_WEBHOOK_ID not set — rejecting webhook for security')
+      return NextResponse.json({ error: 'Webhook verification not configured' }, { status: 500 })
     }
 
     // Extract subscription data

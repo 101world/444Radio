@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { ADMIN_CLERK_ID } from '@/lib/constants'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,7 +48,6 @@ export async function GET() {
     }
 
     // Allow: active Pro/Studio subscribers, one-time $25 purchasers, or admin
-    const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
     let hasAccess = userId === ADMIN_CLERK_ID  // Admin always has access
 
     if (!hasAccess && user.subscription_status === 'active') {

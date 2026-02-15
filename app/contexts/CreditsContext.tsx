@@ -58,12 +58,22 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
-  // Initial fetch + 30s polling
+  // Initial fetch + event-driven refresh (no polling)
+  // Listen for 'credits:refresh' events dispatched after generation/purchase/etc.
   useEffect(() => {
     if (!user?.id) return
     refreshCredits()
-    const interval = setInterval(refreshCredits, 30_000)
-    return () => clearInterval(interval)
+
+    const handler = () => refreshCredits()
+    window.addEventListener('credits:refresh', handler)
+    // Also refresh when tab comes back to foreground (covers long-away sessions)
+    const visHandler = () => { if (document.visibilityState === 'visible') refreshCredits() }
+    document.addEventListener('visibilitychange', visHandler)
+
+    return () => {
+      window.removeEventListener('credits:refresh', handler)
+      document.removeEventListener('visibilitychange', visHandler)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 

@@ -5,8 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import FloatingMenu from '../components/FloatingMenu'
-import CreditIndicator from '../components/CreditIndicator'
-import FloatingNavButton from '../components/FloatingNavButton'
 import { Search, Play, Pause, ArrowLeft, FileText, Radio as RadioIcon, Users, Music, X, SlidersHorizontal, Heart, TrendingUp, Disc3, Headphones, ChevronRight, Sparkles, Flame, Info } from 'lucide-react'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { supabase } from '@/lib/supabase'
@@ -404,7 +402,6 @@ function ExplorePageContent() {
       {/* Subtle overlay so content stays readable */}
       <div className="fixed inset-0 bg-black/15 backdrop-blur-[0.5px] -z-[5] pointer-events-none" />
 
-      <div className="md:hidden"><CreditIndicator /></div>
       <FloatingMenu />
 
       {/* ESC button — positioned to NOT overlap sidebar */}
@@ -803,8 +800,6 @@ function ExplorePageContent() {
           </>
         )}
       </main>
-
-      <FloatingNavButton showPromptToggle={false} />
 
       <Suspense fallback={null}>
         {selectedLyricsId && (

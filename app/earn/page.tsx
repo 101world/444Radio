@@ -10,7 +10,6 @@ import {
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { useCredits } from '../contexts/CreditsContext'
 import FloatingMenu from '../components/FloatingMenu'
-import FloatingNavButton from '../components/FloatingNavButton'
 import TrackInfoModal from '../components/TrackInfoModal'
 import ArtistProfileModal from './components/ArtistProfileModal'
 import DownloadModal from './components/DownloadModal'
@@ -322,8 +321,6 @@ export default function EarnPage() {
           )}
         </div>
       </main>
-
-      <FloatingNavButton showPromptToggle={false} />
 
       {/* Modals */}
       {selectedArtist && <ArtistProfileModal artist={selectedArtist} onClose={() => setSelectedArtist(null)} />}

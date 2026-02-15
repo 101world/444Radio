@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
+import { ADMIN_CLERK_ID } from '@/lib/constants'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,6 +13,11 @@ export async function POST(request: Request) {
     const { userId: clerkUserId } = await auth()
     if (!clerkUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Admin-only guard
+    if (clerkUserId !== ADMIN_CLERK_ID) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { razorpay_customer_id, credits_to_add = 100 } = await request.json()

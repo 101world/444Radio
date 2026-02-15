@@ -35,17 +35,17 @@ export async function POST(req: NextRequest) {
     // Refund credits
     if (membership.credits_paid > 0) {
       const { data: creditsData } = await supabase
-        .from('credits')
+        .from('users')
         .select('credits')
-        .eq('user_id', userId)
+        .eq('clerk_user_id', userId)
         .single()
 
       const currentCredits = creditsData?.credits || 0
 
       const { error: creditsError } = await supabase
-        .from('credits')
+        .from('users')
         .update({ credits: currentCredits + membership.credits_paid })
-        .eq('user_id', userId)
+        .eq('clerk_user_id', userId)
 
       if (creditsError) {
         console.error('Error refunding credits:', creditsError)

@@ -52,6 +52,22 @@ interface AudioPlayerContextType {
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined)
 
+/** Shared URL resolver — CDN hosts play direct, raw R2/Replicate get proxied. */
+function computeUrl(u: string): string {
+  try {
+    if (u.startsWith('blob:') || u.startsWith('/')) return u
+    const target = new URL(u)
+    const r2CustomHosts: string[] = []
+    if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
+    if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
+    if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
+    if (r2CustomHosts.includes(target.hostname)) return u // CDN — play direct
+    const isRawR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com')
+    const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')
+    return (isRawR2 || isReplicate) ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
+  } catch { return u }
+}
+
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   console.log('🎵 AudioPlayerProvider mounted')
   const { user } = useUser()
@@ -119,14 +135,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audioRef.current.play()
         .then(() => {
           setIsPlaying(true)
+          // When the global player resumes, notify studio to pause
+          try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}
         })
         .catch(error => {
           console.error('Error resuming audio:', error)
           setIsPlaying(false)
         })
     }
-      // When the global player resumes or plays, notify studio to pause
-      try { window.dispatchEvent(new CustomEvent('audio:pause-studio')); } catch {}
   }, [])
 
   const playTrack = useCallback(async (track: Track) => {
@@ -184,35 +200,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     // setCurrentTrack(track)
     
     // Always use proxy for R2 and Replicate URLs to avoid CORS issues
-    // BUT: custom domain R2 URLs (audio.444radio.co.in etc.) are CDN-backed — play direct
-    const computeUrl = (u: string) => {
-      try {
-        // Don't proxy blob URLs or relative paths
-        if (u.startsWith('blob:') || u.startsWith('/')) {
-          return u;
-        }
-        
-        const target = new URL(u)
-        
-        // Custom domain R2 hosts are CDN-backed with CORS — play directly
-        const r2CustomHosts: string[] = []
-        if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
-        if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
-        if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
-        if (r2CustomHosts.includes(target.hostname)) {
-          return u; // CDN URL — play direct, no proxy needed
-        }
-        
-        // Raw R2 bucket URLs (.r2.dev) and Replicate delivery need proxy
-        const isRawR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com')
-        const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')
-        const needsProxy = isRawR2 || isReplicate
-        return needsProxy ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
-      } catch (err) { 
-        console.error('❌ URL computation failed:', err, 'Original URL:', u);
-        return u 
-      }
-    }
+    // Use shared computeUrl — CDN URLs play direct, raw R2/Replicate get proxied
     
     let finalUrl: string;
     try {
@@ -374,21 +362,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       preloadAudio.crossOrigin = 'anonymous'
       preloadAudio.preload = 'auto'
       
-      // Compute URL same way as playTrack
+      // Compute URL using shared computeUrl
       try {
-        const computeUrl = (u: string) => {
-          if (u.startsWith('blob:') || u.startsWith('/')) return u
-          try {
-            const target = new URL(u)
-            const r2Hosts: string[] = []
-            if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2Hosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
-            const isR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com') || r2Hosts.includes(target.hostname)
-            const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')
-            const needsProxy = isR2 || isReplicate
-            return needsProxy ? `/api/r2/proxy?url=${encodeURIComponent(u)}` : u
-          } catch { return u }
-        }
-        
         preloadAudio.src = computeUrl(nextTrack.audioUrl)
         preloadAudio.load()
         preloadAudioRef.current = preloadAudio
@@ -447,7 +422,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   // Track play count after 3 seconds
   useEffect(() => {
     if (!isPlaying || !currentTrack) {
-      playTimeRef.current = 0
+      // Don't reset playTimeRef on pause — only stop the interval.
+      // playTimeRef resets when the *track changes* (in playTrack).
       return
     }
 

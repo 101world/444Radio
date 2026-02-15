@@ -55,9 +55,9 @@ export async function POST(req: NextRequest) {
 
     // Check user credits
     const { data: creditsData } = await supabase
-      .from('credits')
+      .from('users')
       .select('credits')
-      .eq('user_id', userId)
+      .eq('clerk_user_id', userId)
       .single()
 
     const userCredits = creditsData?.credits || 0
@@ -69,9 +69,9 @@ export async function POST(req: NextRequest) {
     // Deduct credits
     if (list.price_credits > 0) {
       const { error: creditsError } = await supabase
-        .from('credits')
+        .from('users')
         .update({ credits: userCredits - list.price_credits })
-        .eq('user_id', userId)
+        .eq('clerk_user_id', userId)
 
       if (creditsError) {
         console.error('Error deducting credits:', creditsError)
@@ -95,9 +95,9 @@ export async function POST(req: NextRequest) {
       // Refund credits if join failed
       if (list.price_credits > 0) {
         await supabase
-          .from('credits')
+          .from('users')
           .update({ credits: userCredits })
-          .eq('user_id', userId)
+          .eq('clerk_user_id', userId)
       }
       return NextResponse.json({ error: 'Failed to join list' }, { status: 500 })
     }

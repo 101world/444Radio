@@ -4,8 +4,6 @@ import { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Image as ImageIcon, Video, Send, Loader2, Download, Play, Pause, Layers, Type, Tag, FileText, Sparkles, Music2, Settings, Zap, X, Rocket, User, Compass, PlusCircle, Library, Globe, Check, Mic, MicOff, Edit3, Atom, Dices, Upload, RotateCcw, Repeat, Plus, Square } from 'lucide-react'
-import CreditIndicator from '../components/CreditIndicator'
-import FloatingNavButton from '../components/FloatingNavButton'
 
 // Lazy load heavy modals for better performance
 const MusicGenerationModal = lazy(() => import('../components/MusicGenerationModal'))
@@ -1725,7 +1723,6 @@ function CreatePageContent() {
           showTopNav ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
-        <CreditIndicator />
       </div>
       
 
@@ -3562,12 +3559,6 @@ function CreatePageContent() {
           }}
         />
       </Suspense>
-
-      {/* Floating Navigation Button */}
-      <FloatingNavButton 
-        showPromptToggle={true}
-        onTogglePrompt={() => setShowBottomDock(!showBottomDock)}
-      />
 
       {/* Generation Recovery UI for stuck generations */}
       <GenerationRecovery />

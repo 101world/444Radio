@@ -2,11 +2,11 @@ import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { ADMIN_CLERK_ID } from '@/lib/constants'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const ADMIN_EMAIL = '444radioog@gmail.com'
-const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
 
 async function supabaseRest(path: string, options?: RequestInit) {
   const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
@@ -89,14 +89,28 @@ export async function POST(request: NextRequest) {
       }
     } catch { /* table may not exist yet — allow */ }
 
-    // 2. Fetch lister's credits
-    const userRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=clerk_user_id,credits`)
-    const users = await userRes.json()
-    const user = users?.[0]
-
-    if (!user || (user.credits || 0) < LISTING_FEE) {
-      return corsResponse(NextResponse.json({ error: `You need at least ${LISTING_FEE} credits to list a track` }, { status: 402 }))
+    // 2. Atomically deduct listing fee via RPC (prevents race conditions)
+    const deductRes = await supabaseRest('rpc/deduct_credits', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_clerk_user_id: userId,
+        p_amount: LISTING_FEE,
+        p_type: 'earn_list',
+        p_description: `Listed track on Earn`,
+        p_metadata: { trackId },
+      }),
+    })
+    if (!deductRes.ok) {
+      return corsResponse(NextResponse.json({ error: 'Failed to deduct listing fee' }, { status: 500 }))
     }
+    const deductRows = await deductRes.json()
+    const deductRow = deductRows?.[0]
+    if (!deductRow?.success) {
+      const msg = deductRow?.error_message || 'Insufficient credits'
+      const status = msg.includes('Insufficient') ? 402 : msg.includes('not found') ? 404 : 500
+      return corsResponse(NextResponse.json({ error: msg === 'Insufficient credits' ? `You need at least ${LISTING_FEE} credits to list a track` : msg }, { status }))
+    }
+    const newUserCredits = deductRow.new_credits
 
     // 3. Fetch admin account to credit
     let admin: any = null
@@ -123,18 +137,8 @@ export async function POST(request: NextRequest) {
       console.warn('Admin account not found — listing will still proceed but admin will not be credited')
     }
 
-    // 4. Deduct credits from lister
-    const newUserCredits = (user.credits || 0) - LISTING_FEE
-    const deductRes = await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ credits: newUserCredits }),
-    })
-
-    if (!deductRes.ok) {
-      return corsResponse(NextResponse.json({ error: 'Failed to deduct listing fee' }, { status: 500 }))
-    }
-
-    // 5. Credit admin (skip if admin account not found)
+    // 4. Credit admin (skip if admin account not found)
+    // Note: buyer deduction already done atomically above via RPC
     if (admin) {
       const newAdminCredits = (admin.credits || 0) + LISTING_FEE
       const creditAdminRes = await supabaseRest(`users?clerk_user_id=eq.${admin.clerk_user_id}`, {
@@ -143,17 +147,16 @@ export async function POST(request: NextRequest) {
       })
 
       if (!creditAdminRes.ok) {
-        // Rollback lister deduction
+        // Refund lister atomically — add credits back
         await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
           method: 'PATCH',
-          body: JSON.stringify({ credits: user.credits }),
+          body: JSON.stringify({ credits: newUserCredits + LISTING_FEE }),
         })
         return corsResponse(NextResponse.json({ error: 'Failed to credit platform — rolled back' }, { status: 500 }))
       }
     }
 
-    // 6. Log credit transactions
-    await logCreditTransaction({ userId, amount: -LISTING_FEE, balanceAfter: newUserCredits, type: 'earn_list', description: `Listed track on Earn`, metadata: { trackId } })
+    // 5. Log credit transactions (buyer already logged atomically by deduct_credits RPC)
     if (admin) {
       const newAdminCredits2 = (admin.credits || 0) + LISTING_FEE
       await logCreditTransaction({ userId: admin.clerk_user_id, amount: LISTING_FEE, balanceAfter: newAdminCredits2, type: 'earn_admin', description: `Listing fee received`, metadata: { trackId, listerId: userId } })
@@ -225,10 +228,10 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({ is_public: true }),
       })
       if (!fallbackRes.ok) {
-        // Rollback credit operations
+        // Rollback credit operations (refund listing fee)
         await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
           method: 'PATCH',
-          body: JSON.stringify({ credits: user.credits }),
+          body: JSON.stringify({ credits: newUserCredits + LISTING_FEE }),
         })
         if (admin) {
           await supabaseRest(`users?clerk_user_id=eq.${admin.clerk_user_id}`, {

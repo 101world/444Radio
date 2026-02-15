@@ -316,6 +316,7 @@ input, textarea {
 
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
+  will-change: transform;
 }
 
 .animate-fade-in {
@@ -562,21 +563,6 @@ input[placeholder*="Video"]:focus {
   scrollbar-color: #06b6d4 rgba(0, 0, 0, 0.3);
 }
 
-/* Vinyl Record Spin Animation */
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin-slow {
-  animation: spin-slow 3s linear infinite;
-  will-change: transform;
-}
-
 /* Playing Indicator Animation - More efficient than pulse */
 @keyframes playing-bar {
   0%, 100% {
@@ -639,23 +625,6 @@ input[placeholder*="Video"]:focus {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* Animated Gradient Background */
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.animate-gradient {
-  animation: gradient 8s ease infinite;
 }
 
 /* Cyan Slider Styling */

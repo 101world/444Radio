@@ -38,47 +38,21 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Check and deduct 0.5 credits
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('credits')
-      .eq('clerk_user_id', userId)
-      .single();
-
-    if (userError || !userData) {
-      return corsResponse(
-        NextResponse.json({ error: 'User not found' }, { status: 404 })
-      );
-    }
-
-    if ((userData.credits || 0) < 0.5) {
-      return corsResponse(
-        NextResponse.json({ error: 'Insufficient credits (need 0.5)' }, { status: 402 })
-      );
-    }
-
-    // Deduct credits
-    const { error: deductError } = await supabase
-      .from('users')
-      .update({ credits: (userData.credits || 0) - 0.5, updated_at: new Date().toISOString() })
-      .eq('clerk_user_id', userId);
-
-    if (deductError) {
-      return corsResponse(
-        NextResponse.json({ error: 'Credit deduction failed' }, { status: 500 })
-      );
-    }
-
-    // Log the credit deduction
-    await logCreditTransaction({
-      userId,
-      amount: -0.5,
-      balanceAfter: (userData.credits || 0) - 0.5,
-      type: 'generation_audio_boost',
-      status: 'success',
-      description: 'Studio auto-tune processing',
-      metadata: { generation_type: 'autotune', scale },
+    // Deduct credits atomically (1 credit for autotune)
+    const { data: deductResult, error: deductErr } = await supabase.rpc('deduct_credits', {
+      p_clerk_user_id: userId,
+      p_amount: 1,
+      p_type: 'generation_audio_boost',
+      p_description: 'Studio auto-tune processing',
+      p_metadata: { generation_type: 'autotune', scale }
     });
+
+    const deductRow = deductResult?.[0] || deductResult;
+    if (deductErr || !deductRow?.success) {
+      return corsResponse(
+        NextResponse.json({ error: deductRow?.error_message || 'Insufficient credits' }, { status: 402 })
+      );
+    }
 
     // Initialize Replicate
     const replicate = new Replicate({
@@ -105,7 +79,7 @@ export async function POST(request: Request) {
         // Refund credits on timeout
         await supabase
           .from('users')
-          .update({ credits: (userData.credits || 0) })
+          .update({ credits: (deductRow.new_credits || 0) + 1 })
           .eq('clerk_user_id', userId);
         
         return corsResponse(
@@ -121,7 +95,7 @@ export async function POST(request: Request) {
       // Refund credits on failure
       await supabase
         .from('users')
-        .update({ credits: (userData.credits || 0) })
+        .update({ credits: (deductRow.new_credits || 0) + 1 })
         .eq('clerk_user_id', userId);
       
       return corsResponse(
@@ -140,7 +114,7 @@ export async function POST(request: Request) {
       // Refund on missing output
       await supabase
         .from('users')
-        .update({ credits: (userData.credits || 0) })
+        .update({ credits: (deductRow.new_credits || 0) + 1 })
         .eq('clerk_user_id', userId);
       
       return corsResponse(
@@ -154,7 +128,7 @@ export async function POST(request: Request) {
       NextResponse.json({
         success: true,
         audioUrl: outputUrl,
-        remainingCredits: (userData.credits || 0) - 0.5,
+        remainingCredits: deductRow.new_credits,
         metadata: { scale, outputFormat, predictionId: result.id }
       })
     );

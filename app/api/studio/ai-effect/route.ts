@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { logCreditTransaction } from '@/lib/credit-transactions';
 
 export async function OPTIONS() {
@@ -31,22 +31,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check user credits (0.5 per generation)
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('credits, total_generated')
-      .eq('clerk_user_id', userId)
-      .single();
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-    if (userError || !userData) {
-      return corsResponse(
-        NextResponse.json({ error: 'User not found' }, { status: 404 })
-      );
-    }
+    // Deduct credits atomically BEFORE generation (0.5 credits)
+    const { data: deductResult, error: deductErr } = await supabaseAdmin.rpc('deduct_credits', {
+      p_clerk_user_id: userId,
+      p_amount: 1, // RPC uses integer — we use 1 as minimum unit
+      p_type: 'generation_effects',
+      p_description: `AI effect generation: ${prompt?.slice(0, 50)}`,
+      p_metadata: { generation_type: 'ai-effect', prompt: prompt?.slice(0, 100), trackId, trackName }
+    });
 
-    if (userData.credits < 0.5) {
+    const row = deductResult?.[0] || deductResult;
+    if (deductErr || !row?.success) {
       return corsResponse(
-        NextResponse.json({ error: 'Insufficient credits (0.5 required)' }, { status: 403 })
+        NextResponse.json({ error: row?.error_message || 'Insufficient credits' }, { status: 402 })
       );
     }
 
@@ -85,32 +87,8 @@ export async function POST(request: Request) {
       throw new Error('No output from stable-audio model');
     }
 
-    // Deduct credits
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ 
-        credits: userData.credits - 0.5,
-        total_generated: (userData.total_generated || 0) + 1
-      })
-      .eq('clerk_user_id', userId);
-
-    if (updateError) {
-      console.error('Failed to deduct credits:', updateError);
-    } else {
-      // Log the credit deduction
-      await logCreditTransaction({
-        userId,
-        amount: -0.5,
-        balanceAfter: userData.credits - 0.5,
-        type: 'generation_effects',
-        status: 'success',
-        description: `AI effect generation: ${prompt?.slice(0, 50)}`,
-        metadata: { generation_type: 'ai-effect', prompt: prompt?.slice(0, 100), trackId, trackName },
-      });
-    }
-
     // Save effect to combined_media table for library access
-    const { data: savedEffect, error: saveError } = await supabase
+    const { data: savedEffect, error: saveError } = await supabaseAdmin
       .from('combined_media')
       .insert({
         user_id: userId,
@@ -140,7 +118,7 @@ export async function POST(request: Request) {
         audioUrl: output,
         effectId: savedEffect?.id,
         message: 'AI effect generated and saved to library',
-        creditsRemaining: userData.credits - 0.5,
+        creditsRemaining: row.new_credits,
       })
     );
 

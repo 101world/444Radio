@@ -79,47 +79,24 @@ export async function POST(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // 1. Check and charge credits
+    // 1. Check and charge credits atomically
     if (cost > 0) {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('credits')
-        .eq('clerk_user_id', userId)
-        .single()
+      const { data: deductResult, error: deductErr } = await supabase.rpc('deduct_credits', {
+        p_clerk_user_id: userId,
+        p_amount: cost,
+        p_type: generationType === 'create-song' || generationType === 'create-beat' ? 'generation_music' : generationType === 'stem-split' ? 'generation_stem_split' : generationType === 'auto-tune' ? 'generation_audio_boost' : 'generation_effects',
+        p_description: `Studio ${generationType} generation`,
+        p_metadata: { generation_type: generationType, prompt: params.prompt?.slice(0, 100) }
+      })
 
-      if (userError || !userData) {
-        return corsResponse(NextResponse.json({ error: 'User not found' }, { status: 404 }))
-      }
-
-      if (userData.credits < cost) {
+      const row = deductResult?.[0] || deductResult
+      if (deductErr || !row?.success) {
         return corsResponse(NextResponse.json({ 
-          error: 'Insufficient credits',
+          error: row?.error_message || 'Insufficient credits',
           required: cost,
-          available: userData.credits
+          available: row?.new_credits ?? 0
         }, { status: 402 }))
       }
-
-      // Deduct credits
-      const { error: deductError } = await supabase
-        .from('users')
-        .update({ credits: userData.credits - cost })
-        .eq('clerk_user_id', userId)
-
-      if (deductError) {
-        console.error('Failed to deduct credits:', deductError)
-        return corsResponse(NextResponse.json({ error: 'Failed to charge credits' }, { status: 500 }))
-      }
-
-      // Log the credit deduction
-      await logCreditTransaction({
-        userId,
-        amount: -cost,
-        balanceAfter: userData.credits - cost,
-        type: generationType === 'create-song' || generationType === 'create-beat' ? 'generation_music' : generationType === 'stem-split' ? 'generation_stem_split' : generationType === 'auto-tune' ? 'generation_audio_boost' : 'generation_effects',
-        status: 'success',
-        description: `Studio ${generationType} generation`,
-        metadata: { generation_type: generationType, prompt: params.prompt?.slice(0, 100) },
-      })
 
       console.log(`💰 Charged ${cost} credits for ${generationType} (user: ${userId})`)
     }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { logOwnershipEvent, recordDownloadLineage } from '@/lib/ownership-engine'
+import { ADMIN_CLERK_ID } from '@/lib/constants'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -96,32 +97,43 @@ export async function POST(request: NextRequest) {
     const stemsCost = splitStems ? 5 : 0
     const totalCost = baseCost + stemsCost
 
-    if ((buyer.credits || 0) < totalCost) {
-      return corsResponse(NextResponse.json({ error: 'Insufficient credits' }, { status: 402 }))
+    // 5. Atomically deduct credits from buyer via RPC (prevents race conditions)
+    const deductRes = await supabaseRest('rpc/deduct_credits', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_clerk_user_id: userId,
+        p_amount: totalCost,
+        p_type: 'earn_purchase',
+        p_description: `Purchased: ${track.title}`,
+        p_metadata: { trackId, splitStems },
+      }),
+    })
+    if (!deductRes.ok) {
+      return corsResponse(NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 }))
     }
+    const deductRows = await deductRes.json()
+    const deductRow = deductRows?.[0]
+    if (!deductRow?.success) {
+      const msg = deductRow?.error_message || 'Insufficient credits'
+      return corsResponse(NextResponse.json({ error: msg === 'Insufficient credits' ? 'Insufficient credits' : msg }, { status: msg.includes('Insufficient') ? 402 : 500 }))
+    }
+    const newBuyerCredits = deductRow.new_credits
 
-    // 5. Fetch artist's credits + username
+    // 6. Fetch artist's credits + username
     const artistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}&select=clerk_user_id,credits,username`)
     const artists = await artistRes.json()
     const artist = artists?.[0]
 
     if (!artist) {
+      // Refund buyer — add credits back
+      await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ credits: newBuyerCredits + totalCost }),
+      })
       return corsResponse(NextResponse.json({ error: 'Artist account not found' }, { status: 500 }))
     }
 
-    // 6. Deduct credits from buyer
-    const newBuyerCredits = (buyer.credits || 0) - totalCost
-    const deductRes = await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ credits: newBuyerCredits }),
-    })
-
-    if (!deductRes.ok) {
-      return corsResponse(NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 }))
-    }
-
     // 7. Credit artist (1 credit) and admin/444 Radio (4 credits)
-    const ADMIN_CLERK_ID = process.env.ADMIN_CLERK_ID || 'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB'
     const newArtistCredits = (artist.credits || 0) + artistShare
     const creditArtistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}`, {
       method: 'PATCH',
@@ -129,10 +141,10 @@ export async function POST(request: NextRequest) {
     })
 
     if (!creditArtistRes.ok) {
-      // Rollback buyer deduction
+      // Rollback buyer deduction — add credits back
       await supabaseRest(`users?clerk_user_id=eq.${userId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ credits: buyer.credits }),
+        body: JSON.stringify({ credits: newBuyerCredits + totalCost }),
       })
       return corsResponse(NextResponse.json({ error: 'Failed to credit artist — rolled back' }, { status: 500 }))
     }
@@ -238,8 +250,7 @@ export async function POST(request: NextRequest) {
       console.error('earn_purchases network error:', e)
     }
 
-    // 9b. Log credit transactions for buyer and seller
-    await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}`, metadata: { trackId, splitStems, sellerUsername: artist?.username || 'Unknown' } })
+    // 9b. Log credit transactions (buyer already logged atomically by deduct_credits RPC)
     await logCreditTransaction({ userId: track.user_id, amount: artistShare, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId, buyerUsername: buyer?.username || 'Unknown' } })
 
     // 9c. Log 444 ownership lineage for the purchase
