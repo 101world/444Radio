@@ -2229,15 +2229,20 @@ export default function PluginPage() {
                       <button
                         draggable
                         onDragStart={(e) => {
-                          const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(msg.result!.audioUrl!)}`
+                          const safeName = (msg.result!.title || 'AI_Track').replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_')
+                          const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(msg.result!.audioUrl!)}&filename=${encodeURIComponent(safeName + '.wav')}`
+                          // DownloadURL tells Chromium/WebView to download to temp file and hand to drop target as real file
+                          e.dataTransfer.setData('DownloadURL', `audio/wav:${safeName}.wav:${proxyUrl}`)
                           e.dataTransfer.setData('text/uri-list', proxyUrl)
                           e.dataTransfer.setData('text/plain', proxyUrl)
                           e.dataTransfer.effectAllowed = 'copy'
+                          // Notify JUCE bridge so native side can handle the drag
+                          sendBridgeMessage({ action: 'drag_start', url: proxyUrl, title: safeName, format: 'wav' })
                         }}
                         onClick={() => importWavToDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
                         disabled={dawImporting !== null}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold cursor-grab active:cursor-grabbing disabled:opacity-50"
-                        title="Click to convert to WAV and import to DAW">
+                        title="Drag to DAW timeline or click to import">
                         {dawImporting ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />} Import to DAW
                       </button>
                       {/* Audio Boost */}
@@ -2325,13 +2330,16 @@ export default function PluginPage() {
                           <button
                             draggable
                             onDragStart={(e) => {
-                              const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(url as string)}`
+                              const stemName = display.label.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_')
+                              const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(url as string)}&filename=${encodeURIComponent(stemName + '_Stem.wav')}`
+                              // DownloadURL tells Chromium/WebView to download to temp file and hand to drop target as real file
+                              e.dataTransfer.setData('DownloadURL', `audio/wav:${stemName}_Stem.wav:${proxyUrl}`)
                               e.dataTransfer.setData('text/uri-list', proxyUrl)
                               e.dataTransfer.setData('text/plain', proxyUrl)
                               e.dataTransfer.setData('application/x-444radio-stem', JSON.stringify({ url: proxyUrl, name: display.label, format: 'wav' }))
                               e.dataTransfer.effectAllowed = 'copy'
                               // Notify JUCE bridge about drag start
-                              sendBridgeMessage({ action: 'drag_start', url: proxyUrl, title: `${display.label} Stem`, format: 'wav' })
+                              sendBridgeMessage({ action: 'drag_start', url: proxyUrl, title: `${stemName} Stem`, format: 'wav' })
                             }}
                             onClick={() => importWavToDAW(url as string, `${display.label} Stem`)}
                             disabled={dawImporting !== null}

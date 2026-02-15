@@ -82,6 +82,13 @@ export async function GET(request: NextRequest) {
       'Access-Control-Allow-Headers': 'Content-Type, Range',
       'Cache-Control': 'public, max-age=31536000'
     }
+
+    // If a filename is requested (for DAW drag-and-drop), set Content-Disposition
+    const filename = searchParams.get('filename')
+    if (filename) {
+      headers['Content-Disposition'] = `attachment; filename="${filename}"`
+    }
+
     const contentType = resp.headers.get('content-type')
     const contentLength = resp.headers.get('content-length')
     const acceptRanges = resp.headers.get('accept-ranges')
