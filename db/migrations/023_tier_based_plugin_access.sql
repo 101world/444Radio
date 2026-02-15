@@ -1,5 +1,5 @@
 -- Migration 023: Tier-based plugin access control
--- 
+--
 -- NEW RULES:
 --   Studio (active)   → Unlimited requests/day
 --   Pro (active)      → 200 requests/day
@@ -12,7 +12,7 @@
 -- Returns an extra column: access_tier TEXT
 --   'studio' | 'pro' | 'purchased' | 'denied_inactive' | 'denied_no_purchase'
 
--- Must DROP first because return type changed (added access_tier column)
+-- Drop the old function first (return type changed — CREATE OR REPLACE can't handle that)
 DROP FUNCTION IF EXISTS validate_plugin_token(text);
 
 CREATE OR REPLACE FUNCTION validate_plugin_token(p_token TEXT)

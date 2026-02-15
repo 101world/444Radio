@@ -96,6 +96,61 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   return new Blob([arrayBuffer], { type: 'audio/wav' })
 }
 
+// ─── File System: save to Documents/444Radio/Generations ────────
+const FS_DB = '444radio_fs'
+const FS_STORE = 'handles'
+const FS_KEY = 'genDir'
+
+function openFsDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(FS_DB, 1)
+    req.onupgradeneeded = () => req.result.createObjectStore(FS_STORE)
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function getStoredDir(): Promise<FileSystemDirectoryHandle | null> {
+  try {
+    const db = await openFsDb()
+    return new Promise((resolve) => {
+      const tx = db.transaction(FS_STORE, 'readonly')
+      const req = tx.objectStore(FS_STORE).get(FS_KEY)
+      req.onsuccess = () => resolve(req.result ?? null)
+      req.onerror = () => resolve(null)
+    })
+  } catch { return null }
+}
+
+async function storeDir(handle: FileSystemDirectoryHandle): Promise<void> {
+  const db = await openFsDb()
+  const tx = db.transaction(FS_STORE, 'readwrite')
+  tx.objectStore(FS_STORE).put(handle, FS_KEY)
+}
+
+async function getGenerationsDir(): Promise<FileSystemDirectoryHandle> {
+  // Try persisted handle first
+  const stored = await getStoredDir()
+  if (stored) {
+    try {
+      const perm = await (stored as any).queryPermission({ mode: 'readwrite' })
+      if (perm === 'granted') return stored
+      const req = await (stored as any).requestPermission({ mode: 'readwrite' })
+      if (req === 'granted') return stored
+    } catch { /* handle expired, re-pick */ }
+  }
+  // First time: user picks Documents folder → we create 444Radio/Generations inside
+  const picked: FileSystemDirectoryHandle = await (window as any).showDirectoryPicker({
+    id: '444radio-gen',
+    startIn: 'documents',
+    mode: 'readwrite',
+  })
+  const radioDir = await picked.getDirectoryHandle('444Radio', { create: true })
+  const genDir = await radioDir.getDirectoryHandle('Generations', { create: true })
+  await storeDir(genDir)
+  return genDir
+}
+
 // ─── Quick Tags (same as create page sidebar) ──────────────────
 const QUICK_TAGS = [
   'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
@@ -566,14 +621,13 @@ export default function PluginPage() {
     sendBridgeMessage({ action: 'drag_start', url: proxyUrl, title: safeName, format: 'mp3' })
   }
 
-  // ═══ DAW Import: fetch R2 → WAV → auto-download → draggable banner ═══
+  // ═══ DAW Import: fetch R2 → WAV → save to Documents/444Radio/Generations → draggable toast ═══
   const [dawImporting, setDawImporting] = useState<string | null>(null)
   const [dawReadyFile, setDawReadyFile] = useState<{ name: string; blobUrl: string } | null>(null)
 
   const importToDAW = async (sourceUrl: string, title: string) => {
     if (dawImporting) return
-    const importId = `${sourceUrl}-${title}`
-    setDawImporting(importId)
+    setDawImporting(`${sourceUrl}-${title}`)
     setDawReadyFile(null)
     try {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
@@ -587,8 +641,8 @@ export default function PluginPage() {
         return
       }
 
-      // Browser: fetch from R2 via proxy (CORS) → decode → WAV
-      showBridgeToast(`⏳ Preparing ${wavName}...`)
+      // Browser: fetch R2 → decode → WAV → save to Documents/444Radio/Generations/
+      showBridgeToast(`⏳ Converting to WAV...`)
       const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
       const res = await fetch(proxyUrl)
       if (!res.ok) {
@@ -599,21 +653,25 @@ export default function PluginPage() {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       const wavBlob = audioBufferToWav(audioBuffer)
-      const wavBlobUrl = URL.createObjectURL(wavBlob)
 
-      // Auto-download the WAV
-      const link = document.createElement('a')
-      link.href = wavBlobUrl
-      link.download = wavName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      // Save WAV to Documents/444Radio/Generations/ (first time prompts folder picker)
+      const dir = await getGenerationsDir()
+      const fileHandle = await dir.getFileHandle(wavName, { create: true })
+      const writable = await fileHandle.createWritable()
+      await writable.write(wavBlob)
+      await writable.close()
 
-      // Show draggable banner — user drags from here to DAW timeline
-      setDawReadyFile({ name: wavName, blobUrl: wavBlobUrl })
+      // Read the real file back from disk → blob URL for draggable toast
+      const savedFile = await fileHandle.getFile()
+      const blobUrl = URL.createObjectURL(savedFile)
+      setDawReadyFile({ name: wavName, blobUrl })
     } catch (err: any) {
       console.error('DAW import error:', err)
-      showBridgeToast(`❌ ${err.message || 'Could not convert to WAV'}`)
+      if (err?.name === 'AbortError') {
+        showBridgeToast('📁 Pick your Documents folder to save generations')
+      } else {
+        showBridgeToast(`❌ ${err.message || 'Could not save WAV'}`)
+      }
     } finally {
       setDawImporting(null)
     }
@@ -1863,7 +1921,7 @@ export default function PluginPage() {
   return (
     <div className={`h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
 
-      {/* DAW drag banner — appears after WAV is ready, user drags from here to DAW */}
+      {/* DAW drag toast — WAV saved to disk, drag this to DAW timeline */}
       {dawReadyFile && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 pl-4 pr-2 py-2.5 rounded-2xl select-none"
           style={{
@@ -1873,7 +1931,6 @@ export default function PluginPage() {
             boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(6,182,212,0.15)',
             animation: 'fadeIn 0.2s ease-out',
           }}>
-          {/* Draggable file chip */}
           <div
             draggable
             onDragStart={(e) => {
@@ -1886,9 +1943,8 @@ export default function PluginPage() {
           >
             <Music size={14} className="text-cyan-400 shrink-0" />
             <span className="text-xs font-bold text-white truncate max-w-[180px]">{dawReadyFile.name}</span>
-            <ArrowDownToLine size={12} className="text-cyan-400/60 shrink-0" />
           </div>
-          <span className="text-[10px] text-cyan-300/80 whitespace-nowrap">← drag to timeline</span>
+          <span className="text-[10px] text-cyan-300/80 whitespace-nowrap">← drag to DAW timeline</span>
           <button onClick={dismissDawFile} className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0">
             <X size={14} className="text-gray-400" />
           </button>
