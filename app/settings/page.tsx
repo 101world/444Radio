@@ -5,6 +5,7 @@ import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info, Plug, Copy, Trash2, Eye, EyeOff, Key, Download, X, Monitor, HardDrive, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
+import Script from 'next/script'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
 import { useCredits } from '../contexts/CreditsContext'
 
@@ -69,6 +70,9 @@ function SettingsPageInner() {
   const [copiedToken, setCopiedToken] = useState(false)
   const [pluginError, setPluginError] = useState('')
   const [showInstallGuide, setShowInstallGuide] = useState(false)
+  const [hasPluginPurchase, setHasPluginPurchase] = useState(false)
+  const [isCheckingPurchase, setIsCheckingPurchase] = useState(false)
+  const [buyingPlugin, setBuyingPlugin] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -263,9 +267,25 @@ function SettingsPageInner() {
     }
   }, [])
 
+  const checkPluginPurchase = useCallback(async () => {
+    try {
+      setIsCheckingPurchase(true)
+      const res = await fetch('/api/plugin/purchase/status')
+      const data = await res.json()
+      if (data.purchased) setHasPluginPurchase(true)
+    } catch {
+      // Ignore — will just show buy option
+    } finally {
+      setIsCheckingPurchase(false)
+    }
+  }, [])
+
   useEffect(() => {
-    if (activeTab === 'plugin' && user) fetchPluginTokens()
-  }, [activeTab, user, fetchPluginTokens])
+    if (activeTab === 'plugin' && user) {
+      fetchPluginTokens()
+      checkPluginPurchase()
+    }
+  }, [activeTab, user, fetchPluginTokens, checkPluginPurchase])
 
   const createPluginToken = async () => {
     try {
@@ -979,13 +999,106 @@ function SettingsPageInner() {
                     View install instructions
                   </button>
                 </div>
-              ) : (
+              ) : hasPluginPurchase ? (
+                /* User bought plugin for $25 — show download */
                 <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs text-emerald-300">Plugin purchased — unlimited access</span>
+                  </div>
+                  <a
+                    href="/api/plugin/download-installer"
+                    onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Plugin v2
+                  </a>
+                  <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
+                  <button
+                    onClick={() => setShowInstallGuide(true)}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                  >
+                    View install instructions
+                  </button>
+                </div>
+              ) : (
+                /* No subscription, no purchase — show both options */
+                <div className="space-y-4">
+                  {/* Option 1: Buy for $25 */}
+                  <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-bold text-white">One-Time Purchase</p>
+                        <p className="text-xs text-gray-400">Unlimited plugin access forever</p>
+                      </div>
+                      <span className="text-2xl font-black text-white">$25</span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (buyingPlugin) return
+                        setBuyingPlugin(true)
+                        try {
+                          const orderRes = await fetch('/api/plugin/purchase/create-order', { method: 'POST' })
+                          const orderData = await orderRes.json()
+                          if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order')
+
+                          const rzp = new (window as any).Razorpay({
+                            key: orderData.razorpay_key_id,
+                            amount: orderData.amount,
+                            currency: orderData.currency,
+                            name: '444 Radio',
+                            description: 'VST3 Plugin — Unlimited Access',
+                            order_id: orderData.order_id,
+                            prefill: {
+                              email: orderData.customer_email,
+                              name: orderData.customer_name,
+                            },
+                            handler: async (response: any) => {
+                              const verifyRes = await fetch('/api/plugin/purchase/verify', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  razorpay_order_id: response.razorpay_order_id,
+                                  razorpay_payment_id: response.razorpay_payment_id,
+                                  razorpay_signature: response.razorpay_signature,
+                                }),
+                              })
+                              if (verifyRes.ok) {
+                                setHasPluginPurchase(true)
+                                setBuyingPlugin(false)
+                              }
+                            },
+                            modal: { ondismiss: () => setBuyingPlugin(false) },
+                            theme: { color: '#06b6d4' },
+                          })
+                          rzp.open()
+                        } catch (err: any) {
+                          setPluginError(err.message || 'Purchase failed')
+                          setBuyingPlugin(false)
+                        }
+                      }}
+                      disabled={buyingPlugin}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                    >
+                      {buyingPlugin ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                      {buyingPlugin ? 'Processing...' : 'Buy Plugin — $25'}
+                    </button>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-px bg-white/10" />
+                    <span className="text-xs text-gray-500">or</span>
+                    <div className="flex-1 h-px bg-white/10" />
+                  </div>
+
+                  {/* Option 2: Subscribe */}
                   <div className="flex items-center gap-3 px-4 py-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
                     <Crown className="w-5 h-5 text-purple-400 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-white">Subscriber Exclusive</p>
-                      <p className="text-xs text-gray-400">Subscribe to 444 Radio to download the plugin for free</p>
+                      <p className="text-sm font-medium text-white">Pro / Studio Subscribers</p>
+                      <p className="text-xs text-gray-400">Get the plugin free with any subscription</p>
                     </div>
                   </div>
                   <Link
@@ -1166,6 +1279,9 @@ function SettingsPageInner() {
           }}
         />
       )}
+
+      {/* Razorpay SDK for $25 plugin purchase */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
     </main>
   )
 }
