@@ -12,6 +12,9 @@
 -- Returns an extra column: access_tier TEXT
 --   'studio' | 'pro' | 'purchased' | 'denied_inactive' | 'denied_no_purchase'
 
+-- Must DROP first because return type changed (added access_tier column)
+DROP FUNCTION IF EXISTS validate_plugin_token(text);
+
 CREATE OR REPLACE FUNCTION validate_plugin_token(p_token TEXT)
 RETURNS TABLE (
   user_id       TEXT,

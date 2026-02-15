@@ -26,6 +26,9 @@ export async function GET(request: NextRequest) {
     // Allow Replicate delivery URLs (for AI-generated content)
     const isReplicate = parsed.hostname.includes('replicate.delivery') || parsed.hostname.includes('replicate.com')
     
+    // Allow the media CDN domain directly (covers all R2 content)
+    const isMediaDomain = parsed.hostname === 'media.444radio.co.in'
+    
     const allowedHosts = [
       process.env.NEXT_PUBLIC_R2_AUDIO_URL,
       process.env.NEXT_PUBLIC_R2_IMAGES_URL,
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    if (!isR2Domain && !isConfiguredHost && !isReplicate) {
+    if (!isR2Domain && !isConfiguredHost && !isReplicate && !isMediaDomain) {
       console.error('Proxy blocked - not allowed:', parsed.hostname)
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
     }
