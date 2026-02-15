@@ -594,14 +594,12 @@ export default function PluginPage() {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
       const fileName = `${safeName}.${format}`
 
-      // Inside JUCE plugin → send direct R2 URL to C++ (native HTTP, no CORS)
+      // Inside JUCE plugin → also tell C++ bridge so it can download natively
       if (isInDAW) {
         sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format })
-        showBridgeToast(`✅ Saving ${fileName} — drag from bar below ↓`)
-        return
       }
 
-      // Browser context:
+      // Create draggable toast blob (works in both browser & WebView2):
       if (format === 'wav') {
         // Convert to WAV
         showBridgeToast(`⏳ Converting to WAV...`)
