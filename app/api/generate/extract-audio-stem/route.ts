@@ -81,6 +81,20 @@ export async function POST(request: Request) {
       }, { status: 402 })
     }
 
+    // ✅ DEDUCT credit atomically BEFORE generation (blocks if wallet < $1)
+    const { data: deductResultRaw } = await supabase
+      .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: EXTRACT_COST })
+      .single()
+    const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
+    if (!deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -EXTRACT_COST, type: 'generation_extract', status: 'failed', description: `Extract ${stem}: ${trackTitle}`, metadata: { stem } })
+      return NextResponse.json({ error: errorMsg }, { status: 402 })
+    }
+    console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -EXTRACT_COST, balanceAfter: deductResult.new_credits, type: 'generation_extract', description: `Extract ${stem}: ${trackTitle}`, metadata: { stem } })
+
     // Stream response for progress updates
     const encoder = new TextEncoder()
     const stream = new TransformStream()
@@ -254,21 +268,6 @@ export async function POST(request: Request) {
           }
         }
 
-        // Deduct credits
-        const { data: deductResultRaw } = await supabase
-          .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: EXTRACT_COST })
-          .single()
-
-        const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
-
-        if (!deductResult?.success) {
-          console.error('⚠️ Failed to deduct credits')
-          await logCreditTransaction({ userId, amount: -EXTRACT_COST, type: 'generation_extract', status: 'failed', description: `Extract ${stem}: ${trackTitle}`, metadata: { stem, stems: Object.keys(permanentStems) } })
-        } else {
-          console.log('✅ Credits deducted successfully')
-          await logCreditTransaction({ userId, amount: -EXTRACT_COST, balanceAfter: deductResult.new_credits, type: 'generation_extract', description: `Extract ${stem}: ${trackTitle}`, metadata: { stem, stems: Object.keys(permanentStems), libraryIds: savedLibraryIds } })
-        }
-
         await sendLine({
           type: 'result',
           success: true,
@@ -277,7 +276,7 @@ export async function POST(request: Request) {
           libraryIds: savedLibraryIds,
           title: `${trackTitle} — ${stem.charAt(0).toUpperCase() + stem.slice(1)} Extract`,
           creditsUsed: EXTRACT_COST,
-          creditsRemaining: deductResult?.new_credits ?? (userData.credits - EXTRACT_COST),
+          creditsRemaining: deductResult.new_credits,
           extractType: 'audio-to-audio',
         })
         await writer.close()

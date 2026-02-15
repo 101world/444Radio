@@ -86,6 +86,33 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Audio Boost requires ${BOOST_COST} credit.`)
 
+    // ✅ DEDUCT credit atomically BEFORE generation (blocks if wallet < $1)
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: BOOST_COST })
+      }
+    )
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+    }
+    if (!deductRes.ok || !deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -BOOST_COST, type: 'generation_audio_boost', status: 'failed', description: `Audio Boost`, metadata: { bass_boost, treble_boost, volume_boost } })
+      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+    }
+    console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -BOOST_COST, balanceAfter: deductResult.new_credits, type: 'generation_audio_boost', description: `Audio Boost`, metadata: { bass_boost, treble_boost, volume_boost, bitrate, output_format } })
+
     // Generate boosted audio using lucataco/audio-boost via raw HTTP API
     console.log('🔊 Processing audio with Audio Boost...')
 
@@ -259,39 +286,6 @@ export async function POST(req: NextRequest) {
         console.error('❌ Library save exception:', librarySaveError)
       }
 
-      // Deduct credits using atomic function
-      console.log(`💰 Deducting ${BOOST_COST} credit from user atomically (${user.credits} → ${user.credits - BOOST_COST})`)
-      const creditDeductRes = await fetch(
-        `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`
-          },
-          body: JSON.stringify({
-            p_clerk_user_id: userId,
-            p_amount: BOOST_COST,
-            p_type: 'generation_audio_boost',
-            p_description: 'Audio Boost',
-          })
-        }
-      )
-
-      let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
-      if (creditDeductRes.ok) {
-        const raw = await creditDeductRes.json()
-        deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
-      }
-      if (!creditDeductRes.ok || !deductResult?.success) {
-        console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || creditDeductRes.statusText)
-        await logCreditTransaction({ userId, amount: -BOOST_COST, type: 'generation_audio_boost', status: 'failed', description: `Audio Boost`, metadata: { bass_boost, treble_boost, volume_boost } })
-      } else {
-        console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-        await logCreditTransaction({ userId, amount: -BOOST_COST, balanceAfter: deductResult.new_credits, type: 'generation_audio_boost', description: `Audio Boost`, metadata: { bass_boost, treble_boost, volume_boost, bitrate, output_format } })
-      }
-
       // Final boost log update — succeeded with all details
       if (boostLogId) {
         await updateBoostLog(boostLogId, {
@@ -300,7 +294,7 @@ export async function POST(req: NextRequest) {
           outputAudioUrl: outputR2Result.url,
           libraryId: libraryId ?? undefined,
           creditsCharged: BOOST_COST,
-          creditsRemaining: deductResult?.new_credits ?? undefined,
+          creditsRemaining: deductResult!.new_credits,
           replicatePredictTime: prediction.metrics?.predict_time ?? undefined,
           replicateTotalTime: prediction.metrics?.total_time ?? undefined,
         })
@@ -312,7 +306,7 @@ export async function POST(req: NextRequest) {
         success: true,
         audioUrl: outputR2Result.url,
         settings: { bass_boost, treble_boost, volume_boost, normalize, noise_reduction, output_format, bitrate },
-        creditsRemaining: deductResult?.new_credits ?? (user.credits - BOOST_COST),
+        creditsRemaining: deductResult!.new_credits,
         creditsUsed: BOOST_COST,
         libraryId,
         librarySaveError,

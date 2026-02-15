@@ -241,6 +241,30 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${userCredits} credits. Music requires 2 credits.`)
 
+    // ✅ DEDUCT 2 CREDITS atomically BEFORE generation (blocks if wallet < $1)
+    const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 2 })
+    })
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+    }
+    if (!deductRes.ok || !deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -2, type: 'generation_music', status: 'failed', description: `Music: ${title}`, metadata: { prompt, genre } })
+      return NextResponse.json({ error: errorMsg }, { status: 402 })
+    }
+    console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Music: ${title}`, metadata: { prompt, genre } })
+
     // Generate music with MiniMax Music-1.5 (all languages)
     // Use NDJSON streaming so the client gets the prediction ID immediately for cancellation
     console.log('🎵 Using MiniMax Music-1.5 ...')
@@ -293,7 +317,7 @@ export async function POST(req: NextRequest) {
             console.log('⏹ Client disconnected, cancelling prediction:', prediction.id)
             try { await replicate.predictions.cancel(prediction.id) } catch {}
             await logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Cancelled: ${title}`, metadata: { prompt, genre, reason: 'client_disconnected' } })
-            await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: userCredits }).catch(() => {})
+            await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits }).catch(() => {})
             await writer.close().catch(() => {})
             return
           }
@@ -305,7 +329,7 @@ export async function POST(req: NextRequest) {
         if (finalPrediction.status === 'canceled') {
           console.log('⏹ Prediction cancelled by user:', prediction.id)
           await logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Cancelled: ${title}`, metadata: { prompt, genre, reason: 'user_cancelled' } })
-          await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: userCredits })
+          await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits })
           await writer.close()
           return
         }
@@ -314,7 +338,7 @@ export async function POST(req: NextRequest) {
           const errMsg = finalPrediction.error || `Generation ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
           console.error('❌ Prediction did not succeed:', errMsg)
           await logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Failed: ${title}`, metadata: { prompt, genre, error: String(errMsg).substring(0, 200) } })
-          await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: userCredits })
+          await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: deductResult!.new_credits })
           await writer.close()
           return
         }
@@ -382,33 +406,6 @@ export async function POST(req: NextRequest) {
           console.error('❌ Failed to save to music_library:', saveResponse.status)
         }
 
-        // Deduct credits (-2 for music)
-        console.log(`💰 Deducting 2 credits...`)
-        const deductRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 2 })
-        })
-
-        // Supabase RPC returns an array of rows for RETURNS TABLE functions
-        let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
-        if (deductRes.ok) {
-          const raw = await deductRes.json()
-          deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
-        }
-
-        if (!deductRes.ok || !deductResult?.success) {
-          console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || deductRes.statusText)
-          await logCreditTransaction({ userId, amount: -2, type: 'generation_music', status: 'failed', description: `Music: ${title}`, metadata: { prompt, genre } })
-        } else {
-          console.log(`💰 Credits deducted. Remaining: ${deductResult.new_credits}`)
-          await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_music', description: `Music: ${title}`, metadata: { prompt, genre } })
-        }
-
         // Record 444 Radio lyrics usage
         if (used444Radio) {
           const today = new Date().toISOString().split('T')[0]
@@ -433,12 +430,12 @@ export async function POST(req: NextRequest) {
           title,
           lyrics: formattedLyrics,
           libraryId: savedMusic?.id || null,
-          creditsRemaining: deductResult?.new_credits ?? (userCredits - 2),
+          creditsRemaining: deductResult!.new_credits,
           creditsDeducted: 2
         }
 
         // Generate cover art if requested
-        if (generateCoverArt && userCredits - 2 >= 1) {
+        if (generateCoverArt && deductResult!.new_credits >= 1) {
           try {
             const imagePrompt = `${prompt} music album cover art, ${genre || 'electronic'} style, professional music artwork`
             const imagePrediction = await replicate.predictions.create({
@@ -497,7 +494,7 @@ export async function POST(req: NextRequest) {
                 }
               }
               // Log cover art transaction
-              await logCreditTransaction({ userId, amount: -1, balanceAfter: (deductResult?.new_credits ?? (userCredits - 2)) - 1, type: 'generation_cover_art', description: `Cover art: ${title}`, metadata: { prompt: imagePrompt } })
+              await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult!.new_credits - 1, type: 'generation_cover_art', description: `Cover art: ${title}`, metadata: { prompt: imagePrompt } })
             }
           } catch (imageError) {
             console.error('❌ Cover art error:', imageError)

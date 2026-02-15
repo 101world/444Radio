@@ -88,6 +88,33 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. ${isHQ ? 'HQ' : 'Standard'} generation requires ${creditsRequired} credits.`)
 
+    // ✅ DEDUCT credits atomically BEFORE generation (blocks if wallet < $1)
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: creditsRequired })
+      }
+    )
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+    }
+    if (!deductRes.ok || !deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -creditsRequired, type: 'generation_video_to_audio', status: 'failed', description: `Video SFX: ${prompt.substring(0, 50)}`, metadata: { prompt, quality, isHQ } })
+      return NextResponse.json({ error: errorMsg }, { status: 402 })
+    }
+    console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -creditsRequired, balanceAfter: deductResult.new_credits, type: 'generation_video_to_audio', description: `Video SFX: ${prompt.substring(0, 50)}`, metadata: { prompt, quality, isHQ } })
+
     // Video is already uploaded to R2, use the validated URL directly
     console.log('✅ Using uploaded video URL:', validatedUrl)
 
@@ -271,33 +298,6 @@ export async function POST(req: NextRequest) {
       console.log('✅ Saved to library:', saved[0]?.id)
     }
 
-    // NOW deduct credits since everything succeeded
-    console.log(`💰 Deducting ${creditsRequired} credits from user (${user.credits} → ${user.credits - creditsRequired})`)
-    const creditDeductRes = await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          credits: user.credits - creditsRequired,
-          total_generated: (user.total_generated || 0) + 1
-        })
-      }
-    )
-
-    if (!creditDeductRes.ok) {
-      console.error('⚠️ Failed to deduct credits, but generation succeeded')
-      await logCreditTransaction({ userId, amount: -creditsRequired, type: 'generation_video_to_audio', status: 'failed', description: `Video SFX: ${prompt.substring(0, 50)}`, metadata: { prompt, quality, isHQ } })
-    } else {
-      console.log('✅ Credits deducted successfully')
-      await logCreditTransaction({ userId, amount: -creditsRequired, balanceAfter: user.credits - creditsRequired, type: 'generation_video_to_audio', description: `Video SFX: ${prompt.substring(0, 50)}`, metadata: { prompt, quality, isHQ } })
-    }
-
     console.log('✅ Video-to-audio generation complete')
 
     return NextResponse.json({ 
@@ -305,7 +305,7 @@ export async function POST(req: NextRequest) {
       videoUrl: outputR2Result.url,
       prompt,
       quality,
-      creditsRemaining: user.credits - creditsRequired,
+      creditsRemaining: deductResult!.new_credits,
       message: `${isHQ ? 'HQ' : 'Standard'} synced audio generated successfully`
     })
 

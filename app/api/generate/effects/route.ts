@@ -76,6 +76,33 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Effects generation requires 2 credits.`)
 
+    // ✅ DEDUCT 2 CREDITS atomically BEFORE generation (blocks if wallet < $1)
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 2 })
+      }
+    )
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+    }
+    if (!deductRes.ok || !deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -2, type: 'generation_effects', status: 'failed', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
+      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+    }
+    console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_effects', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
+
     // Generate sound effects using AudioGen
     console.log('🎨 Generating sound effects with AudioGen...')
     
@@ -197,39 +224,6 @@ export async function POST(req: NextRequest) {
         console.error('❌ Library save exception:', librarySaveError)
       }
 
-      // Deduct credits (-2) using atomic function
-      console.log(`💰 Deducting 2 credits from user atomically (${user.credits} → ${user.credits - 2})`)
-      const creditDeductRes = await fetch(
-        `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`
-          },
-          body: JSON.stringify({
-            p_clerk_user_id: userId,
-            p_amount: 2,
-            p_type: 'generation_effects',
-            p_description: `Effects: ${prompt?.substring(0, 60) || 'unknown'}`,
-          })
-        }
-      )
-
-      let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
-      if (creditDeductRes.ok) {
-        const raw = await creditDeductRes.json()
-        deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
-      }
-      if (!creditDeductRes.ok || !deductResult?.success) {
-        console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || creditDeductRes.statusText)
-        await logCreditTransaction({ userId, amount: -2, type: 'generation_effects', status: 'failed', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
-      } else {
-        console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-        await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_effects', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
-      }
-
       console.log('✅ Effects generation complete')
 
       return corsResponse(NextResponse.json({ 
@@ -237,7 +231,7 @@ export async function POST(req: NextRequest) {
         audioUrl: outputR2Result.url,
         prompt,
         duration,
-        creditsRemaining: user.credits - 2,
+        creditsRemaining: deductResult!.new_credits,
         libraryId, // Include library ID if saved successfully
         librarySaveError, // Include error if save failed
         message: libraryId 

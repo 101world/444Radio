@@ -53,6 +53,33 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Image requires 1 credit.`)
 
+    // ✅ DEDUCT 1 CREDIT atomically BEFORE generation (blocks if wallet < $1)
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 1 })
+      }
+    )
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+    }
+    if (!deductRes.ok || !deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt } })
+      return NextResponse.json({ error: errorMsg }, { status: 402 })
+    }
+    console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt } })
+
     // Generate image directly with Flux Schnell (with retry logic for 502 errors)
     console.log('🎨 Generating standalone image with Flux Schnell')
     console.log('🎨 Prompt:', prompt)
@@ -205,36 +232,7 @@ export async function POST(req: NextRequest) {
     const savedImage = await saveResponse.json()
     console.log('✅ Saved to library:', savedImage)
 
-    // NOW deduct credits (-1 for image) atomically since everything succeeded
-    console.log(`💰 Deducting 1 credit from user (${user.credits})...`)
-    const deductRes = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: 1 })
-      }
-    )
-
-    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
-    if (deductRes.ok) {
-      const raw = await deductRes.json()
-      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
-    }
-
-    if (!deductRes.ok || !deductResult?.success) {
-      console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || deductRes.statusText)
-      await logCreditTransaction({ userId, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt } })
-    } else {
-      console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-      await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt, imageUrl, libraryId: savedImage[0]?.id } })
-    }
-
-    const creditsAfter = deductResult?.new_credits ?? Math.max(0, user.credits - 1)
+    const creditsAfter = deductResult!.new_credits
     console.log('✅ Standalone image generated:', imageUrl)
 
     return NextResponse.json({ 

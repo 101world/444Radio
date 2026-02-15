@@ -92,6 +92,33 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${user.credits} credits. Looper generation requires ${creditCost} credits.`)
 
+    // ✅ DEDUCT credits atomically BEFORE generation (blocks if wallet < $1)
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_clerk_user_id: userId, p_amount: creditCost })
+      }
+    )
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+    }
+    if (!deductRes.ok || !deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -creditCost, type: 'generation_loops', status: 'failed', description: `Loops: ${prompt}`, metadata: { prompt, bpm } })
+      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+    }
+    console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -creditCost, balanceAfter: deductResult.new_credits, type: 'generation_loops', description: `Loops: ${prompt}`, metadata: { prompt, bpm } })
+
     // Generate loops using MusicGen Looper
     console.log('🔄 Generating loops with MusicGen Looper...')
     
@@ -248,39 +275,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Deduct credits using atomic function
-      console.log(`💰 Deducting ${creditCost} credits from user atomically (${user.credits} → ${user.credits - creditCost})`)
-      const creditDeductRes = await fetch(
-        `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${supabaseKey}`
-          },
-          body: JSON.stringify({
-            p_clerk_user_id: userId,
-            p_amount: creditCost,
-            p_type: 'generation_loops',
-            p_description: `Loops: ${prompt?.substring(0, 60) || 'unknown'}`,
-          })
-        }
-      )
-
-      let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
-      if (creditDeductRes.ok) {
-        const raw = await creditDeductRes.json()
-        deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
-      }
-      if (!creditDeductRes.ok || !deductResult?.success) {
-        console.error('⚠️ Failed to deduct credits:', deductResult?.error_message || creditDeductRes.statusText)
-        await logCreditTransaction({ userId, amount: -creditCost, type: 'generation_loops', status: 'failed', description: `Loops: ${prompt}`, metadata: { prompt, bpm, variations: uploadedVariations.length } })
-      } else {
-        console.log('✅ Credits deducted successfully')
-        await logCreditTransaction({ userId, amount: -creditCost, balanceAfter: deductResult.new_credits, type: 'generation_loops', description: `Loops: ${prompt}`, metadata: { prompt, bpm, variations: uploadedVariations.length } })
-      }
-
       console.log('✅ Looper generation complete')
 
       return corsResponse(NextResponse.json({ 
@@ -291,7 +285,7 @@ export async function POST(req: NextRequest) {
         bpm,
         duration: max_duration,
         creditsUsed: creditCost,
-        creditsRemaining: user.credits - creditCost,
+        creditsRemaining: deductResult!.new_credits,
         message: `${uploadedVariations.length} loop variations generated successfully`
       }))
 

@@ -76,6 +76,20 @@ export async function POST(req: NextRequest) {
 
     console.log(`💰 User has ${userData.credits} credits. Extract costs ${EXTRACT_COST} credit.`)
 
+    // ✅ DEDUCT credit atomically BEFORE generation (blocks if wallet < $1)
+    const { data: deductResultRaw } = await supabase
+      .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: EXTRACT_COST })
+      .single()
+    const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
+    if (!deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId, amount: -EXTRACT_COST, type: 'generation_extract', status: 'failed', description: `Video Extract: ${trackTitle}`, metadata: { videoUrl } })
+      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+    }
+    console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -EXTRACT_COST, balanceAfter: deductResult.new_credits, type: 'generation_extract', description: `Video Extract: ${trackTitle}`, metadata: { videoUrl } })
+
     // Create Replicate prediction using lucataco/extract-audio
     console.log('🔄 Extracting audio from video with lucataco/extract-audio...')
 
@@ -179,28 +193,13 @@ export async function POST(req: NextRequest) {
         console.log('✅ Saved to library:', saved?.id)
       }
 
-      // Deduct credits
-      const { data: deductResultRaw } = await supabase
-        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: EXTRACT_COST })
-        .single()
-
-      const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null
-
-      if (!deductResult?.success) {
-        console.error('⚠️ Failed to deduct credits')
-        await logCreditTransaction({ userId, amount: -EXTRACT_COST, type: 'generation_extract', status: 'failed', description: `Video Extract: ${trackTitle}`, metadata: { videoUrl } })
-      } else {
-        console.log('✅ Credits deducted successfully')
-        await logCreditTransaction({ userId, amount: -EXTRACT_COST, balanceAfter: deductResult.new_credits, type: 'generation_extract', description: `Video Extract: ${trackTitle}`, metadata: { videoUrl, audioUrl: r2Result.url, libraryId: saved?.id } })
-      }
-
       return corsResponse(NextResponse.json({
         success: true,
         audioUrl: r2Result.url,
         libraryId: saved?.id,
         title: `${trackTitle} (Video Extract)`,
         creditsUsed: EXTRACT_COST,
-        creditsRemaining: deductResult?.new_credits ?? (userData.credits - EXTRACT_COST),
+        creditsRemaining: deductResult.new_credits,
         extractType: 'video-to-audio',
       }))
 

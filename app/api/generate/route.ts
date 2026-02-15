@@ -91,8 +91,34 @@ export async function POST(request: NextRequest) {
       }, { status: 402 })
     }
 
+    // ✅ DEDUCT 1 CREDIT atomically BEFORE generation (blocks if wallet < $1)
+    const deductRes = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_clerk_user_id: user.id, p_amount: 1 })
+      }
+    )
+    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
+    if (deductRes.ok) {
+      const raw = await deductRes.json()
+      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
+    }
+    if (!deductRes.ok || !deductResult?.success) {
+      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+      console.error('❌ Credit deduction blocked:', errorMsg)
+      await logCreditTransaction({ userId: user.id, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
+      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+    }
+    console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId: user.id, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
+
     // Create initial song record with "generating" status
-    // Credits will be deducted here when song is created
     // Songs are PRIVATE by default - user can make public from profile
     
     // Get username from user data
@@ -135,40 +161,7 @@ export async function POST(request: NextRequest) {
       throw new Error('No song data returned')
     }
 
-    // ✅ DEDUCT 1 CREDIT atomically (prevents race conditions / double-deductions)
-    const deductRes = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/deduct_credits`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          p_clerk_user_id: user.id,
-          p_amount: 1,
-          p_type: 'generation_image',
-          p_description: `Image: ${prompt?.substring(0, 60) || 'cover art'}`,
-        })
-      }
-    )
-
-    let deductResult: { success: boolean; new_credits: number; error_message: string | null } | null = null
-    if (deductRes.ok) {
-      const raw = await deductRes.json()
-      deductResult = Array.isArray(raw) ? raw[0] ?? null : raw
-    }
-    if (!deductRes.ok || !deductResult?.success) {
-      console.error('Failed to deduct credit:', deductResult?.error_message || deductRes.statusText)
-      await logCreditTransaction({ userId: user.id, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
-      // Still return success since song record was created — credit deduction failure shouldn't block the generation
-    } else {
-      console.log(`✅ Credit deducted atomically. User now has ${deductResult.new_credits} credits`)
-      await logCreditTransaction({ userId: user.id, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
-    }
-
-    const creditsAfter = deductResult?.new_credits ?? Math.max(0, userRecord.credits - 1)
+    const creditsAfter = deductResult.new_credits
 
     // Return the song ID so frontend can track generation progress
     return corsResponse(NextResponse.json({ 
