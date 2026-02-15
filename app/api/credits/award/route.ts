@@ -23,8 +23,6 @@ interface CodeConfig {
 
 const VALID_CODES: Record<string, CodeConfig> = {
   'FREE THE MUSIC': { credits: 20,  description: 'Decrypt puzzle — 20 credits',  policy: 'lifetime'  },
-  '444OG79RIZZ':    { credits: 444, description: 'Admin code — 444 credits',      policy: 'unlimited' },
-  '444ISAHOMIE':    { credits: 100, description: 'Secret code — 100 credits',     policy: 'monthly'   },
 }
 
 export async function POST(req: NextRequest) {
