@@ -569,9 +569,9 @@ export default function PluginPage() {
   }, [isInDAW])
 
   const sendToDAW = (url: string, title: string, format: 'mp3' | 'wav' = 'wav') => {
-    const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(url)}`
-    const fullProxyUrl = `${window.location.origin}${proxyUrl}`
-    sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format })
+    const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
+    // Send direct R2 URL to C++ — native HTTP, no CORS issues
+    sendBridgeMessage({ action: 'import_audio', url, title: safeName, format })
   }
 
   // ═══ Download + Toast — downloads file and shows draggable toast ═══
@@ -594,11 +594,9 @@ export default function PluginPage() {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
       const fileName = `${safeName}.${format}`
 
-      // Inside JUCE plugin → let the C++ side handle download + conversion + drag bar
+      // Inside JUCE plugin → send direct R2 URL to C++ (native HTTP, no CORS)
       if (isInDAW) {
-        const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
-        const fullProxyUrl = `${window.location.origin}${proxyUrl}`
-        sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title: safeName, format })
+        sendBridgeMessage({ action: 'import_audio', url: sourceUrl, title: safeName, format })
         showBridgeToast(`✅ Saving ${fileName} — drag from bar below ↓`)
         return
       }
@@ -2456,6 +2454,18 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50">
                         <Scissors size={12} /> Stems <span className="text-[10px] text-gray-500">(-5)</span>
                       </button>
+                      {/* Import to DAW — only shows inside JUCE plugin */}
+                      {isInDAW && (
+                        <button onClick={() => {
+                          const title = msg.result!.title || 'AI Track'
+                          const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
+                          sendBridgeMessage({ action: 'import_audio', url: msg.result!.audioUrl!, title: safeName, format: 'wav' })
+                          showBridgeToast(`✅ Importing ${safeName}.wav — drag from bar below ↓`)
+                        }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold">
+                          <ArrowDownToLine size={12} /> Import to DAW
+                        </button>
+                      )}
                       {/* Audio Boost */}
                       <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
