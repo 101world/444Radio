@@ -8,7 +8,7 @@ import {
   Edit3, Dices, Upload, RotateCcw, Repeat, Plus, Square, FileText,
   Layers, Film, Scissors, Volume2, ChevronLeft, ChevronDown, ChevronUp, Lightbulb, Settings,
   RotateCw, Save, RefreshCw, AlertCircle, Compass, ExternalLink, Home,
-  BookOpen, ArrowDownToLine, Pin, PinOff, Maximize2, Minimize2
+  BookOpen, ArrowDownToLine, Pin, PinOff
 } from 'lucide-react'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
@@ -46,20 +46,18 @@ const TOKEN_KEY = '444radio_plugin_token'
 const PIN_KEY = '444radio_plugin_pinned'
 const SIZE_KEY = '444radio_plugin_size'
 
-// ─── Window size presets for JUCE plugin ────────────────────────
-const WINDOW_SIZES = [
-  { label: 'Portrait',  w: 480, h: 720, icon: '▮', desc: 'Tall & narrow — side-dock friendly' },
-  { label: 'Square',    w: 600, h: 600, icon: '◼', desc: 'Balanced — works everywhere' },
-  { label: 'Wide',      w: 820, h: 520, icon: '▬', desc: 'Landscape — horizontal inserts' },
-  { label: 'Full',      w: 960, h: 740, icon: '⛶', desc: 'Large — premium workspace' },
+// ─── 3 fixed window presets — no free resizing ─────────────────
+const WINDOW_PRESETS = [
+  { label: 'Portrait', w: 420, h: 660, icon: '▮' },
+  { label: 'Square',   w: 540, h: 540, icon: '◼' },
+  { label: 'Wide',     w: 720, h: 460, icon: '▬' },
 ] as const
 
 // Classify current aspect ratio for adaptive layout
 type LayoutMode = 'portrait' | 'square' | 'wide'
-function getLayoutMode(w: number, h: number): LayoutMode {
-  const ratio = w / h
-  if (ratio > 1.25) return 'wide'
-  if (ratio < 0.75) return 'portrait'
+function getLayoutMode(idx: number): LayoutMode {
+  if (idx === 0) return 'portrait'
+  if (idx === 2) return 'wide'
   return 'square'
 }
 
@@ -168,11 +166,11 @@ export default function PluginPage() {
   const [windowSizeIdx, setWindowSizeIdx] = useState(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(SIZE_KEY)
-      return stored ? parseInt(stored, 10) : 0 // default to Portrait
+      const idx = stored ? parseInt(stored, 10) : 0
+      return Math.min(idx, 2) // clamp to 3 presets
     }
     return 0
   })
-  const [showSizeMenu, setShowSizeMenu] = useState(false)
   const [bridgeToast, setBridgeToast] = useState<string | null>(null)
 
   // ── Chat ──
@@ -385,12 +383,9 @@ export default function PluginPage() {
     })()
   }, [token])
 
-  // ═══ LAYOUT: detect mobile + aspect ratio mode ═══
+  // ═══ LAYOUT: detect mobile + set layout from preset ═══
   useEffect(() => {
-    const check = () => {
-      setIsMobile(window.innerWidth < 768)
-      setLayoutMode(getLayoutMode(window.innerWidth, window.innerHeight))
-    }
+    const check = () => setIsMobile(window.innerWidth < 768)
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
@@ -558,42 +553,50 @@ export default function PluginPage() {
     const next = !isPinned
     setIsPinned(next)
     localStorage.setItem(PIN_KEY, String(next))
+    // Send to JUCE bridge — multiple channel attempts for reliability
     sendBridgeMessage({ action: 'pin_window', pinned: next })
-    showBridgeToast(next ? '📌 Window pinned — stays on top' : '📌 Window unpinned')
+    sendBridgeMessage({ action: 'set_always_on_top', enabled: next })
+    // Repeat after brief delay (some hosts need a tick)
+    setTimeout(() => sendBridgeMessage({ action: 'pin_window', pinned: next }), 100)
+    showBridgeToast(next ? '📌 Window pinned — stays on top' : '📌 Unpinned')
   }
 
-  const setWindowSize = (idx: number) => {
-    setWindowSizeIdx(idx)
-    setShowSizeMenu(false)
-    localStorage.setItem(SIZE_KEY, String(idx))
-    const size = WINDOW_SIZES[idx]
-    // Update layout mode immediately
-    setLayoutMode(getLayoutMode(size.w, size.h))
-    // Send to JUCE C++ bridge
-    sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
-    // Direct window resize fallback + force CSS dimensions for WebView2
+  const applyPreset = (idx: number) => {
+    const clamped = Math.min(idx, WINDOW_PRESETS.length - 1)
+    setWindowSizeIdx(clamped)
+    setLayoutMode(getLayoutMode(clamped))
+    localStorage.setItem(SIZE_KEY, String(clamped))
+    const p = WINDOW_PRESETS[clamped]
+    sendBridgeMessage({ action: 'resize_window', width: p.w, height: p.h, preset: p.label })
     try {
-      window.resizeTo(size.w, size.h)
-      document.documentElement.style.width = size.w + 'px'
-      document.documentElement.style.height = size.h + 'px'
-      document.body.style.width = size.w + 'px'
-      document.body.style.height = size.h + 'px'
+      window.resizeTo(p.w, p.h)
+      document.documentElement.style.width = p.w + 'px'
+      document.documentElement.style.height = p.h + 'px'
+      document.body.style.width = p.w + 'px'
+      document.body.style.height = p.h + 'px'
     } catch {}
-    showBridgeToast(`${size.icon} ${size.label} (${size.w}×${size.h})`)
+    showBridgeToast(`${p.icon} ${p.label} (${p.w}×${p.h})`)
+  }
+
+  // Cycle through presets with a single button tap
+  const cyclePreset = () => {
+    applyPreset((windowSizeIdx + 1) % WINDOW_PRESETS.length)
   }
 
   // Send persisted pin/size state to JUCE on mount
   useEffect(() => {
+    // Always apply the stored preset on mount (even outside DAW for web preview)
+    setLayoutMode(getLayoutMode(windowSizeIdx))
     if (isInDAW) {
       if (isPinned) sendBridgeMessage({ action: 'pin_window', pinned: true })
-      const size = WINDOW_SIZES[windowSizeIdx]
-      sendBridgeMessage({ action: 'resize_window', width: size.w, height: size.h, preset: size.label })
+      const p = WINDOW_PRESETS[Math.min(windowSizeIdx, WINDOW_PRESETS.length - 1)]
+      sendBridgeMessage({ action: 'resize_window', width: p.w, height: p.h, preset: p.label })
       try {
-        window.resizeTo(size.w, size.h)
-        document.documentElement.style.width = size.w + 'px'
-        document.documentElement.style.height = size.h + 'px'
-        document.body.style.width = size.w + 'px'
-        document.body.style.height = size.h + 'px'
+        window.resizeTo(p.w, p.h)
+        document.documentElement.style.width = p.w + 'px'
+        document.documentElement.style.height = p.h + 'px'
+        document.body.style.width = p.w + 'px'
+        document.body.style.height = p.h + 'px'
       } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1998,7 +2001,7 @@ export default function PluginPage() {
   //  RENDER — Carbon copy of create page layout
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className={`h-screen text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? (layoutMode === 'wide' ? 'md:pl-[340px]' : 'md:pl-[320px]') : ''}`}
+    <div className="h-screen text-white flex flex-col relative overflow-hidden transition-all duration-300"
       style={{
         background: '#050a0f',
       }}>
@@ -2050,23 +2053,23 @@ export default function PluginPage() {
       {showFeaturesSidebar && (
         <>
           {/* Mobile backdrop */}
-          <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50" onClick={() => setShowFeaturesSidebar(false)} />
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={() => setShowFeaturesSidebar(false)} />
 
-          <div className={`fixed inset-0 md:inset-auto md:left-0 md:top-0 md:h-screen ${layoutMode === 'wide' ? 'md:w-[340px]' : 'md:w-[320px]'} z-50 md:z-40 flex flex-col relative overflow-hidden`} style={{ background: 'linear-gradient(180deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderRight: '1px solid rgba(0,255,255,0.12)', boxShadow: '4px 0 40px rgba(0,0,0,0.5), 0 0 30px rgba(0,255,255,0.03)', animation: 'slideInLeft 0.3s ease-out' }}>
+          <div className="fixed left-0 top-0 h-screen w-[280px] z-50 flex flex-col overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(5,18,28,0.98), rgba(3,12,20,0.99))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderRight: '1px solid rgba(0,255,255,0.12)', boxShadow: '4px 0 40px rgba(0,0,0,0.6)', animation: 'slideInLeft 0.2s ease-out' }}>
             {/* Sidebar diagonal shine */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-50%',left:'-15%',width:'45%',height:'200%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.03) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.03) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
             {/* Subtle cyan ambient overlay */}
             <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 80% 30% at 50% 0%, rgba(0,255,255,0.04) 0%, transparent 60%)'}} />
             {/* Header */}
-            <div className="flex items-center justify-between px-5 h-20 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
-              <div className="flex items-center gap-3">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{color:'#00ffff',filter:'drop-shadow(0 0 8px rgba(0,255,255,0.4))'}}>
+            <div className="flex items-center justify-between px-4 h-12 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
+              <div className="flex items-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{color:'#00ffff'}}>
                   <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
                   <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
                   <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
                   <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="2"/>
                 </svg>
-                <span className="text-white font-bold text-lg tracking-wider" style={{textShadow:'0 0 20px rgba(0,255,255,0.2)'}}>Features</span>
+                <span className="text-white font-bold text-sm tracking-wider">Features</span>
               </div>
               <button onClick={() => setShowFeaturesSidebar(false)} className="p-2 rounded-lg transition-colors" style={{color:'rgba(255,255,255,0.3)'}} onMouseEnter={e=>e.currentTarget.style.color='rgba(255,255,255,0.7)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(255,255,255,0.3)'}>
                 <X size={18} />
@@ -2074,21 +2077,21 @@ export default function PluginPage() {
             </div>
 
             {/* Credits */}
-            <div className="px-5 py-4 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl relative overflow-hidden" style={{background:'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))',border:'1px solid rgba(0,255,255,0.25)',boxShadow:'0 0 20px rgba(0,255,255,0.08), inset 0 1px 0 rgba(0,255,255,0.15)'}}>
+            <div className="px-4 py-2 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{background:'rgba(0,255,255,0.06)',border:'1px solid rgba(0,255,255,0.2)'}}>
                 <Zap size={16} style={{color:'#00ffff'}} />
                 <span className="text-white font-bold text-sm">{isLoadingCredits ? '...' : userCredits} credits</span>
               </div>
             </div>
 
             {/* Mode Toggle */}
-            <div className="px-5 py-3 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
-              <div className="flex gap-2">
-                <button onClick={() => setIsInstrumental(false)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all`}
+            <div className="px-4 py-2 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
+              <div className="flex gap-1.5">
+                <button onClick={() => setIsInstrumental(false)} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[11px] font-semibold transition-all"
                   style={!isInstrumental ? {background:'linear-gradient(135deg, rgba(0,255,255,0.15), rgba(0,136,255,0.1))',color:'#00ffff',border:'1px solid rgba(0,255,255,0.35)',boxShadow:'0 0 20px rgba(0,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.1)'} : {background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.45)',border:'1px solid rgba(255,255,255,0.08)'}}>
                   <Mic size={14} /> Vocal
                 </button>
-                <button onClick={() => setIsInstrumental(true)} className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all`}
+                <button onClick={() => setIsInstrumental(true)} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[11px] font-semibold transition-all"
                   style={isInstrumental ? {background:'linear-gradient(135deg, rgba(160,80,255,0.15), rgba(120,60,200,0.1))',color:'rgba(200,160,255,0.95)',border:'1px solid rgba(160,80,255,0.35)',boxShadow:'0 0 20px rgba(160,80,255,0.12), inset 0 1px 0 rgba(255,255,255,0.1)'} : {background:'rgba(255,255,255,0.04)',color:'rgba(255,255,255,0.45)',border:'1px solid rgba(255,255,255,0.08)'}}>
                   <Music size={14} /> Inst
                 </button>
@@ -2096,26 +2099,26 @@ export default function PluginPage() {
             </div>
 
             {/* Prompt Input */}
-            <div className="px-5 py-4 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
+            <div className="px-3 py-2 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
               <div className="relative">
                 <textarea value={input} onChange={(e) => setInput(e.target.value)}
                   placeholder="Describe your music..."
-                  className="w-full rounded-xl px-4 py-3 text-sm text-white resize-none focus:outline-none transition-all"
+                  className="w-full rounded-lg px-3 py-2 text-xs text-white resize-none focus:outline-none transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(0,255,255,0.12)',
                     caretColor: '#00ffff',
-                    boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3)',
+                    boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.3)',
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = 'rgba(0,255,255,0.35)'
-                    e.currentTarget.style.boxShadow = 'inset 0 2px 8px rgba(0,0,0,0.3), 0 0 16px rgba(0,255,255,0.06)'
+                    e.currentTarget.style.boxShadow = 'inset 0 2px 6px rgba(0,0,0,0.3), 0 0 12px rgba(0,255,255,0.06)'
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = 'rgba(0,255,255,0.12)'
-                    e.currentTarget.style.boxShadow = 'inset 0 2px 8px rgba(0,0,0,0.3)'
+                    e.currentTarget.style.boxShadow = 'inset 0 2px 6px rgba(0,0,0,0.3)'
                   }}
-                  rows={5}
+                  rows={3}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate() } }}
                 />
                 <div className="flex items-center justify-between mt-2">
@@ -2125,8 +2128,8 @@ export default function PluginPage() {
                     <Mic size={14} />
                   </button>
                   <button onClick={handleGenerate} disabled={isGenerating || !input.trim()}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
-                    style={{background:'linear-gradient(135deg, #00ffff, #0088ff)',color:'#000000',boxShadow:'0 0 24px rgba(0,255,255,0.3), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4)'}}>
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+                    style={{background:'linear-gradient(135deg, #00ffff, #0088ff)',color:'#000000',boxShadow:'0 0 16px rgba(0,255,255,0.2), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4)'}}>
                     <Send size={12} /> Generate
                   </button>
                 </div>
@@ -2201,7 +2204,7 @@ export default function PluginPage() {
             )}
 
             {/* Feature Buttons */}
-            <div className="flex-1 overflow-y-auto px-4 py-4">
+            <div className="flex-1 overflow-y-auto px-3 py-2">
               {/* Generation Queue Notification (shows when generations are active) */}
               {activeGenerations.size > 0 && (
                 <div className="mb-3 p-3 rounded-xl flex items-center gap-2 generating-glow" style={{background:'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))',border:'1px solid rgba(0,255,255,0.3)'}}>
@@ -2214,15 +2217,15 @@ export default function PluginPage() {
 
               {/* Ideas Lightbulb */}
               <button onClick={() => { setShowSidebarIdeas(!showSidebarIdeas); setSidebarIdeasView('tags') }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all mb-3 relative overflow-hidden"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all mb-2 relative overflow-hidden"
                 style={showSidebarIdeas ? {background:'linear-gradient(135deg, rgba(255,200,0,0.08), rgba(255,150,0,0.05))',border:'1px solid rgba(255,200,0,0.25)',color:'rgba(255,220,80,0.9)',boxShadow:'0 0 16px rgba(255,200,0,0.06), inset 0 1px 0 rgba(255,255,255,0.06)'} : {background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,200,0,0.12)',color:'rgba(255,200,0,0.7)'}}>
-                <div className="p-2 rounded-lg" style={{background:'rgba(255,255,255,0.03)'}}><Lightbulb size={18} /></div>
-                <div className="flex-1 text-left"><div className="text-sm font-semibold">Ideas & Tags</div><div className="text-[10px] text-gray-500">AI prompts & quick tags</div></div>
+                <div className="p-1.5 rounded-md" style={{background:'rgba(255,255,255,0.03)'}}><Lightbulb size={14} /></div>
+                <div className="flex-1 text-left"><div className="text-xs font-semibold">Ideas & Tags</div></div>
                 <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full">AI</span>
               </button>
 
-              <p className="text-[10px] uppercase tracking-widest font-bold mb-3 px-1" style={{color:'rgba(255,255,255,0.2)'}}>Creation Tools</p>
-              <div className="space-y-2">
+              <p className="text-[9px] uppercase tracking-widest font-bold mb-2 px-1" style={{color:'rgba(255,255,255,0.15)'}}>Creation Tools</p>
+              <div className="space-y-1">
                 {FEATURES.filter(f => {
                   // Hide lyrics when not in music vocal mode
                   if ((f as any).conditionalMusic && (selectedType !== 'music' || isInstrumental)) return false
@@ -2259,12 +2262,12 @@ export default function PluginPage() {
                         setSelectedType(f.key as GenerationType)
                       }
                     }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative overflow-hidden"
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all relative overflow-hidden"
                       style={isActive ? colorMap[f.color].active : colorMap[f.color].inactive}>
-                      <div className="p-2 rounded-lg" style={{background:'rgba(255,255,255,0.03)'}}><Icon size={18} /></div>
+                      <div className="p-1.5 rounded-md" style={{background:'rgba(255,255,255,0.03)'}}><Icon size={14} /></div>
                       <div className="flex-1 text-left">
-                        <div className="text-sm font-semibold">{f.label}</div>
-                        <div className="text-[10px]" style={{color:'rgba(255,255,255,0.35)'}}>{f.desc}</div>
+                        <div className="text-xs font-semibold">{f.label}</div>
+                        <div className="text-[9px]" style={{color:'rgba(255,255,255,0.3)'}}>{f.desc}</div>
                       </div>
                       {f.cost > 0 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(255,255,255,0.25)',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.04)'}}>-{f.cost}</span>}
                     </button>
@@ -2273,21 +2276,21 @@ export default function PluginPage() {
               </div>
 
               {/* Utilities */}
-              <div className="mt-6 pt-4" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
-                <div className="flex items-center gap-2 px-1">
-                  <button onClick={() => setShowDeletedChatsModal(true)} className="p-2.5 rounded-xl transition-all" style={{border:'1px solid rgba(0,255,180,0.1)',color:'rgba(0,255,180,0.5)'}} title="Chat History">
-                    <RotateCcw size={16} />
+              <div className="mt-3 pt-3" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+                <div className="flex items-center gap-1.5 px-1">
+                  <button onClick={() => setShowDeletedChatsModal(true)} className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(0,255,180,0.1)',color:'rgba(0,255,180,0.5)'}} title="Chat History">
+                    <RotateCcw size={14} />
                   </button>
-                  <button onClick={handleClearChat} className="p-2.5 rounded-xl transition-all" style={{border:'1px solid rgba(0,255,180,0.1)',color:'rgba(0,255,180,0.5)'}} title="New Chat">
-                    <Plus size={16} />
+                  <button onClick={handleClearChat} className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(0,255,180,0.1)',color:'rgba(0,255,180,0.5)'}} title="New Chat">
+                    <Plus size={14} />
                   </button>
                   <button onClick={() => window.open('https://444radio.co.in/explore?host=juce', '_blank')}
-                    className="p-2.5 rounded-xl transition-all" style={{border:'1px solid rgba(0,255,255,0.1)',color:'rgba(0,255,255,0.5)'}} title="Explore 444 Radio">
-                    <Compass size={16} />
+                    className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(0,255,255,0.1)',color:'rgba(0,255,255,0.5)'}} title="Explore 444 Radio">
+                    <Compass size={14} />
                   </button>
                   <button onClick={() => window.location.href = '/plugin'}
-                    className="p-2.5 rounded-xl border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Plugin Home">
-                    <Home size={16} />
+                    className="p-2 rounded-lg border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Plugin Home">
+                    <Home size={14} />
                   </button>
                 </div>
               </div>
@@ -2325,72 +2328,47 @@ export default function PluginPage() {
             </button>
             <span className="text-white font-bold text-sm tracking-wider" style={{textShadow:'0 0 20px rgba(0,255,255,0.15)'}}>444 Radio</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 relative z-10">
             {/* ── Pin window toggle ── */}
             <button onClick={togglePin}
-              className="p-2 rounded-lg transition-all"
-              style={isPinned ? {background:'rgba(0,255,255,0.08)',color:'#00ffff'} : {color:'rgba(255,255,255,0.25)'}}
+              className="p-1.5 rounded-lg transition-all"
+              style={isPinned ? {background:'rgba(0,255,255,0.1)',color:'#00ffff'} : {color:'rgba(255,255,255,0.2)'}}
               onMouseEnter={e => { if (!isPinned) e.currentTarget.style.color = 'rgba(0,255,255,0.6)' }}
-              onMouseLeave={e => { if (!isPinned) e.currentTarget.style.color = 'rgba(255,255,255,0.25)' }}
-              title={isPinned ? 'Unpin window (window stays on top)' : 'Pin window on screen'}>
-              {isPinned ? <PinOff size={15} /> : <Pin size={15} />}
+              onMouseLeave={e => { if (!isPinned) e.currentTarget.style.color = 'rgba(255,255,255,0.2)' }}
+              title={isPinned ? 'Unpin' : 'Pin on top'}>
+              {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
             </button>
-            {/* ── Resize dropdown ── */}
-            <div className="relative">
-              <button onClick={() => setShowSizeMenu(!showSizeMenu)}
-                className="p-2 rounded-lg transition-all"
-                style={{color:'rgba(255,255,255,0.25)'}}
-                onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
-                title="Resize plugin window">
-                <Maximize2 size={15} />
-              </button>
-              {showSizeMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowSizeMenu(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 rounded-xl py-1 min-w-[200px] overflow-hidden"
-                    style={{background:'linear-gradient(135deg, rgba(5,18,28,0.97), rgba(3,12,20,0.98))',backdropFilter:'blur(40px)',border:'1px solid rgba(0,255,255,0.12)',boxShadow:'0 16px 60px rgba(0,0,0,0.9), 0 0 16px rgba(0,255,255,0.04)'}}>
-                    {/* Glass shine */}
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"><div style={{position:'absolute',top:'-100%',left:'-25%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
-                    {WINDOW_SIZES.map((s, i) => (
-                      <button key={s.label} onClick={() => setWindowSize(i)}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs transition-colors relative ${i === windowSizeIdx ? 'text-cyan-400' : 'text-gray-400 hover:text-white'}`}
-                        style={i === windowSizeIdx ? {background:'rgba(0,255,255,0.08)',boxShadow:'inset 0 0 20px rgba(0,255,255,0.05)'} : {}}>
-                        <span className="text-base leading-none opacity-60">{s.icon}</span>
-                        <div className="flex flex-col items-start gap-0.5 flex-1 min-w-0">
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-semibold">{s.label}</span>
-                            <span className="text-[9px] text-gray-500 tabular-nums">{s.w}×{s.h}</span>
-                          </div>
-                          <span className="text-[9px] text-gray-500 truncate w-full">{s.desc}</span>
-                        </div>
-                        {i === windowSizeIdx && <span className="text-cyan-400 text-[10px]">✓</span>}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            {/* Library — opens in-plugin, not browser */}
+            {/* ── Preset cycle (tap to switch Portrait/Square/Wide) ── */}
+            <button onClick={cyclePreset}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-[10px] font-mono"
+              style={{color:'rgba(255,255,255,0.3)',border:'1px solid rgba(255,255,255,0.06)'}}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,255,255,0.7)'; e.currentTarget.style.borderColor = 'rgba(0,255,255,0.2)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)' }}
+              title={`${WINDOW_PRESETS[windowSizeIdx].label} — tap to cycle`}>
+              <span>{WINDOW_PRESETS[windowSizeIdx].icon}</span>
+              <span className="hidden min-[460px]:inline">{WINDOW_PRESETS[windowSizeIdx].label}</span>
+            </button>
+            {/* Library */}
             <button onClick={() => { window.location.href = '/library?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
-              className="p-2 rounded-lg transition-all" title="My Library"
-              style={{color:'rgba(180,130,255,0.6)'}}
+              className="p-1.5 rounded-lg transition-all" title="My Library"
+              style={{color:'rgba(180,130,255,0.5)'}}
               onMouseEnter={e => e.currentTarget.style.color = 'rgba(180,130,255,0.9)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(180,130,255,0.6)'}>
-              <BookOpen size={16} />
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(180,130,255,0.5)'}>
+              <BookOpen size={14} />
             </button>
-            {/* Back to Plugin Home — always visible */}
+            {/* Home */}
             <button onClick={() => { window.location.href = '/plugin?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
-              className="p-2 rounded-lg transition-all" title="Back to Plugin Home"
-              style={{color:'rgba(0,255,255,0.5)'}}
+              className="p-1.5 rounded-lg transition-all" title="Plugin Home"
+              style={{color:'rgba(0,255,255,0.4)'}}
               onMouseEnter={e => e.currentTarget.style.color = 'rgba(0,255,255,0.9)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,255,255,0.5)'}>
-              <Home size={16} />
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,255,255,0.4)'}>
+              <Home size={14} />
             </button>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full relative overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))', border: '1px solid rgba(0,255,255,0.25)', boxShadow: '0 0 16px rgba(0,255,255,0.08), inset 0 1px 0 rgba(0,255,255,0.15)' }}>
-              <Zap size={11} style={{color:'#00ffff'}} />
-              <span className="text-xs font-bold tabular-nums" style={{color:'#00ffff'}}>{userCredits ?? '...'}</span>
+            {/* Credits badge */}
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full"
+              style={{ background: 'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))', border: '1px solid rgba(0,255,255,0.2)' }}>
+              <Zap size={10} style={{color:'#00ffff'}} />
+              <span className="text-[11px] font-bold tabular-nums" style={{color:'#00ffff'}}>{userCredits ?? '...'}</span>
             </div>
           </div>
         </div>
