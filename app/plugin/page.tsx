@@ -96,61 +96,6 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   return new Blob([arrayBuffer], { type: 'audio/wav' })
 }
 
-// ─── File System: save to Documents/444Radio/Generations ────────
-const FS_DB = '444radio_fs'
-const FS_STORE = 'handles'
-const FS_KEY = 'genDir'
-
-function openFsDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(FS_DB, 1)
-    req.onupgradeneeded = () => req.result.createObjectStore(FS_STORE)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
-
-async function getStoredDir(): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    const db = await openFsDb()
-    return new Promise((resolve) => {
-      const tx = db.transaction(FS_STORE, 'readonly')
-      const req = tx.objectStore(FS_STORE).get(FS_KEY)
-      req.onsuccess = () => resolve(req.result ?? null)
-      req.onerror = () => resolve(null)
-    })
-  } catch { return null }
-}
-
-async function storeDir(handle: FileSystemDirectoryHandle): Promise<void> {
-  const db = await openFsDb()
-  const tx = db.transaction(FS_STORE, 'readwrite')
-  tx.objectStore(FS_STORE).put(handle, FS_KEY)
-}
-
-async function getGenerationsDir(): Promise<FileSystemDirectoryHandle> {
-  // Try persisted handle first
-  const stored = await getStoredDir()
-  if (stored) {
-    try {
-      const perm = await (stored as any).queryPermission({ mode: 'readwrite' })
-      if (perm === 'granted') return stored
-      const req = await (stored as any).requestPermission({ mode: 'readwrite' })
-      if (req === 'granted') return stored
-    } catch { /* handle expired, re-pick */ }
-  }
-  // First time: user picks Documents folder → we create 444Radio/Generations inside
-  const picked: FileSystemDirectoryHandle = await (window as any).showDirectoryPicker({
-    id: '444radio-gen',
-    startIn: 'documents',
-    mode: 'readwrite',
-  })
-  const radioDir = await picked.getDirectoryHandle('444Radio', { create: true })
-  const genDir = await radioDir.getDirectoryHandle('Generations', { create: true })
-  await storeDir(genDir)
-  return genDir
-}
-
 // ─── Quick Tags (same as create page sidebar) ──────────────────
 const QUICK_TAGS = [
   'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
@@ -609,78 +554,48 @@ export default function PluginPage() {
     sendBridgeMessage({ action: 'import_audio', url: fullProxyUrl, title, format: 'wav' })
   }
 
-  // ═══ Drag-to-DAW — DownloadURL for Chromium native file drag ═══
-  const buildDragData = (e: React.DragEvent, sourceUrl: string, title: string) => {
-    const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
-    const filename = `${safeName}.mp3`
-    const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}`
-    e.dataTransfer.setData('DownloadURL', `audio/mpeg:${filename}:${proxyUrl}`)
-    e.dataTransfer.setData('text/uri-list', proxyUrl)
-    e.dataTransfer.setData('text/plain', proxyUrl)
-    e.dataTransfer.effectAllowed = 'copy'
-    sendBridgeMessage({ action: 'drag_start', url: proxyUrl, title: safeName, format: 'mp3' })
-  }
+  // ═══ Download WAV for DAW — simple: fetch → convert → download ═══
+  const [dawDownloading, setDawDownloading] = useState<string | null>(null)
 
-  // ═══ DAW Import: fetch R2 → WAV → save to Documents/444Radio/Generations → draggable toast ═══
-  const [dawImporting, setDawImporting] = useState<string | null>(null)
-  const [dawReadyFile, setDawReadyFile] = useState<{ name: string; blobUrl: string } | null>(null)
-
-  const importToDAW = async (sourceUrl: string, title: string) => {
-    if (dawImporting) return
-    setDawImporting(`${sourceUrl}-${title}`)
-    setDawReadyFile(null)
+  const downloadForDAW = async (sourceUrl: string, title: string) => {
+    const id = `${sourceUrl}-${title}`
+    if (dawDownloading) return
+    setDawDownloading(id)
     try {
       const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'audio'
       const wavName = `${safeName}.wav`
 
-      // JUCE plugin — bridge handles it natively
+      // Inside JUCE plugin → let the C++ side handle it
       if (isInDAW) {
         const proxyUrl = `${window.location.origin}/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
         sendBridgeMessage({ action: 'import_audio', url: proxyUrl, title: safeName, format: 'wav' })
-        showBridgeToast(`🎵 Importing "${safeName}" to DAW...`)
+        showBridgeToast(`🎵 Sending to DAW...`)
         return
       }
 
-      // Browser: fetch R2 → decode → WAV → save to Documents/444Radio/Generations/
-      showBridgeToast(`⏳ Converting to WAV...`)
+      // Browser: fetch → decode → WAV → download
+      showBridgeToast(`⏳ Downloading ${wavName}...`)
       const proxyUrl = `/api/r2/proxy?url=${encodeURIComponent(sourceUrl)}`
       const res = await fetch(proxyUrl)
-      if (!res.ok) {
-        if (res.status === 404) throw new Error('File not found — may have expired. Try regenerating.')
-        throw new Error(`Download failed: ${res.status}`)
-      }
-      const arrayBuffer = await res.arrayBuffer()
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-      const wavBlob = audioBufferToWav(audioBuffer)
-
-      // Save WAV to Documents/444Radio/Generations/ (first time prompts folder picker)
-      const dir = await getGenerationsDir()
-      const fileHandle = await dir.getFileHandle(wavName, { create: true })
-      const writable = await fileHandle.createWritable()
-      await writable.write(wavBlob)
-      await writable.close()
-
-      // Read the real file back from disk → blob URL for draggable toast
-      const savedFile = await fileHandle.getFile()
-      const blobUrl = URL.createObjectURL(savedFile)
-      setDawReadyFile({ name: wavName, blobUrl })
+      if (!res.ok) throw new Error(res.status === 404 ? 'File expired — regenerate it' : `Download failed: ${res.status}`)
+      const ab = await res.arrayBuffer()
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const decoded = await ctx.decodeAudioData(ab)
+      const wavBlob = audioBufferToWav(decoded)
+      const url = URL.createObjectURL(wavBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = wavName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 3000)
+      showBridgeToast(`✅ ${wavName} downloaded`)
     } catch (err: any) {
-      console.error('DAW import error:', err)
-      if (err?.name === 'AbortError') {
-        showBridgeToast('📁 Pick your Documents folder to save generations')
-      } else {
-        showBridgeToast(`❌ ${err.message || 'Could not save WAV'}`)
-      }
+      console.error('DAW download error:', err)
+      showBridgeToast(`❌ ${err.message || 'Download failed'}`)
     } finally {
-      setDawImporting(null)
-    }
-  }
-
-  const dismissDawFile = () => {
-    if (dawReadyFile) {
-      URL.revokeObjectURL(dawReadyFile.blobUrl)
-      setDawReadyFile(null)
+      setDawDownloading(null)
     }
   }
 
@@ -1921,38 +1836,8 @@ export default function PluginPage() {
   return (
     <div className={`h-screen bg-black text-white flex flex-col relative overflow-hidden transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[420px]' : ''}`}>
 
-      {/* DAW drag toast — WAV saved to disk, drag this to DAW timeline */}
-      {dawReadyFile && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 pl-4 pr-2 py-2.5 rounded-2xl select-none"
-          style={{
-            background: 'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(139,92,246,0.2))',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(6,182,212,0.5)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 20px rgba(6,182,212,0.15)',
-            animation: 'fadeIn 0.2s ease-out',
-          }}>
-          <div
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('DownloadURL', `audio/wav:${dawReadyFile.name}:${dawReadyFile.blobUrl}`)
-              e.dataTransfer.setData('text/uri-list', dawReadyFile.blobUrl)
-              e.dataTransfer.setData('text/plain', dawReadyFile.name)
-              e.dataTransfer.effectAllowed = 'copy'
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-xl cursor-grab active:cursor-grabbing hover:bg-cyan-500/30 transition-all"
-          >
-            <Music size={14} className="text-cyan-400 shrink-0" />
-            <span className="text-xs font-bold text-white truncate max-w-[180px]">{dawReadyFile.name}</span>
-          </div>
-          <span className="text-[10px] text-cyan-300/80 whitespace-nowrap">← drag to DAW timeline</span>
-          <button onClick={dismissDawFile} className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0">
-            <X size={14} className="text-gray-400" />
-          </button>
-        </div>
-      )}
-
       {/* Bridge action toast */}
-      {bridgeToast && !dawReadyFile && (
+      {bridgeToast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-xl text-xs font-medium text-cyan-300 select-none pointer-events-none"
           style={{
             background: 'rgba(15,23,42,0.9)',
@@ -2347,15 +2232,13 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all disabled:opacity-50">
                         <Scissors size={12} /> Stems <span className="text-[10px] text-gray-500">(-5)</span>
                       </button>
-                      {/* Import to DAW — drag to timeline or click for WAV download */}
+                      {/* Download WAV for DAW */}
                       <button
-                        draggable
-                        onDragStart={(e) => buildDragData(e, msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
-                        onClick={() => importToDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
-                        disabled={dawImporting !== null}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold cursor-grab active:cursor-grabbing disabled:opacity-50"
-                        title="Drag to DAW timeline or click to download WAV">
-                        {dawImporting ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />} Import to DAW
+                        onClick={() => downloadForDAW(msg.result!.audioUrl!, msg.result!.title || 'AI Track')}
+                        disabled={dawDownloading !== null}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 hover:from-cyan-500/30 hover:to-purple-500/30 border border-cyan-500/40 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all font-semibold disabled:opacity-50"
+                        title="Download WAV file for your DAW">
+                        {dawDownloading ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />} WAV for DAW
                       </button>
                       {/* Audio Boost */}
                       <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
@@ -2437,16 +2320,14 @@ export default function PluginPage() {
                             className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
                             <Download size={12} className="text-white" />
                           </button>
-                          {/* Import stem to DAW — drag to timeline or click for WAV download */}
+                          {/* Download stem WAV for DAW */}
                           <button
-                            draggable
-                            onDragStart={(e) => buildDragData(e, url as string, `${display.label} Stem`)}
-                            onClick={() => importToDAW(url as string, `${display.label} Stem`)}
-                            disabled={dawImporting !== null}
-                            className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-lg transition-colors cursor-grab active:cursor-grabbing disabled:opacity-50"
-                            title={`Drag ${display.label} to DAW or click for WAV`}>
-                            {dawImporting === `${url}-${display.label} Stem` ? <Loader2 size={12} className="text-cyan-400 animate-spin" /> : <ArrowDownToLine size={12} className="text-cyan-400" />}
-                            <span className="text-[9px] text-cyan-400/70 font-medium">DAW</span>
+                            onClick={() => downloadForDAW(url as string, `${display.label} Stem`)}
+                            disabled={dawDownloading !== null}
+                            className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-lg transition-colors disabled:opacity-50"
+                            title={`Download ${display.label} WAV`}>
+                            {dawDownloading === `${url}-${display.label} Stem` ? <Loader2 size={12} className="text-cyan-400 animate-spin" /> : <ArrowDownToLine size={12} className="text-cyan-400" />}
+                            <span className="text-[9px] text-cyan-400/70 font-medium">WAV</span>
                           </button>
                           <button onClick={() => setShowBoostParamsFor({ audioUrl: url as string, title: display.label })}
                             className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-full transition-colors" title="Boost this stem">
