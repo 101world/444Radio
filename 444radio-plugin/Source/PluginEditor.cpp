@@ -540,6 +540,7 @@ bool RadioPluginEditor::convertToWav (const juce::File& source,
 {
     juce::AudioFormatManager fmtMgr;
     fmtMgr.registerBasicFormats();
+    fmtMgr.registerFormat (new juce::MP3AudioFormat(), false);
 
     std::unique_ptr<juce::AudioFormatReader> reader (
         fmtMgr.createReaderFor (source));
