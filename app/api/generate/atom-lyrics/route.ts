@@ -18,17 +18,22 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
-    const { prompt } = await req.json()
+    const { prompt, language } = await req.json()
 
     if (!prompt || !prompt.trim()) {
       return corsResponse(NextResponse.json({ error: 'Missing prompt' }, { status: 400 }))
     }
 
-    console.log(`🔬 [ATOM] Generating lyrics for user ${userId}`)
+    const lang = (language && language !== 'English') ? language : null
+
+    console.log(`🔬 [ATOM] Generating lyrics for user ${userId}${lang ? ` (language: ${lang})` : ''}`)
     console.log('🔬 [ATOM] User prompt:', prompt)
 
     // Construct the full prompt for GPT-5 Nano
-    const fullPrompt = `Generate lyrics based on my prompt - ${prompt} and the lyrics should be structured in [intro] [verse] [chorus] [hook] [bridge] [hook] [chorus] [outro] format under 600 characters`
+    const languageInstruction = lang
+      ? `The lyrics MUST be written entirely in ${lang}. Do NOT use English — write every word in ${lang}.`
+      : ''
+    const fullPrompt = `Generate lyrics based on my prompt - ${prompt}. ${languageInstruction} The lyrics should be structured in [intro] [verse] [chorus] [hook] [bridge] [hook] [chorus] [outro] format under 600 characters`
 
     console.log('🔬 [ATOM] Full prompt:', fullPrompt)
 

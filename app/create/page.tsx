@@ -815,7 +815,7 @@ function CreatePageContent() {
           const lyricsResponse = await fetch('/api/generate/atom-lyrics', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: originalPrompt })
+            body: JSON.stringify({ prompt: originalPrompt, language: selectedLanguage })
           })
           const lyricsData = await lyricsResponse.json()
           if (lyricsData.success && lyricsData.lyrics) {
@@ -1989,7 +1989,6 @@ function CreatePageContent() {
                         src={message.result.url}
                         controls
                         className="w-full h-full object-contain"
-                        autoPlay
                         playsInline
                       />
                     </div>
@@ -2544,6 +2543,48 @@ function CreatePageContent() {
                             
                             {/* Quick Tags */}
                             <div className="flex flex-wrap gap-2 overflow-y-auto scrollbar-thin pr-2 flex-1">
+                              {/* Language mini-dropdown at top of tags */}
+                              <div className="w-full mb-1">
+                                <select
+                                  value={selectedLanguage}
+                                  onChange={(e) => {
+                                    setSelectedLanguage(e.target.value)
+                                    // Also append language as tag if non-English
+                                    if (e.target.value !== 'English') {
+                                      const langTag = e.target.value.toLowerCase()
+                                      if (!input.toLowerCase().includes(langTag)) {
+                                        const newInput = input ? `${input}, ${langTag}` : langTag
+                                        setInput(newInput.slice(0, MAX_PROMPT_LENGTH))
+                                      }
+                                    }
+                                  }}
+                                  className="w-full px-3 py-1.5 bg-white/5 border border-cyan-500/30 rounded-lg text-cyan-200 text-xs focus:outline-none focus:border-cyan-400/60 transition-all appearance-none cursor-pointer"
+                                  style={{
+                                    backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(34,211,238,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")",
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'right 0.4rem center',
+                                    backgroundSize: '1.2em 1.2em',
+                                    paddingRight: '2rem'
+                                  }}
+                                >
+                                  <option value="English">🌐 Language: English</option>
+                                  <option value="chinese">🌐 中文 Chinese</option>
+                                  <option value="japanese">🌐 日本語 Japanese</option>
+                                  <option value="korean">🌐 한국어 Korean</option>
+                                  <option value="spanish">🌐 Español Spanish</option>
+                                  <option value="french">🌐 Français French</option>
+                                  <option value="hindi">🌐 हिन्दी Hindi</option>
+                                  <option value="german">🌐 Deutsch German</option>
+                                  <option value="portuguese">🌐 Português Portuguese</option>
+                                  <option value="arabic">🌐 العربية Arabic</option>
+                                  <option value="italian">🌐 Italiano Italian</option>
+                                  <option value="tamil">🌐 தமிழ் Tamil</option>
+                                  <option value="telugu">🌐 తెలుగు Telugu</option>
+                                  <option value="punjabi">🌐 ਪੰਜਾਬੀ Punjabi</option>
+                                  <option value="russian">🌐 Русский Russian</option>
+                                  <option value="turkish">🌐 Türkçe Turkish</option>
+                                </select>
+                              </div>
                               {[
                                 'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
                                 'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
@@ -2556,7 +2597,10 @@ function CreatePageContent() {
                                 'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
                                 'romantic', 'sad', 'happy', 'mysterious', 'powerful',
                                 'soft vocals', 'no vocals', 'female vocals', 'male vocals',
-                                'synth lead', 'strings', 'brass', 'flute', 'violin'
+                                'male & female duet',
+                                'synth lead', 'strings', 'brass', 'flute', 'violin',
+                                'trailer', 'ad', 'commercial', 'music video',
+                                'hollywood', 'bollywood',
                               ].map((tag, idx) => (
                                 <button
                                   key={tag}
@@ -2796,7 +2840,8 @@ function CreatePageContent() {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
-                            prompt: input
+                            prompt: input,
+                            language: selectedLanguage
                           })
                         })
 
@@ -3047,7 +3092,9 @@ function CreatePageContent() {
                       'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
                       'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop',
                       'heavy bass', 'soft piano', 'guitar solo', 'synthwave',
-                      'lo-fi beats', 'orchestral', 'dreamy', 'aggressive'
+                      'lo-fi beats', 'orchestral', 'dreamy', 'aggressive',
+                      'trailer', 'ad', 'commercial', 'music video',
+                      'hollywood', 'bollywood', 'male & female duet',
                     ].map((tag) => (
                       <button
                         key={tag}

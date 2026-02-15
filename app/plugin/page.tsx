@@ -118,6 +118,8 @@ const QUICK_TAGS = [
   'cinematic', 'epic', 'dark', 'bright', 'nostalgic',
   'romantic', 'sad', 'happy', 'mysterious', 'powerful',
   'soft vocals', 'no vocals', 'female vocals', 'male vocals',
+  'male & female duet', 'trailer', 'ad', 'commercial',
+  'music video', 'hollywood', 'bollywood',
   'synth lead', 'strings', 'brass', 'flute', 'violin'
 ]
 
@@ -568,13 +570,7 @@ export default function PluginPage() {
     localStorage.setItem(SIZE_KEY, String(clamped))
     const p = WINDOW_PRESETS[clamped]
     sendBridgeMessage({ action: 'resize_window', width: p.w, height: p.h, preset: p.label })
-    try {
-      window.resizeTo(p.w, p.h)
-      document.documentElement.style.width = p.w + 'px'
-      document.documentElement.style.height = p.h + 'px'
-      document.body.style.width = p.w + 'px'
-      document.body.style.height = p.h + 'px'
-    } catch {}
+    try { window.resizeTo(p.w, p.h) } catch {}
     showBridgeToast(`${p.icon} ${p.label} (${p.w}×${p.h})`)
   }
 
@@ -591,13 +587,7 @@ export default function PluginPage() {
       if (isPinned) sendBridgeMessage({ action: 'pin_window', pinned: true })
       const p = WINDOW_PRESETS[Math.min(windowSizeIdx, WINDOW_PRESETS.length - 1)]
       sendBridgeMessage({ action: 'resize_window', width: p.w, height: p.h, preset: p.label })
-      try {
-        window.resizeTo(p.w, p.h)
-        document.documentElement.style.width = p.w + 'px'
-        document.documentElement.style.height = p.h + 'px'
-        document.body.style.width = p.w + 'px'
-        document.body.style.height = p.h + 'px'
-      } catch {}
+      try { window.resizeTo(p.w, p.h) } catch {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInDAW])
@@ -817,7 +807,7 @@ export default function PluginPage() {
     try {
       const res = await fetch('/api/generate/atom-lyrics', {
         method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt, language: selectedLanguage })
       })
       const data = await res.json()
       if (data.success && data.lyrics) return data.lyrics
@@ -2001,7 +1991,7 @@ export default function PluginPage() {
   //  RENDER — Carbon copy of create page layout
   // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="h-screen text-white flex flex-col relative overflow-hidden transition-all duration-300"
+    <div className="h-screen text-white flex flex-col relative overflow-hidden"
       style={{
         background: '#050a0f',
       }}>
@@ -2392,10 +2382,8 @@ export default function PluginPage() {
               }`}
                 style={{
                   background: msg.type === 'user'
-                    ? 'linear-gradient(135deg, rgba(0,255,255,0.06), rgba(0,136,255,0.03))'
-                    : 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
-                  backdropFilter: 'blur(20px)',
-                  WebkitBackdropFilter: 'blur(20px)',
+                    ? 'linear-gradient(135deg, rgba(0,20,30,0.95), rgba(0,15,25,0.92))'
+                    : 'linear-gradient(135deg, rgba(12,18,26,0.95), rgba(10,16,24,0.92))',
                   border: msg.type === 'user'
                     ? '1px solid rgba(0,255,255,0.2)'
                     : '1px solid rgba(255,255,255,0.1)',
@@ -2403,8 +2391,6 @@ export default function PluginPage() {
                     ? '0 4px 24px rgba(0,0,0,0.4), 0 0 16px rgba(0,255,255,0.06), inset 0 1px 0 rgba(0,255,255,0.1)'
                     : '0 4px 20px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)',
                 }}>
-                {/* Glass diagonal shine on each bubble */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"><div style={{position:'absolute',top:'-100%',left:msg.type==='user'?'-10%':'-30%',width:'45%',height:'300%',background:`linear-gradient(105deg,transparent 40%,${msg.type==='user'?'rgba(0,255,255,0.03)':'rgba(255,255,255,0.03)'} 45%,${msg.type==='user'?'rgba(0,255,255,0.06)':'rgba(255,255,255,0.06)'} 50%,${msg.type==='user'?'rgba(0,255,255,0.03)':'rgba(255,255,255,0.03)'} 55%,transparent 60%)`,transform:'rotate(-15deg)'}} /></div>
                 {/* Text content */}
                 <p className="text-sm text-white whitespace-pre-wrap">{msg.content}</p>
 
@@ -2982,7 +2968,7 @@ export default function PluginPage() {
                         try {
                           const res = await fetch('/api/generate/atom-lyrics', {
                             method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-                            body: JSON.stringify({ prompt: input })
+                            body: JSON.stringify({ prompt: input, language: selectedLanguage })
                           })
                           const data = await res.json()
                           if (data.success && data.lyrics) setCustomLyrics(data.lyrics)
@@ -3593,21 +3579,13 @@ export default function PluginPage() {
         @keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes glowPulse {
-          0%, 100% { box-shadow: 0 0 20px rgba(0,255,255,0.1), 0 0 40px rgba(0,255,255,0.05); }
-          50% { box-shadow: 0 0 30px rgba(0,255,255,0.2), 0 0 60px rgba(0,255,255,0.1), 0 0 80px rgba(0,255,255,0.05); }
-        }
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
         /* Scrollbar styling */
         .chat-scroll-container::-webkit-scrollbar { width: 4px; }
         .chat-scroll-container::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll-container::-webkit-scrollbar-thumb { background: rgba(0,255,255,0.15); border-radius: 4px; }
         .chat-scroll-container::-webkit-scrollbar-thumb:hover { background: rgba(0,255,255,0.3); }
         select option { background: #0a1520; color: white; }
-        .generating-glow { animation: glowPulse 2s ease-in-out infinite; }
+        .generating-glow { box-shadow: 0 0 20px rgba(0,255,255,0.1), 0 0 40px rgba(0,255,255,0.05); }
 
         /* ═══ Universal responsive plugin sizing ═══ */
         html, body { 
@@ -3617,16 +3595,15 @@ export default function PluginPage() {
           margin: 0 !important;
           padding: 0 !important;
         }
-        /* Prevent content overflow — plugin must contain everything */
         * { box-sizing: border-box; }
-        /* Compact text in small viewports */
+        /* GPU-accelerate the chat scroll for smooth scrolling */
+        .chat-scroll-container { will-change: scroll-position; contain: layout style; }
         @media (max-height: 550px) {
           .chat-scroll-container { font-size: 13px; }
         }
         @media (max-width: 500px) {
           .chat-scroll-container { font-size: 13px; }
         }
-        /* Ensure images never overflow container */
         img, video { max-width: 100%; height: auto; }
       `}} />
     </div>
