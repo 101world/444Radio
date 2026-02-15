@@ -1,6 +1,6 @@
 /**
  * Plugin Purchase API
- * POST /api/plugin/purchase — Creates a Razorpay order for $25 one-time plugin purchase
+ * POST /api/plugin/purchase — Creates a Razorpay order for $4 one-time plugin purchase
  * 
  * Auth: Bearer token (plugin token, NOT Clerk session)
  * The token must be valid structurally but can be from a denied_no_purchase user.
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     const users = await userRes.json()
     const user = Array.isArray(users) ? users[0] : null
 
-    // Create Razorpay Order for $25 plugin purchase
+    // Create Razorpay Order for $4 plugin purchase
     const keyId = process.env.RAZORPAY_KEY_ID
     const keySecret = process.env.RAZORPAY_KEY_SECRET
     if (!keyId || !keySecret) {
@@ -83,13 +83,13 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        amount: 2500, // $25.00 in cents
+        amount: 400, // $4.00 in cents
         currency: 'USD',
         receipt: `plug_${shortId}_${ts}`,
         notes: {
           clerk_user_id: clerkUserId,
           purchase_type: 'plugin_one_time',
-          amount_display: '$25',
+          amount_display: '$4',
         },
       }),
     })
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         clerk_user_id: clerkUserId,
         order_id: order.id,
-        amount: 2500,
+        amount: 400,
         currency: 'USD',
         status: 'pending',
       }),
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     return corsResponse(NextResponse.json({
       success: true,
       orderId: order.id,
-      amount: 2500,
+      amount: 400,
       currency: 'USD',
       keyId,
       customerEmail: user?.email || '',

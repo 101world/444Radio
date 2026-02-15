@@ -22,6 +22,8 @@ export type CreditTransactionType =
   | 'earn_admin'
   | 'credit_award'
   | 'credit_refund'
+  | 'wallet_deposit'
+  | 'wallet_conversion'
   | 'subscription_bonus'
   | 'plugin_purchase'
   | 'release'

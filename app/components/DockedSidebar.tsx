@@ -44,7 +44,7 @@ export default function DockedSidebar() {
   if (pathname === '/plugin' || pathname?.startsWith('/plugin')) return null
 
   // Hide on home page and pricing pages
-  const hiddenPages = ['/', '/pricing', '/subscription']
+  const hiddenPages = ['/', '/pricing']
   if (hiddenPages.includes(pathname)) {
     return null
   }

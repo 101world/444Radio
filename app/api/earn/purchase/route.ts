@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'trackId required' }, { status: 400 }))
     }
 
-    // 1. Fetch buyer — need credits + subscription_status + username
-    const buyerRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=clerk_user_id,credits,subscription_status,username`)
+    // 1. Fetch buyer — need credits + username
+    const buyerRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=clerk_user_id,credits,username`)
     const buyers = await buyerRes.json()
     const buyer = buyers?.[0]
 
@@ -57,15 +57,7 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'User not found' }, { status: 404 }))
     }
 
-    // 2. Subscription gate — free users cannot download
-    const isSubscribed = buyer.subscription_status === 'active' || buyer.subscription_status === 'trialing'
-    if (!isSubscribed) {
-      return corsResponse(
-        NextResponse.json({ error: 'Subscription required. Upgrade at /pricing to download tracks.' }, { status: 403 })
-      )
-    }
-
-    // 3. Fetch track details (include image_url + metadata for library save)
+    // 2. Fetch track details (include image_url + metadata for library save)
     const trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&select=id,user_id,title,audio_url,image_url,genre,mood,bpm,key_signature,downloads,track_id_444,original_creator_id,license_type_444,remix_allowed,derivative_allowed`)
     const tracks = await trackRes.json()
     const track = tracks?.[0]

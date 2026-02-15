@@ -164,7 +164,7 @@ export default function ListTrackModal({ onClose, onListed }: ListTrackModalProp
         <div className="p-6 pt-4 border-t border-white/10">
           <div className="text-xs text-gray-500 mb-3">
             <strong className="text-yellow-400">Listing fee: 2 credits</strong> (one-time, paid to 444 Radio)<br/>
-            Subscribers can download for <strong className="text-white">5 credits</strong> → 1 credit goes to you, 4 to 444 Radio
+            Users can download for <strong className="text-white">5 credits</strong> → 1 credit goes to you, 4 to 444 Radio
           </div>
           <div className="flex gap-3">
             <button

@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     if (typeFilter) {
       // "awards" is a compound filter covering all credit income types
       if (typeFilter === 'awards') {
-        queryPath += `&type=in.(credit_award,subscription_bonus,code_claim,plugin_purchase)`
+        queryPath += `&type=in.(credit_award,wallet_deposit,wallet_conversion,code_claim,plugin_purchase)`
       } else {
         queryPath += `&type=eq.${typeFilter}`
       }

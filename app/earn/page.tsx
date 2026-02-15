@@ -40,8 +40,7 @@ export default function EarnPage() {
 
   const [tracks, setTracks] = useState<EarnTrack[]>([])
   const [loading, setLoading] = useState(true)
-  const { credits, subscriptionStatus, refreshCredits } = useCredits()
-  const isSubscribed = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
+  const { credits, refreshCredits } = useCredits()
   const [filter, setFilter] = useState<FilterType>('trending')
   const [selectedGenre, setSelectedGenre] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -222,16 +221,10 @@ export default function EarnPage() {
             </div>
 
             {/* List Track button — right next to heading */}
-            {isSignedIn && isSubscribed && (
+            {isSignedIn && (
               <button onClick={() => setShowListModal(true)}
                 className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600/80 to-cyan-600/80 border border-emerald-500/30 text-white text-xs font-semibold rounded-xl backdrop-blur-xl hover:from-emerald-500/80 hover:to-cyan-500/80 transition-all shadow-lg shadow-emerald-500/10">
                 <Sparkles size={13} /> List Track
-              </button>
-            )}
-            {isSignedIn && !isSubscribed && (
-              <button onClick={() => router.push('/pricing')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] border border-amber-500/20 text-amber-300 text-xs font-medium rounded-xl backdrop-blur-xl hover:bg-white/[0.08] transition">
-                <Sparkles size={12} /> Subscribe to List
               </button>
             )}
 
@@ -311,7 +304,7 @@ export default function EarnPage() {
               </div>
               <h3 className="text-base font-semibold text-gray-300 mb-1">No tracks listed</h3>
               <p className="text-gray-600 text-xs max-w-sm mb-4">Be the first to list tracks and earn credits.</p>
-              {isSignedIn && isSubscribed && (
+              {isSignedIn && (
                 <button onClick={() => setShowListModal(true)}
                   className="flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-emerald-600/80 to-cyan-600/80 text-white text-xs font-semibold rounded-xl">
                   <Sparkles size={14} /> List Your First Track
@@ -325,7 +318,7 @@ export default function EarnPage() {
       {/* Modals */}
       {selectedArtist && <ArtistProfileModal artist={selectedArtist} onClose={() => setSelectedArtist(null)} />}
       {downloadTrack && (
-        <DownloadModal track={downloadTrack} userCredits={credits || 0} subscriptionStatus={subscriptionStatus || 'none'}
+        <DownloadModal track={downloadTrack} userCredits={credits || 0}
           onClose={() => setDownloadTrack(null)} onConfirm={(splitStems: boolean) => handlePurchase(downloadTrack.id, splitStems)} />
       )}
       {successData && <SuccessModal track={successData.track} splitJobId={successData.splitJobId} stemStatus={successData.stemStatus} onClose={() => setSuccessData(null)} />}

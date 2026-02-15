@@ -3,7 +3,7 @@
  * POST /api/plugin/purchase/checkout
  * Auth: Clerk session
  *
- * Creates a Razorpay order for the $25 one-time plugin purchase.
+ * Creates a Razorpay order for the $4 one-time plugin purchase.
  * After payment, client calls /api/plugin/purchase/verify to confirm.
  */
 
@@ -23,8 +23,8 @@ export async function OPTIONS() {
 
 // Plugin price in each currency (one-time)
 const PLUGIN_PRICE = {
-  INR: 2100,  // ~$25 USD
-  USD: 25,
+  INR: 340,   // ~$4 USD
+  USD: 4,
 }
 
 export async function POST(request: Request) {
@@ -58,23 +58,6 @@ export async function POST(request: Request) {
       return corsResponse(
         NextResponse.json({ error: 'You already own the plugin!' }, { status: 409 })
       )
-    }
-
-    // Also check — Pro/Studio active subscribers don't need to buy
-    const { data: userRow } = await supabaseAdmin
-      .from('users')
-      .select('subscription_status, subscription_plan')
-      .eq('clerk_user_id', userId)
-      .single()
-
-    if (userRow?.subscription_status === 'active') {
-      const plan = (userRow.subscription_plan || '').toLowerCase()
-      if (plan.includes('pro') || plan.includes('studio') ||
-          ['plan_S2DHUGo7n1m6iv', 'plan_S2DNEvy1YzYWNh', 'plan_S2DIdCKNcV6TtA', 'plan_S2DOABOeGedJHk'].includes(userRow.subscription_plan || '')) {
-        return corsResponse(
-          NextResponse.json({ error: 'Your Pro/Studio subscription already includes plugin access!' }, { status: 409 })
-        )
-      }
     }
 
     const body = await request.json()

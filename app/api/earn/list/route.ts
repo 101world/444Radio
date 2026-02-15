@@ -48,15 +48,6 @@ export async function POST(request: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'trackId required' }, { status: 400 }))
     }
 
-    // 0. Subscription gate — only subscribers can list
-    const subRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=subscription_status`)
-    const subUsers = await subRes.json()
-    const subStatus = subUsers?.[0]?.subscription_status
-    const isSubscribed = subStatus === 'active' || subStatus === 'trialing'
-    if (!isSubscribed) {
-      return corsResponse(NextResponse.json({ error: 'Active subscription required to list tracks on the marketplace.' }, { status: 403 }))
-    }
-
     // 1. Verify user owns the track
     // Try with listed_on_earn column first, fall back without it if column doesn't exist yet
     let trackRes = await supabaseRest(`combined_media?id=eq.${trackId}&user_id=eq.${userId}&select=id,title,user_id,listed_on_earn`)

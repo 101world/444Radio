@@ -3,25 +3,11 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, CreditCard, User, AlertCircle, CheckCircle, XCircle, Crown, Calendar, Clock, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info, Plug, Copy, Trash2, Eye, EyeOff, Key, Download, X, Monitor, HardDrive, FolderOpen } from 'lucide-react'
+import { ArrowLeft, User, AlertCircle, CheckCircle, XCircle, Zap, Wallet, ChevronLeft, ChevronRight, Music, Image, Video, Repeat, Sparkles, ShoppingCart, Tag, Gift, RefreshCw, Filter, Scissors, Volume2, Send, Info, Plug, Copy, Trash2, Key, Download, X, Monitor, FolderOpen, DollarSign, AlertTriangle, ArrowRightLeft } from 'lucide-react'
 import Link from 'next/link'
 import Script from 'next/script'
 import ProfileSettingsModal from '../components/ProfileSettingsModal'
 import { useCredits } from '../contexts/CreditsContext'
-
-type SubscriptionStatus = {
-  hasSubscription: boolean
-  status: string
-  plan: string
-  planId: string | null
-  subscriptionId: string | null
-  startDate: number | null
-  endDate: number | null
-  currentPeriodEnd: number | null
-  nextBillingDate: number | null
-  cancelAtPeriodEnd: boolean
-  razorpayStatus: string | null
-}
 
 export default function SettingsPage() {
   return (
@@ -39,17 +25,13 @@ function SettingsPageInner() {
   const { user, isLoaded } = useUser()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialTab = (['profile', 'subscription', 'wallet', 'plugin'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'subscription') as 'profile' | 'subscription' | 'wallet' | 'plugin'
-  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'wallet' | 'plugin'>(initialTab)
-  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
-  const [isLoadingSubscription, setIsLoadingSubscription] = useState(true)
-  const { credits, isLoading: isLoadingCredits, refreshCredits } = useCredits()
-  const [isCanceling, setIsCanceling] = useState(false)
-  const [isReactivating, setIsReactivating] = useState(false)
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
-  const [cancelMessage, setCancelMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const initialTab = (['profile', 'credits', 'wallet', 'plugin'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'credits') as 'profile' | 'credits' | 'wallet' | 'plugin'
+  const [activeTab, setActiveTab] = useState<'profile' | 'credits' | 'wallet' | 'plugin'>(initialTab)
+  const { credits, walletBalance, isLoading: isLoadingCredits, refreshCredits } = useCredits()
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [customAvatarUrl, setCustomAvatarUrl] = useState<string | null>(null)
+  const [isConverting, setIsConverting] = useState(false)
+  const [convertMessage, setConvertMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Wallet state
   const [transactions, setTransactions] = useState<any[]>([])
@@ -81,7 +63,6 @@ function SettingsPageInner() {
     }
   }, [user, isLoaded, router])
 
-  // Fetch custom avatar from Supabase (R2 URL stored in avatar_url column)
   useEffect(() => {
     if (user) {
       fetch(`/api/media/profile/${user.id}`)
@@ -94,137 +75,6 @@ function SettingsPageInner() {
         .catch(() => {})
     }
   }, [user])
-
-  useEffect(() => {
-    if (user) {
-      fetchSubscriptionStatus()
-    }
-  }, [user])
-
-  const fetchSubscriptionStatus = async () => {
-    try {
-      setIsLoadingSubscription(true)
-      const response = await fetch('/api/subscriptions/status')
-      const data = await response.json()
-      
-      if (data.success) {
-        setSubscription(data)
-      }
-    } catch (error) {
-      console.error('Failed to fetch subscription:', error)
-    } finally {
-      setIsLoadingSubscription(false)
-    }
-  }
-
-  const handleCancelSubscription = async () => {
-    if (!subscription?.subscriptionId) return
-
-    try {
-      setIsCanceling(true)
-      setCancelMessage(null)
-
-      const response = await fetch('/api/subscriptions/cancel', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          cancelAtCycleEnd: true // Safe: keeps access until period end
-        })
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        setCancelMessage({
-          type: 'success',
-          text: data.message || 'Subscription cancelled successfully'
-        })
-        setShowCancelConfirm(false)
-        setTimeout(() => {
-          fetchSubscriptionStatus()
-          refreshCredits()
-        }, 1000)
-      } else {
-        setCancelMessage({
-          type: 'error',
-          text: data.error || 'Failed to cancel subscription'
-        })
-      }
-    } catch (error: any) {
-      setCancelMessage({
-        type: 'error',
-        text: error.message || 'Network error occurred'
-      })
-    } finally {
-      setIsCanceling(false)
-    }
-  }
-
-  const handleReactivateSubscription = async () => {
-    if (!subscription?.subscriptionId) return
-
-    try {
-      setIsReactivating(true)
-      setCancelMessage(null)
-
-      const response = await fetch('/api/subscriptions/reactivate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        setCancelMessage({
-          type: 'success',
-          text: data.message || 'Subscription reactivated successfully'
-        })
-        setTimeout(() => {
-          fetchSubscriptionStatus()
-          refreshCredits()
-        }, 1000)
-      } else {
-        setCancelMessage({
-          type: 'error',
-          text: data.error || data.message || 'Failed to reactivate subscription'
-        })
-      }
-    } catch (error: any) {
-      setCancelMessage({
-        type: 'error',
-        text: error.message || 'Network error occurred'
-      })
-    } finally {
-      setIsReactivating(false)
-    }
-  }
-
-  const formatDate = (timestamp: number | null) => {
-    if (!timestamp) return 'N/A'
-    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
-  const getPlanColor = (plan: string) => {
-    const planLower = plan.toLowerCase()
-    if (planLower.includes('studio')) return 'from-purple-500 to-pink-500'
-    if (planLower.includes('pro')) return 'from-blue-500 to-cyan-500'
-    return 'from-cyan-500 to-teal-500'
-  }
-
-  const getPlanCredits = (plan: string) => {
-    const planLower = plan.toLowerCase()
-    if (planLower.includes('studio')) return '1500'
-    if (planLower.includes('pro')) return '600'
-    return '100'
-  }
 
   const fetchWalletTransactions = useCallback(async (page = 1, filter = '') => {
     try {
@@ -253,7 +103,6 @@ function SettingsPageInner() {
     }
   }, [activeTab, user, walletPage, walletFilter, fetchWalletTransactions])
 
-  // Plugin token functions
   const fetchPluginTokens = useCallback(async () => {
     try {
       setIsLoadingTokens(true)
@@ -274,7 +123,7 @@ function SettingsPageInner() {
       const data = await res.json()
       if (data.purchased) setHasPluginPurchase(true)
     } catch {
-      // Ignore — will just show buy option
+      // Ignore
     } finally {
       setIsCheckingPurchase(false)
     }
@@ -354,7 +203,6 @@ function SettingsPageInner() {
       release: 'Release',
       credit_award: 'Credit Award',
       credit_refund: 'Refund',
-      subscription_bonus: 'Subscription Bonus',
       other: 'Other',
     }
     return map[type] || type
@@ -371,7 +219,7 @@ function SettingsPageInner() {
     if (type === 'earn_purchase') return <ShoppingCart className="w-4 h-4" />
     if (type === 'earn_sale' || type === 'earn_list') return <Tag className="w-4 h-4" />
     if (type === 'release') return <Send className="w-4 h-4" />
-    if (type === 'credit_award' || type === 'subscription_bonus') return <Gift className="w-4 h-4" />
+    if (type === 'credit_award') return <Gift className="w-4 h-4" />
     if (type === 'credit_refund') return <RefreshCw className="w-4 h-4" />
     return <Zap className="w-4 h-4" />
   }
@@ -392,7 +240,6 @@ function SettingsPageInner() {
     { value: 'earn_list', label: 'Listings' },
     { value: 'release', label: 'Releases' },
     { value: 'awards', label: 'Awards' },
-    { value: 'subscription_bonus', label: 'Subscriptions' },
     { value: 'credit_refund', label: 'Refunds' },
   ]
 
@@ -421,33 +268,33 @@ function SettingsPageInner() {
           <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-cyan-400 via-white to-cyan-300 bg-clip-text text-transparent">
             Settings
           </h1>
-          <p className="text-cyan-400/60">Manage your account and subscription</p>
+          <p className="text-cyan-400/60">Manage your account and credits</p>
         </div>
 
-        <div className="flex gap-4 mb-8 border-b border-white/10">
+        <div className="flex gap-4 mb-8 border-b border-white/10 overflow-x-auto">
           <button
-            onClick={() => setActiveTab('subscription')}
-            className={`pb-4 px-2 font-medium transition-colors relative ${
-              activeTab === 'subscription' ? 'text-cyan-400' : 'text-gray-400 hover:text-white'
+            onClick={() => setActiveTab('credits')}
+            className={`pb-4 px-2 font-medium transition-colors relative whitespace-nowrap ${
+              activeTab === 'credits' ? 'text-cyan-400' : 'text-gray-400 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              <span>Subscription</span>
+              <Zap className="w-5 h-5" />
+              <span>Credits</span>
             </div>
-            {activeTab === 'subscription' && (
+            {activeTab === 'credits' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
             )}
           </button>
           <button
             onClick={() => setActiveTab('wallet')}
-            className={`pb-4 px-2 font-medium transition-colors relative ${
+            className={`pb-4 px-2 font-medium transition-colors relative whitespace-nowrap ${
               activeTab === 'wallet' ? 'text-cyan-400' : 'text-gray-400 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-2">
               <Wallet className="w-5 h-5" />
-              <span>Wallet & Billing</span>
+              <span>Wallet &amp; Billing</span>
             </div>
             {activeTab === 'wallet' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"></div>
@@ -455,7 +302,7 @@ function SettingsPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('profile')}
-            className={`pb-4 px-2 font-medium transition-colors relative ${
+            className={`pb-4 px-2 font-medium transition-colors relative whitespace-nowrap ${
               activeTab === 'profile' ? 'text-cyan-400' : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -469,7 +316,7 @@ function SettingsPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('plugin')}
-            className={`pb-4 px-2 font-medium transition-colors relative ${
+            className={`pb-4 px-2 font-medium transition-colors relative whitespace-nowrap ${
               activeTab === 'plugin' ? 'text-cyan-400' : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -483,178 +330,172 @@ function SettingsPageInner() {
           </button>
         </div>
 
-        {activeTab === 'subscription' ? (
+        {/* Credits Tab */}
+        {activeTab === 'credits' ? (
           <div className="space-y-6">
-            {cancelMessage && (
-              <div className={`p-4 rounded-lg border flex items-start gap-3 ${
-                cancelMessage.type === 'success'
-                  ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                  : 'bg-red-500/10 border-red-500/30 text-red-400'
-              }`}>
-                {cancelMessage.type === 'success' ? (
-                  <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                )}
-                <p className="text-sm">{cancelMessage.text}</p>
-              </div>
-            )}
-
-            {isLoadingSubscription ? (
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div>
-              </div>
-            ) : subscription?.hasSubscription ? (
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-xl bg-gradient-to-br ${getPlanColor(subscription.plan)} bg-opacity-20`}>
-                      <Crown className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold">{subscription.plan} Plan</h2>
-                      <p className="text-sm text-gray-400 capitalize">Status: {subscription.status}</p>
-                    </div>
+            {/* Wallet Balance Card */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 bg-opacity-20">
+                    <DollarSign className="w-6 h-6" />
                   </div>
-                  <div className={`px-4 py-2 rounded-full text-sm font-medium ${
-                    subscription.status === 'active'
-                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                      : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                  }`}>
-                    {subscription.cancelAtPeriodEnd ? 'Ending Soon' : 'Active'}
+                  <div>
+                    <h2 className="text-2xl font-bold">Wallet &amp; Credits</h2>
+                    <p className="text-sm text-gray-400">$1 access fee &middot; pay-per-use</p>
                   </div>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                  <div className="flex items-start gap-3">
-                    <Zap className="w-5 h-5 text-cyan-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-400">Credits in Wallet</p>
-                      <p className="text-lg font-semibold">
-                        {isLoadingCredits ? (
-                          <span className="text-gray-500">Loading...</span>
-                        ) : (
-                          `${credits || 0} credits`
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        +{getPlanCredits(subscription.plan)} credits/month
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {subscription.nextBillingDate && !subscription.cancelAtPeriodEnd && (
-                    <div className="flex items-start gap-3">
-                      <Calendar className="w-5 h-5 text-cyan-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-400">Next Billing Date</p>
-                        <p className="text-lg font-semibold">{formatDate(subscription.nextBillingDate)}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {subscription.currentPeriodEnd && (
-                    <div className="flex items-start gap-3">
-                      <Clock className="w-5 h-5 text-cyan-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-400">
-                          {subscription.cancelAtPeriodEnd ? 'Access Until' : 'Current Period Ends'}
-                        </p>
-                        <p className="text-lg font-semibold">{formatDate(subscription.currentPeriodEnd)}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {subscription.startDate && (
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-cyan-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-400">Member Since</p>
-                        <p className="text-lg font-semibold">{formatDate(subscription.startDate)}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {subscription.cancelAtPeriodEnd && (
-                  <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-yellow-400 font-medium">Subscription Ending</p>
-                      <p className="text-sm text-gray-400 mt-1">
-                        Your subscription will end on {formatDate(subscription.currentPeriodEnd)}. You'll keep ALL your accumulated credits forever and can use them anytime. You just won't receive new monthly credits after this date.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-4">
-                  {subscription.cancelAtPeriodEnd ? (
-                    <button
-                      onClick={handleReactivateSubscription}
-                      disabled={isReactivating}
-                      className="px-6 py-3 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {isReactivating ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin" />
-                          <span>Reactivating...</span>
-                        </>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="flex items-start gap-3">
+                  <DollarSign className="w-5 h-5 text-green-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-400">Wallet Balance</p>
+                    <p className="text-3xl font-bold">
+                      {isLoadingCredits ? (
+                        <span className="text-gray-500">...</span>
                       ) : (
-                        <>
-                          <CheckCircle className="w-5 h-5" />
-                          <span>Reactivate Subscription</span>
-                        </>
+                        <span className="text-green-400">${(walletBalance ?? 0).toFixed(2)}</span>
                       )}
-                    </button>
-                  ) : (
-                    subscription.status === 'active' && (
-                      <button
-                        onClick={() => setShowCancelConfirm(true)}
-                        className="px-6 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg font-medium transition-colors"
-                      >
-                        Cancel Subscription
-                      </button>
-                    )
-                  )}
-                  <Link
-                    href="/pricing"
-                    className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 rounded-lg font-medium transition-colors text-center"
-                  >
-                    {subscription.cancelAtPeriodEnd ? 'View Plans' : 'Change Plan'}
-                  </Link>
+                    </p>
+                    {(walletBalance ?? 0) < 1 && (
+                      <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Min $1.00 required
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-cyan-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-400">Available Credits</p>
+                    <p className="text-3xl font-bold">
+                      {isLoadingCredits ? (
+                        <span className="text-gray-500">...</span>
+                      ) : (
+                        <span className="text-cyan-400">{credits || 0}</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-cyan-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-400">Credit Rate</p>
+                    <p className="text-sm text-gray-300">1 credit = $0.035</p>
+                    <p className="text-xs text-gray-500 mt-1">Credits never expire</p>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center">
-                <div className="inline-flex p-4 rounded-full bg-cyan-500/10 mb-4">
-                  <CreditCard className="w-8 h-8 text-cyan-400" />
+
+              {/* Convert wallet to credits */}
+              {(walletBalance ?? 0) > 1 && (
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ArrowRightLeft className="w-4 h-4 text-purple-400" />
+                      <div>
+                        <p className="text-sm font-medium">Convertible: ${((walletBalance ?? 0) - 1).toFixed(2)}</p>
+                        <p className="text-xs text-gray-500">~{Math.floor(((walletBalance ?? 0) - 1) / 0.035)} credits ($1 stays as access fee)</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setIsConverting(true)
+                        setConvertMessage(null)
+                        try {
+                          const res = await fetch('/api/wallet/convert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({}),
+                          })
+                          const data = await res.json()
+                          if (data.success) {
+                            setConvertMessage({ type: 'success', text: `+${data.creditsAdded} credits added! Wallet: $${data.walletBalance.toFixed(2)}` })
+                            refreshCredits()
+                            window.dispatchEvent(new Event('credits:refresh'))
+                          } else {
+                            setConvertMessage({ type: 'error', text: data.error || 'Conversion failed' })
+                          }
+                        } catch {
+                          setConvertMessage({ type: 'error', text: 'Network error' })
+                        } finally {
+                          setIsConverting(false)
+                        }
+                      }}
+                      disabled={isConverting}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      {isConverting ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ArrowRightLeft className="w-3 h-3" />}
+                      Convert All
+                    </button>
+                  </div>
+                  {convertMessage && (
+                    <div className={`mt-3 text-xs flex items-center gap-1 ${convertMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                      {convertMessage.type === 'success' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                      {convertMessage.text}
+                    </div>
+                  )}
                 </div>
-                <h2 className="text-2xl font-bold mb-2">No Active Subscription</h2>
-                <p className="text-gray-400 mb-6">
-                  Subscribe to get monthly credits and unlock unlimited AI music generation
-                </p>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/pricing"
-                  className="inline-block px-8 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 rounded-lg font-semibold transition-all"
+                  className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 rounded-lg font-semibold transition-all text-center text-black"
                 >
-                  View Plans
+                  + Add Money
                 </Link>
-              </div>
-            )}
-          </div>
-        ) : activeTab === 'wallet' ? (
-          <div className="space-y-6">
-            {/* Wallet Header */}
-            <div className="flex items-center gap-3 px-1">
-              <Wallet className="w-6 h-6 text-cyan-400" />
-              <div>
-                <h2 className="text-lg font-bold text-white">Wallet &amp; Transactions</h2>
-                <p className="text-xs text-gray-500">All transactions, generations, purchases, releases &amp; sales</p>
+                <button
+                  onClick={() => setActiveTab('wallet')}
+                  className="px-6 py-3 bg-white/10 hover:bg-white/15 border border-white/10 text-white rounded-lg font-medium transition-colors text-center"
+                >
+                  View Transaction History
+                </button>
               </div>
             </div>
 
-            {/* Credit Balance Card */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+              <h3 className="text-sm font-semibold text-gray-400 mb-4">Generation Costs</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { name: 'Song', cost: 2 },
+                  { name: 'Cover Art', cost: 1 },
+                  { name: 'Sound Effect', cost: 2 },
+                  { name: 'Stem Split', cost: 5 },
+                  { name: 'Loops', cost: 7 },
+                  { name: 'Audio Boost', cost: 1 },
+                  { name: 'Extract', cost: 1 },
+                  { name: 'Video to Audio', cost: 2 },
+                ].map((item) => (
+                  <div key={item.name} className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-lg">
+                    <span className="text-xs text-gray-400">{item.name}</span>
+                    <span className="text-xs font-bold text-cyan-400">{item.cost} cr</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        ) : activeTab === 'wallet' ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-3">
+                <Wallet className="w-6 h-6 text-cyan-400" />
+                <div>
+                  <h2 className="text-lg font-bold text-white">Wallet &amp; Transactions</h2>
+                  <p className="text-xs text-gray-500">All transactions, generations, purchases, releases &amp; sales</p>
+                </div>
+              </div>
+              <Link
+                href="/pricing"
+                className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 text-black rounded-lg text-sm font-semibold hover:from-cyan-400 hover:to-teal-400 transition-all"
+              >
+                + Add Money
+              </Link>
+            </div>
+
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -673,7 +514,6 @@ function SettingsPageInner() {
               </div>
             </div>
 
-            {/* Filters */}
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
               <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
               {txFilterOptions.map((opt) => (
@@ -691,7 +531,6 @@ function SettingsPageInner() {
               ))}
             </div>
 
-            {/* Transaction List */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
               {isLoadingWallet ? (
                 <div className="p-12 flex items-center justify-center">
@@ -708,15 +547,12 @@ function SettingsPageInner() {
                   {transactions.map((tx: any) => (
                     <div key={tx.id}>
                       <div className="flex items-center gap-3 px-5 py-4 hover:bg-white/[0.02] transition-colors">
-                        {/* Icon */}
                         <div className={`p-2 rounded-lg flex-shrink-0 ${
                           tx.type === 'release' ? 'bg-green-500/10 text-green-400' :
                           tx.amount > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
                         }`}>
                           {txTypeIcon(tx.type)}
                         </div>
-
-                        {/* Info */}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{tx.description || txTypeLabel(tx.type)}</p>
                           {tx.type === 'earn_sale' && tx.metadata?.buyerUsername && (
@@ -732,8 +568,6 @@ function SettingsPageInner() {
                             {txTypeLabel(tx.type)} &middot; {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
-
-                        {/* Info button for releases */}
                         {tx.type === 'release' && tx.metadata && (
                           <button
                             onClick={() => setExpandedTx(expandedTx === tx.id ? null : tx.id)}
@@ -745,8 +579,6 @@ function SettingsPageInner() {
                             <Info className="w-4 h-4" />
                           </button>
                         )}
-
-                        {/* Amount */}
                         <div className="text-right flex-shrink-0">
                           <p className={`text-sm font-bold ${
                             tx.type === 'release' ? 'text-green-400' :
@@ -758,8 +590,6 @@ function SettingsPageInner() {
                             <p className="text-xs text-gray-500">Bal: {tx.balance_after}</p>
                           )}
                         </div>
-
-                        {/* Status badge */}
                         <div className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
                           tx.status === 'success' ? 'bg-green-500/10 text-green-400' :
                           tx.status === 'failed' ? 'bg-red-500/10 text-red-400' :
@@ -768,8 +598,6 @@ function SettingsPageInner() {
                           {tx.status}
                         </div>
                       </div>
-
-                      {/* Expanded release metadata */}
                       {tx.type === 'release' && expandedTx === tx.id && tx.metadata && (
                         <div className="px-5 pb-4 -mt-1">
                           <div className="ml-10 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5">
@@ -777,12 +605,6 @@ function SettingsPageInner() {
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-gray-500 w-20">Track ID</span>
                                 <span className="text-xs text-cyan-400 font-mono">{tx.metadata.trackId444}</span>
-                              </div>
-                            )}
-                            {tx.metadata.trackId && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-gray-500 w-20">DB ID</span>
-                                <span className="text-[10px] text-gray-400 font-mono truncate">{tx.metadata.trackId}</span>
                               </div>
                             )}
                             {tx.metadata.genre && (
@@ -820,8 +642,6 @@ function SettingsPageInner() {
                   ))}
                 </div>
               )}
-
-              {/* Pagination */}
               {walletTotalPages > 1 && (
                 <div className="flex items-center justify-between px-5 py-3 border-t border-white/5">
                   <button
@@ -831,9 +651,7 @@ function SettingsPageInner() {
                   >
                     <ChevronLeft className="w-4 h-4" /> Prev
                   </button>
-                  <span className="text-xs text-gray-500">
-                    Page {walletPage} of {walletTotalPages}
-                  </span>
+                  <span className="text-xs text-gray-500">Page {walletPage} of {walletTotalPages}</span>
                   <button
                     onClick={() => setWalletPage(p => Math.min(walletTotalPages, p + 1))}
                     disabled={walletPage >= walletTotalPages}
@@ -845,9 +663,9 @@ function SettingsPageInner() {
               )}
             </div>
           </div>
+
         ) : activeTab === 'plugin' ? (
           <div className="space-y-6">
-            {/* Plugin Header */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 bg-opacity-20">
@@ -855,7 +673,7 @@ function SettingsPageInner() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">444 Radio Plugin</h2>
-                  <p className="text-sm text-gray-400">Generate music, effects, loops & stems directly inside Ableton</p>
+                  <p className="text-sm text-gray-400">Generate music, effects, loops &amp; stems directly inside Ableton</p>
                 </div>
               </div>
 
@@ -865,7 +683,6 @@ function SettingsPageInner() {
                 </p>
               </div>
 
-              {/* Create new token */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
                   <Key className="w-4 h-4" /> Generate Plugin Token
@@ -898,12 +715,11 @@ function SettingsPageInner() {
                   </div>
                 )}
 
-                {/* Newly created token (shown ONCE) */}
                 {newToken && (
                   <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 space-y-3">
                     <div className="flex items-center gap-2 text-green-400">
                       <CheckCircle className="w-4 h-4" />
-                      <span className="text-sm font-semibold">Token created! Copy it now — it won't be shown again.</span>
+                      <span className="text-sm font-semibold">Token created! Copy it now — it won&apos;t be shown again.</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 bg-black/50 rounded-lg px-3 py-2 text-sm text-green-300 font-mono break-all select-all">
@@ -923,12 +739,10 @@ function SettingsPageInner() {
               </div>
             </div>
 
-            {/* Existing tokens */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                 <Key className="w-5 h-5 text-purple-400" /> Your Plugin Tokens
               </h3>
-
               {isLoadingTokens ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
@@ -942,9 +756,7 @@ function SettingsPageInner() {
                 <div className="space-y-3">
                   {pluginTokens.map((t) => (
                     <div key={t.id} className={`flex items-center justify-between p-4 rounded-xl border ${
-                      t.is_active
-                        ? 'bg-white/5 border-white/10'
-                        : 'bg-white/2 border-white/5 opacity-50'
+                      t.is_active ? 'bg-white/5 border-white/10' : 'bg-white/2 border-white/5 opacity-50'
                     }`}>
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${t.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -968,11 +780,9 @@ function SettingsPageInner() {
                   ))}
                 </div>
               )}
-
-              <p className="text-xs text-gray-600 mt-4">Maximum 5 active tokens. Pro: 200 generation queues/day · Studio & Purchased: Unlimited.</p>
+              <p className="text-xs text-gray-600 mt-4">Maximum 5 active tokens. Credits required for each generation.</p>
             </div>
 
-            {/* Plugin download */}
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
               <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
                 <Download className="w-5 h-5 text-cyan-400" /> Get the Plugin
@@ -981,160 +791,91 @@ function SettingsPageInner() {
                 The 444 Radio VST3 plugin works inside Ableton Live, FL Studio, and any DAW that supports VST3 on Windows.
               </p>
 
-              {(() => {
-                // Determine if user has Pro/Studio (not Creator)
-                const planId = subscription?.planId || ''
-                const planName = (subscription?.plan || '').toLowerCase()
-                const isProOrStudio = subscription?.hasSubscription && subscription?.status === 'active' && (
-                  planName.includes('pro') || planName.includes('studio') ||
-                  ['plan_S2DHUGo7n1m6iv', 'plan_S2DNEvy1YzYWNh', 'plan_S2DIdCKNcV6TtA', 'plan_S2DOABOeGedJHk'].includes(planId)
-                )
-
-                if (isProOrStudio) {
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                        <CheckCircle className="w-4 h-4 text-emerald-400" />
-                        <span className="text-xs text-emerald-300">
-                          {planName.includes('studio') || ['plan_S2DIdCKNcV6TtA', 'plan_S2DOABOeGedJHk'].includes(planId)
-                            ? 'Studio subscriber — unlimited generation queues/day'
-                            : 'Pro subscriber — 200 generation queues/day (100 songs)'}
-                        </span>
-                      </div>
-                      <a
-                        href="/api/plugin/download-installer"
-                        onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download Plugin v2 (Free with your plan)
-                      </a>
-                      <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
-                      <button
-                        onClick={() => setShowInstallGuide(true)}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
-                      >
-                        View install instructions
-                      </button>
-                    </div>
-                  )
-                }
-
-                if (hasPluginPurchase) {
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                        <CheckCircle className="w-4 h-4 text-emerald-400" />
-                        <span className="text-xs text-emerald-300">Plugin purchased — unlimited access forever</span>
-                      </div>
-                      <a
-                        href="/api/plugin/download-installer"
-                        onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download Plugin v2
-                      </a>
-                      <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
-                      <button
-                        onClick={() => setShowInstallGuide(true)}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
-                      >
-                        View install instructions
-                      </button>
-                    </div>
-                  )
-                }
-
-                // No Pro/Studio, no purchase — show buy + subscribe options
-                return (
-                  <div className="space-y-4">
-                    {/* Option 1: Buy for $25 */}
-                    <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <p className="text-sm font-bold text-white">One-Time Purchase</p>
-                          <p className="text-xs text-gray-400">Unlimited plugin access forever</p>
-                        </div>
-                        <span className="text-2xl font-black text-white">$25</span>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          if (buyingPlugin) return
-                          setBuyingPlugin(true)
-                          try {
-                            const orderRes = await fetch('/api/plugin/purchase/create-order', { method: 'POST' })
-                            const orderData = await orderRes.json()
-                            if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order')
-
-                            const rzp = new (window as any).Razorpay({
-                              key: orderData.razorpay_key_id,
-                              amount: orderData.amount,
-                              currency: orderData.currency,
-                              name: '444 Radio',
-                              description: 'VST3 Plugin — Unlimited Access',
-                              order_id: orderData.order_id,
-                              prefill: {
-                                email: orderData.customer_email,
-                                name: orderData.customer_name,
-                              },
-                              handler: async (response: any) => {
-                                const verifyRes = await fetch('/api/plugin/purchase/verify', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    razorpay_order_id: response.razorpay_order_id,
-                                    razorpay_payment_id: response.razorpay_payment_id,
-                                    razorpay_signature: response.razorpay_signature,
-                                  }),
-                                })
-                                if (verifyRes.ok) {
-                                  setHasPluginPurchase(true)
-                                  setBuyingPlugin(false)
-                                }
-                              },
-                              modal: { ondismiss: () => setBuyingPlugin(false) },
-                              theme: { color: '#06b6d4' },
-                            })
-                            rzp.open()
-                          } catch (err: any) {
-                            setPluginError(err.message || 'Purchase failed')
-                            setBuyingPlugin(false)
-                          }
-                        }}
-                        disabled={buyingPlugin}
-                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
-                      >
-                        {buyingPlugin ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                        {buyingPlugin ? 'Processing...' : 'Buy Plugin — $25'}
-                      </button>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-px bg-white/10" />
-                      <span className="text-xs text-gray-500">or</span>
-                      <div className="flex-1 h-px bg-white/10" />
-                    </div>
-
-                    {/* Option 2: Subscribe Pro/Studio */}
-                    <div className="flex items-center gap-3 px-4 py-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
-                      <Crown className="w-5 h-5 text-purple-400 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-white">Pro / Studio Subscribers</p>
-                        <p className="text-xs text-gray-400">Get the plugin included free — Pro (200 queues/day) or Studio (unlimited)</p>
-                      </div>
-                    </div>
-                    <Link
-                      href="/pricing"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm hover:from-purple-500 hover:to-pink-500 transition-all"
-                    >
-                      <Crown className="w-4 h-4" />
-                      View Pricing Plans
-                    </Link>
+              {hasPluginPurchase ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs text-emerald-300">Plugin purchased — unlimited access forever</span>
                   </div>
-                )
-              })()}
+                  <a
+                    href="/api/plugin/download-installer"
+                    onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Plugin v2
+                  </a>
+                  <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
+                  <button
+                    onClick={() => setShowInstallGuide(true)}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                  >
+                    View install instructions
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-bold text-white">One-Time Purchase</p>
+                        <p className="text-xs text-gray-400">Unlimited plugin access forever</p>
+                      </div>
+                      <span className="text-2xl font-black text-white">$4</span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (buyingPlugin) return
+                        setBuyingPlugin(true)
+                        try {
+                          const orderRes = await fetch('/api/plugin/purchase/create-order', { method: 'POST' })
+                          const orderData = await orderRes.json()
+                          if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order')
+
+                          const rzp = new (window as any).Razorpay({
+                            key: orderData.razorpay_key_id,
+                            amount: orderData.amount,
+                            currency: orderData.currency,
+                            name: '444 Radio',
+                            description: 'VST3 Plugin — Unlimited Access',
+                            order_id: orderData.order_id,
+                            prefill: {
+                              email: orderData.customer_email,
+                              name: orderData.customer_name,
+                            },
+                            handler: async (response: any) => {
+                              const verifyRes = await fetch('/api/plugin/purchase/verify', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  razorpay_order_id: response.razorpay_order_id,
+                                  razorpay_payment_id: response.razorpay_payment_id,
+                                  razorpay_signature: response.razorpay_signature,
+                                }),
+                              })
+                              if (verifyRes.ok) {
+                                setHasPluginPurchase(true)
+                                setBuyingPlugin(false)
+                              }
+                            },
+                            modal: { ondismiss: () => setBuyingPlugin(false) },
+                            theme: { color: '#06b6d4' },
+                          })
+                          rzp.open()
+                        } catch (err: any) {
+                          setPluginError(err.message || 'Purchase failed')
+                          setBuyingPlugin(false)
+                        }
+                      }}
+                      disabled={buyingPlugin}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                    >
+                      {buyingPlugin ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                      {buyingPlugin ? 'Processing...' : 'Buy Plugin — $4'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {pluginError && (
                 <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
@@ -1144,72 +885,6 @@ function SettingsPageInner() {
               )}
             </div>
 
-            {/* Plugin Tier Comparison */}
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Info className="w-5 h-5 text-cyan-400" /> Plugin Access Tiers
-              </h3>
-              <p className="text-sm text-gray-400 mb-5">
-                Each song uses <span className="text-cyan-400 font-bold">2 generation queues</span> for <span className="text-cyan-400 font-bold">2 credits total</span>. Pro users: when your daily queues run out, generation is locked for 24 hours.
-              </p>
-              <div className="overflow-hidden rounded-xl border border-white/10">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-white/5">
-                      <th className="text-left px-4 py-3 text-gray-400 font-medium">Tier</th>
-                      <th className="text-center px-4 py-3 text-gray-400 font-medium">Queues/Day</th>
-                      <th className="text-center px-4 py-3 text-gray-400 font-medium">Songs/Day</th>
-                      <th className="text-center px-4 py-3 text-gray-400 font-medium">Cost</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    <tr>
-                      <td className="px-4 py-3">
-                        <span className="text-purple-400 font-bold">Pro</span>
-                        <span className="text-gray-500 text-xs ml-1">subscriber</span>
-                      </td>
-                      <td className="text-center px-4 py-3 text-white font-mono">200</td>
-                      <td className="text-center px-4 py-3 text-white font-mono">100</td>
-                      <td className="text-center px-4 py-3 text-emerald-400 text-xs">Free with Pro</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-3">
-                        <span className="text-cyan-400 font-bold">Studio</span>
-                        <span className="text-gray-500 text-xs ml-1">subscriber</span>
-                      </td>
-                      <td className="text-center px-4 py-3 text-white font-mono">∞</td>
-                      <td className="text-center px-4 py-3 text-white font-mono">∞</td>
-                      <td className="text-center px-4 py-3 text-emerald-400 text-xs">Free with Studio</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-3">
-                        <span className="text-yellow-400 font-bold">Purchased</span>
-                        <span className="text-gray-500 text-xs ml-1">one-time $25</span>
-                      </td>
-                      <td className="text-center px-4 py-3 text-white font-mono">∞</td>
-                      <td className="text-center px-4 py-3 text-white font-mono">∞</td>
-                      <td className="text-center px-4 py-3 text-white text-xs">$25 once</td>
-                    </tr>
-                    <tr className="bg-white/[0.02]">
-                      <td className="px-4 py-3">
-                        <span className="text-gray-500 font-bold">Creator / Free</span>
-                      </td>
-                      <td className="text-center px-4 py-3 text-red-400 font-mono">—</td>
-                      <td className="text-center px-4 py-3 text-red-400 font-mono">—</td>
-                      <td className="text-center px-4 py-3 text-gray-500 text-xs">Purchase or upgrade required</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 space-y-2">
-                <p className="text-xs text-gray-500"><span className="text-cyan-400">▸</span> 1 song = 2 generation queues per song for 2 credits = <span className="text-white font-bold">2 credits per song</span></p>
-                <p className="text-xs text-gray-500"><span className="text-purple-400">▸</span> Pro: 200 queues/day = <span className="text-white font-bold">up to 100 songs/day</span> (200 credits). Once used, locked for 24hrs.</p>
-                <p className="text-xs text-gray-500"><span className="text-cyan-400">▸</span> Studio & Purchased: Unlimited queuing, no daily lock. Credits still required.</p>
-                <p className="text-xs text-gray-500"><span className="text-yellow-400">▸</span> Pro/Studio with inactive subscription: plugin loads but won&apos;t generate. Website generation still works with remaining credits.</p>
-              </div>
-            </div>
-
-            {/* Install Guide Popup */}
             {showInstallGuide && (
               <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowInstallGuide(false)}>
                 <div className="bg-gray-900 border border-white/10 rounded-2xl p-8 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -1222,72 +897,39 @@ function SettingsPageInner() {
                       <X size={18} className="text-gray-400" />
                     </button>
                   </div>
-
                   <div className="space-y-5">
-                    {/* Step 1 */}
                     <div className="flex gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">1</div>
                       <div>
                         <p className="font-semibold text-white text-sm">Extract the ZIP</p>
-                        <p className="text-xs text-gray-400 mt-1">Unzip <span className="text-cyan-400 font-mono">444Radio-Plugin-v2-Windows.zip</span> — you&apos;ll find <span className="text-cyan-400 font-mono">444 Radio v2.exe</span> (standalone) and <span className="text-cyan-400 font-mono">444 Radio v2.vst3</span> (plugin)</p>
+                        <p className="text-xs text-gray-400 mt-1">Unzip <span className="text-cyan-400 font-mono">444Radio-Plugin-v2-Windows.zip</span></p>
                       </div>
                     </div>
-
-                    {/* Step 2 */}
                     <div className="flex gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">2</div>
                       <div>
                         <p className="font-semibold text-white text-sm">Copy to VST3 Folder</p>
-                        <p className="text-xs text-gray-400 mt-1">Move the <span className="text-cyan-400 font-mono">444 Radio v2.vst3</span> folder to:</p>
-                        <div className="mt-2 space-y-1.5">
-                          <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg">
-                            <FolderOpen className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
-                            <code className="text-xs text-cyan-300 break-all">C:\Program Files\Common Files\VST3\</code>
-                          </div>
-                          <p className="text-[10px] text-gray-500">Or: <code className="text-gray-400">C:\Users\YourName\Documents\VST3\</code> (no admin needed)</p>
+                        <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg">
+                          <FolderOpen className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                          <code className="text-xs text-cyan-300 break-all">C:\Program Files\Common Files\VST3\</code>
                         </div>
                       </div>
                     </div>
-
-                    {/* Step 3 */}
                     <div className="flex gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">3</div>
                       <div>
                         <p className="font-semibold text-white text-sm">Rescan in Your DAW</p>
                         <p className="text-xs text-gray-400 mt-1"><strong className="text-white">Ableton:</strong> Preferences → Plug-ins → VST3 → Rescan</p>
-                        <p className="text-xs text-gray-400"><strong className="text-white">FL Studio:</strong> Options → Manage Plugins → Find more → Rescan</p>
-                        <p className="text-xs text-gray-400 mt-1">Look for <span className="text-cyan-400 font-semibold">&quot;444 Radio v2&quot;</span> under VST3 instruments</p>
                       </div>
                     </div>
-
-                    {/* Step 4 */}
                     <div className="flex gap-3">
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">4</div>
                       <div>
                         <p className="font-semibold text-white text-sm">Connect Your Token</p>
-                        <p className="text-xs text-gray-400 mt-1">Open the plugin → paste your token from above → hit <span className="text-cyan-400">Connect</span>. Your credits will appear and you can start generating!</p>
-                      </div>
-                    </div>
-
-                    {/* Step 5 */}
-                    <div className="flex gap-3">
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs font-bold text-purple-400">5</div>
-                      <div>
-                        <p className="font-semibold text-white text-sm">Drag to Timeline</p>
-                        <p className="text-xs text-gray-400 mt-1">After generating, drag audio from the purple bar at the bottom of the plugin window straight onto your DAW timeline.</p>
-                      </div>
-                    </div>
-
-                    {/* WebView2 note */}
-                    <div className="mt-4 flex items-start gap-2 px-4 py-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-                      <Info className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-xs text-yellow-300 font-medium">Requires Microsoft Edge WebView2</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">Most Windows 10/11 PCs already have it. If the plugin window is blank, <a href="https://developer.microsoft.com/en-us/microsoft-edge/webview2/" target="_blank" rel="noopener noreferrer" className="text-yellow-400 underline">download WebView2 Runtime here</a>.</p>
+                        <p className="text-xs text-gray-400 mt-1">Paste your token → hit Connect.</p>
                       </div>
                     </div>
                   </div>
-
                   <button
                     onClick={() => setShowInstallGuide(false)}
                     className="w-full mt-6 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium text-gray-300 transition-colors"
@@ -1298,6 +940,7 @@ function SettingsPageInner() {
               </div>
             )}
           </div>
+
         ) : (
           <div className="space-y-6">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
@@ -1324,60 +967,16 @@ function SettingsPageInner() {
         )}
       </div>
 
-      {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-white/10 rounded-2xl p-8 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 rounded-full bg-red-500/10">
-                <AlertCircle className="w-6 h-6  text-red-400" />
-              </div>
-              <h3 className="text-xl font-bold">Cancel Subscription?</h3>
-            </div>
-            <p className="text-gray-400 mb-6">
-              Your subscription will remain active until {formatDate(subscription?.currentPeriodEnd || null)}. 
-              <strong className="text-white">You'll keep all your accumulated credits forever</strong> and can use them anytime. You just won't receive new monthly credits after this date. No refunds for remaining time.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowCancelConfirm(false)}
-                disabled={isCanceling}
-                className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition-colors disabled:opacity-50"
-              >
-                Keep Subscription
-              </button>
-              <button
-                onClick={handleCancelSubscription}
-                disabled={isCanceling}
-                className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isCanceling ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Canceling...</span>
-                  </>
-                ) : (
-                  'Yes, Cancel'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {user && showProfileModal && (
         <ProfileSettingsModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
           currentUsername={user.username || user.firstName || ''}
           currentAvatar={customAvatarUrl || user.imageUrl}
-          onUpdate={() => {
-            // Force refresh Clerk user data + credits
-            window.location.reload()
-          }}
+          onUpdate={() => { window.location.reload() }}
         />
       )}
 
-      {/* Razorpay SDK for $25 plugin purchase */}
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
     </main>
   )

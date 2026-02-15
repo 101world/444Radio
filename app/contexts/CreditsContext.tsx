@@ -6,8 +6,7 @@ import { useUser } from '@clerk/nextjs'
 interface CreditsContextType {
   credits: number | null
   totalGenerated: number
-  subscriptionStatus: string
-  subscriptionPlan: string
+  walletBalance: number | null
   isLoading: boolean
   refreshCredits: () => Promise<void>
 }
@@ -15,8 +14,7 @@ interface CreditsContextType {
 const CreditsContext = createContext<CreditsContextType>({
   credits: null,
   totalGenerated: 0,
-  subscriptionStatus: 'none',
-  subscriptionPlan: 'creator',
+  walletBalance: null,
   isLoading: true,
   refreshCredits: async () => {},
 })
@@ -34,8 +32,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser()
   const [credits, setCredits] = useState<number | null>(null)
   const [totalGenerated, setTotalGenerated] = useState(0)
-  const [subscriptionStatus, setSubscriptionStatus] = useState('none')
-  const [subscriptionPlan, setSubscriptionPlan] = useState('creator')
+  const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const fetchingRef = useRef(false)
 
@@ -47,8 +44,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json()
       setCredits(data.credits ?? 0)
       setTotalGenerated(data.totalGenerated ?? 0)
-      setSubscriptionStatus(data.subscription_status ?? 'none')
-      setSubscriptionPlan(data.subscription_plan ?? 'creator')
+      setWalletBalance(data.walletBalance ?? 0)
       setIsLoading(false)
     } catch {
       setIsLoading(false)
@@ -78,7 +74,7 @@ export function CreditsProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id])
 
   return (
-    <CreditsContext.Provider value={{ credits, totalGenerated, subscriptionStatus, subscriptionPlan, isLoading, refreshCredits }}>
+    <CreditsContext.Provider value={{ credits, totalGenerated, walletBalance, isLoading, refreshCredits }}>
       {children}
     </CreditsContext.Provider>
   )

@@ -363,7 +363,7 @@ export default function PluginPage() {
           console.warn('[plugin] Auth failed:', res.status, errorMsg)
 
           // If denied because no purchase — keep token, show buy button
-          if (res.status === 403 && errorMsg.includes('$25')) {
+          if (res.status === 403 && (errorMsg.includes('$4') || errorMsg.includes('$25') || errorMsg.includes('purchase'))) {
             setNeedsPurchase(true)
             setAuthError(errorMsg)
             setIsAuthenticated(false)
@@ -1824,7 +1824,7 @@ export default function PluginPage() {
             </div>
           )}
 
-          {/* Plugin purchase required — $25 Razorpay button */}
+          {/* Plugin purchase required — $4 Razorpay button */}
           {needsPurchase && (
             <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5 text-left space-y-4">
               <div className="flex items-center gap-3">
@@ -1837,7 +1837,7 @@ export default function PluginPage() {
                 </div>
               </div>
               <div className="flex items-baseline gap-1 ml-[52px]">
-                <span className="text-3xl font-black text-white">$25</span>
+                <span className="text-3xl font-black text-white">$4</span>
                 <span className="text-xs text-gray-500">USD • one-time</span>
               </div>
               <ul className="ml-[52px] space-y-1 text-xs text-gray-300">
@@ -1918,9 +1918,9 @@ export default function PluginPage() {
                 className="ml-[52px] w-[calc(100%-52px)] py-3 rounded-xl text-sm font-bold text-black bg-gradient-to-r from-cyan-400 to-cyan-300 hover:from-cyan-300 hover:to-cyan-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {buyingPlugin ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                {buyingPlugin ? 'Processing...' : 'Buy Plugin — $25'}
+                {buyingPlugin ? 'Processing...' : 'Buy Plugin — $4'}
               </button>
-              <p className="ml-[52px] text-[10px] text-gray-600">Or subscribe to Pro/Studio for plugin access included</p>
+              <p className="ml-[52px] text-[10px] text-gray-600">One-time purchase. Credits purchased separately.</p>
             </div>
           )}
 
@@ -1973,7 +1973,7 @@ export default function PluginPage() {
 
           <p className="text-[11px] text-gray-600">Token is saved locally — you only need to do this once per device</p>
         </div>
-        {/* Razorpay SDK for $25 plugin purchase */}
+        {/* Razorpay SDK for $4 plugin purchase */}
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </div>
     )
