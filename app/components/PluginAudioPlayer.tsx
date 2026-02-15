@@ -31,6 +31,7 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const waveformRef = useRef<HTMLDivElement>(null)
   const animFrameRef = useRef<number>(0)
+  const shineRef = useRef<HTMLDivElement>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -41,19 +42,20 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
   const [error, setError] = useState<string | null>(null)
   const [pulse, setPulse] = useState(0)
 
-  const barCount = 64
+  const barCount = 80
   const barsData = useRef<number[]>([])
   if (barsData.current.length === 0) {
     for (let i = 0; i < barCount; i++) {
       barsData.current.push(
-        Math.sin(i * 0.4 + 1.3) * 0.25 +
-        Math.sin(i * 0.15 + 2.1) * 0.2 +
-        Math.cos(i * 0.3 + 0.7) * 0.15 + 0.4
+        Math.sin(i * 0.35 + 1.7) * 0.22 +
+        Math.sin(i * 0.18 + 2.5) * 0.18 +
+        Math.cos(i * 0.28 + 0.9) * 0.15 +
+        Math.sin(i * 0.7 + 3.1) * 0.08 + 0.38
       )
     }
   }
 
-  // Pulsating animation
+  // Pulsating animation — smoother with time-based
   useEffect(() => {
     let frame = 0
     const animate = () => {
@@ -169,76 +171,123 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
 
   return (
     <div className="w-full select-none relative overflow-hidden" style={{
-      background: 'linear-gradient(160deg, rgba(2,6,23,0.97) 0%, rgba(15,23,42,0.94) 50%, rgba(30,27,75,0.92) 100%)',
-      backdropFilter: 'blur(40px) saturate(1.8)',
-      WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
-      borderBottom: '1px solid rgba(6,182,212,0.12)',
-      boxShadow: '0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04), 0 0 80px rgba(6,182,212,0.04)',
+      background: '#000000',
+      borderBottom: '1px solid rgba(255,255,255,0.06)',
+      boxShadow: '0 12px 48px rgba(0,0,0,0.9), 0 0 1px rgba(255,255,255,0.1)',
     }}>
-      {/* Ambient tracking glow */}
+      {/* ── Diagonal glass shine sweep ── */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" ref={shineRef}>
+        <div style={{
+          position: 'absolute',
+          top: '-50%',
+          left: '-20%',
+          width: '60%',
+          height: '200%',
+          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 55%, transparent 60%)',
+          transform: 'rotate(-15deg)',
+          pointerEvents: 'none',
+        }} />
+      </div>
+
+      {/* ── Ambient tracking glow — follows playback position ── */}
       {isPlaying && (
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: `radial-gradient(ellipse 40% 100% at ${progress}% 80%, rgba(6,182,212,0.1) 0%, transparent 70%)`,
-          transition: 'background 0.5s ease',
+          background: `radial-gradient(ellipse 30% 120% at ${progress}% 100%, rgba(0,255,255,0.07) 0%, transparent 60%)`,
+          transition: 'background 0.3s ease',
         }} />
       )}
 
-      {/* Top edge highlight */}
+      {/* ── Top edge highlight — white shine catch ── */}
       <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(6,182,212,0.2), rgba(139,92,246,0.15), transparent)' }} />
+        style={{ background: 'linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.12) 30%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.12) 70%, transparent 95%)' }} />
 
-      {/* Controls row */}
-      <div className="relative flex items-center gap-1 px-2.5 pt-2 pb-0.5">
-        <button onClick={skipBack} className="p-1 text-white/20 hover:text-cyan-400/70 transition-all duration-200 flex-shrink-0 active:scale-90">
-          <SkipBack size={10} />
+      {/* ── Bottom edge subtle glow ── */}
+      <div className="absolute bottom-0 left-0 right-0 h-[1px] pointer-events-none"
+        style={{ background: 'linear-gradient(90deg, transparent 10%, rgba(0,255,255,0.08) 50%, transparent 90%)' }} />
+
+      {/* ── Controls row ── */}
+      <div className="relative flex items-center gap-1.5 px-3 pt-2.5 pb-1">
+        {/* Skip back */}
+        <button onClick={skipBack}
+          className="p-1.5 rounded-lg transition-all duration-200 active:scale-90"
+          style={{
+            color: 'rgba(255,255,255,0.25)',
+            background: 'transparent',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,255,255,0.7)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.25)'; e.currentTarget.style.background = 'transparent' }}>
+          <SkipBack size={11} />
         </button>
 
+        {/* Play/Pause — the hero button */}
         <button onClick={togglePlay}
-          className="w-7 h-7 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0 relative group"
+          className="relative w-8 h-8 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0"
           style={{
             background: isPlaying
-              ? 'linear-gradient(135deg, rgba(34,211,238,0.95), rgba(99,102,241,0.75))'
-              : 'linear-gradient(135deg, rgba(34,211,238,0.8), rgba(34,211,238,0.55))',
+              ? 'linear-gradient(135deg, #00ffff, #0088ff)'
+              : 'rgba(0,255,255,0.15)',
+            border: isPlaying ? 'none' : '1px solid rgba(0,255,255,0.3)',
             boxShadow: isPlaying
-              ? '0 0 16px rgba(34,211,238,0.45), 0 0 40px rgba(99,102,241,0.12), inset 0 1px 0 rgba(255,255,255,0.3)'
-              : '0 0 10px rgba(34,211,238,0.2), inset 0 1px 0 rgba(255,255,255,0.2)',
+              ? '0 0 20px rgba(0,255,255,0.5), 0 0 60px rgba(0,255,255,0.15), inset 0 1px 0 rgba(255,255,255,0.4)'
+              : '0 0 8px rgba(0,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.1)',
           }}>
-          {/* Outer pulse ring */}
-          {isPlaying && <div className="absolute inset-0 rounded-full animate-ping opacity-20"
-            style={{ background: 'rgba(34,211,238,0.4)' }} />}
-          {isPlaying ? <Pause size={10} className="text-black relative z-10" /> : <Play size={10} className="text-black ml-0.5 relative z-10" />}
+          {/* Pulse rings when playing */}
+          {isPlaying && (
+            <>
+              <div className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgba(0,255,255,0.15)', animationDuration: '2s' }} />
+              <div className="absolute inset-[-4px] rounded-full" style={{
+                border: '1px solid rgba(0,255,255,0.1)',
+                animation: 'pulse 2s ease-in-out infinite',
+              }} />
+            </>
+          )}
+          {isPlaying
+            ? <Pause size={11} className="relative z-10" style={{ color: '#000000' }} />
+            : <Play size={11} className="relative z-10 ml-0.5" style={{ color: '#00ffff' }} />}
         </button>
 
-        <button onClick={skipFwd} className="p-1 text-white/20 hover:text-cyan-400/70 transition-all duration-200 flex-shrink-0 active:scale-90">
-          <SkipForward size={10} />
+        {/* Skip forward */}
+        <button onClick={skipFwd}
+          className="p-1.5 rounded-lg transition-all duration-200 active:scale-90"
+          style={{ color: 'rgba(255,255,255,0.25)' }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'rgba(0,255,255,0.7)'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.25)'; e.currentTarget.style.background = 'transparent' }}>
+          <SkipForward size={11} />
         </button>
 
-        <span className="text-[8px] text-cyan-400/40 font-mono w-6 text-right flex-shrink-0 tabular-nums tracking-tight">{fmt(currentTime)}</span>
+        {/* Current time */}
+        <span className="text-[9px] font-mono w-7 text-right flex-shrink-0 tabular-nums tracking-tight"
+          style={{ color: 'rgba(0,255,255,0.5)' }}>{fmt(currentTime)}</span>
 
-        {/* Title */}
-        <div className="flex-1 min-w-0 px-1.5">
+        {/* Track title */}
+        <div className="flex-1 min-w-0 px-2">
           {error ? (
-            <p className="text-[9px] font-medium text-red-400/90 truncate">{error}</p>
+            <p className="text-[9px] font-medium truncate" style={{ color: '#ff4444' }}>{error}</p>
           ) : (
-            <p className="text-[9px] font-semibold text-white/60 truncate tracking-wider uppercase">{track.title || 'AI Track'}</p>
+            <p className="text-[9px] font-semibold truncate tracking-[0.15em] uppercase"
+              style={{ color: 'rgba(255,255,255,0.5)' }}>{track.title || 'AI Track'}</p>
           )}
         </div>
 
-        <span className="text-[8px] text-white/15 font-mono w-6 flex-shrink-0 tabular-nums tracking-tight">{fmt(duration)}</span>
+        {/* Duration */}
+        <span className="text-[9px] font-mono w-7 flex-shrink-0 tabular-nums tracking-tight"
+          style={{ color: 'rgba(255,255,255,0.15)' }}>{fmt(duration)}</span>
 
         {/* Volume */}
         <div className="flex items-center flex-shrink-0 relative">
           <button onClick={() => setIsMuted(p => !p)} onMouseEnter={() => setShowVolume(true)}
-            className="p-1 text-white/20 hover:text-cyan-400/50 transition-all">
-            {isMuted || volume === 0 ? <VolumeX size={10} /> : <Volume2 size={10} />}
+            className="p-1.5 rounded-lg transition-all"
+            style={{ color: 'rgba(255,255,255,0.2)' }}
+            onMouseOver={e => e.currentTarget.style.color = 'rgba(0,255,255,0.6)'}
+            onMouseOut={e => e.currentTarget.style.color = 'rgba(255,255,255,0.2)'}>
+            {isMuted || volume === 0 ? <VolumeX size={11} /> : <Volume2 size={11} />}
           </button>
           {showVolume && (
-            <div className="absolute top-full right-0 mt-1 rounded-xl p-2 z-50"
+            <div className="absolute top-full right-0 mt-1 rounded-xl p-2.5 z-50"
               style={{
-                background: 'rgba(2,6,23,0.95)',
-                backdropFilter: 'blur(30px)',
-                border: '1px solid rgba(6,182,212,0.1)',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                background: '#000000',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 16px 48px rgba(0,0,0,0.9), 0 0 1px rgba(255,255,255,0.1)',
               }}
               onMouseLeave={() => setShowVolume(false)}>
               <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume}
@@ -248,64 +297,103 @@ export default function PluginAudioPlayer({ track, playing, onClose, onPlayState
           )}
         </div>
 
+        {/* Close */}
         {onClose && (
-          <button onClick={onClose} className="p-0.5 text-white/10 hover:text-white/50 hover:rotate-90 transition-all duration-300 flex-shrink-0">
-            <X size={10} />
+          <button onClick={onClose}
+            className="p-1 transition-all duration-300 flex-shrink-0 rounded-lg"
+            style={{ color: 'rgba(255,255,255,0.1)' }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.transform = 'rotate(90deg)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'rotate(0deg)' }}>
+            <X size={11} />
           </button>
         )}
       </div>
 
-      {/* Futuristic waveform with pulsating bars */}
-      <div ref={waveformRef} className="relative h-8 mx-2.5 mb-1.5 flex items-end gap-[0.5px] cursor-pointer rounded-lg overflow-hidden"
+      {/* ── WAVEFORM — Glass node with diagonal shine ── */}
+      <div ref={waveformRef}
+        className="relative h-10 mx-3 mb-2 flex items-end gap-[0.4px] cursor-pointer rounded-xl overflow-hidden"
         onClick={seekFromEvent}
         style={{
-          background: 'rgba(0,0,0,0.4)',
-          border: '1px solid rgba(6,182,212,0.06)',
-          boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.3)',
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.05)',
         }}>
-        {/* Playhead */}
-        <div className="absolute top-0 bottom-0 w-[1.5px] z-10 pointer-events-none"
-          style={{
-            left: `${progress}%`,
-            background: 'linear-gradient(to bottom, rgba(34,211,238,0.95), rgba(139,92,246,0.7), rgba(34,211,238,0.3))',
-            boxShadow: '0 0 6px rgba(34,211,238,0.5), 0 0 12px rgba(34,211,238,0.15)',
-            transition: 'left 0.1s ease',
+
+        {/* Waveform diagonal glass shine */}
+        <div className="absolute inset-0 pointer-events-none z-[5] rounded-xl overflow-hidden">
+          <div style={{
+            position: 'absolute',
+            top: '-100%',
+            left: '-30%',
+            width: '50%',
+            height: '300%',
+            background: 'linear-gradient(105deg, transparent 42%, rgba(255,255,255,0.04) 47%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 53%, transparent 58%)',
+            transform: 'rotate(-20deg)',
           }} />
-        {/* Playhead dot */}
-        <div className="absolute top-0 w-1.5 h-1.5 rounded-full z-10 pointer-events-none -translate-x-1/2"
+        </div>
+
+        {/* Playhead line */}
+        <div className="absolute top-0 bottom-0 w-[2px] z-[8] pointer-events-none"
           style={{
             left: `${progress}%`,
-            background: 'rgba(34,211,238,1)',
-            boxShadow: '0 0 6px rgba(34,211,238,0.8)',
-            transition: 'left 0.1s ease',
+            background: 'linear-gradient(to bottom, #00ffff, rgba(0,136,255,0.6), rgba(0,255,255,0.15))',
+            boxShadow: '0 0 8px rgba(0,255,255,0.6), 0 0 20px rgba(0,255,255,0.15)',
+            transition: 'left 0.08s linear',
           }} />
 
+        {/* Playhead glow dot */}
+        <div className="absolute top-[-1px] w-2 h-2 rounded-full z-[9] pointer-events-none -translate-x-1/2"
+          style={{
+            left: `${progress}%`,
+            background: '#00ffff',
+            boxShadow: '0 0 8px rgba(0,255,255,0.9), 0 0 16px rgba(0,255,255,0.4)',
+            transition: 'left 0.08s linear',
+          }} />
+
+        {/* Bars */}
         {barsData.current.map((val, i) => {
           const t = i / barCount
           const played = t <= progress / 100
+          const nearPlayhead = Math.abs(t - progress / 100) < 0.05
           const pulseAmt = isPlaying
-            ? Math.sin((pulse * 0.06) + i * 0.4) * 0.1 + Math.sin((pulse * 0.04) + i * 0.9) * 0.05
+            ? Math.sin((pulse * 0.05) + i * 0.5) * 0.12 +
+              Math.sin((pulse * 0.03) + i * 1.1) * 0.06 +
+              Math.cos((pulse * 0.07) + i * 0.3) * 0.04
             : 0
-          const barH = Math.max(1.5, (val + pulseAmt) * 28)
+          const barH = Math.max(2, (val + pulseAmt) * 36)
 
           return (
-            <div key={i} className="flex-1 rounded-t-[1px]"
+            <div key={i} className="flex-1 rounded-t-sm relative z-[2]"
               style={{
                 height: `${barH}px`,
                 background: played
-                  ? `linear-gradient(to top, rgba(34,211,238,${isPlaying ? 0.9 : 0.65}), rgba(139,92,246,${isPlaying ? 0.65 : 0.35}))`
-                  : 'rgba(100,116,139,0.1)',
-                boxShadow: played && isPlaying ? '0 0 3px rgba(34,211,238,0.2)' : 'none',
-                transition: isPlaying ? 'height 60ms ease, background 100ms ease' : 'all 200ms ease',
-                opacity: played ? 1 : 0.6,
+                  ? nearPlayhead && isPlaying
+                    ? '#00ffff'
+                    : `linear-gradient(to top, rgba(0,255,255,${isPlaying ? 0.9 : 0.5}), rgba(0,136,255,${isPlaying ? 0.6 : 0.25}))`
+                  : 'rgba(255,255,255,0.06)',
+                boxShadow: played && isPlaying
+                  ? nearPlayhead
+                    ? '0 0 6px rgba(0,255,255,0.6)'
+                    : '0 0 2px rgba(0,255,255,0.15)'
+                  : 'none',
+                transition: isPlaying ? 'height 50ms ease, background 80ms ease' : 'all 300ms ease',
+                opacity: played ? 1 : 0.5,
               }} />
           )
         })}
 
-        {/* Reflection / glass effect */}
-        <div className="absolute inset-0 pointer-events-none rounded-lg"
-          style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent 40%)' }} />
+        {/* Inner top reflection */}
+        <div className="absolute top-0 left-0 right-0 h-[40%] pointer-events-none rounded-t-xl z-[3]"
+          style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent)' }} />
       </div>
+
+      {/* CSS for pulse animation */}
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 0.3; }
+          50% { transform: scale(1.3); opacity: 0; }
+        }
+      `}</style>
     </div>
   )
 }
