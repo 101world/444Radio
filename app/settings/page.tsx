@@ -969,7 +969,7 @@ function SettingsPageInner() {
                 </div>
               )}
 
-              <p className="text-xs text-gray-600 mt-4">Maximum 5 active tokens. Each token has a 100 requests/day rate limit.</p>
+              <p className="text-xs text-gray-600 mt-4">Maximum 5 active tokens. Pro: 200 requests/day · Studio & Purchased: Unlimited.</p>
             </div>
 
             {/* Plugin download */}
@@ -981,135 +981,227 @@ function SettingsPageInner() {
                 The 444 Radio VST3 plugin works inside Ableton Live, FL Studio, and any DAW that supports VST3 on Windows.
               </p>
 
-              {subscription?.hasSubscription ? (
-                <div className="space-y-3">
-                  <a
-                    href="/api/plugin/download-installer"
-                    onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download Plugin v2 (Free)
-                  </a>
-                  <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
-                  <button
-                    onClick={() => setShowInstallGuide(true)}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
-                  >
-                    View install instructions
-                  </button>
-                </div>
-              ) : hasPluginPurchase ? (
-                /* User bought plugin for $25 — show download */
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs text-emerald-300">Plugin purchased — unlimited access</span>
-                  </div>
-                  <a
-                    href="/api/plugin/download-installer"
-                    onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download Plugin v2
-                  </a>
-                  <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
-                  <button
-                    onClick={() => setShowInstallGuide(true)}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
-                  >
-                    View install instructions
-                  </button>
-                </div>
-              ) : (
-                /* No subscription, no purchase — show both options */
-                <div className="space-y-4">
-                  {/* Option 1: Buy for $25 */}
-                  <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-sm font-bold text-white">One-Time Purchase</p>
-                        <p className="text-xs text-gray-400">Unlimited plugin access forever</p>
+              {(() => {
+                // Determine if user has Pro/Studio (not Creator)
+                const planId = subscription?.planId || ''
+                const planName = (subscription?.plan || '').toLowerCase()
+                const isProOrStudio = subscription?.hasSubscription && subscription?.status === 'active' && (
+                  planName.includes('pro') || planName.includes('studio') ||
+                  ['plan_S2DHUGo7n1m6iv', 'plan_S2DNEvy1YzYWNh', 'plan_S2DIdCKNcV6TtA', 'plan_S2DOABOeGedJHk'].includes(planId)
+                )
+
+                if (isProOrStudio) {
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                        <span className="text-xs text-emerald-300">
+                          {planName.includes('studio') || ['plan_S2DIdCKNcV6TtA', 'plan_S2DOABOeGedJHk'].includes(planId)
+                            ? 'Studio subscriber — unlimited requests/day'
+                            : 'Pro subscriber — 200 requests/day'}
+                        </span>
                       </div>
-                      <span className="text-2xl font-black text-white">$25</span>
+                      <a
+                        href="/api/plugin/download-installer"
+                        onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download Plugin v2 (Free with your plan)
+                      </a>
+                      <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
+                      <button
+                        onClick={() => setShowInstallGuide(true)}
+                        className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                      >
+                        View install instructions
+                      </button>
                     </div>
-                    <button
-                      onClick={async () => {
-                        if (buyingPlugin) return
-                        setBuyingPlugin(true)
-                        try {
-                          const orderRes = await fetch('/api/plugin/purchase/create-order', { method: 'POST' })
-                          const orderData = await orderRes.json()
-                          if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order')
+                  )
+                }
 
-                          const rzp = new (window as any).Razorpay({
-                            key: orderData.razorpay_key_id,
-                            amount: orderData.amount,
-                            currency: orderData.currency,
-                            name: '444 Radio',
-                            description: 'VST3 Plugin — Unlimited Access',
-                            order_id: orderData.order_id,
-                            prefill: {
-                              email: orderData.customer_email,
-                              name: orderData.customer_name,
-                            },
-                            handler: async (response: any) => {
-                              const verifyRes = await fetch('/api/plugin/purchase/verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  razorpay_order_id: response.razorpay_order_id,
-                                  razorpay_payment_id: response.razorpay_payment_id,
-                                  razorpay_signature: response.razorpay_signature,
-                                }),
-                              })
-                              if (verifyRes.ok) {
-                                setHasPluginPurchase(true)
-                                setBuyingPlugin(false)
-                              }
-                            },
-                            modal: { ondismiss: () => setBuyingPlugin(false) },
-                            theme: { color: '#06b6d4' },
-                          })
-                          rzp.open()
-                        } catch (err: any) {
-                          setPluginError(err.message || 'Purchase failed')
-                          setBuyingPlugin(false)
-                        }
-                      }}
-                      disabled={buyingPlugin}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                if (hasPluginPurchase) {
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                        <span className="text-xs text-emerald-300">Plugin purchased — unlimited access forever</span>
+                      </div>
+                      <a
+                        href="/api/plugin/download-installer"
+                        onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download Plugin v2
+                      </a>
+                      <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
+                      <button
+                        onClick={() => setShowInstallGuide(true)}
+                        className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                      >
+                        View install instructions
+                      </button>
+                    </div>
+                  )
+                }
+
+                // No Pro/Studio, no purchase — show buy + subscribe options
+                return (
+                  <div className="space-y-4">
+                    {/* Option 1: Buy for $25 */}
+                    <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-sm font-bold text-white">One-Time Purchase</p>
+                          <p className="text-xs text-gray-400">Unlimited plugin access forever</p>
+                        </div>
+                        <span className="text-2xl font-black text-white">$25</span>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (buyingPlugin) return
+                          setBuyingPlugin(true)
+                          try {
+                            const orderRes = await fetch('/api/plugin/purchase/create-order', { method: 'POST' })
+                            const orderData = await orderRes.json()
+                            if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order')
+
+                            const rzp = new (window as any).Razorpay({
+                              key: orderData.razorpay_key_id,
+                              amount: orderData.amount,
+                              currency: orderData.currency,
+                              name: '444 Radio',
+                              description: 'VST3 Plugin — Unlimited Access',
+                              order_id: orderData.order_id,
+                              prefill: {
+                                email: orderData.customer_email,
+                                name: orderData.customer_name,
+                              },
+                              handler: async (response: any) => {
+                                const verifyRes = await fetch('/api/plugin/purchase/verify', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    razorpay_order_id: response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature: response.razorpay_signature,
+                                  }),
+                                })
+                                if (verifyRes.ok) {
+                                  setHasPluginPurchase(true)
+                                  setBuyingPlugin(false)
+                                }
+                              },
+                              modal: { ondismiss: () => setBuyingPlugin(false) },
+                              theme: { color: '#06b6d4' },
+                            })
+                            rzp.open()
+                          } catch (err: any) {
+                            setPluginError(err.message || 'Purchase failed')
+                            setBuyingPlugin(false)
+                          }
+                        }}
+                        disabled={buyingPlugin}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                      >
+                        {buyingPlugin ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                        {buyingPlugin ? 'Processing...' : 'Buy Plugin — $25'}
+                      </button>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-white/10" />
+                      <span className="text-xs text-gray-500">or</span>
+                      <div className="flex-1 h-px bg-white/10" />
+                    </div>
+
+                    {/* Option 2: Subscribe Pro/Studio */}
+                    <div className="flex items-center gap-3 px-4 py-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+                      <Crown className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-white">Pro / Studio Subscribers</p>
+                        <p className="text-xs text-gray-400">Get the plugin included free — Pro (200/day) or Studio (unlimited)</p>
+                      </div>
+                    </div>
+                    <Link
+                      href="/subscribe"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm hover:from-purple-500 hover:to-pink-500 transition-all"
                     >
-                      {buyingPlugin ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                      {buyingPlugin ? 'Processing...' : 'Buy Plugin — $25'}
-                    </button>
+                      <Crown className="w-4 h-4" />
+                      Subscribe to Download
+                    </Link>
                   </div>
+                )
+              })()}
 
-                  {/* Divider */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-xs text-gray-500">or</span>
-                    <div className="flex-1 h-px bg-white/10" />
-                  </div>
-
-                  {/* Option 2: Subscribe */}
-                  <div className="flex items-center gap-3 px-4 py-3 bg-purple-500/10 border border-purple-500/30 rounded-xl">
-                    <Crown className="w-5 h-5 text-purple-400 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-white">Pro / Studio Subscribers</p>
-                      <p className="text-xs text-gray-400">Get the plugin free with any subscription</p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/subscribe"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm hover:from-purple-500 hover:to-pink-500 transition-all"
-                  >
-                    <Crown className="w-4 h-4" />
-                    Subscribe to Download
-                  </Link>
+              {pluginError && (
+                <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <span className="text-xs text-red-300">{pluginError}</span>
                 </div>
               )}
+            </div>
+
+            {/* Plugin Tier Comparison */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Info className="w-5 h-5 text-cyan-400" /> Plugin Access Tiers
+              </h3>
+              <p className="text-sm text-gray-400 mb-5">
+                Each generation in the plugin uses <span className="text-cyan-400 font-bold">1 request</span> + <span className="text-cyan-400 font-bold">2 credits</span>. One request = one instrumental.
+              </p>
+              <div className="overflow-hidden rounded-xl border border-white/10">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-white/5">
+                      <th className="text-left px-4 py-3 text-gray-400 font-medium">Tier</th>
+                      <th className="text-center px-4 py-3 text-gray-400 font-medium">Requests/Day</th>
+                      <th className="text-center px-4 py-3 text-gray-400 font-medium">Songs/Day</th>
+                      <th className="text-center px-4 py-3 text-gray-400 font-medium">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    <tr>
+                      <td className="px-4 py-3">
+                        <span className="text-purple-400 font-bold">Pro</span>
+                        <span className="text-gray-500 text-xs ml-1">subscriber</span>
+                      </td>
+                      <td className="text-center px-4 py-3 text-white font-mono">200</td>
+                      <td className="text-center px-4 py-3 text-white font-mono">200</td>
+                      <td className="text-center px-4 py-3 text-emerald-400 text-xs">Free with Pro</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3">
+                        <span className="text-cyan-400 font-bold">Studio</span>
+                        <span className="text-gray-500 text-xs ml-1">subscriber</span>
+                      </td>
+                      <td className="text-center px-4 py-3 text-white font-mono">∞</td>
+                      <td className="text-center px-4 py-3 text-white font-mono">∞</td>
+                      <td className="text-center px-4 py-3 text-emerald-400 text-xs">Free with Studio</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3">
+                        <span className="text-yellow-400 font-bold">Purchased</span>
+                        <span className="text-gray-500 text-xs ml-1">one-time</span>
+                      </td>
+                      <td className="text-center px-4 py-3 text-white font-mono">∞</td>
+                      <td className="text-center px-4 py-3 text-white font-mono">∞</td>
+                      <td className="text-center px-4 py-3 text-white text-xs">$25 once</td>
+                    </tr>
+                    <tr className="bg-white/[0.02]">
+                      <td className="px-4 py-3">
+                        <span className="text-gray-500 font-bold">Creator / Free</span>
+                      </td>
+                      <td className="text-center px-4 py-3 text-red-400 font-mono">—</td>
+                      <td className="text-center px-4 py-3 text-red-400 font-mono">—</td>
+                      <td className="text-center px-4 py-3 text-gray-500 text-xs">Purchase or upgrade required</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-gray-600 mt-3">Each instrumental costs 2 credits. Pro with 200 requests/day = up to 200 songs/day (400 credits). Credits are shared with web generations.</p>
             </div>
 
             {/* Install Guide Popup */}
