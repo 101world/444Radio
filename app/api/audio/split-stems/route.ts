@@ -268,7 +268,7 @@ export async function POST(request: Request) {
         let finalCredits = userData.credits
         if (!skipCreditDeduction) {
           const { data: deductResultRaw } = await supabase
-            .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST })
+            .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST, p_type: 'generation_stem_split', p_description: `Stem split (${Object.keys(permanentStems).join(', ')})` })
             .single()
 
           const deductResult = deductResultRaw as { success: boolean; new_credits: number } | null

@@ -1,8 +1,9 @@
 /**
  * Log a credit transaction to the credit_transactions table.
  *
- * This is a fire-and-forget helper — failures are logged but
- * never block the calling route.
+ * Retries up to 2 times on failure (3 total attempts) with exponential backoff.
+ * The DB-level deduct_credits function also logs atomically, so this serves
+ * as enrichment with full type/description/metadata.
  */
 
 export type CreditTransactionType =
@@ -38,45 +39,58 @@ export interface LogTransactionParams {
 }
 
 export async function logCreditTransaction(params: LogTransactionParams): Promise<void> {
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const MAX_RETRIES = 2
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('⚠️ logCreditTransaction: missing SUPABASE env vars (url:', !!supabaseUrl, 'key:', !!supabaseKey, ')')
-      return
+      if (!supabaseUrl || !supabaseKey) {
+        console.error('⚠️ logCreditTransaction: missing SUPABASE env vars (url:', !!supabaseUrl, 'key:', !!supabaseKey, ')')
+        return
+      }
+
+      const body = {
+        user_id: params.userId,
+        amount: params.amount,
+        balance_after: params.balanceAfter ?? null,
+        type: params.type,
+        status: params.status || 'success',
+        description: params.description || null,
+        metadata: { ...(params.metadata ?? {}), source: 'app' },
+      }
+
+      console.log('💳 logCreditTransaction:', params.type, params.amount, params.status || 'success', attempt > 0 ? `(retry ${attempt})` : '')
+
+      const res = await fetch(`${supabaseUrl}/rest/v1/credit_transactions`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify(body),
+      })
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.statusText)
+        console.error('⚠️ Failed to log credit transaction:', res.status, text, JSON.stringify(body))
+        if (attempt < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, 200 * (attempt + 1)))
+          continue
+        }
+      } else {
+        console.log('✅ Credit transaction logged:', params.type, params.amount)
+        return
+      }
+    } catch (err) {
+      console.error('⚠️ logCreditTransaction error:', err, attempt > 0 ? `(retry ${attempt})` : '')
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 200 * (attempt + 1)))
+        continue
+      }
     }
-
-    const body = {
-      user_id: params.userId,
-      amount: params.amount,
-      balance_after: params.balanceAfter ?? null,
-      type: params.type,
-      status: params.status || 'success',
-      description: params.description || null,
-      metadata: params.metadata ?? {},
-    }
-
-    console.log('💳 logCreditTransaction:', params.type, params.amount, params.status || 'success')
-
-    const res = await fetch(`${supabaseUrl}/rest/v1/credit_transactions`, {
-      method: 'POST',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify(body),
-    })
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => res.statusText)
-      console.error('⚠️ Failed to log credit transaction:', res.status, text, JSON.stringify(body))
-    } else {
-      console.log('✅ Credit transaction logged:', params.type, params.amount)
-    }
-  } catch (err) {
-    console.error('⚠️ logCreditTransaction error:', err)
   }
+  console.error('🔴 logCreditTransaction: all retries exhausted for', params.type, params.amount)
 }

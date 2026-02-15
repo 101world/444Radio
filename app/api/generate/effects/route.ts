@@ -210,7 +210,9 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             p_clerk_user_id: userId,
-            p_amount: 2
+            p_amount: 2,
+            p_type: 'generation_effects',
+            p_description: `Effects: ${prompt?.substring(0, 60) || 'unknown'}`,
           })
         }
       )

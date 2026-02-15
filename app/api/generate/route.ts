@@ -147,7 +147,9 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           p_clerk_user_id: user.id,
-          p_amount: 1
+          p_amount: 1,
+          p_type: 'generation_image',
+          p_description: `Image: ${prompt?.substring(0, 60) || 'cover art'}`,
         })
       }
     )

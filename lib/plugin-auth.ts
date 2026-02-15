@@ -149,8 +149,13 @@ export async function getPluginUserCredits(userId: string): Promise<{ credits: n
 
 /**
  * Deduct credits atomically via deduct_credits RPC.
+ * Now also passes type/description so the DB logs the transaction atomically.
  */
-export async function deductPluginCredits(userId: string, amount: number): Promise<{ success: boolean; newCredits: number; error?: string }> {
+export async function deductPluginCredits(
+  userId: string,
+  amount: number,
+  opts?: { type?: string; description?: string; metadata?: Record<string, unknown> }
+): Promise<{ success: boolean; newCredits: number; error?: string }> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
@@ -161,7 +166,13 @@ export async function deductPluginCredits(userId: string, amount: number): Promi
       'Authorization': `Bearer ${supabaseKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ p_clerk_user_id: userId, p_amount: amount }),
+    body: JSON.stringify({
+      p_clerk_user_id: userId,
+      p_amount: amount,
+      p_type: opts?.type || 'deduction',
+      p_description: opts?.description || null,
+      p_metadata: opts?.metadata ? JSON.stringify(opts.metadata) : '{}',
+    }),
   })
 
   if (!res.ok) return { success: false, newCredits: 0, error: 'Credit deduction failed' }

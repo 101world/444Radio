@@ -146,7 +146,13 @@ export async function POST(req: NextRequest) {
 
       // ── Deduct credits on success ──
       if (result.success) {
-        const deduct = await deductPluginCredits(userId, creditCost)
+        const txType = `generation_${type.replace('-', '_')}`
+        const txDesc = `Plugin: ${type} — ${(body.prompt as string || body.title as string || '').substring(0, 60)}`
+        const deduct = await deductPluginCredits(userId, creditCost, {
+          type: txType,
+          description: txDesc,
+          metadata: { source: 'plugin', jobId },
+        })
         result.creditsDeducted = creditCost
         result.creditsRemaining = deduct.success ? deduct.newCredits : credits - creditCost
 
@@ -154,8 +160,8 @@ export async function POST(req: NextRequest) {
           userId,
           amount: -creditCost,
           balanceAfter: deduct.newCredits,
-          type: `generation_${type.replace('-', '_')}` as any,
-          description: `Plugin: ${type} — ${(body.prompt as string || body.title as string || '').substring(0, 60)}`,
+          type: txType as any,
+          description: txDesc,
           metadata: { source: 'plugin', jobId },
         })
 

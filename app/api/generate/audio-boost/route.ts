@@ -272,7 +272,9 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             p_clerk_user_id: userId,
-            p_amount: BOOST_COST
+            p_amount: BOOST_COST,
+            p_type: 'generation_audio_boost',
+            p_description: 'Audio Boost',
           })
         }
       )

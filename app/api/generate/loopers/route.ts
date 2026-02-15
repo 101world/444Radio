@@ -261,7 +261,9 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             p_clerk_user_id: userId,
-            p_amount: creditCost
+            p_amount: creditCost,
+            p_type: 'generation_loops',
+            p_description: `Loops: ${prompt?.substring(0, 60) || 'unknown'}`,
           })
         }
       )
