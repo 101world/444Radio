@@ -232,7 +232,7 @@ async function generateMusic(userId: string, body: Record<string, unknown>, jobI
   const genre = body.genre as string | undefined
   const bitrate = (body.bitrate as number) || 256000
   const sample_rate = (body.sample_rate as number) || 44100
-  const audio_format = (body.audio_format as string) || 'mp3'
+  const audio_format = (body.audio_format as string) || 'wav'  // WAV for DAW compatibility
   const generateCoverArt = body.generateCoverArt === true
 
   if (!title || title.length < 3 || title.length > 100) {
@@ -388,7 +388,7 @@ async function generateEffects(userId: string, body: Record<string, unknown>, jo
   if (!prompt) return { success: false, error: 'Missing prompt' }
 
   const duration = Math.min(10, Math.max(1, (body.duration as number) || 5))
-  const output_format = (body.output_format as string) || 'mp3'
+  const output_format = (body.output_format as string) || 'wav'  // WAV for DAW compatibility
 
   await updatePluginJob(jobId, { status: 'processing' })
 
@@ -644,7 +644,7 @@ async function generateExtract(userId: string, body: Record<string, unknown>, jo
   const validStems = ['vocals', 'bass', 'drums', 'piano', 'guitar', 'other']
   if (!validStems.includes(stem)) return { success: false, error: `Invalid stem. Choose: ${validStems.join(', ')}` }
 
-  const output_format = (body.output_format as string) || 'mp3'
+  const output_format = (body.output_format as string) || 'wav'  // WAV for DAW compatibility
   const trackTitle = (body.trackTitle as string) || 'Extracted Audio'
   const effectiveModel = (stem === 'guitar' || stem === 'piano') ? 'htdemucs_6s' : ((body.model_name as string) || 'htdemucs_6s')
 
@@ -733,7 +733,7 @@ async function generateAudioBoost(userId: string, body: Record<string, unknown>,
   const volume_boost = (body.volume_boost as number) ?? 2
   const normalize = body.normalize !== false
   const noise_reduction = body.noise_reduction === true
-  const output_format = (body.output_format as string) || 'mp3'
+  const output_format = (body.output_format as string) || 'wav'  // WAV for DAW compatibility
   const bitrate = (body.bitrate as string) || '192k'
   const trackTitle = (body.trackTitle as string) || 'Boosted Audio'
 
