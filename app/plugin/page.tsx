@@ -1674,14 +1674,11 @@ export default function PluginPage() {
         const data = await res.json()
         if (data.messages && data.messages.length > 1) {
           const serverMsgs = data.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
-          // Only use server messages if they have real generation results
-          // (prevents old stale chats from overriding a fresh session)
-          const serverHasResults = serverMsgs.some((m: any) => m.result?.audioUrl || m.result?.imageUrl || m.result?.url)
           const localStr = localStorage.getItem(CHAT_KEY)
           const localMsgs = localStr ? JSON.parse(localStr) : []
-          const localHasResults = localMsgs.some((m: any) => m.result?.audioUrl || m.result?.imageUrl || m.result?.url)
-          // Only restore server chat if it has results and local doesn't, or server is strictly newer
-          if (serverHasResults && !localHasResults && serverMsgs.length > localMsgs.length) {
+          // Adopt server messages whenever server has more content
+          // This ensures website generations appear in the plugin
+          if (serverMsgs.length > localMsgs.length) {
             setMessages(serverMsgs)
           }
         }

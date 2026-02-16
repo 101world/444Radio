@@ -87,10 +87,8 @@ ORDER BY count DESC;
 
 
 -- Step 3: BACKFILL — Insert missing transaction logs
--- WARNING: This creates historical records. Review Step 1 output first!
--- Uncomment below to execute.
+-- 29 missing records found: 15 stem_split (75cr), 6 extract (6cr), 5 music (25cr), 2 audio_boost (2cr), 1 video_to_audio (2cr) = 110 credits total
 
-/*
 INSERT INTO credit_transactions (user_id, type, credits_amount, description, metadata, created_at)
 SELECT 
   cm.user_id,
@@ -146,14 +144,12 @@ LEFT JOIN credit_transactions ct
   AND ct.type LIKE 'generation_%'
 WHERE ct.id IS NULL
   AND cm.user_id IS NOT NULL;
-*/
 
 
 -- Step 4: Verify after backfill
 -- Run after Step 3 to confirm all gaps are filled
-/*
+
 SELECT 
-  'Before' AS status,
+  'After backfill' AS status,
   (SELECT COUNT(*) FROM combined_media WHERE user_id IS NOT NULL) AS total_media,
   (SELECT COUNT(*) FROM credit_transactions WHERE type LIKE 'generation_%') AS total_gen_transactions;
-*/
