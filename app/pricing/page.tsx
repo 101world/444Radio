@@ -246,8 +246,21 @@ export default function PricingPage() {
             Add Money
           </h1>
           <p className="text-gray-400 max-w-xl mx-auto">
-            Deposit dollars to your wallet. $1 stays as your access fee — the rest auto-converts to credits at 1 credit = ${CREDIT_RATE}. No subscriptions.
+            Deposit money → get credits instantly. 1 credit = ${CREDIT_RATE}. No subscriptions.
           </p>
+
+          {/* Info banner: $1 wallet requirement */}
+          <div className="mt-5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 max-w-2xl mx-auto">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-cyan-300">$1 Minimum Wallet Balance Required</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  You must maintain at least $1 in your wallet to generate AI content. All deposits convert to credits immediately.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Current balance strip */}
           <div className="flex items-center justify-center gap-4 mt-5 flex-wrap">
@@ -339,13 +352,13 @@ export default function PricingPage() {
                 </div>
                 <div className="mb-5 space-y-1">
                   <p className="text-sm text-cyan-400 font-semibold">
-                    Up to {maxCredits.toLocaleString()} credits
+                    {maxCredits.toLocaleString()} credits
                   </p>
                   <p className="text-2xl font-bold">
                     {charge.symbol}{charge.total.toFixed(2)}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {charge.symbol}{charge.base.toFixed(2)} + {charge.symbol}{charge.gst.toFixed(2)} GST
+                  <p className="text-xs text-gray-400">
+                    Instant delivery • ${pack.amount} USD worth
                   </p>
                 </div>
                 <button
@@ -364,48 +377,57 @@ export default function PricingPage() {
           })}
 
           {/* Custom amount card */}
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:col-span-2 lg:col-span-3">
-            <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <div className="flex-1">
-                <p className="text-sm text-gray-400 font-medium mb-1">Custom Amount</p>
-                <p className="text-lg font-bold text-white mb-3">
-                  Deposit ${customAmount} — up to {Math.floor(customAmount / CREDIT_RATE).toLocaleString()} credits
-                </p>
-                <input
-                  type="range"
-                  min={1}
-                  max={100}
-                  step={1}
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(Number(e.target.value))}
-                  className="w-full h-2 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-500"
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>$1</span>
-                  <span>$25</span>
-                  <span>$50</span>
-                  <span>$100</span>
+          <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-6 sm:col-span-2 lg:col-span-3">
+            <div className="flex flex-col gap-6">
+              <div>
+                <p className="text-sm text-cyan-400 font-semibold mb-3">Custom Amount</p>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-400 mb-1.5 block">Amount (USD)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="500"
+                      step="1"
+                      value={customAmount}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        if (val >= 1 && val <= 500) setCustomAmount(val)
+                      }}
+                      className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-xl text-white font-semibold text-lg focus:outline-none focus:border-cyan-500 transition-colors"
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-gray-400 mb-1.5 block">You'll Get</label>
+                    <div className="px-4 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
+                      <p className="text-2xl font-bold text-cyan-300">
+                        {Math.floor(customAmount / CREDIT_RATE).toLocaleString()} credits
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="text-center md:text-right md:min-w-[200px]">
-                {(() => {
-                  const charge = calcCharge(customAmount, currency)
-                  return (
-                    <>
-                      <p className="text-3xl font-bold">{charge.symbol}{charge.total.toFixed(2)}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {charge.symbol}{charge.base.toFixed(2)} + {charge.symbol}{charge.gst.toFixed(2)} GST
-                      </p>
-                      <button
-                        onClick={() => handleDeposit(customAmount)}
-                        disabled={isPurchasing}
-                        className="mt-3 px-8 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 text-black rounded-xl font-semibold text-sm hover:from-cyan-400 hover:to-teal-400 transition-all disabled:opacity-50"
-                      >
-                        {isPurchasing ? 'Processing...' : `Add $${customAmount} to Wallet`}
-                      </button>
-                    </>
-                  )
-                })()}
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex-1 text-left">
+                  {(() => {
+                    const charge = calcCharge(customAmount, currency)
+                    return (
+                      <>
+                        <p className="text-sm text-gray-400">Total Charge (incl. GST)</p>
+                        <p className="text-3xl font-bold text-white">{charge.symbol}{charge.total.toFixed(2)}</p>
+                        <p className="text-xs text-gray-500 mt-1">Credits worth ${customAmount} USD</p>
+                      </>
+                    )
+                  })()}
+                </div>
+                <button
+                  onClick={() => handleDeposit(customAmount)}
+                  disabled={isPurchasing || customAmount < 1}
+                  className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-teal-500 text-black rounded-xl font-bold text-base hover:from-cyan-400 hover:to-teal-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
+                >
+                  {isPurchasing ? 'Processing...' : `Buy ${Math.floor(customAmount / CREDIT_RATE)} Credits`}
+                </button>
               </div>
             </div>
           </div>
@@ -418,22 +440,22 @@ export default function PricingPage() {
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-xs font-bold text-green-400">1</div>
               <div>
-                <p className="text-sm font-medium text-white">Add money</p>
-                <p className="text-xs text-gray-500">Deposit via Razorpay. 18% GST charged on top.</p>
+                <p className="text-sm font-medium text-white">Deposit money</p>
+                <p className="text-xs text-gray-500">Choose amount in USD. GST included in final price.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">2</div>
               <div>
-                <p className="text-sm font-medium text-white">$1 access stays</p>
-                <p className="text-xs text-gray-500">$1 minimum wallet balance is required for app access.</p>
+                <p className="text-sm font-medium text-white">Get credits instantly</p>
+                <p className="text-xs text-gray-500">All deposits convert to credits at $0.035/credit.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs font-bold text-purple-400">3</div>
               <div>
-                <p className="text-sm font-medium text-white">Auto-convert</p>
-                <p className="text-xs text-gray-500">Remaining balance auto-converts to credits at $0.035/credit.</p>
+                <p className="text-sm font-medium text-white">Generate content</p>
+                <p className="text-xs text-gray-500">Keep $1 min. wallet balance to use credits for generation.</p>
               </div>
             </div>
           </div>
