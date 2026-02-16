@@ -191,21 +191,14 @@ export async function POST(req: Request) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * payment.captured — PRIMARY handler.
- * Deposits dollars to wallet_balance (user converts to credits manually).
- * Expects notes: { clerk_user_id, deposit_usd } or legacy { credits }
+ * payment.captured — PRIMARY webhook handler.
+ * Uses deposit_wallet_safe() RPC for atomic, race-free deposits.
  */
 async function handlePaymentCaptured(payment: any, eventType: string) {
   const entity = payment.entity || payment
   const paymentId = entity.id
 
   console.log('[Razorpay] Payment captured:', paymentId, 'Amount:', entity.amount)
-
-  // ── Idempotency check ──
-  if (await isAlreadyProcessed(paymentId, eventType)) {
-    console.log('[Razorpay] ⏭ Payment already processed:', paymentId)
-    return
-  }
 
   const notes = entity.notes || {}
   const clerkUserId = notes.clerk_user_id
@@ -216,44 +209,7 @@ async function handlePaymentCaptured(payment: any, eventType: string) {
     return
   }
 
-  // ── Cross-path idempotency: check if verify route (or order.paid) already deposited ──
-  // Check by BOTH order_id and payment_id to catch all paths
-  const capturedOrderId = entity.order_id
-  if (clerkUserId) {
-    // Check by order_id
-    if (capturedOrderId) {
-      const { data: existingByOrder } = await supabaseAdmin
-        .from('credit_transactions')
-        .select('id')
-        .eq('user_id', clerkUserId)
-        .in('type', ['wallet_deposit', 'credit_award'])
-        .eq('status', 'success')
-        .contains('metadata', { order_id: capturedOrderId })
-        .limit(1)
-
-      if (existingByOrder && existingByOrder.length > 0) {
-        console.log('[Razorpay] ⏭ Already processed via verify route or order.paid (order_id):', capturedOrderId)
-        return
-      }
-    }
-
-    // Check by payment_id (verify route stores as razorpay_payment_id)
-    const { data: existingByPayment } = await supabaseAdmin
-      .from('credit_transactions')
-      .select('id')
-      .eq('user_id', clerkUserId)
-      .in('type', ['wallet_deposit', 'credit_award'])
-      .eq('status', 'success')
-      .contains('metadata', { razorpay_payment_id: paymentId })
-      .limit(1)
-
-    if (existingByPayment && existingByPayment.length > 0) {
-      console.log('[Razorpay] ⏭ Already processed via verify route (payment_id):', paymentId)
-      return
-    }
-  }
-
-  // Get current user
+  // Get current user (for customer_id storage)
   const user = await resolveUser(entity.customer_id, clerkUserId)
   if (!user) {
     console.error('[Razorpay] User not found:', clerkUserId)
@@ -268,52 +224,32 @@ async function handlePaymentCaptured(payment: any, eventType: string) {
       .eq('clerk_user_id', user.clerk_user_id)
   }
 
-  // ── Step 1: Deposit to wallet ──
-  const { data: depositData, error: depositErr } = await supabaseAdmin.rpc('deposit_wallet', {
+  // ── ATOMIC deposit — locks user row, checks idempotency, deposits, logs in one transaction ──
+  const { data: depositData, error: depositErr } = await supabaseAdmin.rpc('deposit_wallet_safe', {
     p_clerk_user_id: user.clerk_user_id,
     p_amount_usd: depositUsd,
+    p_order_id: entity.order_id,
+    p_payment_id: paymentId,
+    p_description: `Wallet deposit: +$${depositUsd}`,
+    p_metadata: {
+      event_type: eventType,
+      payment_amount: entity.amount,
+      currency: entity.currency,
+      credit_source: 'webhook_payment_captured',
+    },
   })
-  const depositRow = Array.isArray(depositData) ? depositData[0] : depositData
-  if (depositErr || !depositRow?.success) {
-    console.error('[Razorpay] Wallet deposit failed:', depositErr || depositRow?.error_message)
+
+  const result = Array.isArray(depositData) ? depositData[0] : depositData
+  if (depositErr || !result?.success) {
+    console.error('[Razorpay] Wallet deposit failed:', depositErr || result?.error_message)
     return
   }
 
-  // ── Step 2: Dollars stay in wallet — user converts to credits manually ──
-  const finalWallet = parseFloat(depositRow.new_balance)
-  const finalCredits = user.credits || 0
-
-  // ── Log transaction (idempotency record) ──
-  // Wrapped in try/catch to handle unique constraint violation (race condition safety net)
-  try {
-    await logCreditTransaction({
-      userId: user.clerk_user_id,
-      amount: 0,
-      balanceAfter: finalCredits,
-      type: 'wallet_deposit',
-      status: 'success',
-      description: `Wallet deposit: +$${depositUsd} → wallet $${finalWallet}`,
-      metadata: {
-        razorpay_id: paymentId,
-        razorpay_payment_id: paymentId,
-        event_type: eventType,
-        payment_amount: entity.amount,
-        currency: entity.currency,
-        deposit_usd: depositUsd,
-        wallet_balance: finalWallet,
-        order_id: entity.order_id,
-      },
-    })
-  } catch (txnError: any) {
-    // If unique constraint violation, the verify route already handled it — that's fine
-    if (txnError?.code === '23505' || txnError?.message?.includes('unique') || txnError?.message?.includes('duplicate')) {
-      console.log(`[Razorpay] ⏭ Transaction log conflict (verify route won the race): ${paymentId}`)
-      return
-    }
-    console.error('[Razorpay] Transaction logging error:', txnError)
+  if (result.already_processed) {
+    console.log(`[Razorpay] ⏭ Payment ${paymentId} already deposited (verify or order.paid won)`)
+  } else {
+    console.log(`[Razorpay] ✅ Payment ${paymentId}: +$${depositUsd} → wallet=$${result.new_balance} → ${user.email}`)
   }
-
-  console.log(`[Razorpay] ✅ Payment ${paymentId}: +$${depositUsd} → wallet=$${finalWallet} → ${user.email}`)
 }
 
 /**
@@ -359,8 +295,8 @@ async function handlePaymentFailed(payment: any) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * order.paid — secondary confirmation. If payment.captured already delivered
- * credits, the idempotency check will skip. Otherwise awards credits here.
+ * order.paid — secondary confirmation. Uses same atomic deposit_wallet_safe()
+ * so if verify or payment.captured already deposited, this is a no-op.
  */
 async function handleOrderPaid(order: any) {
   const entity = order.entity || order
@@ -376,70 +312,38 @@ async function handleOrderPaid(order: any) {
     return
   }
 
-  // ── Idempotency: check if payment.captured or verify route already handled this ──
-  const { data: existing } = await supabaseAdmin
-    .from('credit_transactions')
-    .select('id')
-    .eq('user_id', clerkUserId)
-    .in('type', ['wallet_deposit', 'credit_award'])
-    .eq('status', 'success')
-    .contains('metadata', { order_id: orderId })
-    .limit(1)
-
-  if (existing && existing.length > 0) {
-    console.log('[Razorpay] ⏭ Order already processed via payment.captured or verify:', orderId)
-    return
-  }
-
   const user = await resolveUser(undefined, clerkUserId)
   if (!user) {
     console.error('[Razorpay] User not found for order:', clerkUserId)
     return
   }
 
-  // ── Deposit to wallet (manual convert later) ──
-  const { data: depositData, error: depositErr } = await supabaseAdmin.rpc('deposit_wallet', {
+  // ── ATOMIC deposit — same RPC, same lock, impossible to double ──
+  const { data: depositData, error: depositErr } = await supabaseAdmin.rpc('deposit_wallet_safe', {
     p_clerk_user_id: user.clerk_user_id,
     p_amount_usd: depositUsd,
+    p_order_id: orderId,
+    p_payment_id: null,
+    p_description: `Wallet deposit: +$${depositUsd} (order.paid)`,
+    p_metadata: {
+      event_type: 'order.paid',
+      payment_amount: entity.amount,
+      currency: entity.currency,
+      credit_source: 'webhook_order_paid',
+    },
   })
-  const depositRow = Array.isArray(depositData) ? depositData[0] : depositData
-  if (depositErr || !depositRow?.success) {
-    console.error('[Razorpay] order.paid — deposit failed:', depositErr || depositRow?.error_message)
+
+  const result = Array.isArray(depositData) ? depositData[0] : depositData
+  if (depositErr || !result?.success) {
+    console.error('[Razorpay] order.paid — deposit failed:', depositErr || result?.error_message)
     return
   }
 
-  // Dollars stay in wallet — user converts to credits manually
-  const finalWallet = parseFloat(depositRow.new_balance)
-  const finalCredits = user.credits || 0
-
-  // Wrapped in try/catch — unique constraint prevents double deposit even in race conditions
-  try {
-    await logCreditTransaction({
-      userId: user.clerk_user_id,
-      amount: 0,
-      balanceAfter: finalCredits,
-      type: 'wallet_deposit',
-      status: 'success',
-      description: `Order paid (fallback): +$${depositUsd} → wallet $${finalWallet}`,
-      metadata: {
-        razorpay_id: orderId,
-        event_type: 'order.paid',
-        order_id: orderId,
-        deposit_usd: depositUsd,
-        wallet_balance: finalWallet,
-        payment_amount: entity.amount,
-        currency: entity.currency,
-      },
-    })
-  } catch (txnError: any) {
-    if (txnError?.code === '23505' || txnError?.message?.includes('unique') || txnError?.message?.includes('duplicate')) {
-      console.log(`[Razorpay] ⏭ Order transaction conflict (already deposited): ${orderId}`)
-      return
-    }
-    console.error('[Razorpay] Order transaction logging error:', txnError)
+  if (result.already_processed) {
+    console.log(`[Razorpay] ⏭ Order ${orderId} already deposited (verify or payment.captured won)`)
+  } else {
+    console.log(`[Razorpay] ✅ Order ${orderId}: +$${depositUsd} → wallet=$${result.new_balance} → ${user.email}`)
   }
-
-  console.log(`[Razorpay] ✅ Order ${orderId}: +$${depositUsd} → wallet=$${finalWallet} → ${user.email}`)
 }
 
 // ═══════════════════════════════════════════════════════════════

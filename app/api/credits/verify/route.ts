@@ -2,7 +2,6 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { logCreditTransaction } from '@/lib/credit-transactions'
 import crypto from 'crypto'
 
 export async function OPTIONS() {
@@ -12,7 +11,7 @@ export async function OPTIONS() {
 // ── Instant verification for wallet deposits ──
 // Called from frontend after Razorpay Checkout completes.
 // 1. Verifies HMAC signature
-// 2. Deposits dollars to wallet_balance via deposit_wallet() RPC
+// 2. Deposits dollars to wallet_balance via deposit_wallet_safe() RPC (atomic — no double deposits)
 // 3. Returns new wallet balance (user converts to credits manually via /api/wallet/convert)
 export async function POST(request: Request) {
   try {
@@ -59,36 +58,6 @@ export async function POST(request: Request) {
 
     console.log('[Wallet Verify] ✅ Signature verified')
 
-    // ── Idempotency: check by payment_id ──
-    const { data: existingTxn } = await supabaseAdmin
-      .from('credit_transactions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('type', 'wallet_deposit')
-      .eq('status', 'success')
-      .contains('metadata', { razorpay_payment_id })
-      .limit(1)
-      .maybeSingle()
-
-    if (existingTxn) {
-      console.warn('[Wallet Verify] ⏭ Already processed:', razorpay_payment_id)
-      // Return current state
-      const { data: user } = await supabaseAdmin
-        .from('users')
-        .select('credits, wallet_balance')
-        .eq('clerk_user_id', userId)
-        .single()
-      return corsResponse(
-        NextResponse.json({
-          success: true,
-          message: 'Already processed',
-          alreadyProcessed: true,
-          walletBalance: parseFloat(user?.wallet_balance || '0'),
-          credits: user?.credits || 0,
-        })
-      )
-    }
-
     // ── Fetch order from Razorpay API ──
     const authHeader = Buffer.from(`${keyId}:${keySecret}`).toString('base64')
     const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
@@ -118,103 +87,42 @@ export async function POST(request: Request) {
       )
     }
 
-    // ── Also check if webhook already handled via order_id ──
-    const { data: webhookTxn } = await supabaseAdmin
-      .from('credit_transactions')
-      .select('id')
-      .eq('user_id', userId)
-      .in('type', ['wallet_deposit', 'credit_award'])
-      .eq('status', 'success')
-      .contains('metadata', { order_id: razorpay_order_id })
-      .limit(1)
-      .maybeSingle()
-
-    if (webhookTxn) {
-      console.log('[Wallet Verify] ⏭ Webhook already processed this order')
-      const { data: user } = await supabaseAdmin
-        .from('users')
-        .select('credits, wallet_balance')
-        .eq('clerk_user_id', userId)
-        .single()
-      return corsResponse(
-        NextResponse.json({
-          success: true,
-          message: 'Already processed by webhook',
-          alreadyProcessed: true,
-          walletBalance: parseFloat(user?.wallet_balance || '0'),
-          credits: user?.credits || 0,
-        })
-      )
-    }
-
-    // ── Step 1: Deposit to wallet ──
-    const { data: depositData, error: depositError } = await supabaseAdmin.rpc('deposit_wallet', {
+    // ── ATOMIC deposit via deposit_wallet_safe (locks user row + checks idempotency + deposits + logs in one transaction) ──
+    const { data: depositData, error: depositError } = await supabaseAdmin.rpc('deposit_wallet_safe', {
       p_clerk_user_id: userId,
       p_amount_usd: depositUsd,
+      p_order_id: razorpay_order_id,
+      p_payment_id: razorpay_payment_id,
+      p_description: `Wallet deposit: +$${depositUsd}`,
+      p_metadata: {
+        razorpay_order_id,
+        order_amount: order.amount,
+        order_currency: order.currency,
+        credit_source: 'verify_route',
+        purchase_type: 'wallet_deposit',
+      },
     })
 
-    const depositRow = Array.isArray(depositData) ? depositData[0] : depositData
-    if (depositError || !depositRow?.success) {
-      console.error('[Wallet Verify] ❌ Deposit failed:', depositError || depositRow?.error_message)
-      throw new Error(depositRow?.error_message || 'Wallet deposit failed')
+    const result = Array.isArray(depositData) ? depositData[0] : depositData
+    if (depositError || !result?.success) {
+      console.error('[Wallet Verify] ❌ Deposit failed:', depositError || result?.error_message)
+      throw new Error(result?.error_message || 'Wallet deposit failed')
     }
 
-    console.log(`[Wallet Verify] ✅ Deposited $${depositUsd} → wallet=$${depositRow.new_balance}`)
-
-    // Dollars stay in wallet — user converts to credits manually via /api/wallet/convert
-    const finalWallet = parseFloat(depositRow.new_balance)
-
-    // Fetch current credits for response
-    const { data: currentUser } = await supabaseAdmin
-      .from('users')
-      .select('credits')
-      .eq('clerk_user_id', userId)
-      .single()
-    const finalCredits = currentUser?.credits || 0
-
-    // ── Log the deposit transaction with payment metadata ──
-    // Note: razorpay_id + order_id must match the keys used by the webhook
-    // handlers so cross-path idempotency checks work in both directions.
-    // Wrapped in try/catch — unique constraint prevents double deposit in race conditions.
-    try {
-      await logCreditTransaction({
-        userId,
-        amount: 0,
-        balanceAfter: finalCredits,
-        type: 'wallet_deposit',
-        status: 'success',
-        description: `Wallet deposit: +$${depositUsd} → wallet $${finalWallet}`,
-        metadata: {
-          razorpay_id: razorpay_payment_id,
-          razorpay_payment_id,
-          razorpay_order_id,
-          order_id: razorpay_order_id,
-          order_amount: order.amount,
-          order_currency: order.currency,
-          deposit_usd: depositUsd,
-          wallet_balance: finalWallet,
-          credit_source: 'verify_route',
-          purchase_type: 'wallet_deposit',
-        },
-      })
-    } catch (txnError: any) {
-      // If unique constraint violation, webhook already handled it — still return success
-      if (txnError?.code === '23505' || txnError?.message?.includes('unique') || txnError?.message?.includes('duplicate')) {
-        console.log(`[Wallet Verify] ⏭ Transaction already logged by webhook: ${razorpay_payment_id}`)
-      } else {
-        console.error('[Wallet Verify] Transaction logging error:', txnError)
-      }
+    if (result.already_processed) {
+      console.log('[Wallet Verify] ⏭ Already processed (webhook or duplicate):', razorpay_order_id)
+    } else {
+      console.log(`[Wallet Verify] ✅ Deposited $${depositUsd} → wallet=$${result.new_balance}`)
     }
-
-    console.log(`[Wallet Verify] ✅ Complete: ${userId} deposited $${depositUsd}, wallet=$${finalWallet}`)
 
     return corsResponse(
       NextResponse.json({
         success: true,
-        depositUsd,
+        depositUsd: result.already_processed ? 0 : depositUsd,
         creditsAdded: 0,
-        walletBalance: finalWallet,
-        credits: finalCredits,
+        walletBalance: parseFloat(result.new_balance),
+        credits: result.credits || 0,
+        alreadyProcessed: result.already_processed || false,
       })
     )
   } catch (error: any) {
