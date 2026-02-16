@@ -25,6 +25,7 @@ interface FeaturesSidebarProps {
   onShowStemSplit: () => void
   onShowAudioBoost: () => void
   onShowExtract: () => void
+  onShowAutotune: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -61,6 +62,7 @@ export default function FeaturesSidebar({
   onShowStemSplit,
   onShowAudioBoost,
   onShowExtract,
+  onShowAutotune,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -152,6 +154,15 @@ export default function FeaturesSidebar({
       active: false,
       cost: 1,
       onClick: onShowExtract,
+    },
+    {
+      icon: Mic,
+      label: 'Autotune',
+      description: 'Pitch correct vocals',
+      color: 'purple',
+      active: false,
+      cost: 1,
+      onClick: onShowAutotune,
     },
     {
       icon: Edit3,

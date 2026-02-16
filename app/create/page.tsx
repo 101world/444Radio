@@ -13,6 +13,7 @@ const CombineMediaModal = lazy(() => import('../components/CombineMediaModal'))
 const TwoStepReleaseModal = lazy(() => import('../components/TwoStepReleaseModal'))
 const MediaUploadModal = lazy(() => import('../components/MediaUploadModal'))
 const AudioBoostModal = lazy(() => import('../components/AudioBoostModal'))
+const AutotuneModal = lazy(() => import('../components/AutotuneModal'))
 const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
@@ -93,6 +94,7 @@ function CreatePageContent() {
   const [showReleaseModal, setShowReleaseModal] = useState(false)
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false)
   const [showAudioBoostModal, setShowAudioBoostModal] = useState(false)
+  const [showAutotuneModal, setShowAutotuneModal] = useState(false)
   const [boostAudioUrl, setBoostAudioUrl] = useState('')
   const [boostTrackTitle, setBoostTrackTitle] = useState('')
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
@@ -1692,6 +1694,7 @@ function CreatePageContent() {
           onShowStemSplit={() => setShowMediaUploadModal(true)}
           onShowAudioBoost={() => setShowMediaUploadModal(true)}
           onShowExtract={() => setShowMediaUploadModal(true)}
+          onShowAutotune={() => setShowAutotuneModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
@@ -3424,6 +3427,17 @@ function CreatePageContent() {
               setMessages(prev => [...prev, processingMessage])
               setShowMediaUploadModal(false)
             }
+            if (type === 'autotune') {
+              const processingMessage: Message = {
+                id: `autotune-${Date.now()}`,
+                type: 'assistant',
+                content: '🎤 Autotuning audio... Pitch correcting to key.',
+                timestamp: new Date(),
+                isGenerating: true
+              }
+              setMessages(prev => [...prev, processingMessage])
+              setShowMediaUploadModal(false)
+            }
           }}
           onError={(errorMessage) => {
             // Remove processing message
@@ -3503,6 +3517,21 @@ function CreatePageContent() {
                 timestamp: new Date()
               }
               setMessages(prev => [...prev, extractMessage])
+            } else if (result.type === 'autotune') {
+              // Handle autotune results
+              const autotuneMessage: Message = {
+                id: Date.now().toString(),
+                type: 'generation',
+                content: `✅ Autotuned successfully! Key: ${result.scale || 'auto'}. Used 1 credit. ${result.creditsRemaining || 0} credits remaining.`,
+                generationType: 'music',
+                result: {
+                  audioUrl: result.audioUrl,
+                  title: result.title || 'Autotuned Audio',
+                  prompt: `Autotune: ${result.scale || 'auto'}`
+                },
+                timestamp: new Date()
+              }
+              setMessages(prev => [...prev, autotuneMessage])
             } else {
               // Handle video-to-audio results
               const resultMessage: Message = {
@@ -3569,6 +3598,60 @@ function CreatePageContent() {
               id: Date.now().toString(),
               type: 'assistant',
               content: `❌ Audio Boost Error: ${errorMessage}`,
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, errorMsg])
+          }}
+        />
+      </Suspense>
+
+      {/* Autotune Modal - Dedicated futuristic autotune experience */}
+      <Suspense fallback={null}>
+        <AutotuneModal
+          isOpen={showAutotuneModal}
+          onClose={() => setShowAutotuneModal(false)}
+          onStart={() => {
+            // Add processing message to chat
+            const processingMessage: Message = {
+              id: `autotune-modal-${Date.now()}`,
+              type: 'assistant',
+              content: '🎤 Autotuning audio... Pitch correcting to key.',
+              timestamp: new Date(),
+              isGenerating: true
+            }
+            setMessages(prev => [...prev, processingMessage])
+            setShowAutotuneModal(false)
+          }}
+          onSuccess={(result) => {
+            // Remove processing message
+            setMessages(prev => prev.filter(msg => !msg.isGenerating))
+            // Add result to chat
+            const autotuneMessage: Message = {
+              id: Date.now().toString(),
+              type: 'generation',
+              content: `✅ Autotuned successfully! Key: ${result.scale || 'auto'}. Used 1 credit. ${result.creditsRemaining || 0} credits remaining.`,
+              generationType: 'music',
+              result: {
+                audioUrl: result.audioUrl,
+                title: result.title || 'Autotuned Audio',
+                prompt: `Autotune: ${result.scale || 'auto'}`
+              },
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, autotuneMessage])
+            // Update credits
+            if (result.creditsRemaining !== undefined) {
+              setUserCredits(result.creditsRemaining)
+            }
+            refreshCredits()
+            window.dispatchEvent(new Event('credits:refresh'))
+          }}
+          onError={(errorMessage) => {
+            setMessages(prev => prev.filter(msg => !msg.isGenerating))
+            const errorMsg: Message = {
+              id: Date.now().toString(),
+              type: 'assistant',
+              content: `❌ Autotune Error: ${errorMessage}`,
               timestamp: new Date()
             }
             setMessages(prev => [...prev, errorMsg])

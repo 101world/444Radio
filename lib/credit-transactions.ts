@@ -15,6 +15,7 @@ export type CreditTransactionType =
   | 'generation_cover_art'
   | 'generation_stem_split'
   | 'generation_audio_boost'
+  | 'generation_autotune'
   | 'generation_extract'
   | 'earn_list'
   | 'earn_purchase'

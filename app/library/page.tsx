@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info } from 'lucide-react'
+import { Music, Image as ImageIcon, Trash2, Download, Play, Pause, Send, ArrowLeft, RefreshCw, FileText, ImageIcon as ImageViewIcon, Heart, Scissors, ChevronDown, ChevronUp, Volume2, ShoppingBag, Layers, Repeat, Radio, Info, Mic } from 'lucide-react'
 import FloatingMenu from '../components/FloatingMenu'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { LibraryTabSkeleton } from '../components/LoadingSkeleton'
@@ -59,7 +59,7 @@ export default function LibraryPage() {
   const router = useRouter()
   const { user } = useUser()
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setPlaylist } = useAudioPlayer()
-  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects'>('music')
+  const [activeTab, setActiveTab] = useState<'images' | 'music' | 'videos' | 'releases' | 'liked' | 'stems' | 'mixmaster' | 'bought' | 'extract' | 'loops' | 'effects' | 'autotune'>('music')
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
   const [videoItems, setVideoItems] = useState<LibraryMusic[]>([]) // Reuse music interface for videos
@@ -71,6 +71,7 @@ export default function LibraryPage() {
   const [extractGroups, setExtractGroups] = useState<any[]>([])
   const [loopsItems, setLoopsItems] = useState<any[]>([])
   const [effectsItems, setEffectsItems] = useState<any[]>([])
+  const [autotuneItems, setAutotuneItems] = useState<any[]>([])
   const [expandedExtracts, setExpandedExtracts] = useState<Set<number>>(new Set())
   const [expandedStems, setExpandedStems] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -109,7 +110,7 @@ export default function LibraryPage() {
     }
     try {
       // Fetch all user's content from DB, R2, and releases
-      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes] = await Promise.all([
+      const [musicRes, r2AudioRes, imagesRes, r2ImagesRes, videosRes, r2VideosRes, releasesRes, likedRes, stemsRes, mixmasterRes, boughtRes, extractRes, loopsRes, effectsRes, autotuneRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/r2/list-audio'),
         fetch('/api/library/images'),
@@ -123,7 +124,8 @@ export default function LibraryPage() {
         fetch('/api/library/bought'),
         fetch('/api/library/extract'),
         fetch('/api/library/loops'),
-        fetch('/api/library/effects')
+        fetch('/api/library/effects'),
+        fetch('/api/library/autotune')
       ])
 
       const musicData = await musicRes.json()
@@ -140,6 +142,7 @@ export default function LibraryPage() {
       const extractData = await extractRes.json()
       const loopsData = await loopsRes.json()
       const effectsData = await effectsRes.json()
+      const autotuneData = await autotuneRes.json()
 
       // Use ONLY database music - it has correct titles from generation
       if (musicData.success && Array.isArray(musicData.music)) {
@@ -165,7 +168,7 @@ export default function LibraryPage() {
           (boughtData.success && Array.isArray(boughtData.bought) ? boughtData.bought : []).map((t: any) => t.audio_url).filter(Boolean)
         )
         const nonStemMusic = uniqueMusic.filter((track: any) =>
-          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' &&
+          track.genre !== 'stem' && track.genre !== 'boosted' && track.genre !== 'extract' && track.genre !== 'loop' && track.genre !== 'effects' && track.genre !== 'processed' &&
           !(track.prompt && typeof track.prompt === 'string' && track.prompt.toLowerCase().includes('purchased from earn')) &&
           !boughtAudioUrls.has(track.audio_url)
         )
@@ -236,6 +239,10 @@ export default function LibraryPage() {
       if (effectsData.success && Array.isArray(effectsData.effects)) {
         setEffectsItems(effectsData.effects)
         console.log('🎵 Loaded', effectsData.effects.length, 'effects/SFX')
+      }
+      if (autotuneData.success && Array.isArray(autotuneData.tracks)) {
+        setAutotuneItems(autotuneData.tracks)
+        console.log('🎤 Loaded', autotuneData.tracks.length, 'autotune tracks')
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -689,6 +696,20 @@ export default function LibraryPage() {
               <Radio size={18} />
               <span>SFX</span>
               <span className="ml-1 text-xs opacity-60">({effectsItems.length})</span>
+            </button>
+
+            {/* Autotune Tab */}
+            <button
+              onClick={() => setActiveTab('autotune')}
+              className={`flex-1 min-w-[100px] px-6 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                activeTab === 'autotune'
+                  ? 'bg-gradient-to-r from-violet-600 to-purple-400 text-white shadow-lg shadow-violet-500/30'
+                  : 'bg-white/5 text-violet-400/60 hover:bg-violet-500/10 hover:text-violet-400'
+              }`}
+            >
+              <Mic size={18} />
+              <span>Autotune</span>
+              <span className="ml-1 text-xs opacity-60">({autotuneItems.length})</span>
             </button>
           </div>
         </div>
@@ -1718,6 +1739,87 @@ export default function LibraryPage() {
                           <span className="text-xs text-pink-400 font-medium">MP3</span>
                         </button>
                       )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Autotune Tab */}
+        {!isLoading && activeTab === 'autotune' && (
+          <div>
+            {autotuneItems.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-400/10 border border-violet-500/30 flex items-center justify-center">
+                  <Mic size={32} className="text-violet-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white/80 mb-2">No autotuned tracks yet</h3>
+                <p className="text-violet-400/50 mb-6 text-sm">Pitch correct any audio to a musical key & scale</p>
+                <Link href="/create" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-400 text-white rounded-xl font-bold hover:from-violet-700 hover:to-purple-500 transition-all shadow-lg shadow-violet-500/20">
+                  <Mic size={18} />
+                  Autotune a Track
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {autotuneItems.map((track: any) => {
+                  const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying
+                  return (
+                    <div
+                      key={track.id}
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-violet-500/20 rounded-xl hover:border-violet-400/40 transition-all group"
+                    >
+                      {/* Play button */}
+                      <button
+                        onClick={async () => {
+                          const t = {
+                            id: track.id,
+                            audioUrl: track.audioUrl || track.audio_url,
+                            title: track.title || 'Autotuned Audio',
+                            artist: user?.firstName || 'You'
+                          }
+                          if (isCurrentlyPlaying) {
+                            togglePlayPause()
+                          } else {
+                            const allTracks = autotuneItems.filter((a: any) => a.audioUrl || a.audio_url).map((a: any) => ({
+                              id: a.id,
+                              audioUrl: a.audioUrl || a.audio_url,
+                              title: a.title || 'Autotuned Audio',
+                              artist: user?.firstName || 'You'
+                            }))
+                            await setPlaylist(allTracks, allTracks.findIndex((t: any) => t.id === track.id))
+                          }
+                        }}
+                        className="w-12 h-12 flex-shrink-0 rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/10 border border-violet-500/30 flex items-center justify-center hover:scale-105 transition-transform"
+                      >
+                        {isCurrentlyPlaying ? (
+                          <Pause size={18} className="text-violet-400" />
+                        ) : (
+                          <Play size={18} className="text-violet-400 ml-0.5" />
+                        )}
+                      </button>
+
+                      {/* Track info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-sm truncate">{track.title || 'Autotuned Audio'}</h3>
+                        <p className="text-violet-400/50 text-xs mt-0.5 truncate">{track.prompt || 'Pitch Corrected'}</p>
+                      </div>
+
+                      {/* Date */}
+                      <span className="text-[10px] text-gray-500 flex-shrink-0 hidden sm:block">
+                        {new Date(track.created_at).toLocaleDateString()}
+                      </span>
+
+                      {/* Download */}
+                      <button
+                        onClick={() => handleDownload(track.audioUrl || track.audio_url, `${track.title || 'autotuned'}.wav`)}
+                        className="p-2 rounded-lg hover:bg-violet-500/20 transition-colors flex-shrink-0"
+                        title="Download"
+                      >
+                        <Download size={16} className="text-violet-400" />
+                      </button>
                     </div>
                   )
                 })}

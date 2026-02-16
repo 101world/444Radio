@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       await logCreditTransaction({ 
         userId, 
         amount: -CREDIT_COST, 
-        type: 'generation_audio_boost',  // Closest type for audio processing
+        type: 'generation_autotune',
         status: 'failed', 
         description: `Autotune (${scale})`,
         metadata: { audio_file, scale, output_format }
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
       userId, 
       amount: -CREDIT_COST, 
       balanceAfter: deductResult.new_credits,
-      type: 'generation_audio_boost',  // Using audio_boost type for processing
+      type: 'generation_autotune',
       description: `Autotune (${scale})`,
       metadata: { audio_file, scale, output_format }
     })
@@ -229,6 +229,21 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Autotune error:', error)
+    
+    // Log generation failure
+    try {
+      const { userId } = await auth()
+      if (userId) {
+        await logCreditTransaction({
+          userId,
+          amount: 0,
+          type: 'generation_autotune',
+          status: 'failed',
+          description: 'Autotune generation failed (post-deduction)',
+          metadata: { error: error instanceof Error ? error.message : String(error) }
+        })
+      }
+    } catch { /* ignore logging errors */ }
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return corsResponse(NextResponse.json(
