@@ -46,7 +46,7 @@ export async function GET() {
     let userMap: Record<string, any> = {}
     if (userIds.length > 0) {
       const usersRes = await fetch(
-        `${supabaseUrl}/rest/v1/users?clerk_user_id=in.(${userIds.join(',')}')&select=clerk_user_id,username,email,subscription_plan,subscription_status`,
+        `${supabaseUrl}/rest/v1/users?clerk_user_id=in.(${userIds.join(',')}')&select=clerk_user_id,username,email,wallet_balance,credits`,
         {
           headers: {
             'apikey': supabaseKey,

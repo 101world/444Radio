@@ -32,7 +32,7 @@ export async function OPTIONS() {
  * Pricing model:
  *   - Download costs 5 credits (fixed).
  *   - 1 credit goes to the artist, 4 credits go to 444 Radio.
- *   - Only subscribers (subscription_status = active | trialing) can purchase.
+ *   - Users with $1+ wallet balance can purchase.
  *   - Optional stem-split adds 5 credits.
  */
 export async function POST(request: NextRequest) {

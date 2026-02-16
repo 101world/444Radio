@@ -50,7 +50,7 @@ export async function GET() {
     let userMap: Record<string, any> = {}
     if (userIds.length > 0) {
       const usersRes = await supabaseRest(
-        `users?clerk_user_id=in.(${userIds.join(',')}')&select=clerk_user_id,username,email,credits,subscription_status,subscription_plan`
+        `users?clerk_user_id=in.(${userIds.join(',')}')&select=clerk_user_id,username,email,credits,wallet_balance`
       )
       if (usersRes.ok) {
         const users = await usersRes.json()

@@ -30,14 +30,14 @@ export async function GET() {
       )
     }
 
-    // Get user subscription info
+    // Get user wallet + credits info (wallet-based access model)
     const { data: user } = await supabaseAdmin
       .from('users')
-      .select('subscription_status, subscription_plan')
+      .select('wallet_balance, credits')
       .eq('clerk_user_id', userId)
       .single()
 
-    // Check for one-time purchase
+    // Check for one-time plugin purchase
     const { data: purchase } = await supabaseAdmin
       .from('plugin_purchases')
       .select('id, created_at')
@@ -46,46 +46,33 @@ export async function GET() {
       .limit(1)
       .maybeSingle()
 
-    const plan = (user?.subscription_plan || '').toLowerCase()
-    const isActive = user?.subscription_status === 'active'
+    const walletBalance = parseFloat(user?.wallet_balance || '0')
+    const hasWalletAccess = walletBalance >= 1.0 // $1 minimum for access
 
     let accessTier: string
     let hasAccess: boolean
     let rateLimit: number | null = null // null = unlimited
     let message: string
 
-    // Studio active
-    if (isActive && (plan.includes('studio') || ['plan_s2didckncv6tta', 'plan_s2doabogedjhk'].includes(plan))) {
-      accessTier = 'studio'
-      hasAccess = true
-      rateLimit = null
-      message = 'Unlimited plugin access (Studio plan)'
-    }
-    // Studio inactive
-    else if (!isActive && (plan.includes('studio') || ['plan_s2didckncv6tta', 'plan_s2doabogedjhk'].includes(plan))) {
-      accessTier = 'studio_inactive'
-      hasAccess = false
-      message = 'Studio subscription inactive. Resubscribe for plugin access.'
-    }
-    // Pro active
-    else if (isActive && (plan.includes('pro') || ['plan_s2dhugo7n1m6iv', 'plan_s2dnevy1yzywnh'].includes(plan))) {
-      accessTier = 'pro'
-      hasAccess = true
-      rateLimit = 200
-      message = 'Plugin access included (200 requests/day)'
-    }
-    // Has one-time purchase
-    else if (purchase) {
+    // Has one-time plugin purchase → unlimited
+    if (purchase) {
       accessTier = 'purchased'
       hasAccess = true
       rateLimit = null
       message = 'Unlimited plugin access (purchased)'
     }
+    // Has $1+ in wallet → full access
+    else if (hasWalletAccess) {
+      accessTier = 'wallet'
+      hasAccess = true
+      rateLimit = null
+      message = 'Plugin access active ($1+ in wallet)'
+    }
     // No access
     else {
       accessTier = 'none'
       hasAccess = false
-      message = 'Plugin requires a $25 one-time purchase or Pro/Studio subscription.'
+      message = 'Plugin requires $1 minimum wallet balance or a one-time purchase.'
     }
 
     return corsResponse(
@@ -95,11 +82,10 @@ export async function GET() {
         rateLimit,
         message,
         hasPurchase: !!purchase,
-        subscriptionPlan: user?.subscription_plan || null,
-        subscriptionStatus: user?.subscription_status || 'none',
+        walletBalance,
       })
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Plugin Access] Error:', error)
     return corsResponse(
       NextResponse.json({ error: 'Failed to check access' }, { status: 500 })

@@ -25,6 +25,7 @@ interface Listing {
     credits: number
     subscription_status: string
     subscription_plan: string
+    wallet_balance: number
   }
 }
 
@@ -247,9 +248,9 @@ export default function AdminEarnListings() {
                               <span className="text-gray-500 text-xs block">
                                 {l.user?.email || l.user_id.slice(0, 20) + '...'}
                               </span>
-                              {l.user?.subscription_plan && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 mt-0.5 inline-block">
-                                  {l.user.subscription_plan} ({l.user.subscription_status})
+                              {l.user?.wallet_balance != null && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 mt-0.5 inline-block">
+                                  ${parseFloat(l.user.wallet_balance as any || 0).toFixed(2)} wallet
                                 </span>
                               )}
                             </div>

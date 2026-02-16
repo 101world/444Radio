@@ -18,6 +18,7 @@ interface Purchase {
     email: string
     subscription_plan: string
     subscription_status: string
+    wallet_balance: number
   }
 }
 
@@ -128,9 +129,9 @@ export default function AdminPluginPurchases() {
                         <div>
                           <span className="text-white font-medium">{p.user?.username || 'Unknown'}</span>
                           <span className="text-gray-500 text-xs block">{p.user?.email || p.clerk_user_id.slice(0, 20)}</span>
-                          {p.user?.subscription_plan && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 mt-0.5 inline-block">
-                              {p.user.subscription_plan} ({p.user.subscription_status})
+                          {p.user?.wallet_balance != null && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 mt-0.5 inline-block">
+                              ${parseFloat(p.user.wallet_balance as any || 0).toFixed(2)} wallet
                             </span>
                           )}
                         </div>
