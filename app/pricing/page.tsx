@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { useCredits } from '../contexts/CreditsContext'
@@ -24,7 +24,48 @@ import {
   X,
   DollarSign,
   AlertTriangle,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react'
+
+// ── Transaction type labels ──
+const TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  generation_music: { label: 'Song', color: 'text-pink-400' },
+  generation_effects: { label: 'SFX', color: 'text-orange-400' },
+  generation_loops: { label: 'Loops', color: 'text-purple-400' },
+  generation_image: { label: 'Image', color: 'text-blue-400' },
+  generation_video_to_audio: { label: 'Video→Audio', color: 'text-yellow-400' },
+  generation_cover_art: { label: 'Cover Art', color: 'text-emerald-400' },
+  generation_stem_split: { label: 'Stem Split', color: 'text-red-400' },
+  generation_audio_boost: { label: 'Boost', color: 'text-amber-400' },
+  generation_extract: { label: 'Extract', color: 'text-teal-400' },
+  earn_list: { label: 'Listed', color: 'text-cyan-400' },
+  earn_purchase: { label: 'Purchased', color: 'text-red-400' },
+  earn_sale: { label: 'Sale', color: 'text-green-400' },
+  earn_admin: { label: 'Reward', color: 'text-green-400' },
+  credit_award: { label: 'Awarded', color: 'text-green-400' },
+  credit_refund: { label: 'Refund', color: 'text-amber-400' },
+  wallet_deposit: { label: 'Deposit', color: 'text-green-400' },
+  wallet_conversion: { label: 'Converted', color: 'text-cyan-400' },
+  subscription_bonus: { label: 'Sub Bonus', color: 'text-emerald-400' },
+  plugin_purchase: { label: 'Plugin', color: 'text-purple-400' },
+  code_claim: { label: 'Code', color: 'text-green-400' },
+  release: { label: 'Release', color: 'text-cyan-400' },
+  other: { label: 'Other', color: 'text-gray-400' },
+}
+
+interface Transaction {
+  id: string
+  type: string
+  status: string
+  amount: number
+  balance_after: number | null
+  description: string
+  created_at: string
+}
 
 // ── Constants ──
 const GST_RATE = 0.18
@@ -71,10 +112,34 @@ export default function PricingPage() {
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [purchaseMessage, setPurchaseMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showCostModal, setShowCostModal] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [txnTotal, setTxnTotal] = useState(0)
+  const [txnLoading, setTxnLoading] = useState(false)
+  const [txnOffset, setTxnOffset] = useState(0)
+  const TXN_LIMIT = 20
+
+  const fetchTransactions = useCallback(async (offset = 0) => {
+    setTxnLoading(true)
+    try {
+      const res = await fetch(`/api/credits/history?limit=${TXN_LIMIT}&offset=${offset}`)
+      const data = await res.json()
+      if (res.ok) {
+        setTransactions(offset === 0 ? data.transactions : [...transactions, ...data.transactions])
+        setTxnTotal(data.total)
+        setTxnOffset(offset)
+      }
+    } catch { /* ignore */ }
+    setTxnLoading(false)
+  }, [transactions])
 
   useEffect(() => {
     if (isLoaded && !user) router.push('/sign-in')
   }, [isLoaded, user, router])
+
+  useEffect(() => {
+    if (showHistory && transactions.length === 0) fetchTransactions(0)
+  }, [showHistory])
 
   // ── Deposit handler ──
   const handleDeposit = async (amountUsd: number) => {
@@ -375,7 +440,7 @@ export default function PricingPage() {
         </div>
 
         {/* ── Generation Costs ── */}
-        <div className="mb-10">
+        <div className="mb-6">
           <button
             onClick={() => setShowCostModal(true)}
             className="flex items-center gap-2 mx-auto text-sm text-cyan-400/70 hover:text-cyan-400 transition-colors"
@@ -383,6 +448,87 @@ export default function PricingPage() {
             <Info className="w-4 h-4" />
             What does each generation cost?
           </button>
+        </div>
+
+        {/* ── Transaction History ── */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl mb-10 overflow-hidden">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="w-full flex items-center justify-between p-5 hover:bg-white/[0.03] transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Clock className="w-5 h-5 text-cyan-400" />
+              <span className="text-sm font-semibold text-white">Transaction History</span>
+              {txnTotal > 0 && (
+                <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{txnTotal}</span>
+              )}
+            </div>
+            {showHistory ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          </button>
+
+          {showHistory && (
+            <div className="border-t border-white/5">
+              {txnLoading && transactions.length === 0 ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-cyan-500" />
+                </div>
+              ) : transactions.length === 0 ? (
+                <p className="text-center text-gray-500 text-sm py-10">No transactions yet</p>
+              ) : (
+                <>
+                  <div className="divide-y divide-white/5">
+                    {transactions.map((txn) => {
+                      const info = TYPE_LABELS[txn.type] || TYPE_LABELS.other
+                      const isPositive = txn.amount > 0
+                      const isRefund = txn.type === 'credit_refund'
+                      const isFailed = txn.status === 'failed'
+                      const dateStr = new Date(txn.created_at).toLocaleString('en-IN', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
+                      })
+                      return (
+                        <div key={txn.id} className={`flex items-center gap-4 px-5 py-3 ${isFailed ? 'opacity-50' : ''}`}>
+                          <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${isPositive ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                            {isPositive ? (
+                              <ArrowDownRight className="w-4 h-4 text-green-400" />
+                            ) : (
+                              <ArrowUpRight className="w-4 h-4 text-red-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-medium ${info.color}`}>{info.label}</span>
+                              {isFailed && <span className="text-[10px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">Failed</span>}
+                              {isRefund && <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">Adjustment</span>}
+                            </div>
+                            <p className="text-xs text-gray-500 truncate mt-0.5">{txn.description || info.label}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className={`text-sm font-semibold tabular-nums ${
+                              isFailed ? 'text-gray-500' : isPositive ? 'text-green-400' : 'text-red-400'
+                            }`}>
+                              {isPositive ? '+' : ''}{txn.amount} cr
+                            </p>
+                            <p className="text-[10px] text-gray-600">{dateStr}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {transactions.length < txnTotal && (
+                    <div className="p-4 text-center border-t border-white/5">
+                      <button
+                        onClick={() => fetchTransactions(txnOffset + TXN_LIMIT)}
+                        disabled={txnLoading}
+                        className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors disabled:opacity-50"
+                      >
+                        {txnLoading ? 'Loading...' : `Load more (${transactions.length} of ${txnTotal})`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Trust ── */}

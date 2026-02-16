@@ -814,66 +814,26 @@ function SettingsPageInner() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-sm font-bold text-white">One-Time Purchase</p>
-                        <p className="text-xs text-gray-400">Unlimited plugin access forever</p>
-                      </div>
-                      <span className="text-2xl font-black text-white">$4</span>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        if (buyingPlugin) return
-                        setBuyingPlugin(true)
-                        try {
-                          const orderRes = await fetch('/api/plugin/purchase/create-order', { method: 'POST' })
-                          const orderData = await orderRes.json()
-                          if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create order')
-
-                          const rzp = new (window as any).Razorpay({
-                            key: orderData.razorpay_key_id,
-                            amount: orderData.amount,
-                            currency: orderData.currency,
-                            name: '444 Radio',
-                            description: 'VST3 Plugin — Unlimited Access',
-                            order_id: orderData.order_id,
-                            prefill: {
-                              email: orderData.customer_email,
-                              name: orderData.customer_name,
-                            },
-                            handler: async (response: any) => {
-                              const verifyRes = await fetch('/api/plugin/purchase/verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  razorpay_order_id: response.razorpay_order_id,
-                                  razorpay_payment_id: response.razorpay_payment_id,
-                                  razorpay_signature: response.razorpay_signature,
-                                }),
-                              })
-                              if (verifyRes.ok) {
-                                setHasPluginPurchase(true)
-                                setBuyingPlugin(false)
-                              }
-                            },
-                            modal: { ondismiss: () => setBuyingPlugin(false) },
-                            theme: { color: '#06b6d4' },
-                          })
-                          rzp.open()
-                        } catch (err: any) {
-                          setPluginError(err.message || 'Purchase failed')
-                          setBuyingPlugin(false)
-                        }
-                      }}
-                      disabled={buyingPlugin}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
-                    >
-                      {buyingPlugin ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                      {buyingPlugin ? 'Processing...' : 'Buy Plugin — $4'}
-                    </button>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs text-emerald-300">Free for all users — download now!</span>
                   </div>
+                  <a
+                    href="/api/plugin/download-installer"
+                    onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Plugin v2
+                  </a>
+                  <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
+                  <button
+                    onClick={() => setShowInstallGuide(true)}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
+                  >
+                    View install instructions
+                  </button>
                 </div>
               )}
 

@@ -1824,103 +1824,32 @@ export default function PluginPage() {
             </div>
           )}
 
-          {/* Plugin purchase required — $4 Razorpay button */}
+          {/* Plugin is FREE for all — no purchase gate */}
           {needsPurchase && (
-            <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-cyan-500/30 rounded-xl p-5 text-left space-y-4">
+            <div className="bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-xl p-5 text-left space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shrink-0">
                   <Zap size={20} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-white">Unlock 444Radio Plugin</p>
-                  <p className="text-xs text-gray-400">One-time purchase • Unlimited access forever</p>
+                  <p className="text-sm font-bold text-white">444Radio Plugin — Free</p>
+                  <p className="text-xs text-gray-400">Download from Settings → Plugin tab</p>
                 </div>
-              </div>
-              <div className="flex items-baseline gap-1 ml-[52px]">
-                <span className="text-3xl font-black text-white">$4</span>
-                <span className="text-xs text-gray-500">USD • one-time</span>
               </div>
               <ul className="ml-[52px] space-y-1 text-xs text-gray-300">
                 <li>✓ Unlimited AI generations in your DAW</li>
                 <li>✓ WAV export + drag to timeline</li>
                 <li>✓ Stem splitting, loops, SFX, cover art</li>
                 <li>✓ Works in Ableton, FL Studio, Logic, Premiere Pro</li>
-                <li>✓ No subscription needed</li>
               </ul>
-              <button
-                onClick={async () => {
-                  if (buyingPlugin) return
-                  setBuyingPlugin(true)
-                  try {
-                    const res = await fetch('/api/plugin/purchase', {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${token}` },
-                    })
-                    const data = await res.json()
-                    if (!data.success || !data.orderId) {
-                      alert(data.error || 'Could not create payment')
-                      return
-                    }
-                    if (!(window as any).Razorpay) {
-                      alert('Payment SDK loading... please try again in a moment')
-                      return
-                    }
-                    const razorpay = new (window as any).Razorpay({
-                      key: data.keyId,
-                      amount: data.amount,
-                      currency: data.currency,
-                      name: '444Radio',
-                      description: 'Plugin — Unlimited Access',
-                      order_id: data.orderId,
-                      handler: async (response: any) => {
-                        try {
-                          const verifyRes = await fetch('/api/plugin/verify-purchase', {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${token}`,
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                              razorpay_order_id: response.razorpay_order_id,
-                              razorpay_payment_id: response.razorpay_payment_id,
-                              razorpay_signature: response.razorpay_signature,
-                            }),
-                          })
-                          const verifyData = await verifyRes.json()
-                          if (verifyData.success) {
-                            alert('✅ Plugin purchased! Refreshing...')
-                            window.location.reload()
-                          } else {
-                            alert('✅ Payment received! Access will activate within 1-2 minutes. Refresh the page.')
-                          }
-                        } catch {
-                          alert('✅ Payment received! Refresh the page to activate.')
-                        }
-                      },
-                      prefill: {
-                        email: data.customerEmail || '',
-                        name: data.customerName || '',
-                      },
-                      theme: { color: '#06b6d4' },
-                      modal: {
-                        ondismiss: () => setBuyingPlugin(false),
-                      },
-                    })
-                    razorpay.open()
-                  } catch (err: any) {
-                    console.error('Purchase error:', err)
-                    alert('Payment error: ' + (err.message || 'Unknown'))
-                  } finally {
-                    setBuyingPlugin(false)
-                  }
-                }}
-                disabled={buyingPlugin}
-                className="ml-[52px] w-[calc(100%-52px)] py-3 rounded-xl text-sm font-bold text-black bg-gradient-to-r from-cyan-400 to-cyan-300 hover:from-cyan-300 hover:to-cyan-200 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              <a
+                href="https://444radio.co.in/settings?tab=plugin"
+                className="ml-[52px] inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-black bg-gradient-to-r from-cyan-400 to-cyan-300 hover:from-cyan-300 hover:to-cyan-200 transition-all"
               >
-                {buyingPlugin ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                {buyingPlugin ? 'Processing...' : 'Buy Plugin — $4'}
-              </button>
-              <p className="ml-[52px] text-[10px] text-gray-600">One-time purchase. Credits purchased separately.</p>
+                <Download size={16} />
+                Download Plugin
+              </a>
+              <p className="ml-[52px] text-[10px] text-gray-600">Credits required for generations only.</p>
             </div>
           )}
 
