@@ -455,7 +455,7 @@ function CreatePageContent() {
                       : (gen.type === 'music' ? '✅ Track generated!' : 
                          gen.type === 'effects' ? '✅ Effects generated!' : 
                          gen.type === 'image' ? '✅ Image generated!' : 
-                         gen.type === 'stem-split' ? `✅ Stems separated successfully! Used ${gen.result?.creditsUsed || 0} credits.` :
+                         gen.type === 'stem-split' ? `✅ Stem separated! Used ${gen.result?.creditsUsed || 1} credit.` :
                          '✅ Generation complete!'),
                     result: gen.status === 'completed' ? gen.result : undefined,
                     stems: gen.type === 'stem-split' && gen.result?.stems ? gen.result.stems : undefined
@@ -476,7 +476,7 @@ function CreatePageContent() {
               content: gen.type === 'music' ? '✅ Track generated!' : 
                        gen.type === 'effects' ? '✅ Effects generated!' : 
                        gen.type === 'image' ? '✅ Image generated!' : 
-                       gen.type === 'stem-split' ? `✅ Stems separated successfully! Used ${gen.result?.creditsUsed || 0} credits.` :
+                       gen.type === 'stem-split' ? `✅ Stem separated! Used ${gen.result?.creditsUsed || 1} credit.` :
                        '✅ Generation complete!',
               timestamp: new Date(gen.completedAt || gen.startedAt),
               isGenerating: false,
@@ -1558,7 +1558,7 @@ function CreatePageContent() {
       refreshCredits()
       window.dispatchEvent(new Event('credits:refresh'))
 
-      updateGeneration(genId, { status: 'completed', result: { stems: data.stems } })
+      updateGeneration(genId, { status: 'completed', result: { stems: data.stems, creditsUsed: data.creditsUsed || 1 } })
 
       // Add completed stems to state — merge with existing
       setSplitStemsCompleted(prev => ({ ...prev, ...data.stems }))
@@ -3445,7 +3445,7 @@ function CreatePageContent() {
               const stemMessage: Message = {
                 id: Date.now().toString(),
                 type: 'generation',
-                content: `✅ Stems separated successfully! Used ${result.creditsUsed || 5} credits. ${result.creditsRemaining || 0} credits remaining.`,
+                content: `✅ Stem separated! Used ${result.creditsUsed || 1} credit. ${result.creditsRemaining || 0} credits remaining.`,
                 generationType: 'music',
                 stems: result.stems,
                 timestamp: new Date()
