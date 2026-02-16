@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     const overlap = typeof requestedOverlap === 'number' && requestedOverlap >= 0 && requestedOverlap <= 0.99 ? requestedOverlap : 0.25
     const splitAudio = typeof requestedSplit === 'boolean' ? requestedSplit : true
     const segment = typeof requestedSegment === 'number' && requestedSegment > 0 ? requestedSegment : undefined
-    const jobs = typeof requestedJobs === 'number' && requestedJobs >= 0 && requestedJobs <= 8 ? requestedJobs : 0
+    const jobs = 0 // Locked to 0 (auto) — prevents abuse of parallel jobs
 
     // Determine valid stems for the chosen model
     const SIX_STEM_MODELS = ['htdemucs_6s']

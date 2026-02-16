@@ -413,12 +413,9 @@ export default function SplitStemsModal({
                 </div>
                 <div>
                   <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">Jobs</label>
-                  <input
-                    type="number" min={0} max={8}
-                    value={advancedParams.jobs}
-                    onChange={e => setAdvancedParams(p => ({ ...p, jobs: Number(e.target.value) }))}
-                    className="w-full bg-gray-900/60 border border-gray-700/40 rounded-lg px-3 py-1.5 text-xs text-white"
-                  />
+                  <div className="w-full bg-gray-900/60 border border-gray-700/40 rounded-lg px-3 py-1.5 text-xs text-gray-500 cursor-not-allowed">
+                    Auto (locked)
+                  </div>
                 </div>
               </div>
             </div>

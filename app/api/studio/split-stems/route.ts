@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     const mp3Preset = typeof body?.mp3_preset === 'number' && body.mp3_preset >= 2 && body.mp3_preset <= 9 ? body.mp3_preset : 2
     const splitAudio = typeof body?.split === 'boolean' ? body.split : true
     const segment = typeof body?.segment === 'number' && body.segment > 0 ? body.segment : undefined
-    const jobs = typeof body?.jobs === 'number' && body.jobs >= 0 && body.jobs <= 8 ? body.jobs : 0
+    const jobs = 0 // Locked to 0 (auto) — prevents abuse of parallel jobs
 
     // Check and deduct credits (stem split costs 1 credit per stem)
     const STEM_COST = 1
