@@ -47,6 +47,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   stems: 5,
   extract: 1,
   'audio-boost': 1,
+  'extract-video': 1,
   'video-to-audio': (p) => ((p.quality as string) === 'hq' ? 10 : 2),
   autotune: 1,
 }
@@ -170,6 +171,9 @@ export async function POST(req: NextRequest) {
           break
         case 'extract':
           result = await generateExtract(userId, body, jobId, requestSignal)
+          break
+        case 'extract-video':
+          result = await generateExtractVideo(userId, body, jobId, requestSignal)
           break
         case 'video-to-audio':
           result = await generateVideoToAudio(userId, body, jobId, requestSignal)
@@ -723,6 +727,84 @@ async function generateExtract(userId: string, body: Record<string, unknown>, jo
 
   if (Object.keys(stems).length === 0) return { success: false, error: 'No stems extracted' }
   return { success: true, stems, requestedStem: stem, title: trackTitle }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// EXTRACT VIDEO AUDIO  (uses lucataco/extract-audio — NOT Demucs)
+// ──────────────────────────────────────────────────────────────────
+async function generateExtractVideo(userId: string, body: Record<string, unknown>, jobId: string, signal: AbortSignal) {
+  const videoUrl = (body.audioUrl as string) || (body.videoUrl as string)
+  if (!videoUrl) return { success: false, error: 'Video URL required' }
+
+  const trackTitle = (body.trackTitle as string) || 'Extracted Audio'
+  const output_format = (body.output_format as string) || 'mp3'
+  const audio_quality = (body.audio_quality as string) || 'high'
+  const fade_in = (body.fade_in as number) || 0
+  const fade_out = (body.fade_out as number) || 0
+  const trim_start = (body.trim_start as number) || 0
+  const trim_end = (body.trim_end as number) || 0
+  const volume_boost = (body.volume_boost as number) || 1
+  const noise_reduction = body.noise_reduction === true
+  const normalize_audio = body.normalize_audio === true
+
+  await updatePluginJob(jobId, { status: 'processing' })
+
+  console.log(`🎬 [${jobId}] Extract audio from video via lucataco/extract-audio: ${videoUrl}`)
+
+  const prediction = await replicate.predictions.create({
+    model: 'lucataco/extract-audio',
+    input: {
+      video: videoUrl,
+      fade_in, fade_out, trim_start, trim_end,
+      volume_boost, audio_quality, output_format,
+      noise_reduction, normalize_audio,
+    },
+  })
+
+  await updatePluginJob(jobId, { replicatePredictionId: prediction.id })
+
+  let final = prediction
+  let attempts = 0
+  while (final.status !== 'succeeded' && final.status !== 'failed' && final.status !== 'canceled' && attempts < 60) {
+    if (signal.aborted) {
+      try { await replicate.predictions.cancel(prediction.id) } catch {}
+      return { success: false, error: 'Cancelled' }
+    }
+    await new Promise(r => setTimeout(r, 1000))
+    final = await replicate.predictions.get(prediction.id)
+    attempts++
+  }
+
+  if (final.status !== 'succeeded') {
+    return { success: false, error: final.error || 'Extraction failed or timed out' }
+  }
+
+  const outputUrl = typeof final.output === 'string' ? final.output : (final.output as any)?.url || (final.output as any)?.[0]
+  if (!outputUrl) return { success: false, error: 'No audio output from extraction' }
+
+  // Download and upload to R2
+  const dlRes = await fetch(outputUrl)
+  if (!dlRes.ok) return { success: false, error: 'Failed to download extracted audio' }
+  const buffer = Buffer.from(await dlRes.arrayBuffer())
+  const r2Key = `${userId}/extract/${Date.now()}-video-extract.${output_format}`
+  const r2 = await uploadToR2(buffer, 'audio-files', r2Key, `audio/${output_format === 'mp3' ? 'mpeg' : output_format}`)
+  if (!r2.success) return { success: false, error: 'Failed to save to storage' }
+
+  // Save to combined_media
+  await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+    method: 'POST',
+    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId, type: 'audio',
+      title: `${trackTitle} (Video Extract)`,
+      audio_url: r2.url, is_public: false, genre: 'extract',
+      description: 'Audio extracted from video',
+      metadata: JSON.stringify({ source: 'video-extract', audio_quality, output_format, noise_reduction, normalize_audio }),
+    }),
+  })
+
+  console.log(`✅ [${jobId}] Video audio extracted: ${r2.url}`)
+  return { success: true, audioUrl: r2.url, title: `${trackTitle} (Video Extract)` }
 }
 
 // ──────────────────────────────────────────────────────────────────

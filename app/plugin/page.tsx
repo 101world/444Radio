@@ -1418,7 +1418,7 @@ export default function PluginPage() {
       // Step 4: Build request body with full params (matching /api/plugin/generate expectations)
       const apiType = featureType === 'stem-split' ? 'stems'
         : featureType === 'extract-audio' ? 'extract'
-        : featureType === 'extract-video' ? 'extract'
+        : featureType === 'extract-video' ? 'extract-video'
         : featureType
       const body: any = { type: apiType, ...(extraParams || {}) }
 
@@ -1441,7 +1441,8 @@ export default function PluginPage() {
         body.stem = extraParams?.stem || 'vocals'
         body.trackTitle = file.name
       } else if (featureType === 'extract-video') {
-        body.type = 'extract'
+        body.type = 'extract-video'
+        body.videoUrl = publicUrl
         body.audioUrl = publicUrl
         body.trackTitle = file.name
       } else if (featureType === 'video-to-audio') {
