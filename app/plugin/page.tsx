@@ -141,6 +141,7 @@ const FEATURES = [
   { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 5 },
   { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
   { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1 },
+  { key: 'autotune', icon: Zap, label: 'Autotune', desc: 'Pitch correct to any key', color: 'purple', cost: 1 },
   { key: 'lyrics', icon: Edit3, label: 'Lyrics', desc: 'Write & edit lyrics', color: 'cyan', cost: 0, conditionalMusic: true },
   { key: 'upload', icon: Upload, label: 'Upload', desc: 'Upload audio/video', color: 'purple', cost: 0 },
   { key: 'release', icon: Rocket, label: 'Release', desc: 'Publish to feed', color: 'cyan', cost: 0 },
@@ -242,7 +243,7 @@ export default function PluginPage() {
 
   // ── Upload Media Modal (mirrors MediaUploadModal from create page) ──
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | null>(null)
+  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | null>(null)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadFilePreview, setUploadFilePreview] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState('')
@@ -265,12 +266,18 @@ export default function PluginPage() {
   const [videoPrompt, setVideoPrompt] = useState('')
   const [videoHQ, setVideoHQ] = useState(false)
 
+  // Autotune settings
+  const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
+  const [autotuneKey, setAutotuneKey] = useState('C')
+  const [autotuneScale, setAutotuneScale] = useState<'maj' | 'min'>('maj')
+
   // File input refs per mode (correct accept types)
   const uploadVideoRef = useRef<HTMLInputElement>(null)
   const uploadAudioRef = useRef<HTMLInputElement>(null)
   const uploadBoostRef = useRef<HTMLInputElement>(null)
   const uploadExtractVideoRef = useRef<HTMLInputElement>(null)
   const uploadExtractAudioRef = useRef<HTMLInputElement>(null)
+  const uploadAutotuneRef = useRef<HTMLInputElement>(null)
 
   // Legacy refs (kept for sidebar triggerFeatureUpload)
   const [showFileUpload, setShowFileUpload] = useState(false)
@@ -1246,7 +1253,7 @@ export default function PluginPage() {
     }
 
     // ── File-based features: trigger upload dialog ──
-    if (['stems', 'audio-boost', 'extract', 'video-to-audio'].includes(selectedType as string)) {
+    if (['stems', 'audio-boost', 'extract', 'video-to-audio', 'autotune'].includes(selectedType as string)) {
       triggerFeatureUpload(selectedType as string)
       return
     }
@@ -1366,7 +1373,8 @@ export default function PluginPage() {
       'audio-boost': '🔊 Boosting audio... Mix & mastering your track.',
       'extract': '🎵 Extracting audio stem...',
       'extract-video': '🎬 Extracting audio from video...',
-      'video-to-audio': '🎬 Generating synced audio from video...'
+      'video-to-audio': '🎬 Generating synced audio from video...',
+      'autotune': '🎤 Autotuning audio... Pitch correcting to key.'
     }
     setMessages(prev => [...prev, {
       id: processingId, type: 'assistant',
@@ -1442,6 +1450,12 @@ export default function PluginPage() {
         body.quality = extraParams?.quality || 'standard'
       } else if (featureType === 'extract') {
         body.audioUrl = publicUrl
+      } else if (featureType === 'autotune') {
+        body.audioUrl = publicUrl
+        body.audio_file = publicUrl
+        body.scale = extraParams?.scale || 'C:maj'
+        body.output_format = extraParams?.output_format || 'wav'
+        body.trackTitle = file.name
       }
 
       const res = await fetch('/api/plugin/generate', {
@@ -1473,7 +1487,7 @@ export default function PluginPage() {
           setMessages(prev => prev.map(msg =>
             msg.id === processingId ? {
               ...msg, isGenerating: false,
-              content: `✅ ${featureType === 'audio-boost' ? 'Audio boosted' : 'Processing complete'}! Used ${result.creditsDeducted || 0} credits.`,
+              content: `✅ ${featureType === 'audio-boost' ? 'Audio boosted' : featureType === 'autotune' ? 'Autotune complete' : 'Processing complete'}! Used ${result.creditsDeducted || 0} credits.`,
               result: { audioUrl: result.audioUrl, title: result.title || file.name, prompt: featureType }
             } : msg
           ))
@@ -1533,7 +1547,7 @@ export default function PluginPage() {
       setUploadError('Please select a video file')
       return
     }
-    if ((mode === 'stem-split' || mode === 'audio-boost' || mode === 'extract-audio') && !isAudio) {
+    if ((mode === 'stem-split' || mode === 'audio-boost' || mode === 'extract-audio' || mode === 'autotune') && !isAudio) {
       setUploadError('Please select an audio file')
       return
     }
@@ -1585,6 +1599,9 @@ export default function PluginPage() {
     } else if (uploadMode === 'video-to-audio') {
       extraParams.prompt = videoPrompt
       extraParams.quality = videoHQ ? 'hq' : 'standard'
+    } else if (uploadMode === 'autotune') {
+      extraParams.scale = `${autotuneKey}:${autotuneScale}`
+      extraParams.output_format = 'wav'
     }
 
     // Map mode to featureType
@@ -1604,6 +1621,7 @@ export default function PluginPage() {
       'audio-boost': 'audio-boost',
       'extract': 'extract-audio',
       'video-to-audio': 'video-to-audio',
+      'autotune': 'autotune',
     }
     openUploadModal(modeMap[featureType] || null)
   }
@@ -2144,7 +2162,7 @@ export default function PluginPage() {
                   return (
                     <button key={f.key} onClick={() => {
                       // File-based features: open upload modal
-                      if (['stems', 'audio-boost', 'extract', 'video-to-audio'].includes(f.key)) {
+                      if (['stems', 'audio-boost', 'extract', 'video-to-audio', 'autotune'].includes(f.key)) {
                         triggerFeatureUpload(f.key)
                       } else if (f.key === 'lyrics') {
                         setShowLyricsModal(true)
@@ -3157,13 +3175,24 @@ export default function PluginPage() {
 
                     {/* Extract: Audio → Stem */}
                     <button onClick={() => setUploadMode('extract-audio')}
-                      className="p-4 bg-white/5 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/40 rounded-xl transition-all text-left col-span-2">
+                      className="p-4 bg-white/5 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/40 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
                         <Layers size={16} className="text-purple-400" />
                         <span className="text-sm font-bold text-white">Extract: Audio Stem</span>
                       </div>
                       <p className="text-[10px] text-gray-500">Extract specific stem (vocals, bass, drums, piano, guitar) from audio</p>
                       <span className="text-[9px] text-purple-400 mt-1 inline-block">-1 credit</span>
+                    </button>
+
+                    {/* Autotune */}
+                    <button onClick={() => setUploadMode('autotune')}
+                      className="p-4 bg-white/5 hover:bg-violet-500/10 border border-white/10 hover:border-violet-500/40 rounded-xl transition-all text-left">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Mic size={16} className="text-violet-400" />
+                        <span className="text-sm font-bold text-white">Autotune</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500">Pitch correct vocals to any musical key & scale</p>
+                      <span className="text-[9px] text-violet-400 mt-1 inline-block">-1 credit</span>
                     </button>
                   </div>
                 </div>
@@ -3184,19 +3213,20 @@ export default function PluginPage() {
                     {uploadMode === 'audio-boost' && <><Volume2 size={18} className="text-orange-400" /><span className="font-bold text-white">Audio Boost</span></>}
                     {uploadMode === 'extract-video' && <><Layers size={18} className="text-cyan-400" /><span className="font-bold text-white">Extract: Video → Audio</span></>}
                     {uploadMode === 'extract-audio' && <><Layers size={18} className="text-purple-400" /><span className="font-bold text-white">Extract: Audio Stem</span></>}
+                    {uploadMode === 'autotune' && <><Mic size={18} className="text-violet-400" /><span className="font-bold text-white">Autotune</span></>}
                   </div>
 
                   {/* File select */}
                   {!uploadFile ? (
                     <div>
-                      <input ref={uploadMode === 'video-to-audio' ? uploadVideoRef : uploadMode === 'extract-video' ? uploadExtractVideoRef : uploadMode === 'stem-split' ? uploadAudioRef : uploadMode === 'audio-boost' ? uploadBoostRef : uploadExtractAudioRef}
+                      <input ref={uploadMode === 'video-to-audio' ? uploadVideoRef : uploadMode === 'extract-video' ? uploadExtractVideoRef : uploadMode === 'stem-split' ? uploadAudioRef : uploadMode === 'audio-boost' ? uploadBoostRef : uploadMode === 'autotune' ? uploadAutotuneRef : uploadExtractAudioRef}
                         type="file"
                         accept={uploadMode === 'video-to-audio' || uploadMode === 'extract-video' ? 'video/*' : 'audio/*'}
                         className="hidden"
                         onChange={(e) => handleUploadFileSelect(e, uploadMode)} />
                       <button
                         onClick={() => {
-                          const ref = uploadMode === 'video-to-audio' ? uploadVideoRef : uploadMode === 'extract-video' ? uploadExtractVideoRef : uploadMode === 'stem-split' ? uploadAudioRef : uploadMode === 'audio-boost' ? uploadBoostRef : uploadExtractAudioRef
+                          const ref = uploadMode === 'video-to-audio' ? uploadVideoRef : uploadMode === 'extract-video' ? uploadExtractVideoRef : uploadMode === 'stem-split' ? uploadAudioRef : uploadMode === 'audio-boost' ? uploadBoostRef : uploadMode === 'autotune' ? uploadAutotuneRef : uploadExtractAudioRef
                           ref.current?.click()
                         }}
                         className="w-full py-8 border-2 border-dashed border-white/20 hover:border-cyan-500/50 rounded-xl transition-all flex flex-col items-center gap-2 text-gray-400 hover:text-white">
@@ -3343,6 +3373,40 @@ export default function PluginPage() {
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Autotune: key & scale picker */}
+                  {uploadMode === 'autotune' && uploadFile && (
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Key & Scale</label>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {MUSICAL_KEYS.map((k) => (
+                          <button key={k} onClick={() => setAutotuneKey(k)}
+                            className={`px-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                              autotuneKey === k
+                                ? 'bg-violet-500 text-black shadow-lg shadow-violet-500/30'
+                                : 'bg-white/5 text-gray-300 hover:bg-violet-500/20 hover:text-violet-300 border border-white/10'
+                            }`}>
+                            {k}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => setAutotuneScale('maj')}
+                          className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center ${
+                            autotuneScale === 'maj' ? 'bg-violet-500/20 border-violet-500/40 text-violet-300' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                          }`}>
+                          Major (Happy)
+                        </button>
+                        <button onClick={() => setAutotuneScale('min')}
+                          className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center ${
+                            autotuneScale === 'min' ? 'bg-violet-500/20 border-violet-500/40 text-violet-300' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                          }`}>
+                          Minor (Dark)
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-violet-400">Selected: {autotuneKey}:{autotuneScale} · 1 credit</p>
                     </div>
                   )}
 

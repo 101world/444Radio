@@ -48,6 +48,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   extract: 1,
   'audio-boost': 1,
   'video-to-audio': (p) => ((p.quality as string) === 'hq' ? 10 : 2),
+  autotune: 1,
 }
 
 function getCreditCost(type: string, params: Record<string, unknown>): number {
@@ -172,6 +173,9 @@ export async function POST(req: NextRequest) {
           break
         case 'video-to-audio':
           result = await generateVideoToAudio(userId, body, jobId, requestSignal)
+          break
+        case 'autotune':
+          result = await generateAutotune(userId, body, jobId)
           break
         default:
           result = { success: false, error: 'Unknown type' }
@@ -943,4 +947,66 @@ async function generateCoverArtForTrack(userId: string, prompt: string, title: s
     const r2 = await downloadAndUploadToR2(imageUrl, userId, 'images', fileName)
     return r2.success ? r2.url : null
   } catch { return null }
+}
+
+// ------------------------------------------------------------------
+// AUTOTUNE  (pitch correction via nateraw/autotune)
+// ------------------------------------------------------------------
+async function generateAutotune(userId: string, body: Record<string, unknown>, jobId: string) {
+  const audioUrl = (body.audio_file as string) || (body.audioUrl as string)
+  const scale = (body.scale as string) || 'C:maj'
+  const output_format = (body.output_format as string) || 'wav'
+  const trackTitle = (body.trackTitle as string) || 'Autotuned Audio'
+
+  if (!audioUrl) return { success: false, error: 'Missing audio URL for autotune' }
+
+  console.log(`🎤 [${jobId}] Autotune: ${audioUrl} → ${scale} (${output_format})`)
+
+  const output = await replicate.run(
+    "nateraw/autotune:53d58aea27ccd949e5f9d77e4b2a74ffe90e1fa534295b257cea50f011e233dd",
+    { input: { scale, audio_file: audioUrl, output_format } }
+  ) as any
+
+  let resultUrl: string
+  if (typeof output === 'string') {
+    resultUrl = output
+  } else if (output && typeof output.url === 'function') {
+    resultUrl = output.url()
+  } else if (output && typeof output.url === 'string') {
+    resultUrl = output.url
+  } else {
+    return { success: false, error: 'Unexpected output from autotune model' }
+  }
+
+  // Download and persist to R2
+  const r2Key = `${userId}/autotune/${Date.now()}-autotuned.${output_format}`
+  const r2 = await downloadAndUploadToR2(resultUrl, userId, 'music', r2Key)
+  if (!r2.success) return { success: false, error: 'Failed to upload autotuned audio to storage' }
+
+  // Save to combined_media
+  const title = trackTitle.replace(/\.[^/.]+$/, '') + ` (${scale})`
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+    },
+    body: JSON.stringify({
+      user_id: userId,
+      type: 'audio',
+      title,
+      prompt: `Pitch-corrected to ${scale}`,
+      audio_url: r2.url,
+      is_public: false,
+      genre: 'processed',
+    })
+  })
+
+  await updatePluginJob(jobId, { status: 'completed', output: { audioUrl: r2.url, title, scale } })
+
+  console.log(`✅ [${jobId}] Autotune complete: ${r2.url}`)
+  return { success: true, audioUrl: r2.url, title, scale, output_format }
 }

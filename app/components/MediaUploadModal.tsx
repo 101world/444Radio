@@ -1,20 +1,20 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors, Volume2, Zap, Layers } from 'lucide-react'
+import { X, Upload, Film, Music, Loader2, AlertCircle, Scissors, Volume2, Zap, Layers, Mic } from 'lucide-react'
 
 interface MediaUploadModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess?: (result: any) => void
-  onStart?: (type: 'stem-split' | 'video-to-audio' | 'audio-boost' | 'extract-video' | 'extract-audio') => void
+  onStart?: (type: 'stem-split' | 'video-to-audio' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune') => void
   onError?: (error: string) => void
 }
 
 export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
-  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | null>(null)
+  const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | null>(null)
   const [prompt, setPrompt] = useState('')
   const [useHQ, setUseHQ] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -26,9 +26,15 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const boostFileInputRef = useRef<HTMLInputElement>(null)
   const extractVideoFileInputRef = useRef<HTMLInputElement>(null)
   const extractAudioFileInputRef = useRef<HTMLInputElement>(null)
+  const autotuneFileInputRef = useRef<HTMLInputElement>(null)
 
   // Extract Audio parameters
   const [extractStem, setExtractStem] = useState<'vocals' | 'bass' | 'drums' | 'piano' | 'guitar' | 'other'>('vocals')
+
+  // Autotune parameters
+  const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'Db', 'Eb', 'Gb', 'Ab', 'Bb']
+  const [autotuneKey, setAutotuneKey] = useState('C')
+  const [autotuneScale, setAutotuneScale] = useState<'maj' | 'min'>('maj')
 
   // Audio Boost parameters
   const [bassBoost, setBassBoost] = useState(0)
@@ -39,7 +45,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const [boostFormat, setBoostFormat] = useState('mp3')
   const [boostBitrate, setBoostBitrate] = useState('192k')
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio') => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, mode: 'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune') => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -74,6 +80,11 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
     }
 
     if (mode === 'extract-audio' && !isAudio) {
+      setError('Please select an audio file')
+      return
+    }
+
+    if (mode === 'autotune' && !isAudio) {
       setError('Please select an audio file')
       return
     }
@@ -423,6 +434,63 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         return
       }
 
+      // For autotune, upload to R2 then call the autotune API
+      if (uploadMode === 'autotune') {
+        onStart?.('autotune')
+
+        // Wait for R2 propagation
+        setUploadProgress('Verifying file accessibility...')
+        await new Promise(resolve => setTimeout(resolve, 5000))
+
+        let retries = 0
+        const maxRetries = 3
+        let isAccessible = false
+        while (retries < maxRetries && !isAccessible) {
+          try {
+            const headResponse = await fetch(publicUrl, { method: 'HEAD' })
+            if (headResponse.ok) {
+              isAccessible = true
+            } else {
+              await new Promise(resolve => setTimeout(resolve, 2000))
+              retries++
+            }
+          } catch {
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            retries++
+          }
+        }
+
+        if (!isAccessible) {
+          throw new Error('Uploaded file is not yet accessible. Please try again in a moment.')
+        }
+
+        const scale = `${autotuneKey}:${autotuneScale}`
+        setUploadProgress(`Autotuning to ${scale}... This may take 1-2 minutes.`)
+        console.log('🎤 Autotuning audio to', scale, 'from:', publicUrl)
+
+        const autotuneResponse = await fetch('/api/generate/autotune', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            audio_file: publicUrl,
+            scale: scale,
+            trackTitle: selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Audio',
+            output_format: 'wav',
+          })
+        })
+
+        const autotuneResult = await autotuneResponse.json()
+
+        if (!autotuneResponse.ok || autotuneResult.error) {
+          throw new Error(autotuneResult.error || 'Autotune processing failed')
+        }
+
+        console.log('✅ Autotune complete:', autotuneResult)
+        onSuccess?.({ ...autotuneResult, type: 'autotune' })
+        handleClose()
+        return
+      }
+
       // Step 3: Generate audio/remix using the uploaded file URL (for video-to-audio only)
       setUploadProgress('Generating audio...')
       console.log('🎵 Step 3: Generating...')
@@ -628,6 +696,25 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 </div>
               </button>
 
+              {/* Autotune Button */}
+              <button
+                onClick={() => autotuneFileInputRef.current?.click()}
+                className="w-full p-4 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-2 border-violet-500/30 hover:border-violet-400/50 rounded-xl transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-violet-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Mic size={24} className="text-violet-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="text-base font-semibold text-white mb-1">Autotune</h3>
+                    <p className="text-xs text-gray-400">Pitch correct vocals to any musical key & scale</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-violet-400">1 credit</p>
+                  </div>
+                </div>
+              </button>
+
               <input
                 ref={fileInputRef}
                 type="file"
@@ -663,6 +750,13 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 onChange={(e) => handleFileSelect(e, 'extract-audio')}
                 className="hidden"
               />
+              <input
+                ref={autotuneFileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={(e) => handleFileSelect(e, 'autotune')}
+                className="hidden"
+              />
             </div>
           )}
 
@@ -673,7 +767,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
               {/* Compact File Info */}
               <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  uploadMode === 'stem-split' ? 'bg-teal-500/20' : uploadMode === 'audio-boost' ? 'bg-orange-500/20' : uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'bg-emerald-500/20' : 'bg-cyan-500/20'
+                  uploadMode === 'stem-split' ? 'bg-teal-500/20' : uploadMode === 'audio-boost' ? 'bg-orange-500/20' : uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'bg-emerald-500/20' : uploadMode === 'autotune' ? 'bg-violet-500/20' : 'bg-cyan-500/20'
                 }`}>
                   {uploadMode === 'stem-split' ? (
                     <Scissors size={20} className="text-teal-400" />
@@ -683,6 +777,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                     <Film size={20} className="text-emerald-400" />
                   ) : uploadMode === 'extract-audio' ? (
                     <Layers size={20} className="text-emerald-400" />
+                  ) : uploadMode === 'autotune' ? (
+                    <Mic size={20} className="text-violet-400" />
                   ) : (
                     <Film size={20} className="text-cyan-400" />
                   )}
@@ -765,6 +861,18 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                     className="w-full"
                   />
                   <p className="text-xs text-gray-400 mt-2">Select a stem to extract below</p>
+                </div>
+              )}
+
+              {/* Audio Preview for Autotune */}
+              {previewUrl && fileType === 'audio' && uploadMode === 'autotune' && (
+                <div className="rounded-lg overflow-hidden bg-violet-500/10 border border-violet-500/20 p-4">
+                  <audio 
+                    src={previewUrl} 
+                    controls 
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-400 mt-2">Select a key & scale for pitch correction</p>
                 </div>
               )}
 
@@ -869,6 +977,63 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                     ))}
                   </div>
                   <p className="text-emerald-400 font-semibold text-xs">Cost: 1 credit</p>
+                </div>
+              )}
+
+              {/* Autotune Key & Scale Selector */}
+              {uploadMode === 'autotune' && (
+                <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <Mic className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="text-white font-semibold">Choose key & scale</p>
+                      <p className="text-gray-400 text-xs mt-1">Pitch correct your audio to the selected musical key</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-400 font-medium">Key</label>
+                    <div className="grid grid-cols-6 gap-1.5">
+                      {MUSICAL_KEYS.map((k) => (
+                        <button
+                          key={k}
+                          onClick={() => setAutotuneKey(k)}
+                          className={`px-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                            autotuneKey === k
+                              ? 'bg-violet-500 text-black shadow-lg shadow-violet-500/30'
+                              : 'bg-white/5 text-gray-300 hover:bg-violet-500/20 hover:text-violet-300 border border-white/10'
+                          }`}
+                        >
+                          {k}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-400 font-medium">Scale</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setAutotuneScale('maj')}
+                        className={`px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                          autotuneScale === 'maj'
+                            ? 'bg-violet-500 text-black shadow-lg shadow-violet-500/30'
+                            : 'bg-white/5 text-gray-300 hover:bg-violet-500/20 hover:text-violet-300 border border-white/10'
+                        }`}
+                      >
+                        Major (Happy)
+                      </button>
+                      <button
+                        onClick={() => setAutotuneScale('min')}
+                        className={`px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                          autotuneScale === 'min'
+                            ? 'bg-violet-500 text-black shadow-lg shadow-violet-500/30'
+                            : 'bg-white/5 text-gray-300 hover:bg-violet-500/20 hover:text-violet-300 border border-white/10'
+                        }`}
+                      >
+                        Minor (Dark)
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-violet-400 font-semibold text-xs">Selected: {autotuneKey}:{autotuneScale} · Cost: 1 credit</p>
                 </div>
               )}
 
@@ -980,18 +1145,21 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
               uploadMode === 'stem-split' ? 'text-teal-400' : 
               uploadMode === 'audio-boost' ? 'text-orange-400' : 
               uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'text-emerald-400' :
+              uploadMode === 'autotune' ? 'text-violet-400' :
               useHQ ? 'text-yellow-400' : 'text-cyan-400'
             }>💰</span>
             <span className={`font-semibold ${
               uploadMode === 'stem-split' ? 'text-teal-400' :
               uploadMode === 'audio-boost' ? 'text-orange-400' :
               uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'text-emerald-400' :
+              uploadMode === 'autotune' ? 'text-violet-400' :
               useHQ ? 'text-yellow-400' : 'text-cyan-400'
             }`}>
               {uploadMode === 'stem-split' ? '5 credits' :
                uploadMode === 'audio-boost' ? '1 credit' :
                uploadMode === 'extract-video' ? '1 credit' :
                uploadMode === 'extract-audio' ? '1 credit' :
+               uploadMode === 'autotune' ? '1 credit' :
                selectedFile && useHQ ? '10 credits' : '2 credits'}
             </span>
             {selectedFile && uploadMode === 'video-to-audio' && (
@@ -1011,6 +1179,8 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 ? 'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-orange-500/30'
                 : uploadMode === 'extract-video' || uploadMode === 'extract-audio'
                 ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-emerald-500/30'
+                : uploadMode === 'autotune'
+                ? 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-violet-500/30'
                 : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 shadow-cyan-500/30'
             }`}
           >
@@ -1038,6 +1208,11 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
               <>
                 <Layers size={16} />
                 <span>Extract {extractStem.charAt(0).toUpperCase() + extractStem.slice(1)}</span>
+              </>
+            ) : uploadMode === 'autotune' ? (
+              <>
+                <Mic size={16} />
+                <span>Autotune</span>
               </>
             ) : (
               <>

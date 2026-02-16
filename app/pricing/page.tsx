@@ -108,7 +108,7 @@ export default function PricingPage() {
   const router = useRouter()
   const { credits: currentCredits, walletBalance, refreshCredits } = useCredits()
 
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR')
+  const [currency, setCurrency] = useState<'INR' | 'USD' | 'CREDITS'>('INR')
   const [customAmount, setCustomAmount] = useState(10)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isConverting, setIsConverting] = useState(false)
@@ -405,6 +405,14 @@ export default function PricingPage() {
             >
               $ USD
             </button>
+            <button
+              onClick={() => setCurrency('CREDITS')}
+              className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+                currency === 'CREDITS' ? 'bg-cyan-500 text-black' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              ⚡ Credits
+            </button>
           </div>
         </div>
 
@@ -430,7 +438,7 @@ export default function PricingPage() {
         {/* ── Dollar Deposit Packs ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
           {WALLET_PACKS.map((pack) => {
-            const charge = calcCharge(pack.amount, currency)
+            const charge = calcCharge(pack.amount, currency === 'CREDITS' ? 'USD' : currency)
             const realCredits = calcRealCredits(pack.amount)
             const maxCredits = Math.floor(pack.amount / CREDIT_RATE)
             const isReduced = realCredits < maxCredits
@@ -448,24 +456,47 @@ export default function PricingPage() {
                 )}
                 <div className="mb-4">
                   <p className="text-sm text-gray-400 font-medium">{pack.label}</p>
-                  <p className="text-3xl font-bold mt-1">
-                    <span className="text-green-400">${pack.amount}</span>
-                    <span className="text-sm text-gray-500 ml-1">deposit</span>
-                  </p>
-                </div>
-                <div className="mb-5 space-y-1">
-                  <p className="text-sm text-cyan-400 font-semibold">
-                    {realCredits.toLocaleString()} credits
-                  </p>
-                  {isReduced && (
-                    <p className="text-[10px] text-amber-400 flex items-center gap-1">
-                      <Lock className="w-3 h-3" />
-                      $1 locked as access fee · {maxCredits} after
+                  {currency === 'CREDITS' ? (
+                    <p className="text-3xl font-bold mt-1">
+                      <span className="text-cyan-400">{realCredits.toLocaleString()}</span>
+                      <span className="text-sm text-gray-500 ml-1">credits</span>
+                    </p>
+                  ) : (
+                    <p className="text-3xl font-bold mt-1">
+                      <span className="text-green-400">${pack.amount}</span>
+                      <span className="text-sm text-gray-500 ml-1">deposit</span>
                     </p>
                   )}
-                  <p className="text-2xl font-bold">
-                    {charge.symbol}{charge.total.toFixed(2)}
-                  </p>
+                </div>
+                <div className="mb-5 space-y-1">
+                  {currency === 'CREDITS' ? (
+                    <>
+                      <p className="text-sm text-green-400 font-semibold">
+                        ${pack.amount} USD · ₹{(pack.amount * INR_RATE * (1 + GST_RATE)).toFixed(0)} INR
+                      </p>
+                      {isReduced && (
+                        <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          $1 locked · {maxCredits} credits after
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-cyan-400 font-semibold">
+                        {realCredits.toLocaleString()} credits
+                      </p>
+                      {isReduced && (
+                        <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          $1 locked as access fee · {maxCredits} after
+                        </p>
+                      )}
+                      <p className="text-2xl font-bold">
+                        {charge.symbol}{charge.total.toFixed(2)}
+                      </p>
+                    </>
+                  )}
                   <p className="text-xs text-gray-400">
                     {isReduced ? `$1 access fee + $${pack.amount - 1} credits` : `Instant delivery • $${pack.amount} USD worth`}
                   </p>
@@ -495,13 +526,13 @@ export default function PricingPage() {
                     <label className="text-xs text-gray-400 mb-1.5 block">Amount (USD)</label>
                     <input
                       type="number"
-                      min="1"
+                      min="0.07"
                       max="500"
-                      step="1"
+                      step="0.01"
                       value={customAmount}
                       onChange={(e) => {
                         const val = Number(e.target.value)
-                        if (val >= 1 && val <= 500) setCustomAmount(val)
+                        if (val >= 0.07 && val <= 500) setCustomAmount(val)
                       }}
                       className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-xl text-white font-semibold text-lg focus:outline-none focus:border-cyan-500 transition-colors"
                       placeholder="Enter amount"
@@ -525,7 +556,7 @@ export default function PricingPage() {
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <div className="flex-1 text-left">
                   {(() => {
-                    const charge = calcCharge(customAmount, currency)
+                    const charge = calcCharge(customAmount, currency === 'CREDITS' ? 'USD' : currency)
                     return (
                       <>
                         <p className="text-sm text-gray-400">Total Charge (incl. GST)</p>
@@ -537,7 +568,7 @@ export default function PricingPage() {
                 </div>
                 <button
                   onClick={() => handleDeposit(customAmount)}
-                  disabled={isPurchasing || customAmount < 1}
+                  disabled={isPurchasing || customAmount < 0.07}
                   className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-teal-500 text-black rounded-xl font-bold text-base hover:from-cyan-400 hover:to-teal-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
                 >
                   {isPurchasing ? 'Processing...' : `Buy ${calcRealCredits(customAmount)} Credits`}
