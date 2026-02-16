@@ -117,6 +117,19 @@ export default function PricingPage() {
   const [purchaseMessage, setPurchaseMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showCostModal, setShowCostModal] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+
+  // $1 is locked as access fee. Calculate how much of a new deposit is convertible.
+  const hasAccessFee = (walletBalance ?? 0) >= 1
+  const calcRealCredits = (depositUsd: number) => {
+    if (hasAccessFee) {
+      // Already have $1 locked — full deposit converts
+      return Math.floor(depositUsd / CREDIT_RATE)
+    }
+    // First-time: $1 goes to access fee from this deposit
+    const lockNeeded = Math.max(0, 1 - (walletBalance ?? 0))
+    const convertible = Math.max(0, depositUsd - lockNeeded)
+    return Math.floor(convertible / CREDIT_RATE)
+  }
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [txnTotal, setTxnTotal] = useState(0)
   const [txnLoading, setTxnLoading] = useState(false)
@@ -418,7 +431,9 @@ export default function PricingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
           {WALLET_PACKS.map((pack) => {
             const charge = calcCharge(pack.amount, currency)
+            const realCredits = calcRealCredits(pack.amount)
             const maxCredits = Math.floor(pack.amount / CREDIT_RATE)
+            const isReduced = realCredits < maxCredits
             return (
               <div
                 key={pack.amount}
@@ -440,13 +455,19 @@ export default function PricingPage() {
                 </div>
                 <div className="mb-5 space-y-1">
                   <p className="text-sm text-cyan-400 font-semibold">
-                    {maxCredits.toLocaleString()} credits
+                    {realCredits.toLocaleString()} credits
                   </p>
+                  {isReduced && (
+                    <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      $1 locked as access fee · {maxCredits} after
+                    </p>
+                  )}
                   <p className="text-2xl font-bold">
                     {charge.symbol}{charge.total.toFixed(2)}
                   </p>
                   <p className="text-xs text-gray-400">
-                    Instant delivery • ${pack.amount} USD worth
+                    {isReduced ? `$1 access fee + $${pack.amount - 1} credits` : `Instant delivery • $${pack.amount} USD worth`}
                   </p>
                 </div>
                 <button
@@ -490,8 +511,13 @@ export default function PricingPage() {
                     <label className="text-xs text-gray-400 mb-1.5 block">You'll Get</label>
                     <div className="px-4 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
                       <p className="text-2xl font-bold text-cyan-300">
-                        {Math.floor(customAmount / CREDIT_RATE).toLocaleString()} credits
+                        {calcRealCredits(customAmount).toLocaleString()} credits
                       </p>
+                      {calcRealCredits(customAmount) < Math.floor(customAmount / CREDIT_RATE) && (
+                        <p className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                          <Lock className="w-3 h-3" /> $1 locked · {Math.floor(customAmount / CREDIT_RATE)} after
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -514,7 +540,7 @@ export default function PricingPage() {
                   disabled={isPurchasing || customAmount < 1}
                   className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-teal-500 text-black rounded-xl font-bold text-base hover:from-cyan-400 hover:to-teal-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
                 >
-                  {isPurchasing ? 'Processing...' : `Buy ${Math.floor(customAmount / CREDIT_RATE)} Credits`}
+                  {isPurchasing ? 'Processing...' : `Buy ${calcRealCredits(customAmount)} Credits`}
                 </button>
               </div>
             </div>
