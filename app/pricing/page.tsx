@@ -110,6 +110,7 @@ export default function PricingPage() {
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR')
   const [customAmount, setCustomAmount] = useState(10)
   const [isPurchasing, setIsPurchasing] = useState(false)
+  const [isConverting, setIsConverting] = useState(false)
   const [purchaseMessage, setPurchaseMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showCostModal, setShowCostModal] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
@@ -140,6 +141,36 @@ export default function PricingPage() {
   useEffect(() => {
     if (showHistory && transactions.length === 0) fetchTransactions(0)
   }, [showHistory])
+
+  // ── Convert wallet to credits handler ──
+  const handleConvert = async () => {
+    if (isConverting || isPurchasing) return
+    setIsConverting(true)
+    setPurchaseMessage(null)
+
+    try {
+      const res = await fetch('/api/credits/convert', { method: 'POST' })
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        setPurchaseMessage({
+          type: 'success',
+          text: `✅ Converted $${(walletBalance ?? 0).toFixed(2)} → +${data.creditsAdded} credits! You now have ${data.newCredits} total credits.`
+        })
+        refreshCredits()
+        window.dispatchEvent(new Event('credits:refresh'))
+      } else {
+        throw new Error(data.error || 'Conversion failed')
+      }
+    } catch (err: any) {
+      setPurchaseMessage({
+        type: 'error',
+        text: err.message || 'Failed to convert wallet balance to credits'
+      })
+    } finally {
+      setIsConverting(false)
+    }
+  }
 
   // ── Deposit handler ──
   const handleDeposit = async (amountUsd: number) => {
@@ -276,6 +307,17 @@ export default function PricingPage() {
               <span className="text-sm text-gray-300">Credits:</span>
               <span className="text-sm font-bold text-cyan-400">{currentCredits ?? 0}</span>
             </div>
+            {/* Convert wallet to credits button (only if wallet > 0) */}
+            {(walletBalance ?? 0) > 0 && (
+              <button
+                onClick={handleConvert}
+                disabled={isConverting || isPurchasing}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-full font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ArrowDownRight className="w-4 h-4" />
+                {isConverting ? 'Converting...' : 'Convert to Credits'}
+              </button>
+            )}
             {!hasAccess && (
               <div className="inline-flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full">
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
