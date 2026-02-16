@@ -175,26 +175,36 @@ export async function POST(request: Request) {
     // ── Log the deposit transaction with payment metadata ──
     // Note: razorpay_id + order_id must match the keys used by the webhook
     // handlers so cross-path idempotency checks work in both directions.
-    await logCreditTransaction({
-      userId,
-      amount: 0,
-      balanceAfter: finalCredits,
-      type: 'wallet_deposit',
-      status: 'success',
-      description: `Wallet deposit: +$${depositUsd} → wallet $${finalWallet}`,
-      metadata: {
-        razorpay_id: razorpay_payment_id,
-        razorpay_payment_id,
-        razorpay_order_id,
-        order_id: razorpay_order_id,
-        order_amount: order.amount,
-        order_currency: order.currency,
-        deposit_usd: depositUsd,
-        wallet_balance: finalWallet,
-        credit_source: 'verify_route',
-        purchase_type: 'wallet_deposit',
-      },
-    })
+    // Wrapped in try/catch — unique constraint prevents double deposit in race conditions.
+    try {
+      await logCreditTransaction({
+        userId,
+        amount: 0,
+        balanceAfter: finalCredits,
+        type: 'wallet_deposit',
+        status: 'success',
+        description: `Wallet deposit: +$${depositUsd} → wallet $${finalWallet}`,
+        metadata: {
+          razorpay_id: razorpay_payment_id,
+          razorpay_payment_id,
+          razorpay_order_id,
+          order_id: razorpay_order_id,
+          order_amount: order.amount,
+          order_currency: order.currency,
+          deposit_usd: depositUsd,
+          wallet_balance: finalWallet,
+          credit_source: 'verify_route',
+          purchase_type: 'wallet_deposit',
+        },
+      })
+    } catch (txnError: any) {
+      // If unique constraint violation, webhook already handled it — still return success
+      if (txnError?.code === '23505' || txnError?.message?.includes('unique') || txnError?.message?.includes('duplicate')) {
+        console.log(`[Wallet Verify] ⏭ Transaction already logged by webhook: ${razorpay_payment_id}`)
+      } else {
+        console.error('[Wallet Verify] Transaction logging error:', txnError)
+      }
+    }
 
     console.log(`[Wallet Verify] ✅ Complete: ${userId} deposited $${depositUsd}, wallet=$${finalWallet}`)
 

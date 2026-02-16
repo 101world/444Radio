@@ -217,19 +217,38 @@ async function handlePaymentCaptured(payment: any, eventType: string) {
   }
 
   // ── Cross-path idempotency: check if verify route (or order.paid) already deposited ──
+  // Check by BOTH order_id and payment_id to catch all paths
   const capturedOrderId = entity.order_id
-  if (capturedOrderId && clerkUserId) {
-    const { data: existingByOrder } = await supabaseAdmin
+  if (clerkUserId) {
+    // Check by order_id
+    if (capturedOrderId) {
+      const { data: existingByOrder } = await supabaseAdmin
+        .from('credit_transactions')
+        .select('id')
+        .eq('user_id', clerkUserId)
+        .in('type', ['wallet_deposit', 'credit_award'])
+        .eq('status', 'success')
+        .contains('metadata', { order_id: capturedOrderId })
+        .limit(1)
+
+      if (existingByOrder && existingByOrder.length > 0) {
+        console.log('[Razorpay] ⏭ Already processed via verify route or order.paid (order_id):', capturedOrderId)
+        return
+      }
+    }
+
+    // Check by payment_id (verify route stores as razorpay_payment_id)
+    const { data: existingByPayment } = await supabaseAdmin
       .from('credit_transactions')
       .select('id')
       .eq('user_id', clerkUserId)
       .in('type', ['wallet_deposit', 'credit_award'])
       .eq('status', 'success')
-      .contains('metadata', { order_id: capturedOrderId })
+      .contains('metadata', { razorpay_payment_id: paymentId })
       .limit(1)
 
-    if (existingByOrder && existingByOrder.length > 0) {
-      console.log('[Razorpay] ⏭ Already processed via verify route or order.paid:', capturedOrderId)
+    if (existingByPayment && existingByPayment.length > 0) {
+      console.log('[Razorpay] ⏭ Already processed via verify route (payment_id):', paymentId)
       return
     }
   }
@@ -265,23 +284,34 @@ async function handlePaymentCaptured(payment: any, eventType: string) {
   const finalCredits = user.credits || 0
 
   // ── Log transaction (idempotency record) ──
-  await logCreditTransaction({
-    userId: user.clerk_user_id,
-    amount: 0,
-    balanceAfter: finalCredits,
-    type: 'wallet_deposit',
-    status: 'success',
-    description: `Wallet deposit: +$${depositUsd} → wallet $${finalWallet}`,
-    metadata: {
-      razorpay_id: paymentId,
-      event_type: eventType,
-      payment_amount: entity.amount,
-      currency: entity.currency,
-      deposit_usd: depositUsd,
-      wallet_balance: finalWallet,
-      order_id: entity.order_id,
-    },
-  })
+  // Wrapped in try/catch to handle unique constraint violation (race condition safety net)
+  try {
+    await logCreditTransaction({
+      userId: user.clerk_user_id,
+      amount: 0,
+      balanceAfter: finalCredits,
+      type: 'wallet_deposit',
+      status: 'success',
+      description: `Wallet deposit: +$${depositUsd} → wallet $${finalWallet}`,
+      metadata: {
+        razorpay_id: paymentId,
+        razorpay_payment_id: paymentId,
+        event_type: eventType,
+        payment_amount: entity.amount,
+        currency: entity.currency,
+        deposit_usd: depositUsd,
+        wallet_balance: finalWallet,
+        order_id: entity.order_id,
+      },
+    })
+  } catch (txnError: any) {
+    // If unique constraint violation, the verify route already handled it — that's fine
+    if (txnError?.code === '23505' || txnError?.message?.includes('unique') || txnError?.message?.includes('duplicate')) {
+      console.log(`[Razorpay] ⏭ Transaction log conflict (verify route won the race): ${paymentId}`)
+      return
+    }
+    console.error('[Razorpay] Transaction logging error:', txnError)
+  }
 
   console.log(`[Razorpay] ✅ Payment ${paymentId}: +$${depositUsd} → wallet=$${finalWallet} → ${user.email}`)
 }
@@ -346,7 +376,7 @@ async function handleOrderPaid(order: any) {
     return
   }
 
-  // ── Idempotency: check if payment.captured already handled this ──
+  // ── Idempotency: check if payment.captured or verify route already handled this ──
   const { data: existing } = await supabaseAdmin
     .from('credit_transactions')
     .select('id')
@@ -357,7 +387,7 @@ async function handleOrderPaid(order: any) {
     .limit(1)
 
   if (existing && existing.length > 0) {
-    console.log('[Razorpay] ⏭ Order already processed via payment.captured:', orderId)
+    console.log('[Razorpay] ⏭ Order already processed via payment.captured or verify:', orderId)
     return
   }
 
@@ -382,23 +412,32 @@ async function handleOrderPaid(order: any) {
   const finalWallet = parseFloat(depositRow.new_balance)
   const finalCredits = user.credits || 0
 
-  await logCreditTransaction({
-    userId: user.clerk_user_id,
-    amount: 0,
-    balanceAfter: finalCredits,
-    type: 'wallet_deposit',
-    status: 'success',
-    description: `Order paid (fallback): +$${depositUsd} → wallet $${finalWallet}`,
-    metadata: {
-      razorpay_id: orderId,
-      event_type: 'order.paid',
-      order_id: orderId,
-      deposit_usd: depositUsd,
-      wallet_balance: finalWallet,
-      payment_amount: entity.amount,
-      currency: entity.currency,
-    },
-  })
+  // Wrapped in try/catch — unique constraint prevents double deposit even in race conditions
+  try {
+    await logCreditTransaction({
+      userId: user.clerk_user_id,
+      amount: 0,
+      balanceAfter: finalCredits,
+      type: 'wallet_deposit',
+      status: 'success',
+      description: `Order paid (fallback): +$${depositUsd} → wallet $${finalWallet}`,
+      metadata: {
+        razorpay_id: orderId,
+        event_type: 'order.paid',
+        order_id: orderId,
+        deposit_usd: depositUsd,
+        wallet_balance: finalWallet,
+        payment_amount: entity.amount,
+        currency: entity.currency,
+      },
+    })
+  } catch (txnError: any) {
+    if (txnError?.code === '23505' || txnError?.message?.includes('unique') || txnError?.message?.includes('duplicate')) {
+      console.log(`[Razorpay] ⏭ Order transaction conflict (already deposited): ${orderId}`)
+      return
+    }
+    console.error('[Razorpay] Order transaction logging error:', txnError)
+  }
 
   console.log(`[Razorpay] ✅ Order ${orderId}: +$${depositUsd} → wallet=$${finalWallet} → ${user.email}`)
 }
