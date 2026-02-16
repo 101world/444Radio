@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         creditPurchases = depositTxns || []
         totalDeposited = creditPurchases.reduce((sum: number, t: any) => {
           const meta = t.metadata || {}
-          return sum + (parseFloat(meta.amount_usd || meta.deposit_amount || '0'))
+          return sum + (parseFloat(meta.deposit_usd || meta.amount_usd || meta.deposit_amount || '0'))
         }, 0)
       } catch {
         // Table may not exist yet

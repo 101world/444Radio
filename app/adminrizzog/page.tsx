@@ -482,7 +482,7 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
               <tbody>
                 {(data.creditPurchases || []).slice(0, 20).map((tx: Transaction) => {
                   const meta = (tx.metadata || {}) as Record<string, unknown>
-                  const usd = parseFloat((meta.amount_usd || meta.deposit_amount || '0') as string)
+                  const usd = parseFloat((meta.deposit_usd || meta.amount_usd || meta.deposit_amount || '0') as string)
                   return (
                     <tr key={tx.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
                       <td className="py-2 px-2 text-gray-500 whitespace-nowrap">{formatDate(tx.created_at)}</td>
