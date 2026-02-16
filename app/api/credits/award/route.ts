@@ -122,6 +122,37 @@ export async function POST(req: NextRequest) {
     // ── Award credits ──
     const creditsToAward = codeConfig.credits
 
+    // ── Record redemption FIRST (before credits) — prevents race condition ──
+    // If two requests race, the second INSERT fails on the unique index
+    // and no credits are ever awarded twice.
+    if (!existingRedemption) {
+      const { error: insertError } = await supabase
+        .from('code_redemptions')
+        .insert({
+          clerk_user_id: userId,
+          code: normalizedCode,
+          credits_awarded: creditsToAward,
+          redeemed_at: new Date().toISOString(),
+          redemption_count: 1,
+        })
+
+      if (insertError) {
+        // Unique constraint violation = another concurrent request already claimed
+        if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+          console.log(`⛔ Race condition caught: Code "${normalizedCode}" already claimed by ${userId}`)
+          return NextResponse.json(
+            { success: false, error: 'This code has already been claimed.', alreadyClaimed: true },
+            { status: 400 }
+          )
+        }
+        console.error('Error recording redemption:', insertError)
+        return NextResponse.json(
+          { success: false, error: 'Failed to record code redemption' },
+          { status: 500 }
+        )
+      }
+    }
+
     // Get current credits
     const { data: userData, error: fetchError } = await supabase
       .from('users')
@@ -155,24 +186,6 @@ export async function POST(req: NextRequest) {
         { success: false, error: 'Failed to update credits' },
         { status: 500 }
       )
-    }
-
-    // ── Record redemption (only insert if first time) ──
-    if (!existingRedemption) {
-      const { error: insertError } = await supabase
-        .from('code_redemptions')
-        .insert({
-          clerk_user_id: userId,
-          code: normalizedCode,
-          credits_awarded: creditsToAward,
-          redeemed_at: new Date().toISOString(),
-          redemption_count: 1,
-        })
-
-      if (insertError) {
-        console.error('Error recording redemption:', insertError)
-        // Credits already awarded — log but don't fail
-      }
     }
 
     // ── Log to credit_transactions (wallet history) ──

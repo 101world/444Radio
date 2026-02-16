@@ -47,17 +47,38 @@ export async function POST(req: NextRequest) {
     const quest = quests[0]
     const reward = quest.credits_reward || 0
 
-    // 3. Check for duplicate claim (idempotency)
-    const dupRes = await fetch(
-      `${supabaseUrl}/rest/v1/quest_completions?user_id=eq.${userId}&quest_id=eq.${questId}&limit=1`,
-      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    // 3. INSERT completion FIRST (before credits) — prevents race condition.
+    // If two requests race, the second INSERT fails on the unique constraint
+    // and no credits are ever awarded twice.
+    const insertRes = await fetch(
+      `${supabaseUrl}/rest/v1/quest_completions`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          quest_id: questId,
+          credits_awarded: reward,
+        }),
+      }
     )
-    const dups = await dupRes.json()
-    if (dups?.length) {
-      return corsResponse(NextResponse.json({ error: 'Reward already claimed' }, { status: 409 }))
+
+    if (!insertRes.ok) {
+      // 409 or unique constraint failure = already claimed
+      const insertErr = await insertRes.text()
+      if (insertRes.status === 409 || insertErr.includes('duplicate') || insertErr.includes('unique')) {
+        return corsResponse(NextResponse.json({ error: 'Reward already claimed' }, { status: 409 }))
+      }
+      console.error('Quest completion insert failed:', insertErr)
+      return corsResponse(NextResponse.json({ error: 'Failed to record completion' }, { status: 500 }))
     }
 
-    // 4. Award credits to user
+    // 4. Award credits to user (safe now — completion record exists, so no double-claim)
     const userRes = await fetch(
       `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
@@ -98,25 +119,7 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    // 6. Insert completion log
-    await fetch(
-      `${supabaseUrl}/rest/v1/quest_completions`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          quest_id: questId,
-          credits_awarded: reward,
-        }),
-      }
-    )
-
-    // 7. Update user_quest status to 'claimed'
+    // 6. Update user_quest status to 'claimed'
     await fetch(
       `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&quest_id=eq.${questId}`,
       {
