@@ -1473,7 +1473,7 @@ function CreatePageContent() {
   }
 
   // Handle individual stem split from modal
-  const handleSplitSingleStem = async (stem: 'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other') => {
+  const handleSplitSingleStem = async (stem: 'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other', params?: { model?: string; output_format?: string; mp3_bitrate?: number; mp3_preset?: number; wav_format?: string; clip_mode?: string; shifts?: number; overlap?: number; split?: boolean; segment?: number; jobs?: number }) => {
     if (!splitStemsAudioUrl || !splitStemsMessageId) return
     
     // Check credits (1 credit per stem)
@@ -1498,7 +1498,23 @@ function CreatePageContent() {
       const response = await fetch('/api/audio/split-stems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl: splitStemsAudioUrl, stem }),
+        body: JSON.stringify({
+          audioUrl: splitStemsAudioUrl,
+          stem,
+          ...(params && {
+            model: params.model,
+            output_format: params.output_format,
+            mp3_bitrate: params.mp3_bitrate,
+            mp3_preset: params.mp3_preset,
+            wav_format: params.wav_format,
+            clip_mode: params.clip_mode,
+            shifts: params.shifts,
+            overlap: params.overlap,
+            split: params.split,
+            segment: params.segment,
+            jobs: params.jobs,
+          }),
+        }),
         signal: abortController.signal
       })
 

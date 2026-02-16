@@ -14,7 +14,7 @@ import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
 import PluginGenerationQueue from '@/app/components/PluginGenerationQueue'
 import PluginPostGenModal from '@/app/components/PluginPostGenModal'
 import SplitStemsModal from '@/app/components/SplitStemsModal'
-import type { StemType } from '@/app/components/SplitStemsModal'
+import type { StemType, StemAdvancedParams } from '@/app/components/SplitStemsModal'
 
 // ─── Types (mirrored from create page) ──────────────────────────
 type MessageType = 'user' | 'assistant' | 'generation'
@@ -1282,7 +1282,7 @@ export default function PluginPage() {
   }
 
   // Handle individual stem split from modal
-  const handleSplitSingleStem = async (stem: StemType) => {
+  const handleSplitSingleStem = async (stem: StemType, params?: StemAdvancedParams) => {
     if (!splitStemsAudioUrl) return
     if (userCredits !== null && userCredits < 1) {
       alert(`⚡ Need 1 credit for stem split, have ${userCredits}.`)
@@ -1295,7 +1295,23 @@ export default function PluginPage() {
       const res = await fetch('/api/audio/split-stems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl: splitStemsAudioUrl, stem }),
+        body: JSON.stringify({
+          audioUrl: splitStemsAudioUrl,
+          stem,
+          ...(params && {
+            model: params.model,
+            output_format: params.output_format,
+            mp3_bitrate: params.mp3_bitrate,
+            mp3_preset: params.mp3_preset,
+            wav_format: params.wav_format,
+            clip_mode: params.clip_mode,
+            shifts: params.shifts,
+            overlap: params.overlap,
+            split: params.split,
+            segment: params.segment,
+            jobs: params.jobs,
+          }),
+        }),
       })
 
       // Parse NDJSON stream

@@ -64,15 +64,28 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => null)
     const audioUrl = body?.audioUrl as string | undefined
-    const outputFormat = (body?.outputFormat as string | undefined) || 'mp3' // Default to mp3
+    const outputFormat = (body?.outputFormat as string | undefined) || (body?.output_format as string | undefined) || 'wav'
     
     if (!audioUrl || typeof audioUrl !== 'string') {
       return corsResponse(NextResponse.json({ success: false, error: 'audioUrl required' }, { status: 400 }))
     }
     
-    if (!['mp3', 'wav'].includes(outputFormat)) {
-      return corsResponse(NextResponse.json({ success: false, error: 'outputFormat must be mp3 or wav' }, { status: 400 }))
+    if (!['mp3', 'wav', 'flac'].includes(outputFormat)) {
+      return corsResponse(NextResponse.json({ success: false, error: 'outputFormat must be mp3, wav, or flac' }, { status: 400 }))
     }
+
+    // Extract advanced params with safe defaults
+    const VALID_MODELS = ['htdemucs', 'htdemucs_6s', 'htdemucs_ft'] as const
+    const demucsModel = VALID_MODELS.includes(body?.model as any) ? (body.model as string) : 'htdemucs'
+    const wavFormat = (['int16', 'int24', 'float32'].includes(body?.wav_format) ? body.wav_format : 'int24') as string
+    const clipMode = (['rescale', 'clamp'].includes(body?.clip_mode) ? body.clip_mode : 'rescale') as string
+    const shifts = typeof body?.shifts === 'number' && body.shifts >= 1 && body.shifts <= 10 ? body.shifts : 1
+    const overlap = typeof body?.overlap === 'number' && body.overlap >= 0 && body.overlap <= 0.99 ? body.overlap : 0.25
+    const mp3Bitrate = typeof body?.mp3_bitrate === 'number' && body.mp3_bitrate >= 64 && body.mp3_bitrate <= 320 ? body.mp3_bitrate : 320
+    const mp3Preset = typeof body?.mp3_preset === 'number' && body.mp3_preset >= 2 && body.mp3_preset <= 9 ? body.mp3_preset : 2
+    const splitAudio = typeof body?.split === 'boolean' ? body.split : true
+    const segment = typeof body?.segment === 'number' && body.segment > 0 ? body.segment : undefined
+    const jobs = typeof body?.jobs === 'number' && body.jobs >= 0 && body.jobs <= 8 ? body.jobs : 0
 
     // Check and deduct credits (stem split costs 1 credit per stem)
     const STEM_COST = 1
@@ -133,21 +146,26 @@ export async function POST(request: Request) {
     const createPrediction = async () => {
       attempt++
       try {
-        console.log('🎵 Starting stem separation (attempt', attempt, ')', { audioUrl, outputFormat, stem })
-        const resp = await replicate.predictions.create({
-          version: DEMUCS_VERSION,
-          input: {
+        console.log('🎵 Starting stem separation (attempt', attempt, ')', { audioUrl, outputFormat, stem, model: demucsModel })
+        const demucsInput: Record<string, unknown> = {
             audio: audioUrl,
-            model: 'htdemucs_6s',
+            model: demucsModel,
             stem: stem,
             output_format: outputFormat,
-            wav_format: outputFormat === 'wav' ? 'int24' : undefined,
-            clip_mode: 'rescale',
-            shifts: 1,
-            overlap: 0.25,
-            mp3_bitrate: 320,
-            split: true,
-          },
+            wav_format: wavFormat,
+            clip_mode: clipMode,
+            shifts,
+            overlap,
+            mp3_bitrate: mp3Bitrate,
+            mp3_preset: mp3Preset,
+            split: splitAudio,
+            jobs,
+        }
+        if (segment !== undefined) demucsInput.segment = segment
+
+        const resp = await replicate.predictions.create({
+          version: DEMUCS_VERSION,
+          input: demucsInput,
         })
         console.log('✅ Prediction created:', resp?.id)
         return resp

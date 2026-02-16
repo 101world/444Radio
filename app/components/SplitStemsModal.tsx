@@ -1,14 +1,44 @@
 /**
  * Split Stems Modal — Select individual stems to isolate from audio
- * Uses ryan5453/demucs htdemucs_6s model for 6-stem separation
+ * Uses ryan5453/demucs with htdemucs / htdemucs_6s / htdemucs_ft models
  * Each stem costs 1 credit; output is WAV for DAW import
  */
 'use client'
 
 import { useState } from 'react'
-import { X, Loader2, Scissors, Download, Play, Pause, Music2, ArrowDownToLine } from 'lucide-react'
+import { X, Loader2, Scissors, Download, Play, Pause, Music2, ArrowDownToLine, ChevronDown, ChevronUp, Settings2 } from 'lucide-react'
 
 export type StemType = 'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other'
+
+export type DemucsModel = 'htdemucs' | 'htdemucs_6s' | 'htdemucs_ft'
+
+export interface StemAdvancedParams {
+  model: DemucsModel
+  output_format: 'wav' | 'mp3' | 'flac'
+  mp3_bitrate: number
+  mp3_preset: number
+  wav_format: 'int16' | 'int24' | 'float32'
+  clip_mode: 'rescale' | 'clamp'
+  shifts: number
+  overlap: number
+  split: boolean
+  segment?: number
+  jobs: number
+}
+
+export const DEFAULT_ADVANCED_PARAMS: StemAdvancedParams = {
+  model: 'htdemucs',
+  output_format: 'wav',
+  mp3_bitrate: 320,
+  mp3_preset: 2,
+  wav_format: 'int24',
+  clip_mode: 'rescale',
+  shifts: 1,
+  overlap: 0.25,
+  split: true,
+  segment: undefined,
+  jobs: 0,
+}
 
 interface StemOption {
   key: StemType
@@ -20,7 +50,8 @@ interface StemOption {
   border: string
 }
 
-const STEM_OPTIONS: StemOption[] = [
+// htdemucs_6s has 6 stems; htdemucs and htdemucs_ft have 4 (drums, bass, vocals, other)
+const ALL_STEM_OPTIONS: StemOption[] = [
   { key: 'vocals', label: 'Vocals', description: 'Isolated vocal track', emoji: '🎤', color: 'text-pink-400', gradient: 'from-pink-500/20 to-purple-500/20', border: 'border-pink-500/30 hover:border-pink-400/60' },
   { key: 'drums', label: 'Drums', description: 'Percussion & beats', emoji: '🥁', color: 'text-orange-400', gradient: 'from-orange-500/20 to-amber-500/20', border: 'border-orange-500/30 hover:border-orange-400/60' },
   { key: 'bass', label: 'Bass', description: 'Low-end bassline', emoji: '🎸', color: 'text-purple-400', gradient: 'from-purple-500/20 to-indigo-500/20', border: 'border-purple-500/30 hover:border-purple-400/60' },
@@ -29,13 +60,19 @@ const STEM_OPTIONS: StemOption[] = [
   { key: 'other', label: 'Instrumental', description: 'Everything else', emoji: '🎶', color: 'text-cyan-400', gradient: 'from-cyan-500/20 to-teal-500/20', border: 'border-cyan-500/30 hover:border-cyan-400/60' },
 ]
 
+const MODEL_INFO: Record<DemucsModel, { label: string; description: string; stems: number; stemKeys: StemType[] }> = {
+  htdemucs: { label: 'HTDemucs', description: 'Hybrid Transformer — fast, high quality, 4 stems', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'] },
+  htdemucs_6s: { label: 'HTDemucs 6s', description: 'Hybrid Transformer — 6 stems incl. guitar & piano', stems: 6, stemKeys: ['drums', 'bass', 'vocals', 'guitar', 'piano', 'other'] },
+  htdemucs_ft: { label: 'HTDemucs FT', description: 'Fine-tuned — best vocal separation, 4 stems', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'] },
+}
+
 interface SplitStemsModalProps {
   isOpen: boolean
   onClose: () => void
   audioUrl: string
   trackTitle?: string
   /** Called when user picks a stem. Parent handles the API call. */
-  onSplitStem: (stem: StemType) => void
+  onSplitStem: (stem: StemType, params: StemAdvancedParams) => void
   /** Currently processing stems (allows multiple in parallel) */
   processingStem?: StemType | null
   /** Results from completed splits: { vocals: url, drums: url, ... } */
@@ -63,9 +100,14 @@ export default function SplitStemsModal({
   isInDAW,
   userCredits,
 }: SplitStemsModalProps) {
+  const [advancedParams, setAdvancedParams] = useState<StemAdvancedParams>({ ...DEFAULT_ADVANCED_PARAMS })
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
   if (!isOpen) return null
 
   const completedCount = Object.keys(completedStems).length
+  const modelInfo = MODEL_INFO[advancedParams.model]
+  const availableStems = ALL_STEM_OPTIONS.filter(opt => modelInfo.stemKeys.includes(opt.key))
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -82,7 +124,7 @@ export default function SplitStemsModal({
             <div>
               <h2 className="text-lg font-bold text-white">Split Stems</h2>
               <p className="text-xs text-gray-400 truncate max-w-[250px]">
-                {trackTitle || 'Audio Track'} — WAV output
+                {trackTitle || 'Audio Track'}
               </p>
             </div>
           </div>
@@ -94,10 +136,32 @@ export default function SplitStemsModal({
           </button>
         </div>
 
+        {/* Model Selector */}
+        <div className="px-5 pt-5 pb-2">
+          <label className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2 block">Model</label>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.entries(MODEL_INFO) as [DemucsModel, typeof MODEL_INFO[DemucsModel]][]).map(([key, info]) => (
+              <button
+                key={key}
+                onClick={() => setAdvancedParams(p => ({ ...p, model: key }))}
+                className={`px-3 py-2 rounded-lg border text-left transition-all ${
+                  advancedParams.model === key
+                    ? 'border-purple-500/60 bg-purple-500/15 text-white'
+                    : 'border-gray-700/40 bg-gray-900/40 text-gray-400 hover:border-gray-600/60 hover:text-gray-300'
+                }`}
+              >
+                <div className="text-xs font-bold">{info.label}</div>
+                <div className="text-[10px] opacity-70">{info.stems} stems</div>
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-500 mt-1.5">{modelInfo.description}</p>
+        </div>
+
         {/* Stem Buttons */}
         <div className="p-5 space-y-3">
           <p className="text-sm text-gray-400 mb-4">
-            Choose a stem to isolate. Each extraction costs <span className="text-purple-400 font-bold">1 credit</span> and outputs a high-quality <span className="text-cyan-400 font-bold">WAV</span> file ready for DAW import.
+            Choose a stem to isolate. Each extraction costs <span className="text-purple-400 font-bold">1 credit</span>.
           </p>
 
           {userCredits !== null && userCredits !== undefined && (
@@ -107,7 +171,7 @@ export default function SplitStemsModal({
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            {STEM_OPTIONS.map(opt => {
+            {availableStems.map(opt => {
               const isCompleted = !!completedStems[opt.key]
               const isProcessing = processingStem === opt.key
               const stemUrl = completedStems[opt.key]
@@ -119,7 +183,7 @@ export default function SplitStemsModal({
                   <button
                     onClick={() => {
                       if (!isCompleted && !isProcessing) {
-                        onSplitStem(opt.key)
+                        onSplitStem(opt.key, advancedParams)
                       }
                     }}
                     disabled={isProcessing || isCompleted || (userCredits !== null && userCredits !== undefined && userCredits < 1)}
@@ -162,12 +226,12 @@ export default function SplitStemsModal({
                           {isPlayingThis ? <Pause size={12} className="text-white" /> : <Play size={12} className="text-white" />}
                         </button>
                       )}
-                      {/* Download WAV */}
+                      {/* Download */}
                       <a
                         href={stemUrl}
-                        download={`${(trackTitle || 'track').replace(/[^a-zA-Z0-9 _-]/g, '')}-${opt.key}.wav`}
+                        download={`${(trackTitle || 'track').replace(/[^a-zA-Z0-9 _-]/g, '')}-${opt.key}.${advancedParams.output_format}`}
                         className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-                        title={`Download ${opt.label} WAV`}
+                        title={`Download ${opt.label} ${advancedParams.output_format.toUpperCase()}`}
                       >
                         <Download size={12} className="text-white" />
                       </a>
@@ -190,6 +254,177 @@ export default function SplitStemsModal({
           </div>
         </div>
 
+        {/* Advanced Parameters (collapsible) */}
+        <div className="px-5 pb-2">
+          <button
+            onClick={() => setShowAdvanced(v => !v)}
+            className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition-colors w-full py-2"
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+            <span className="font-semibold uppercase tracking-wider">Advanced Parameters</span>
+            {showAdvanced ? <ChevronUp className="w-3.5 h-3.5 ml-auto" /> : <ChevronDown className="w-3.5 h-3.5 ml-auto" />}
+          </button>
+
+          {showAdvanced && (
+            <div className="space-y-3 pb-3 pt-1 border-t border-gray-800/50 mt-1">
+              {/* Output Format */}
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">Output Format</label>
+                <div className="flex gap-2">
+                  {(['wav', 'mp3', 'flac'] as const).map(fmt => (
+                    <button
+                      key={fmt}
+                      onClick={() => setAdvancedParams(p => ({ ...p, output_format: fmt }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        advancedParams.output_format === fmt
+                          ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-400'
+                          : 'border-gray-700/40 bg-gray-900/40 text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      {fmt.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* WAV Format (only if wav selected) */}
+              {advancedParams.output_format === 'wav' && (
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">WAV Bit Depth</label>
+                  <div className="flex gap-2">
+                    {(['int16', 'int24', 'float32'] as const).map(wf => (
+                      <button
+                        key={wf}
+                        onClick={() => setAdvancedParams(p => ({ ...p, wav_format: wf }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                          advancedParams.wav_format === wf
+                            ? 'border-purple-500/50 bg-purple-500/15 text-purple-400'
+                            : 'border-gray-700/40 bg-gray-900/40 text-gray-500 hover:text-gray-300'
+                        }`}
+                      >
+                        {wf === 'int16' ? '16-bit' : wf === 'int24' ? '24-bit' : '32-bit float'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* MP3 Bitrate (only if mp3 selected) */}
+              {advancedParams.output_format === 'mp3' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">MP3 Bitrate (kbps)</label>
+                    <select
+                      value={advancedParams.mp3_bitrate}
+                      onChange={e => setAdvancedParams(p => ({ ...p, mp3_bitrate: Number(e.target.value) }))}
+                      className="w-full bg-gray-900/60 border border-gray-700/40 rounded-lg px-3 py-1.5 text-xs text-white"
+                    >
+                      {[128, 192, 256, 320].map(v => <option key={v} value={v}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">MP3 Preset (quality)</label>
+                    <select
+                      value={advancedParams.mp3_preset}
+                      onChange={e => setAdvancedParams(p => ({ ...p, mp3_preset: Number(e.target.value) }))}
+                      className="w-full bg-gray-900/60 border border-gray-700/40 rounded-lg px-3 py-1.5 text-xs text-white"
+                    >
+                      {[2, 3, 4, 5, 7].map(v => <option key={v} value={v}>{v} {v === 2 ? '(best)' : v === 7 ? '(fastest)' : ''}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Clip Mode */}
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">Clip Mode</label>
+                <div className="flex gap-2">
+                  {(['rescale', 'clamp'] as const).map(cm => (
+                    <button
+                      key={cm}
+                      onClick={() => setAdvancedParams(p => ({ ...p, clip_mode: cm }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        advancedParams.clip_mode === cm
+                          ? 'border-amber-500/50 bg-amber-500/15 text-amber-400'
+                          : 'border-gray-700/40 bg-gray-900/40 text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      {cm === 'rescale' ? 'Rescale (safe)' : 'Clamp (hard clip)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Shifts & Overlap */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">
+                    Shifts <span className="text-gray-600">(quality, {advancedParams.shifts}x slower)</span>
+                  </label>
+                  <input
+                    type="range" min={1} max={10} step={1}
+                    value={advancedParams.shifts}
+                    onChange={e => setAdvancedParams(p => ({ ...p, shifts: Number(e.target.value) }))}
+                    className="w-full accent-purple-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-gray-600">
+                    <span>1 (fast)</span><span>10 (best)</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">
+                    Overlap <span className="text-gray-600">({advancedParams.overlap})</span>
+                  </label>
+                  <input
+                    type="range" min={0} max={0.99} step={0.05}
+                    value={advancedParams.overlap}
+                    onChange={e => setAdvancedParams(p => ({ ...p, overlap: Number(e.target.value) }))}
+                    className="w-full accent-purple-500"
+                  />
+                  <div className="flex justify-between text-[9px] text-gray-600">
+                    <span>0</span><span>0.99</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Split & Segment & Jobs */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">Split audio</label>
+                  <button
+                    onClick={() => setAdvancedParams(p => ({ ...p, split: !p.split }))}
+                    className={`w-full px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                      advancedParams.split
+                        ? 'border-green-500/50 bg-green-500/15 text-green-400'
+                        : 'border-gray-700/40 bg-gray-900/40 text-gray-500'
+                    }`}
+                  >
+                    {advancedParams.split ? 'On' : 'Off'}
+                  </button>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">Segment (s)</label>
+                  <input
+                    type="number" min={1} max={300} placeholder="auto"
+                    value={advancedParams.segment ?? ''}
+                    onChange={e => setAdvancedParams(p => ({ ...p, segment: e.target.value ? Number(e.target.value) : undefined }))}
+                    className="w-full bg-gray-900/60 border border-gray-700/40 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1">Jobs</label>
+                  <input
+                    type="number" min={0} max={8}
+                    value={advancedParams.jobs}
+                    onChange={e => setAdvancedParams(p => ({ ...p, jobs: Number(e.target.value) }))}
+                    className="w-full bg-gray-900/60 border border-gray-700/40 rounded-lg px-3 py-1.5 text-xs text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Info Footer */}
         <div className="p-5 border-t border-purple-900/30">
           <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3">
@@ -197,8 +432,8 @@ export default function SplitStemsModal({
               <Music2 className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
                 <p className="text-gray-300">
-                  Powered by <span className="text-purple-400 font-semibold">Demucs htdemucs_6s</span> — 6-stem AI separation.
-                  Output is lossless <span className="text-cyan-400 font-semibold">WAV (int24)</span> for pro-quality DAW import.
+                  Powered by <span className="text-purple-400 font-semibold">Demucs {modelInfo.label}</span> — {modelInfo.stems}-stem AI separation.
+                  Output: <span className="text-cyan-400 font-semibold">{advancedParams.output_format.toUpperCase()}{advancedParams.output_format === 'wav' ? ` (${advancedParams.wav_format})` : advancedParams.output_format === 'mp3' ? ` ${advancedParams.mp3_bitrate}kbps` : ''}</span>
                 </p>
                 {completedCount > 0 && (
                   <p className="text-purple-400 font-semibold">

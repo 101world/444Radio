@@ -48,16 +48,58 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { audioUrl, stem, earnJobId } = body as { audioUrl?: string; stem?: string; earnJobId?: string }
+    const {
+      audioUrl,
+      stem,
+      earnJobId,
+      // Advanced params from modal (with safe defaults)
+      model: requestedModel,
+      output_format: requestedOutputFormat,
+      mp3_bitrate: requestedMp3Bitrate,
+      mp3_preset: requestedMp3Preset,
+      wav_format: requestedWavFormat,
+      clip_mode: requestedClipMode,
+      shifts: requestedShifts,
+      overlap: requestedOverlap,
+      split: requestedSplit,
+      segment: requestedSegment,
+      jobs: requestedJobs,
+    } = body as {
+      audioUrl?: string; stem?: string; earnJobId?: string;
+      model?: string; output_format?: string; mp3_bitrate?: number; mp3_preset?: number;
+      wav_format?: string; clip_mode?: string; shifts?: number; overlap?: number;
+      split?: boolean; segment?: number; jobs?: number;
+    }
+
+    // Validate and apply advanced params with safe defaults
+    const VALID_MODELS = ['htdemucs', 'htdemucs_6s', 'htdemucs_ft'] as const
+    const demucsModel = VALID_MODELS.includes(requestedModel as any) ? requestedModel as string : 'htdemucs'
+    const outputFormat = (['wav', 'mp3', 'flac'].includes(requestedOutputFormat || '') ? requestedOutputFormat : 'wav') as string
+    const mp3Bitrate = typeof requestedMp3Bitrate === 'number' && requestedMp3Bitrate >= 64 && requestedMp3Bitrate <= 320 ? requestedMp3Bitrate : 320
+    const mp3Preset = typeof requestedMp3Preset === 'number' && requestedMp3Preset >= 2 && requestedMp3Preset <= 9 ? requestedMp3Preset : 2
+    const wavFormat = (['int16', 'int24', 'float32'].includes(requestedWavFormat || '') ? requestedWavFormat : 'int24') as string
+    const clipMode = (['rescale', 'clamp'].includes(requestedClipMode || '') ? requestedClipMode : 'rescale') as string
+    const shifts = typeof requestedShifts === 'number' && requestedShifts >= 1 && requestedShifts <= 10 ? requestedShifts : 1
+    const overlap = typeof requestedOverlap === 'number' && requestedOverlap >= 0 && requestedOverlap <= 0.99 ? requestedOverlap : 0.25
+    const splitAudio = typeof requestedSplit === 'boolean' ? requestedSplit : true
+    const segment = typeof requestedSegment === 'number' && requestedSegment > 0 ? requestedSegment : undefined
+    const jobs = typeof requestedJobs === 'number' && requestedJobs >= 0 && requestedJobs <= 8 ? requestedJobs : 0
+
+    // Determine valid stems for the chosen model
+    const SIX_STEM_MODELS = ['htdemucs_6s']
+    const validStemsForModel = SIX_STEM_MODELS.includes(demucsModel)
+      ? VALID_STEMS
+      : (['drums', 'bass', 'vocals', 'other'] as const)
 
     if (!audioUrl) {
       return NextResponse.json({ error: 'Audio URL required' }, { status: 400 })
     }
 
-    // Validate stem choice
-    if (!stem || !VALID_STEMS.includes(stem as StemChoice)) {
+    // Validate stem choice for the chosen model
+    const validStemsList = validStemsForModel as readonly string[]
+    if (!stem || !validStemsList.includes(stem)) {
       return NextResponse.json({ 
-        error: `Invalid stem. Choose one of: ${VALID_STEMS.join(', ')}` 
+        error: `Invalid stem for ${demucsModel}. Choose one of: ${validStemsForModel.join(', ')}` 
       }, { status: 400 })
     }
 
@@ -140,22 +182,27 @@ export async function POST(request: Request) {
         // Send initial heartbeat so client knows the stream is alive
         await sendLine({ type: 'progress', status: 'starting', elapsed: 0 })
 
-        // Create Replicate prediction with ryan5453/demucs (htdemucs_6s)
-        // This model supports per-stem isolation: drums, bass, vocals, guitar, piano, other
+        // Create Replicate prediction with ryan5453/demucs
+        // Model supports per-stem isolation: drums, bass, vocals (+ guitar, piano for 6s), other
+        const demucsInput: Record<string, unknown> = {
+            audio: audioUrl,
+            model: demucsModel,
+            stem: stem === 'other' ? 'none' : stem,  // 'none' returns all stems; specific stem isolates it
+            output_format: outputFormat,
+            wav_format: wavFormat,
+            clip_mode: clipMode,
+            shifts,
+            overlap,
+            mp3_bitrate: mp3Bitrate,
+            mp3_preset: mp3Preset,
+            split: splitAudio,
+            jobs,
+        }
+        if (segment !== undefined) demucsInput.segment = segment
+
         const prediction = await replicate.predictions.create({
           version: DEMUCS_VERSION,
-          input: {
-            audio: audioUrl,
-            model: 'htdemucs_6s',
-            stem: stem === 'other' ? 'none' : stem,  // 'none' returns all stems; specific stem isolates it
-            output_format: 'wav',
-            wav_format: 'int24',
-            clip_mode: 'rescale',
-            shifts: 1,
-            overlap: 0.25,
-            mp3_bitrate: 320,
-            split: true,
-          }
+          input: demucsInput,
         })
 
         await sendLine({ type: 'started', predictionId: prediction.id })
@@ -260,9 +307,11 @@ export async function POST(request: Request) {
             }
             const buffer = Buffer.from(await dlRes.arrayBuffer())
             const safeName = stemName.replace(/[^a-zA-Z0-9_-]/g, '-')
-            const r2Key = `${userId}/stems/${timestamp}-${safeName}.wav`
+            const fileExt = outputFormat === 'mp3' ? 'mp3' : outputFormat === 'flac' ? 'flac' : 'wav'
+            const mimeType = outputFormat === 'mp3' ? 'audio/mpeg' : outputFormat === 'flac' ? 'audio/flac' : 'audio/wav'
+            const r2Key = `${userId}/stems/${timestamp}-${safeName}.${fileExt}`
 
-            const r2Result = await uploadToR2(buffer, 'audio-files', r2Key, 'audio/wav')
+            const r2Result = await uploadToR2(buffer, 'audio-files', r2Key, mimeType)
             if (r2Result.success && r2Result.url) {
               permanentStems[stemName] = r2Result.url
               console.log(`[Stem Split] ✅ ${stemName} → R2:`, r2Result.url)
@@ -309,8 +358,10 @@ export async function POST(request: Request) {
           stem: stem,
           stems: permanentStems,
           libraryIds: savedLibraryIds,
-          creditsUsed: skipCreditDeduction ? 0 : STEM_SPLIT_COST,
-          creditsRemaining: skipCreditDeduction ? userData.credits : (deductResult?.new_credits ?? userData.credits)
+          creditsUsed: STEM_SPLIT_COST,
+          creditsRemaining: skipCreditDeduction ? userData.credits : (deductResult?.new_credits ?? userData.credits),
+          model: demucsModel,
+          outputFormat: outputFormat,
         })
 
         // Mark earn job completed if applicable
