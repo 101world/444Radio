@@ -111,6 +111,8 @@ export default function PricingPage() {
   const [customAmount, setCustomAmount] = useState(10)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isConverting, setIsConverting] = useState(false)
+  const [showConvertModal, setShowConvertModal] = useState(false)
+  const [convertAmount, setConvertAmount] = useState('')
   const [purchaseMessage, setPurchaseMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showCostModal, setShowCostModal] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
@@ -143,22 +145,52 @@ export default function PricingPage() {
   }, [showHistory])
 
   // ── Convert wallet to credits handler ──
-  const handleConvert = async () => {
+  const handleConvertSubmit = async () => {
     if (isConverting || isPurchasing) return
+    
+    // Convert input amount to USD (if INR, divide by INR_RATE)
+    let amountUsd: number | null = null
+    if (convertAmount) {
+      const inputAmount = parseFloat(convertAmount)
+      if (isNaN(inputAmount) || inputAmount <= 0) {
+        setPurchaseMessage({ type: 'error', text: 'Please enter a valid amount' })
+        return
+      }
+      amountUsd = currency === 'INR' ? inputAmount / INR_RATE : inputAmount
+      
+      if (amountUsd > (walletBalance ?? 0)) {
+        const maxDisplay = currency === 'INR' 
+          ? `₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
+          : `$${(walletBalance ?? 0).toFixed(2)}`
+        setPurchaseMessage({ type: 'error', text: `Amount exceeds wallet balance (${maxDisplay})` })
+        return
+      }
+    }
+
     setIsConverting(true)
     setPurchaseMessage(null)
 
     try {
-      const res = await fetch('/api/credits/convert', { method: 'POST' })
+      const res = await fetch('/api/credits/convert', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount_usd: amountUsd })
+      })
       const data = await res.json()
 
       if (res.ok && data.success) {
+        const convertedUsd = data.amountConverted
+        const displayAmount = currency === 'INR' 
+          ? `₹${(convertedUsd * INR_RATE).toFixed(2)}`
+          : `$${convertedUsd.toFixed(2)}`
         setPurchaseMessage({
           type: 'success',
-          text: `✅ Converted $${(walletBalance ?? 0).toFixed(2)} → +${data.creditsAdded} credits! You now have ${data.newCredits} total credits.`
+          text: `✅ Converted ${displayAmount} → +${data.creditsAdded} credits! You now have ${data.newCredits} total credits.`
         })
         refreshCredits()
         window.dispatchEvent(new Event('credits:refresh'))
+        setShowConvertModal(false)
+        setConvertAmount('')
       } else {
         throw new Error(data.error || 'Conversion failed')
       }
@@ -310,12 +342,12 @@ export default function PricingPage() {
             {/* Convert wallet to credits button (only if wallet > 0) */}
             {(walletBalance ?? 0) > 0 && (
               <button
-                onClick={handleConvert}
-                disabled={isConverting || isPurchasing}
+                onClick={() => setShowConvertModal(true)}
+                disabled={isPurchasing}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-full font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ArrowDownRight className="w-4 h-4" />
-                {isConverting ? 'Converting...' : 'Convert to Credits'}
+                Convert to Credits
               </button>
             )}
             {!hasAccess && (
@@ -658,6 +690,90 @@ export default function PricingPage() {
               <p className="text-xs text-cyan-300">
                 <strong>Example:</strong> $10 deposit = ~285 credits = ~142 songs or ~285 cover art images.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Convert Wallet Modal ── */}
+      {showConvertModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowConvertModal(false)}>
+          <div className="bg-gray-900 border border-white/10 rounded-2xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold">Convert Wallet to Credits</h3>
+              <button onClick={() => setShowConvertModal(false)} className="p-2 hover:bg-white/10 rounded-lg">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Info banner */}
+            <div className="mb-6 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
+              <p className="text-xs text-cyan-300 leading-relaxed">
+                <strong>Current Wallet:</strong> {currency === 'INR' 
+                  ? `₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
+                  : `$${(walletBalance ?? 0).toFixed(2)}`}
+                <br />
+                <strong>Conversion Rate:</strong> {currency === 'INR'
+                  ? `₹${(CREDIT_RATE * INR_RATE).toFixed(2)}`
+                  : `$${CREDIT_RATE.toFixed(3)}`} per credit
+              </p>
+            </div>
+
+            {/* Amount input */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold mb-3">
+                Amount to Convert {currency === 'INR' ? '(₹)' : '($)'}
+              </label>
+              <input
+                type="number"
+                value={convertAmount}
+                onChange={(e) => setConvertAmount(e.target.value)}
+                placeholder={currency === 'INR' 
+                  ? `Max: ₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
+                  : `Max: $${(walletBalance ?? 0).toFixed(2)}`}
+                min="0.01"
+                max={currency === 'INR' ? ((walletBalance ?? 0) * INR_RATE) : (walletBalance ?? 0)}
+                step={currency === 'INR' ? '1' : '0.01'}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Leave empty to convert all wallet balance
+              </p>
+            </div>
+
+            {/* Conversion preview */}
+            {convertAmount && parseFloat(convertAmount) > 0 && (
+              <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-xl">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">You'll receive:</span>
+                  <span className="font-bold text-cyan-400">
+                    {currency === 'INR'
+                      ? Math.floor(parseFloat(convertAmount) / INR_RATE / CREDIT_RATE)
+                      : Math.floor(parseFloat(convertAmount) / CREDIT_RATE)} credits
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowConvertModal(false)
+                  setConvertAmount('')
+                }}
+                disabled={isConverting}
+                className="flex-1 px-6 py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl font-semibold transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConvertSubmit}
+                disabled={isConverting || isPurchasing}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isConverting ? 'Converting...' : 'Confirm'}
+              </button>
             </div>
           </div>
         </div>

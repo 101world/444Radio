@@ -25,6 +25,9 @@ export async function POST(request: Request) {
       )
     }
 
+    const body = await request.json()
+    const amountUsd = body.amount_usd ? parseFloat(body.amount_usd) : null
+
     // Get current wallet balance
     const { data: user, error: fetchError } = await supabaseAdmin
       .from('users')
@@ -51,12 +54,30 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log(`[Wallet Convert] Converting $${currentWallet} for ${userId}`)
+    // Validate amount if specified
+    if (amountUsd !== null) {
+      if (amountUsd <= 0) {
+        return corsResponse(
+          NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 })
+        )
+      }
+      if (amountUsd > currentWallet) {
+        return corsResponse(
+          NextResponse.json({ 
+            error: `Amount exceeds wallet balance ($${currentWallet.toFixed(2)})`,
+            wallet: currentWallet
+          }, { status: 400 })
+        )
+      }
+    }
 
-    // Call convert_wallet_to_credits RPC (converts ALL after migration 123)
+    const convertAmount = amountUsd || currentWallet
+    console.log(`[Wallet Convert] Converting $${convertAmount} for ${userId} (wallet: $${currentWallet})`)
+
+    // Call convert_wallet_to_credits RPC
     const { data: convertData, error: convertError } = await supabaseAdmin.rpc('convert_wallet_to_credits', {
       p_clerk_user_id: userId,
-      p_amount_usd: null, // Convert all available
+      p_amount_usd: amountUsd, // null = convert all, otherwise specific amount
     })
 
     const convertRow = Array.isArray(convertData) ? convertData[0] : convertData
@@ -72,16 +93,17 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log(`[Wallet Convert] ✅ Converted $${currentWallet} → +${convertRow.credits_added} credits`)
+    console.log(`[Wallet Convert] ✅ Converted $${convertAmount} → +${convertRow.credits_added} credits`)
     console.log(`[Wallet Convert] New balance: wallet=$${convertRow.new_wallet_balance}, credits=${convertRow.new_credits}`)
 
     return corsResponse(
       NextResponse.json({
         success: true,
+        amountConverted: convertAmount,
         creditsAdded: convertRow.credits_added,
         newWallet: parseFloat(convertRow.new_wallet_balance),
         newCredits: convertRow.new_credits,
-        message: `Converted $${currentWallet.toFixed(2)} → ${convertRow.credits_added} credits`
+        message: `Converted $${convertAmount.toFixed(2)} → ${convertRow.credits_added} credits`
       })
     )
   } catch (error: any) {
