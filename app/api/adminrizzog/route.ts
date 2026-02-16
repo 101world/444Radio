@@ -52,23 +52,37 @@ export async function GET(req: NextRequest) {
         console.error('[adminrizzog] Paid users query error:', subUsersRes.error)
       }
       
-      // Fallback: if .gte query returns empty but we know users paid, 
-      // do a secondary check from all users
+      // Build paid users list: wallet_balance >= $1 OR has wallet_deposit/credit_award transactions
       let paidUsersList = subUsersRes.data || []
-      if (paidUsersList.length === 0 && !subUsersRes.error) {
-        // Try fetching all users and filtering manually
-        const { data: allUsers } = await supabase
+      
+      // Also find users who deposited real money (wallet_deposit txns) but wallet_balance may be $0
+      // This catches users who paid before the wallet system was deployed
+      const { data: depositTxnUsers } = await supabase
+        .from('credit_transactions')
+        .select('user_id')
+        .in('type', ['wallet_deposit'])
+        .eq('status', 'success')
+      
+      const depositUserIds = [...new Set((depositTxnUsers || []).map((t: any) => t.user_id))]
+      const existingIds = new Set(paidUsersList.map((u: any) => u.clerk_user_id))
+      const missingIds = depositUserIds.filter(id => !existingIds.has(id))
+      
+      if (missingIds.length > 0) {
+        // Fetch these users who deposited money but wallet_balance < $1
+        const { data: extraPaidUsers } = await supabase
           .from('users')
           .select('*')
-          .order('wallet_balance', { ascending: false })
-        paidUsersList = (allUsers || []).filter((u: any) => 
-          parseFloat(String(u.wallet_balance || '0')) >= 1.00
-        )
-        if (paidUsersList.length > 0) {
-          console.log(`[adminrizzog] Found ${paidUsersList.length} paid users via fallback filter`)
+          .in('clerk_user_id', missingIds)
+        if (extraPaidUsers && extraPaidUsers.length > 0) {
+          paidUsersList = [...paidUsersList, ...extraPaidUsers]
+          console.log(`[adminrizzog] Found ${extraPaidUsers.length} additional paid users from transaction history`)
         }
       }
-      console.log(`[adminrizzog] Paid users: ${paidUsersList.length}`, 
+      
+      // Sort by wallet_balance descending
+      paidUsersList.sort((a: any, b: any) => parseFloat(b.wallet_balance || '0') - parseFloat(a.wallet_balance || '0'))
+      
+      console.log(`[adminrizzog] Total paid users: ${paidUsersList.length}`, 
         paidUsersList.map((u: any) => ({ username: u.username, wallet: u.wallet_balance })))
 
       // Sum all credits in system

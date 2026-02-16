@@ -418,11 +418,11 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
           </div>
         </div>
 
-        {/* Paid Users ($1+ wallet balance = has access) */}
+        {/* Paid Users (wallet_balance >= $1 OR has real deposits) */}
         <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
           <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">💰 Paid Users ({(paidUsers || []).length})</h3>
           {(paidUsers || []).length === 0 ? (
-            <p className="text-gray-500 text-sm">No paid users</p>
+            <p className="text-gray-500 text-sm">No paid users found</p>
           ) : (
             <div className="space-y-2">
               {(paidUsers || []).map((u: UserRow) => (
@@ -435,13 +435,13 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                     <span className="text-sm font-semibold text-white">{u.username || u.email}</span>
                     <br />
                     <span className="text-[10px] text-gray-500">
-                      ${(u.wallet_balance || 0).toFixed(2)} in wallet
+                      ${Number(u.wallet_balance || 0).toFixed(2)} wallet · {u.credits} credits
                     </span>
                   </div>
                   <div className="text-right">
-                    <Badge text={walletStatusText(u.wallet_balance || 0)} color={walletStatusColor(u.wallet_balance || 0)} />
+                    <Badge text={Number(u.wallet_balance || 0) >= 1 ? 'active' : 'paid'} color={Number(u.wallet_balance || 0) >= 1 ? 'green' : 'yellow'} />
                     <br />
-                    <span className="text-[10px] text-gray-500">{u.credits} credits</span>
+                    <span className="text-[10px] text-gray-500">{u.total_generated} generated</span>
                   </div>
                 </button>
               ))}
