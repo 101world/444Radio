@@ -16,11 +16,13 @@ interface UserRow {
   full_name: string | null
   credits: number
   total_generated: number
+  wallet_balance: number
   subscription_status: string
   subscription_plan: string | null
   subscription_start: number | null
   subscription_end: number | null
   created_at: string
+  [key: string]: unknown
 }
 
 interface Transaction {
@@ -99,6 +101,19 @@ function subStatusColor(s: string) {
   if (s === 'cancelled') return 'yellow'
   if (s === 'expired') return 'red'
   return 'gray'
+}
+
+function walletStatusColor(balance: number) {
+  if (balance >= 10) return 'cyan'
+  if (balance >= 1) return 'green'
+  if (balance > 0) return 'yellow'
+  return 'gray'
+}
+
+function walletStatusText(balance: number) {
+  if (balance >= 1) return 'active'
+  if (balance > 0) return 'limited'
+  return 'no access'
 }
 
 function txnTypeBadge(t: string) {
@@ -301,7 +316,7 @@ export default function AdminBillingPage() {
 
 // ═══════════ OVERVIEW TAB ═══════════
 function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: string) => void }) {
-  const { totalUsers, totalMedia, totalCreditsInSystem, totalCreditsAwarded, totalCreditsSpent, adminWalletTotal, adminWalletRemaining, mediaByType, topUsers, subscribers, recentTransactions, recentAwards } = data
+  const { totalUsers, totalMedia, totalCreditsInSystem, totalCreditsAwarded, totalCreditsSpent, adminWalletTotal, adminWalletRemaining, mediaByType, topUsers, paidUsers, recentTransactions, recentAwards } = data
 
   return (
     <div className="space-y-8">
@@ -396,21 +411,21 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                 <div className="text-right">
                   <span className="text-sm font-black text-cyan-400">{u.credits.toLocaleString()}</span>
                   <br />
-                  <Badge text={u.subscription_status || 'none'} color={subStatusColor(u.subscription_status)} />
+                  <Badge text={`$${(u.wallet_balance || 0).toFixed(2)}`} color={walletStatusColor(u.wallet_balance || 0)} />
                 </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Active Subscribers */}
+        {/* Paid Users ($1+ wallet balance = has access) */}
         <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
-          <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">💎 Subscribers</h3>
-          {(subscribers || []).length === 0 ? (
-            <p className="text-gray-500 text-sm">No active subscribers</p>
+          <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">💰 Paid Users</h3>
+          {(paidUsers || []).length === 0 ? (
+            <p className="text-gray-500 text-sm">No paid users</p>
           ) : (
             <div className="space-y-2">
-              {(subscribers || []).map((u: UserRow) => (
+              {(paidUsers || []).map((u: UserRow) => (
                 <button
                   key={u.clerk_user_id}
                   onClick={() => onViewUser(u.clerk_user_id)}
@@ -420,11 +435,11 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                     <span className="text-sm font-semibold text-white">{u.username || u.email}</span>
                     <br />
                     <span className="text-[10px] text-gray-500">
-                      {formatEpoch(u.subscription_start)} → {formatEpoch(u.subscription_end)}
+                      ${(u.wallet_balance || 0).toFixed(2)} in wallet
                     </span>
                   </div>
                   <div className="text-right">
-                    <Badge text={u.subscription_status} color={subStatusColor(u.subscription_status)} />
+                    <Badge text={walletStatusText(u.wallet_balance || 0)} color={walletStatusColor(u.wallet_balance || 0)} />
                     <br />
                     <span className="text-[10px] text-gray-500">{u.credits} credits</span>
                   </div>
@@ -446,7 +461,7 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
         <div className="flex items-center gap-2 mb-4">
           <span className="text-lg">🎁</span>
           <h3 className="text-sm font-bold text-emerald-300 uppercase tracking-wider">Credit Awards &amp; Income</h3>
-          <span className="text-[10px] text-gray-500 ml-auto">Subscriptions, codes, refunds — all incoming credits</span>
+          <span className="text-[10px] text-gray-500 ml-auto">Deposits, codes, refunds — all incoming credits</span>
         </div>
         {(recentAwards || []).length === 0 ? (
           <p className="text-gray-500 text-sm text-center py-6">No credit awards found</p>
@@ -502,7 +517,8 @@ function UsersTab({ data, page, onPage, onViewUser }: { data: ApiData; page: num
               <th className="text-left py-3 px-2">Email</th>
               <th className="text-right py-3 px-2">Credits</th>
               <th className="text-right py-3 px-2">Generated</th>
-              <th className="text-center py-3 px-2">Subscription</th>
+              <th className="text-center py-3 px-2">Wallet</th>
+              <th className="text-center py-3 px-2">Access</th>
               <th className="text-right py-3 px-2">Joined</th>
               <th className="text-center py-3 px-2"></th>
             </tr>
@@ -518,8 +534,11 @@ function UsersTab({ data, page, onPage, onViewUser }: { data: ApiData; page: num
                 <td className="py-2.5 px-2 text-gray-400">{u.email}</td>
                 <td className="py-2.5 px-2 text-right font-bold text-cyan-400">{u.credits.toLocaleString()}</td>
                 <td className="py-2.5 px-2 text-right text-gray-300">{u.total_generated}</td>
+                <td className="py-2.5 px-2 text-center text-emerald-400 font-mono">
+                  ${(u.wallet_balance || 0).toFixed(2)}
+                </td>
                 <td className="py-2.5 px-2 text-center">
-                  <Badge text={u.subscription_status || 'none'} color={subStatusColor(u.subscription_status)} />
+                  <Badge text={walletStatusText(u.wallet_balance || 0)} color={walletStatusColor(u.wallet_balance || 0)} />
                 </td>
                 <td className="py-2.5 px-2 text-right text-gray-500">{formatDate(u.created_at).split(',')[0]}</td>
                 <td className="py-2.5 px-2 text-center">
@@ -837,18 +856,21 @@ function UserDetailTab({ data, onBack }: { data: ApiData; onBack: () => void }) 
               <div className="text-[10px] text-gray-500">Generated</div>
             </div>
             <div className="text-center bg-gray-800/50 rounded-lg px-4 py-3">
+              <div className="text-2xl font-black text-emerald-400">${(user.wallet_balance || 0).toFixed(2)}</div>
+              <div className="text-[10px] text-gray-500">Wallet</div>
+            </div>
+            <div className="text-center bg-gray-800/50 rounded-lg px-4 py-3">
               <div className="text-lg font-bold">
-                <Badge text={user.subscription_status || 'none'} color={subStatusColor(user.subscription_status || 'none')} />
+                <Badge text={walletStatusText(user.wallet_balance || 0)} color={walletStatusColor(user.wallet_balance || 0)} />
               </div>
-              <div className="text-[10px] text-gray-500 mt-1">Subscription</div>
+              <div className="text-[10px] text-gray-500 mt-1">Access</div>
             </div>
           </div>
         </div>
-        {user.subscription_status && user.subscription_status !== 'none' && (
-          <div className="mt-4 bg-gray-800/30 rounded-lg p-3 text-xs text-gray-400">
-            Plan: <span className="text-gray-300">{user.subscription_plan || '—'}</span> • 
-            Start: <span className="text-gray-300">{formatEpoch(user.subscription_start)}</span> • 
-            End: <span className="text-gray-300">{formatEpoch(user.subscription_end)}</span>
+        {(user.wallet_balance || 0) >= 1 && (
+          <div className="mt-4 bg-emerald-900/20 border border-emerald-500/20 rounded-lg p-3 text-xs text-gray-400">
+            💰 Wallet Balance: <span className="text-emerald-300 font-bold">${(user.wallet_balance || 0).toFixed(2)}</span> • 
+            Access: <span className="text-emerald-300">Active ($1+ deposited)</span>
           </div>
         )}
         <div className="mt-3 text-xs text-gray-500">

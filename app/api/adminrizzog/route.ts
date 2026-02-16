@@ -39,12 +39,12 @@ export async function GET(req: NextRequest) {
           .select('*')
           .order('credits', { ascending: false })
           .limit(10),
-        // Active subscribers
+        // Paid users (wallet_balance >= $1 = has access)
         supabase
           .from('users')
           .select('*')
-          .neq('subscription_status', 'none')
-          .order('subscription_start', { ascending: false })
+          .gte('wallet_balance', 1)
+          .order('wallet_balance', { ascending: false })
       ])
 
       // Sum all credits in system
@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
         adminWalletRemaining: 444_000_000_000 - totalCreditsAwarded,
         mediaByType,
         topUsers: topUsersRes.data || [],
-        subscribers: subUsersRes.data || [],
+        paidUsers: subUsersRes.data || [],
         recentTransactions: recentTxnsRes.data || [],
         recentAwards: recentAwards || [],
         pluginPurchases,
