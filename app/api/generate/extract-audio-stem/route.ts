@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { createClient } from '@supabase/supabase-js'
+import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 5 minutes for stem extraction (large files can take time)
 export const maxDuration = 300
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -EXTRACT_COST, type: 'generation_extract', status: 'failed', description: `Extract ${stem}: ${trackTitle}`, metadata: { stem } })
-      return NextResponse.json({ error: errorMsg }, { status: 402 })
+      return NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 })
     }
     console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -EXTRACT_COST, balanceAfter: deductResult.new_credits, type: 'generation_extract', description: `Extract ${stem}: ${trackTitle}`, metadata: { stem } })
@@ -170,8 +171,9 @@ export async function POST(request: Request) {
 
         if (finalPrediction.status !== 'succeeded') {
           const errMsg = finalPrediction.error || 'Extraction failed'
+          console.error('[extract-audio-stem] Prediction failed:', errMsg)
           await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Extract ${stem} failed`, metadata: { error: String(errMsg).substring(0, 200) } })
-          await sendLine({ type: 'result', success: false, error: errMsg })
+          await sendLine({ type: 'result', success: false, error: SAFE_ERROR_MESSAGE })
           await writer.close()
           return
         }
@@ -299,7 +301,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Extract audio error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ error: `Failed to extract audio: ${errorMessage}` }, { status: 500 })
+    return NextResponse.json({ error: SAFE_ERROR_MESSAGE }, { status: 500 })
   }
 }

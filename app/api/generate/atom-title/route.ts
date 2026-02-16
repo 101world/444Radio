@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUserId } from '@/lib/hybrid-auth'
 import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
-
+import { SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST2!,
 })
@@ -117,19 +117,9 @@ export async function POST(req: NextRequest) {
       stack: error?.stack
     })
     
-    let errorMessage = 'Failed to generate title with Atom'
-    if (error instanceof Error) {
-      errorMessage = error.message
-    }
-    
-    if (error?.response?.data) {
-      errorMessage = `Replicate API error: ${JSON.stringify(error.response.data)}`
-    }
-    
     return corsResponse(NextResponse.json({ 
       success: false,
-      error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      error: SAFE_ERROR_MESSAGE
     }, { status: 500 }))
   }
 }

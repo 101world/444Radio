@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 import { corsResponse, handleOptions } from '../../../lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 export async function OPTIONS() {
   return handleOptions()
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId: user.id, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
-      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+      return corsResponse(NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 }))
     }
     console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId: user.id, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt}`, metadata: { prompt, outputType } })
@@ -175,8 +176,9 @@ export async function POST(request: NextRequest) {
     console.error('Generation initiation error:', error)
     await logCreditTransaction({ userId: user.id, amount: 0, type: 'generation_image', status: 'failed', description: `Image failed: ${prompt || 'unknown'}`, metadata: { prompt, error: String(error).substring(0, 200) } })
     const errorMessage = error instanceof Error ? error.message : 'Failed to initiate generation'
+    console.error('Generation initiation - raw error:', errorMessage)
     return corsResponse(NextResponse.json({ 
-      error: errorMessage
+      error: SAFE_ERROR_MESSAGE
     }, { status: 500 }))
   }
 }

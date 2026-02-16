@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 3 minutes for looper generation (can take 1-2 minutes for 20s loops)
 export const maxDuration = 180
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -creditCost, type: 'generation_loops', status: 'failed', description: `Loops: ${prompt}`, metadata: { prompt, bpm } })
-      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+      return corsResponse(NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 }))
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -creditCost, balanceAfter: deductResult.new_credits, type: 'generation_loops', description: `Loops: ${prompt}`, metadata: { prompt, bpm } })
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (finalPrediction.status === 'failed') {
-        throw new Error(typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Generation failed')
+        throw new Error(typeof finalPrediction.error === 'string' ? (console.error('[loopers] Prediction failed:', finalPrediction.error), SAFE_ERROR_MESSAGE) : SAFE_ERROR_MESSAGE)
       }
 
       if (finalPrediction.status !== 'succeeded') {
@@ -302,9 +303,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Looper generation error:', error)
     
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return corsResponse(NextResponse.json(
-      { error: `Failed to generate loops: ${errorMessage}` },
+      { error: SAFE_ERROR_MESSAGE },
       { status: 500 }
     ))
   }

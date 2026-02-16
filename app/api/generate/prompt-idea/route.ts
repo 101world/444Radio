@@ -108,8 +108,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ Prompt generation error:', error)
     return corsResponse(NextResponse.json(
       {
-        error: '444 radio is locking in, please try again in few minutes',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: '444 Radio locking in. Please try again.'
       },
       { status: 500 }
     ))

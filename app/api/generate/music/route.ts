@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { trackQuestProgress } from '@/lib/quest-progress'
+import { SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -145,8 +146,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (finalPrediction.status === 'failed') {
-      const errorMsg = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Music generation failed'
-      throw new Error(errorMsg)
+      console.error('[music] Prediction failed:', finalPrediction.error)
+      throw new Error(SAFE_ERROR_MESSAGE)
     }
 
     // The output is the audio URL
@@ -231,22 +232,10 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Music generation error:', error)
     
-    // Better error messages for users
-    let errorMessage = 'Failed to generate music'
-    const is502or500 = error?.message?.includes('502') || error?.message?.includes('500')
-    
-    if (is502or500) {
-      errorMessage = 'Replicate API is temporarily unavailable. Please try again in a few minutes.'
-    } else if (error?.message?.includes('timeout')) {
-      errorMessage = 'Music generation timed out. Please try again with a shorter prompt.'
-    } else if (error instanceof Error) {
-      errorMessage = error.message
-    }
-    
     return NextResponse.json({ 
       success: false,
-      error: errorMessage,
-      retry: is502or500 // Tell frontend it can retry
+      error: SAFE_ERROR_MESSAGE,
+      retry: error?.message?.includes('502') || error?.message?.includes('500')
     }, { status: 500 })
   }
 }

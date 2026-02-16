@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 5 minutes for video-to-audio generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -50,9 +51,7 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       console.error('❌ Invalid video URL format:', videoUrl, e)
       return NextResponse.json({ 
-        error: 'Invalid video URL format. Must be a valid HTTP(S) URL.',
-        receivedUrl: videoUrl,
-        details: e instanceof Error ? e.message : String(e)
+        error: 'Invalid video URL format. Must be a valid HTTP(S) URL.'
       }, { status: 400 })
     }
 
@@ -110,7 +109,7 @@ export async function POST(req: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -creditsRequired, type: 'generation_video_to_audio', status: 'failed', description: `Video SFX: ${prompt.substring(0, 50)}`, metadata: { prompt, quality, isHQ } })
-      return NextResponse.json({ error: errorMsg }, { status: 402 })
+      return NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 })
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -creditsRequired, balanceAfter: deductResult.new_credits, type: 'generation_video_to_audio', description: `Video SFX: ${prompt.substring(0, 50)}`, metadata: { prompt, quality, isHQ } })
@@ -179,7 +178,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (finalPrediction.status === 'failed') {
-          throw new Error(typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Generation failed')
+          console.error('[video-to-audio] Prediction failed:', finalPrediction.error)
+          throw new Error('Generation failed')
         }
 
         if (finalPrediction.status !== 'succeeded') {
@@ -207,9 +207,7 @@ export async function POST(req: NextRequest) {
         
         return NextResponse.json(
           { 
-            error: is502Error 
-              ? '444 radio is lockin in. Please refresh and retry again! Lock in.' 
-              : errorMessage || 'Generation failed',
+            error: SAFE_ERROR_MESSAGE,
             creditsRefunded: false,
             creditsRemaining: user.credits,
             retriesAttempted: attempt
@@ -225,9 +223,7 @@ export async function POST(req: NextRequest) {
       
       return NextResponse.json(
         { 
-          error: is502Error 
-            ? '444 radio is lockin in. Please refresh and retry again! Lock in.' 
-            : 'Generation failed after all retries',
+          error: SAFE_ERROR_MESSAGE,
           creditsRefunded: false,
           creditsRemaining: user.credits,
           retriesAttempted: maxRetries
@@ -315,10 +311,8 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Video-to-audio generation error:', error)
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: `Failed to generate video audio: ${errorMessage}` },
+      { error: SAFE_ERROR_MESSAGE },
       { status: 500 }
     )
   }

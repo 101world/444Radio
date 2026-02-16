@@ -5,6 +5,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { createClient } from '@supabase/supabase-js'
+import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 3 minutes for extraction
 export const maxDuration = 180
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -EXTRACT_COST, type: 'generation_extract', status: 'failed', description: `Video Extract: ${trackTitle}`, metadata: { videoUrl } })
-      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+      return corsResponse(NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 }))
     }
     console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -EXTRACT_COST, balanceAfter: deductResult.new_credits, type: 'generation_extract', description: `Video Extract: ${trackTitle}`, metadata: { videoUrl } })
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
         const errMsg = finalPrediction.error || 'Extraction failed or timed out'
         console.error('❌ Extraction failed:', errMsg)
         await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Video Extract failed: ${trackTitle}`, metadata: { videoUrl, error: String(errMsg).substring(0, 200) } })
-        return corsResponse(NextResponse.json({ error: errMsg }, { status: 500 }))
+        return corsResponse(NextResponse.json({ error: SAFE_ERROR_MESSAGE }, { status: 500 }))
       }
 
       // Output is a direct URL string
@@ -215,9 +216,8 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Extract video audio error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return corsResponse(NextResponse.json(
-      { error: `Failed to extract audio: ${errorMessage}` },
+      { error: SAFE_ERROR_MESSAGE },
       { status: 500 }
     ))
   }

@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 2.5 minutes for effects generation (AudioGen can take 60-90s)
 export const maxDuration = 150
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -2, type: 'generation_effects', status: 'failed', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
-      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+      return corsResponse(NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 }))
     }
     console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -2, balanceAfter: deductResult.new_credits, type: 'generation_effects', description: `Effects: ${prompt}`, metadata: { prompt, duration } })
@@ -136,7 +137,8 @@ export async function POST(req: NextRequest) {
       }
 
       if (finalPrediction.status === 'failed') {
-        throw new Error(typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Generation failed')
+        console.error('[effects] Prediction failed:', finalPrediction.error)
+        throw new Error(SAFE_ERROR_MESSAGE)
       }
 
       if (finalPrediction.status !== 'succeeded') {
@@ -251,10 +253,8 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Effects generation error:', error)
-    
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return corsResponse(NextResponse.json(
-      { error: `Failed to generate effects: ${errorMessage}` },
+      { error: SAFE_ERROR_MESSAGE },
       { status: 500 }
     ))
   }

@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 5 minutes for image generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -1, type: 'generation_image', status: 'failed', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt } })
-      return NextResponse.json({ error: errorMsg }, { status: 402 })
+      return NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 })
     }
     console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -1, balanceAfter: deductResult.new_credits, type: 'generation_image', description: `Image: ${prompt.substring(0, 80)}`, metadata: { prompt } })
@@ -128,9 +129,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           { 
             success: false, 
-            error: is502Error 
-              ? '444 radio is lockin in. Please refresh and retry again! Lock in.' 
-              : errorMessage || 'Image generation failed',
+            error: SAFE_ERROR_MESSAGE,
             creditsRefunded: false,
             creditsRemaining: user.credits,
             retriesAttempted: attempt
@@ -141,16 +140,10 @@ export async function POST(req: NextRequest) {
     }
     
     if (!output) {
-      // All retries failed
-      const errorMessage = lastError instanceof Error ? lastError.message : String(lastError)
-      const is502Error = errorMessage.includes('502') || errorMessage.includes('Bad Gateway')
-      
       return NextResponse.json(
         { 
           success: false, 
-          error: is502Error 
-            ? '444 radio is lockin in. Please refresh and retry again! Lock in.' 
-            : 'Image generation failed after all retries',
+          error: SAFE_ERROR_MESSAGE,
           creditsRefunded: false,
           creditsRemaining: user.credits,
           retriesAttempted: maxRetries
@@ -253,10 +246,9 @@ export async function POST(req: NextRequest) {
         await logCreditTransaction({ userId: uid, amount: 0, type: 'generation_image', status: 'failed', description: `Image failed: ${String(error).substring(0, 80)}`, metadata: { error: String(error).substring(0, 200) } })
       }
     } catch { /* auth failed in catch — skip logging */ }
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate image'
     return NextResponse.json({ 
       success: false,
-      error: errorMessage,
+      error: SAFE_ERROR_MESSAGE,
       creditsRefunded: false
     }, { status: 500 })
   }

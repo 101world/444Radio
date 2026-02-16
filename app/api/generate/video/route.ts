@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
+import { SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 5 minutes for video generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -53,8 +54,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (finalPrediction.status === 'failed') {
-      const errorMsg = typeof finalPrediction.error === 'string' ? finalPrediction.error : 'Video generation failed'
-      throw new Error(errorMsg)
+      console.error('[video] Prediction failed:', finalPrediction.error)
+      throw new Error(SAFE_ERROR_MESSAGE)
     }
 
     // The output is the video URL
@@ -118,10 +119,9 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Video generation error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate cover video'
     return NextResponse.json({ 
       success: false,
-      error: errorMessage
+      error: SAFE_ERROR_MESSAGE
     }, { status: 500 })
   }
 }

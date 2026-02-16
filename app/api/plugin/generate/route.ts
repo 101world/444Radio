@@ -21,6 +21,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
+import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { randomUUID } from 'crypto'
 
 export const maxDuration = 300 // Vercel Pro 5-min limit
@@ -282,7 +283,8 @@ async function generateMusic(userId: string, body: Record<string, unknown>, jobI
   }
 
   if (final.status !== 'succeeded') {
-    return { success: false, error: final.error || `Generation ${final.status}` }
+    console.error('[plugin/music] Prediction failed:', final.error)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
   }
 
   // Extract audio URL
@@ -424,7 +426,8 @@ async function generateEffects(userId: string, body: Record<string, unknown>, jo
   }
 
   if (final.status !== 'succeeded') {
-    return { success: false, error: final.error || 'Effects generation failed' }
+    console.error('[plugin/effects] Prediction failed:', final.error)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
   }
 
   let audioUrl = extractUrl(final.output)
@@ -494,7 +497,8 @@ async function generateLoops(userId: string, body: Record<string, unknown>, jobI
   }
 
   if (final.status !== 'succeeded') {
-    return { success: false, error: final.error || 'Loop generation failed' }
+    console.error('[plugin/loops] Prediction failed:', final.error)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
   }
 
   const output = final.output as Record<string, string | null>
@@ -577,7 +581,8 @@ async function generateStems(userId: string, body: Record<string, unknown>, jobI
   }
 
   if (final.status !== 'succeeded') {
-    return { success: false, error: final.error || 'Stem splitting failed or timed out' }
+    console.error('[plugin/stems] Prediction failed:', final.error)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
   }
 
   // Parse output: grab every key that has an HTTP audio URL (skip nulls/json)
@@ -687,7 +692,8 @@ async function generateExtract(userId: string, body: Record<string, unknown>, jo
   }
 
   if (final.status !== 'succeeded') {
-    return { success: false, error: final.error || 'Stem extraction failed' }
+    console.error('[plugin/extract] Prediction failed:', final.error)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
   }
 
   const output = final.output as Record<string, string | null>
@@ -838,7 +844,10 @@ async function generateAudioBoost(userId: string, body: Record<string, unknown>,
   let prediction = await createRes.json()
   await updatePluginJob(jobId, { replicatePredictionId: prediction.id })
 
-  if (prediction.error) return { success: false, error: `Replicate: ${prediction.error}` }
+  if (prediction.error) {
+    console.error('[plugin/audio-boost] Prediction error:', prediction.error)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
+  }
 
   let pollAttempts = 0
   while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && prediction.status !== 'canceled' && pollAttempts < 60) {
@@ -850,7 +859,10 @@ async function generateAudioBoost(userId: string, body: Record<string, unknown>,
     pollAttempts++
   }
 
-  if (prediction.status !== 'succeeded') return { success: false, error: prediction.error || 'Audio boost failed' }
+  if (prediction.status !== 'succeeded') {
+    console.error('[plugin/audio-boost] Prediction failed:', prediction.error)
+    return { success: false, error: SAFE_ERROR_MESSAGE }
+  }
 
   const replicateUrl = typeof prediction.output === 'string' ? prediction.output : prediction.output?.url || prediction.output?.[0]
   if (!replicateUrl) return { success: false, error: 'No output from audio boost' }
@@ -943,7 +955,10 @@ async function generateVideoToAudio(userId: string, body: Record<string, unknown
         pollAttempts++
       }
 
-      if (final.status === 'failed') throw new Error(typeof final.error === 'string' ? final.error : 'Generation failed')
+      if (final.status === 'failed') {
+        console.error('[plugin/video-to-audio] Prediction failed:', final.error)
+        throw new Error('Generation failed')
+      }
       if (final.status !== 'succeeded') throw new Error('Timed out')
 
       output = final.output
@@ -955,11 +970,11 @@ async function generateVideoToAudio(userId: string, body: Record<string, unknown
         await new Promise(r => setTimeout(r, attempt * 3000))
         continue
       }
-      if (attempt === maxRetries) return { success: false, error: lastError }
+      if (attempt === maxRetries) return { success: false, error: SAFE_ERROR_MESSAGE }
     }
   }
 
-  if (!output) return { success: false, error: lastError || 'No output' }
+  if (!output) return { success: false, error: SAFE_ERROR_MESSAGE }
 
   const outputUrl = typeof output === 'string' ? output : output?.url || output?.[0]
   if (!outputUrl) return { success: false, error: 'No output URL from model' }

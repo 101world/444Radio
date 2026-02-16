@@ -4,6 +4,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { logBoostGeneration, updateBoostLog } from '@/lib/boost-logs'
+import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 2 minutes for audio boost processing
 export const maxDuration = 120
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({ userId, amount: -BOOST_COST, type: 'generation_audio_boost', status: 'failed', description: `Audio Boost`, metadata: { bass_boost, treble_boost, volume_boost } })
-      return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
+      return corsResponse(NextResponse.json({ error: sanitizeCreditError(errorMsg) }, { status: 402 }))
     }
     console.log(`✅ Credit deducted. Remaining: ${deductResult.new_credits}`)
     await logCreditTransaction({ userId, amount: -BOOST_COST, balanceAfter: deductResult.new_credits, type: 'generation_audio_boost', description: `Audio Boost`, metadata: { bass_boost, treble_boost, volume_boost, bitrate, output_format } })
@@ -167,7 +168,8 @@ export async function POST(req: NextRequest) {
       }
 
       if (prediction.error) {
-        throw new Error(`Replicate error: ${typeof prediction.error === 'string' ? prediction.error : JSON.stringify(prediction.error)}`)
+        console.error('[audio-boost] Prediction error:', prediction.error)
+        throw new Error(SAFE_ERROR_MESSAGE)
       }
 
       // Step 2: Poll if not yet completed (Prefer: wait may timeout)
@@ -186,18 +188,20 @@ export async function POST(req: NextRequest) {
 
       if (prediction.status === 'failed' || prediction.status === 'canceled') {
         const errMsg = typeof prediction.error === 'string' ? prediction.error : JSON.stringify(prediction.error) || 'Audio boost failed'
+        console.error('[audio-boost] Prediction failed:', errMsg)
         if (boostLogId) {
           await updateBoostLog(boostLogId, { status: prediction.status as 'failed' | 'canceled', errorMessage: errMsg })
         }
-        throw new Error(errMsg)
+        throw new Error(SAFE_ERROR_MESSAGE)
       }
 
       if (prediction.status !== 'succeeded') {
         const errMsg = `Audio boost timed out after ${pollAttempts}s (status: ${prediction.status})`
+        console.error('[audio-boost]', errMsg)
         if (boostLogId) {
           await updateBoostLog(boostLogId, { status: 'failed', errorMessage: errMsg })
         }
-        throw new Error(errMsg)
+        throw new Error(SAFE_ERROR_MESSAGE)
       }
 
       // Step 3: Extract output URL
@@ -210,10 +214,11 @@ export async function POST(req: NextRequest) {
 
       if (!replicateOutputUrl || typeof replicateOutputUrl !== 'string') {
         const errMsg = `No output URL from Audio Boost. Raw output: ${JSON.stringify(prediction.output)}`
+        console.error('[audio-boost]', errMsg)
         if (boostLogId) {
           await updateBoostLog(boostLogId, { status: 'failed', errorMessage: errMsg })
         }
-        throw new Error(errMsg)
+        throw new Error(SAFE_ERROR_MESSAGE)
       }
 
       console.log('✅ Audio Boost output:', replicateOutputUrl)
@@ -331,10 +336,8 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Audio Boost error:', error)
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return corsResponse(NextResponse.json(
-      { error: `Failed to boost audio: ${errorMessage}` },
+      { error: SAFE_ERROR_MESSAGE },
       { status: 500 }
     ))
   }

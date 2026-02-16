@@ -1065,7 +1065,7 @@ export default function PluginPage() {
           setShowPostGenModal(true)
         } else {
           setMessages(prev => prev.map(msg =>
-            msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Generation failed'}` } : msg
+            msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
           ))
           refreshCredits()
         }
@@ -1121,13 +1121,13 @@ export default function PluginPage() {
           }])
         } else {
           setMessages(prev => prev.map(msg =>
-            msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Image generation failed'}` } : msg
+            msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
           ))
           refreshCredits()
         }
       } catch {
         setMessages(prev => prev.map(msg =>
-          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ Generation failed.' } : msg
+          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
         ))
       } finally {
         setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
@@ -1174,12 +1174,12 @@ export default function PluginPage() {
           setShowPostGenModal(true)
         } else {
           setMessages(prev => prev.map(msg =>
-            msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Failed'}` } : msg
+            msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
           ))
         }
       } catch {
         setMessages(prev => prev.map(msg =>
-          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ Generation failed.' } : msg
+          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
         ))
       } finally {
         setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
@@ -1238,12 +1238,12 @@ export default function PluginPage() {
           }
         } else {
           setMessages(prev => prev.map(msg =>
-            msg.id === genMsgId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Loops generation failed'}` } : msg
+            msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
           ))
         }
       } catch {
         setMessages(prev => prev.map(msg =>
-          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ Loops generation failed.' } : msg
+          msg.id === genMsgId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
         ))
       } finally {
         setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
@@ -1296,13 +1296,13 @@ export default function PluginPage() {
         if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
       } else {
         setMessages(prev => prev.map(msg =>
-          msg.id === processingId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Stem splitting failed'}` } : msg
+          msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
         ))
       }
     } catch (err: any) {
       if (err?.name === 'AbortError') return
       setMessages(prev => prev.map(msg =>
-        msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ Stem splitting failed.' } : msg
+        msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
       ))
     } finally {
       abortControllersRef.current.delete(processingId)
@@ -1354,12 +1354,12 @@ export default function PluginPage() {
         if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
       } else {
         setMessages(prev => prev.map(msg =>
-          msg.id === processingId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Boost failed'}` } : msg
+          msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
         ))
       }
     } catch {
       setMessages(prev => prev.map(msg =>
-        msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ Boost failed.' } : msg
+        msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
       ))
     } finally { refreshCredits() }
   }
@@ -1496,12 +1496,12 @@ export default function PluginPage() {
         if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
       } else {
         setMessages(prev => prev.map(msg =>
-          msg.id === processingId ? { ...msg, isGenerating: false, content: `❌ ${result?.error || 'Processing failed'}` } : msg
+          msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
         ))
       }
     } catch (err: any) {
       setMessages(prev => prev.map(msg =>
-        msg.id === processingId ? { ...msg, isGenerating: false, content: `❌ ${err?.message || 'Processing failed'}` } : msg
+        msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
       ))
     } finally { refreshCredits() }
   }

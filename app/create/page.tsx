@@ -442,7 +442,7 @@ function CreatePageContent() {
                     ...msg,
                     isGenerating: false,
                     content: gen.status === 'failed' 
-                      ? `❌ ${gen.error || 'Generation failed'}` 
+                      ? '❌ 444 Radio locking in. Please try again.' 
                       : (gen.type === 'music' ? '✅ Track generated!' : 
                          gen.type === 'effects' ? '✅ Effects generated!' : 
                          gen.type === 'image' ? '✅ Image generated!' : 
@@ -1071,7 +1071,7 @@ function CreatePageContent() {
             ? {
                 ...msg,
                 isGenerating: false,
-                content: result.error ? `❌ ${result.error}` : (type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
+                content: result.error ? '❌ 444 Radio locking in. Please try again.' : (type === 'music' ? '✅ Track generated!' : '✅ Cover art generated!'),
                 result: result.error ? undefined : result
               }
             : msg
