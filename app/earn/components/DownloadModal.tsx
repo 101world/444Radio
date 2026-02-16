@@ -26,7 +26,7 @@ export default function DownloadModal({ track, userCredits, onClose, onConfirm }
   const baseCost = 5
   const artistCut = 1
   const adminCut = 4
-  const stemsCost = 5
+  const stemsCost = 1
   const totalCost = baseCost + (splitStems ? stemsCost : 0)
   const canAfford = userCredits >= totalCost
 

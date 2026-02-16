@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     const baseCost = 5
     const artistShare = 1
     const adminShare = 4
-    const stemsCost = splitStems ? 5 : 0
+    const stemsCost = splitStems ? 1 : 0
     const totalCost = baseCost + stemsCost
 
     // 5. Atomically deduct credits from buyer via RPC (prevents race conditions)

@@ -45,7 +45,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   image: 1,
   effects: 2,
   loops: (p) => ((p.max_duration as number) || 8) <= 10 ? 6 : 7,
-  stems: 5,
+  stems: 1,
   extract: 1,
   'audio-boost': 1,
   'extract-video': 1,
@@ -538,30 +538,34 @@ async function generateLoops(userId: string, body: Record<string, unknown>, jobI
 }
 
 // ──────────────────────────────────────────────────────────────────
-// STEMS  (all-in-one split — mirrors /api/audio/split-stems)
-// Uses harmonix-all model to return ALL stems at once:
-// vocals, drums, bass, piano, guitar, other
+// STEMS  (per-stem or all-in-one split using ryan5453/demucs htdemucs_6s)
+// Output: WAV format for pro DAW import
+// Available stems: vocals, drums, bass, piano, guitar, other
 // ──────────────────────────────────────────────────────────────────
 async function generateStems(userId: string, body: Record<string, unknown>, jobId: string, signal: AbortSignal) {
   const audioUrl = body.audioUrl as string
   if (!audioUrl) return { success: false, error: 'audioUrl required' }
 
   const trackTitle = (body.trackTitle as string) || 'Stem Split'
+  const stem = (body.stem as string) || 'none' // specific stem or 'none' for all
 
   await updatePluginJob(jobId, { status: 'processing' })
 
-  // Use the same all-in-one harmonix model as /api/audio/split-stems
+  // Use ryan5453/demucs htdemucs_6s — 6-stem separation, WAV output
+  const DEMUCS_VERSION = '5a7041cc9b82e5a558fea6b3d7b12dea89625e89da33f0447bd727c2d0ab9e77'
   const prediction = await replicate.predictions.create({
-    version: 'f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e',
+    version: DEMUCS_VERSION,
     input: {
-      music_input: audioUrl,
-      model: 'harmonix-all',
-      sonify: false,
-      visualize: false,
-      audioSeparator: true,
-      include_embeddings: false,
-      audioSeparatorModel: 'Kim_Vocal_2.onnx',
-      include_activations: false,
+      audio: audioUrl,
+      model: 'htdemucs_6s',
+      stem: stem,
+      output_format: 'wav',
+      wav_format: 'int24',
+      clip_mode: 'rescale',
+      shifts: 1,
+      overlap: 0.25,
+      mp3_bitrate: 320,
+      split: true,
     },
   })
 
@@ -610,8 +614,8 @@ async function generateStems(userId: string, body: Record<string, unknown>, jobI
       if (!dlRes.ok) { permanentStems[stemName] = replicateUrl; continue }
       const buffer = Buffer.from(await dlRes.arrayBuffer())
       const safeName = stemName.replace(/[^a-zA-Z0-9_-]/g, '-')
-      const r2Key = `${userId}/stems/${timestamp}-${safeName}.mp3`
-      const r2 = await uploadToR2(buffer, 'audio-files', r2Key, 'audio/mpeg')
+      const r2Key = `${userId}/stems/${timestamp}-${safeName}.wav`
+      const r2 = await uploadToR2(buffer, 'audio-files', r2Key, 'audio/wav')
 
       if (r2.success && r2.url) {
         permanentStems[stemName] = r2.url

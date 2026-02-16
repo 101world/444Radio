@@ -108,7 +108,7 @@ export default function StemSplitModal({
                   <li>• Bass track (bass instruments)</li>
                   <li>• Other track (remaining instruments)</li>
                 </ul>
-                <p className="text-teal-400 font-semibold mt-2">Cost: 5 credits</p>
+                <p className="text-teal-400 font-semibold mt-2">Cost: 1 credit per stem</p>
               </div>
             </div>
           </div>

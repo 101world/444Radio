@@ -74,8 +74,8 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'outputFormat must be mp3 or wav' }, { status: 400 }))
     }
 
-    // Check and deduct credits (stem split costs 5 credits)
-    const STEM_COST = 5
+    // Check and deduct credits (stem split costs 1 credit per stem)
+    const STEM_COST = 1
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -116,8 +116,12 @@ export async function POST(request: Request) {
 
     console.log('🎵 Stem splitting requested by user:', userId)
 
-    // Use cjwbw/demucs model - industry-standard stem separation
+    // Use ryan5453/demucs model — htdemucs_6s with 6-stem support (WAV output)
+    const DEMUCS_VERSION = '5a7041cc9b82e5a558fea6b3d7b12dea89625e89da33f0447bd727c2d0ab9e77'
     const replicate = new Replicate({ auth: token })
+
+    // Accept optional stem parameter for per-stem isolation
+    const stem = (body?.stem as string | undefined) || 'none'
 
     let prediction: any
     let lastError: any = null
@@ -129,13 +133,20 @@ export async function POST(request: Request) {
     const createPrediction = async () => {
       attempt++
       try {
-        console.log('🎵 Starting stem separation (attempt', attempt, ')', { audioUrl, outputFormat })
+        console.log('🎵 Starting stem separation (attempt', attempt, ')', { audioUrl, outputFormat, stem })
         const resp = await replicate.predictions.create({
-          version: 'cjwbw/demucs',
+          version: DEMUCS_VERSION,
           input: {
             audio: audioUrl,
+            model: 'htdemucs_6s',
+            stem: stem,
             output_format: outputFormat,
-            stems: 'all',
+            wav_format: outputFormat === 'wav' ? 'int24' : undefined,
+            clip_mode: 'rescale',
+            shifts: 1,
+            overlap: 0.25,
+            mp3_bitrate: 320,
+            split: true,
           },
         })
         console.log('✅ Prediction created:', resp?.id)

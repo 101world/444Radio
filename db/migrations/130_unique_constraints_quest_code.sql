@@ -13,7 +13,7 @@ BEGIN
     WHERE id IN (
       SELECT id FROM (
         SELECT id, ROW_NUMBER() OVER (
-          PARTITION BY user_id, quest_id ORDER BY created_at ASC
+          PARTITION BY user_id, quest_id ORDER BY completed_at ASC
         ) as rn
         FROM quest_completions
       ) dupes

@@ -13,6 +13,8 @@ import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLang
 import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
 import PluginGenerationQueue from '@/app/components/PluginGenerationQueue'
 import PluginPostGenModal from '@/app/components/PluginPostGenModal'
+import SplitStemsModal from '@/app/components/SplitStemsModal'
+import type { StemType } from '@/app/components/SplitStemsModal'
 
 // ─── Types (mirrored from create page) ──────────────────────────
 type MessageType = 'user' | 'assistant' | 'generation'
@@ -137,7 +139,7 @@ const FEATURES = [
   { key: 'loops', icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops', color: 'cyan', cost: 6 },
   { key: 'image', icon: ImageIcon, label: 'Cover Art', desc: 'AI album artwork', color: 'cyan', cost: 1 },
   { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 2 },
-  { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 5 },
+  { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 1 },
   { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
   { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1 },
   { key: 'autotune', icon: Zap, label: 'Autotune', desc: 'Pitch correct to any key', color: 'purple', cost: 1 },
@@ -239,6 +241,15 @@ export default function PluginPage() {
 
   // ── Stem splitting ──
   const [isSplittingStems, setIsSplittingStems] = useState(false)
+  // New: modal-based per-stem splitting
+  const [showSplitStemsModal, setShowSplitStemsModal] = useState(false)
+  const [splitStemsAudioUrl, setSplitStemsAudioUrl] = useState<string | null>(null)
+  const [splitStemsTrackTitle, setSplitStemsTrackTitle] = useState<string>('')
+  const [splitStemsMessageId, setSplitStemsMessageId] = useState<string | null>(null)
+  const [splitStemsProcessing, setSplitStemsProcessing] = useState<'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other' | null>(null)
+  const [splitStemsCompleted, setSplitStemsCompleted] = useState<Record<string, string>>({})
+  const [stemPlayingId, setStemPlayingId] = useState<string | null>(null)
+  const stemAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // ── Upload Media Modal (mirrors MediaUploadModal from create page) ──
   const [showUploadModal, setShowUploadModal] = useState(false)
@@ -1258,55 +1269,106 @@ export default function PluginPage() {
     }
   }
 
-  // ═══ STEM SPLITTING ═══
+  // ═══ STEM SPLITTING (modal-based, per-stem) ═══
   const handleSplitStems = async (audioUrl: string, messageId: string) => {
-    if (userCredits !== null && userCredits < 5) {
-      alert(`⚡ Need 5 credits for stems, have ${userCredits}.`)
+    setSplitStemsAudioUrl(audioUrl)
+    setSplitStemsMessageId(messageId)
+    setSplitStemsTrackTitle(
+      messages.find(m => m.id === messageId)?.result?.title || 'Audio Track'
+    )
+    setSplitStemsCompleted({})
+    setSplitStemsProcessing(null)
+    setShowSplitStemsModal(true)
+  }
+
+  // Handle individual stem split from modal
+  const handleSplitSingleStem = async (stem: StemType) => {
+    if (!splitStemsAudioUrl) return
+    if (userCredits !== null && userCredits < 1) {
+      alert(`⚡ Need 1 credit for stem split, have ${userCredits}.`)
       return
     }
+    setSplitStemsProcessing(stem)
     setIsSplittingStems(true)
-    const processingId = `${messageId}-stems`
-    setMessages(prev => [...prev, {
-      id: processingId, type: 'assistant',
-      content: '🎵 Splitting stems... This may take 1-2 minutes.',
-      timestamp: new Date(), isGenerating: true
-    }])
-    const abort = new AbortController()
-    abortControllersRef.current.set(processingId, abort)
 
     try {
-      const res = await fetch('/api/plugin/generate', {
+      const res = await fetch('/api/audio/split-stems', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ type: 'stems', audioUrl }),
-        signal: abort.signal
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioUrl: splitStemsAudioUrl, stem }),
       })
-      let result: any = null
-      await parseNDJSON(res, () => {}, (r) => { result = r }, abort.signal)
 
-      if (result?.success && result.stems) {
-        setMessages(prev => prev.map(msg =>
-          msg.id === processingId ? {
-            ...msg, isGenerating: false,
-            content: `✅ Stems separated! Used ${result.creditsDeducted || 5} credits.`,
-            stems: result.stems
-          } : msg
-        ))
-        if (result.creditsRemaining !== undefined) setUserCredits(result.creditsRemaining)
-      } else {
-        setMessages(prev => prev.map(msg =>
-          msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
-        ))
+      // Parse NDJSON stream
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No response stream')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let data: any = null
+
+      const processLine = (line: string) => {
+        if (!line.trim()) return
+        try {
+          const parsed = JSON.parse(line)
+          if (parsed.type === 'result') data = parsed
+        } catch {}
+      }
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) processLine(line)
+      }
+      if (buffer.trim()) {
+        for (const line of buffer.split('\n')) processLine(line)
+      }
+      reader.releaseLock()
+
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Stem splitting failed')
+      }
+
+      if (data.creditsRemaining !== undefined) setUserCredits(data.creditsRemaining)
+      refreshCredits()
+
+      // Merge completed stems
+      setSplitStemsCompleted(prev => ({ ...prev, ...data.stems }))
+
+      // Also persist to message stems
+      if (splitStemsMessageId) {
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === splitStemsMessageId) {
+            return { ...msg, stems: { ...(msg.stems || {}), ...data.stems } }
+          }
+          return msg
+        }))
       }
     } catch (err: any) {
       if (err?.name === 'AbortError') return
-      setMessages(prev => prev.map(msg =>
-        msg.id === processingId ? { ...msg, isGenerating: false, content: '❌ 444 Radio locking in. Please try again.' } : msg
-      ))
+      console.error('Stem split error:', err)
+      alert(`❌ ${err?.message || '444 Radio locking in. Please try again.'}`)
     } finally {
-      abortControllersRef.current.delete(processingId)
+      setSplitStemsProcessing(null)
       setIsSplittingStems(false)
       refreshCredits()
+    }
+  }
+
+  // Play/pause stem audio in modal
+  const handlePlayStemInModal = (stemKey: string, url: string, label: string) => {
+    if (stemPlayingId === stemKey) {
+      stemAudioRef.current?.pause()
+      setStemPlayingId(null)
+    } else {
+      if (stemAudioRef.current) stemAudioRef.current.pause()
+      const audio = new Audio(url)
+      audio.onended = () => setStemPlayingId(null)
+      audio.play()
+      stemAudioRef.current = audio
+      setStemPlayingId(stemKey)
     }
   }
 
@@ -2379,7 +2441,7 @@ export default function PluginPage() {
                       <button onClick={() => handleSplitStems(msg.result!.audioUrl!, msg.id)} disabled={isSplittingStems}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-50 relative overflow-hidden"
                         style={{ background: 'rgba(160,80,255,0.07)', border: '1px solid rgba(160,80,255,0.2)', color: 'rgba(200,160,255,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 12px rgba(160,80,255,0.06), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
-                        <Scissors size={12} /> Stems <span className="text-[10px]" style={{color:'rgba(255,255,255,0.35)'}}>(-5)</span>
+                        <Scissors size={12} /> Stems <span className="text-[10px]" style={{color:'rgba(255,255,255,0.35)'}}>(-1)</span>
                       </button>
                       {/* Import to DAW — sends URL to C++ for native timeline import */}
                       {isInDAW && (
@@ -3542,6 +3604,30 @@ export default function PluginPage() {
         onCreditsChange={(credits) => setUserCredits(credits)}
         onPlayPause={(messageId, audioUrl, title, prompt) => handlePlayPause(messageId, audioUrl, title, prompt)}
         playingId={playingId}
+      />
+
+      {/* ── Split Stems Modal — per-stem isolation with WAV output ── */}
+      <SplitStemsModal
+        isOpen={showSplitStemsModal}
+        onClose={() => {
+          setShowSplitStemsModal(false)
+          if (stemAudioRef.current) { stemAudioRef.current.pause(); stemAudioRef.current = null }
+          setStemPlayingId(null)
+        }}
+        audioUrl={splitStemsAudioUrl || ''}
+        trackTitle={splitStemsTrackTitle}
+        onSplitStem={handleSplitSingleStem}
+        processingStem={splitStemsProcessing}
+        completedStems={splitStemsCompleted}
+        onPlayStem={handlePlayStemInModal}
+        playingId={stemPlayingId}
+        onImportToDAW={isInDAW ? (url, title) => {
+          const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'stem'
+          sendBridgeMessage({ action: 'import_audio', url, title: safeName, format: 'wav' })
+          showBridgeToast(`✅ Importing ${safeName}.wav to DAW`)
+        } : undefined}
+        isInDAW={isInDAW}
+        userCredits={userCredits}
       />
 
       {/* ── Global Styles (no style jsx — regular style tag) ── */}

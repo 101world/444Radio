@@ -16,7 +16,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const STEM_SPLIT_COST = 5
+// New: 1 credit per individual stem split
+const STEM_SPLIT_COST = 1
+
+// Valid stem choices (maps UI labels → Demucs stem parameter)
+const VALID_STEMS = ['drums', 'bass', 'vocals', 'guitar', 'piano', 'other'] as const
+type StemChoice = typeof VALID_STEMS[number]
+
+// Demucs model version — ryan5453/demucs latest (htdemucs_6s with 6-stem support)
+const DEMUCS_VERSION = '5a7041cc9b82e5a558fea6b3d7b12dea89625e89da33f0447bd727c2d0ab9e77'
 
 // Helper to refund stem credits for failed earn purchases
 async function refundEarnStemCredits(userId: string, earnJobId: string, reason: string) {
@@ -25,8 +33,8 @@ async function refundEarnStemCredits(userId: string, earnJobId: string, reason: 
     const { data: refundUser } = await supabase.from('users').select('credits').eq('clerk_user_id', userId).single()
     const refundedCredits = (refundUser?.credits || 0) + STEM_SPLIT_COST
     await supabase.from('users').update({ credits: refundedCredits }).eq('clerk_user_id', userId)
-    await logCreditTransaction({ userId, amount: STEM_SPLIT_COST, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split ${reason} — refunded ${STEM_SPLIT_COST} credits`, metadata: { earnJobId, reason } })
-    console.log(`[Stem Split] Refunded ${STEM_SPLIT_COST} credits to ${userId} (reason: ${reason})`)
+    await logCreditTransaction({ userId, amount: STEM_SPLIT_COST, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split ${reason} — refunded ${STEM_SPLIT_COST} credit`, metadata: { earnJobId, reason } })
+    console.log(`[Stem Split] Refunded ${STEM_SPLIT_COST} credit to ${userId} (reason: ${reason})`)
   } catch (refundErr) {
     console.error('[Stem Split] Refund failed:', refundErr)
   }
@@ -39,9 +47,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { audioUrl, earnJobId } = await request.json()
+    const body = await request.json()
+    const { audioUrl, stem, earnJobId } = body as { audioUrl?: string; stem?: string; earnJobId?: string }
+
     if (!audioUrl) {
       return NextResponse.json({ error: 'Audio URL required' }, { status: 400 })
+    }
+
+    // Validate stem choice
+    if (!stem || !VALID_STEMS.includes(stem as StemChoice)) {
+      return NextResponse.json({ 
+        error: `Invalid stem. Choose one of: ${VALID_STEMS.join(', ')}` 
+      }, { status: 400 })
     }
 
     // If earnJobId is provided, this was already paid for via earn purchase — skip credit deduction
@@ -84,7 +101,7 @@ export async function POST(request: Request) {
 
     if (!skipCreditDeduction && userData.credits < STEM_SPLIT_COST) {
       return NextResponse.json({ 
-        error: `Insufficient credits. Need ${STEM_SPLIT_COST} credits but have ${userData.credits}` 
+        error: `Insufficient credits. Need ${STEM_SPLIT_COST} credit but have ${userData.credits}` 
       }, { status: 402 })
     }
 
@@ -92,17 +109,17 @@ export async function POST(request: Request) {
     let deductResult: { success: boolean; new_credits: number; error_message?: string | null } | null = null
     if (!skipCreditDeduction) {
       const { data: deductResultRaw } = await supabase
-        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST, p_type: 'generation_stem_split', p_description: 'Stem split' })
+        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST, p_type: 'generation_stem_split', p_description: `Stem split: ${stem}` })
         .single()
       deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
       if (!deductResult?.success) {
         const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
         console.error('❌ Credit deduction blocked:', errorMsg)
-        await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, type: 'generation_stem_split', status: 'failed', description: 'Stem split', metadata: {} })
+        await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, type: 'generation_stem_split', status: 'failed', description: `Stem split: ${stem}`, metadata: {} })
         return NextResponse.json({ error: errorMsg }, { status: 402 })
       }
       console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-      await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: 'Stem split', metadata: {} })
+      await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem split: ${stem}`, metadata: { stem } })
     }
 
     // Stream prediction ID to client for cancellation, then process result
@@ -118,33 +135,35 @@ export async function POST(request: Request) {
     const requestSignal = request.signal
 
     // Return streaming response IMMEDIATELY — do all slow work inside the IIFE
-    // This prevents Vercel 504 from slow Replicate cold-starts
     ;(async () => {
       try {
         // Send initial heartbeat so client knows the stream is alive
         await sendLine({ type: 'progress', status: 'starting', elapsed: 0 })
 
-        // Create Replicate prediction (can take 5-30s on cold start)
+        // Create Replicate prediction with ryan5453/demucs (htdemucs_6s)
+        // This model supports per-stem isolation: drums, bass, vocals, guitar, piano, other
         const prediction = await replicate.predictions.create({
-          version: "f2a8516c9084ef460592deaa397acd4a97f60f18c3d15d273644c72500cdff0e",
+          version: DEMUCS_VERSION,
           input: {
-            music_input: audioUrl,
-            model: "harmonix-all",
-            sonify: false,
-            visualize: false,
-            audioSeparator: true,
-            include_embeddings: false,
-            audioSeparatorModel: "Kim_Vocal_2.onnx",
-            include_activations: false
+            audio: audioUrl,
+            model: 'htdemucs_6s',
+            stem: stem === 'other' ? 'none' : stem,  // 'none' returns all stems; specific stem isolates it
+            output_format: 'wav',
+            wav_format: 'int24',
+            clip_mode: 'rescale',
+            shifts: 1,
+            overlap: 0.25,
+            mp3_bitrate: 320,
+            split: true,
           }
         })
 
         await sendLine({ type: 'started', predictionId: prediction.id })
 
-        // Poll for result — 60s hard timeout, cancel prediction if exceeded
+        // Poll for result — 120s hard timeout for WAV processing
         let finalPrediction = prediction
         let attempts = 0
-        const MAX_POLL_ATTEMPTS = 12 // 12 × 5s = 60s max
+        const MAX_POLL_ATTEMPTS = 24 // 24 × 5s = 120s max
         while (
           finalPrediction.status !== 'succeeded' &&
           finalPrediction.status !== 'failed' &&
@@ -157,7 +176,7 @@ export async function POST(request: Request) {
             if (skipCreditDeduction && earnJobId) {
               await refundEarnStemCredits(userId, earnJobId, 'client_disconnected')
             }
-            await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: 'Stem split cancelled', metadata: { reason: 'client_disconnected' } })
+            await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split cancelled: ${stem}`, metadata: { reason: 'client_disconnected' } })
             await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: skipCreditDeduction }).catch(() => {})
             await writer.close().catch(() => {})
             return
@@ -169,7 +188,7 @@ export async function POST(request: Request) {
           await sendLine({ type: 'progress', status: finalPrediction.status, elapsed: attempts * 5 }).catch(() => {})
         }
 
-        // If timed out (still processing after 60s), cancel the prediction to stop billing
+        // If timed out, cancel the prediction to stop billing
         if (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && finalPrediction.status !== 'canceled') {
           console.log(`[Stem Split] ⏰ Timeout after ${attempts * 5}s, cancelling prediction:`, prediction.id)
           try { await replicate.predictions.cancel(prediction.id) } catch (cancelErr) {
@@ -178,8 +197,8 @@ export async function POST(request: Request) {
           if (skipCreditDeduction && earnJobId) {
             await refundEarnStemCredits(userId, earnJobId, 'timeout')
           }
-          await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: 'Stem split timed out (60s limit)', metadata: { reason: 'timeout', predictionId: prediction.id } })
-          await sendLine({ type: 'result', success: false, error: 'Stem splitting timed out after 60 seconds. The model may be overloaded — please try again later.', refunded: skipCreditDeduction })
+          await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split timed out: ${stem}`, metadata: { reason: 'timeout', predictionId: prediction.id } })
+          await sendLine({ type: 'result', success: false, error: 'Stem splitting timed out. The model may be overloaded — please try again later.', refunded: skipCreditDeduction })
           await writer.close()
           return
         }
@@ -197,38 +216,41 @@ export async function POST(request: Request) {
           if (skipCreditDeduction && earnJobId) {
             await refundEarnStemCredits(userId, earnJobId, 'failed')
           }
-          await sendLine({ type: 'result', success: false, error: 'Stem split failed or timed out', refunded: skipCreditDeduction })
+          await sendLine({ type: 'result', success: false, error: 'Stem split failed', refunded: skipCreditDeduction })
           await writer.close()
           return
         }
 
-        const raw = finalPrediction.output ?? finalPrediction
+        // Extract the requested stem URL from output
+        // Demucs returns: { bass, drums, guitar, other, piano, vocals } — each key is url or null
+        const raw = finalPrediction.output as Record<string, string | null> | null
+        if (!raw) {
+          await sendLine({ type: 'result', success: false, error: 'No output returned from model.' })
+          await writer.close()
+          return
+        }
 
-        // Simple: grab every key that has an audio URL, skip nulls/json/non-strings
-        const stems: Record<string, string> = {}
-        for (const [key, value] of Object.entries(raw || {})) {
-          if (typeof value === 'string' && value.startsWith('http') && !value.includes('.json')) {
-            let name = key.replace(/^(demucs_|mdx_)/, '')
-            if (stems[name]) {
-              name = `${name} 2`
-            }
-            stems[name] = value
+        // Collect only non-null stem URLs from the output
+        const outputStems: Record<string, string> = {}
+        for (const [key, value] of Object.entries(raw)) {
+          if (typeof value === 'string' && value.startsWith('http')) {
+            outputStems[key] = value
           }
         }
 
-        if (Object.keys(stems).length === 0) {
+        if (Object.keys(outputStems).length === 0) {
           await sendLine({ type: 'result', success: false, error: 'No stems returned. Try a different audio file.' })
           await writer.close()
           return
         }
 
-        // Download each stem from Replicate and upload to R2 for permanent storage
+        // Download each returned stem from Replicate and upload to R2 for permanent storage
         await sendLine({ type: 'progress', status: 'uploading', elapsed: attempts * 5 + 1 }).catch(() => {})
         const permanentStems: Record<string, string> = {}
         const savedLibraryIds: string[] = []
         const timestamp = Date.now()
 
-        for (const [stemName, replicateUrl] of Object.entries(stems)) {
+        for (const [stemName, replicateUrl] of Object.entries(outputStems)) {
           try {
             const dlRes = await fetch(replicateUrl)
             if (!dlRes.ok) {
@@ -238,9 +260,9 @@ export async function POST(request: Request) {
             }
             const buffer = Buffer.from(await dlRes.arrayBuffer())
             const safeName = stemName.replace(/[^a-zA-Z0-9_-]/g, '-')
-            const r2Key = `${userId}/stems/${timestamp}-${safeName}.mp3`
+            const r2Key = `${userId}/stems/${timestamp}-${safeName}.wav`
 
-            const r2Result = await uploadToR2(buffer, 'audio-files', r2Key, 'audio/mpeg')
+            const r2Result = await uploadToR2(buffer, 'audio-files', r2Key, 'audio/wav')
             if (r2Result.success && r2Result.url) {
               permanentStems[stemName] = r2Result.url
               console.log(`[Stem Split] ✅ ${stemName} → R2:`, r2Result.url)
@@ -261,7 +283,7 @@ export async function POST(request: Request) {
                   genre: 'stem',
                   stem_type: stemName.toLowerCase().replace(/\s+\d+$/, ''),
                   parent_track_id: parentTrack?.id || null,
-                  description: `Stem split from: ${parentTrack?.title || audioUrl}`,
+                  description: `Stem split (${stem}) from: ${parentTrack?.title || audioUrl}`,
                 })
                 .select('id')
                 .single()
@@ -284,6 +306,7 @@ export async function POST(request: Request) {
         await sendLine({
           type: 'result',
           success: true,
+          stem: stem,
           stems: permanentStems,
           libraryIds: savedLibraryIds,
           creditsUsed: skipCreditDeduction ? 0 : STEM_SPLIT_COST,
@@ -302,17 +325,16 @@ export async function POST(request: Request) {
         if (skipCreditDeduction && earnJobId) {
           try {
             await supabase.from('earn_split_jobs').update({ status: 'failed' }).eq('id', earnJobId)
-            // Refund the 5 stem credits to the buyer
             const { data: refundUser } = await supabase.from('users').select('credits').eq('clerk_user_id', userId).single()
             const refundedCredits = (refundUser?.credits || 0) + STEM_SPLIT_COST
             await supabase.from('users').update({ credits: refundedCredits }).eq('clerk_user_id', userId)
-            await logCreditTransaction({ userId, amount: STEM_SPLIT_COST, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split failed — refunded ${STEM_SPLIT_COST} credits`, metadata: { earnJobId, error: String(error).substring(0, 200) } })
-            console.log(`[Stem Split] Refunded ${STEM_SPLIT_COST} credits to ${userId} for failed earn stem split`)
+            await logCreditTransaction({ userId, amount: STEM_SPLIT_COST, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split failed — refunded ${STEM_SPLIT_COST} credit`, metadata: { earnJobId, error: String(error).substring(0, 200) } })
+            console.log(`[Stem Split] Refunded ${STEM_SPLIT_COST} credit to ${userId} for failed stem split`)
           } catch (refundErr) {
             console.error('[Stem Split] Refund failed:', refundErr)
           }
         }
-        await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split failed`, metadata: { error: String(error).substring(0, 200) } })
+        await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split failed: ${stem}`, metadata: { error: String(error).substring(0, 200) } })
         try {
           await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes', refunded: skipCreditDeduction })
           await writer.close()

@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
         {
           lyrics: prompt.substring(0, 600), // Max 600 characters
           style_strength: params?.style_strength ?? 0.8, // 0.0 to 1.0, default 0.8
+          audio_format: 'wav', // WAV output for lossless quality
         }
       )
 
@@ -167,11 +168,11 @@ export async function POST(req: NextRequest) {
     }
 
     const audioBlob = await audioResponse.blob()
-    const audioFile = new File([audioBlob], `${songId}.mp3`, { type: 'audio/mpeg' })
+    const audioFile = new File([audioBlob], `${songId}.wav`, { type: 'audio/wav' })
 
     // Upload to R2
     const { uploadToR2 } = await import('@/lib/r2-upload')
-    const r2Result = await uploadToR2(audioFile, 'audio-files', `${songId}.mp3`)
+    const r2Result = await uploadToR2(audioFile, 'audio-files', `${songId}.wav`)
 
     if (!r2Result.success || !r2Result.url) {
       console.error('Failed to upload to R2:', r2Result.error)

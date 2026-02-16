@@ -86,6 +86,7 @@ export async function POST(request: Request) {
         lyrics: finalLyrics,
         title: finalTitle,
         genre: finalGenre,
+        audio_format: 'wav', // WAV output for lossless quality
       }
     });
 
@@ -175,7 +176,7 @@ export async function POST(request: Request) {
       // Generate unique filename
       const timestamp = Date.now();
       const sanitizedTitle = (finalTitle || 'song').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const filename = `song_${sanitizedTitle}_${timestamp}.mp3`;
+      const filename = `song_${sanitizedTitle}_${timestamp}.wav`;
       
       console.log('☁️ Uploading to R2:', filename);
       const uploadResult = await uploadToR2(audioBuffer, 'audio-files', filename);

@@ -15,6 +15,7 @@ const MediaUploadModal = lazy(() => import('../components/MediaUploadModal'))
 const AudioBoostModal = lazy(() => import('../components/AudioBoostModal'))
 const AutotuneModal = lazy(() => import('../components/AutotuneModal'))
 const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
+const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 import GenerationRecovery from '../components/GenerationRecovery'
@@ -154,6 +155,14 @@ function CreatePageContent() {
   // Stem splitting state
   const [isSplittingStems, setIsSplittingStems] = useState(false)
   const [splitStemsMessageId, setSplitStemsMessageId] = useState<string | null>(null)
+  // New: modal-based per-stem splitting
+  const [showSplitStemsModal, setShowSplitStemsModal] = useState(false)
+  const [splitStemsAudioUrl, setSplitStemsAudioUrl] = useState<string | null>(null)
+  const [splitStemsTrackTitle, setSplitStemsTrackTitle] = useState<string>('')
+  const [splitStemsProcessing, setSplitStemsProcessing] = useState<'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other' | null>(null)
+  const [splitStemsCompleted, setSplitStemsCompleted] = useState<Record<string, string>>({})
+  const [stemPlayingId, setStemPlayingId] = useState<string | null>(null)
+  const stemAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Abort controllers for cancellable generations
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
@@ -1451,51 +1460,49 @@ function CreatePageContent() {
     }
   }
 
-  // Handle stem splitting
+  // Handle stem splitting — opens modal for per-stem selection
   const handleSplitStems = async (audioUrl: string, messageId: string) => {
-    // Check credits before splitting (stem splitting costs 5 credits)
-    if (userCredits !== null && userCredits < 5) {
-      alert(`⚡ Insufficient credits! You need 5 credits to split stems but only have ${userCredits}. Visit the pricing page to get more.`)
+    setSplitStemsAudioUrl(audioUrl)
+    setSplitStemsMessageId(messageId)
+    setSplitStemsTrackTitle(
+      messages.find(m => m.id === messageId)?.result?.title || 'Audio Track'
+    )
+    setSplitStemsCompleted({})
+    setSplitStemsProcessing(null)
+    setShowSplitStemsModal(true)
+  }
+
+  // Handle individual stem split from modal
+  const handleSplitSingleStem = async (stem: 'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other') => {
+    if (!splitStemsAudioUrl || !splitStemsMessageId) return
+    
+    // Check credits (1 credit per stem)
+    if (userCredits !== null && userCredits < 1) {
+      alert(`⚡ Insufficient credits! You need 1 credit to split a stem but only have ${userCredits}.`)
       return
     }
 
+    setSplitStemsProcessing(stem)
     setIsSplittingStems(true)
-    setSplitStemsMessageId(messageId)
 
-    // Add to GenerationQueue instead of localStorage
     const genId = addGeneration({
       type: 'stem-split',
-      prompt: `Stem split: ${audioUrl}`,
-      title: 'Stem Separation'
+      prompt: `Split ${stem} from: ${splitStemsAudioUrl}`,
+      title: `${stem.charAt(0).toUpperCase() + stem.slice(1)} Stem`
     })
-
-    // Update to generating
     updateGeneration(genId, { status: 'generating' })
 
-    // Add "processing" message linked to generation
-    const processingMessage: Message = {
-      id: `${messageId}-stems-processing`,
-      type: 'assistant',
-      content: '🎵 Splitting stems... This may take 1-2 minutes.',
-      timestamp: new Date(),
-      isGenerating: true,
-      generationId: genId
-    }
-    setMessages(prev => [...prev, processingMessage])
-
-    // Create abort controller for stem split
     const abortController = new AbortController()
-    abortControllersRef.current.set(processingMessage.id, abortController)
 
     try {
       const response = await fetch('/api/audio/split-stems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audioUrl }),
+        body: JSON.stringify({ audioUrl: splitStemsAudioUrl, stem }),
         signal: abortController.signal
       })
 
-      // Parse NDJSON stream for prediction ID and result
+      // Parse NDJSON stream
       const reader = response.body?.getReader()
       if (!reader) throw new Error('No response stream')
 
@@ -1507,26 +1514,8 @@ function CreatePageContent() {
         if (!line.trim()) return
         try {
           const parsed = JSON.parse(line)
-          if (parsed.type === 'started' && parsed.predictionId) {
-            predictionIdsRef.current.set(processingMessage.id, parsed.predictionId)
-            console.log('[StemSplit] Stored prediction ID:', parsed.predictionId)
-            if (pendingCancelsRef.current.has(processingMessage.id)) {
-              pendingCancelsRef.current.delete(processingMessage.id)
-              fetch('/api/generate/cancel', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ predictionId: parsed.predictionId })
-              }).catch(() => {})
-              predictionIdsRef.current.delete(processingMessage.id)
-            }
-          } else if (parsed.type === 'result') {
-            data = parsed
-          } else if (parsed.type === 'progress') {
-            console.log('[StemSplit] Progress:', parsed.status, `${parsed.elapsed}s`)
-          }
-        } catch (e) {
-          console.warn('[StemSplit] NDJSON parse skip:', (e as Error).message?.substring(0, 80))
-        }
+          if (parsed.type === 'result') data = parsed
+        } catch {}
       }
 
       while (true) {
@@ -1537,7 +1526,6 @@ function CreatePageContent() {
         buffer = lines.pop() || ''
         for (const line of lines) processLine(line)
       }
-      // Process any remaining buffer lines
       if (buffer.trim()) {
         for (const line of buffer.split('\n')) processLine(line)
       }
@@ -1547,73 +1535,53 @@ function CreatePageContent() {
         throw new Error(data?.error || 'Stem splitting failed')
       }
 
-      // Update credits — optimistic local + context refresh
+      // Update credits
       if (data.creditsRemaining !== undefined) {
         setUserCredits(data.creditsRemaining)
       }
       refreshCredits()
       window.dispatchEvent(new Event('credits:refresh'))
 
-      // Update GenerationQueue with success
-      updateGeneration(genId, {
-        status: 'completed',
-        result: {
-          stems: data.stems,
-          creditsUsed: data.creditsUsed,
-          creditsRemaining: data.creditsRemaining
-        }
-      })
+      updateGeneration(genId, { status: 'completed', result: { stems: data.stems } })
 
-      // Update UI message
-      setMessages(prev => prev.map(msg =>
-        msg.id === processingMessage.id
-          ? {
-              ...msg,
-              content: `✅ Stems separated successfully! Used ${data.creditsUsed || 0} credits. ${data.creditsRemaining || 0} credits remaining.`,
-              isGenerating: false,
-              stems: data.stems || {}
-            }
-          : msg
-      ))
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        console.log('[StemSplit] Aborted by user')
-        return
-      }
-      console.error('Stem splitting error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to split stems. Please try again.'
-      
-      // Update GenerationQueue with error
-      updateGeneration(genId, {
-        status: 'failed',
-        error: errorMessage
-      })
-      
-      setMessages(prev => prev.map(msg =>
-        msg.id === processingMessage.id
-          ? { ...msg, content: `❌ ${errorMessage}`, isGenerating: false }
-          : msg
-      ))
-    } finally {
-      abortControllersRef.current.delete(processingMessage.id)
-      predictionIdsRef.current.delete(processingMessage.id)
-      setIsSplittingStems(false)
-      setSplitStemsMessageId(null)
-      
-      // Safety: ensure the processing message is never stuck in "generating" state
-      // This catches edge cases where stream closes without a result line
-      setMessages(prev => {
-        const msg = prev.find(m => m.id === processingMessage.id)
-        if (msg && msg.isGenerating) {
-          console.warn('[StemSplit] Processing message still in generating state — forcing completion')
-          return prev.map(m =>
-            m.id === processingMessage.id
-              ? { ...m, isGenerating: false, content: m.content.startsWith('❌') ? m.content : '✅ Stem split complete — check your Library > Stems tab.' }
-              : m
-          )
+      // Add completed stems to state — merge with existing
+      setSplitStemsCompleted(prev => ({ ...prev, ...data.stems }))
+
+      // Also add stems to the message for persistence
+      setMessages(prev => prev.map(msg => {
+        if (msg.id === splitStemsMessageId || msg.id === `${splitStemsMessageId}-stems-processing`) {
+          return {
+            ...msg,
+            stems: { ...(msg.stems || {}), ...data.stems }
+          }
         }
-        return prev
-      })
+        return msg
+      }))
+
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      console.error('Stem splitting error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to split stem. Please try again.'
+      updateGeneration(genId, { status: 'failed', error: errorMessage })
+      alert(`❌ ${errorMessage}`)
+    } finally {
+      setSplitStemsProcessing(null)
+      setIsSplittingStems(false)
+    }
+  }
+
+  // Play/pause stem audio in modal
+  const handlePlayStemInModal = (stemKey: string, url: string, label: string) => {
+    if (stemPlayingId === stemKey) {
+      stemAudioRef.current?.pause()
+      setStemPlayingId(null)
+    } else {
+      if (stemAudioRef.current) stemAudioRef.current.pause()
+      const audio = new Audio(url)
+      audio.onended = () => setStemPlayingId(null)
+      audio.play()
+      stemAudioRef.current = audio
+      setStemPlayingId(stemKey)
     }
   }
 
@@ -1901,11 +1869,11 @@ function CreatePageContent() {
                       <button
                         onClick={() => handleSplitStems(message.result!.audioUrl!, message.id)}
                         className="w-full px-6 py-4 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-pink-500/10 border-t border-white/10 text-sm font-medium text-purple-400 flex items-center justify-center gap-2 transition-all"
-                        title="Split audio into vocals and instrumental"
+                        title="Split audio into individual stems (vocals, drums, bass, etc.)"
                       >
                         <Sparkles size={18} />
                         <span>Split Stems</span>
-                        <span className="text-xs text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">5</span>
+                        <span className="text-xs text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full">1/stem</span>
                       </button>
                       <button
                         onClick={() => {
@@ -3556,6 +3524,27 @@ function CreatePageContent() {
             refreshCredits()
             window.dispatchEvent(new Event('credits:refresh'))
           }}
+        />
+      </Suspense>
+
+      {/* Split Stems Modal — per-stem isolation with WAV output */}
+      <Suspense fallback={null}>
+        <SplitStemsModal
+          isOpen={showSplitStemsModal}
+          onClose={() => {
+            setShowSplitStemsModal(false)
+            // Cleanup stem audio playback
+            if (stemAudioRef.current) { stemAudioRef.current.pause(); stemAudioRef.current = null }
+            setStemPlayingId(null)
+          }}
+          audioUrl={splitStemsAudioUrl || ''}
+          trackTitle={splitStemsTrackTitle}
+          onSplitStem={handleSplitSingleStem}
+          processingStem={splitStemsProcessing}
+          completedStems={splitStemsCompleted}
+          onPlayStem={handlePlayStemInModal}
+          playingId={stemPlayingId}
+          userCredits={userCredits}
         />
       </Suspense>
 

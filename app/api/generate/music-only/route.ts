@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { title, prompt, lyrics, duration = 'medium', genre, bpm, bitrate = 256000, sample_rate = 44100, audio_format = 'mp3', language = 'English', audio_length_in_s, num_inference_steps, guidance_scale, denoising_strength, generateCoverArt = false } = await req.json()
+    const { title, prompt, lyrics, duration = 'medium', genre, bpm, bitrate = 256000, sample_rate = 44100, audio_format = 'wav', language = 'English', audio_length_in_s, num_inference_steps, guidance_scale, denoising_strength, generateCoverArt = false } = await req.json()
 
     // Title is REQUIRED (3-100 characters)
     if (!title || typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 100) {
