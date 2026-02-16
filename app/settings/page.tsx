@@ -52,8 +52,6 @@ function SettingsPageInner() {
   const [copiedToken, setCopiedToken] = useState(false)
   const [pluginError, setPluginError] = useState('')
   const [showInstallGuide, setShowInstallGuide] = useState(false)
-  const [hasPluginPurchase, setHasPluginPurchase] = useState(false)
-  const [isCheckingPurchase, setIsCheckingPurchase] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
@@ -115,25 +113,11 @@ function SettingsPageInner() {
     }
   }, [])
 
-  const checkPluginPurchase = useCallback(async () => {
-    try {
-      setIsCheckingPurchase(true)
-      const res = await fetch('/api/plugin/purchase/status')
-      const data = await res.json()
-      if (data.purchased) setHasPluginPurchase(true)
-    } catch {
-      // Ignore
-    } finally {
-      setIsCheckingPurchase(false)
-    }
-  }, [])
-
   useEffect(() => {
     if (activeTab === 'plugin' && user) {
       fetchPluginTokens()
-      checkPluginPurchase()
     }
-  }, [activeTab, user, fetchPluginTokens, checkPluginPurchase])
+  }, [activeTab, user, fetchPluginTokens])
 
   const createPluginToken = async () => {
     try {
@@ -790,11 +774,10 @@ function SettingsPageInner() {
                 The 444 Radio VST3 plugin works inside Ableton Live, FL Studio, and any DAW that supports VST3 on Windows.
               </p>
 
-              {hasPluginPurchase ? (
-                <div className="space-y-3">
+              <div className="space-y-3">
                   <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
                     <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs text-emerald-300">Plugin purchased — unlimited access forever</span>
+                    <span className="text-xs text-emerald-300">Free for all users — deposit $1 to your wallet for access</span>
                   </div>
                   <a
                     href="/api/plugin/download-installer"
@@ -812,29 +795,6 @@ function SettingsPageInner() {
                     View install instructions
                   </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs text-emerald-300">Free for all users — download now!</span>
-                  </div>
-                  <a
-                    href="/api/plugin/download-installer"
-                    onClick={() => setTimeout(() => setShowInstallGuide(true), 500)}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-cyan-400 text-black rounded-xl font-bold text-sm hover:from-cyan-500 hover:to-cyan-300 transition-all shadow-lg shadow-cyan-500/20"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download Plugin v2
-                  </a>
-                  <p className="text-xs text-gray-500">Windows · Standalone + VST3 · 3.8 MB</p>
-                  <button
-                    onClick={() => setShowInstallGuide(true)}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 underline transition-colors"
-                  >
-                    View install instructions
-                  </button>
-                </div>
-              )}
 
               {pluginError && (
                 <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg">

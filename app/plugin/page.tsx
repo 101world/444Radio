@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react'
-import Script from 'next/script'
 import {
   Music, Image as ImageIcon, Send, Loader2, Download, Play, Pause,
   Sparkles, Zap, X, Rocket, PlusCircle, Globe, Mic, MicOff,
@@ -1880,8 +1879,6 @@ export default function PluginPage() {
 
           <p className="text-[11px] text-gray-600">Token is saved locally — you only need to do this once per device</p>
         </div>
-        {/* Razorpay SDK for $4 plugin purchase */}
-        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </div>
     )
   }

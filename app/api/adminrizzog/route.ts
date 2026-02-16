@@ -68,28 +68,31 @@ export async function GET(req: NextRequest) {
           .reduce((sum: number, t: { amount: number }) => sum + (t.amount || 0), 0)
       )
 
-      // Recent credit inflow transactions (subscription_bonus, credit_award, code_claim, plugin_purchase)
+      // Recent credit inflow transactions (wallet_deposit, wallet_conversion, credit_award, code_claim)
       const { data: recentAwards } = await supabase
         .from('credit_transactions')
         .select('*')
-        .in('type', ['subscription_bonus', 'credit_award', 'code_claim', 'credit_refund', 'plugin_purchase'])
+        .in('type', ['wallet_deposit', 'wallet_conversion', 'credit_award', 'code_claim', 'credit_refund'])
         .order('created_at', { ascending: false })
         .limit(50)
 
-      // Plugin purchases summary (graceful if table doesn't exist yet)
-      let pluginPurchases: any[] = []
-      let pluginRevenue = 0
+      // Credit purchases summary (wallet deposits = real money in)
+      let creditPurchases: any[] = []
+      let totalDeposited = 0
       try {
-        const { data: ppData } = await supabase
-          .from('plugin_purchases')
+        const { data: depositTxns } = await supabase
+          .from('credit_transactions')
           .select('*')
-          .eq('status', 'completed')
+          .eq('type', 'wallet_deposit')
           .order('created_at', { ascending: false })
           .limit(50)
-        pluginPurchases = ppData || []
-        pluginRevenue = pluginPurchases.reduce((sum: number, p: any) => sum + ((p.amount || 0) / 100), 0) // cents → dollars
+        creditPurchases = depositTxns || []
+        totalDeposited = creditPurchases.reduce((sum: number, t: any) => {
+          const meta = t.metadata || {}
+          return sum + (parseFloat(meta.amount_usd || meta.deposit_amount || '0'))
+        }, 0)
       } catch {
-        // Table may not exist yet (migration 023)
+        // Table may not exist yet
       }
 
       // Count by media type
@@ -116,9 +119,9 @@ export async function GET(req: NextRequest) {
         paidUsers: subUsersRes.data || [],
         recentTransactions: recentTxnsRes.data || [],
         recentAwards: recentAwards || [],
-        pluginPurchases,
-        pluginRevenue,
-        totalPluginPurchases: pluginPurchases.length,
+        creditPurchases,
+        totalDeposited,
+        totalCreditPurchases: creditPurchases.length,
       })
     }
 

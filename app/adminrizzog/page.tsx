@@ -450,6 +450,58 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
         </div>
       </div>
 
+      {/* ── Credit Purchases (who deposited real $$$) ── */}
+      <div className="bg-gradient-to-br from-green-950/30 via-gray-900/80 to-gray-900/80 border border-green-500/20 rounded-2xl p-6 relative overflow-hidden">
+        <div className="absolute top-3 right-4 text-5xl opacity-10">💳</div>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-xl shadow-lg shadow-green-500/20">
+            💳
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-white tracking-tight uppercase">Credit Purchases</h2>
+            <p className="text-[10px] text-gray-400">Who bought credits (wallet deposits)</p>
+          </div>
+          <div className="ml-auto text-right">
+            <div className="text-xl font-black text-emerald-400">${(data.totalDeposited || 0).toFixed(2)}</div>
+            <div className="text-[10px] text-gray-500">{data.totalCreditPurchases || 0} deposits</div>
+          </div>
+        </div>
+        {(data.creditPurchases || []).length === 0 ? (
+          <p className="text-gray-500 text-sm text-center py-4">No credit purchases yet</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-700/50 text-gray-500 uppercase tracking-wider">
+                  <th className="text-left py-2 px-2">Date</th>
+                  <th className="text-left py-2 px-2">User</th>
+                  <th className="text-right py-2 px-2">Amount</th>
+                  <th className="text-right py-2 px-2">Credits</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.creditPurchases || []).slice(0, 20).map((tx: Transaction) => {
+                  const meta = (tx.metadata || {}) as Record<string, unknown>
+                  const usd = parseFloat((meta.amount_usd || meta.deposit_amount || '0') as string)
+                  return (
+                    <tr key={tx.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
+                      <td className="py-2 px-2 text-gray-500 whitespace-nowrap">{formatDate(tx.created_at)}</td>
+                      <td className="py-2 px-2">
+                        <button onClick={() => onViewUser(tx.user_id)} className="text-cyan-400 hover:text-cyan-300 font-mono text-[10px]">
+                          {tx.user_id.slice(0, 16)}...
+                        </button>
+                      </td>
+                      <td className="py-2 px-2 text-right font-bold text-green-400">${usd.toFixed(2)}</td>
+                      <td className="py-2 px-2 text-right font-bold text-emerald-400">+{tx.amount}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Recent Transactions */}
       <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
         <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">🔄 Recent Transactions</h3>
@@ -488,7 +540,7 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
                       </button>
                     </td>
                     <td className="py-2 px-2">
-                      <Badge text={tx.type} color={tx.type === 'subscription_bonus' ? 'cyan' : tx.type === 'code_claim' ? 'purple' : tx.type === 'credit_refund' ? 'yellow' : 'green'} />
+                      <Badge text={tx.type} color={tx.type === 'wallet_deposit' ? 'green' : tx.type === 'wallet_conversion' ? 'cyan' : tx.type === 'code_claim' ? 'purple' : tx.type === 'credit_refund' ? 'yellow' : 'green'} />
                     </td>
                     <td className="py-2 px-2 text-right font-bold text-emerald-400">+{tx.amount}</td>
                     <td className="py-2 px-2 text-right text-gray-400">{tx.balance_after ?? '—'}</td>

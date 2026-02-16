@@ -37,15 +37,6 @@ export async function GET() {
       .eq('clerk_user_id', userId)
       .single()
 
-    // Check for one-time plugin purchase
-    const { data: purchase } = await supabaseAdmin
-      .from('plugin_purchases')
-      .select('id, created_at')
-      .eq('clerk_user_id', userId)
-      .eq('status', 'completed')
-      .limit(1)
-      .maybeSingle()
-
     const walletBalance = parseFloat(user?.wallet_balance || '0')
     const hasWalletAccess = walletBalance >= 1.0 // $1 minimum for access
 
@@ -54,15 +45,8 @@ export async function GET() {
     let rateLimit: number | null = null // null = unlimited
     let message: string
 
-    // Has one-time plugin purchase → unlimited
-    if (purchase) {
-      accessTier = 'purchased'
-      hasAccess = true
-      rateLimit = null
-      message = 'Unlimited plugin access (purchased)'
-    }
-    // Has $1+ in wallet → full access
-    else if (hasWalletAccess) {
+    // Has $1+ in wallet → full access (plugin is free)
+    if (hasWalletAccess) {
       accessTier = 'wallet'
       hasAccess = true
       rateLimit = null
@@ -72,7 +56,7 @@ export async function GET() {
     else {
       accessTier = 'none'
       hasAccess = false
-      message = 'Plugin requires $1 minimum wallet balance or a one-time purchase.'
+      message = 'Deposit $1 minimum to your wallet for full access.'
     }
 
     return corsResponse(
@@ -81,7 +65,6 @@ export async function GET() {
         hasAccess,
         rateLimit,
         message,
-        hasPurchase: !!purchase,
         walletBalance,
       })
     )
