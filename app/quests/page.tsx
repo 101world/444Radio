@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import {
@@ -10,8 +10,6 @@ import {
   Calendar, Gift, Crown, Swords, ArrowLeft
 } from 'lucide-react'
 import { useCredits } from '../contexts/CreditsContext'
-
-const HolographicBackgroundClient = lazy(() => import('../components/HolographicBackgroundClient'))
 
 // ─── Types ────────────────────────────────────────────────────────
 interface Quest {
@@ -340,27 +338,226 @@ export default function QuestsPage() {
   const passActive = pass && new Date(pass.expires_at) > new Date()
   const passDaysLeft = pass ? Math.max(0, Math.ceil((new Date(pass.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0
 
+  // ── Canvas background ref ─────────────────────────────────────────
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animId: number
+    let w = canvas.width = window.innerWidth
+    let h = canvas.height = window.innerHeight
+
+    // ── Code rain columns (multi-color like reference images) ──
+    const fontSize = 13
+    const cols = Math.ceil(w / fontSize)
+    const drops: number[] = Array.from({ length: cols }, () => Math.random() * -50)
+    const speeds: number[] = Array.from({ length: cols }, () => 0.3 + Math.random() * 0.7)
+    const colors = ['#06b6d4', '#22d3ee', '#a855f7', '#f43f5e', '#f97316', '#10b981', '#3b82f6', '#eab308']
+    const colColors: string[] = Array.from({ length: cols }, () => colors[Math.floor(Math.random() * colors.length)])
+
+    // Characters: code-like symbols + binary + "444"
+    const charSets = [
+      '01{}[]()<>+=;:./\\|!@#$%^&*~',
+      'function(){return}const let var=>async await',
+      '444RADIO0xFFABCDEF',
+      '⚡▶■□◆◇●○►◄▲▼',
+    ]
+    const allChars = charSets.join('')
+
+    // ── Floating circuit nodes ──
+    interface CircuitNode { x: number; y: number; vx: number; vy: number; size: number; color: string; pulse: number }
+    const nodes: CircuitNode[] = Array.from({ length: 40 }, () => ({
+      x: Math.random() * w, y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+      size: 1 + Math.random() * 2.5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      pulse: Math.random() * Math.PI * 2,
+    }))
+
+    // ── Glowing "444" in center ──
+    let frame = 0
+
+    function draw444(t: number) {
+      ctx!.save()
+      const cx = w / 2, cy = h / 2 - 40
+      const size = Math.min(w * 0.35, 220)
+      const alpha = 0.04 + Math.sin(t * 0.002) * 0.015
+
+      // Outer glow
+      ctx!.shadowBlur = 80
+      ctx!.shadowColor = 'rgba(6, 182, 212, 0.3)'
+      ctx!.font = `${size}px "JetBrains Mono", "Fira Code", monospace`
+      ctx!.textAlign = 'center'
+      ctx!.textBaseline = 'middle'
+      ctx!.fillStyle = `rgba(6, 182, 212, ${alpha})`
+      ctx!.fillText('444', cx, cy)
+
+      // Inner bright flash
+      ctx!.shadowBlur = 40
+      ctx!.shadowColor = 'rgba(168, 85, 247, 0.2)'
+      ctx!.fillStyle = `rgba(168, 85, 247, ${alpha * 0.6})`
+      ctx!.fillText('444', cx + 2, cy + 2)
+
+      ctx!.shadowBlur = 0
+      ctx!.restore()
+    }
+
+    function drawCircuits(t: number) {
+      // Move nodes
+      for (const n of nodes) {
+        n.x += n.vx
+        n.y += n.vy
+        n.pulse += 0.02
+        if (n.x < 0 || n.x > w) n.vx *= -1
+        if (n.y < 0 || n.y > h) n.vy *= -1
+      }
+
+      // Draw connections
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x
+          const dy = nodes[i].y - nodes[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 180) {
+            const alpha = (1 - dist / 180) * 0.12
+            ctx!.strokeStyle = `rgba(243, 63, 94, ${alpha})`
+            ctx!.lineWidth = 0.5
+            ctx!.beginPath()
+            // Circuit-style: right angle connections
+            if (Math.random() > 0.5) {
+              ctx!.moveTo(nodes[i].x, nodes[i].y)
+              ctx!.lineTo(nodes[j].x, nodes[i].y)
+              ctx!.lineTo(nodes[j].x, nodes[j].y)
+            } else {
+              ctx!.moveTo(nodes[i].x, nodes[i].y)
+              ctx!.lineTo(nodes[i].x, nodes[j].y)
+              ctx!.lineTo(nodes[j].x, nodes[j].y)
+            }
+            ctx!.stroke()
+          }
+        }
+      }
+
+      // Draw nodes with pulse
+      for (const n of nodes) {
+        const pulseSize = n.size + Math.sin(n.pulse) * 1
+        ctx!.beginPath()
+        ctx!.arc(n.x, n.y, pulseSize, 0, Math.PI * 2)
+        ctx!.fillStyle = n.color.replace(')', ', 0.6)').replace('rgb', 'rgba')
+        ctx!.fill()
+
+        // Glow ring
+        ctx!.beginPath()
+        ctx!.arc(n.x, n.y, pulseSize + 3, 0, Math.PI * 2)
+        ctx!.strokeStyle = n.color.replace(')', ', 0.15)').replace('rgb', 'rgba')
+        ctx!.lineWidth = 1
+        ctx!.stroke()
+      }
+    }
+
+    function drawCodeRain() {
+      // Fade
+      ctx!.fillStyle = 'rgba(0, 0, 0, 0.06)'
+      ctx!.fillRect(0, 0, w, h)
+
+      for (let i = 0; i < cols; i++) {
+        const char = allChars[Math.floor(Math.random() * allChars.length)]
+        const py = drops[i] * fontSize
+
+        // Leading bright char
+        ctx!.fillStyle = '#ffffff'
+        ctx!.font = `${fontSize}px "JetBrains Mono", "Fira Code", monospace`
+        ctx!.globalAlpha = 0.8
+        ctx!.fillText(char, i * fontSize, py)
+
+        // Trail chars in column color
+        ctx!.fillStyle = colColors[i]
+        ctx!.globalAlpha = 0.35
+        ctx!.fillText(char, i * fontSize, py)
+
+        ctx!.globalAlpha = 1
+
+        drops[i] += speeds[i]
+        if (py > h && Math.random() > 0.985) {
+          drops[i] = 0
+          colColors[i] = colors[Math.floor(Math.random() * colors.length)]
+        }
+      }
+    }
+
+    function drawScanLines() {
+      // Horizontal scan lines
+      for (let y = 0; y < h; y += 3) {
+        ctx!.fillStyle = `rgba(255, 255, 255, 0.008)`
+        ctx!.fillRect(0, y, w, 1)
+      }
+
+      // Moving scan line
+      const scanY = (frame * 1.5) % (h + 200) - 100
+      const scanGrad = ctx!.createLinearGradient(0, scanY - 40, 0, scanY + 40)
+      scanGrad.addColorStop(0, 'rgba(6, 182, 212, 0)')
+      scanGrad.addColorStop(0.5, 'rgba(6, 182, 212, 0.04)')
+      scanGrad.addColorStop(1, 'rgba(6, 182, 212, 0)')
+      ctx!.fillStyle = scanGrad
+      ctx!.fillRect(0, scanY - 40, w, 80)
+    }
+
+    function animate() {
+      frame++
+      drawCodeRain()
+      drawCircuits(frame)
+      draw444(frame)
+      drawScanLines()
+      animId = requestAnimationFrame(animate)
+    }
+
+    // Initial black fill
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, w, h)
+    animate()
+
+    const onResize = () => {
+      w = canvas.width = window.innerWidth
+      h = canvas.height = window.innerHeight
+    }
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [])
+
   // ── Render ───────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Animated background */}
-      <Suspense fallback={null}>
-        <HolographicBackgroundClient />
-      </Suspense>
+      {/* Full-screen canvas background: code rain + circuits + 444 */}
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 z-0"
+        style={{ pointerEvents: 'none' }}
+      />
 
-      {/* Cyberpunk grid overlay */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(6,182,212,0.08)_0%,_transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(168,85,247,0.06)_0%,_transparent_60%)]" />
-        <div className="absolute inset-0" style={{
-          backgroundImage: `linear-gradient(rgba(6,182,212,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.03) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px',
-        }} />
-        {/* Scan lines */}
-        <div className="absolute inset-0 opacity-[0.015]" style={{
-          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)`,
-        }} />
+      {/* Gradient overlays for depth */}
+      <div className="fixed inset-0 pointer-events-none z-[1]">
+        {/* Top vignette — dark */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/80" />
+        {/* Center spotlight */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_30%,_rgba(6,182,212,0.06)_0%,_transparent_70%)]" />
+        {/* Red accent glow bottom-right */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_90%,_rgba(244,63,94,0.04)_0%,_transparent_50%)]" />
+        {/* Purple accent top-left */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_10%,_rgba(168,85,247,0.04)_0%,_transparent_50%)]" />
       </div>
+
+      {/* CRT / console overlay effect */}
+      <div className="fixed inset-0 pointer-events-none z-[2] mix-blend-overlay opacity-[0.03]" style={{
+        backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.15) 2px, rgba(255,255,255,0.15) 4px)`,
+      }} />
 
       {/* Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 md:pl-24">
@@ -450,7 +647,7 @@ export default function QuestsPage() {
                 ) : (
                   <Unlock size={16} />
                 )}
-                Activate — 30 Credits ($1)
+                Activate — 1 Credit
               </button>
             )}
           </div>
@@ -562,7 +759,7 @@ export default function QuestsPage() {
               <h2 className="text-white font-bold text-sm uppercase tracking-wider mb-3">How It Works</h2>
               <ol className="space-y-2.5 text-gray-400 text-xs">
                 {[
-                  'Purchase a Quest Pass (30 credits / $1)',
+                  'Purchase a Quest Pass (1 credit)',
                   'Browse and start available quests',
                   'Complete challenges by using the platform',
                   'Claim your credit rewards',

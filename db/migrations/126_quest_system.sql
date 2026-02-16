@@ -3,12 +3,18 @@
 -- ============================================================
 -- Creates tables for the 444Radio quest/challenge system:
 --   1. quests            – Admin-defined quest templates
---   2. quest_passes      – User $1 entry passes (30-day)
+--   2. quest_passes      – User 1-credit entry passes (30-day)
 --   3. user_quests       – User progress on individual quests
 --   4. quest_completions – Immutable completion log
 --
--- Also adds 'quest_entry' and 'quest_reward' types to the
--- credit_transactions type constraint (if applicable).
+-- Quest passes cost 1 credit (deducted from user balance).
+-- Quest rewards add credits (logged as 'quest_reward' in credit_transactions).
+-- Both count toward the 444 billion admin wallet allocation in the dashboard.
+-- 
+-- All credit purchases (Razorpay/Stripe) flow to the 444 billion allocation,
+-- NOT to personal admin wallets.
+--
+-- Date: 2026-02-16
 -- ============================================================
 
 -- 1. QUESTS — admin-created quest definitions
@@ -28,14 +34,14 @@ CREATE TABLE IF NOT EXISTS quests (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2. QUEST PASSES — $1 entry, 30-day window
+-- 2. QUEST PASSES — 1 credit entry, 30-day window
 CREATE TABLE IF NOT EXISTS quest_passes (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       TEXT NOT NULL,          -- clerk_user_id
   purchased_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at    TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '30 days'),
   is_active     BOOLEAN NOT NULL DEFAULT true,
-  transaction_id UUID,                  -- FK to credit_transactions if desired
+  credits_spent INT NOT NULL DEFAULT 1, -- Cost in credits (default 1)
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -80,6 +86,12 @@ ALTER TABLE user_quests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quest_completions ENABLE ROW LEVEL SECURITY;
 
 -- Policies: users can read quests, own passes/progress
+-- Use DROP IF EXISTS to make migration re-runnable
+DROP POLICY IF EXISTS "Anyone can read active quests" ON quests;
+DROP POLICY IF EXISTS "Users read own passes" ON quest_passes;
+DROP POLICY IF EXISTS "Users read own quests" ON user_quests;
+DROP POLICY IF EXISTS "Users read own completions" ON quest_completions;
+
 CREATE POLICY "Anyone can read active quests"
   ON quests FOR SELECT USING (is_active = true);
 
@@ -95,24 +107,72 @@ CREATE POLICY "Users read own completions"
 -- Grant service-role full access (API routes use service key)
 -- No additional grants needed since service role bypasses RLS.
 
--- Seed initial quests (admin can edit later)
-INSERT INTO quests (title, description, quest_type, requirement, credits_reward, is_active) VALUES
+-- ============================================================
+-- ADD QUEST TYPES TO CREDIT_TRANSACTIONS CONSTRAINT
+-- ============================================================
+DO $$
+BEGIN
+  -- Drop existing constraint
+  IF EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_name = 'credit_transactions'
+      AND constraint_type = 'CHECK'
+      AND constraint_name = 'credit_transactions_type_check'
+  ) THEN
+    ALTER TABLE credit_transactions DROP CONSTRAINT credit_transactions_type_check;
+  END IF;
+
+  -- Re-create with quest types included
+  ALTER TABLE credit_transactions ADD CONSTRAINT credit_transactions_type_check
+    CHECK (type IN (
+      'generation_music',
+      'generation_effects',
+      'generation_loops',
+      'generation_image',
+      'generation_video_to_audio',
+      'generation_cover_art',
+      'generation_stem_split',
+      'generation_audio_boost',
+      'generation_extract',
+      'earn_list',
+      'earn_purchase',
+      'earn_sale',
+      'earn_admin',
+      'credit_award',
+      'credit_refund',
+      'wallet_deposit',
+      'wallet_conversion',
+      'subscription_bonus',
+      'plugin_purchase',
+      'code_claim',
+      'quest_entry',
+      'quest_reward',
+      'release',
+      'other'
+    ));
+END $$;
+
+-- Seed initial quests (skip if already seeded)
+INSERT INTO quests (title, description, quest_type, requirement, credits_reward, is_active)
+SELECT * FROM (VALUES
   -- Monthly quests
-  ('Song Machine',        'Generate 200 songs in a month',       'monthly', '{"action": "generate_songs", "target": 200}',   100, true),
-  ('Recruiter Elite',     'Invite 100 paying users',             'monthly', '{"action": "invite_users", "target": 100}',     100, true),
-  ('Marketplace Maven',   'Upload 10 tracks to marketplace',     'monthly', '{"action": "upload_marketplace", "target": 10}', 100, true),
-  ('Master Engineer',     'Use AI mastering 50 times',           'monthly', '{"action": "use_mastering", "target": 50}',     100, true),
-  ('Streak Lord',         'Complete a 7-day generation streak',  'monthly', '{"action": "generation_streak", "target": 7}',  100, true),
+  ('Song Machine',        'Generate 200 songs in a month',       'monthly', '{"action": "generate_songs", "target": 200}'::jsonb,   100, true),
+  ('Recruiter Elite',     'Invite 100 paying users',             'monthly', '{"action": "invite_users", "target": 100}'::jsonb,     100, true),
+  ('Marketplace Maven',   'Upload 10 tracks to marketplace',     'monthly', '{"action": "upload_marketplace", "target": 10}'::jsonb, 100, true),
+  ('Master Engineer',     'Use AI mastering 50 times',           'monthly', '{"action": "use_mastering", "target": 50}'::jsonb,     100, true),
+  ('Streak Lord',         'Complete a 7-day generation streak',  'monthly', '{"action": "generation_streak", "target": 7}'::jsonb,  100, true),
   -- Weekly quests
-  ('Weekly Grinder',      'Generate 25 songs this week',         'weekly',  '{"action": "generate_songs", "target": 25}',     20, true),
-  ('Social Butterfly',    'Share 3 tracks publicly',             'weekly',  '{"action": "share_tracks", "target": 3}',        20, true),
-  ('Loyal Operator',      'Login 5 days in a week',              'weekly',  '{"action": "login_days", "target": 5}',          20, true),
-  ('Genre Explorer',      'Use 3 different genres',              'weekly',  '{"action": "use_genres", "target": 3}',          20, true),
-  ('Recruitment Drive',   'Invite 5 users',                      'weekly',  '{"action": "invite_users", "target": 5}',        20, true),
+  ('Weekly Grinder',      'Generate 25 songs this week',         'weekly',  '{"action": "generate_songs", "target": 25}'::jsonb,     20, true),
+  ('Social Butterfly',    'Share 3 tracks publicly',             'weekly',  '{"action": "share_tracks", "target": 3}'::jsonb,        20, true),
+  ('Loyal Operator',      'Login 5 days in a week',              'weekly',  '{"action": "login_days", "target": 5}'::jsonb,          20, true),
+  ('Genre Explorer',      'Use 3 different genres',              'weekly',  '{"action": "use_genres", "target": 3}'::jsonb,          20, true),
+  ('Recruitment Drive',   'Invite 5 users',                      'weekly',  '{"action": "invite_users", "target": 5}'::jsonb,        20, true),
   -- Daily quests
-  ('Daily Creator',       'Generate 5 songs today',              'daily',   '{"action": "generate_songs", "target": 5}',      50, false),
-  ('Social Share',        'Share 1 track on social',             'daily',   '{"action": "share_tracks", "target": 1}',        50, false),
-  ('New Model Test',      'Use a new AI model once',             'daily',   '{"action": "use_new_model", "target": 1}',       50, false),
-  ('Beat Maker',          'Login and create 1 beat',             'daily',   '{"action": "create_beat", "target": 1}',         50, false),
+  ('Daily Creator',       'Generate 5 songs today',              'daily',   '{"action": "generate_songs", "target": 5}'::jsonb,      50, false),
+  ('Social Share',        'Share 1 track on social',             'daily',   '{"action": "share_tracks", "target": 1}'::jsonb,        50, false),
+  ('New Model Test',      'Use a new AI model once',             'daily',   '{"action": "use_new_model", "target": 1}'::jsonb,       50, false),
+  ('Beat Maker',          'Login and create 1 beat',             'daily',   '{"action": "create_beat", "target": 1}'::jsonb,         50, false),
   -- Yearly quest
-  ('Golden Recruiter',    'Invite 1000 users in a year',         'yearly',  '{"action": "invite_users", "target": 1000}',    250, true);
+  ('Golden Recruiter',    'Invite 1000 users in a year',         'yearly',  '{"action": "invite_users", "target": 1000}'::jsonb,    250, true)
+) AS v(title, description, quest_type, requirement, credits_reward, is_active)
+WHERE NOT EXISTS (SELECT 1 FROM quests LIMIT 1);

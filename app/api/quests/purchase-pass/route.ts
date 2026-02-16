@@ -6,7 +6,8 @@ export async function OPTIONS() { return handleOptions() }
 
 /**
  * POST /api/quests/purchase-pass
- * User pays 30 credits ($1) to unlock quest participation for 30 days.
+ * User pays 1 credit to unlock quest participation for 30 days.
+ * Credit goes back to the 444 billion wallet allocation (not admin personal wallet).
  */
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-  const PASS_COST_CREDITS = 30 // $1 at $0.035 per credit
+  const PASS_COST_CREDITS = 1 // 1 credit for 30-day quest access
 
   try {
     // 1. Check if user already has an active pass
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     if (walletBalance < PASS_COST_CREDITS && credits < PASS_COST_CREDITS) {
       return corsResponse(NextResponse.json({
-        error: 'Insufficient balance. You need 30 credits ($1) to purchase a Quest Pass.',
+        error: 'Insufficient balance. You need 1 credit to purchase a Quest Pass.',
         required: PASS_COST_CREDITS,
         currentWallet: walletBalance,
         currentCredits: credits,
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           type: 'quest_entry',
           credits_amount: -PASS_COST_CREDITS,
-          description: 'Quest Entry Pass — 30 Day Access',
+          description: 'Quest Entry Pass — 30-day access (1 credit)',
           metadata: { pass_type: 'quest_entry', duration_days: 30 },
         }),
       }
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           expires_at: expiresAt.toISOString(),
           is_active: true,
+          credits_spent: PASS_COST_CREDITS,
         }),
       }
     )
