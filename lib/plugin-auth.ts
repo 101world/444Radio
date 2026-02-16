@@ -11,7 +11,7 @@ import { NextRequest } from 'next/server'
 export interface PluginAuthResult {
   userId: string
   tokenId: string
-  accessTier: 'studio' | 'pro' | 'purchased'
+  accessTier: 'studio' | 'pro' | 'purchased' | 'free'
   valid: true
 }
 
@@ -19,7 +19,7 @@ export interface PluginAuthError {
   valid: false
   error: string
   status: number
-  accessTier?: 'denied_inactive' | 'denied_no_purchase' | null
+  accessTier?: 'denied_inactive' | null
 }
 
 export type PluginAuth = PluginAuthResult | PluginAuthError
@@ -81,9 +81,6 @@ export async function authenticatePlugin(req: NextRequest): Promise<PluginAuth> 
       if (tier === 'denied_inactive') {
         userError = 'Your Studio subscription is inactive. Please resubscribe at 444radio.co.in/pricing to use the plugin.'
         httpStatus = 403
-      } else if (tier === 'denied_no_purchase') {
-        userError = 'Plugin access requires a $25 one-time purchase or a Pro/Studio subscription. Visit 444radio.co.in/pricing.'
-        httpStatus = 403
       } else if (errMsg.includes('revoked')) {
         userError = 'Token has been revoked. Generate a new token from Settings → Plugin tab.'
       } else if (errMsg.includes('expired')) {
@@ -99,7 +96,7 @@ export async function authenticatePlugin(req: NextRequest): Promise<PluginAuth> 
         valid: false, 
         error: userError, 
         status: httpStatus,
-        accessTier: tier as 'denied_inactive' | 'denied_no_purchase' | null
+        accessTier: tier as 'denied_inactive' | null
       }
     }
     

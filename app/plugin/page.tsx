@@ -329,15 +329,12 @@ export default function PluginPage() {
 
   // ═══ AUTH: Verify token on mount ═══
   const [authError, setAuthError] = useState<string | null>(null)
-  const [needsPurchase, setNeedsPurchase] = useState(false)
-  const [buyingPlugin, setBuyingPlugin] = useState(false)
   useEffect(() => {
     if (!token) {
       setIsLoadingCredits(false)
       return
     }
     setAuthError(null)
-    setNeedsPurchase(false)
     ;(async () => {
       try {
         const res = await fetch('/api/plugin/credits', {
@@ -362,20 +359,12 @@ export default function PluginPage() {
           } catch {}
           console.warn('[plugin] Auth failed:', res.status, errorMsg)
 
-          // If denied because no purchase — keep token, show buy button
-          if (res.status === 403 && (errorMsg.includes('$4') || errorMsg.includes('$25') || errorMsg.includes('purchase'))) {
-            setNeedsPurchase(true)
-            setAuthError(errorMsg)
-            setIsAuthenticated(false)
-            setIsLoadingCredits(false)
-          } else {
-            // Clear invalid token so user can re-enter
-            localStorage.removeItem(TOKEN_KEY)
-            setToken(null)
-            setAuthError(errorMsg)
-            setIsAuthenticated(false)
-            setIsLoadingCredits(false)
-          }
+          // Clear invalid token so user can re-enter
+          localStorage.removeItem(TOKEN_KEY)
+          setToken(null)
+          setAuthError(errorMsg)
+          setIsAuthenticated(false)
+          setIsLoadingCredits(false)
         }
       } catch {
         setAuthError('Network error — could not reach server')
@@ -1817,41 +1806,14 @@ export default function PluginPage() {
           <h1 className="text-2xl font-bold text-white">Connect to 444 Radio</h1>
 
           {/* Show auth error if token was rejected */}
-          {authError && !needsPurchase && (
+          {authError && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-left">
               <p className="text-sm text-red-400 font-medium">⚠️ {authError}</p>
               <p className="text-xs text-red-400/70 mt-1">Generate a new token from Settings → Plugin tab</p>
             </div>
           )}
 
-          {/* Plugin is FREE for all — no purchase gate */}
-          {needsPurchase && (
-            <div className="bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border border-emerald-500/30 rounded-xl p-5 text-left space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shrink-0">
-                  <Zap size={20} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white">444Radio Plugin — Free</p>
-                  <p className="text-xs text-gray-400">Download from Settings → Plugin tab</p>
-                </div>
-              </div>
-              <ul className="ml-[52px] space-y-1 text-xs text-gray-300">
-                <li>✓ Unlimited AI generations in your DAW</li>
-                <li>✓ WAV export + drag to timeline</li>
-                <li>✓ Stem splitting, loops, SFX, cover art</li>
-                <li>✓ Works in Ableton, FL Studio, Logic, Premiere Pro</li>
-              </ul>
-              <a
-                href="https://444radio.co.in/settings?tab=plugin"
-                className="ml-[52px] inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-black bg-gradient-to-r from-cyan-400 to-cyan-300 hover:from-cyan-300 hover:to-cyan-200 transition-all"
-              >
-                <Download size={16} />
-                Download Plugin
-              </a>
-              <p className="ml-[52px] text-[10px] text-gray-600">Credits required for generations only.</p>
-            </div>
-          )}
+
 
           {/* Step 1: Get token */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-left space-y-2">

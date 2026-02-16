@@ -54,7 +54,6 @@ function SettingsPageInner() {
   const [showInstallGuide, setShowInstallGuide] = useState(false)
   const [hasPluginPurchase, setHasPluginPurchase] = useState(false)
   const [isCheckingPurchase, setIsCheckingPurchase] = useState(false)
-  const [buyingPlugin, setBuyingPlugin] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return

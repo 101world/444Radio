@@ -50,7 +50,7 @@ SELECT
   'user_34StnaXDJ3yZTYmz1Wmv3sYcqcB',
   -5,
   GREATEST(0, credits - 5),
-  'credit_clawback',
+  'credit_refund',
   'success',
   'Clawback: 5 free credits from 3 generations (deduction bug pre-2026-02-16)',
   '{"free_generations": 3, "total_free_credits": 5, "bug": "deduct_after_generation_ignored_failure"}'::jsonb
