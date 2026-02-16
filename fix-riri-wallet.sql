@@ -1,95 +1,98 @@
 -- ============================================================
--- DIAGNOSE & FIX RIRI'S WALLET BALANCE
--- User: riri (user_34LKhAX7aYSnMboQLn5S8vVbzoQ)
--- She paid $2 but wallet shows $0
+-- COMPREHENSIVE FIX: ALL PAYING USERS WALLET + QUEST TABLE FIX
+-- Fixes: Riri, test056, and ANY other user who ever paid
+-- Also adds missing credits_spent column to quest_passes
 -- ============================================================
 
--- Step 1: Check current state
+-- ===================== SCHEMA FIX =====================
+-- Step 0: Add credits_spent column to quest_passes if missing
+-- (migration 126 may have run before column was added)
+ALTER TABLE quest_passes ADD COLUMN IF NOT EXISTS credits_spent INT NOT NULL DEFAULT 30;
+
+-- ===================== DIAGNOSTICS =====================
+
+-- Step 1: Check Riri
 SELECT clerk_user_id, username, email, credits, wallet_balance, total_generated, created_at
 FROM users WHERE clerk_user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ';
 
--- Step 2: Check ALL her transactions to trace where the money went
+-- Step 2: Riri's full transaction history
 SELECT id, type, amount, balance_after, status, description,
        metadata->>'deposit_usd' as deposit_usd,
        metadata->>'wallet_balance' as wallet_in_meta,
        metadata->>'razorpay_payment_id' as razorpay_id,
-       metadata->>'credit_source' as source,
        created_at
 FROM credit_transactions
 WHERE user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ'
 ORDER BY created_at DESC;
 
--- Step 3: Check wallet-specific transactions
-SELECT id, type, amount, description,
-       metadata->>'deposit_usd' as deposit_usd,
-       metadata->>'previous_wallet_balance' as prev_wallet,
-       metadata->>'new_wallet_balance' as new_wallet,
-       metadata->>'usd_converted' as usd_converted,
-       metadata->>'credits_added' as credits_added,
-       created_at
-FROM credit_transactions
-WHERE user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ'
-  AND type IN ('wallet_deposit', 'wallet_conversion')
-ORDER BY created_at DESC;
-
--- Step 4: Also check test056
-SELECT clerk_user_id, username, email, credits, wallet_balance, total_generated
+-- Step 3: Check test056
+SELECT clerk_user_id, username, email, credits, wallet_balance
 FROM users WHERE username ILIKE '%test056%' OR email ILIKE '%test056%';
 
--- Step 4b: Check test056 transactions too
-SELECT id, type, amount, description,
-       metadata->>'deposit_usd' as deposit_usd,
-       metadata->>'wallet_balance' as wallet_in_meta,
-       created_at
-FROM credit_transactions
-WHERE user_id = (SELECT clerk_user_id FROM users WHERE username ILIKE '%test056%' LIMIT 1)
-  AND type IN ('wallet_deposit', 'wallet_conversion', 'credit_award')
-ORDER BY created_at DESC;
+-- Step 4: Find ALL paying users (wallet_deposit transactions)
+SELECT DISTINCT u.clerk_user_id, u.username, u.email, u.credits, u.wallet_balance,
+       COUNT(ct.id) as deposit_count,
+       SUM(CAST(ct.metadata->>'deposit_usd' AS NUMERIC)) as total_usd_deposited
+FROM users u
+JOIN credit_transactions ct ON u.clerk_user_id = ct.user_id
+WHERE ct.type = 'wallet_deposit' AND ct.status = 'success'
+GROUP BY u.clerk_user_id, u.username, u.email, u.credits, u.wallet_balance
+ORDER BY u.wallet_balance ASC;
 
--- ============================================================
--- FIX: Set wallet_balance to $1 for Riri (she paid $2, $1 must be locked)
--- And for test056 (he paid $1, $1 must be locked)
--- Only run this AFTER checking Step 1-4 above
--- ============================================================
+-- Step 5: Also check credit_award/subscription_bonus (old payment methods)
+SELECT DISTINCT u.clerk_user_id, u.username, u.wallet_balance, ct.type, ct.description
+FROM users u
+JOIN credit_transactions ct ON u.clerk_user_id = ct.user_id
+WHERE ct.type IN ('credit_award', 'subscription_bonus')
+  AND ct.status = 'success'
+  AND ct.description ILIKE '%payment%' OR ct.description ILIKE '%subscription%' OR ct.description ILIKE '%razorpay%'
+ORDER BY u.username;
 
--- Fix Riri — If wallet_balance is 0, set it to 1.00
+-- ===================== FIXES =====================
+
+-- Step 6: Fix ALL paying users — set wallet_balance to $1 if currently < $1
 UPDATE users
-SET wallet_balance = GREATEST(wallet_balance, 1.00), updated_at = NOW()
-WHERE clerk_user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ'
-  AND (wallet_balance IS NULL OR wallet_balance < 1);
+SET wallet_balance = GREATEST(COALESCE(wallet_balance, 0), 1.00), updated_at = NOW()
+WHERE clerk_user_id IN (
+  SELECT DISTINCT user_id FROM credit_transactions
+  WHERE type = 'wallet_deposit' AND status = 'success'
+)
+AND (wallet_balance IS NULL OR wallet_balance < 1);
 
--- Log the fix for Riri
+-- Step 7: Log the fix for affected users
 INSERT INTO credit_transactions (user_id, amount, balance_after, type, status, description, metadata)
 SELECT
-  'user_34LKhAX7aYSnMboQLn5S8vVbzoQ',
+  u.clerk_user_id,
   0,
-  (SELECT credits FROM users WHERE clerk_user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ'),
+  u.credits,
   'credit_refund',
   'success',
-  'Wallet fix: restored $1 locked balance (payment processed before wallet system)',
-  '{"fix_reason": "wallet_balance_zero_after_payment", "paid_total_usd": 2, "restored_wallet": 1.00}'::jsonb
-WHERE (SELECT wallet_balance FROM users WHERE clerk_user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ') = 1.00;
+  'Wallet fix: restored $1 locked balance (payment before wallet system)',
+  jsonb_build_object(
+    'fix_reason', 'wallet_balance_zero_after_payment',
+    'restored_wallet', 1.00,
+    'fix_date', NOW()::text
+  )
+FROM users u
+WHERE u.clerk_user_id IN (
+  SELECT DISTINCT user_id FROM credit_transactions
+  WHERE type = 'wallet_deposit' AND status = 'success'
+)
+AND u.wallet_balance = 1.00;
 
--- Fix test056 — If wallet_balance is 0, set it to 1.00
-UPDATE users
-SET wallet_balance = GREATEST(wallet_balance, 1.00), updated_at = NOW()
-WHERE (username ILIKE '%test056%' OR email ILIKE '%test056%')
-  AND (wallet_balance IS NULL OR wallet_balance < 1);
+-- ===================== VERIFICATION =====================
 
--- Log the fix for test056
-INSERT INTO credit_transactions (user_id, amount, balance_after, type, status, description, metadata)
-SELECT
-  clerk_user_id,
-  0,
-  credits,
-  'credit_refund',
-  'success',
-  'Wallet fix: restored $1 locked balance (payment processed before wallet system)',
-  '{"fix_reason": "wallet_balance_zero_after_payment", "paid_total_usd": 1, "restored_wallet": 1.00}'::jsonb
-FROM users
-WHERE (username ILIKE '%test056%' OR email ILIKE '%test056%')
-  AND wallet_balance = 1.00;
-
--- Step 5: Verify fix
+-- Step 8: Verify ALL paying users now show $1+
 SELECT clerk_user_id, username, credits, wallet_balance
-FROM users WHERE clerk_user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ';
+FROM users
+WHERE clerk_user_id IN (
+  SELECT DISTINCT user_id FROM credit_transactions
+  WHERE type = 'wallet_deposit' AND status = 'success'
+)
+ORDER BY wallet_balance DESC;
+
+-- Step 9: Double-check quest_passes schema is correct
+SELECT column_name, data_type, column_default, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'quest_passes'
+ORDER BY ordinal_position;

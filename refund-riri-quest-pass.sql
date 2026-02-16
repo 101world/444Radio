@@ -37,11 +37,72 @@ VALUES (
   '{"refund_reason": "quest_pass_purchase_failed_twice", "original_cost": 1, "count": 2}'::jsonb
 );
 
--- Step 6: Delete any orphaned/invalid quest passes for riri
+-- Step 6: Delete any orphaned/invalid quest passes for riri (created by old buggy code)
 DELETE FROM quest_passes
-WHERE user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ'
-  AND credits_spent <= 1;
+WHERE user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ';
 
--- Step 7: Verify
+-- Step 7: Verify riri
 SELECT clerk_user_id, username, credits, wallet_balance
 FROM users WHERE clerk_user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ';
+
+-- ============================================================
+-- CHECK ALL PAYING USERS — anyone with wallet_deposit transactions
+-- ============================================================
+
+-- Step 8: Find ALL users who ever deposited real money
+SELECT DISTINCT
+  u.clerk_user_id,
+  u.username,
+  u.email,
+  u.credits,
+  u.wallet_balance,
+  u.total_generated,
+  ct.total_deposits,
+  ct.total_deposit_usd
+FROM users u
+JOIN (
+  SELECT 
+    user_id,
+    COUNT(*) as total_deposits,
+    SUM(COALESCE((metadata->>'deposit_usd')::numeric, 0)) as total_deposit_usd
+  FROM credit_transactions
+  WHERE type = 'wallet_deposit' AND status = 'success'
+  GROUP BY user_id
+) ct ON u.clerk_user_id = ct.user_id
+ORDER BY ct.total_deposit_usd DESC;
+
+-- Step 9: Also check credit_award transactions (old payment system gave credits directly)
+SELECT DISTINCT
+  u.clerk_user_id,
+  u.username,
+  u.email,
+  u.credits,
+  u.wallet_balance,
+  ct.type,
+  ct.amount,
+  ct.description,
+  ct.created_at
+FROM users u
+JOIN credit_transactions ct ON u.clerk_user_id = ct.user_id
+WHERE ct.type IN ('wallet_deposit', 'credit_award', 'subscription_bonus')
+  AND ct.status = 'success'
+ORDER BY ct.created_at DESC;
+
+-- Step 10: Fix ALL users who deposited money but have wallet_balance = 0
+-- Set to $1 locked minimum
+UPDATE users
+SET wallet_balance = 1.00, updated_at = NOW()
+WHERE clerk_user_id IN (
+  SELECT DISTINCT user_id FROM credit_transactions
+  WHERE type = 'wallet_deposit' AND status = 'success'
+)
+AND (wallet_balance IS NULL OR wallet_balance < 1);
+
+-- Step 11: Verify all paying users now have $1+
+SELECT clerk_user_id, username, credits, wallet_balance
+FROM users
+WHERE clerk_user_id IN (
+  SELECT DISTINCT user_id FROM credit_transactions
+  WHERE type = 'wallet_deposit' AND status = 'success'
+)
+ORDER BY wallet_balance DESC;
