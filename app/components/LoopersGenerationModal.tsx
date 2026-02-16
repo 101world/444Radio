@@ -128,6 +128,9 @@ export default function LoopersGenerationModal({
           onSuccess(data.variations, prompt)
         }
         
+        // Refresh credits in shared context
+        window.dispatchEvent(new Event('credits:refresh'))
+        
         alert(`🔄 ${data.variations.length} loop variations generated! ${data.creditsRemaining} credits remaining`)
       } else {
         // Update generation queue with failure

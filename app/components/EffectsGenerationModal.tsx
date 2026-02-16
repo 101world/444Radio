@@ -115,6 +115,9 @@ export default function EffectsGenerationModal({
           onSuccess(data.audioUrl, prompt)
         }
         
+        // Refresh credits in shared context
+        window.dispatchEvent(new Event('credits:refresh'))
+        
         alert(`🎨 Sound effects generated! ${data.creditsRemaining} credits remaining`)
       } else {
         // Update generation queue with failure

@@ -1034,15 +1034,14 @@ function CreatePageContent() {
         console.log('[Generation] Image generation result:', result)
       }
 
-      // Update credits
+      // Update credits — optimistic local update + context refresh
       if (!result.error && result.creditsRemaining !== undefined) {
         console.log('[Generation] Updating credits from', userCredits, 'to', result.creditsRemaining)
         setUserCredits(result.creditsRemaining)
-      } else {
-        // Refetch credits to ensure sync
-        console.log('[Generation] Refetching credits after generation')
-        refreshCredits()
       }
+      // Always refresh context so the shared CreditsContext stays in sync
+      refreshCredits()
+      window.dispatchEvent(new Event('credits:refresh'))
 
       // Update persistent generation queue with result
       if (result.error) {
@@ -1114,6 +1113,7 @@ function CreatePageContent() {
       
       // Refetch credits in case of error
       refreshCredits()
+      window.dispatchEvent(new Event('credits:refresh'))
     } finally {
       // Clean up abort controller
       abortControllersRef.current.delete(messageId)
@@ -1545,10 +1545,12 @@ function CreatePageContent() {
         throw new Error(data?.error || 'Stem splitting failed')
       }
 
-      // Update credits
+      // Update credits — optimistic local + context refresh
       if (data.creditsRemaining !== undefined) {
         setUserCredits(data.creditsRemaining)
       }
+      refreshCredits()
+      window.dispatchEvent(new Event('credits:refresh'))
 
       // Update GenerationQueue with success
       updateGeneration(genId, {
@@ -3518,12 +3520,12 @@ function CreatePageContent() {
               setMessages(prev => [...prev, resultMessage])
             }
             
-            // Update credits
+            // Update credits — optimistic + context refresh
             if (result.creditsRemaining !== undefined) {
               setUserCredits(result.creditsRemaining)
-            } else {
-              refreshCredits()
             }
+            refreshCredits()
+            window.dispatchEvent(new Event('credits:refresh'))
           }}
         />
       </Suspense>
@@ -3555,12 +3557,12 @@ function CreatePageContent() {
               timestamp: new Date()
             }
             setMessages(prev => [...prev, boostMessage])
-            // Update credits
+            // Update credits — optimistic + context refresh
             if (result.creditsRemaining !== undefined) {
               setUserCredits(result.creditsRemaining)
-            } else {
-              refreshCredits()
             }
+            refreshCredits()
+            window.dispatchEvent(new Event('credits:refresh'))
           }}
           onError={(errorMessage) => {
             const errorMsg: Message = {
