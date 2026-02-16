@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 5 minutes for image generation (Vercel Pro limit: 300s)
@@ -227,6 +227,9 @@ export async function POST(req: NextRequest) {
 
     const creditsAfter = deductResult!.new_credits
     console.log('✅ Standalone image generated:', imageUrl)
+
+    // Update transaction with output media
+    updateTransactionMedia({ userId, type: 'generation_image', mediaUrl: imageUrl, mediaType: 'image', title: `Image: ${prompt.substring(0, 50)}` }).catch(() => {})
 
     return NextResponse.json({ 
       success: true, 

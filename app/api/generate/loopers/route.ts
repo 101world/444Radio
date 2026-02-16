@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 3 minutes for looper generation (can take 1-2 minutes for 20s loops)
@@ -277,6 +277,12 @@ export async function POST(req: NextRequest) {
       }
 
       console.log('✅ Looper generation complete')
+
+      // Update transaction with output media
+      const firstVariation = uploadedVariations[0]
+      if (firstVariation) {
+        updateTransactionMedia({ userId, type: 'generation_loops', mediaUrl: firstVariation.url, mediaType: 'audio', title: `Loop: ${prompt.substring(0, 50)}`, extraMeta: { variation_count: uploadedVariations.length } }).catch(() => {})
+      }
 
       // Quest progress: fire-and-forget
       const { trackQuestProgress } = await import('@/lib/quest-progress')

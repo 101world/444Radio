@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 2.5 minutes for effects generation (AudioGen can take 60-90s)
@@ -227,6 +227,9 @@ export async function POST(req: NextRequest) {
       }
 
       console.log('✅ Effects generation complete')
+
+      // Update transaction with output media
+      updateTransactionMedia({ userId, type: 'generation_effects', mediaUrl: outputR2Result.url, mediaType: 'audio', title: `SFX: ${prompt.substring(0, 50)}` }).catch(() => {})
 
       // Quest progress: fire-and-forget
       const { trackQuestProgress } = await import('@/lib/quest-progress')

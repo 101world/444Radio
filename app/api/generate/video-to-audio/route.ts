@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
 // Allow up to 5 minutes for video-to-audio generation (Vercel Pro limit: 300s)
@@ -295,6 +295,9 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('✅ Video-to-audio generation complete')
+
+    // Update transaction with output media
+    updateTransactionMedia({ userId, type: 'generation_video_to_audio', mediaUrl: outputR2Result.url, mediaType: 'audio', title: `Video SFX: ${prompt.substring(0, 40)}` }).catch(() => {})
 
     // Quest progress: fire-and-forget
     const { trackQuestProgress } = await import('@/lib/quest-progress')

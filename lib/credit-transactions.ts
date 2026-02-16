@@ -97,3 +97,61 @@ export async function logCreditTransaction(params: LogTransactionParams): Promis
   }
   console.error('🔴 logCreditTransaction: all retries exhausted for', params.type, params.amount)
 }
+
+/**
+ * After a generation succeeds, patch the most recent deduction transaction
+ * for this user+type with the output media_url, media_type, and title.
+ * This enables the admin/user transaction UI to show thumbnails & players.
+ */
+export async function updateTransactionMedia(params: {
+  userId: string
+  type: CreditTransactionType
+  mediaUrl?: string
+  mediaType?: 'audio' | 'image' | 'video'
+  title?: string
+  extraMeta?: Record<string, unknown>
+}): Promise<void> {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!supabaseUrl || !supabaseKey) return
+
+    // Find the most recent transaction for this user+type (within last 5 min)
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    const findRes = await fetch(
+      `${supabaseUrl}/rest/v1/credit_transactions?user_id=eq.${params.userId}&type=eq.${params.type}&created_at=gte.${fiveMinAgo}&order=created_at.desc&limit=1&select=id,metadata`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    )
+    if (!findRes.ok) return
+    const rows = await findRes.json()
+    if (!rows?.length) return
+
+    const txn = rows[0]
+    const updatedMeta = {
+      ...(txn.metadata || {}),
+      ...(params.mediaUrl ? { media_url: params.mediaUrl } : {}),
+      ...(params.mediaType ? { media_type: params.mediaType } : {}),
+      ...(params.title ? { media_title: params.title } : {}),
+      ...(params.extraMeta || {}),
+      generation_status: 'completed',
+    }
+
+    await fetch(
+      `${supabaseUrl}/rest/v1/credit_transactions?id=eq.${txn.id}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify({ metadata: updatedMeta }),
+      }
+    )
+    console.log('✅ Transaction media updated:', params.type, params.mediaUrl?.substring(0, 60))
+  } catch (err) {
+    // Non-critical — don't break the generation flow
+    console.error('⚠️ updateTransactionMedia error:', err)
+  }
+}

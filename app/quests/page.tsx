@@ -630,7 +630,7 @@ export default function QuestsPage() {
                 <p className="text-gray-500 text-xs mt-0.5">
                   {passActive
                     ? `Expires ${new Date(pass!.expires_at).toLocaleDateString()}`
-                    : 'Purchase a Quest Pass to start earning credits from challenges'
+                    : 'Activate your Quest Pass to start earning credits from challenges ($1+ in wallet required)'
                   }
                 </p>
               </div>
@@ -647,7 +647,7 @@ export default function QuestsPage() {
                 ) : (
                   <Unlock size={16} />
                 )}
-                Activate — 1 Credit
+                Activate Quest Pass
               </button>
             )}
           </div>
@@ -759,7 +759,7 @@ export default function QuestsPage() {
               <h2 className="text-white font-bold text-sm uppercase tracking-wider mb-3">How It Works</h2>
               <ol className="space-y-2.5 text-gray-400 text-xs">
                 {[
-                  'Purchase a Quest Pass (1 credit)',
+                  'Have $1+ in your wallet to activate', 
                   'Browse and start available quests',
                   'Complete challenges by using the platform',
                   'Claim your credit rewards',

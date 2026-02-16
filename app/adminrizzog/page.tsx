@@ -642,6 +642,7 @@ function TransactionsTab({ data, page, onPage, typeFilter, setTypeFilter, onView
 // ═══════════ TRANSACTION TABLE (shared) ═══════════
 function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUser: (id: string) => void }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null)
 
   // Extract human-readable detail from metadata
   function metadataDetail(tx: Transaction): { label: string; details: { key: string; value: string }[] } | null {
@@ -671,10 +672,18 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
     // Generation
     if (type.startsWith('generation_')) {
       if (m.generation_type) details.push({ key: 'Type', value: String(m.generation_type) })
-      if (m.prompt) details.push({ key: 'Prompt', value: String(m.prompt).slice(0, 80) })
+      if (m.media_title) details.push({ key: 'Title', value: String(m.media_title) })
+      if (m.prompt) details.push({ key: 'Prompt', value: String(m.prompt).slice(0, 120) })
       if (m.model) details.push({ key: 'Model', value: String(m.model) })
       if (m.duration) details.push({ key: 'Duration', value: `${m.duration}s` })
+      if (m.genre) details.push({ key: 'Genre', value: String(m.genre) })
+      if (m.generation_status) details.push({ key: 'Result', value: String(m.generation_status) === 'completed' ? '✅ Completed' : String(m.generation_status) })
+      if (m.variation_count) details.push({ key: 'Variations', value: String(m.variation_count) })
     }
+
+    // Wallet deposit
+    if (m.deposit_usd) details.push({ key: 'Deposit', value: `$${parseFloat(String(m.deposit_usd)).toFixed(2)}` })
+    if (m.wallet_balance != null) details.push({ key: 'Wallet After', value: `$${parseFloat(String(m.wallet_balance)).toFixed(2)}` })
 
     // Razorpay payment info
     if (m.razorpay_id) details.push({ key: 'Razorpay ID', value: String(m.razorpay_id) })
@@ -684,7 +693,7 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
 
     // Generic metadata fallback — show any remaining keys
     const shownKeys = new Set(details.map(d => d.key.toLowerCase()))
-    const skipKeys = new Set(['code_name', 'code', 'source', 'decrypt', 'plan_type', 'plan_id', 'credit_source', 'paid_count', 'subscription_id', 'blocked_reason', 'generation_type', 'prompt', 'model', 'duration', 'razorpay_id', 'payment_amount', 'event_type', 'previous_balance', 'subscription_status', 'customer_id'])
+    const skipKeys = new Set(['code_name', 'code', 'source', 'decrypt', 'plan_type', 'plan_id', 'credit_source', 'paid_count', 'subscription_id', 'blocked_reason', 'generation_type', 'prompt', 'model', 'duration', 'razorpay_id', 'payment_amount', 'event_type', 'previous_balance', 'subscription_status', 'customer_id', 'media_url', 'media_type', 'media_title', 'generation_status', 'genre', 'deposit_usd', 'wallet_balance', 'variation_count'])
     for (const [k, v] of Object.entries(m)) {
       if (!skipKeys.has(k) && !shownKeys.has(k.toLowerCase()) && v != null && v !== '') {
         details.push({ key: k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), value: String(v).slice(0, 100) })
@@ -701,8 +710,32 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
     else if (type.startsWith('generation_')) label = '🎵 Generation'
     else if (type === 'credit_refund') label = '↩️ Refund'
     else if (type === 'admin_adjustment') label = '⚙️ Admin Adjustment'
+    else if (type === 'wallet_deposit') label = '💰 Wallet Deposit'
+    else if (type === 'wallet_conversion') label = '🔄 Wallet → Credits'
 
     return { label, details }
+  }
+
+  // Get media info from transaction metadata
+  function getMediaInfo(tx: Transaction): { url: string; type: 'audio' | 'image' | 'video'; title?: string } | null {
+    const m = tx.metadata
+    if (!m?.media_url) return null
+    return {
+      url: String(m.media_url),
+      type: (m.media_type as 'audio' | 'image' | 'video') || 'audio',
+      title: m.media_title ? String(m.media_title) : undefined,
+    }
+  }
+
+  function handlePlayAudio(url: string) {
+    if (playingAudio === url) {
+      setPlayingAudio(null)
+      // Stop any playing audio
+      document.querySelectorAll<HTMLAudioElement>('audio.txn-player').forEach(a => { a.pause(); a.currentTime = 0 })
+    } else {
+      document.querySelectorAll<HTMLAudioElement>('audio.txn-player').forEach(a => { a.pause(); a.currentTime = 0 })
+      setPlayingAudio(url)
+    }
   }
 
   return (
@@ -714,7 +747,8 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
             <th className="text-left py-2 px-2">Date</th>
             <th className="text-left py-2 px-2">User</th>
             <th className="text-left py-2 px-2">Type</th>
-            <th className="text-right py-2 px-2">Amount</th>
+            <th className="text-center py-2 px-2">Output</th>
+            <th className="text-right py-2 px-2">Credits</th>
             <th className="text-right py-2 px-2">Balance</th>
             <th className="text-left py-2 px-2">Description</th>
             <th className="text-center py-2 px-2">Status</th>
@@ -723,6 +757,7 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
         <tbody>
           {rows.map((tx) => {
             const detail = metadataDetail(tx)
+            const media = getMediaInfo(tx)
             const isExpanded = expandedId === tx.id
             return (
               <Fragment key={tx.id}>
@@ -740,6 +775,30 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
                   <td className="py-2 px-2">
                     <Badge text={tx.type} color={txnTypeBadge(tx.type)} />
                   </td>
+                  {/* Media preview column */}
+                  <td className="py-1 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    {media ? (
+                      media.type === 'image' ? (
+                        <img src={media.url} alt={media.title || 'Generated'} className="w-8 h-8 rounded object-cover inline-block border border-gray-700" />
+                      ) : media.type === 'audio' ? (
+                        <button
+                          onClick={() => handlePlayAudio(media.url)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition text-xs ${
+                            playingAudio === media.url
+                              ? 'bg-cyan-500/30 border border-cyan-500/50 text-cyan-300'
+                              : 'bg-gray-800/60 border border-gray-700/50 text-gray-400 hover:text-cyan-400 hover:border-cyan-500/30'
+                          }`}
+                          title={media.title || 'Play audio'}
+                        >
+                          {playingAudio === media.url ? '⏸' : '▶'}
+                        </button>
+                      ) : (
+                        <span className="text-gray-600 text-[10px]">🎬</span>
+                      )
+                    ) : (
+                      <span className="text-gray-700">—</span>
+                    )}
+                  </td>
                   <td className={`py-2 px-2 text-right font-bold ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {tx.amount >= 0 ? '+' : ''}{tx.amount}
                   </td>
@@ -749,10 +808,10 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
                     <Badge text={tx.status} color={tx.status === 'success' ? 'green' : tx.status === 'failed' ? 'red' : 'yellow'} />
                   </td>
                 </tr>
-                {/* Expandable metadata row */}
+                {/* Expandable metadata + media row */}
                 {isExpanded && detail && (
                   <tr className="bg-gray-800/40">
-                    <td colSpan={8} className="py-3 px-4">
+                    <td colSpan={9} className="py-3 px-4">
                       <div className="flex flex-wrap gap-x-6 gap-y-2 items-start">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{detail.label}</span>
                         {detail.details.map(({ key, value }) => (
@@ -762,6 +821,26 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
                           </div>
                         ))}
                       </div>
+                      {/* Inline media player for expanded row */}
+                      {media && media.type === 'audio' && (
+                        <div className="mt-3 flex items-center gap-3">
+                          <audio
+                            className="txn-player"
+                            src={media.url}
+                            controls
+                            autoPlay={playingAudio === media.url}
+                            onEnded={() => setPlayingAudio(null)}
+                            style={{ height: 32, maxWidth: 320 }}
+                          />
+                          <span className="text-[10px] text-gray-500 truncate max-w-[200px]">{media.title || 'Audio output'}</span>
+                        </div>
+                      )}
+                      {media && media.type === 'image' && (
+                        <div className="mt-3 flex items-center gap-3">
+                          <img src={media.url} alt={media.title || 'Generated image'} className="w-24 h-24 rounded-lg object-cover border border-gray-700" />
+                          <span className="text-[10px] text-gray-500">{media.title || 'Image output'}</span>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -769,7 +848,7 @@ function TransactionTable({ rows, onViewUser }: { rows: Transaction[]; onViewUse
             )
           })}
           {rows.length === 0 && (
-            <tr><td colSpan={8} className="py-8 text-center text-gray-600">No transactions found</td></tr>
+            <tr><td colSpan={9} className="py-8 text-center text-gray-600">No transactions found</td></tr>
           )}
         </tbody>
       </table>

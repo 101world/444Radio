@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { logBoostGeneration, updateBoostLog } from '@/lib/boost-logs'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
@@ -306,6 +306,9 @@ export async function POST(req: NextRequest) {
       }
 
       console.log('✅ Audio Boost complete')
+
+      // Update transaction with output media
+      updateTransactionMedia({ userId, type: 'generation_audio_boost', mediaUrl: outputR2Result.url, mediaType: 'audio', title: 'Audio Boost' }).catch(() => {})
 
       // Quest progress: fire-and-forget
       const { trackQuestProgress } = await import('@/lib/quest-progress')

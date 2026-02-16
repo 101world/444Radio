@@ -6,8 +6,8 @@ export async function OPTIONS() { return handleOptions() }
 
 /**
  * POST /api/quests/purchase-pass
- * User pays 1 credit to unlock quest participation for 30 days.
- * Credit goes back to the 444 billion wallet allocation (not admin personal wallet).
+ * User activates quest participation for 30 days.
+ * Requires $1+ in wallet (access gate, not deducted).
  */
 export async function POST(req: NextRequest) {
   const { userId } = await auth()
@@ -17,8 +17,6 @@ export async function POST(req: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-  const PASS_COST_CREDITS = 1 // 1 credit for 30-day quest access
 
   try {
     // 1. Check if user already has an active pass
@@ -34,7 +32,7 @@ export async function POST(req: NextRequest) {
       }, { status: 409 }))
     }
 
-    // 2. Check user credits
+    // 2. Check wallet balance — $1 minimum required (access gate, not deducted)
     const userRes = await fetch(
       `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits,wallet_balance`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
@@ -45,57 +43,16 @@ export async function POST(req: NextRequest) {
       return corsResponse(NextResponse.json({ error: 'User not found' }, { status: 404 }))
     }
 
-    // Use wallet_balance first, then credits
-    const walletBalance = user.wallet_balance || 0
-    const credits = user.credits || 0
-
-    if (walletBalance < PASS_COST_CREDITS && credits < PASS_COST_CREDITS) {
+    const walletBalance = parseFloat(user.wallet_balance || '0')
+    if (walletBalance < 1) {
       return corsResponse(NextResponse.json({
-        error: 'Insufficient balance. You need 1 credit to purchase a Quest Pass.',
-        required: PASS_COST_CREDITS,
+        error: 'You need at least $1 in your wallet to activate the Quest Pass.',
+        required: 1,
         currentWallet: walletBalance,
-        currentCredits: credits,
       }, { status: 402 }))
     }
 
-    // 3. Deduct from wallet_balance preferably, otherwise credits
-    const deductField = walletBalance >= PASS_COST_CREDITS ? 'wallet_balance' : 'credits'
-    const currentBalance = deductField === 'wallet_balance' ? walletBalance : credits
-
-    await fetch(
-      `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ [deductField]: currentBalance - PASS_COST_CREDITS }),
-      }
-    )
-
-    // 4. Log transaction
-    await fetch(
-      `${supabaseUrl}/rest/v1/credit_transactions`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          type: 'quest_entry',
-          credits_amount: -PASS_COST_CREDITS,
-          description: 'Quest Entry Pass — 30-day access (1 credit)',
-          metadata: { pass_type: 'quest_entry', duration_days: 30 },
-        }),
-      }
-    )
-
-    // 5. Create quest pass
+    // 3. Create quest pass (no credits deducted — wallet gate only)
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
@@ -113,21 +70,42 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           expires_at: expiresAt.toISOString(),
           is_active: true,
-          credits_spent: PASS_COST_CREDITS,
+          credits_spent: 0,
         }),
       }
     )
 
     const newPass = await createRes.json()
 
+    // 4. Log activation
+    await fetch(
+      `${supabaseUrl}/rest/v1/credit_transactions`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          amount: 0,
+          type: 'quest_entry',
+          status: 'success',
+          description: 'Quest Pass activated — 30-day access (wallet $1+ gate)',
+          metadata: { pass_type: 'quest_entry', duration_days: 30, wallet_balance: walletBalance },
+        }),
+      }
+    )
+
     return corsResponse(NextResponse.json({
       success: true,
       pass: newPass?.[0],
-      deducted: PASS_COST_CREDITS,
-      deductedFrom: deductField,
+      deducted: 0,
+      deductedFrom: 'none',
     }))
   } catch (error) {
-    console.error('Quest pass purchase error:', error)
+    console.error('Quest pass activation error:', error)
     return corsResponse(NextResponse.json({ error: 'Internal server error' }, { status: 500 }))
   }
 }

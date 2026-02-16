@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { createClient } from '@supabase/supabase-js'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 
@@ -273,6 +273,12 @@ export async function POST(request: Request) {
         // Quest progress: fire-and-forget
         const { trackQuestProgress } = await import('@/lib/quest-progress')
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
+
+        // Update transaction with output media
+        const primaryStemUrl = permanentStems[stem] || Object.values(permanentStems)[0]
+        if (primaryStemUrl) {
+          updateTransactionMedia({ userId, type: 'generation_extract', mediaUrl: primaryStemUrl, mediaType: 'audio', title: `${trackTitle} — ${stem}` }).catch(() => {})
+        }
 
         await sendLine({
           type: 'result',

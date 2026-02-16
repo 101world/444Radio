@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 
 // Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -427,6 +427,9 @@ export async function POST(req: NextRequest) {
         const { trackQuestProgress } = await import('@/lib/quest-progress')
         trackQuestProgress(userId, 'generate_songs').catch(() => {})
         if (genre) trackQuestProgress(userId, 'use_genres', 1, genre).catch(() => {})
+
+        // Update transaction with output media
+        updateTransactionMedia({ userId, type: 'generation_music', mediaUrl: audioUrl, mediaType: 'audio', title, extraMeta: { genre } }).catch(() => {})
 
         const response: any = {
           type: 'result',
