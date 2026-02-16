@@ -7,12 +7,13 @@ export async function OPTIONS() {
   return handleOptions()
 }
 
+const LOCKED_AMOUNT = 1.00  // $1 permanently locked in wallet
+
 /**
  * POST /api/credits/convert
  * 
- * Converts available wallet balance to credits.
- * After migration 123: converts ALL wallet balance (no $1 retention).
- * $1 minimum is only enforced during generation (in deduct_credits).
+ * Converts wallet balance to credits, keeping $1 locked.
+ * Only the amount ABOVE $1 is convertible.
  * 
  * Rate: 1 credit = $0.035 USD
  */
@@ -44,12 +45,16 @@ export async function POST(request: Request) {
     const currentWallet = parseFloat(user.wallet_balance || '0')
     const currentCredits = user.credits || 0
 
-    if (currentWallet <= 0) {
+    const convertibleAmount = Math.max(0, currentWallet - LOCKED_AMOUNT)
+
+    if (convertibleAmount <= 0) {
       return corsResponse(
         NextResponse.json({ 
-          error: 'No wallet balance to convert',
+          error: '$1.00 is locked in your wallet as an access fee. Add more funds to convert.',
           wallet: currentWallet,
-          credits: currentCredits
+          credits: currentCredits,
+          locked: LOCKED_AMOUNT,
+          convertible: 0
         }, { status: 400 })
       )
     }
@@ -61,17 +66,18 @@ export async function POST(request: Request) {
           NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 })
         )
       }
-      if (amountUsd > currentWallet) {
+      if (amountUsd > convertibleAmount) {
         return corsResponse(
           NextResponse.json({ 
-            error: `Amount exceeds wallet balance ($${currentWallet.toFixed(2)})`,
-            wallet: currentWallet
+            error: `Amount exceeds convertible balance ($${convertibleAmount.toFixed(2)}). $1.00 is locked.`,
+            wallet: currentWallet,
+            convertible: convertibleAmount
           }, { status: 400 })
         )
       }
     }
 
-    const convertAmount = amountUsd || currentWallet
+    const convertAmount = amountUsd || convertibleAmount
     console.log(`[Wallet Convert] Converting $${convertAmount} for ${userId} (wallet: $${currentWallet})`)
 
     // Call convert_wallet_to_credits RPC

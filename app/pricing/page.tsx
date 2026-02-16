@@ -29,6 +29,7 @@ import {
   ChevronUp,
   ArrowUpRight,
   ArrowDownRight,
+  Lock,
 } from 'lucide-react'
 
 // ── Transaction type labels ──
@@ -145,9 +146,16 @@ export default function PricingPage() {
   }, [showHistory])
 
   // ── Convert wallet to credits handler ──
+  const LOCKED_WALLET = 1.00  // $1 permanently locked
   const handleConvertSubmit = async () => {
     if (isConverting || isPurchasing) return
     
+    const convertible = Math.max(0, (walletBalance ?? 0) - LOCKED_WALLET)
+    if (convertible <= 0) {
+      setPurchaseMessage({ type: 'error', text: '$1.00 is locked as an access fee. Add more funds to convert.' })
+      return
+    }
+
     // Convert input amount to USD (if INR, divide by INR_RATE)
     let amountUsd: number | null = null
     if (convertAmount) {
@@ -158,11 +166,11 @@ export default function PricingPage() {
       }
       amountUsd = currency === 'INR' ? inputAmount / INR_RATE : inputAmount
       
-      if (amountUsd > (walletBalance ?? 0)) {
+      if (amountUsd > convertible) {
         const maxDisplay = currency === 'INR' 
-          ? `₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
-          : `$${(walletBalance ?? 0).toFixed(2)}`
-        setPurchaseMessage({ type: 'error', text: `Amount exceeds wallet balance (${maxDisplay})` })
+          ? `₹${(convertible * INR_RATE).toFixed(2)}`
+          : `$${convertible.toFixed(2)}`
+        setPurchaseMessage({ type: 'error', text: `Max convertible: ${maxDisplay}. $1 is locked.` })
         return
       }
     }
@@ -309,7 +317,7 @@ export default function PricingPage() {
             Add Money
           </h1>
           <p className="text-gray-400 max-w-xl mx-auto">
-            Deposit money → get credits instantly. 1 credit = ${CREDIT_RATE}. No subscriptions.
+            Deposit money → convert to credits. 1 credit = ${CREDIT_RATE}. $1 stays locked as access fee.
           </p>
 
           {/* Info banner: $1 wallet requirement */}
@@ -317,9 +325,9 @@ export default function PricingPage() {
             <div className="flex items-start gap-3">
               <Info className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-cyan-300">$1 Minimum Wallet Balance Required</p>
+                <p className="text-sm font-semibold text-cyan-300">$1 Locked as Access Fee</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  You must maintain at least $1 in your wallet to generate AI content. All deposits convert to credits immediately.
+                  Your first $1 is permanently locked in your wallet. Only the balance above $1 can be converted to credits.
                 </p>
               </div>
             </div>
@@ -339,8 +347,8 @@ export default function PricingPage() {
               <span className="text-sm text-gray-300">Credits:</span>
               <span className="text-sm font-bold text-cyan-400">{currentCredits ?? 0}</span>
             </div>
-            {/* Convert wallet to credits button (only if wallet > 0) */}
-            {(walletBalance ?? 0) > 0 && (
+            {/* Convert wallet to credits button (only if wallet > $1 locked minimum) */}
+            {(walletBalance ?? 0) > 1 && (
               <button
                 onClick={() => setShowConvertModal(true)}
                 disabled={isPurchasing}
@@ -349,6 +357,12 @@ export default function PricingPage() {
                 <ArrowDownRight className="w-4 h-4" />
                 Convert to Credits
               </button>
+            )}
+            {(walletBalance ?? 0) > 0 && (walletBalance ?? 0) <= 1 && (
+              <div className="inline-flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-full">
+                <Lock className="w-3.5 h-3.5 text-gray-500" />
+                <span className="text-xs text-gray-500">$1 locked as access fee</span>
+              </div>
             )}
             {!hasAccess && (
               <div className="inline-flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full">
@@ -521,15 +535,15 @@ export default function PricingPage() {
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">2</div>
               <div>
-                <p className="text-sm font-medium text-white">Get credits instantly</p>
-                <p className="text-xs text-gray-500">All deposits convert to credits at $0.035/credit.</p>
+                <p className="text-sm font-medium text-white">Get credits</p>
+                <p className="text-xs text-gray-500">Convert balance above $1 to credits at $0.035/credit.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs font-bold text-purple-400">3</div>
               <div>
                 <p className="text-sm font-medium text-white">Generate content</p>
-                <p className="text-xs text-gray-500">Keep $1 min. wallet balance to use credits for generation.</p>
+                <p className="text-xs text-gray-500">$1 stays locked as your access fee. Use credits to generate.</p>
               </div>
             </div>
           </div>
@@ -631,8 +645,8 @@ export default function PricingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
             <DollarSign className="w-6 h-6 text-green-400 mx-auto mb-2" />
-            <p className="text-sm font-semibold">$1 Access App</p>
-            <p className="text-xs text-gray-500 mt-1">Keep $1 in your wallet to use all features. Pay per usage.</p>
+            <p className="text-sm font-semibold">$1 Access Fee</p>
+            <p className="text-xs text-gray-500 mt-1">$1 locked permanently as access fee. Cannot be converted or withdrawn.</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
             <Shield className="w-6 h-6 text-cyan-400 mx-auto mb-2" />
@@ -642,7 +656,7 @@ export default function PricingPage() {
           <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
             <Sparkles className="w-6 h-6 text-cyan-400 mx-auto mb-2" />
             <p className="text-sm font-semibold">Instant Credits</p>
-            <p className="text-xs text-gray-500 mt-1">Deposits auto-convert to credits immediately.</p>
+            <p className="text-xs text-gray-500 mt-1">Convert wallet balance above $1 to credits for generation.</p>
           </div>
         </div>
 
@@ -707,39 +721,63 @@ export default function PricingPage() {
             </div>
 
             {/* Info banner */}
-            <div className="mb-6 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
-              <p className="text-xs text-cyan-300 leading-relaxed">
-                <strong>Current Wallet:</strong> {currency === 'INR' 
-                  ? `₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
-                  : `$${(walletBalance ?? 0).toFixed(2)}`}
-                <br />
-                <strong>Conversion Rate:</strong> {currency === 'INR'
-                  ? `₹${(CREDIT_RATE * INR_RATE).toFixed(2)}`
-                  : `$${CREDIT_RATE.toFixed(3)}`} per credit
-              </p>
-            </div>
+            {(() => {
+              const convertible = Math.max(0, (walletBalance ?? 0) - 1)
+              const convertibleDisplay = currency === 'INR'
+                ? `₹${(convertible * INR_RATE).toFixed(2)}`
+                : `$${convertible.toFixed(2)}`
+              const maxCredits = Math.floor(convertible / CREDIT_RATE)
+              return (
+                <>
+                  <div className="mb-4 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
+                    <p className="text-xs text-cyan-300 leading-relaxed">
+                      <strong>Current Wallet:</strong> {currency === 'INR' 
+                        ? `₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
+                        : `$${(walletBalance ?? 0).toFixed(2)}`}
+                      <br />
+                      <strong>Convertible:</strong> {convertibleDisplay} ({maxCredits} credits)
+                      <br />
+                      <strong>Rate:</strong> {currency === 'INR'
+                        ? `₹${(CREDIT_RATE * INR_RATE).toFixed(2)}`
+                        : `$${CREDIT_RATE.toFixed(3)}`} per credit
+                    </p>
+                  </div>
+                  <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <p className="text-xs text-amber-300">
+                      $1.00 is permanently locked in your wallet as an access fee and cannot be converted.
+                    </p>
+                  </div>
+                </>
+              )
+            })()}
 
             {/* Amount input */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold mb-3">
-                Amount to Convert {currency === 'INR' ? '(₹)' : '($)'}
-              </label>
-              <input
-                type="number"
-                value={convertAmount}
-                onChange={(e) => setConvertAmount(e.target.value)}
-                placeholder={currency === 'INR' 
-                  ? `Max: ₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
-                  : `Max: $${(walletBalance ?? 0).toFixed(2)}`}
-                min="0.01"
-                max={currency === 'INR' ? ((walletBalance ?? 0) * INR_RATE) : (walletBalance ?? 0)}
-                step={currency === 'INR' ? '1' : '0.01'}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Leave empty to convert all wallet balance
-              </p>
-            </div>
+            {(() => {
+              const convertible = Math.max(0, (walletBalance ?? 0) - 1)
+              return (
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold mb-3">
+                    Amount to Convert {currency === 'INR' ? '(₹)' : '($)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={convertAmount}
+                    onChange={(e) => setConvertAmount(e.target.value)}
+                    placeholder={currency === 'INR' 
+                      ? `Max: ₹${(convertible * INR_RATE).toFixed(2)}`
+                      : `Max: $${convertible.toFixed(2)}`}
+                    min="0.01"
+                    max={currency === 'INR' ? (convertible * INR_RATE) : convertible}
+                    step={currency === 'INR' ? '1' : '0.01'}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    Leave empty to convert all available balance (above $1)
+                  </p>
+                </div>
+              )
+            })()}
 
             {/* Conversion preview */}
             {convertAmount && parseFloat(convertAmount) > 0 && (

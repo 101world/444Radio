@@ -135,7 +135,7 @@ WHERE type LIKE 'generation_%'
 GROUP BY type
 ORDER BY generations DESC;
 
--- 10. SUMMARY: Credit sources ranked by total credits added
+-- 10. SUMMARY: Credit sources ranked by total credits added (FIXED - shows individual gen types)
 SELECT
   CASE
     WHEN type = 'wallet_deposit' THEN '💳 Wallet Deposits (Paid)'
@@ -143,12 +143,24 @@ SELECT
     WHEN type = 'code_claim' THEN '🔓 Decrypt Code (20cr once)'
     WHEN type = 'credit_award' THEN '🎁 Admin Awards'
     WHEN type = 'subscription_bonus' THEN '💎 Subscription Bonus (Legacy PayPal)'
-    WHEN type = 'earn_sale' THEN '💰 Earn Marketplace Sales'
-    WHEN type = 'earn_admin' THEN '💼 Earn Admin Fees'
-    WHEN type LIKE 'generation_%' THEN '🎵 Generation Spent'
-    WHEN type LIKE 'earn_%' AND type NOT IN ('earn_sale', 'earn_admin') THEN '🛒 Earn Marketplace Costs'
-    ELSE type
+    WHEN type = 'earn_sale' THEN '💰 Earn: Artist Sale Proceeds (1cr/sale)'
+    WHEN type = 'earn_admin' THEN '💼 Earn: Platform Fees (2cr list + 4cr sale)'
+    WHEN type = 'earn_list' THEN '🛒 Earn: Listing Fee (2cr)'
+    WHEN type = 'earn_purchase' THEN '🛒 Earn: Purchase Cost (5cr+)'
+    WHEN type = 'generation_music' THEN '🎵 Gen: Music (2cr)'
+    WHEN type = 'generation_image' THEN '🖼️ Gen: Cover Art'
+    WHEN type = 'generation_effects' THEN '🔊 Gen: SFX (1cr)'
+    WHEN type = 'generation_loops' THEN '🔁 Gen: Loops (1cr)'
+    WHEN type = 'generation_audio_boost' THEN '⚡ Gen: Audio Boost (1cr)'
+    WHEN type = 'generation_extract' THEN '🎚️ Gen: Stem Extract (2cr)'
+    WHEN type = 'generation_video' THEN '📹 Gen: Video (2cr)'
+    WHEN type = 'generation_video_to_audio' THEN '🎬 Gen: Video-to-SFX (2cr)'
+    WHEN type = 'credit_refund' THEN '↩️ Refunds / Clawbacks'
+    WHEN type = 'release' THEN '📀 Track Releases (0cr audit)'
+    WHEN type = 'other' THEN '❓ Other / Manual'
+    ELSE '⚠️ UNKNOWN: ' || type
   END as source,
+  type as raw_type,
   COUNT(*) as count,
   SUM(amount) as net_credits,
   SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as credits_added,
@@ -157,3 +169,51 @@ FROM credit_transactions
 WHERE created_at > NOW() - INTERVAL '30 days'
 GROUP BY type
 ORDER BY credits_added DESC NULLS LAST;
+
+-- 11. INVESTIGATE: Decrypt code claims (individual amounts)
+SELECT
+  user_id, amount, description, metadata, created_at
+FROM credit_transactions
+WHERE type = 'code_claim'
+ORDER BY created_at DESC
+LIMIT 20;
+
+-- 12. INVESTIGATE: "other" type transactions (what are they?)
+SELECT
+  user_id, amount, description, metadata, status, created_at
+FROM credit_transactions
+WHERE type = 'other'
+ORDER BY created_at DESC;
+
+-- 13. INVESTIGATE: credit_refund breakdown (refunds vs clawbacks)
+SELECT
+  user_id, amount, description,
+  CASE WHEN amount > 0 THEN 'REFUND (credits returned)' ELSE 'CLAWBACK (credits removed)' END as direction,
+  metadata, created_at
+FROM credit_transactions
+WHERE type = 'credit_refund'
+ORDER BY created_at DESC
+LIMIT 20;
+
+-- 14. EARN MATH CHECK: For each purchase, verify buyer/artist/admin all logged
+SELECT
+  ct_buy.metadata->>'trackId' as track_id,
+  ct_buy.user_id as buyer,
+  ct_buy.amount as buyer_paid,
+  ct_sell.user_id as seller,
+  ct_sell.amount as seller_received,
+  ct_admin.amount as admin_received,
+  ABS(ct_buy.amount) - COALESCE(ct_sell.amount, 0) - COALESCE(ct_admin.amount, 0) as unaccounted
+FROM credit_transactions ct_buy
+LEFT JOIN credit_transactions ct_sell
+  ON ct_sell.type = 'earn_sale'
+  AND ct_sell.metadata->>'trackId' = ct_buy.metadata->>'trackId'
+  AND ct_sell.created_at BETWEEN ct_buy.created_at - INTERVAL '5 minutes' AND ct_buy.created_at + INTERVAL '5 minutes'
+LEFT JOIN credit_transactions ct_admin
+  ON ct_admin.type = 'earn_admin'
+  AND ct_admin.metadata->>'trackId' = ct_buy.metadata->>'trackId'
+  AND ct_admin.description LIKE 'Download fee%'
+  AND ct_admin.created_at BETWEEN ct_buy.created_at - INTERVAL '5 minutes' AND ct_buy.created_at + INTERVAL '5 minutes'
+WHERE ct_buy.type = 'earn_purchase'
+  AND ct_buy.created_at > NOW() - INTERVAL '30 days'
+ORDER BY ct_buy.created_at DESC;
