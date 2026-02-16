@@ -81,6 +81,11 @@ export async function GET() {
       }
     }
 
+    // Quest: track daily login (fire-and-forget)
+    import('@/lib/quest-progress').then(({ trackQuestProgress }) => {
+      trackQuestProgress(userId!, 'login_days').catch(() => {})
+    }).catch(() => {})
+
     return corsResponse(NextResponse.json({ 
       credits: user?.credits || 0,
       totalGenerated: user?.total_generated || 0,

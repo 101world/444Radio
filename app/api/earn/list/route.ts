@@ -256,6 +256,10 @@ export async function POST(request: NextRequest) {
       console.error('Failed to record listing transaction:', e)
     }
 
+    // Quest progress: fire-and-forget
+    const { trackQuestProgress } = await import('@/lib/quest-progress')
+    trackQuestProgress(userId, 'upload_marketplace').catch(() => {})
+
     return corsResponse(NextResponse.json({
       success: true,
       message: `"${track.title}" is now listed on the EARN marketplace`,

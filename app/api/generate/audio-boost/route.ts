@@ -302,6 +302,10 @@ export async function POST(req: NextRequest) {
 
       console.log('✅ Audio Boost complete')
 
+      // Quest progress: fire-and-forget
+      const { trackQuestProgress } = await import('@/lib/quest-progress')
+      trackQuestProgress(userId, 'use_mastering').catch(() => {})
+
       return corsResponse(NextResponse.json({
         success: true,
         audioUrl: outputR2Result.url,

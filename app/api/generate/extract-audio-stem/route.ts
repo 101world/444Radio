@@ -268,6 +268,10 @@ export async function POST(request: Request) {
           }
         }
 
+        // Quest progress: fire-and-forget
+        const { trackQuestProgress } = await import('@/lib/quest-progress')
+        trackQuestProgress(userId, 'generate_songs').catch(() => {})
+
         await sendLine({
           type: 'result',
           success: true,

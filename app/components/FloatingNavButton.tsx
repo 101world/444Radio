@@ -3,7 +3,7 @@
 // Professional mobile navigation — slide-up panel with labeled icons
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings, CreditCard, Home, Zap, DollarSign, LayoutGrid } from 'lucide-react'
+import { User, Compass, PlusCircle, Library, Menu, X, MessageSquare, Unlock, Settings, CreditCard, Home, Zap, DollarSign, LayoutGrid, Swords } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import ProfileSettingsModal from './ProfileSettingsModal'
@@ -65,6 +65,7 @@ export default function FloatingNavButton({ onTogglePrompt, showPromptToggle = f
       badge: 'Pro'
     },
     { href: '/earn', icon: DollarSign, label: 'Earn', highlight: 'green' as const, badge: 'New' },
+    { href: '/quests', icon: Swords, label: 'Quests', highlight: 'cyan' as const, badge: '🎮' },
     { href: '/decrypt', icon: Unlock, label: 'Decrypt', highlight: 'cyan-outline' as const },
     { href: '/pricing', icon: CreditCard, label: 'Pricing' },
     { href: user?.id ? `/profile/${user.id}` : '/profile', icon: User, label: 'My Profile', highlight: 'cyan' as const, badge: '🎤' },

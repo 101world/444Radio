@@ -193,6 +193,10 @@ export async function POST(req: NextRequest) {
         console.log('✅ Saved to library:', saved?.id)
       }
 
+      // Quest progress: fire-and-forget
+      const { trackQuestProgress } = await import('@/lib/quest-progress')
+      trackQuestProgress(userId, 'generate_songs').catch(() => {})
+
       return corsResponse(NextResponse.json({
         success: true,
         audioUrl: r2Result.url,

@@ -300,6 +300,10 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ Video-to-audio generation complete')
 
+    // Quest progress: fire-and-forget
+    const { trackQuestProgress } = await import('@/lib/quest-progress')
+    trackQuestProgress(userId, 'generate_songs').catch(() => {})
+
     return NextResponse.json({ 
       success: true, 
       videoUrl: outputR2Result.url,

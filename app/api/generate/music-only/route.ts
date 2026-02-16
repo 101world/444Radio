@@ -423,6 +423,11 @@ export async function POST(req: NextRequest) {
 
         console.log('✅ Music generated successfully:', audioUrl)
 
+        // Quest progress: fire-and-forget
+        const { trackQuestProgress } = await import('@/lib/quest-progress')
+        trackQuestProgress(userId, 'generate_songs').catch(() => {})
+        if (genre) trackQuestProgress(userId, 'use_genres', 1, genre).catch(() => {})
+
         const response: any = {
           type: 'result',
           success: true,

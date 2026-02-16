@@ -277,6 +277,10 @@ export async function POST(req: NextRequest) {
 
       console.log('✅ Looper generation complete')
 
+      // Quest progress: fire-and-forget
+      const { trackQuestProgress } = await import('@/lib/quest-progress')
+      trackQuestProgress(userId, 'generate_songs').catch(() => {})
+
       return corsResponse(NextResponse.json({ 
         success: true, 
         variations: uploadedVariations,

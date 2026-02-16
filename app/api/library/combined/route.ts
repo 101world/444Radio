@@ -365,6 +365,11 @@ export async function PATCH(req: NextRequest) {
       )
     }
 
+    // Quest progress: share_tracks (fire-and-forget)
+    import('@/lib/quest-progress').then(({ trackQuestProgress }) => {
+      trackQuestProgress(userId!, 'share_tracks').catch(() => {})
+    }).catch(() => {})
+
     return NextResponse.json({
       success: true,
       combined: updated[0]

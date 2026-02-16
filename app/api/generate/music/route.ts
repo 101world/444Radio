@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
+import { trackQuestProgress } from '@/lib/quest-progress'
 
 // Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -217,6 +218,9 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       console.error('444 Ownership registration failed (non-critical):', e)
     }
+
+    // Quest progress: fire-and-forget
+    trackQuestProgress(userId, 'generate_songs').catch(() => {})
 
     return NextResponse.json({ 
       success: true, 
