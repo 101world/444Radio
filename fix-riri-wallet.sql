@@ -50,7 +50,7 @@ ORDER BY u.username;
 
 -- ===================== FIXES =====================
 
--- Step 6: Fix ALL paying users — set wallet_balance to $1 if currently < $1
+-- Step 6a: Fix ALL paying users (wallet_deposit) — set wallet_balance to $1 if < $1
 UPDATE users
 SET wallet_balance = GREATEST(COALESCE(wallet_balance, 0), 1.00), updated_at = NOW()
 WHERE clerk_user_id IN (
@@ -59,7 +59,13 @@ WHERE clerk_user_id IN (
 )
 AND (wallet_balance IS NULL OR wallet_balance < 1);
 
--- Step 7: Log the fix for affected users
+-- Step 6b: DIRECT FIX for Riri — she paid via old subscription system (not wallet_deposit)
+UPDATE users
+SET wallet_balance = 1.00, updated_at = NOW()
+WHERE clerk_user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ'
+  AND (wallet_balance IS NULL OR wallet_balance < 1);
+
+-- Step 7: Log the fix for all affected users (wallet_deposit payers)
 INSERT INTO credit_transactions (user_id, amount, balance_after, type, status, description, metadata)
 SELECT
   u.clerk_user_id,
@@ -79,6 +85,25 @@ WHERE u.clerk_user_id IN (
   WHERE type = 'wallet_deposit' AND status = 'success'
 )
 AND u.wallet_balance = 1.00;
+
+-- Step 7b: Log the fix for Riri specifically
+INSERT INTO credit_transactions (user_id, amount, balance_after, type, status, description, metadata)
+SELECT
+  'user_34LKhAX7aYSnMboQLn5S8vVbzoQ',
+  0,
+  credits,
+  'credit_refund',
+  'success',
+  'Wallet fix: restored $1 locked balance — Riri paid $2 via old subscription system',
+  jsonb_build_object(
+    'fix_reason', 'riri_paid_before_wallet_system',
+    'restored_wallet', 1.00,
+    'paid_usd', 2,
+    'fix_date', NOW()::text
+  )
+FROM users
+WHERE clerk_user_id = 'user_34LKhAX7aYSnMboQLn5S8vVbzoQ'
+  AND wallet_balance = 1.00;
 
 -- ===================== VERIFICATION =====================
 
