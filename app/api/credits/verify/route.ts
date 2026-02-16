@@ -13,8 +13,7 @@ export async function OPTIONS() {
 // Called from frontend after Razorpay Checkout completes.
 // 1. Verifies HMAC signature
 // 2. Deposits dollars to wallet_balance via deposit_wallet() RPC
-// 3. Auto-converts available balance to credits via convert_wallet_to_credits()
-// 4. Returns new wallet balance + credit balance
+// 3. Returns new wallet balance (user converts to credits manually via /api/wallet/convert)
 export async function POST(request: Request) {
   try {
     const { userId } = await auth()
@@ -162,44 +161,27 @@ export async function POST(request: Request) {
 
     console.log(`[Wallet Verify] ✅ Deposited $${depositUsd} → wallet=$${depositRow.new_balance}`)
 
-    // ── Step 2: Auto-convert to credits (all available, keeping $1) ──
-    const { data: convertData, error: convertError } = await supabaseAdmin.rpc('convert_wallet_to_credits', {
-      p_clerk_user_id: userId,
-      p_amount_usd: null, // Convert all available
-    })
+    // Dollars stay in wallet — user converts to credits manually via /api/wallet/convert
+    const finalWallet = parseFloat(depositRow.new_balance)
 
-    const convertRow = Array.isArray(convertData) ? convertData[0] : convertData
-    let finalWallet = parseFloat(depositRow.new_balance)
-    let finalCredits = 0
-    let creditsAdded = 0
-
-    if (!convertError && convertRow?.success) {
-      finalWallet = parseFloat(convertRow.new_wallet_balance)
-      finalCredits = convertRow.new_credits
-      creditsAdded = convertRow.credits_added
-      console.log(`[Wallet Verify] ✅ Converted → +${creditsAdded} credits, wallet=$${finalWallet}`)
-    } else {
-      // Conversion failed (maybe wallet < $1 after deposit? unlikely). Fetch current state.
-      console.warn('[Wallet Verify] Conversion skipped:', convertError?.message || convertRow?.error_message)
-      const { data: user } = await supabaseAdmin
-        .from('users')
-        .select('credits, wallet_balance')
-        .eq('clerk_user_id', userId)
-        .single()
-      finalCredits = user?.credits || 0
-      finalWallet = parseFloat(user?.wallet_balance || '0')
-    }
+    // Fetch current credits for response
+    const { data: currentUser } = await supabaseAdmin
+      .from('users')
+      .select('credits')
+      .eq('clerk_user_id', userId)
+      .single()
+    const finalCredits = currentUser?.credits || 0
 
     // ── Log the deposit transaction with payment metadata ──
     // Note: razorpay_id + order_id must match the keys used by the webhook
     // handlers so cross-path idempotency checks work in both directions.
     await logCreditTransaction({
       userId,
-      amount: creditsAdded,
+      amount: 0,
       balanceAfter: finalCredits,
       type: 'wallet_deposit',
       status: 'success',
-      description: `Wallet deposit: +$${depositUsd} → ${creditsAdded} credits`,
+      description: `Wallet deposit: +$${depositUsd} → wallet $${finalWallet}`,
       metadata: {
         razorpay_id: razorpay_payment_id,
         razorpay_payment_id,
@@ -208,20 +190,19 @@ export async function POST(request: Request) {
         order_amount: order.amount,
         order_currency: order.currency,
         deposit_usd: depositUsd,
-        credits_added: creditsAdded,
         wallet_balance: finalWallet,
         credit_source: 'verify_route',
         purchase_type: 'wallet_deposit',
       },
     })
 
-    console.log(`[Wallet Verify] ✅ Complete: ${userId} deposited $${depositUsd}, +${creditsAdded} credits, wallet=$${finalWallet}`)
+    console.log(`[Wallet Verify] ✅ Complete: ${userId} deposited $${depositUsd}, wallet=$${finalWallet}`)
 
     return corsResponse(
       NextResponse.json({
         success: true,
         depositUsd,
-        creditsAdded,
+        creditsAdded: 0,
         walletBalance: finalWallet,
         credits: finalCredits,
       })

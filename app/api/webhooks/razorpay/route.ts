@@ -192,7 +192,7 @@ export async function POST(req: Request) {
 
 /**
  * payment.captured — PRIMARY handler.
- * Deposits dollars to wallet_balance, then auto-converts to credits.
+ * Deposits dollars to wallet_balance (user converts to credits manually).
  * Expects notes: { clerk_user_id, deposit_usd } or legacy { credits }
  */
 async function handlePaymentCaptured(payment: any, eventType: string) {
@@ -260,44 +260,30 @@ async function handlePaymentCaptured(payment: any, eventType: string) {
     return
   }
 
-  // ── Step 2: Auto-convert to credits ──
-  let creditsAdded = 0
-  let finalWallet = parseFloat(depositRow.new_balance)
-  let finalCredits = user.credits || 0
-
-  const { data: convertData, error: convertErr } = await supabaseAdmin.rpc('convert_wallet_to_credits', {
-    p_clerk_user_id: user.clerk_user_id,
-    p_amount_usd: null, // Convert all available
-  })
-  const convertRow = Array.isArray(convertData) ? convertData[0] : convertData
-  if (!convertErr && convertRow?.success) {
-    creditsAdded = convertRow.credits_added
-    finalWallet = parseFloat(convertRow.new_wallet_balance)
-    finalCredits = convertRow.new_credits
-  }
+  // ── Step 2: Dollars stay in wallet — user converts to credits manually ──
+  const finalWallet = parseFloat(depositRow.new_balance)
+  const finalCredits = user.credits || 0
 
   // ── Log transaction (idempotency record) ──
   await logCreditTransaction({
     userId: user.clerk_user_id,
-    amount: creditsAdded,
+    amount: 0,
     balanceAfter: finalCredits,
     type: 'wallet_deposit',
     status: 'success',
-    description: `Wallet deposit: +$${depositUsd} → ${creditsAdded} credits`,
+    description: `Wallet deposit: +$${depositUsd} → wallet $${finalWallet}`,
     metadata: {
       razorpay_id: paymentId,
       event_type: eventType,
       payment_amount: entity.amount,
       currency: entity.currency,
       deposit_usd: depositUsd,
-      credits_added: creditsAdded,
       wallet_balance: finalWallet,
-      previous_credits: user.credits || 0,
       order_id: entity.order_id,
     },
   })
 
-  console.log(`[Razorpay] ✅ Payment ${paymentId}: +$${depositUsd} → ${creditsAdded} credits → ${user.email} (wallet=$${finalWallet})`)
+  console.log(`[Razorpay] ✅ Payment ${paymentId}: +$${depositUsd} → wallet=$${finalWallet} → ${user.email}`)
 }
 
 /**
@@ -381,7 +367,7 @@ async function handleOrderPaid(order: any) {
     return
   }
 
-  // ── Deposit to wallet + auto-convert ──
+  // ── Deposit to wallet (manual convert later) ──
   const { data: depositData, error: depositErr } = await supabaseAdmin.rpc('deposit_wallet', {
     p_clerk_user_id: user.clerk_user_id,
     p_amount_usd: depositUsd,
@@ -392,42 +378,29 @@ async function handleOrderPaid(order: any) {
     return
   }
 
-  let creditsAdded = 0
-  let finalWallet = parseFloat(depositRow.new_balance)
-  let finalCredits = user.credits || 0
-
-  const { data: convertData } = await supabaseAdmin.rpc('convert_wallet_to_credits', {
-    p_clerk_user_id: user.clerk_user_id,
-    p_amount_usd: null,
-  })
-  const convertRow = Array.isArray(convertData) ? convertData[0] : convertData
-  if (convertRow?.success) {
-    creditsAdded = convertRow.credits_added
-    finalWallet = parseFloat(convertRow.new_wallet_balance)
-    finalCredits = convertRow.new_credits
-  }
+  // Dollars stay in wallet — user converts to credits manually
+  const finalWallet = parseFloat(depositRow.new_balance)
+  const finalCredits = user.credits || 0
 
   await logCreditTransaction({
     userId: user.clerk_user_id,
-    amount: creditsAdded,
+    amount: 0,
     balanceAfter: finalCredits,
     type: 'wallet_deposit',
     status: 'success',
-    description: `Order paid (fallback): +$${depositUsd} → ${creditsAdded} credits`,
+    description: `Order paid (fallback): +$${depositUsd} → wallet $${finalWallet}`,
     metadata: {
       razorpay_id: orderId,
       event_type: 'order.paid',
       order_id: orderId,
       deposit_usd: depositUsd,
-      credits_added: creditsAdded,
       wallet_balance: finalWallet,
       payment_amount: entity.amount,
       currency: entity.currency,
-      previous_credits: user.credits || 0,
     },
   })
 
-  console.log(`[Razorpay] ✅ Order ${orderId}: +$${depositUsd} → ${creditsAdded} credits → ${user.email}`)
+  console.log(`[Razorpay] ✅ Order ${orderId}: +$${depositUsd} → wallet=$${finalWallet} → ${user.email}`)
 }
 
 // ═══════════════════════════════════════════════════════════════

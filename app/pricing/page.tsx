@@ -257,7 +257,7 @@ export default function PricingPage() {
           name: orderData.customerName,
         },
         handler: async (response: any) => {
-          // 3. Verify + deposit + auto-convert
+          // 3. Verify + deposit to wallet (user converts to credits manually)
           try {
             const verifyRes = await fetch('/api/credits/verify', {
               method: 'POST',
@@ -271,10 +271,7 @@ export default function PricingPage() {
             const verifyData = await verifyRes.json()
 
             if (verifyData.success) {
-              const msg = verifyData.creditsAdded > 0
-                ? `+$${amountUsd} deposited → ${verifyData.creditsAdded} credits added! Wallet: $${verifyData.walletBalance.toFixed(2)}`
-                : `+$${amountUsd} deposited to wallet. Balance: $${verifyData.walletBalance.toFixed(2)}`
-              setPurchaseMessage({ type: 'success', text: msg })
+              setPurchaseMessage({ type: 'success', text: `✅ +$${amountUsd} deposited to wallet! Balance: $${verifyData.walletBalance.toFixed(2)}. Convert to credits when ready.` })
               refreshCredits()
               window.dispatchEvent(new Event('credits:refresh'))
             } else {
