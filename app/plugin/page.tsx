@@ -1957,6 +1957,19 @@ export default function PluginPage() {
               </button>
             </div>
 
+            {/* Pin reminder for drag-drop */}
+            {!isPinned && (
+              <div className="px-4 py-2 relative z-10" style={{borderBottom:'1px solid rgba(255,180,0,0.08)'}}>
+                <button onClick={togglePin} className="w-full flex items-start gap-2 px-3 py-2 rounded-lg transition-all hover:scale-[1.02]" style={{background:'rgba(255,180,0,0.08)',border:'1px solid rgba(255,180,0,0.2)'}}>
+                  <Pin size={14} className="mt-0.5 shrink-0" style={{color:'rgba(255,200,0,0.9)'}} />
+                  <div className="text-left flex-1 min-w-0">
+                    <p className="text-[11px] font-semibold leading-tight" style={{color:'rgba(255,200,0,0.95)'}}>Pin window for drag & drop</p>
+                    <p className="text-[9px] mt-0.5 leading-tight" style={{color:'rgba(255,255,255,0.45)'}}>Keeps window on top + enables file drops</p>
+                  </div>
+                </button>
+              </div>
+            )}
+
             {/* Credits */}
             <div className="px-4 py-2 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{background:'rgba(0,255,255,0.06)',border:'1px solid rgba(0,255,255,0.2)'}}>
@@ -3431,12 +3444,19 @@ export default function PluginPage() {
 
       {/* ── Drag-in file overlay ── */}
       {isDraggingFileOver && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-none">
           <div className="border-2 border-dashed border-cyan-400/60 rounded-3xl p-12 text-center space-y-3">
             <Upload size={48} className="text-cyan-400 mx-auto" />
             <p className="text-xl font-bold text-white">Drop file to process</p>
             <p className="text-sm text-gray-400">Audio or video files — stems, boost, effects & more</p>
           </div>
+          {!isPinned && (
+            <div className="mt-6 px-6 py-3 rounded-xl" style={{background:'rgba(255,180,0,0.12)',border:'1px solid rgba(255,180,0,0.3)'}}>
+              <p className="text-xs text-center leading-relaxed" style={{color:'rgba(255,200,0,0.95)'}}>
+                💡 <strong>Tip:</strong> If drop doesn't work, click the <Pin size={12} className="inline mx-0.5" style={{position:'relative',top:'2px'}} /> pin button to keep window on top
+              </p>
+            </div>
+          )}
         </div>
       )}
 
