@@ -43,9 +43,33 @@ export async function GET(req: NextRequest) {
         supabase
           .from('users')
           .select('*')
-          .gte('wallet_balance', 1)
+          .gte('wallet_balance', 1.00)
           .order('wallet_balance', { ascending: false })
       ])
+
+      // Debug: log paid users query result
+      if (subUsersRes.error) {
+        console.error('[adminrizzog] Paid users query error:', subUsersRes.error)
+      }
+      
+      // Fallback: if .gte query returns empty but we know users paid, 
+      // do a secondary check from all users
+      let paidUsersList = subUsersRes.data || []
+      if (paidUsersList.length === 0 && !subUsersRes.error) {
+        // Try fetching all users and filtering manually
+        const { data: allUsers } = await supabase
+          .from('users')
+          .select('*')
+          .order('wallet_balance', { ascending: false })
+        paidUsersList = (allUsers || []).filter((u: any) => 
+          parseFloat(String(u.wallet_balance || '0')) >= 1.00
+        )
+        if (paidUsersList.length > 0) {
+          console.log(`[adminrizzog] Found ${paidUsersList.length} paid users via fallback filter`)
+        }
+      }
+      console.log(`[adminrizzog] Paid users: ${paidUsersList.length}`, 
+        paidUsersList.map((u: any) => ({ username: u.username, wallet: u.wallet_balance })))
 
       // Sum all credits in system
       const { data: creditSum } = await supabase
@@ -116,7 +140,8 @@ export async function GET(req: NextRequest) {
         adminWalletRemaining: 444_000_000_000 - totalCreditsAwarded,
         mediaByType,
         topUsers: topUsersRes.data || [],
-        paidUsers: subUsersRes.data || [],
+        paidUsers: paidUsersList,
+        paidUsersCount: paidUsersList.length,
         recentTransactions: recentTxnsRes.data || [],
         recentAwards: recentAwards || [],
         creditPurchases,

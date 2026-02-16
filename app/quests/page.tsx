@@ -64,11 +64,11 @@ function getTimeRemaining(expiresAt: string) {
 
 function getQuestTypeColor(type: string) {
   switch (type) {
-    case 'daily': return { bg: 'from-emerald-500/20 to-cyan-500/20', border: 'border-emerald-500/40', text: 'text-emerald-400', glow: 'shadow-emerald-500/20' }
-    case 'weekly': return { bg: 'from-cyan-500/20 to-blue-500/20', border: 'border-cyan-500/40', text: 'text-cyan-400', glow: 'shadow-cyan-500/20' }
-    case 'monthly': return { bg: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/40', text: 'text-purple-400', glow: 'shadow-purple-500/20' }
-    case 'yearly': return { bg: 'from-amber-500/20 to-red-500/20', border: 'border-amber-500/40', text: 'text-amber-400', glow: 'shadow-amber-500/20' }
-    default: return { bg: 'from-gray-500/20 to-gray-500/20', border: 'border-gray-500/40', text: 'text-gray-400', glow: 'shadow-gray-500/20' }
+    case 'daily': return { bg: 'from-blue-500/15 to-sky-500/10', border: 'border-blue-500/30', text: 'text-blue-400', glow: 'shadow-blue-500/15' }
+    case 'weekly': return { bg: 'from-blue-600/15 to-indigo-500/10', border: 'border-blue-400/30', text: 'text-blue-300', glow: 'shadow-blue-400/15' }
+    case 'monthly': return { bg: 'from-indigo-500/15 to-blue-600/10', border: 'border-indigo-400/30', text: 'text-indigo-300', glow: 'shadow-indigo-400/15' }
+    case 'yearly': return { bg: 'from-sky-500/15 to-blue-700/10', border: 'border-sky-400/30', text: 'text-sky-300', glow: 'shadow-sky-400/15' }
+    default: return { bg: 'from-gray-600/15 to-gray-700/10', border: 'border-gray-500/30', text: 'text-gray-400', glow: 'shadow-gray-500/15' }
   }
 }
 
@@ -99,7 +99,7 @@ function QuestCard({ quest, hasPass, onStart, onClaim, starting, claiming }: {
   const isActive = progress?.status === 'active'
 
   return (
-    <div className={`group relative bg-gradient-to-br ${colors.bg} backdrop-blur-xl border ${colors.border} rounded-2xl p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${colors.glow}`}>
+    <div className={`group relative bg-gradient-to-br ${colors.bg} backdrop-blur-2xl border ${colors.border} rounded-2xl p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${colors.glow} shadow-xl shadow-black/10`}>
       {/* Scan-line effect */}
       <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/[0.02] to-transparent animate-pulse" />
@@ -107,14 +107,14 @@ function QuestCard({ quest, hasPass, onStart, onClaim, starting, claiming }: {
 
       {/* Top row: type badge + reward */}
       <div className="flex items-center justify-between mb-3">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${colors.text} bg-black/30 border ${colors.border}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${colors.text} bg-black/40 border ${colors.border}`}>
           {getQuestTypeIcon(quest.quest_type)}
           {quest.quest_type}
         </span>
         <div className="flex items-center gap-1.5">
-          <Zap size={14} className="text-yellow-400" />
-          <span className="text-yellow-300 font-bold text-sm">{quest.credits_reward}</span>
-          <span className="text-yellow-300/60 text-xs">credits</span>
+          <Zap size={14} className="text-blue-400" />
+          <span className="text-blue-300 font-bold text-sm">{quest.credits_reward}</span>
+          <span className="text-blue-300/50 text-xs">credits</span>
         </div>
       </div>
 
@@ -126,17 +126,17 @@ function QuestCard({ quest, hasPass, onStart, onClaim, starting, claiming }: {
       {progress && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-gray-400 text-xs">Progress</span>
-            <span className={`text-xs font-mono font-bold ${isCompleted || isClaimed ? 'text-emerald-400' : colors.text}`}>
+            <span className="text-gray-500 text-xs">Progress</span>
+            <span className={`text-xs font-mono font-bold ${isCompleted || isClaimed ? 'text-blue-300' : colors.text}`}>
               {progress.progress}/{progress.target}
             </span>
           </div>
-          <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/10">
+          <div className="h-2 bg-black/50 rounded-full overflow-hidden border border-white/5">
             <div
               className={`h-full rounded-full transition-all duration-700 ease-out ${
-                isClaimed ? 'bg-gradient-to-r from-emerald-500 to-cyan-400' :
-                isCompleted ? 'bg-gradient-to-r from-yellow-500 to-amber-400 animate-pulse' :
-                'bg-gradient-to-r from-cyan-500 to-blue-500'
+                isClaimed ? 'bg-gradient-to-r from-blue-400 to-sky-300' :
+                isCompleted ? 'bg-gradient-to-r from-blue-500 to-indigo-400 animate-pulse' :
+                'bg-gradient-to-r from-blue-600 to-blue-400'
               }`}
               style={{ width: `${pct}%` }}
             />
@@ -147,7 +147,7 @@ function QuestCard({ quest, hasPass, onStart, onClaim, starting, claiming }: {
       {/* Action button */}
       <div className="flex items-center gap-3">
         {isClaimed ? (
-          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm font-medium">
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/25 rounded-xl text-blue-300 text-sm font-medium">
             <CheckCircle2 size={16} />
             Claimed
           </div>
@@ -155,17 +155,17 @@ function QuestCard({ quest, hasPass, onStart, onClaim, starting, claiming }: {
           <button
             onClick={() => onClaim(quest.id)}
             disabled={claiming === quest.id}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 text-sm shadow-lg shadow-yellow-500/30"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-sky-400 text-white font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 text-sm shadow-lg shadow-blue-500/30"
           >
             {claiming === quest.id ? (
-              <div className="w-4 h-4 border-2 border-black/40 border-t-black rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             ) : (
               <Gift size={16} />
             )}
             Claim Reward
           </button>
         ) : isActive ? (
-          <div className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-sm font-medium">
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/25 rounded-xl text-blue-300 text-sm font-medium">
             <Target size={16} className="animate-pulse" />
             In Progress
           </div>
@@ -205,17 +205,17 @@ function QuestCard({ quest, hasPass, onStart, onClaim, starting, claiming }: {
 function StatsPanel({ stats }: { stats: QuestStats | null }) {
   if (!stats) return null
   const items = [
-    { label: 'Participants', value: stats.totalParticipants, icon: Users, color: 'text-cyan-400' },
-    { label: 'Active Quests', value: stats.activeQuests, icon: Target, color: 'text-purple-400' },
-    { label: 'Completions', value: stats.totalCompletions, icon: Trophy, color: 'text-yellow-400' },
-    { label: 'Rate', value: `${stats.completionRate}%`, icon: TrendingUp, color: 'text-emerald-400' },
+    { label: 'Participants', value: stats.totalParticipants, icon: Users, color: 'text-blue-400' },
+    { label: 'Active Quests', value: stats.activeQuests, icon: Target, color: 'text-blue-300' },
+    { label: 'Completions', value: stats.totalCompletions, icon: Trophy, color: 'text-sky-400' },
+    { label: 'Rate', value: `${stats.completionRate}%`, icon: TrendingUp, color: 'text-blue-300' },
   ]
   return (
     <div className="grid grid-cols-2 gap-3">
       {items.map(item => (
-        <div key={item.label} className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1">
+        <div key={item.label} className="bg-black/50 backdrop-blur-2xl border border-white/[0.06] rounded-xl p-3 flex flex-col items-center gap-1 shadow-lg shadow-black/10">
           <item.icon size={18} className={item.color} />
-          <span className="text-white font-bold text-lg">{item.value}</span>
+          <span className="text-gray-100 font-bold text-lg">{item.value}</span>
           <span className="text-gray-500 text-[10px] uppercase tracking-wider">{item.label}</span>
         </div>
       ))}
@@ -356,7 +356,7 @@ export default function QuestsPage() {
     const cols = Math.ceil(w / fontSize)
     const drops: number[] = Array.from({ length: cols }, () => Math.random() * -50)
     const speeds: number[] = Array.from({ length: cols }, () => 0.3 + Math.random() * 0.7)
-    const colors = ['#06b6d4', '#22d3ee', '#a855f7', '#f43f5e', '#f97316', '#10b981', '#3b82f6', '#eab308']
+    const colors = ['#3b82f6', '#60a5fa', '#2563eb', '#1d4ed8', '#93c5fd', '#6b7280', '#475569', '#38bdf8']
     const colColors: string[] = Array.from({ length: cols }, () => colors[Math.floor(Math.random() * colors.length)])
 
     // Characters: code-like symbols + binary + "444"
@@ -389,17 +389,17 @@ export default function QuestsPage() {
 
       // Outer glow
       ctx!.shadowBlur = 80
-      ctx!.shadowColor = 'rgba(6, 182, 212, 0.3)'
+      ctx!.shadowColor = 'rgba(59, 130, 246, 0.3)'
       ctx!.font = `${size}px "JetBrains Mono", "Fira Code", monospace`
       ctx!.textAlign = 'center'
       ctx!.textBaseline = 'middle'
-      ctx!.fillStyle = `rgba(6, 182, 212, ${alpha})`
+      ctx!.fillStyle = `rgba(59, 130, 246, ${alpha})`
       ctx!.fillText('444', cx, cy)
 
       // Inner bright flash
       ctx!.shadowBlur = 40
-      ctx!.shadowColor = 'rgba(168, 85, 247, 0.2)'
-      ctx!.fillStyle = `rgba(168, 85, 247, ${alpha * 0.6})`
+      ctx!.shadowColor = 'rgba(99, 102, 241, 0.2)'
+      ctx!.fillStyle = `rgba(99, 102, 241, ${alpha * 0.6})`
       ctx!.fillText('444', cx + 2, cy + 2)
 
       ctx!.shadowBlur = 0
@@ -424,7 +424,7 @@ export default function QuestsPage() {
           const dist = Math.sqrt(dx * dx + dy * dy)
           if (dist < 180) {
             const alpha = (1 - dist / 180) * 0.12
-            ctx!.strokeStyle = `rgba(243, 63, 94, ${alpha})`
+            ctx!.strokeStyle = `rgba(59, 130, 246, ${alpha})`
             ctx!.lineWidth = 0.5
             ctx!.beginPath()
             // Circuit-style: right angle connections
@@ -499,9 +499,9 @@ export default function QuestsPage() {
       // Moving scan line
       const scanY = (frame * 1.5) % (h + 200) - 100
       const scanGrad = ctx!.createLinearGradient(0, scanY - 40, 0, scanY + 40)
-      scanGrad.addColorStop(0, 'rgba(6, 182, 212, 0)')
-      scanGrad.addColorStop(0.5, 'rgba(6, 182, 212, 0.04)')
-      scanGrad.addColorStop(1, 'rgba(6, 182, 212, 0)')
+      scanGrad.addColorStop(0, 'rgba(59, 130, 246, 0)')
+      scanGrad.addColorStop(0.5, 'rgba(59, 130, 246, 0.03)')
+      scanGrad.addColorStop(1, 'rgba(59, 130, 246, 0)')
       ctx!.fillStyle = scanGrad
       ctx!.fillRect(0, scanY - 40, w, 80)
     }
@@ -547,11 +547,11 @@ export default function QuestsPage() {
         {/* Top vignette — dark */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/80" />
         {/* Center spotlight */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_30%,_rgba(6,182,212,0.06)_0%,_transparent_70%)]" />
-        {/* Red accent glow bottom-right */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_90%,_rgba(244,63,94,0.04)_0%,_transparent_50%)]" />
-        {/* Purple accent top-left */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_10%,_rgba(168,85,247,0.04)_0%,_transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_30%,_rgba(59,130,246,0.04)_0%,_transparent_70%)]" />
+        {/* Blue accent glow bottom-right */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_90%,_rgba(59,130,246,0.03)_0%,_transparent_50%)]" />
+        {/* Subtle accent top-left */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_10%,_rgba(99,102,241,0.03)_0%,_transparent_50%)]" />
       </div>
 
       {/* CRT / console overlay effect */}
@@ -575,11 +575,11 @@ export default function QuestsPage() {
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2.5 bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 rounded-xl">
-                  <Swords size={24} className="text-cyan-400" />
+                <div className="p-2.5 bg-gradient-to-br from-blue-500/15 to-blue-600/15 border border-blue-500/25 rounded-xl">
+                  <Swords size={24} className="text-blue-400" />
                 </div>
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  <h1 className="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-blue-400 via-blue-300 to-sky-400 bg-clip-text text-transparent">
                     QUESTS
                   </h1>
                   <p className="text-gray-500 text-xs uppercase tracking-[0.3em] font-mono">Mission Control // AI Ops</p>
@@ -591,8 +591,8 @@ export default function QuestsPage() {
             </div>
 
             {/* Credits badge */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-black/50 backdrop-blur-xl border border-cyan-500/20 rounded-xl">
-              <Zap size={16} className="text-cyan-400" />
+            <div className="flex items-center gap-2 px-4 py-2 bg-black/60 backdrop-blur-xl border border-blue-500/15 rounded-xl">
+              <Zap size={16} className="text-blue-400" />
               <span className="text-white font-bold">{credits ?? '...'}</span>
               <span className="text-gray-500 text-xs">credits</span>
             </div>
@@ -602,27 +602,27 @@ export default function QuestsPage() {
         {/* ──── Quest Pass Status Bar ──── */}
         <div className={`mb-8 p-4 md:p-5 rounded-2xl border backdrop-blur-xl transition-all ${
           passActive
-            ? 'bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border-emerald-500/30'
-            : 'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30'
+            ? 'bg-gradient-to-r from-blue-500/10 to-blue-600/10 border-blue-500/25 shadow-lg shadow-blue-500/5'
+            : 'bg-gradient-to-r from-gray-800/60 to-gray-900/60 border-gray-600/30'
         }`}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               {passActive ? (
-                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                  <Shield size={20} className="text-emerald-400" />
+                <div className="p-2 bg-blue-500/15 rounded-lg border border-blue-500/20">
+                  <Shield size={20} className="text-blue-400" />
                 </div>
               ) : (
-                <div className="p-2 bg-red-500/20 rounded-lg">
-                  <Lock size={20} className="text-red-400" />
+                <div className="p-2 bg-gray-700/30 rounded-lg border border-gray-600/20">
+                  <Lock size={20} className="text-gray-400" />
                 </div>
               )}
               <div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-sm font-bold ${passActive ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <span className={`text-sm font-bold ${passActive ? 'text-blue-400' : 'text-gray-400'}`}>
                     Quest Pass: {passActive ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                   {passActive && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 font-mono border border-blue-500/20">
                       {passDaysLeft}d remaining
                     </span>
                   )}
@@ -630,7 +630,7 @@ export default function QuestsPage() {
                 <p className="text-gray-500 text-xs mt-0.5">
                   {passActive
                     ? `Expires ${new Date(pass!.expires_at).toLocaleDateString()}`
-                    : 'Activate your Quest Pass to start earning credits from challenges ($1+ in wallet required)'
+                    : 'Activate your Quest Pass to start earning credits from challenges (30 credits)'
                   }
                 </p>
               </div>
@@ -640,14 +640,14 @@ export default function QuestsPage() {
               <button
                 onClick={handlePurchasePass}
                 disabled={purchasing}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-cyan-500/30 text-sm"
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-blue-600/30 text-sm border border-blue-400/20"
               >
                 {purchasing ? (
                   <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                 ) : (
                   <Unlock size={16} />
                 )}
-                Activate Quest Pass
+                Activate Quest Pass — 30 Credits
               </button>
             )}
           </div>
@@ -655,10 +655,10 @@ export default function QuestsPage() {
 
         {/* Error toast */}
         {error && (
-          <div className="mb-6 flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-            <AlertTriangle size={18} className="text-red-400 flex-shrink-0" />
-            <p className="text-red-300 text-sm">{error}</p>
-            <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">✕</button>
+          <div className="mb-6 flex items-center gap-3 p-4 bg-red-500/5 border border-red-500/20 rounded-xl backdrop-blur-xl">
+            <AlertTriangle size={18} className="text-red-400/80 flex-shrink-0" />
+            <p className="text-red-300/80 text-sm">{error}</p>
+            <button onClick={() => setError(null)} className="ml-auto text-gray-500 hover:text-gray-300">✕</button>
           </div>
         )}
 
@@ -676,8 +676,8 @@ export default function QuestsPage() {
                   onClick={() => setFilter(f)}
                   className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                     filter === f
-                      ? 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-400'
-                      : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+                      ? 'bg-blue-500/15 border border-blue-500/30 text-blue-300'
+                      : 'bg-white/[0.03] border border-white/[0.06] text-gray-500 hover:bg-white/[0.06] hover:text-gray-300'
                   }`}
                 >
                   {f === 'all' ? 'All Quests' : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -722,32 +722,32 @@ export default function QuestsPage() {
           {/* Right sidebar: Analytics (1 col) */}
           <div className="space-y-6">
             {/* Analytics card */}
-            <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
+            <div className="bg-black/50 backdrop-blur-2xl border border-white/[0.06] rounded-2xl p-5 shadow-xl shadow-black/20">
               <div className="flex items-center gap-2 mb-4">
-                <TrendingUp size={16} className="text-cyan-400" />
-                <h2 className="text-white font-bold text-sm uppercase tracking-wider">Analytics</h2>
+                <TrendingUp size={16} className="text-blue-400" />
+                <h2 className="text-gray-300 font-bold text-sm uppercase tracking-wider">Analytics</h2>
               </div>
               <StatsPanel stats={stats} />
             </div>
 
             {/* Reward tiers info */}
-            <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
+            <div className="bg-black/50 backdrop-blur-2xl border border-white/[0.06] rounded-2xl p-5 shadow-xl shadow-black/20">
               <div className="flex items-center gap-2 mb-4">
-                <Sparkles size={16} className="text-purple-400" />
-                <h2 className="text-white font-bold text-sm uppercase tracking-wider">Reward Tiers</h2>
+                <Sparkles size={16} className="text-blue-400" />
+                <h2 className="text-gray-300 font-bold text-sm uppercase tracking-wider">Reward Tiers</h2>
               </div>
               <div className="space-y-3">
                 {[
-                  { type: 'Daily', reward: '50', color: 'text-emerald-400', border: 'border-emerald-500/20' },
-                  { type: 'Weekly', reward: '20', color: 'text-cyan-400', border: 'border-cyan-500/20' },
-                  { type: 'Monthly', reward: '100', color: 'text-purple-400', border: 'border-purple-500/20' },
-                  { type: 'Yearly', reward: '250', color: 'text-amber-400', border: 'border-amber-500/20' },
+                  { type: 'Daily', reward: '50', color: 'text-blue-400', border: 'border-blue-500/15' },
+                  { type: 'Weekly', reward: '20', color: 'text-blue-300', border: 'border-blue-400/15' },
+                  { type: 'Monthly', reward: '100', color: 'text-indigo-300', border: 'border-indigo-500/15' },
+                  { type: 'Yearly', reward: '250', color: 'text-sky-300', border: 'border-sky-500/15' },
                 ].map(tier => (
                   <div key={tier.type} className={`flex items-center justify-between p-2.5 rounded-lg border ${tier.border} bg-white/[0.02]`}>
                     <span className={`text-xs font-bold uppercase tracking-wider ${tier.color}`}>{tier.type}</span>
                     <div className="flex items-center gap-1">
-                      <Zap size={12} className="text-yellow-400" />
-                      <span className="text-yellow-300 font-bold text-xs">{tier.reward}</span>
+                      <Zap size={12} className="text-blue-400" />
+                      <span className="text-blue-300 font-bold text-xs">{tier.reward}</span>
                     </div>
                   </div>
                 ))}
@@ -755,17 +755,17 @@ export default function QuestsPage() {
             </div>
 
             {/* How it works */}
-            <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-              <h2 className="text-white font-bold text-sm uppercase tracking-wider mb-3">How It Works</h2>
-              <ol className="space-y-2.5 text-gray-400 text-xs">
+            <div className="bg-black/50 backdrop-blur-2xl border border-white/[0.06] rounded-2xl p-5 shadow-xl shadow-black/20">
+              <h2 className="text-gray-300 font-bold text-sm uppercase tracking-wider mb-3">How It Works</h2>
+              <ol className="space-y-2.5 text-gray-500 text-xs">
                 {[
-                  'Have $1+ in your wallet to activate', 
+                  'Pay 30 credits to activate your Quest Pass', 
                   'Browse and start available quests',
                   'Complete challenges by using the platform',
                   'Claim your credit rewards',
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-[10px] font-bold">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/15 border border-blue-500/20 flex items-center justify-center text-blue-400 text-[10px] font-bold">
                       {i + 1}
                     </span>
                     <span className="mt-0.5">{step}</span>

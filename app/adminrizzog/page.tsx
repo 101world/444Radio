@@ -420,7 +420,7 @@ function OverviewTab({ data, onViewUser }: { data: ApiData; onViewUser: (id: str
 
         {/* Paid Users ($1+ wallet balance = has access) */}
         <div className="bg-gray-900/80 border border-gray-700/50 rounded-xl p-6">
-          <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">💰 Paid Users</h3>
+          <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">💰 Paid Users ({(paidUsers || []).length})</h3>
           {(paidUsers || []).length === 0 ? (
             <p className="text-gray-500 text-sm">No paid users</p>
           ) : (

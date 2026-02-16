@@ -27,6 +27,8 @@ export type CreditTransactionType =
   | 'wallet_conversion'
   | 'subscription_bonus'
   | 'plugin_purchase'
+  | 'quest_entry'
+  | 'quest_reward'
   | 'release'
   | 'code_claim'
   | 'other'

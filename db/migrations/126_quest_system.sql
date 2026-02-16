@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS quest_passes (
   purchased_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at    TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '30 days'),
   is_active     BOOLEAN NOT NULL DEFAULT true,
-  credits_spent INT NOT NULL DEFAULT 1, -- Cost in credits (default 1)
+  credits_spent INT NOT NULL DEFAULT 30, -- Cost in credits (default 30)
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -145,6 +145,7 @@ BEGIN
       'subscription_bonus',
       'plugin_purchase',
       'code_claim',
+
       'quest_entry',
       'quest_reward',
       'release',
