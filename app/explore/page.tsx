@@ -87,8 +87,8 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
       <div className={`relative w-[140px] h-[140px] rounded-xl overflow-hidden transition-all duration-200 ${
         isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/20' : 'ring-1 ring-white/[0.06] hover:ring-white/15 hover:shadow-lg hover:shadow-black/30'
       }`}>
-        {/* Looping video canvas (Spotify Canvas–style) */}
-        {media.video_url && isCurrentlyPlaying ? (
+        {/* Looping video canvas (Spotify Canvas–style) — always loops for video releases */}
+        {media.video_url ? (
           <video
             src={media.video_url}
             autoPlay
