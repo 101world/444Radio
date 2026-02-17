@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { createClient } from '@supabase/supabase-js'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { refundCredits } from '@/lib/refund-credits'
 import { uploadToR2 } from '@/lib/r2-upload'
 
 export const maxDuration = 300
@@ -226,8 +227,10 @@ export async function POST(request: Request) {
             if (skipCreditDeduction && earnJobId) {
               await refundEarnStemCredits(userId, earnJobId, 'client_disconnected')
             }
-            await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split cancelled: ${stem}`, metadata: { reason: 'client_disconnected' } })
-            await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: skipCreditDeduction }).catch(() => {})
+            if (!skipCreditDeduction) {
+              await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split cancelled (client disconnected): ${stem}`, metadata: { reason: 'client_disconnected' } })
+            }
+            await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: true }).catch(() => {})
             await writer.close().catch(() => {})
             return
           }
@@ -247,8 +250,10 @@ export async function POST(request: Request) {
           if (skipCreditDeduction && earnJobId) {
             await refundEarnStemCredits(userId, earnJobId, 'timeout')
           }
-          await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split timed out: ${stem}`, metadata: { reason: 'timeout', predictionId: prediction.id } })
-          await sendLine({ type: 'result', success: false, error: 'Stem splitting timed out. The model may be overloaded — please try again later.', refunded: skipCreditDeduction })
+          if (!skipCreditDeduction) {
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split timed out: ${stem}`, metadata: { reason: 'timeout', predictionId: prediction.id } })
+          }
+          await sendLine({ type: 'result', success: false, error: 'Stem splitting timed out. The model may be overloaded — please try again later.', refunded: true })
           await writer.close()
           return
         }
@@ -257,7 +262,10 @@ export async function POST(request: Request) {
           if (skipCreditDeduction && earnJobId) {
             await refundEarnStemCredits(userId, earnJobId, 'canceled')
           }
-          await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: skipCreditDeduction })
+          if (!skipCreditDeduction) {
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split cancelled: ${stem}`, metadata: { reason: 'canceled' } })
+          }
+          await sendLine({ type: 'result', success: false, error: 'Stem split cancelled', refunded: true })
           await writer.close()
           return
         }
@@ -266,16 +274,23 @@ export async function POST(request: Request) {
           if (skipCreditDeduction && earnJobId) {
             await refundEarnStemCredits(userId, earnJobId, 'failed')
           }
-          await sendLine({ type: 'result', success: false, error: 'Stem split failed', refunded: skipCreditDeduction })
+          if (!skipCreditDeduction) {
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split failed: ${stem}`, metadata: { reason: 'failed' } })
+          }
+          await sendLine({ type: 'result', success: false, error: 'Stem split failed', refunded: true })
           await writer.close()
           return
         }
 
         // Extract the requested stem URL from output
         // Demucs returns: { bass, drums, guitar, other, piano, vocals } — each key is url or null
+        // No output — refund
         const raw = finalPrediction.output as Record<string, string | null> | null
         if (!raw) {
-          await sendLine({ type: 'result', success: false, error: 'No output returned from model.' })
+          if (!skipCreditDeduction) {
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split: no output for ${stem}`, metadata: {} })
+          }
+          await sendLine({ type: 'result', success: false, error: 'No output returned from model.', refunded: true })
           await writer.close()
           return
         }
@@ -289,7 +304,10 @@ export async function POST(request: Request) {
         }
 
         if (Object.keys(outputStems).length === 0) {
-          await sendLine({ type: 'result', success: false, error: 'No stems returned. Try a different audio file.' })
+          if (!skipCreditDeduction) {
+            await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split: no stems returned for ${stem}`, metadata: {} })
+          }
+          await sendLine({ type: 'result', success: false, error: 'No stems returned. Try a different audio file.', refunded: true })
           await writer.close()
           return
         }
@@ -388,9 +406,12 @@ export async function POST(request: Request) {
             console.error('[Stem Split] Refund failed:', refundErr)
           }
         }
-        await logCreditTransaction({ userId, amount: 0, type: 'generation_stem_split', status: 'failed', description: `Stem split failed: ${stem}`, metadata: { error: String(error).substring(0, 200) } })
+        // Refund credits for non-earn failures
+        if (!skipCreditDeduction) {
+          await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split stream error: ${stem}`, metadata: { error: String(error).substring(0, 200) } })
+        }
         try {
-          await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes', refunded: skipCreditDeduction })
+          await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes', refunded: true })
           await writer.close()
         } catch { /* stream may already be closed */ }
       }
