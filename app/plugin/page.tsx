@@ -403,11 +403,13 @@ export default function PluginPage() {
     })()
   }, [token])
 
-  // ═══ MOUNT: hide HTML fallback loader once React is alive ═══
+  // ═══ Hide HTML fallback only once React has real content (not during loading) ═══
   useEffect(() => {
-    const fb = document.getElementById('plugin-fallback')
-    if (fb) fb.style.display = 'none'
-  }, [])
+    if (!isLoadingCredits) {
+      const fb = document.getElementById('plugin-fallback')
+      if (fb) fb.style.display = 'none'
+    }
+  }, [isLoadingCredits])
 
   // ═══ LAYOUT: detect mobile + set layout from preset ═══
   useEffect(() => {
@@ -1909,7 +1911,7 @@ export default function PluginPage() {
   // ═══ UNAUTHENTICATED STATE ═══
   if (!isAuthenticated && !isLoadingCredits) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4" style={{ minHeight: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
         <style dangerouslySetInnerHTML={{ __html: `
           @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
           .auth-card { animation: fadeIn 0.5s ease-out; }
@@ -1982,11 +1984,8 @@ export default function PluginPage() {
   }
 
   if (isLoadingCredits) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="text-cyan-400 animate-spin" size={32} />
-      </div>
-    )
+    // Return null — the HTML fallback in layout.tsx stays visible
+    return null
   }
 
   // ═══════════════════════════════════════════════════════════════
