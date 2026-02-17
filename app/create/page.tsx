@@ -1478,9 +1478,16 @@ function CreatePageContent() {
   const handleSplitSingleStem = async (stem: 'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other' | 'all', params?: { model?: string; output_format?: string; mp3_bitrate?: number; mp3_preset?: number; wav_format?: string; clip_mode?: string; shifts?: number; overlap?: number; split?: boolean; segment?: number; jobs?: number }) => {
     if (!splitStemsAudioUrl || !splitStemsMessageId) return
     
-    // Check credits — 'all' costs 5, Pro (htdemucs_ft) costs 3, others cost 1
-    const stemCost = stem === 'all' ? 5 : params?.model === 'htdemucs_ft' ? 3 : 1
-    if (userCredits !== null && userCredits < stemCost) {
+    // Pricing: Core free for int16/int24 WAV; Extended always 1cr; Heat always 5cr
+    const wavFormat = params?.wav_format || 'int24'
+    const outputFormat = params?.output_format || 'wav'
+    const isCoreFree = (params?.model || 'htdemucs') !== 'htdemucs_6s'
+      && outputFormat === 'wav'
+      && wavFormat !== 'float32'
+    const perStemCost = isCoreFree ? 0 : 1
+    const HEAT_COST = 5
+    const stemCost = stem === 'all' ? HEAT_COST : perStemCost
+    if (stemCost > 0 && userCredits !== null && userCredits < stemCost) {
       alert(`⚡ Insufficient credits! You need ${stemCost} credit${stemCost > 1 ? 's' : ''} to split a stem but only have ${userCredits}.`)
       return
     }

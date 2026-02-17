@@ -17,10 +17,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Credit cost: FREE for int16/int24, 1 credit per stem for float32
-function getStemCost(model: string, wavFormat?: string): number {
+/**
+ * Credit cost per stem:
+ * - 444 Core (htdemucs): FREE for int16/int24 WAV, 1 credit for float32/mp3/flac
+ * - 444 Extended (htdemucs_6s): always 1 credit per stem
+ * - 444 Heat (all stems): always 5 credits flat (handled separately)
+ */
+function getStemCost(model: string, outputFormat: string, wavFormat?: string): number {
+  // Extended always costs 1 credit per stem
+  if (model === 'htdemucs_6s') return 1
+  // Core: free only for int16/int24 WAV output; mp3/flac/float32 = 1 credit
+  if (outputFormat === 'mp3' || outputFormat === 'flac') return 1
   if (wavFormat === 'float32') return 1
-  return 0 // Free for int16 and int24
+  return 0 // Core with int16/int24 WAV is free
 }
 
 // Display names for Demucs models (used in transaction descriptions)
@@ -151,8 +160,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const perStemCost = getStemCost(demucsModel, wavFormat)
-    const stemCost = stem === 'all' ? (perStemCost * (SIX_STEM_MODELS.includes(demucsModel) ? 6 : 4)) : perStemCost
+    const HEAT_COST = 5 // 444 Heat is always 5 credits flat
+    const perStemCost = getStemCost(demucsModel, outputFormat, wavFormat)
+    const stemCost = stem === 'all' ? HEAT_COST : perStemCost
     if (!skipCreditDeduction && stemCost > 0 && userData.credits < stemCost) {
       return NextResponse.json({ 
         error: `Insufficient credits. Need ${stemCost} credit${stemCost > 1 ? 's' : ''} but have ${userData.credits}` 
@@ -178,11 +188,18 @@ export async function POST(request: Request) {
       await logCreditTransaction({
         userId, amount: -stemCost, balanceAfter: deductResult.new_credits,
         type: 'generation_stem_split',
-        description: `Stem Split: ${txnLabel} [${wavFormat}]`,
-        metadata: { stem, model: demucsModel, cost: stemCost, wav_format: wavFormat },
+        description: `Stem Split: ${txnLabel} [${outputFormat}/${wavFormat}]`,
+        metadata: { stem, model: demucsModel, cost: stemCost, wav_format: wavFormat, output_format: outputFormat },
       })
-    } else if (stemCost === 0) {
-      console.log(`🆓 Free stem split: ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`)
+    } else {
+      // Free generation — still log it for tracking
+      console.log(`🆓 Free stem split: ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${outputFormat}/${wavFormat}]`)
+      await logCreditTransaction({
+        userId, amount: 0, balanceAfter: userData.credits,
+        type: 'generation_stem_split',
+        description: `Stem Split (FREE): ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${outputFormat}/${wavFormat}]`,
+        metadata: { stem, model: demucsModel, cost: 0, wav_format: wavFormat, output_format: outputFormat, free: true },
+      })
     }
 
     // Stream prediction ID to client for cancellation, then process result

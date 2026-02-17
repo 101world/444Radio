@@ -78,7 +78,8 @@ export async function POST(request: Request) {
     }
 
     // Extract advanced params with safe defaults
-    const VALID_MODELS = ['htdemucs', 'htdemucs_6s', 'htdemucs_ft'] as const
+    // Valid models: htdemucs (Core) and htdemucs_6s (Extended)
+    const VALID_MODELS = ['htdemucs', 'htdemucs_6s'] as const
     const demucsModel = VALID_MODELS.includes(body?.model as any) ? (body.model as string) : 'htdemucs'
     const wavFormat = (['int16', 'int24', 'float32'].includes(body?.wav_format) ? body.wav_format : 'int24') as string
     const clipMode = (['rescale', 'clamp'].includes(body?.clip_mode) ? body.clip_mode : 'rescale') as string
@@ -96,8 +97,14 @@ export async function POST(request: Request) {
       htdemucs_6s: '444 Extended',
     }
 
-    // Credit cost: FREE for int16/int24, 1 credit per stem for float32
-    const stemCost = wavFormat === 'float32' ? 1 : 0
+    /**
+     * Credit cost per stem:
+     * - 444 Core (htdemucs): FREE for int16/int24 WAV, 1 credit for float32/mp3/flac
+     * - 444 Extended (htdemucs_6s): always 1 credit per stem
+     * - 444 Heat handled separately at 5 credits flat (not used in studio route)
+     */
+    const isCoreFree = demucsModel !== 'htdemucs_6s' && outputFormat === 'wav' && wavFormat !== 'float32'
+    const stemCost = isCoreFree ? 0 : 1
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -139,7 +146,9 @@ export async function POST(request: Request) {
       deductedUserId = userId
       await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`, metadata: { model: demucsModel, cost: stemCost, wav_format: wavFormat } })
     } else {
-      console.log(`🆓 Free stem split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`)
+      // Free generation — still log it for tracking
+      console.log(`🆓 Free stem split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${outputFormat}/${wavFormat}]`)
+      await logCreditTransaction({ userId, amount: 0, balanceAfter: userData.credits, type: 'generation_stem_split', description: `Stem Split (FREE): ${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel} [${outputFormat}/${wavFormat}]`, metadata: { model: demucsModel, cost: 0, wav_format: wavFormat, output_format: outputFormat, free: true } })
     }
 
     console.log('🎵 Stem splitting requested by user:', userId)

@@ -45,7 +45,19 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   image: 1,
   effects: 2,
   loops: (p) => ((p.max_duration as number) || 8) <= 10 ? 6 : 7,
-  stems: (p) => (p.model as string) === 'htdemucs_ft' ? 3 : 1,
+  stems: (p) => {
+    const model = (p.model as string) || 'htdemucs'
+    const wavFormat = (p.wav_format as string) || 'int24'
+    const outputFormat = (p.output_format as string) || 'wav'
+    const stem = (p.stem as string) || 'none'
+    // Heat (all stems) = 5cr flat
+    if (stem === 'none' || stem === 'all') return 5
+    // Extended always 1cr
+    if (model === 'htdemucs_6s') return 1
+    // Core: free for int16/int24 WAV, 1cr for float32/mp3/flac
+    if (outputFormat === 'mp3' || outputFormat === 'flac' || wavFormat === 'float32') return 1
+    return 0
+  },
   extract: 1,
   'audio-boost': 1,
   'extract-video': 1,

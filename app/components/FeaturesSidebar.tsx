@@ -136,7 +136,7 @@ export default function FeaturesSidebar({
       description: 'Vocals, drums, bass & more',
       color: 'purple',
       active: false,
-      cost: 1,
+      cost: 0,
       onClick: onShowStemSplit,
     },
     {

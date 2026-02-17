@@ -1380,11 +1380,15 @@ function PluginPageInner() {
   // Handle individual stem split from modal
   const handleSplitSingleStem = async (stem: StemType, params?: StemAdvancedParams) => {
     if (!splitStemsAudioUrl) return
-    // 444 Heat (all) costs based on wav format, free for ≤24-bit, 1 credit/stem for float32
+    // Pricing: Core free for int16/int24 WAV; Extended always 1cr; Heat always 5cr
     const wavFormat = params?.wav_format || 'int16'
-    const perStemCost = wavFormat === 'float32' ? 1 : 0
-    const modelInfo = params?.model === 'htdemucs_6s' ? { stems: 6 } : { stems: 4 }
-    const stemCost = stem === 'all' ? perStemCost * modelInfo.stems : perStemCost
+    const outputFormat = params?.output_format || 'wav'
+    const isCoreFree = (params?.model || 'htdemucs') !== 'htdemucs_6s'
+      && outputFormat === 'wav'
+      && wavFormat !== 'float32'
+    const perStemCost = isCoreFree ? 0 : 1
+    const HEAT_COST = 5
+    const stemCost = stem === 'all' ? HEAT_COST : perStemCost
     if (userCredits !== null && userCredits < stemCost) {
       alert(`⚡ Need ${stemCost} credit${stemCost > 1 ? 's' : ''} for stem split, have ${userCredits}.`)
       return
