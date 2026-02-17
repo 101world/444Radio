@@ -224,14 +224,16 @@ export default function TwoStepReleaseModal({
   const fetchLibraryItems = async () => {
     setIsLoading(true)
     try {
-      const [musicRes, imagesRes, videosRes] = await Promise.all([
+      const [musicRes, imagesRes, videosRes, r2VideosRes] = await Promise.all([
         fetch('/api/library/music'),
         fetch('/api/library/images'),
         fetch('/api/library/videos'),
+        fetch('/api/r2/list-videos'),
       ])
       const musicData = await musicRes.json()
       const imagesData = await imagesRes.json()
       const videosData = await videosRes.json()
+      const r2VideosData = await r2VideosRes.json()
 
       if (musicData.success && Array.isArray(musicData.music)) {
         const markedMusic = musicData.music.map((m: LibraryMusic) => ({
@@ -243,14 +245,21 @@ export default function TwoStepReleaseModal({
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
       }
-      if (videosData.success && Array.isArray(videosData.videos)) {
-        // Normalize: ensure every video has video_url set from any URL field
-        const normalized = videosData.videos.map((v: Record<string, unknown>) => ({
-          ...v,
-          video_url: (v.video_url || v.media_url || v.audioUrl || v.audio_url || '') as string,
-        })).filter((v: LibraryVideo) => v.video_url)
-        setVideoItems(normalized as LibraryVideo[])
-      }
+      // Merge DB videos + R2 videos, normalize, deduplicate
+      const dbVideos = (videosData.success && Array.isArray(videosData.videos)) ? videosData.videos : []
+      const r2Videos = (r2VideosData.success && Array.isArray(r2VideosData.videos)) ? r2VideosData.videos : []
+      const allVideos = [...dbVideos, ...r2Videos]
+      const normalizeUrl = (v: Record<string, unknown>) =>
+        (v.video_url || v.media_url || v.audioUrl || v.audio_url || '') as string
+      const normalized = allVideos.map((v: Record<string, unknown>) => ({
+        ...v,
+        video_url: normalizeUrl(v),
+      })).filter(v => v.video_url)
+      // Deduplicate by video_url
+      const unique = Array.from(
+        new Map(normalized.map(v => [v.video_url, v])).values()
+      )
+      setVideoItems(unique as LibraryVideo[])
     } catch (error) {
       console.error('Error fetching library:', error)
     } finally {
@@ -599,20 +608,20 @@ export default function TwoStepReleaseModal({
               </div>
 
               {/* Visualizer (Video) — Optional, loops like Spotify Canvas */}
-              {videoItems.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                      <Film size={12} className="text-purple-400" />
-                      Attach Visualizer
-                      <span className="text-[10px] font-normal text-gray-600">(loops like Spotify Canvas)</span>
-                    </h3>
-                    {selectedVideo && (
-                      <button onClick={() => setSelectedVideo(null)} className="text-[10px] text-red-400 hover:text-red-300 transition-colors">
-                        Remove
-                      </button>
-                    )}
-                  </div>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                    <Film size={12} className="text-purple-400" />
+                    Attach Visualizer
+                    <span className="text-[10px] font-normal text-gray-600">(loops like Spotify Canvas)</span>
+                  </h3>
+                  {selectedVideo && (
+                    <button onClick={() => setSelectedVideo(null)} className="text-[10px] text-red-400 hover:text-red-300 transition-colors">
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {videoItems.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
                     {videoItems.map(video => (
                       <button
@@ -636,11 +645,17 @@ export default function TwoStepReleaseModal({
                       </button>
                     ))}
                   </div>
-                  <p className="text-[10px] text-purple-300/50 mt-1.5">
-                    Video will loop on the Explore feed while your track plays. Cover art is still required as fallback.
-                  </p>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center py-6 border border-dashed border-purple-500/20 rounded-xl">
+                    <Film size={24} className="mx-auto text-purple-500/30 mb-2" />
+                    <p className="text-xs text-gray-500">No visualizers yet</p>
+                    <p className="text-[10px] text-gray-600 mt-1">Generate one from the Visualizer on the Create page</p>
+                  </div>
+                )}
+                <p className="text-[10px] text-purple-300/50 mt-1.5">
+                  Video will loop on the Explore feed while your track plays. Cover art is still required as fallback.
+                </p>
+              </div>
             </div>
           )}
 
