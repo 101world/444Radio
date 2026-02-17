@@ -228,10 +228,20 @@ export function GenerationQueueProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// No-op fallback so components that call useGenerationQueue still work
+// outside the provider (e.g. inside the JUCE plugin's bare layout).
+const NOOP_CONTEXT: GenerationQueueContextType = {
+  generations: [],
+  addGeneration: () => `gen_noop_${Date.now()}`,
+  updateGeneration: () => {},
+  removeGeneration: () => {},
+  clearCompleted: () => {},
+  getActiveCount: () => 0,
+  recoverStuckGenerations: async () => {},
+}
+
 export function useGenerationQueue() {
   const context = useContext(GenerationQueueContext)
-  if (!context) {
-    throw new Error('useGenerationQueue must be used within GenerationQueueProvider')
-  }
-  return context
+  // Return no-op defaults when no provider wraps the tree (plugin / bare layout)
+  return context ?? NOOP_CONTEXT
 }
