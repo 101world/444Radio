@@ -156,15 +156,6 @@ export default function FloatingMenu() {
                       <span className="font-medium">Library</span>
                     </Link>
                     <Link
-                      href="/studio"
-                      onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-purple-600/20 to-pink-500/20 border border-purple-500/40 text-purple-300 hover:from-purple-600/30 hover:to-pink-500/30 rounded-xl transition-all shadow-lg shadow-purple-500/10"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                      <span className="font-semibold">Studio</span>
-                      <span className="ml-auto text-xs bg-purple-500/20 text-purple-200 px-2 py-1 rounded-full">Pro</span>
-                    </Link>
-                    <Link
                       href="/decrypt"
                       onClick={() => setIsOpen(false)}
                       className="flex items-center gap-3 px-4 py-3 text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-colors border border-cyan-500/30"
