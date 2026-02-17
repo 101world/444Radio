@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { X, Loader2, Scissors, Download, Play, Pause, Music2, ArrowDownToLine, ChevronDown, ChevronUp, Settings2 } from 'lucide-react'
 
-export type StemType = 'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other'
+export type StemType = 'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other' | 'all'
 
 export type DemucsModel = 'htdemucs' | 'htdemucs_6s' | 'htdemucs_ft'
 
@@ -163,7 +163,49 @@ export default function SplitStemsModal({
 
         {/* Stem Buttons */}
         <div className="p-5 space-y-3">
-          <p className="text-sm text-gray-400 mb-4">
+          {/* 444 Heat — All Stems at once */}
+          <button
+            onClick={() => {
+              if (!completedStems['all'] && processingStem !== 'all') {
+                onSplitStem('all', advancedParams)
+              }
+            }}
+            disabled={!!processingStem || !!completedStems['all'] || (userCredits !== null && userCredits !== undefined && userCredits < 5)}
+            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+              completedStems['all']
+                ? 'border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-orange-500/15'
+                : processingStem === 'all'
+                ? 'border-amber-500/30 bg-amber-500/5 animate-pulse'
+                : 'border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-orange-500/5 hover:from-amber-500/15 hover:to-orange-500/15 hover:border-amber-400/60'
+            } disabled:cursor-not-allowed`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🔥</span>
+              <div className="flex-1">
+                <div className="text-sm font-black text-amber-400">444 Heat — All Stems</div>
+                <div className="text-[10px] text-gray-400">Split all {modelInfo.stems} stems at once (vocals, drums, bass{modelInfo.stems === 6 ? ', guitar, piano' : ''} & more)</div>
+              </div>
+              {processingStem === 'all' && (
+                <Loader2 className="w-5 h-5 text-amber-400 animate-spin flex-shrink-0" />
+              )}
+              {completedStems['all'] && (
+                <div className="w-6 h-6 rounded-full bg-green-500/20 border border-green-500/50 flex items-center justify-center flex-shrink-0">
+                  <span className="text-green-400 text-xs">✓</span>
+                </div>
+              )}
+              {!processingStem && !completedStems['all'] && (
+                <span className="text-[10px] px-2.5 py-1 rounded-full text-amber-400/80 bg-amber-500/15 border border-amber-500/20 font-bold">5 credits</span>
+              )}
+            </div>
+          </button>
+
+          <div className="flex items-center gap-3 py-1">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">or pick individual</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          <p className="text-sm text-gray-400">
             Choose a stem to isolate. Each extraction costs <span className={`font-bold ${modelInfo.costPerStem > 1 ? 'text-amber-400' : 'text-purple-400'}`}>{modelInfo.costPerStem} credit{modelInfo.costPerStem > 1 ? 's' : ''}</span>{modelInfo.costPerStem > 1 && <span className="text-[10px] text-amber-400/60 ml-1">(Pro tier)</span>}.
           </p>
 

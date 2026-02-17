@@ -10,6 +10,7 @@ interface Track {
   title: string
   artist?: string
   imageUrl?: string
+  videoUrl?: string
   userId?: string
   genre?: string
   mood?: string
@@ -534,6 +535,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       ...t,
       audioUrl: t.audioUrl || (t as any).audio_url, // Handle both formats
       imageUrl: t.imageUrl || (t as any).image_url, // Handle both formats
+      videoUrl: t.videoUrl || (t as any).video_url, // Handle both formats
     }));
     
     const validTracks = normalizedTracks.filter(t => t && t.audioUrl);

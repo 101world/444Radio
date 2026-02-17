@@ -42,16 +42,24 @@ export async function GET(req: NextRequest) {
     }
 
     // Transform to match the frontend Message interface
-    const transformedMessages = (messages || []).map(msg => ({
-      id: msg.id,
-      type: msg.message_type,
-      content: msg.content,
-      generationType: msg.generation_type,
-      generationId: msg.generation_id,
-      result: msg.result,
-      timestamp: msg.timestamp,
-      isGenerating: false
-    }))
+    const transformedMessages = (messages || []).map(msg => {
+      // Extract stems from result._stems if present
+      const result = msg.result as Record<string, unknown> | null
+      const stems = result?._stems as Record<string, string> | undefined
+      const cleanResult = result ? { ...result } : null
+      if (cleanResult) delete cleanResult._stems
+      return {
+        id: msg.id,
+        type: msg.message_type,
+        content: msg.content,
+        generationType: msg.generation_type,
+        generationId: msg.generation_id,
+        result: cleanResult && Object.keys(cleanResult).length > 0 ? cleanResult : undefined,
+        stems,
+        timestamp: msg.timestamp,
+        isGenerating: false
+      }
+    })
 
     return corsResponse(NextResponse.json({
       success: true,
@@ -101,16 +109,24 @@ export async function PUT(req: NextRequest) {
         generationType?: string
         generationId?: string
         result?: Record<string, unknown>
+        stems?: Record<string, string>
         timestamp?: string
-      }) => ({
-        clerk_user_id: authResult.userId,
-        message_type: msg.type,
-        content: msg.content,
-        generation_type: msg.generationType || null,
-        generation_id: msg.generationId || null,
-        result: msg.result || null,
-        timestamp: msg.timestamp || new Date().toISOString()
-      }))
+      }) => {
+        // Merge stems into result JSONB so they survive round-trip
+        const resultData = msg.result || (msg.stems ? {} : null)
+        if (msg.stems && resultData) {
+          (resultData as Record<string, unknown>)._stems = msg.stems
+        }
+        return {
+          clerk_user_id: authResult.userId,
+          message_type: msg.type,
+          content: msg.content,
+          generation_type: msg.generationType || null,
+          generation_id: msg.generationId || null,
+          result: resultData,
+          timestamp: msg.timestamp || new Date().toISOString()
+        }
+      })
 
       const { error: insertError } = await supabase
         .from('chat_messages')

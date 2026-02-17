@@ -375,6 +375,7 @@ function ExplorePageContent() {
       const sourceList = isSearchActive && searchResults.length > 0 ? searchResults : combinedMedia
       const playlistTracks = sourceList.map(m => ({
         id: m.id, title: m.title, audioUrl: m.audioUrl || m.audio_url, imageUrl: m.imageUrl || m.image_url,
+        videoUrl: m.video_url || undefined,
         artist: m.artist_name || m.users?.username || m.username || 'Unknown Artist', userId: m.user_id,
         genre: m.genre || undefined, mood: m.mood || undefined, tags: m.tags || undefined
       }))

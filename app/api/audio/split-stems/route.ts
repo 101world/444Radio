@@ -100,9 +100,9 @@ export async function POST(request: Request) {
 
     // Validate stem choice for the chosen model
     const validStemsList = validStemsForModel as readonly string[]
-    if (!stem || !validStemsList.includes(stem)) {
+    if (!stem || (stem !== 'all' && !validStemsList.includes(stem))) {
       return NextResponse.json({ 
-        error: `Invalid stem for ${demucsModel}. Choose one of: ${validStemsForModel.join(', ')}` 
+        error: `Invalid stem for ${demucsModel}. Choose one of: ${validStemsForModel.join(', ')}, all` 
       }, { status: 400 })
     }
 
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const stemCost = getStemCost(demucsModel)
+    const stemCost = stem === 'all' ? 5 : getStemCost(demucsModel)
     if (!skipCreditDeduction && userData.credits < stemCost) {
       return NextResponse.json({ 
         error: `Insufficient credits. Need ${stemCost} credit${stemCost > 1 ? 's' : ''} but have ${userData.credits}` 
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
         const demucsInput: Record<string, unknown> = {
             audio: audioUrl,
             model: demucsModel,
-            stem: stem === 'other' ? 'none' : stem,  // 'none' returns all stems; specific stem isolates it
+            stem: (stem === 'other' || stem === 'all') ? 'none' : stem,  // 'none' returns all stems; specific stem isolates it
             output_format: outputFormat,
             wav_format: wavFormat,
             clip_mode: clipMode,
@@ -302,7 +302,7 @@ export async function POST(request: Request) {
         for (const [key, value] of Object.entries(raw)) {
           if (typeof value === 'string' && value.startsWith('http')) {
             // If a specific stem was requested, skip the residual "other" output
-            if (stem !== 'other' && stem !== 'none' && key === 'other') {
+            if (stem !== 'other' && stem !== 'none' && stem !== 'all' && key === 'other') {
               console.log(`[Stem Split] Skipping residual "other" output (user requested: ${stem})`)
               continue
             }

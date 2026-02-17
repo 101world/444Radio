@@ -385,7 +385,10 @@ export default function FloatingAudioPlayer() {
         </div>
         <div className="px-3 py-2">
           <div className="flex items-center gap-3">
-            {currentTrack.imageUrl ? (
+            {currentTrack.videoUrl ? (
+              <video src={currentTrack.videoUrl} autoPlay loop muted playsInline
+                className="w-10 h-10 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
+            ) : currentTrack.imageUrl ? (
               <Image src={currentTrack.imageUrl} alt={currentTrack.title} width={40} height={40}
                 className="w-10 h-10 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
             ) : (
@@ -480,7 +483,10 @@ export default function FloatingAudioPlayer() {
         {/* Album art — click to expand */}
         <div className="mb-3 cursor-pointer group/art" onClick={() => setExpanded(true)} title="Expand player">
           <div className="relative">
-            {currentTrack.imageUrl ? (
+            {currentTrack.videoUrl ? (
+              <video src={currentTrack.videoUrl} autoPlay loop muted playsInline
+                className="w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/[0.08] shadow-xl shadow-black/60 group-hover/art:ring-teal-500/30 group-hover/art:shadow-teal-500/10 transition-all duration-300" />
+            ) : currentTrack.imageUrl ? (
               <Image src={currentTrack.imageUrl} alt={currentTrack.title} width={72} height={72}
                 className="w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/[0.08] shadow-xl shadow-black/60 group-hover/art:ring-teal-500/30 group-hover/art:shadow-teal-500/10 transition-all duration-300" />
             ) : (
@@ -628,7 +634,9 @@ export default function FloatingAudioPlayer() {
             </defs>
           </svg>
           <div className="absolute inset-[6px] rounded-2xl overflow-hidden ring-1 ring-white/[0.06]">
-            {currentTrack.imageUrl ? (
+            {currentTrack.videoUrl ? (
+              <video src={currentTrack.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+            ) : currentTrack.imageUrl ? (
               <Image src={currentTrack.imageUrl} alt={currentTrack.title} fill className="object-cover" />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-gray-800/80 to-gray-900 flex items-center justify-center">

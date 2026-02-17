@@ -43,6 +43,7 @@ interface Track {
   title: string
   audio_url: string
   image_url: string
+  video_url?: string
   duration: number
   plays: number
   likes: number
@@ -231,7 +232,8 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           likes: t.likes || 0,
           created_at: t.created_at,
           user_id: t.user_id,
-          genre: t.genre || 'Unknown'
+          genre: t.genre || 'Unknown',
+          video_url: t.video_url
         })))
 
       } catch (error) {
@@ -355,6 +357,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       title: t.title,
       audioUrl: t.audio_url,
       imageUrl: t.image_url,
+      videoUrl: t.video_url,
       artist: profile?.username,
       userId: t.user_id
     }))

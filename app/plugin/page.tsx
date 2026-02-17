@@ -248,7 +248,7 @@ export default function PluginPage() {
   const [splitStemsAudioUrl, setSplitStemsAudioUrl] = useState<string | null>(null)
   const [splitStemsTrackTitle, setSplitStemsTrackTitle] = useState<string>('')
   const [splitStemsMessageId, setSplitStemsMessageId] = useState<string | null>(null)
-  const [splitStemsProcessing, setSplitStemsProcessing] = useState<'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other' | null>(null)
+  const [splitStemsProcessing, setSplitStemsProcessing] = useState<'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other' | 'all' | null>(null)
   const [splitStemsCompleted, setSplitStemsCompleted] = useState<Record<string, string>>({})
   const [stemPlayingId, setStemPlayingId] = useState<string | null>(null)
   const stemAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -457,12 +457,8 @@ export default function PluginPage() {
           setUploadFile(file)
           setUploadFilePreview(URL.createObjectURL(file))
           setUploadError('')
-          // Smart default mode based on file type
-          if (isVideo) {
-            setUploadMode('video-to-audio')
-          } else {
-            setUploadMode('stem-split')
-          }
+          // Don't auto-set mode — let user choose what to do with the file
+          setUploadMode(null)
           setShowUploadModal(true)
         }
       }
@@ -1329,8 +1325,8 @@ export default function PluginPage() {
   // Handle individual stem split from modal
   const handleSplitSingleStem = async (stem: StemType, params?: StemAdvancedParams) => {
     if (!splitStemsAudioUrl) return
-    // Pro (htdemucs_ft) costs 3 credits, others cost 1
-    const stemCost = params?.model === 'htdemucs_ft' ? 3 : 1
+    // 444 Heat (all) costs 5, Pro (htdemucs_ft) costs 3, others cost 1
+    const stemCost = stem === 'all' ? 5 : params?.model === 'htdemucs_ft' ? 3 : 1
     if (userCredits !== null && userCredits < stemCost) {
       alert(`⚡ Need ${stemCost} credit${stemCost > 1 ? 's' : ''} for stem split, have ${userCredits}.`)
       return
@@ -2610,16 +2606,23 @@ export default function PluginPage() {
                         className="w-full aspect-video object-contain rounded-xl"
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button onClick={() => handleDownload(msg.result!.url!, `${msg.result!.title || 'video'}.mp4`, 'mp3')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all">
-                        <Download size={12} /> Download
+                        <Download size={12} /> Download MP4
                       </button>
-                      {isInDAW && (
+                      {isInDAW ? (
                         <button onClick={() => sendVideoToDAW(msg.result!.url!, msg.result!.title || 'video')}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
-                          <Download size={12} /> Import to Premiere
+                          <Download size={12} /> Import to DAW
                         </button>
+                      ) : (
+                        <a href={msg.result!.url!} download={`${(msg.result!.title || 'video').replace(/[^a-zA-Z0-9 _-]/g, '')}.mp4`}
+                          draggable="true"
+                          onDragStart={(e) => { e.dataTransfer.setData('text/uri-list', msg.result!.url!); e.dataTransfer.setData('text/plain', msg.result!.url!) }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all cursor-grab active:cursor-grabbing">
+                          <Download size={12} /> Drag to Timeline
+                        </a>
                       )}
                       <button onClick={() => window.open('https://444radio.co.in/library?tab=videos&host=juce', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
@@ -3288,9 +3291,26 @@ export default function PluginPage() {
               {/* Mode Selector (if no mode selected yet) */}
               {!uploadMode && (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-400">Choose a processing mode:</p>
+                  {/* Show file preview if already dropped */}
+                  {uploadFile && (
+                    <div className="p-3 bg-white/5 border border-white/10 rounded-xl mb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {uploadFile.type.startsWith('video/') ? <Film size={16} className="text-cyan-400 flex-shrink-0" /> : <Music size={16} className="text-purple-400 flex-shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white truncate">{uploadFile.name}</p>
+                            <p className="text-[10px] text-gray-500">{(uploadFile.size / (1024 * 1024)).toFixed(1)} MB</p>
+                          </div>
+                        </div>
+                        <button onClick={() => { setUploadFile(null); if (uploadFilePreview) URL.revokeObjectURL(uploadFilePreview); setUploadFilePreview(null) }}
+                          className="p-1 hover:bg-white/10 rounded-lg"><X size={14} className="text-gray-400" /></button>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-400">Choose what to do{uploadFile ? ` with ${uploadFile.name.slice(0, 30)}` : ''}:</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Video to Audio */}
+                    {/* Video to Audio — video files only */}
+                    {(!uploadFile || uploadFile.type.startsWith('video/')) && (
                     <button onClick={() => setUploadMode('video-to-audio')}
                       className="p-4 bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/40 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
@@ -3300,8 +3320,10 @@ export default function PluginPage() {
                       <p className="text-[10px] text-gray-500">Generate synced SFX from video</p>
                       <span className="text-[9px] text-cyan-400 mt-1 inline-block">-2 to -10 credits</span>
                     </button>
+                    )}
 
-                    {/* Split Stems */}
+                    {/* Split Stems — audio files only */}
+                    {(!uploadFile || uploadFile.type.startsWith('audio/')) && (
                     <button onClick={() => setUploadMode('stem-split')}
                       className="p-4 bg-white/5 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/40 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
@@ -3311,8 +3333,10 @@ export default function PluginPage() {
                       <p className="text-[10px] text-gray-500">Separate vocals, drums, bass & more</p>
                       <span className="text-[9px] text-purple-400 mt-1 inline-block">-5 credits</span>
                     </button>
+                    )}
 
-                    {/* Audio Boost */}
+                    {/* Audio Boost — audio files only */}
+                    {(!uploadFile || uploadFile.type.startsWith('audio/')) && (
                     <button onClick={() => setUploadMode('audio-boost')}
                       className="p-4 bg-white/5 hover:bg-orange-500/10 border border-white/10 hover:border-orange-500/40 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
@@ -3322,8 +3346,10 @@ export default function PluginPage() {
                       <p className="text-[10px] text-gray-500">Mix & master with bass/treble/volume</p>
                       <span className="text-[9px] text-orange-400 mt-1 inline-block">-1 credit</span>
                     </button>
+                    )}
 
-                    {/* Extract: Video → Audio */}
+                    {/* Extract: Video → Audio — video files only */}
+                    {(!uploadFile || uploadFile.type.startsWith('video/')) && (
                     <button onClick={() => setUploadMode('extract-video')}
                       className="p-4 bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/40 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
@@ -3333,8 +3359,10 @@ export default function PluginPage() {
                       <p className="text-[10px] text-gray-500">Extract audio track from video</p>
                       <span className="text-[9px] text-cyan-400 mt-1 inline-block">-1 credit</span>
                     </button>
+                    )}
 
-                    {/* Extract: Audio → Stem */}
+                    {/* Extract: Audio → Stem — audio files only */}
+                    {(!uploadFile || uploadFile.type.startsWith('audio/')) && (
                     <button onClick={() => setUploadMode('extract-audio')}
                       className="p-4 bg-white/5 hover:bg-purple-500/10 border border-white/10 hover:border-purple-500/40 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
@@ -3344,8 +3372,10 @@ export default function PluginPage() {
                       <p className="text-[10px] text-gray-500">Extract specific stem (vocals, bass, drums, piano, guitar) from audio</p>
                       <span className="text-[9px] text-purple-400 mt-1 inline-block">-1 credit</span>
                     </button>
+                    )}
 
-                    {/* Autotune */}
+                    {/* Autotune — audio files only */}
+                    {(!uploadFile || uploadFile.type.startsWith('audio/')) && (
                     <button onClick={() => setUploadMode('autotune')}
                       className="p-4 bg-white/5 hover:bg-violet-500/10 border border-white/10 hover:border-violet-500/40 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
@@ -3355,6 +3385,7 @@ export default function PluginPage() {
                       <p className="text-[10px] text-gray-500">Pitch correct vocals to any musical key & scale</p>
                       <span className="text-[9px] text-violet-400 mt-1 inline-block">-1 credit</span>
                     </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -3363,7 +3394,7 @@ export default function PluginPage() {
               {uploadMode && (
                 <div className="space-y-4">
                   {/* Back + mode title */}
-                  <button onClick={() => { setUploadMode(null); setUploadFile(null); setUploadFilePreview(null); setUploadError('') }}
+                  <button onClick={() => { setUploadMode(null); setUploadError('') }}
                     className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors">
                     <ChevronLeft size={14} /> Back to modes
                   </button>
