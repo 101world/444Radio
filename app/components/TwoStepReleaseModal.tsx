@@ -244,7 +244,12 @@ export default function TwoStepReleaseModal({
         setImageItems(imagesData.images)
       }
       if (videosData.success && Array.isArray(videosData.videos)) {
-        setVideoItems(videosData.videos)
+        // Normalize: ensure every video has video_url set from any URL field
+        const normalized = videosData.videos.map((v: Record<string, unknown>) => ({
+          ...v,
+          video_url: (v.video_url || v.media_url || v.audioUrl || v.audio_url || '') as string,
+        })).filter((v: LibraryVideo) => v.video_url)
+        setVideoItems(normalized as LibraryVideo[])
       }
     } catch (error) {
       console.error('Error fetching library:', error)
