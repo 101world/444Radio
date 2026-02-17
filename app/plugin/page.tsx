@@ -14,6 +14,7 @@ import PluginAudioPlayer from '@/app/components/PluginAudioPlayer'
 import PluginGenerationQueue from '@/app/components/PluginGenerationQueue'
 import PluginPostGenModal from '@/app/components/PluginPostGenModal'
 import SplitStemsModal from '@/app/components/SplitStemsModal'
+import VisualizerModal from '@/app/components/VisualizerModal'
 import type { StemType, StemAdvancedParams } from '@/app/components/SplitStemsModal'
 
 // ─── Types (mirrored from create page) ──────────────────────────
@@ -143,6 +144,7 @@ const FEATURES = [
   { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
   { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1 },
   { key: 'autotune', icon: Zap, label: 'Autotune', desc: 'Pitch correct to any key', color: 'purple', cost: 1 },
+  { key: 'visualizer', icon: Film, label: 'Visualizer', desc: 'Text/Image to video', color: 'purple', cost: 0 },
   { key: 'lyrics', icon: Edit3, label: 'Lyrics', desc: 'Write & edit lyrics', color: 'cyan', cost: 0, conditionalMusic: true },
   { key: 'upload', icon: Upload, label: 'Upload', desc: 'Upload audio/video', color: 'purple', cost: 0 },
   { key: 'release', icon: Rocket, label: 'Release', desc: 'Publish to feed', color: 'cyan', cost: 0 },
@@ -253,6 +255,7 @@ export default function PluginPage() {
 
   // ── Upload Media Modal (mirrors MediaUploadModal from create page) ──
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | null>(null)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadFilePreview, setUploadFilePreview] = useState<string | null>(null)
@@ -1285,6 +1288,12 @@ export default function PluginPage() {
         setActiveGenerations(prev => { const s = new Set(prev); s.delete(genMsgId); return s })
         refreshCredits()
       }
+      return
+    }
+
+    // ── Visualizer: open modal ──
+    if ((selectedType as string) === 'visualizer') {
+      setShowVisualizerModal(true)
       return
     }
 
@@ -3678,6 +3687,36 @@ export default function PluginPage() {
         } : undefined}
         isInDAW={isInDAW}
         userCredits={userCredits}
+      />
+
+      {/* ── Visualizer Modal — Text/Image to Video ── */}
+      <VisualizerModal
+        isOpen={showVisualizerModal}
+        onClose={() => setShowVisualizerModal(false)}
+        userCredits={userCredits ?? undefined}
+        initialPrompt={input}
+        onGenerationStart={(prompt: string, generationId: string) => {
+          const userMsgId = Date.now().toString()
+          const genMsgId = (Date.now() + 1).toString()
+          setMessages(prev => [...prev,
+            { id: userMsgId, type: 'user' as MessageType, content: `🎬 Generate video: "${prompt}"`, timestamp: new Date() },
+            { id: genMsgId, type: 'generation' as MessageType, content: '🎬 Generating video...', generationType: 'video', generationId, isGenerating: true, timestamp: new Date() }
+          ])
+          setInput('')
+        }}
+        onSuccess={(videoUrl: string, prompt: string, mediaId: string | null) => {
+          setMessages(prev => {
+            let idx = -1
+            for (let i = prev.length - 1; i >= 0; i--) {
+              if (prev[i].isGenerating && prev[i].generationType === 'video') { idx = i; break }
+            }
+            if (idx === -1) return prev
+            const updated = [...prev]
+            updated[idx] = { ...updated[idx], isGenerating: false, content: '✅ Video generated!', result: { url: videoUrl, title: `Visualizer: ${prompt.substring(0, 40)}`, prompt } }
+            return updated
+          })
+          refreshCredits()
+        }}
       />
 
       {/* ── Global Styles (no style jsx — regular style tag) ── */}

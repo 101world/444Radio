@@ -26,6 +26,7 @@ interface FeaturesSidebarProps {
   onShowAudioBoost: () => void
   onShowExtract: () => void
   onShowAutotune: () => void
+  onShowVisualizer: () => void
   onOpenRelease: () => void
   onClearChat: () => void
   onShowDeletedChats: () => void
@@ -63,6 +64,7 @@ export default function FeaturesSidebar({
   onShowAudioBoost,
   onShowExtract,
   onShowAutotune,
+  onShowVisualizer,
   onOpenRelease,
   onClearChat,
   onShowDeletedChats,
@@ -163,6 +165,15 @@ export default function FeaturesSidebar({
       active: false,
       cost: 1,
       onClick: onShowAutotune,
+    },
+    {
+      icon: Film,
+      label: 'Visualizer',
+      description: 'Text/Image to video',
+      color: 'purple',
+      active: false,
+      cost: undefined,
+      onClick: onShowVisualizer,
     },
     {
       icon: Edit3,

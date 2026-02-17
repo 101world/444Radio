@@ -16,6 +16,7 @@ const AudioBoostModal = lazy(() => import('../components/AudioBoostModal'))
 const AutotuneModal = lazy(() => import('../components/AutotuneModal'))
 const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
+const VisualizerModal = lazy(() => import('../components/VisualizerModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
 import PluginGenerationQueue from '../components/PluginGenerationQueue'
@@ -96,6 +97,7 @@ function CreatePageContent() {
   const [showMediaUploadModal, setShowMediaUploadModal] = useState(false)
   const [showAudioBoostModal, setShowAudioBoostModal] = useState(false)
   const [showAutotuneModal, setShowAutotuneModal] = useState(false)
+  const [showVisualizerModal, setShowVisualizerModal] = useState(false)
   const [boostAudioUrl, setBoostAudioUrl] = useState('')
   const [boostTrackTitle, setBoostTrackTitle] = useState('')
   const [preselectedMusicId, setPreselectedMusicId] = useState<string | undefined>()
@@ -1707,6 +1709,7 @@ function CreatePageContent() {
           onShowAudioBoost={() => setShowMediaUploadModal(true)}
           onShowExtract={() => setShowMediaUploadModal(true)}
           onShowAutotune={() => setShowAutotuneModal(true)}
+          onShowVisualizer={() => setShowVisualizerModal(true)}
           onOpenRelease={() => handleOpenRelease()}
           onTagClick={(tag: string) => {
             const newInput = input ? `${input}, ${tag}` : tag
@@ -2335,7 +2338,21 @@ function CreatePageContent() {
             </button>
             )}
 
-            {/* Upload Button - New for Audio/Video Processing */}
+            {/* Visualizer Button - Text/Image to Video */}
+            {showAdvancedButtons && (
+            <button
+              onClick={() => setShowVisualizerModal(true)}
+              className="flex-shrink-0 group relative p-2.5 md:p-2.5 rounded-2xl transition-all duration-300 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-purple-500/30 hover:border-purple-400/60 hover:scale-105"
+              title="Generate Video (Visualizer)"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] md:w-[20px] md:h-[20px]">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <path d="M10 9l5 3-5 3V9z"/>
+              </svg>
+            </button>
+            )}
+
+            {/* Upload Button - Audio/Video Processing */}
             {showAdvancedButtons && (
             <button
               onClick={() => setShowMediaUploadModal(true)}
@@ -3706,6 +3723,65 @@ function CreatePageContent() {
               timestamp: new Date()
             }
             setMessages(prev => [...prev, errorMsg])
+          }}
+        />
+      </Suspense>
+
+      {/* Visualizer Modal - Text/Image to Video */}
+      <Suspense fallback={null}>
+        <VisualizerModal
+          isOpen={showVisualizerModal}
+          onClose={() => setShowVisualizerModal(false)}
+          userCredits={userCredits || 0}
+          initialPrompt={input}
+          onGenerationStart={(prompt: string, generationId: string) => {
+            const userMsgId = Date.now().toString()
+            const genMsgId = (Date.now() + 1).toString()
+            const userMessage: Message = {
+              id: userMsgId,
+              type: 'user',
+              content: `🎬 Generate video: "${prompt}"`,
+              timestamp: new Date()
+            }
+            const generatingMessage: Message = {
+              id: genMsgId,
+              type: 'generation',
+              content: '🎬 Generating video with Seedance 1.5 Pro...',
+              generationType: 'video',
+              generationId: generationId,
+              isGenerating: true,
+              timestamp: new Date()
+            }
+            setMessages(prev => [...prev, userMessage, generatingMessage])
+            setInput('')
+          }}
+          onSuccess={(videoUrl: string, prompt: string, mediaId: string | null) => {
+            // Replace generating message with result
+            setMessages(prev => {
+              let lastGeneratingIndex = -1
+              for (let i = prev.length - 1; i >= 0; i--) {
+                if (prev[i].isGenerating && prev[i].generationType === 'video') {
+                  lastGeneratingIndex = i
+                  break
+                }
+              }
+              if (lastGeneratingIndex === -1) return prev
+              const updated = [...prev]
+              updated[lastGeneratingIndex] = {
+                ...updated[lastGeneratingIndex],
+                isGenerating: false,
+                content: '✅ Video generated successfully!',
+                generationType: 'video',
+                result: {
+                  url: videoUrl,
+                  title: `Visualizer: ${prompt.substring(0, 40)}`,
+                  prompt,
+                },
+              }
+              return updated
+            })
+            refreshCredits()
+            window.dispatchEvent(new Event('credits:refresh'))
           }}
         />
       </Suspense>
