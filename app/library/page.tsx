@@ -25,6 +25,8 @@ interface LibraryMusic {
   lyrics: string | null
   audio_url: string
   audioUrl?: string // Normalized field for frontend compatibility
+  media_url?: string // Fallback URL field
+  video_url?: string // Video URL for visualizer-generated content
   created_at: string
   file_size: number | null
   likes?: number
@@ -196,10 +198,10 @@ export default function LibraryPage() {
         const dbVideos = (videosData.success && Array.isArray(videosData.videos)) ? videosData.videos : []
         const r2Videos = (r2VideosData.success && Array.isArray(r2VideosData.videos)) ? r2VideosData.videos : []
         
-        // Combine and deduplicate by audioUrl/media_url
+        // Combine and deduplicate by video_url/audioUrl/media_url
         const allVideos = [...dbVideos, ...r2Videos]
         const uniqueVideos = Array.from(
-          new Map(allVideos.map(item => [item.audioUrl || item.audio_url || item.media_url, item])).values()
+          new Map(allVideos.map(item => [item.video_url || item.audioUrl || item.audio_url || item.media_url, item])).values()
         )
         
         setVideoItems(uniqueVideos)
@@ -959,12 +961,12 @@ export default function LibraryPage() {
                     className="group relative aspect-video bg-black/60 backdrop-blur-xl border border-purple-500/20 rounded-xl overflow-hidden hover:border-purple-400/60 transition-all duration-300 cursor-pointer"
                     onClick={() => {
                       // Play video with generated audio
-                      const videoUrl = item.audioUrl || item.audio_url
+                      const videoUrl = item.video_url || item.audioUrl || item.audio_url || item.media_url
                       window.open(videoUrl, '_blank')
                     }}
                   >
                     <video 
-                      src={item.audioUrl || item.audio_url}
+                      src={item.video_url || item.audioUrl || item.audio_url || item.media_url}
                       className="w-full h-full object-cover"
                       muted
                       playsInline

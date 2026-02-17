@@ -39,20 +39,38 @@ interface VisualizerModalProps {
 
 /**
  * Credit cost for 444 Engine video generation.
- * Cost: $0.06/sec (Replicate)  |  Charge: $0.075/sec  |  1 credit = $0.035
- * Formula: ceil(duration × 0.075 / 0.035)
+ * 1 credit = $0.035 | 50% profit margin (charge = cost × 1.5)
  *
- *   Duration │ Credits │  Charge
- *   ─────────┼─────────┼─────────
- *     2s     │    5    │  $0.175
- *     5s     │   11    │  $0.385
- *     8s     │   18    │  $0.630
- *    12s     │   26    │  $0.910
+ * Replicate per-second cost by variant:
+ *   Resolution │ With Audio │ No Audio
+ *   ───────────┼────────────┼──────────
+ *     480p     │  $0.025/s  │ $0.013/s
+ *     720p     │  $0.052/s  │ $0.026/s
+ *    1080p     │  $0.120/s  │ $0.060/s
  *
- * Same price with or without audio.
+ * Credits per variant (50% margin → ceil(dur × cost×1.5 / 0.035)):
+ *   Variant        │  2s │  5s │  8s │ 12s
+ *   ───────────────┼─────┼─────┼─────┼─────
+ *   480p  + audio  │   3 │   6 │   9 │  13
+ *   480p  silent   │   2 │   3 │   5 │   7
+ *   720p  + audio  │   5 │  12 │  18 │  27
+ *   720p  silent   │   3 │   6 │   9 │  14
+ *   1080p + audio  │  11 │  26 │  42 │  62
+ *   1080p silent   │   6 │  13 │  21 │  31
  */
-function calcCredits(duration: number): number {
-  return Math.ceil(duration * 0.075 / 0.035)
+const REPLICATE_COST_PER_SECOND: Record<string, { audio: number; silent: number }> = {
+  '480p':  { audio: 0.025, silent: 0.013 },
+  '720p':  { audio: 0.052, silent: 0.026 },
+  '1080p': { audio: 0.120, silent: 0.060 },
+}
+const PROFIT_MARGIN = 1.5
+const CREDIT_VALUE = 0.035
+
+function calcCredits(duration: number, resolution: string, withAudio: boolean): number {
+  const tier = REPLICATE_COST_PER_SECOND[resolution] || REPLICATE_COST_PER_SECOND['720p']
+  const costPerSec = withAudio ? tier.audio : tier.silent
+  const chargePerSec = costPerSec * PROFIT_MARGIN
+  return Math.ceil(duration * chargePerSec / CREDIT_VALUE)
 }
 
 export default function VisualizerModal({
@@ -132,7 +150,7 @@ export default function VisualizerModal({
   }, [shufflePrompt])
 
   // ── Generate ──
-  const creditCost = calcCredits(duration)
+  const creditCost = calcCredits(duration, resolution, generateAudio)
   const canGenerate = prompt.trim().length >= 3 && !isGenerating && (userCredits === undefined || userCredits >= creditCost)
 
   const handleGenerate = async () => {

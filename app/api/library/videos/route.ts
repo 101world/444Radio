@@ -76,8 +76,9 @@ export async function GET() {
     // Normalize field names for frontend compatibility
     const normalizedVideos = videos.map(video => ({
       ...video,
-      audioUrl: video.audio_url, // audio_url is the primary field for video storage
-      media_url: video.audio_url // For backwards compatibility
+      audioUrl: video.video_url || video.audio_url || video.media_url, // video_url is primary for visualizer videos
+      media_url: video.video_url || video.audio_url || video.media_url, // For backwards compatibility
+      video_url: video.video_url || video.media_url, // Ensure video_url is always set
     }))
 
     console.log('🎥 [Videos API] Returning normalized videos:', normalizedVideos.length)

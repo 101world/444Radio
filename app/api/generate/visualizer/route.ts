@@ -17,22 +17,45 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 /**
  * Credit cost for 444 Engine video generation.
+ * 1 credit = $0.035 | 50% profit margin (charge = cost × 1.5)
  *
- * Cost (Replicate):  $0.06/sec (1080p, with or without audio)
- * Charge to user:    $0.075/sec  →  1 credit = $0.035
- * Formula:           ceil(duration × 0.075 / 0.035)
+ * Replicate per-second cost by variant:
+ *   Resolution │ With Audio │ No Audio
+ *   ───────────┼────────────┼──────────
+ *     480p     │  $0.025/s  │ $0.013/s
+ *     720p     │  $0.052/s  │ $0.026/s
+ *    1080p     │  $0.120/s  │ $0.060/s
  *
- *   Duration │ Credits │  Charge
- *   ─────────┼─────────┼─────────
- *     2s     │    5    │  $0.175
- *     5s     │   11    │  $0.385
- *     8s     │   18    │  $0.630
- *    12s     │   26    │  $0.910
- *
- * Same price regardless of audio / resolution / aspect ratio.
+ * Charge (cost × 1.5), then credits = ceil(dur × charge / 0.035):
+ *   Variant        │  2s │  5s │  8s │ 12s
+ *   ───────────────┼─────┼─────┼─────┼─────
+ *   480p  + audio  │   3 │   6 │   9 │  13
+ *   480p  silent   │   2 │   3 │   5 │   7
+ *   720p  + audio  │   5 │  12 │  18 │  27
+ *   720p  silent   │   3 │   6 │   9 │  14
+ *   1080p + audio  │  11 │  26 │  42 │  62
+ *   1080p silent   │   6 │  13 │  21 │  31
  */
-function calculateCredits(durationSeconds: number): number {
-  return Math.ceil(durationSeconds * 0.075 / 0.035)
+const REPLICATE_COST_PER_SECOND: Record<string, { audio: number; silent: number }> = {
+  '480p':  { audio: 0.025, silent: 0.013 },
+  '720p':  { audio: 0.052, silent: 0.026 },
+  '1080p': { audio: 0.120, silent: 0.060 },
+}
+const PROFIT_MARGIN = 1.5
+const CREDIT_VALUE = 0.035
+
+function calculateCredits(durationSeconds: number, resolution: string, withAudio: boolean): number {
+  const tier = REPLICATE_COST_PER_SECOND[resolution] || REPLICATE_COST_PER_SECOND['720p']
+  const costPerSec = withAudio ? tier.audio : tier.silent
+  const chargePerSec = costPerSec * PROFIT_MARGIN
+  return Math.ceil(durationSeconds * chargePerSec / CREDIT_VALUE)
+}
+
+function getCostDetails(resolution: string, withAudio: boolean) {
+  const tier = REPLICATE_COST_PER_SECOND[resolution] || REPLICATE_COST_PER_SECOND['720p']
+  const costPerSec = withAudio ? tier.audio : tier.silent
+  const chargePerSec = costPerSec * PROFIT_MARGIN
+  return { costPerSec, chargePerSec }
 }
 
 /**
@@ -84,8 +107,8 @@ export async function POST(req: NextRequest) {
     const validAspectRatios = ['16:9', '9:16', '1:1', '4:3', '3:4']
     const finalAspectRatio = validAspectRatios.includes(aspectRatio) ? aspectRatio : '16:9'
 
-    // Calculate credit cost
-    creditCost = calculateCredits(durationSec)
+    // Calculate credit cost (variant-specific: resolution × audio)
+    creditCost = calculateCredits(durationSec, finalResolution, generateAudio)
 
     console.log('🎬 Visualizer Generation Request:')
     console.log('  Prompt:', prompt.substring(0, 100))
@@ -149,7 +172,7 @@ export async function POST(req: NextRequest) {
     await logCreditTransaction({
       userId, amount: -creditCost, balanceAfter: deductResult.new_credits,
       type: 'generation_video',
-      description: `444 Visualizer (${durationSec}s ${finalResolution}${generateAudio ? ' +audio' : ''}) — ${creditCost} credits`,
+      description: `444 Visualizer (${durationSec}s ${finalResolution}${generateAudio ? ' +audio' : ' silent'}) — ${creditCost} credits`,
       metadata: {
         prompt: prompt.substring(0, 200),
         duration: durationSec,
@@ -158,9 +181,9 @@ export async function POST(req: NextRequest) {
         cameraFixed,
         generateAudio,
         mode: imageUrl ? 'image-to-video' : 'text-to-video',
-        costPerSecond: 0.06,
-        chargePerSecond: 0.075,
-        totalCharge: (creditCost * 0.035).toFixed(2),
+        costPerSecond: getCostDetails(finalResolution, generateAudio).costPerSec,
+        chargePerSecond: getCostDetails(finalResolution, generateAudio).chargePerSec,
+        totalCharge: (creditCost * CREDIT_VALUE).toFixed(3),
       },
     })
 
@@ -272,6 +295,7 @@ export async function POST(req: NextRequest) {
               type: 'video',
               title,
               media_url: permanentVideoUrl,
+              video_url: permanentVideoUrl,
               cover_url: null,
               prompt,
               genre: 'visualizer',
@@ -286,6 +310,8 @@ export async function POST(req: NextRequest) {
                 generate_audio: generateAudio,
                 mode: imageUrl ? 'image-to-video' : 'text-to-video',
                 credit_cost: creditCost,
+                cost_per_second: getCostDetails(finalResolution, generateAudio).costPerSec,
+                charge_per_second: getCostDetails(finalResolution, generateAudio).chargePerSec,
               },
             }),
           })
