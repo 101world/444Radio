@@ -22,6 +22,13 @@ function getStemCost(model: string): number {
   return model === 'htdemucs_ft' ? 3 : 1
 }
 
+// Display names for Demucs models (used in transaction descriptions)
+const MODEL_DISPLAY_NAMES: Record<string, string> = {
+  htdemucs: '444 Core',
+  htdemucs_6s: '444 Extended',
+  htdemucs_ft: '444 Pro',
+}
+
 // Valid stem choices (maps UI labels → Demucs stem parameter)
 const VALID_STEMS = ['drums', 'bass', 'vocals', 'guitar', 'piano', 'other'] as const
 type StemChoice = typeof VALID_STEMS[number]
@@ -168,7 +175,7 @@ export async function POST(request: Request) {
       await logCreditTransaction({
         userId, amount: -stemCost, balanceAfter: deductResult.new_credits,
         type: 'generation_stem_split',
-        description: `Stem Split: ${stem} (${demucsModel})`,
+        description: `Stem Split: ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`,
         metadata: { stem, model: demucsModel, cost: stemCost },
       })
     }
@@ -196,7 +203,7 @@ export async function POST(request: Request) {
         const demucsInput: Record<string, unknown> = {
             audio: audioUrl,
             model: demucsModel,
-            stem: (stem === 'other' || stem === 'all') ? 'none' : stem,  // 'none' returns all stems; specific stem isolates it
+            stem: stem === 'all' ? 'none' : stem,  // 'none' returns all stems; 'other' isolates instrumental
             output_format: outputFormat,
             wav_format: wavFormat,
             clip_mode: clipMode,

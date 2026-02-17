@@ -3427,6 +3427,16 @@ function CreatePageContent() {
         <MediaUploadModal
           isOpen={showMediaUploadModal}
           onClose={() => setShowMediaUploadModal(false)}
+          onStemSplit={(audioUrl, fileName) => {
+            // Close upload modal and open SplitStemsModal with the uploaded file
+            setShowMediaUploadModal(false)
+            setSplitStemsAudioUrl(audioUrl)
+            setSplitStemsMessageId(`upload-stem-${Date.now()}`)
+            setSplitStemsTrackTitle(fileName)
+            setSplitStemsCompleted({})
+            setSplitStemsProcessing(null)
+            setShowSplitStemsModal(true)
+          }}
           onStart={(type) => {
             // Add processing message when stem splitting starts
             if (type === 'stem-split') {

@@ -9,14 +9,14 @@ interface MediaUploadModalProps {
   onSuccess?: (result: any) => void
   onStart?: (type: 'stem-split' | 'video-to-audio' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune') => void
   onError?: (error: string) => void
+  onStemSplit?: (audioUrl: string, fileName: string) => void
 }
 
-export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError }: MediaUploadModalProps) {
+export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, onError, onStemSplit }: MediaUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileType, setFileType] = useState<'audio' | 'video' | null>(null)
   const [uploadMode, setUploadMode] = useState<'video-to-audio' | 'audio-remix' | 'stem-split' | 'audio-boost' | 'extract-video' | 'extract-audio' | 'autotune' | null>(null)
   const [prompt, setPrompt] = useState('')
-  const [useHQ, setUseHQ] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
   const [error, setError] = useState('')
@@ -207,9 +207,15 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         }
       }
 
-      // For stem splitting, directly call the split-stems API
+      // For stem splitting, hand off to SplitStemsModal via callback
       if (uploadMode === 'stem-split') {
-        // Notify parent that stem splitting is starting
+        if (onStemSplit) {
+          const fileName = selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Uploaded Audio'
+          onStemSplit(publicUrl, fileName)
+          handleClose()
+          return
+        }
+        // Fallback: direct API call if no onStemSplit callback
         onStart?.('stem-split')
         
         setUploadProgress('Splitting stems... This may take 1-2 minutes.')
@@ -339,8 +345,15 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
         return
       }
 
-      // For extract audio-to-audio stem, call the demucs API (streaming)
+      // For extract audio-to-audio stem, hand off to SplitStemsModal via callback
       if (uploadMode === 'extract-audio') {
+        if (onStemSplit) {
+          const fileName = selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Audio'
+          onStemSplit(publicUrl, fileName)
+          handleClose()
+          return
+        }
+        // Fallback: direct API call if no onStemSplit callback
         onStart?.('extract-audio')
 
         // Wait for R2 propagation
@@ -505,7 +518,6 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
           videoUrl: publicUrl,
           audioUrl: publicUrl,
           prompt: prompt,
-          quality: uploadMode === 'video-to-audio' && useHQ ? 'hq' : 'standard'
         })
       })
 
@@ -535,7 +547,6 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
     setFileType(null)
     setUploadMode(null)
     setPrompt('')
-    setUseHQ(false)
     setError('')
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
@@ -595,8 +606,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                     <p className="text-xs text-gray-400">Upload video (max 5s) and generate synced sound effects</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-cyan-400">2 credits</p>
-                    <p className="text-xs text-yellow-400">10 HQ</p>
+                    <p className="text-sm font-bold text-cyan-400">4 credits</p>
                   </div>
                 </div>
               </button>
@@ -793,7 +803,6 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                     setFileType(null)
                     setUploadMode(null)
                     setPrompt('')
-                    setUseHQ(false)
                     if (previewUrl) {
                       URL.revokeObjectURL(previewUrl)
                       setPreviewUrl(null)
@@ -892,25 +901,6 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                     required
                   />
                 </div>
-              )}
-              
-              {/* HQ Toggle - Only for video-to-audio */}
-              {uploadMode === 'video-to-audio' && (
-                <label className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg cursor-pointer hover:bg-yellow-500/15 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={useHQ}
-                    onChange={(e) => setUseHQ(e.target.checked)}
-                    className="w-4 h-4 rounded border-yellow-500/30 bg-white/5 text-yellow-500 focus:ring-2 focus:ring-yellow-500/50"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-yellow-300">✨ High Quality</span>
-                      <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded">+8 credits</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-0.5">Better audio, longer processing</p>
-                  </div>
-                </label>
               )}
 
               {/* Stem Split Info - Only for stem-split mode */}
@@ -1146,21 +1136,21 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
               uploadMode === 'audio-boost' ? 'text-orange-400' : 
               uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'text-emerald-400' :
               uploadMode === 'autotune' ? 'text-violet-400' :
-              useHQ ? 'text-yellow-400' : 'text-cyan-400'
+              'text-cyan-400'
             }>💰</span>
             <span className={`font-semibold ${
               uploadMode === 'stem-split' ? 'text-teal-400' :
               uploadMode === 'audio-boost' ? 'text-orange-400' :
               uploadMode === 'extract-video' || uploadMode === 'extract-audio' ? 'text-emerald-400' :
               uploadMode === 'autotune' ? 'text-violet-400' :
-              useHQ ? 'text-yellow-400' : 'text-cyan-400'
+              'text-cyan-400'
             }`}>
               {uploadMode === 'stem-split' ? '5 credits' :
                uploadMode === 'audio-boost' ? '1 credit' :
                uploadMode === 'extract-video' ? '1 credit' :
                uploadMode === 'extract-audio' ? '1 credit' :
                uploadMode === 'autotune' ? '1 credit' :
-               selectedFile && useHQ ? '10 credits' : '2 credits'}
+               '4 credits'}
             </span>
             {selectedFile && uploadMode === 'video-to-audio' && (
               <>

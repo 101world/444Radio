@@ -256,6 +256,7 @@ export default function FloatingAudioPlayer() {
   // Explore state
   const [exploreSongs, setExploreSongs] = useState<ExploreMedia[]>([])
   const [exploreSearch, setExploreSearch] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
   const [exploreLoading, setExploreLoading] = useState(false)
   const [exploreFetched, setExploreFetched] = useState(false)
   const [activeGenre, setActiveGenre] = useState('All')
@@ -612,9 +613,9 @@ export default function FloatingAudioPlayer() {
       </div>
 
       {/* ─── Now Playing ─── */}
-      <div className="flex gap-5 px-6 pt-5 pb-3 flex-shrink-0">
-        {/* Album art with progress ring */}
-        <div className="relative w-32 h-32 flex-shrink-0">
+      <div className="flex flex-col items-center px-6 pt-5 pb-3 flex-shrink-0">
+        {/* Album art with progress ring — large centered */}
+        <div className="relative w-52 h-52 flex-shrink-0 mb-4">
           {/* Ambient glow behind art */}
           {isPlaying && (
             <div className="absolute -inset-3 rounded-3xl opacity-30 blur-xl pointer-events-none"
@@ -651,12 +652,12 @@ export default function FloatingAudioPlayer() {
         </div>
 
         {/* Track info + quick actions */}
-        <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div className="w-full text-center">
           <p className="text-gray-100 font-bold text-[15px] truncate leading-tight tracking-tight">{currentTrack.title}</p>
           {currentTrack.artist && <p className="text-gray-500 text-[13px] truncate mt-1">{currentTrack.artist}</p>}
           {/* Genre / Mood / Tags chips */}
           {(currentTrack.genre || currentTrack.mood || (currentTrack.tags && currentTrack.tags.length > 0)) && (
-            <div className="flex flex-wrap gap-1 mt-2">
+            <div className="flex flex-wrap gap-1 mt-2 justify-center">
               {currentTrack.genre && (
                 <span className="text-[9px] px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/15 font-medium">{currentTrack.genre}</span>
               )}
@@ -668,7 +669,7 @@ export default function FloatingAudioPlayer() {
               ))}
             </div>
           )}
-          <div className="flex items-center gap-1.5 mt-3">
+          <div className="flex items-center gap-1.5 mt-3 justify-center">
             <button onClick={() => setLiked(!liked)}
               className={`p-2 rounded-xl transition-all ${liked ? 'text-pink-400 bg-pink-500/10 shadow-sm shadow-pink-500/10' : 'text-gray-600 hover:text-pink-400 hover:bg-white/[0.04]'}`}
               title="Like">
@@ -694,10 +695,6 @@ export default function FloatingAudioPlayer() {
                   ))}
                 </div>
               )}
-            </div>
-            <div className="flex items-center gap-1 ml-auto px-2 py-1 rounded-lg bg-teal-500/[0.06] border border-teal-500/10">
-              <Zap size={10} className="text-teal-500/60" />
-              <span className="text-[9px] text-teal-500/60 font-semibold tracking-wider">HQ</span>
             </div>
           </div>
         </div>
@@ -828,19 +825,28 @@ export default function FloatingAudioPlayer() {
           EXPLORE — Smart search + filter chips + grid toggle
          ═══════════════════════════════════════════════════════ */}
       <div className="flex-1 flex flex-col min-h-0 border-t border-white/[0.03]">
-        {/* Search */}
-        <div className="px-5 pt-3 pb-1 flex-shrink-0">
-          <div className="relative">
-            <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-            <input
-              type="text"
-              value={exploreSearch}
-              onChange={(e) => setExploreSearch(e.target.value)}
-              placeholder="Search title, artist, genre, mood, BPM, tags..."
-              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl pl-10 pr-4 py-2 text-[12px] text-gray-300 placeholder-gray-700 focus:outline-none focus:border-teal-500/25 focus:bg-white/[0.04] transition-all"
-              style={{ backdropFilter: 'blur(10px)' }}
-            />
-          </div>
+        {/* Search Toggle + Search Bar */}
+        <div className="px-5 pt-2 pb-1 flex-shrink-0">
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            className="flex items-center gap-2 text-[10px] text-gray-500 hover:text-gray-300 font-medium tracking-widest uppercase transition-all mb-1"
+          >
+            <Search size={11} />
+            <span>{showSearch ? 'Hide Search' : 'Search'}</span>
+          </button>
+          {showSearch && (
+            <div className="relative mt-1">
+              <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+              <input
+                type="text"
+                value={exploreSearch}
+                onChange={(e) => setExploreSearch(e.target.value)}
+                placeholder="Search title, artist, genre, mood, BPM, tags..."
+                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl pl-10 pr-4 py-2 text-[12px] text-gray-300 placeholder-gray-700 focus:outline-none focus:border-teal-500/25 focus:bg-white/[0.04] transition-all"
+                style={{ backdropFilter: 'blur(10px)' }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Genre chips */}

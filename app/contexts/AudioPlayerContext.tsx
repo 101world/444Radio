@@ -62,6 +62,10 @@ function computeUrl(u: string): string {
     if (process.env.NEXT_PUBLIC_R2_AUDIO_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_AUDIO_URL).hostname)
     if (process.env.NEXT_PUBLIC_R2_IMAGES_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_IMAGES_URL).hostname)
     if (process.env.NEXT_PUBLIC_R2_VIDEOS_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_VIDEOS_URL).hostname)
+    // Also recognize the unified R2_PUBLIC_URL (media.444radio.co.in) as a CDN host
+    if (process.env.NEXT_PUBLIC_R2_PUBLIC_URL) r2CustomHosts.push(new URL(process.env.NEXT_PUBLIC_R2_PUBLIC_URL).hostname)
+    // Fallback: always treat media.444radio.co.in as CDN
+    r2CustomHosts.push('media.444radio.co.in')
     if (r2CustomHosts.includes(target.hostname)) return u // CDN — play direct
     const isRawR2 = target.hostname.endsWith('.r2.dev') || target.hostname.endsWith('.r2.cloudflarestorage.com')
     const isReplicate = target.hostname.includes('replicate.delivery') || target.hostname.includes('replicate.com')

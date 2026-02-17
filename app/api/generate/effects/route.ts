@@ -164,11 +164,13 @@ export async function POST(req: NextRequest) {
 
       const outputBuffer = Buffer.from(await downloadRes.arrayBuffer())
       const outputFileName = `${userId}/effects-${Date.now()}.${output_format}`
+      const mimeType = output_format === 'wav' ? 'audio/wav' : 'audio/mpeg'
       
       const outputR2Result = await uploadToR2(
         outputBuffer,
         'audio-files',
-        outputFileName
+        outputFileName,
+        mimeType
       )
 
       if (!outputR2Result.success) {
