@@ -2090,25 +2090,25 @@ function PluginPageInner() {
 
 
           {/* Step 1: Get token */}
-          <div className="rounded-xl p-4 text-left space-y-2" style={{background:'rgba(200,200,220,0.03)',border:'1px solid rgba(200,200,220,0.08)'}}>
+          <div className="rounded-xl p-4 text-left space-y-2" style={{background:'rgba(6,182,212,0.03)',border:'1px solid rgba(200,200,220,0.1)'}}>
             <div className="flex items-center gap-2">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{background:'rgba(200,200,220,0.08)',border:'1px solid rgba(200,200,220,0.2)',color:'rgba(200,200,220,0.8)'}}>1</span>
+              <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{background:'rgba(6,182,212,0.08)',border:'1px solid rgba(200,200,220,0.25)',color:'rgba(6,182,212,0.9)'}}>1</span>
               <p className="text-sm font-semibold" style={{color:'rgba(230,230,240,0.9)'}}>Get your plugin token</p>
             </div>
             <p className="text-xs ml-8" style={{color:'rgba(160,160,180,0.6)'}}>Sign in on the website → Settings → Plugin tab → Generate Token</p>
             <button
               onClick={() => window.location.href = 'https://444radio.co.in/settings?tab=plugin'}
               className="ml-8 mt-1 px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-[1.02]"
-              style={{background:'linear-gradient(135deg, rgba(200,200,220,0.12), rgba(200,200,220,0.06))',border:'1px solid rgba(200,200,220,0.2)',color:'rgba(220,220,235,0.9)',boxShadow:'0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)'}}
+              style={{background:'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(6,182,212,0.08))',border:'1px solid rgba(200,200,220,0.3)',color:'rgba(6,182,212,0.95)',boxShadow:'0 2px 12px rgba(6,182,212,0.1), inset 0 1px 0 rgba(255,255,255,0.06)'}}
             >
               Open Settings → Get Token
             </button>
           </div>
 
           {/* Step 2: Paste token */}
-          <div className="rounded-xl p-4 text-left space-y-2" style={{background:'rgba(200,200,220,0.03)',border:'1px solid rgba(200,200,220,0.08)'}}>
+          <div className="rounded-xl p-4 text-left space-y-2" style={{background:'rgba(6,182,212,0.03)',border:'1px solid rgba(200,200,220,0.1)'}}>
             <div className="flex items-center gap-2">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{background:'rgba(200,200,220,0.08)',border:'1px solid rgba(200,200,220,0.2)',color:'rgba(200,200,220,0.8)'}}>2</span>
+              <span className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{background:'rgba(6,182,212,0.08)',border:'1px solid rgba(200,200,220,0.25)',color:'rgba(6,182,212,0.9)'}}>2</span>
               <p className="text-sm font-semibold" style={{color:'rgba(230,230,240,0.9)'}}>Paste your token below</p>
             </div>
             <div className="flex gap-2 ml-8 mt-1">
@@ -2117,9 +2117,9 @@ function PluginPageInner() {
                 type="text"
                 placeholder="444r_..."
                 className="flex-1 px-3 py-2 rounded-lg text-sm font-mono focus:outline-none transition-all"
-                style={{background:'rgba(0,0,0,0.4)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(220,220,235,0.9)',caretColor:'rgba(200,200,220,0.7)'}}
-                onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(200,200,220,0.3)'}
-                onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(200,200,220,0.12)'}
+                style={{background:'rgba(0,0,0,0.4)',border:'1px solid rgba(200,200,220,0.15)',color:'rgba(220,220,235,0.9)',caretColor:'rgba(6,182,212,0.7)'}}
+                onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(200,200,220,0.4)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(200,200,220,0.15)'}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const val = (e.target as HTMLInputElement).value.trim()
@@ -2134,7 +2134,7 @@ function PluginPageInner() {
                   if (val) { try { localStorage.setItem(TOKEN_KEY, val) } catch {}; setToken(val) }
                 }}
                 className="px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:scale-[1.02]"
-                style={{background:'linear-gradient(135deg, rgba(220,220,235,0.15), rgba(200,200,220,0.08))',border:'1px solid rgba(200,200,220,0.25)',color:'rgba(220,220,235,0.9)',boxShadow:'0 2px 12px rgba(0,0,0,0.3)'}}
+                style={{background:'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(6,182,212,0.1))',border:'1px solid rgba(200,200,220,0.35)',color:'rgba(6,182,212,0.95)',boxShadow:'0 2px 12px rgba(6,182,212,0.1)'}}
               >
                 Connect
               </button>
@@ -2169,16 +2169,16 @@ function PluginPageInner() {
       style={{
         background: 'linear-gradient(180deg, #050508 0%, #08080c 50%, #040406 100%)',
       }}>
-      {/* ── Global ambient background — silver chrome glass ── */}
+      {/* ── Global ambient background — black with cyan/teal glow ── */}
       <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'radial-gradient(ellipse 80% 45% at 50% -5%, rgba(200,200,220,0.04) 0%, rgba(160,160,180,0.015) 35%, transparent 65%)',
+        background: 'radial-gradient(ellipse 80% 45% at 50% -5%, rgba(6,182,212,0.06) 0%, rgba(20,184,166,0.02) 35%, transparent 65%)',
       }} />
       <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'radial-gradient(ellipse 50% 35% at 85% 100%, rgba(180,180,200,0.025) 0%, transparent 50%), radial-gradient(ellipse 50% 35% at 15% 100%, rgba(200,200,220,0.02) 0%, transparent 50%)',
+        background: 'radial-gradient(ellipse 50% 35% at 85% 100%, rgba(20,184,166,0.03) 0%, transparent 50%), radial-gradient(ellipse 50% 35% at 15% 100%, rgba(6,182,212,0.025) 0%, transparent 50%)',
       }} />
       {/* Subtle grid texture */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.02]" style={{
-        backgroundImage: 'linear-gradient(rgba(200,200,220,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(200,200,220,0.3) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(6,182,212,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.3) 1px, transparent 1px)',
         backgroundSize: '32px 32px',
       }} />
 
@@ -2190,7 +2190,7 @@ function PluginPageInner() {
             backdropFilter: 'blur(40px)',
             WebkitBackdropFilter: 'blur(40px)',
             border: '1px solid rgba(200,200,220,0.12)',
-            boxShadow: '0 12px 48px rgba(0,0,0,0.8), 0 0 20px rgba(200,200,220,0.04), inset 0 1px 0 rgba(200,200,220,0.08)',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.8), 0 0 16px rgba(200,200,220,0.04), inset 0 1px 0 rgba(200,200,220,0.08)',
             color: 'rgba(220,220,235,0.9)',
             animation: 'fadeIn 0.2s ease-out',
           }}>
@@ -2203,9 +2203,9 @@ function PluginPageInner() {
       {/* Pin status bar — shows when window is pinned */}
       {isPinned && (
         <div className="flex items-center justify-center gap-2 px-3 py-1 text-[10px] select-none shrink-0"
-          style={{background:'rgba(200,200,220,0.03)',borderBottom:'1px solid rgba(200,200,220,0.08)',color:'rgba(200,200,220,0.5)'}}>
+          style={{background:'rgba(6,182,212,0.03)',borderBottom:'1px solid rgba(200,200,220,0.10)',boxShadow:'0 1px 6px rgba(200,200,220,0.03)',color:'rgba(6,182,212,0.5)'}}>
           <Pin size={10} /> Window pinned — stays on top
-          <button onClick={togglePin} className="ml-2 underline transition-colors" style={{color:'rgba(200,200,220,0.7)'}}>Unpin</button>
+          <button onClick={togglePin} className="ml-2 underline transition-colors" style={{color:'rgba(6,182,212,0.7)'}}>Unpin</button>
         </div>
       )}
 
@@ -2224,22 +2224,22 @@ function PluginPageInner() {
           {/* Mobile backdrop */}
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={() => setShowFeaturesSidebar(false)} />
 
-          <div className="fixed left-0 top-0 h-screen w-[280px] z-50 flex flex-col overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(10,10,14,0.97), rgba(6,6,10,0.99))', backdropFilter: 'blur(60px) saturate(1.2)', WebkitBackdropFilter: 'blur(60px) saturate(1.2)', borderRight: '1px solid rgba(200,200,220,0.06)', boxShadow: '4px 0 40px rgba(0,0,0,0.5), inset -1px 0 0 rgba(200,200,220,0.03)', animation: 'slideInLeft 0.2s ease-out' }}>
-            {/* Subtle ambient gradient */}
-            <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 80% 30% at 50% 0%, rgba(200,200,220,0.02) 0%, transparent 60%)'}} />
+          <div className="fixed left-0 top-0 h-screen w-[280px] z-50 flex flex-col overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(10,10,14,0.97), rgba(6,6,10,0.99))', backdropFilter: 'blur(60px) saturate(1.2)', WebkitBackdropFilter: 'blur(60px) saturate(1.2)', borderRight: '1px solid rgba(200,200,220,0.12)', boxShadow: '4px 0 40px rgba(0,0,0,0.5), 0 0 20px rgba(200,200,220,0.03), inset -1px 0 0 rgba(200,200,220,0.06)', animation: 'slideInLeft 0.2s ease-out' }}>
+            {/* Subtle cyan ambient gradient */}
+            <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 80% 30% at 50% 0%, rgba(6,182,212,0.04) 0%, transparent 60%)'}} />
             {/* Header */}
-            <div className="flex items-center justify-between px-4 h-12 relative z-10" style={{borderBottom:'1px solid rgba(200,200,220,0.06)'}}>
+            <div className="flex items-center justify-between px-4 h-12 relative z-10" style={{borderBottom:'1px solid rgba(200,200,220,0.12)', boxShadow:'0 1px 8px rgba(200,200,220,0.03)'}}>
               <div className="flex items-center gap-2">
                 {/* Visualizer bars icon */}
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{color:'rgba(200,200,220,0.7)'}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{color:'rgba(6,182,212,0.8)',filter:'drop-shadow(0 0 4px rgba(6,182,212,0.4))'}}>
                   <rect x="4" y="14" width="3" height="6" rx="1" fill="currentColor" opacity="0.5"/>
                   <rect x="9" y="8" width="3" height="12" rx="1" fill="currentColor" opacity="0.7"/>
                   <rect x="14" y="4" width="3" height="16" rx="1" fill="currentColor"/>
                   <rect x="19" y="10" width="3" height="10" rx="1" fill="currentColor" opacity="0.6"/>
                 </svg>
-                <span className="font-bold text-sm tracking-wider" style={{color:'rgba(220,220,235,0.9)'}}>Features</span>
+                <span className="font-bold text-sm tracking-wider" style={{color:'#e0f2fe'}}>Features</span>
               </div>
-              <button onClick={() => setShowFeaturesSidebar(false)} className="p-2 rounded-lg transition-colors" style={{color:'rgba(200,200,220,0.25)'}} onMouseEnter={e=>e.currentTarget.style.color='rgba(200,200,220,0.6)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(200,200,220,0.25)'}>
+              <button onClick={() => setShowFeaturesSidebar(false)} className="p-2 rounded-lg transition-colors" style={{color:'rgba(6,182,212,0.25)'}} onMouseEnter={e=>e.currentTarget.style.color='rgba(6,182,212,0.6)'} onMouseLeave={e=>e.currentTarget.style.color='rgba(6,182,212,0.25)'}>
                 <X size={18} />
               </button>
             </div>
@@ -2247,20 +2247,20 @@ function PluginPageInner() {
             {/* Pin reminder for drag-drop */}
             {!isPinned && (
               <div className="px-4 py-2 relative z-10" style={{borderBottom:'1px solid rgba(200,200,220,0.05)'}}>
-                <button onClick={togglePin} className="w-full flex items-start gap-2 px-3 py-2 rounded-lg transition-all hover:scale-[1.02]" style={{background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.1)'}}>
-                  <Pin size={14} className="mt-0.5 shrink-0" style={{color:'rgba(200,200,220,0.6)'}} />
+                <button onClick={togglePin} className="w-full flex items-start gap-2 px-3 py-2 rounded-lg transition-all hover:scale-[1.02]" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.1)'}}>
+                  <Pin size={14} className="mt-0.5 shrink-0" style={{color:'rgba(6,182,212,0.6)'}} />
                   <div className="text-left flex-1 min-w-0">
                     <p className="text-[11px] font-semibold leading-tight" style={{color:'rgba(220,220,235,0.8)'}}>Pin window for drag & drop</p>
-                    <p className="text-[9px] mt-0.5 leading-tight" style={{color:'rgba(200,200,220,0.35)'}}>Keeps window on top + enables file drops</p>
+                    <p className="text-[9px] mt-0.5 leading-tight" style={{color:'rgba(6,182,212,0.35)'}}>Keeps window on top + enables file drops</p>
                   </div>
                 </button>
               </div>
             )}
 
             {/* Credits */}
-            <div className="px-4 py-2 relative z-10" style={{borderBottom:'1px solid rgba(200,200,220,0.06)'}}>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.1)'}}>
-                <Zap size={16} style={{color:'rgba(200,200,220,0.7)'}} />
+            <div className="px-4 py-2 relative z-10" style={{borderBottom:'1px solid rgba(200,200,220,0.08)',boxShadow:'0 1px 6px rgba(200,200,220,0.02)'}}>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.12)',boxShadow:'0 0 10px rgba(200,200,220,0.03)'}}>
+                <Zap size={16} style={{color:'rgba(6,182,212,0.7)',filter:'drop-shadow(0 0 4px rgba(6,182,212,0.4))'}} />
                 <span className="font-bold text-sm" style={{color:'rgba(220,220,235,0.9)'}}>{isLoadingCredits ? '...' : userCredits} credits</span>
               </div>
             </div>
@@ -2269,11 +2269,11 @@ function PluginPageInner() {
             <div className="px-4 py-2 relative z-10" style={{borderBottom:'1px solid rgba(200,200,220,0.06)'}}>
               <div className="flex gap-1.5">
                 <button onClick={() => setIsInstrumental(false)} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[11px] font-semibold transition-all"
-                  style={!isInstrumental ? {background:'linear-gradient(135deg, rgba(200,200,220,0.1), rgba(180,180,200,0.06))',color:'rgba(220,220,235,0.9)',border:'1px solid rgba(200,200,220,0.2)',boxShadow:'0 0 16px rgba(200,200,220,0.06), inset 0 1px 0 rgba(255,255,255,0.08)'} : {background:'rgba(200,200,220,0.02)',color:'rgba(200,200,220,0.35)',border:'1px solid rgba(200,200,220,0.06)'}}>
+                  style={!isInstrumental ? {background:'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(20,184,166,0.06))',color:'rgba(220,240,245,0.95)',border:'1px solid rgba(200,200,220,0.25)',boxShadow:'0 0 16px rgba(6,182,212,0.08), inset 0 1px 0 rgba(255,255,255,0.08)'} : {background:'rgba(6,182,212,0.02)',color:'rgba(6,182,212,0.35)',border:'1px solid rgba(200,200,220,0.06)'}}>
                   <Mic size={14} /> Vocal
                 </button>
                 <button onClick={() => setIsInstrumental(true)} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[11px] font-semibold transition-all"
-                  style={isInstrumental ? {background:'linear-gradient(135deg, rgba(200,200,220,0.1), rgba(180,180,200,0.06))',color:'rgba(220,220,235,0.9)',border:'1px solid rgba(200,200,220,0.2)',boxShadow:'0 0 16px rgba(200,200,220,0.06), inset 0 1px 0 rgba(255,255,255,0.08)'} : {background:'rgba(200,200,220,0.02)',color:'rgba(200,200,220,0.35)',border:'1px solid rgba(200,200,220,0.06)'}}>
+                  style={isInstrumental ? {background:'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(20,184,166,0.06))',color:'rgba(220,240,245,0.95)',border:'1px solid rgba(200,200,220,0.25)',boxShadow:'0 0 16px rgba(6,182,212,0.08), inset 0 1px 0 rgba(255,255,255,0.08)'} : {background:'rgba(6,182,212,0.02)',color:'rgba(6,182,212,0.35)',border:'1px solid rgba(200,200,220,0.06)'}}>
                   <Music size={14} /> Inst
                 </button>
               </div>
@@ -2286,14 +2286,14 @@ function PluginPageInner() {
                   placeholder="Describe your music..."
                   className="w-full rounded-lg px-3 py-2 text-xs text-white resize-none focus:outline-none transition-all"
                   style={{
-                    background: 'rgba(200,200,220,0.03)',
+                    background: 'rgba(6,182,212,0.03)',
                     border: '1px solid rgba(200,200,220,0.08)',
-                    caretColor: 'rgba(200,200,220,0.7)',
+                    caretColor: 'rgba(6,182,212,0.7)',
                     boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.3)',
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(200,200,220,0.2)'
-                    e.currentTarget.style.boxShadow = 'inset 0 2px 6px rgba(0,0,0,0.3), 0 0 12px rgba(200,200,220,0.03)'
+                    e.currentTarget.style.borderColor = 'rgba(200,200,220,0.25)'
+                    e.currentTarget.style.boxShadow = 'inset 0 2px 6px rgba(0,0,0,0.3), 0 0 12px rgba(6,182,212,0.06)'
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = 'rgba(200,200,220,0.08)'
@@ -2305,12 +2305,12 @@ function PluginPageInner() {
                 <div className="flex items-center justify-between mt-2">
                   <button onClick={isRecording ? stopRecording : startRecording}
                     className={`p-2 rounded-full transition-all ${isRecording ? 'animate-pulse' : ''}`}
-                    style={isRecording ? {background:'#ff0040',color:'#fff'} : {background:'rgba(200,200,220,0.03)',color:'rgba(200,200,220,0.25)',border:'1px solid rgba(200,200,220,0.06)'}}>
+                    style={isRecording ? {background:'#ff0040',color:'#fff'} : {background:'rgba(6,182,212,0.03)',color:'rgba(6,182,212,0.3)',border:'1px solid rgba(200,200,220,0.08)'}}>
                     <Mic size={14} />
                   </button>
                   <button onClick={handleGenerate} disabled={isGenerating || !input.trim()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all disabled:opacity-20 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
-                    style={{background:'linear-gradient(135deg, rgba(220,220,235,0.85), rgba(180,180,200,0.75))',color:'#000000',boxShadow:'0 0 16px rgba(200,200,220,0.12), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4)'}}>
+                    style={{background:'linear-gradient(135deg, rgba(6,182,212,0.85), rgba(20,184,166,0.75))',color:'#000000',boxShadow:'0 0 16px rgba(6,182,212,0.15), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3)'}}>
                     <Send size={12} /> Generate
                   </button>
                 </div>
@@ -2323,16 +2323,16 @@ function PluginPageInner() {
                 {sidebarIdeasView === 'tags' && (
                   <>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-bold text-white flex items-center gap-2"><Lightbulb size={14} style={{color:'rgba(200,200,220,0.6)'}} /> Quick Tags</span>
+                      <span className="text-sm font-bold text-white flex items-center gap-2"><Lightbulb size={14} style={{color:'rgba(6,182,212,0.6)'}} /> Quick Tags</span>
                       <div className="flex gap-2">
-                        <button onClick={() => setSidebarIdeasView('type')} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style={{background:'rgba(200,200,220,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(220,220,235,0.7)'}}>✨ IDEAS</button>
+                        <button onClick={() => setSidebarIdeasView('type')} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style={{background:'rgba(6,182,212,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(6,182,212,0.7)'}}>✨ IDEAS</button>
                         <button onClick={() => setShowSidebarIdeas(false)} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {QUICK_TAGS.map(tag => (
                         <button key={tag} onClick={() => setInput(prev => prev + (prev ? ', ' : '') + tag)}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105" style={{background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(200,200,220,0.6)'}}>
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(6,182,212,0.6)'}}>
                           {tag}
                         </button>
                       ))}
@@ -2347,11 +2347,11 @@ function PluginPageInner() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <button onClick={() => { setSidebarPromptType('song'); setSelectedPromptType('song'); setSidebarIdeasView('genre') }}
-                        className="p-5 rounded-2xl hover:scale-105 transition-all" style={{background:'linear-gradient(135deg, rgba(200,200,220,0.06), rgba(200,200,220,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
+                        className="p-5 rounded-2xl hover:scale-105 transition-all" style={{background:'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
                         <div className="text-3xl mb-2">🎤</div><div className="text-sm font-bold text-white">Song</div><div className="text-[10px] text-gray-400">With vocals & lyrics</div>
                       </button>
                       <button onClick={() => { setSidebarPromptType('beat'); setSelectedPromptType('beat'); setIsInstrumental(true); setSidebarIdeasView('genre') }}
-                        className="p-5 rounded-2xl hover:scale-105 transition-all" style={{background:'linear-gradient(135deg, rgba(200,200,220,0.06), rgba(200,200,220,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
+                        className="p-5 rounded-2xl hover:scale-105 transition-all" style={{background:'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
                         <div className="text-3xl mb-2">🎹</div><div className="text-sm font-bold text-white">Beat</div><div className="text-[10px] text-gray-400">Instrumental only</div>
                       </button>
                     </div>
@@ -2360,14 +2360,14 @@ function PluginPageInner() {
                 {sidebarIdeasView === 'genre' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <button onClick={() => setSidebarIdeasView('type')} className="text-xs flex items-center gap-1" style={{color:'rgba(200,200,220,0.6)'}}><ChevronLeft size={14} /> Back</button>
+                      <button onClick={() => setSidebarIdeasView('type')} className="text-xs flex items-center gap-1" style={{color:'rgba(6,182,212,0.6)'}}><ChevronLeft size={14} /> Back</button>
                       <h3 className="text-sm font-bold text-white">🎵 Select Genre</h3>
                       <button onClick={() => setSidebarIdeasView('tags')} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                     </div>
                     <div className="grid grid-cols-3 gap-1.5">
                       {GENRE_OPTIONS.map(g => (
                         <button key={g} onClick={() => handleGeneratePromptIdea(g)} disabled={generatingIdea}
-                          className="px-2 py-2 rounded-xl text-xs font-medium transition-all disabled:opacity-50" style={{background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(200,200,220,0.6)'}}>
+                          className="px-2 py-2 rounded-xl text-xs font-medium transition-all disabled:opacity-50" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(6,182,212,0.6)'}}>
                           {g}
                         </button>
                       ))}
@@ -2388,9 +2388,9 @@ function PluginPageInner() {
             <div className="flex-1 overflow-y-auto px-3 py-2">
               {/* Generation Queue Notification (shows when generations are active) */}
               {activeGenerations.size > 0 && (
-                <div className="mb-3 p-3 rounded-xl flex items-center gap-2 generating-glow" style={{background:'linear-gradient(135deg, rgba(200,200,220,0.06), rgba(180,180,200,0.03))',border:'1px solid rgba(200,200,220,0.15)'}}>
-                  <Loader2 size={16} className="animate-spin" style={{color:'rgba(200,200,220,0.7)'}} />
-                  <span className="text-xs font-medium" style={{color:'rgba(200,200,220,0.7)'}}>
+                <div className="mb-3 p-3 rounded-xl flex items-center gap-2 generating-glow" style={{background:'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(20,184,166,0.03))',border:'1px solid rgba(200,200,220,0.15)'}}>
+                  <Loader2 size={16} className="animate-spin" style={{color:'rgba(6,182,212,0.7)'}} />
+                  <span className="text-xs font-medium" style={{color:'rgba(6,182,212,0.7)'}}>
                     {activeGenerations.size} generation{activeGenerations.size > 1 ? 's' : ''} in progress
                   </span>
                 </div>
@@ -2399,13 +2399,13 @@ function PluginPageInner() {
               {/* Ideas Lightbulb */}
               <button onClick={() => { setShowSidebarIdeas(!showSidebarIdeas); setSidebarIdeasView('tags') }}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all mb-2 relative overflow-hidden"
-                style={showSidebarIdeas ? {background:'linear-gradient(135deg, rgba(200,200,220,0.06), rgba(180,180,200,0.03))',border:'1px solid rgba(200,200,220,0.15)',color:'rgba(220,220,235,0.8)',boxShadow:'0 0 16px rgba(200,200,220,0.04), inset 0 1px 0 rgba(255,255,255,0.04)'} : {background:'rgba(200,200,220,0.02)',border:'1px solid rgba(200,200,220,0.06)',color:'rgba(200,200,220,0.5)'}}>
-                <div className="p-1.5 rounded-md" style={{background:'rgba(200,200,220,0.03)'}}><Lightbulb size={14} /></div>
+                style={showSidebarIdeas ? {background:'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(20,184,166,0.03))',border:'1px solid rgba(200,200,220,0.15)',color:'rgba(220,240,245,0.8)',boxShadow:'0 0 16px rgba(6,182,212,0.04), inset 0 1px 0 rgba(255,255,255,0.04)'} : {background:'rgba(6,182,212,0.02)',border:'1px solid rgba(200,200,220,0.06)',color:'rgba(6,182,212,0.5)'}}>
+                <div className="p-1.5 rounded-md" style={{background:'rgba(6,182,212,0.03)'}}><Lightbulb size={14} /></div>
                 <div className="flex-1 text-left"><div className="text-xs font-semibold">Ideas & Tags</div></div>
-                <span className="text-[10px] bg-white/5 px-2 py-1 rounded-full" style={{color:'rgba(200,200,220,0.3)'}}>AI</span>
+                <span className="text-[10px] bg-white/5 px-2 py-1 rounded-full" style={{color:'rgba(6,182,212,0.3)'}}>AI</span>
               </button>
 
-              <p className="text-[9px] uppercase tracking-widest font-bold mb-2 px-1" style={{color:'rgba(200,200,220,0.12)'}}>Creation Tools</p>
+              <p className="text-[9px] uppercase tracking-widest font-bold mb-2 px-1" style={{color:'rgba(6,182,212,0.12)'}}>Creation Tools</p>
               <div className="space-y-1">
                 {FEATURES.filter(f => {
                   // Hide lyrics when not in music vocal mode
@@ -2416,16 +2416,16 @@ function PluginPageInner() {
                   const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm))
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
-                      active: {background:'linear-gradient(135deg, rgba(200,200,220,0.08), rgba(180,180,200,0.04))',border:'1px solid rgba(200,200,220,0.18)',color:'rgba(220,220,235,0.9)',boxShadow:'0 0 16px rgba(200,200,220,0.04), inset 0 1px 0 rgba(255,255,255,0.05)'},
-                      inactive: {background:'rgba(200,200,220,0.015)',border:'1px solid rgba(200,200,220,0.04)',color:'rgba(200,200,220,0.4)'},
+                      active: {background:'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(20,184,166,0.06))',border:'1px solid rgba(200,200,220,0.35)',color:'rgba(220,240,245,0.95)',boxShadow:'0 0 20px rgba(6,182,212,0.12), inset 0 1px 0 rgba(6,182,212,0.15)'},
+                      inactive: {background:'rgba(6,182,212,0.03)',border:'1px solid rgba(200,200,220,0.08)',color:'rgba(180,220,230,0.5)'},
                     },
                     purple: {
-                      active: {background:'linear-gradient(135deg, rgba(200,200,220,0.08), rgba(180,180,200,0.04))',border:'1px solid rgba(200,200,220,0.18)',color:'rgba(220,220,235,0.9)',boxShadow:'0 0 16px rgba(200,200,220,0.04), inset 0 1px 0 rgba(255,255,255,0.05)'},
-                      inactive: {background:'rgba(200,200,220,0.015)',border:'1px solid rgba(200,200,220,0.04)',color:'rgba(200,200,220,0.4)'},
+                      active: {background:'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(139,92,246,0.06))',border:'1px solid rgba(168,85,247,0.35)',color:'rgba(230,220,250,0.95)',boxShadow:'0 0 20px rgba(168,85,247,0.12), inset 0 1px 0 rgba(168,85,247,0.15)'},
+                      inactive: {background:'rgba(168,85,247,0.03)',border:'1px solid rgba(168,85,247,0.08)',color:'rgba(200,180,240,0.5)'},
                     },
                     orange: {
-                      active: {background:'linear-gradient(135deg, rgba(200,200,220,0.08), rgba(180,180,200,0.04))',border:'1px solid rgba(200,200,220,0.18)',color:'rgba(220,220,235,0.9)',boxShadow:'0 0 16px rgba(200,200,220,0.04), inset 0 1px 0 rgba(255,255,255,0.05)'},
-                      inactive: {background:'rgba(200,200,220,0.015)',border:'1px solid rgba(200,200,220,0.04)',color:'rgba(200,200,220,0.4)'},
+                      active: {background:'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(217,119,6,0.06))',border:'1px solid rgba(245,158,11,0.35)',color:'rgba(255,235,210,0.95)',boxShadow:'0 0 20px rgba(245,158,11,0.1), inset 0 1px 0 rgba(245,158,11,0.15)'},
+                      inactive: {background:'rgba(245,158,11,0.03)',border:'1px solid rgba(245,158,11,0.08)',color:'rgba(240,200,150,0.5)'},
                     },
                   }
                   return (
@@ -2452,10 +2452,10 @@ function PluginPageInner() {
                       <div className="p-1.5 rounded-md" style={{background:'rgba(255,255,255,0.03)'}}><Icon size={14} /></div>
                       <div className="flex-1 text-left">
                         <div className="text-xs font-semibold">{f.label}</div>
-                        <div className="text-[9px]" style={{color:'rgba(200,200,220,0.25)'}}>{f.desc}</div>
+                        <div className="text-[9px]" style={{color:'rgba(6,182,212,0.2)'}}>{f.desc}</div>
                       </div>
-                      {f.cost > 0 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(200,200,220,0.2)',background:'rgba(200,200,220,0.03)',border:'1px solid rgba(200,200,220,0.04)'}}>-{f.cost}</span>}
-                      {f.cost === -1 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(200,200,220,0.3)',background:'rgba(200,200,220,0.03)',border:'1px solid rgba(200,200,220,0.06)'}}>~5+</span>}
+                      {f.cost > 0 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(6,182,212,0.2)',background:'rgba(6,182,212,0.03)',border:'1px solid rgba(200,200,220,0.04)'}}>-{f.cost}</span>}
+                      {f.cost === -1 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(6,182,212,0.3)',background:'rgba(6,182,212,0.03)',border:'1px solid rgba(200,200,220,0.06)'}}>~5+</span>}
                     </button>
                   )
                 })}
@@ -2464,18 +2464,18 @@ function PluginPageInner() {
               {/* Utilities */}
               <div className="mt-3 pt-3" style={{borderTop:'1px solid rgba(200,200,220,0.05)'}}>
                 <div className="flex items-center gap-1.5 px-1">
-                  <button onClick={() => setShowDeletedChatsModal(true)} className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(200,200,220,0.35)'}} title="Chat History">
+                  <button onClick={() => setShowDeletedChatsModal(true)} className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(6,182,212,0.35)'}} title="Chat History">
                     <RotateCcw size={14} />
                   </button>
-                  <button onClick={handleClearChat} className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(200,200,220,0.35)'}} title="New Chat">
+                  <button onClick={handleClearChat} className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(6,182,212,0.35)'}} title="New Chat">
                     <Plus size={14} />
                   </button>
                   <button onClick={() => window.open('https://444radio.co.in/explore?host=juce', '_blank')}
-                    className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(200,200,220,0.35)'}} title="Explore 444 Radio">
+                    className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.06)',color:'rgba(6,182,212,0.35)'}} title="Explore 444 Radio">
                     <Compass size={14} />
                   </button>
                   <button onClick={() => window.location.href = '/plugin'}
-                    className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.08)',color:'rgba(200,200,220,0.4)'}} title="Plugin Home">
+                    className="p-2 rounded-lg transition-all" style={{border:'1px solid rgba(200,200,220,0.08)',color:'rgba(6,182,212,0.4)'}} title="Plugin Home">
                     <Home size={14} />
                   </button>
                 </div>
@@ -2493,16 +2493,16 @@ function PluginPageInner() {
             background: 'linear-gradient(135deg, rgba(14,14,18,0.88), rgba(10,10,14,0.92))',
             backdropFilter: 'blur(60px) saturate(1.2)',
             WebkitBackdropFilter: 'blur(60px) saturate(1.2)',
-            borderBottom: '1px solid rgba(200,200,220,0.06)',
-            boxShadow: '0 4px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
+            borderBottom: '1px solid rgba(200,200,220,0.08)',
+            boxShadow: '0 4px 32px rgba(0,0,0,0.5), 0 1px 8px rgba(200,200,220,0.025), inset 0 1px 0 rgba(255,255,255,0.04)',
           }}>
-          {/* Chrome accent line */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(200,200,220,0.06) 35%,rgba(200,200,220,0.12) 50%,rgba(200,200,220,0.06) 65%,transparent 90%)'}} />
+          {/* Cyan accent line */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(6,182,212,0.1) 35%,rgba(6,182,212,0.25) 50%,rgba(6,182,212,0.1) 65%,transparent 90%)'}} />
           <div className="flex items-center gap-3 relative z-10">
             <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
-              className="p-2 rounded-lg transition-all" style={{color:'rgba(200,200,220,0.7)'}}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,200,220,0.06)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              className="p-2 rounded-lg transition-all" style={{color:'rgba(6,182,212,0.8)',filter:'drop-shadow(0 0 6px rgba(6,182,212,0.3))'}}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(6,182,212,0.08)'; e.currentTarget.style.filter = 'drop-shadow(0 0 10px rgba(6,182,212,0.5))' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.filter = 'drop-shadow(0 0 6px rgba(6,182,212,0.3))' }}>
               {/* Visualizer SVG grid icon */}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="4" y="14" width="3" height="6" rx="1" fill="currentColor" opacity="0.5"/>
@@ -2512,26 +2512,26 @@ function PluginPageInner() {
               </svg>
             </button>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-wider" style={{color:'rgba(220,220,235,0.9)',textShadow:'0 0 20px rgba(200,200,220,0.1)'}}>444 Radio</span>
-              <span className="text-[9px] px-1.5 py-0.5 rounded font-mono" style={{background:'rgba(200,200,220,0.06)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(200,200,220,0.4)'}}>PLUGIN</span>
+              <span className="font-bold text-sm tracking-wider" style={{color:'#e0f2fe',textShadow:'0 0 20px rgba(6,182,212,0.3)'}}>444 Radio</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded font-mono" style={{background:'rgba(6,182,212,0.08)',border:'1px solid rgba(200,200,220,0.2)',color:'rgba(6,182,212,0.6)'}}>PLUGIN</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5 relative z-10">
             {/* ── Pin window toggle ── */}
             <button onClick={togglePin}
               className="p-1.5 rounded-lg transition-all"
-              style={isPinned ? {background:'rgba(200,200,220,0.08)',color:'rgba(220,220,235,0.8)'} : {color:'rgba(200,200,220,0.2)'}}
-              onMouseEnter={e => { if (!isPinned) e.currentTarget.style.color = 'rgba(200,200,220,0.5)' }}
-              onMouseLeave={e => { if (!isPinned) e.currentTarget.style.color = 'rgba(200,200,220,0.2)' }}
+              style={isPinned ? {background:'rgba(6,182,212,0.08)',color:'rgba(6,182,212,0.8)'} : {color:'rgba(6,182,212,0.2)'}}
+              onMouseEnter={e => { if (!isPinned) e.currentTarget.style.color = 'rgba(6,182,212,0.5)' }}
+              onMouseLeave={e => { if (!isPinned) e.currentTarget.style.color = 'rgba(6,182,212,0.2)' }}
               title={isPinned ? 'Unpin' : 'Pin on top'}>
               {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
             </button>
             {/* ── Preset cycle (tap to switch Portrait/Square/Wide) ── */}
             <button onClick={cyclePreset}
               className="flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-[10px] font-mono"
-              style={{color:'rgba(200,200,220,0.3)',border:'1px solid rgba(200,200,220,0.06)'}}
-              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(200,200,220,0.6)'; e.currentTarget.style.borderColor = 'rgba(200,200,220,0.15)' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(200,200,220,0.3)'; e.currentTarget.style.borderColor = 'rgba(200,200,220,0.06)' }}
+              style={{color:'rgba(6,182,212,0.3)',border:'1px solid rgba(200,200,220,0.06)'}}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(6,182,212,0.6)'; e.currentTarget.style.borderColor = 'rgba(200,200,220,0.15)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(6,182,212,0.3)'; e.currentTarget.style.borderColor = 'rgba(200,200,220,0.06)' }}
               title={`${WINDOW_PRESETS[windowSizeIdx].label} — tap to cycle`}>
               <span>{WINDOW_PRESETS[windowSizeIdx].icon}</span>
               <span className="hidden min-[460px]:inline">{WINDOW_PRESETS[windowSizeIdx].label}</span>
@@ -2539,24 +2539,24 @@ function PluginPageInner() {
             {/* Library */}
             <button onClick={() => { window.location.href = '/library?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
               className="p-1.5 rounded-lg transition-all" title="My Library"
-              style={{color:'rgba(200,200,220,0.35)'}}
-              onMouseEnter={e => e.currentTarget.style.color = 'rgba(200,200,220,0.7)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(200,200,220,0.35)'}>
+              style={{color:'rgba(6,182,212,0.35)'}}
+              onMouseEnter={e => e.currentTarget.style.color = 'rgba(6,182,212,0.7)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(6,182,212,0.35)'}>
               <BookOpen size={14} />
             </button>
             {/* Home */}
             <button onClick={() => { window.location.href = '/plugin?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
               className="p-1.5 rounded-lg transition-all" title="Plugin Home"
-              style={{color:'rgba(200,200,220,0.35)'}}
-              onMouseEnter={e => e.currentTarget.style.color = 'rgba(200,200,220,0.7)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(200,200,220,0.35)'}>
+              style={{color:'rgba(6,182,212,0.35)'}}
+              onMouseEnter={e => e.currentTarget.style.color = 'rgba(6,182,212,0.7)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(6,182,212,0.35)'}>
               <Home size={14} />
             </button>
             {/* Credits badge */}
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-              style={{ background: 'linear-gradient(135deg, rgba(200,200,220,0.06), rgba(180,180,200,0.03))', border: '1px solid rgba(200,200,220,0.12)' }}>
-              <Zap size={10} style={{color:'rgba(200,200,220,0.7)'}} />
-              <span className="text-[11px] font-bold tabular-nums" style={{color:'rgba(220,220,235,0.85)'}}>{userCredits ?? '...'}</span>
+              style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.08), rgba(20,184,166,0.04))', border: '1px solid rgba(200,200,220,0.2)' }}>
+              <Zap size={10} style={{color:'rgba(6,182,212,0.8)',filter:'drop-shadow(0 0 4px rgba(6,182,212,0.4))'}} />
+              <span className="text-[11px] font-bold tabular-nums" style={{color:'#e0f2fe'}}>{userCredits ?? '...'}</span>
             </div>
           </div>
         </div>
@@ -2583,11 +2583,11 @@ function PluginPageInner() {
                     ? 'linear-gradient(135deg, rgba(16,16,20,0.92), rgba(12,12,16,0.95))'
                     : 'linear-gradient(135deg, rgba(12,12,16,0.88), rgba(10,10,14,0.92))',
                   border: msg.type === 'user'
-                    ? '1px solid rgba(200,200,220,0.1)'
-                    : '1px solid rgba(200,200,220,0.05)',
+                    ? '1px solid rgba(200,200,220,0.15)'
+                    : '1px solid rgba(200,200,220,0.06)',
                   boxShadow: msg.type === 'user'
-                    ? '0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(200,200,220,0.05)'
-                    : '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(200,200,220,0.03)',
+                    ? '0 4px 20px rgba(0,0,0,0.35), 0 0 8px rgba(200,200,220,0.03), inset 0 1px 0 rgba(200,200,220,0.06)'
+                    : '0 4px 16px rgba(0,0,0,0.3), 0 0 6px rgba(200,200,220,0.02), inset 0 1px 0 rgba(200,200,220,0.04)',
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)',
                 }}>
@@ -2616,7 +2616,7 @@ function PluginPageInner() {
                     <div className="flex items-center gap-3">
                       <button onClick={() => handlePlayPause(msg.id, msg.result!.audioUrl!, msg.result!.title || 'AI Track', msg.result!.prompt)}
                         className="w-10 h-10 flex-shrink-0 rounded-full flex items-center justify-center hover:scale-105 transition-transform"
-                        style={{background:'linear-gradient(135deg, rgba(220,220,235,0.85), rgba(180,180,200,0.7))',boxShadow:'0 2px 12px rgba(0,0,0,0.3), 0 0 12px rgba(200,200,220,0.1)'}}>
+                        style={{background:'linear-gradient(135deg, rgba(6,182,212,0.85), rgba(20,184,166,0.75))',boxShadow:'0 2px 12px rgba(0,0,0,0.3), 0 0 16px rgba(6,182,212,0.2)'}}>
                         {playingId === msg.id ? <Pause size={16} className="text-black" /> : <Play size={16} className="text-black ml-0.5" />}
                       </button>
                       <div className="flex-1 min-w-0">
@@ -2648,22 +2648,22 @@ function PluginPageInner() {
                       <button onClick={() => downloadAndToast(msg.result!.audioUrl!, msg.result!.title || 'track', 'mp3')}
                         disabled={dawDownloading !== null}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-50 relative overflow-hidden group"
-                        style={{ background: 'rgba(200,200,220,0.04)', border: '1px solid rgba(200,200,220,0.1)', color: 'rgba(220,220,235,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+                        style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(200,200,220,0.12)', color: 'rgba(6,182,212,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 6px rgba(200,200,220,0.025), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
                         <Download size={12} /> MP3
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{background:'linear-gradient(135deg,rgba(200,200,220,0.06),transparent)',borderRadius:'inherit'}} />
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{background:'linear-gradient(135deg,rgba(6,182,212,0.06),transparent)',borderRadius:'inherit'}} />
                       </button>
                       {/* WAV Download */}
                       <button onClick={() => downloadAndToast(msg.result!.audioUrl!, msg.result!.title || 'track', 'wav')}
                         disabled={dawDownloading !== null}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all font-semibold disabled:opacity-50 relative overflow-hidden"
-                        style={{ background: 'rgba(200,200,220,0.06)', border: '1px solid rgba(200,200,220,0.15)', color: 'rgba(220,220,235,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 8px rgba(200,200,220,0.04), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+                        style={{ background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(200,200,220,0.18)', color: 'rgba(6,182,212,0.9)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), 0 0 8px rgba(200,200,220,0.03), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
                         <Download size={12} /> WAV
                       </button>
                       {/* Split Stems */}
                       <button onClick={() => handleSplitStems(msg.result!.audioUrl!, msg.id)} disabled={isSplittingStems}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all disabled:opacity-50 relative overflow-hidden"
-                        style={{ background: 'rgba(200,200,220,0.04)', border: '1px solid rgba(200,200,220,0.1)', color: 'rgba(200,200,220,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-                        <Scissors size={12} /> Stems <span className="text-[10px]" style={{color:'rgba(200,200,220,0.3)'}}>(-1)</span>
+                        style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(200,200,220,0.1)', color: 'rgba(6,182,212,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                        <Scissors size={12} /> Stems <span className="text-[10px]" style={{color:'rgba(6,182,212,0.3)'}}>(-1)</span>
                       </button>
                       {/* Import to DAW — sends URL to C++ for native timeline import */}
                       {isInDAW && (
@@ -2675,25 +2675,25 @@ function PluginPageInner() {
                         }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all font-semibold relative overflow-hidden"
                           style={{
-                            background: 'linear-gradient(135deg, rgba(220,220,235,0.08), rgba(200,200,220,0.04))',
-                            border: '1px solid rgba(200,200,220,0.2)',
-                            color: 'rgba(220,220,235,0.9)',
-                            boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 16px rgba(200,200,220,0.06), inset 0 1px 0 rgba(255,255,255,0.08)',
+                            background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(20,184,166,0.06))',
+                            border: '1px solid rgba(200,200,220,0.28)',
+                            color: 'rgba(220,240,245,0.9)',
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 12px rgba(200,200,220,0.04), inset 0 1px 0 rgba(255,255,255,0.08)',
                           }}>
-                          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"><div style={{position:'absolute',top:'-100%',left:'-20%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.04) 45%,rgba(200,200,220,0.06) 50%,rgba(255,255,255,0.04) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
+                          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"><div style={{position:'absolute',top:'-100%',left:'-20%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.04) 45%,rgba(6,182,212,0.08) 50%,rgba(255,255,255,0.04) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
                           <ArrowDownToLine size={12} className="relative z-10" /> <span className="relative z-10">Import to DAW</span>
                         </button>
                       )}
                       {/* Audio Boost */}
                       <button onClick={() => setShowBoostParamsFor({ audioUrl: msg.result!.audioUrl!, title: msg.result!.title || 'Track' })}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all relative overflow-hidden"
-                        style={{ background: 'rgba(200,200,220,0.04)', border: '1px solid rgba(200,200,220,0.1)', color: 'rgba(200,200,220,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-                        <Volume2 size={12} /> Boost <span className="text-[10px]" style={{color:'rgba(200,200,220,0.3)'}}>(-1)</span>
+                        style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(200,200,220,0.1)', color: 'rgba(6,182,212,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                        <Volume2 size={12} /> Boost <span className="text-[10px]" style={{color:'rgba(6,182,212,0.3)'}}>(-1)</span>
                       </button>
                       {/* Library — opens in plugin */}
                       <button onClick={() => { window.location.href = '/library?host=juce' + (token ? '&token=' + encodeURIComponent(token) : '') }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all relative overflow-hidden"
-                        style={{ background: 'rgba(200,200,220,0.03)', border: '1px solid rgba(200,200,220,0.08)', color: 'rgba(200,200,220,0.5)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+                        style={{ background: 'rgba(6,182,212,0.03)', border: '1px solid rgba(200,200,220,0.08)', color: 'rgba(6,182,212,0.5)', boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
                         <Layers size={12} /> Library
                       </button>
                     </div>
@@ -2717,7 +2717,7 @@ function PluginPageInner() {
                       </a>
                       {isInDAW && (
                         <button onClick={() => sendImageToDAW(msg.result!.imageUrl!, msg.result!.title || 'cover-art')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all" style={{background:'rgba(200,200,220,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(200,200,220,0.7)'}}>
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all" style={{background:'rgba(6,182,212,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(6,182,212,0.7)'}}>
                           <Download size={12} /> Import to Premiere
                         </button>
                       )}
@@ -2742,17 +2742,17 @@ function PluginPageInner() {
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       <button onClick={() => handleDownload(msg.result!.url!, `${msg.result!.title || 'video'}.mp4`, 'mp3')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all" style={{background:'rgba(200,200,220,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(200,200,220,0.7)'}}>
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all" style={{background:'rgba(6,182,212,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(6,182,212,0.7)'}}>
                         <Download size={12} /> Download MP4
                       </button>
                       {isInDAW ? (
                         <button onClick={() => sendVideoToDAW(msg.result!.url!, msg.result!.title || 'video')}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all relative overflow-hidden"
                           style={{
-                            background: 'linear-gradient(135deg, rgba(200,200,220,0.08), rgba(180,180,200,0.04))',
-                            border: '1px solid rgba(200,200,220,0.2)',
-                            color: 'rgba(220,220,235,0.8)',
-                            boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 20px rgba(200,200,220,0.05), inset 0 1px 0 rgba(255,255,255,0.1)',
+                            background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(20,184,166,0.05))',
+                            border: '1px solid rgba(200,200,220,0.25)',
+                            color: 'rgba(220,240,245,0.8)',
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 20px rgba(6,182,212,0.06), inset 0 1px 0 rgba(255,255,255,0.1)',
                           }}>
                           <ArrowDownToLine size={12} /> Import to DAW
                         </button>
@@ -2815,10 +2815,10 @@ function PluginPageInner() {
                             onClick={() => downloadForDAW(url as string, `${display.label} Stem`)}
                             disabled={dawDownloading !== null}
                             className="flex items-center gap-1 px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                            style={{background:'rgba(200,200,220,0.06)',border:'1px solid rgba(200,200,220,0.1)'}}
+                            style={{background:'rgba(6,182,212,0.06)',border:'1px solid rgba(200,200,220,0.1)'}}
                             title={`Download ${display.label} WAV`}>
-                            {dawDownloading === `${url}-${display.label} Stem` ? <Loader2 size={12} className="animate-spin" style={{color:'rgba(200,200,220,0.6)'}} /> : <ArrowDownToLine size={12} style={{color:'rgba(200,200,220,0.6)'}} />}
-                            <span className="text-[9px] font-medium" style={{color:'rgba(200,200,220,0.45)'}}>WAV</span>
+                            {dawDownloading === `${url}-${display.label} Stem` ? <Loader2 size={12} className="animate-spin" style={{color:'rgba(6,182,212,0.6)'}} /> : <ArrowDownToLine size={12} style={{color:'rgba(6,182,212,0.6)'}} />}
+                            <span className="text-[9px] font-medium" style={{color:'rgba(6,182,212,0.45)'}}>WAV</span>
                           </button>
                           <button onClick={() => setShowBoostParamsFor({ audioUrl: url as string, title: display.label })}
                             className="p-1.5 bg-orange-500/10 hover:bg-orange-500/20 rounded-full transition-colors" title="Boost this stem">
@@ -2849,10 +2849,10 @@ function PluginPageInner() {
                 borderTop: '1px solid rgba(200,200,220,0.08)',
                 borderLeft: '1px solid rgba(200,200,220,0.04)',
                 borderRight: '1px solid rgba(200,200,220,0.04)',
-                color: 'rgba(200,200,220,0.25)',
+                color: 'rgba(6,182,212,0.25)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(200,200,220,0.6)'; e.currentTarget.style.background = 'rgba(200,200,220,0.06)' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(200,200,220,0.25)'; e.currentTarget.style.background = 'rgba(8,8,12,0.88)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'rgba(6,182,212,0.6)'; e.currentTarget.style.background = 'rgba(6,182,212,0.06)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'rgba(6,182,212,0.25)'; e.currentTarget.style.background = 'rgba(8,8,12,0.88)' }}
               title={showBottomDock ? 'Hide prompt bar' : 'Show prompt bar'}
             >
               {showBottomDock ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -2864,73 +2864,73 @@ function PluginPageInner() {
               background: 'linear-gradient(180deg, rgba(10,10,14,0.95), rgba(6,6,10,0.98))',
               backdropFilter: 'blur(60px) saturate(1.1)',
               WebkitBackdropFilter: 'blur(60px) saturate(1.1)',
-              borderTop: '1px solid rgba(200,200,220,0.04)',
-              boxShadow: '0 -12px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(200,200,220,0.03)',
+              borderTop: '1px solid rgba(200,200,220,0.10)',
+              boxShadow: '0 -12px 48px rgba(0,0,0,0.6), 0 -1px 12px rgba(200,200,220,0.03), inset 0 1px 0 rgba(200,200,220,0.06)',
             }}
           >
           {/* Top edge subtle accent */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(200,200,220,0.06) 40%,rgba(200,200,220,0.1) 50%,rgba(200,200,220,0.06) 60%,transparent 90%)'}} />
+          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(6,182,212,0.1) 40%,rgba(6,182,212,0.2) 50%,rgba(6,182,212,0.1) 60%,transparent 90%)'}} />
           <div className="pt-3 pb-3 px-3 relative z-10">
             {/* Icon Row */}
             <div className={`flex items-center justify-center gap-1 mb-2 ${layoutMode === 'wide' ? 'gap-0.5' : 'gap-1'} flex-wrap`}>
               {/* Music */}
               <button onClick={() => { setSelectedType('music'); setShowAdvancedButtons(!showAdvancedButtons) }}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'music' ? '' : 'text-gray-600 hover:text-gray-300'}`}
-                style={selectedType === 'music' ? { background: 'linear-gradient(135deg, rgba(200,200,220,0.08), rgba(180,180,200,0.04))', border: '1px solid rgba(200,200,220,0.2)', color: 'rgba(220,220,235,0.9)', boxShadow: '0 0 16px rgba(200,200,220,0.06), inset 0 1px 0 rgba(200,200,220,0.08)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'music' ? '' : 'text-gray-600 hover:text-cyan-400/70'}`}
+                style={selectedType === 'music' ? { background: 'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(20,184,166,0.06))', border: '1px solid rgba(200,200,220,0.35)', color: '#22d3ee', boxShadow: '0 0 20px rgba(6,182,212,0.15), 0 0 40px rgba(6,182,212,0.05), inset 0 1px 0 rgba(6,182,212,0.15)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
                 title="Music"><Music size={18} /></button>
               {/* Effects */}
               <button onClick={() => setSelectedType('effects')}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'effects' ? '' : 'text-gray-600 hover:text-gray-300'}`}
-                style={selectedType === 'effects' ? { background: 'linear-gradient(135deg, rgba(200,200,220,0.08), rgba(180,180,200,0.04))', border: '1px solid rgba(200,200,220,0.2)', color: 'rgba(220,220,235,0.9)', boxShadow: '0 0 16px rgba(200,200,220,0.06), inset 0 1px 0 rgba(200,200,220,0.08)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'effects' ? '' : 'text-gray-600 hover:text-teal-400/70'}`}
+                style={selectedType === 'effects' ? { background: 'linear-gradient(135deg, rgba(20,184,166,0.12), rgba(6,182,212,0.06))', border: '1px solid rgba(20,184,166,0.35)', color: '#2dd4bf', boxShadow: '0 0 20px rgba(20,184,166,0.15), 0 0 40px rgba(20,184,166,0.05), inset 0 1px 0 rgba(20,184,166,0.15)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
                 title="Effects"><Sparkles size={18} /></button>
               {/* Loops */}
               <button onClick={() => setSelectedType('loops' as GenerationType)}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${(selectedType as string) === 'loops' ? '' : 'text-gray-600 hover:text-gray-300'}`}
-                style={(selectedType as string) === 'loops' ? { background: 'linear-gradient(135deg, rgba(200,200,220,0.08), rgba(180,180,200,0.04))', border: '1px solid rgba(200,200,220,0.2)', color: 'rgba(220,220,235,0.9)', boxShadow: '0 0 16px rgba(200,200,220,0.06), inset 0 1px 0 rgba(200,200,220,0.08)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${(selectedType as string) === 'loops' ? '' : 'text-gray-600 hover:text-cyan-400/70'}`}
+                style={(selectedType as string) === 'loops' ? { background: 'linear-gradient(135deg, rgba(6,182,212,0.12), rgba(20,184,166,0.06))', border: '1px solid rgba(200,200,220,0.35)', color: '#22d3ee', boxShadow: '0 0 20px rgba(6,182,212,0.15), 0 0 40px rgba(6,182,212,0.05), inset 0 1px 0 rgba(6,182,212,0.15)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
                 title="Loops"><Repeat size={18} /></button>
               {/* Image */}
               <button onClick={() => setSelectedType('image')}
-                className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'image' ? '' : 'text-gray-600 hover:text-gray-300'}`}
-                style={selectedType === 'image' ? { background: 'linear-gradient(135deg, rgba(200,200,220,0.08), rgba(180,180,200,0.04))', border: '1px solid rgba(200,200,220,0.2)', color: 'rgba(220,220,235,0.9)', boxShadow: '0 0 16px rgba(200,200,220,0.06), inset 0 1px 0 rgba(200,200,220,0.08)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
+                className={`p-2.5 rounded-xl transition-all duration-200 ${selectedType === 'image' ? '' : 'text-gray-600 hover:text-teal-400/70'}`}
+                style={selectedType === 'image' ? { background: 'linear-gradient(135deg, rgba(20,184,166,0.12), rgba(6,182,212,0.06))', border: '1px solid rgba(20,184,166,0.35)', color: '#2dd4bf', boxShadow: '0 0 20px rgba(20,184,166,0.15), 0 0 40px rgba(20,184,166,0.05), inset 0 1px 0 rgba(20,184,166,0.15)' } : { border: '1px solid rgba(200,200,220,0.04)' }}
                 title="Cover Art"><ImageIcon size={18} /></button>
               
-              <div className="w-px h-6 mx-1" style={{background:'linear-gradient(to bottom, transparent, rgba(200,200,220,0.1), transparent)'}} />
+              <div className="w-px h-6 mx-1" style={{background:'linear-gradient(to bottom, transparent, rgba(6,182,212,0.1), transparent)'}} />
 
               {/* Lyrics / Settings */}
               {selectedType === 'music' && !isInstrumental && (
                 <button onClick={() => setShowLyricsModal(true)}
                   className="p-2.5 rounded-xl transition-all"
-                  style={(customTitle || genre || customLyrics || bpm) ? {background:'rgba(200,200,220,0.06)',color:'rgba(220,220,235,0.8)',border:'1px solid rgba(200,200,220,0.15)',boxShadow:'0 0 8px rgba(200,200,220,0.04)'} : {color:'rgba(200,200,220,0.25)',border:'1px solid rgba(200,200,220,0.04)'}}
+                  style={(customTitle || genre || customLyrics || bpm) ? {background:'rgba(6,182,212,0.06)',color:'rgba(220,220,235,0.8)',border:'1px solid rgba(200,200,220,0.15)',boxShadow:'0 0 8px rgba(6,182,212,0.04)'} : {color:'rgba(6,182,212,0.25)',border:'1px solid rgba(200,200,220,0.04)'}}
                   title="Lyrics & Settings"><Edit3 size={18} /></button>
               )}
 
               {/* Upload */}
               <button onClick={() => openUploadModal()}
                 className="p-2.5 rounded-xl transition-all" title="Upload Media"
-                style={{color:'rgba(200,200,220,0.35)',border:'1px solid rgba(200,200,220,0.06)'}}>
+                style={{color:'rgba(6,182,212,0.35)',border:'1px solid rgba(200,200,220,0.06)'}}>
                 <Upload size={18} />
               </button>
 
               {/* New Chat */}
               <button onClick={handleClearChat}
                 className="p-2.5 rounded-xl transition-all" title="New Chat"
-                style={{color:'rgba(200,200,220,0.3)',border:'1px solid rgba(200,200,220,0.06)'}}>
+                style={{color:'rgba(6,182,212,0.3)',border:'1px solid rgba(200,200,220,0.06)'}}>
                 <Plus size={18} />
               </button>
 
               {/* Restore Chat */}
               <button onClick={() => setShowDeletedChatsModal(true)}
                 className="p-2.5 rounded-xl transition-all" title="Chat History"
-                style={{color:'rgba(200,200,220,0.3)',border:'1px solid rgba(200,200,220,0.06)'}}>
+                style={{color:'rgba(6,182,212,0.3)',border:'1px solid rgba(200,200,220,0.06)'}}>
                 <RotateCcw size={18} />
               </button>
 
               {/* Credits */}
               <div className={`flex items-center gap-1 ${layoutMode === 'wide' ? 'px-2 py-0.5' : 'px-2.5 py-1'} rounded-xl ml-1 relative overflow-hidden`}
-                style={{ background: 'linear-gradient(135deg, rgba(200,200,220,0.05), rgba(180,180,200,0.03))', border: '1px solid rgba(200,200,220,0.12)', boxShadow: '0 0 12px rgba(200,200,220,0.03), inset 0 1px 0 rgba(200,200,220,0.06)' }}>
-                <Zap size={11} style={{color:'rgba(200,200,220,0.6)'}} />
-                <span className="text-xs font-bold tabular-nums" style={{color:'rgba(220,220,235,0.8)'}}>{userCredits ?? '...'}</span>
-                <span className="text-[10px]" style={{color:'rgba(200,200,220,0.3)'}}>
+                style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(20,184,166,0.03))', border: '1px solid rgba(200,200,220,0.18)', boxShadow: '0 0 12px rgba(6,182,212,0.06), inset 0 1px 0 rgba(6,182,212,0.08)' }}>
+                <Zap size={11} style={{color:'rgba(6,182,212,0.8)',filter:'drop-shadow(0 0 4px rgba(6,182,212,0.4))'}} />
+                <span className="text-xs font-bold tabular-nums" style={{color:'#e0f2fe'}}>{userCredits ?? '...'}</span>
+                <span className="text-[10px]" style={{color:'rgba(6,182,212,0.4)'}}>
                   (-{selectedType === 'music' ? 2 : selectedType === 'image' ? 1 : selectedType === 'effects' ? 2 : (selectedType as string) === 'loops' ? 6 : 0})
                 </span>
               </div>
@@ -2939,7 +2939,7 @@ function PluginPageInner() {
             {/* Instrumental mode info */}
             {isInstrumental && selectedType === 'music' && (
               <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="text-xs px-3 py-1 rounded-full" style={{color:'rgba(200,200,220,0.6)',background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.1)'}}>
+                <span className="text-xs px-3 py-1 rounded-full" style={{color:'rgba(6,182,212,0.6)',background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.1)'}}>
                   🎹 Instrumental Mode — No vocals will be generated
                 </span>
               </div>
@@ -2951,20 +2951,20 @@ function PluginPageInner() {
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] text-gray-400">Duration</label>
                   <input type="range" min={1} max={10} value={effectsDuration} onChange={e => setEffectsDuration(Number(e.target.value))}
-                    className="w-20 h-1" style={{accentColor:'rgba(200,200,220,0.5)'}} />
-                  <span className="text-[10px] w-5 text-center" style={{color:'rgba(200,200,220,0.6)'}}>{effectsDuration}s</span>
+                    className="w-20 h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
+                  <span className="text-[10px] w-5 text-center" style={{color:'rgba(6,182,212,0.6)'}}>{effectsDuration}s</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] text-gray-400">Guidance</label>
                   <input type="range" min={1} max={10} step={0.5} value={effectsGuidance} onChange={e => setEffectsGuidance(Number(e.target.value))}
-                    className="w-16 h-1" style={{accentColor:'rgba(200,200,220,0.5)'}} />
-                  <span className="text-[10px] w-4 text-center" style={{color:'rgba(200,200,220,0.6)'}}>{effectsGuidance}</span>
+                    className="w-16 h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
+                  <span className="text-[10px] w-4 text-center" style={{color:'rgba(6,182,212,0.6)'}}>{effectsGuidance}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] text-gray-400">Temp</label>
                   <input type="range" min={0.1} max={2} step={0.1} value={effectsTemperature} onChange={e => setEffectsTemperature(Number(e.target.value))}
-                    className="w-16 h-1" style={{accentColor:'rgba(200,200,220,0.5)'}} />
-                  <span className="text-[10px] w-5 text-center" style={{color:'rgba(200,200,220,0.6)'}}>{effectsTemperature}</span>
+                    className="w-16 h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
+                  <span className="text-[10px] w-5 text-center" style={{color:'rgba(6,182,212,0.6)'}}>{effectsTemperature}</span>
                 </div>
               </div>
             )}
@@ -2980,21 +2980,21 @@ function PluginPageInner() {
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] text-gray-400">Duration</label>
                   <input type="range" min={1} max={20} value={loopsMaxDuration} onChange={e => setLoopsMaxDuration(Number(e.target.value))}
-                    className="w-20 h-1" style={{accentColor:'rgba(200,200,220,0.5)'}} />
-                  <span className="text-[10px] w-5 text-center" style={{color:'rgba(200,200,220,0.6)'}}>{loopsMaxDuration}s</span>
+                    className="w-20 h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
+                  <span className="text-[10px] w-5 text-center" style={{color:'rgba(6,182,212,0.6)'}}>{loopsMaxDuration}s</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] text-gray-400">Variations</label>
                   <button onClick={() => setLoopsVariations(loopsVariations === 1 ? 2 : 1)}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${loopsVariations === 2 ? '' : 'bg-white/10 text-gray-400 border border-white/10'}`}
-                    style={loopsVariations === 2 ? {background:'rgba(200,200,220,0.12)',color:'rgba(220,220,235,0.8)',border:'1px solid rgba(200,200,220,0.2)'} : {}}>
+                    style={loopsVariations === 2 ? {background:'rgba(6,182,212,0.12)',color:'rgba(220,220,235,0.8)',border:'1px solid rgba(200,200,220,0.2)'} : {}}>
                     {loopsVariations}x
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Prompt Input Bar — Chrome Silver Glass */}
+            {/* Prompt Input Bar */}
             <div className="relative">
               <div className={`flex items-end gap-2 rounded-2xl ${layoutMode === 'wide' ? 'px-2 py-1.5' : 'px-3 py-2'} transition-all duration-300 relative overflow-hidden`}
                 style={{
@@ -3002,30 +3002,30 @@ function PluginPageInner() {
                   backdropFilter: 'blur(40px)',
                   WebkitBackdropFilter: 'blur(40px)',
                   border: input.trim().length >= MIN_PROMPT_LENGTH
-                    ? '1px solid rgba(200,200,220,0.15)'
-                    : '1px solid rgba(200,200,220,0.05)',
+                    ? '1px solid rgba(200,200,220,0.3)'
+                    : '1px solid rgba(200,200,220,0.06)',
                   boxShadow: input.trim().length >= MIN_PROMPT_LENGTH
-                    ? '0 0 20px rgba(200,200,220,0.04), 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
+                    ? '0 0 24px rgba(200,200,220,0.06), 0 0 8px rgba(6,182,212,0.06), 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(200,200,220,0.08)'
                     : '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.02)',
                 }}>
                 {/* Prompt box diagonal shine */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-0"><div style={{position:'absolute',top:'-100%',left:'40%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(200,200,220,0.015) 45%,rgba(255,255,255,0.035) 50%,rgba(200,200,220,0.015) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-0"><div style={{position:'absolute',top:'-100%',left:'40%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(6,182,212,0.015) 45%,rgba(255,255,255,0.035) 50%,rgba(6,182,212,0.015) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
                 
                 {/* Toggle sidebar */}
                 <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
                   className="flex-shrink-0 p-1.5 rounded-full transition-colors mb-0.5 relative z-10"
-                  style={{color:'rgba(200,200,220,0.25)'}}
-                  onMouseEnter={e => e.currentTarget.style.color = 'rgba(200,200,220,0.5)'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(200,200,220,0.25)'}>
+                  style={{color:'rgba(6,182,212,0.25)'}}
+                  onMouseEnter={e => e.currentTarget.style.color = 'rgba(6,182,212,0.5)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(6,182,212,0.25)'}>
                   <PlusCircle size={20} />
                 </button>
 
                 {/* Record button */}
                 <button onClick={isRecording ? stopRecording : startRecording}
                   className={`flex-shrink-0 p-1.5 rounded-full transition-all mb-0.5 relative z-10 ${isRecording ? 'animate-pulse' : ''}`}
-                  style={isRecording ? {background:'#ff0040',color:'#ffffff'} : {color:'rgba(200,200,220,0.25)'}}
+                  style={isRecording ? {background:'#ff0040',color:'#ffffff'} : {color:'rgba(6,182,212,0.25)'}}
                   onMouseEnter={e => { if (!isRecording) e.currentTarget.style.color = 'rgba(255,100,100,0.6)' }}
-                  onMouseLeave={e => { if (!isRecording) e.currentTarget.style.color = 'rgba(200,200,220,0.25)' }}>
+                  onMouseLeave={e => { if (!isRecording) e.currentTarget.style.color = 'rgba(6,182,212,0.25)' }}>
                   <Mic size={18} />
                 </button>
 
@@ -3034,8 +3034,8 @@ function PluginPageInner() {
                   <button onClick={() => setIsInstrumental(!isInstrumental)}
                     className="flex-shrink-0 px-2 py-1 rounded-full text-[10px] font-bold transition-all mb-0.5 relative z-10"
                     style={isInstrumental
-                      ? {background:'rgba(200,200,220,0.1)',color:'rgba(220,220,235,0.8)',border:'1px solid rgba(200,200,220,0.2)'}
-                      : {background:'rgba(200,200,220,0.03)',color:'rgba(200,200,220,0.25)',border:'1px solid rgba(200,200,220,0.06)'}}>
+                      ? {background:'rgba(6,182,212,0.1)',color:'rgba(220,220,235,0.8)',border:'1px solid rgba(200,200,220,0.2)'}
+                      : {background:'rgba(6,182,212,0.03)',color:'rgba(6,182,212,0.25)',border:'1px solid rgba(200,200,220,0.06)'}}>
                     INST
                   </button>
                 )}
@@ -3045,7 +3045,7 @@ function PluginPageInner() {
                   <textarea value={input} onChange={(e) => setInput(e.target.value.slice(0, MAX_PROMPT_LENGTH))}
                     placeholder={selectedType === 'music' ? 'Describe your track...' : selectedType === 'image' ? 'Describe your cover art...' : 'Describe the effect...'}
                     className="w-full bg-transparent text-white text-sm resize-none focus:outline-none min-h-[24px] max-h-[120px]"
-                    style={{caretColor:'rgba(200,200,220,0.7)'}}
+                    style={{caretColor:'rgba(6,182,212,0.7)'}}
                     rows={1}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate() } }}
                     onInput={(e) => {
@@ -3068,9 +3068,9 @@ function PluginPageInner() {
                 {/* Prompt suggestions */}
                 <button onClick={() => { setShowPromptSuggestions(!showPromptSuggestions); setShowIdeasFlow(false); setIdeasStep('type') }}
                   className="flex-shrink-0 p-1.5 rounded-full transition-all mb-0.5 relative z-10"
-                  style={showPromptSuggestions ? {background:'rgba(200,200,220,0.08)',color:'rgba(220,220,235,0.7)',border:'1px solid rgba(200,200,220,0.15)'} : {color:'rgba(200,200,220,0.25)'}}
-                  onMouseEnter={e => { if (!showPromptSuggestions) e.currentTarget.style.color = 'rgba(200,200,220,0.5)' }}
-                  onMouseLeave={e => { if (!showPromptSuggestions) e.currentTarget.style.color = 'rgba(200,200,220,0.25)' }}>
+                  style={showPromptSuggestions ? {background:'rgba(6,182,212,0.08)',color:'rgba(220,220,235,0.7)',border:'1px solid rgba(200,200,220,0.15)'} : {color:'rgba(6,182,212,0.25)'}}
+                  onMouseEnter={e => { if (!showPromptSuggestions) e.currentTarget.style.color = 'rgba(6,182,212,0.5)' }}
+                  onMouseLeave={e => { if (!showPromptSuggestions) e.currentTarget.style.color = 'rgba(6,182,212,0.25)' }}>
                   <Lightbulb size={18} />
                 </button>
 
@@ -3078,8 +3078,8 @@ function PluginPageInner() {
                 <button onClick={handleGenerate} disabled={!input.trim() || input.trim().length < MIN_PROMPT_LENGTH}
                   className="relative flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-20 active:scale-90 hover:scale-110 mb-0.5 z-10"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(200,200,220,0.7), rgba(160,160,180,0.6))',
-                    boxShadow: '0 0 20px rgba(200,200,220,0.15), 0 0 50px rgba(200,200,220,0.04), inset 0 1px 0 rgba(255,255,255,0.4)',
+                    background: 'linear-gradient(135deg, rgba(6,182,212,0.8), rgba(20,184,166,0.7))',
+                    boxShadow: '0 0 24px rgba(6,182,212,0.25), 0 0 60px rgba(6,182,212,0.08), inset 0 1px 0 rgba(255,255,255,0.3)',
                   }}>
                   {activeGenerations.size > 0 && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">{activeGenerations.size}</div>
@@ -3091,17 +3091,17 @@ function PluginPageInner() {
 
             {/* Prompt Suggestions Dropdown — fixed position so it's not clipped by dock containers */}
             {showPromptSuggestions && (
-              <div className="fixed bottom-20 left-4 right-4 p-4 rounded-2xl max-h-[50vh] overflow-y-auto z-[60] relative" style={{ background: 'linear-gradient(135deg, rgba(8,8,15,0.97), rgba(5,5,10,0.98))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', border: '1px solid rgba(200,200,220,0.1)', boxShadow: '0 16px 60px rgba(0,0,0,0.8), 0 0 20px rgba(200,200,220,0.02)', animation: 'fadeIn 0.15s ease-out' }}>
+              <div className="fixed bottom-20 left-4 right-4 p-4 rounded-2xl max-h-[50vh] overflow-y-auto z-[60] relative" style={{ background: 'linear-gradient(135deg, rgba(8,8,15,0.97), rgba(5,5,10,0.98))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', border: '1px solid rgba(200,200,220,0.12)', boxShadow: '0 16px 60px rgba(0,0,0,0.8), 0 0 16px rgba(200,200,220,0.03)', animation: 'fadeIn 0.15s ease-out' }}>
                 {/* Dropdown glass shine */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"><div style={{position:'absolute',top:'-100%',left:'-20%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(200,200,220,0.01) 45%,rgba(255,255,255,0.04) 50%,rgba(200,200,220,0.01) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
+                <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"><div style={{position:'absolute',top:'-100%',left:'-20%',width:'50%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(6,182,212,0.01) 45%,rgba(255,255,255,0.04) 50%,rgba(6,182,212,0.01) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
                 {!showIdeasFlow ? (
                   <>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-bold text-white flex items-center gap-2">
-                        <Lightbulb size={14} style={{color:'rgba(200,200,220,0.6)'}} /> Quick Tags
+                        <Lightbulb size={14} style={{color:'rgba(6,182,212,0.6)'}} /> Quick Tags
                       </span>
                       <div className="flex gap-2">
-                        <button onClick={() => setShowIdeasFlow(true)} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style={{background:'rgba(200,200,220,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(220,220,235,0.7)'}}>✨ IDEAS</button>
+                        <button onClick={() => setShowIdeasFlow(true)} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style={{background:'rgba(6,182,212,0.06)',border:'1px solid rgba(200,200,220,0.12)',color:'rgba(220,220,235,0.7)'}}>✨ IDEAS</button>
                         <button onClick={() => setShowPromptSuggestions(false)} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                       </div>
                     </div>
@@ -3109,9 +3109,9 @@ function PluginPageInner() {
                       {QUICK_TAGS.map(tag => (
                         <button key={tag} onClick={() => { setInput(prev => prev + (prev ? ', ' : '') + tag) }}
                           className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-                          style={{background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(200,200,220,0.6)'}}
-                          onMouseEnter={e => {e.currentTarget.style.background='rgba(200,200,220,0.1)';e.currentTarget.style.borderColor='rgba(200,200,220,0.25)';e.currentTarget.style.color='rgba(255,255,255,0.9)'}}
-                          onMouseLeave={e => {e.currentTarget.style.background='rgba(200,200,220,0.04)';e.currentTarget.style.borderColor='rgba(200,200,220,0.1)';e.currentTarget.style.color='rgba(200,200,220,0.6)'}}>
+                          style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(6,182,212,0.6)'}}
+                          onMouseEnter={e => {e.currentTarget.style.background='rgba(6,182,212,0.1)';e.currentTarget.style.borderColor='rgba(6,182,212,0.25)';e.currentTarget.style.color='rgba(255,255,255,0.9)'}}
+                          onMouseLeave={e => {e.currentTarget.style.background='rgba(6,182,212,0.04)';e.currentTarget.style.borderColor='rgba(6,182,212,0.1)';e.currentTarget.style.color='rgba(6,182,212,0.6)'}}>
                           {tag}
                         </button>
                       ))}
@@ -3128,11 +3128,11 @@ function PluginPageInner() {
                         <p className="text-sm text-gray-400 text-center">What would you like to create?</p>
                         <div className="grid grid-cols-2 gap-4">
                           <button onClick={() => { setSelectedPromptType('song'); setIdeasStep('genre') }}
-                            className="p-6 rounded-2xl hover:scale-105 transition-all shadow-lg" style={{background:'linear-gradient(135deg, rgba(200,200,220,0.06), rgba(200,200,220,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
+                            className="p-6 rounded-2xl hover:scale-105 transition-all shadow-lg" style={{background:'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
                             <div className="text-4xl mb-3">🎤</div><div className="text-lg font-bold text-white mb-1">Song</div><div className="text-xs text-gray-400">With vocals & lyrics</div>
                           </button>
                           <button onClick={() => { setSelectedPromptType('beat'); setIsInstrumental(true); setIdeasStep('genre') }}
-                            className="p-6 rounded-2xl hover:scale-105 transition-all shadow-lg" style={{background:'linear-gradient(135deg, rgba(200,200,220,0.06), rgba(200,200,220,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
+                            className="p-6 rounded-2xl hover:scale-105 transition-all shadow-lg" style={{background:'linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02))',border:'2px solid rgba(200,200,220,0.12)'}}>
                             <div className="text-4xl mb-3">🎹</div><div className="text-lg font-bold text-white mb-1">Beat</div><div className="text-xs text-gray-400">Instrumental only</div>
                           </button>
                         </div>
@@ -3141,7 +3141,7 @@ function PluginPageInner() {
                     {ideasStep === 'genre' && (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <button onClick={() => setIdeasStep('type')} className="text-sm flex items-center gap-1" style={{color:'rgba(200,200,220,0.6)'}}>← Back</button>
+                          <button onClick={() => setIdeasStep('type')} className="text-sm flex items-center gap-1" style={{color:'rgba(6,182,212,0.6)'}}>← Back</button>
                           <h3 className="text-lg font-bold text-white">🎵 Select Genre</h3>
                           <button onClick={() => { setShowIdeasFlow(false); setIdeasStep('type') }} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
                         </div>
@@ -3149,9 +3149,9 @@ function PluginPageInner() {
                           {GENRE_OPTIONS.map(g => (
                             <button key={g} onClick={() => handleGeneratePromptIdea(g)} disabled={generatingIdea}
                               className="px-3 py-2.5 rounded-xl text-xs font-medium transition-all hover:scale-105 disabled:opacity-50"
-                              style={{background:'linear-gradient(135deg, rgba(200,200,220,0.04), rgba(200,200,220,0.08))',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(200,200,220,0.6)'}}
-                              onMouseEnter={e => {e.currentTarget.style.borderColor='rgba(200,200,220,0.25)';e.currentTarget.style.color='rgba(255,255,255,0.9)'}}
-                              onMouseLeave={e => {e.currentTarget.style.borderColor='rgba(200,200,220,0.1)';e.currentTarget.style.color='rgba(200,200,220,0.6)'}}>
+                              style={{background:'linear-gradient(135deg, rgba(6,182,212,0.04), rgba(6,182,212,0.08))',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(6,182,212,0.6)'}}
+                              onMouseEnter={e => {e.currentTarget.style.borderColor='rgba(6,182,212,0.25)';e.currentTarget.style.color='rgba(255,255,255,0.9)'}}
+                              onMouseLeave={e => {e.currentTarget.style.borderColor='rgba(6,182,212,0.1)';e.currentTarget.style.color='rgba(6,182,212,0.6)'}}>
                               {g}
                             </button>
                           ))}
@@ -3175,7 +3175,7 @@ function PluginPageInner() {
 
             {/* Quick Info */}
             <div className={`flex items-center justify-center gap-2 ${layoutMode === 'wide' ? 'mt-1' : 'mt-2'} text-xs`}>
-              <span style={{color: activeGenerations.size > 0 ? 'rgba(200,200,220,0.7)' : 'rgba(200,200,220,0.35)', textShadow: activeGenerations.size > 0 ? '0 0 12px rgba(200,200,220,0.15)' : 'none'}} className="font-mono tracking-wider">
+              <span style={{color: activeGenerations.size > 0 ? 'rgba(6,182,212,0.7)' : 'rgba(6,182,212,0.35)', textShadow: activeGenerations.size > 0 ? '0 0 12px rgba(6,182,212,0.15)' : 'none'}} className="font-mono tracking-wider">
                 {activeGenerations.size > 0
                   ? `⚡ ${activeGenerations.size} generation${activeGenerations.size > 1 ? 's' : ''} in progress`
                   : `✨ ${selectedType === 'music' ? 'Create amazing tracks' : selectedType === 'image' ? 'Generate cover art' : selectedType === 'effects' ? 'Generate Text to SFX' : 'Coming soon'}`}
@@ -3190,12 +3190,12 @@ function PluginPageInner() {
       {showLyricsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease-out' }}>
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowLyricsModal(false)} />
-          <div className="relative w-full max-w-md max-h-[80vh] md:aspect-square bg-black/90 backdrop-blur-2xl border rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{borderColor:'rgba(200,200,220,0.15)'}}>
+          <div className="relative w-full max-w-md max-h-[80vh] md:aspect-square bg-black/90 backdrop-blur-2xl border rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{borderColor:'rgba(200,200,220,0.15)',boxShadow:'0 25px 50px rgba(0,0,0,0.6), 0 0 20px rgba(200,200,220,0.04)'}}>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10" style={{boxShadow:'0 1px 6px rgba(200,200,220,0.02)'}}>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Edit3 size={18} style={{color:'rgba(200,200,220,0.6)'}} /> Lyrics & Settings
+                <Edit3 size={18} style={{color:'rgba(6,182,212,0.6)'}} /> Lyrics & Settings
               </h3>
               <button onClick={() => setShowLyricsModal(false)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                 <X size={16} className="text-gray-400" />
@@ -3227,7 +3227,7 @@ function PluginPageInner() {
                         } catch { alert('❌ Failed to generate lyrics.') }
                         finally { setIsGeneratingAtomLyrics(false) }
                       }}
-                      className="text-xs flex items-center gap-1 disabled:opacity-50" style={{color:'rgba(200,200,220,0.5)'}}>
+                      className="text-xs flex items-center gap-1 disabled:opacity-50" style={{color:'rgba(6,182,212,0.5)'}}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isGeneratingAtomLyrics ? 'animate-spin' : ''}>
                         <circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="10" strokeDasharray="4 4"/>
                       </svg>
@@ -3264,7 +3264,7 @@ function PluginPageInner() {
                         setCustomLyrics("[verse]\nStaring at the stars above\nDreaming of tomorrow\n\n[chorus]\nHold me close, don't let me go")
                       }
                     }} className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/40 hover:bg-black/60 opacity-30 hover:opacity-100 transition-all" title="Randomize lyrics">
-                      <Dices size={14} style={{color:'rgba(200,200,220,0.5)'}} />
+                      <Dices size={14} style={{color:'rgba(6,182,212,0.5)'}} />
                     </button>
                   </div>
                   <p className="text-xs text-gray-500">Add structure tags like [verse] [chorus]</p>
@@ -3274,11 +3274,11 @@ function PluginPageInner() {
               {/* Language */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-red-400 uppercase tracking-wide flex items-center gap-2">
-                  <Globe size={14} style={{color:'rgba(200,200,220,0.5)'}} /> Language *
+                  <Globe size={14} style={{color:'rgba(6,182,212,0.5)'}} /> Language *
                 </label>
                 <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)}
                   className="w-full px-3 py-2 bg-white/5 border border-red-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-white/30 appearance-none cursor-pointer"
-                  style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(200,200,220,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}>
+                  style={{ backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(6,182,212,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}>
                   <option value="English">English</option>
                   <option value="chinese">中文 Chinese</option>
                   <option value="japanese">日本語 Japanese</option>
@@ -3294,11 +3294,11 @@ function PluginPageInner() {
                 {(() => {
                   const hook = getLanguageHook(selectedLanguage.toLowerCase())
                   return hook && (
-                    <div className="p-2 rounded-lg" style={{background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.08)'}}>
-                      <p className="text-[10px] mb-1 font-semibold" style={{color:'rgba(200,200,220,0.6)'}}>💡 Popular Genres:</p>
+                    <div className="p-2 rounded-lg" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.08)'}}>
+                      <p className="text-[10px] mb-1 font-semibold" style={{color:'rgba(6,182,212,0.6)'}}>💡 Popular Genres:</p>
                       <div className="flex flex-wrap gap-1">
                         {hook.genres.slice(0, 4).map((g, i) => (
-                          <span key={i} className="px-1.5 py-0.5 text-[9px] rounded" style={{background:'rgba(200,200,220,0.06)',color:'rgba(200,200,220,0.6)'}}>{g}</span>
+                          <span key={i} className="px-1.5 py-0.5 text-[9px] rounded" style={{background:'rgba(6,182,212,0.06)',color:'rgba(6,182,212,0.6)'}}>{g}</span>
                         ))}
                       </div>
                     </div>
@@ -3308,26 +3308,26 @@ function PluginPageInner() {
 
               {/* ACE-Step Parameters (non-English) */}
               {selectedLanguage.toLowerCase() !== 'english' && (
-                <div className="space-y-3 p-3 rounded-lg" style={{background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.08)'}}>
-                  <span className="font-semibold text-[10px] uppercase tracking-wide" style={{color:'rgba(200,200,220,0.6)'}}>🎵 ACE-Step Model Parameters</span>
+                <div className="space-y-3 p-3 rounded-lg" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.08)'}}>
+                  <span className="font-semibold text-[10px] uppercase tracking-wide" style={{color:'rgba(6,182,212,0.6)'}}>🎵 ACE-Step Model Parameters</span>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Audio Length</span><span style={{color:'rgba(200,200,220,0.6)'}}>{audioLengthInSeconds}s</span></label>
-                    <input type="range" min="15" max="90" step="5" value={audioLengthInSeconds} onChange={e => setAudioLengthInSeconds(parseInt(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(200,200,220,0.5)'}} />
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Audio Length</span><span style={{color:'rgba(6,182,212,0.6)'}}>{audioLengthInSeconds}s</span></label>
+                    <input type="range" min="15" max="90" step="5" value={audioLengthInSeconds} onChange={e => setAudioLengthInSeconds(parseInt(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
                     <div className="flex justify-between text-[9px] text-gray-600"><span>15s</span><span>90s</span></div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Inference Steps</span><span style={{color:'rgba(200,200,220,0.6)'}}>{numInferenceSteps}</span></label>
-                    <input type="range" min="25" max="100" step="5" value={numInferenceSteps} onChange={e => setNumInferenceSteps(parseInt(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(200,200,220,0.5)'}} />
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Inference Steps</span><span style={{color:'rgba(6,182,212,0.6)'}}>{numInferenceSteps}</span></label>
+                    <input type="range" min="25" max="100" step="5" value={numInferenceSteps} onChange={e => setNumInferenceSteps(parseInt(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
                     <div className="flex justify-between text-[9px] text-gray-600"><span>25</span><span>100</span></div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Guidance Scale</span><span style={{color:'rgba(200,200,220,0.6)'}}>{guidanceScale.toFixed(1)}</span></label>
-                    <input type="range" min="1" max="15" step="0.5" value={guidanceScale} onChange={e => setGuidanceScale(parseFloat(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(200,200,220,0.5)'}} />
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Guidance Scale</span><span style={{color:'rgba(6,182,212,0.6)'}}>{guidanceScale.toFixed(1)}</span></label>
+                    <input type="range" min="1" max="15" step="0.5" value={guidanceScale} onChange={e => setGuidanceScale(parseFloat(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
                     <div className="flex justify-between text-[9px] text-gray-600"><span>1</span><span>15</span></div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Denoising</span><span style={{color:'rgba(200,200,220,0.6)'}}>{denoisingStrength.toFixed(2)}</span></label>
-                    <input type="range" min="0.5" max="1.0" step="0.05" value={denoisingStrength} onChange={e => setDenoisingStrength(parseFloat(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(200,200,220,0.5)'}} />
+                    <label className="text-[10px] font-medium text-gray-400 flex justify-between"><span>Denoising</span><span style={{color:'rgba(6,182,212,0.6)'}}>{denoisingStrength.toFixed(2)}</span></label>
+                    <input type="range" min="0.5" max="1.0" step="0.05" value={denoisingStrength} onChange={e => setDenoisingStrength(parseFloat(e.target.value))} className="w-full h-1" style={{accentColor:'rgba(6,182,212,0.5)'}} />
                     <div className="flex justify-between text-[9px] text-gray-600"><span>0.5</span><span>1.0</span></div>
                   </div>
                 </div>
@@ -3339,7 +3339,7 @@ function PluginPageInner() {
                 <div className="flex flex-wrap gap-1">
                   {['upbeat', 'chill', 'energetic', 'melancholic', 'ambient', 'electronic', 'acoustic', 'jazz', 'rock', 'hip-hop', 'heavy bass', 'soft piano', 'synthwave', 'lo-fi beats', 'dreamy', 'trap', 'drill', 'phonk'].map(tag => (
                     <button key={tag} onClick={() => setInput(prev => prev + (prev ? ', ' : '') + tag)}
-                      className="px-2 py-1 rounded-md text-[10px] transition-all" style={{background:'rgba(200,200,220,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(200,200,220,0.6)'}}>
+                      className="px-2 py-1 rounded-md text-[10px] transition-all" style={{background:'rgba(6,182,212,0.04)',border:'1px solid rgba(200,200,220,0.1)',color:'rgba(6,182,212,0.6)'}}>
                       {tag}
                     </button>
                   ))}
@@ -3372,7 +3372,7 @@ function PluginPageInner() {
                   ].map(opt => (
                     <button key={opt.value} onClick={() => setSongDuration(opt.value)}
                       className={`p-3 rounded-xl border text-center transition-all ${songDuration === opt.value ? 'border text-white' : 'border-white/10 text-gray-400 hover:bg-white/5'}`}
-                      style={songDuration === opt.value ? {background:'rgba(200,200,220,0.08)',borderColor:'rgba(200,200,220,0.2)',color:'rgba(220,220,235,0.9)'} : {}}>
+                      style={songDuration === opt.value ? {background:'rgba(6,182,212,0.08)',borderColor:'rgba(6,182,212,0.2)',color:'rgba(220,220,235,0.9)'} : {}}>
                       <div className="text-sm font-bold">{opt.label}</div>
                       <div className="text-[10px] text-gray-500">{opt.size}</div>
                     </button>
@@ -3385,7 +3385,7 @@ function PluginPageInner() {
             <div className="px-5 py-4 border-t border-white/10">
               <button onClick={() => setShowLyricsModal(false)}
                 className="w-full py-3 font-bold rounded-xl transition-all"
-                style={{background:'linear-gradient(135deg, rgba(200,200,220,0.15), rgba(180,180,200,0.1))',color:'rgba(255,255,255,0.9)',border:'1px solid rgba(200,200,220,0.15)'}}>
+                style={{background:'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(180,180,200,0.1))',color:'rgba(255,255,255,0.9)',border:'1px solid rgba(200,200,220,0.15)'}}>
                 Done
               </button>
             </div>
@@ -3397,7 +3397,7 @@ function PluginPageInner() {
       {showDeletedChatsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowDeletedChatsModal(false)} />
-          <div className="relative w-full max-w-md max-h-[70vh] bg-black/90 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="relative w-full max-w-md max-h-[70vh] bg-black/90 backdrop-blur-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{border:'1px solid rgba(200,200,220,0.15)',boxShadow:'0 25px 50px rgba(0,0,0,0.6), 0 0 20px rgba(200,200,220,0.04)'}}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <h3 className="text-base font-bold text-white flex items-center gap-2"><RotateCcw size={18} className="text-green-400" /> Chat History</h3>
               <button onClick={() => setShowDeletedChatsModal(false)} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10"><X size={16} className="text-gray-400" /></button>
@@ -3443,11 +3443,11 @@ function PluginPageInner() {
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeUploadModal} />
-          <div className="relative w-full max-w-lg max-h-[85vh] bg-black/90 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="relative w-full max-w-lg max-h-[85vh] bg-black/90 backdrop-blur-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{border:'1px solid rgba(200,200,220,0.15)',boxShadow:'0 25px 50px rgba(0,0,0,0.6), 0 0 20px rgba(200,200,220,0.04)'}}>
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+            <div className="flex items-center justify-between px-5 py-4" style={{borderBottom:'1px solid rgba(200,200,220,0.08)',boxShadow:'0 1px 6px rgba(200,200,220,0.02)'}}>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Upload size={18} style={{color:'rgba(200,200,220,0.6)'}} /> Upload Media
+                <Upload size={18} style={{color:'rgba(6,182,212,0.6)'}} /> Upload Media
               </h3>
               <button onClick={closeUploadModal} className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10">
                 <X size={16} className="text-gray-400" />
@@ -3463,7 +3463,7 @@ function PluginPageInner() {
                     <div className="p-3 bg-white/5 border border-white/10 rounded-xl mb-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {uploadFile.type.startsWith('video/') ? <Film size={16} style={{color:'rgba(200,200,220,0.6)'}} className="flex-shrink-0" /> : <Music size={16} style={{color:'rgba(200,200,220,0.6)'}} className="flex-shrink-0" />}
+                          {uploadFile.type.startsWith('video/') ? <Film size={16} style={{color:'rgba(6,182,212,0.6)'}} className="flex-shrink-0" /> : <Music size={16} style={{color:'rgba(6,182,212,0.6)'}} className="flex-shrink-0" />}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-white truncate">{uploadFile.name}</p>
                             <p className="text-[10px] text-gray-500">{(uploadFile.size / (1024 * 1024)).toFixed(1)} MB</p>
@@ -3481,11 +3481,11 @@ function PluginPageInner() {
                     <button onClick={() => setUploadMode('video-to-audio')}
                       className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
-                        <Film size={16} style={{color:'rgba(200,200,220,0.6)'}} />
+                        <Film size={16} style={{color:'rgba(6,182,212,0.6)'}} />
                         <span className="text-sm font-bold text-white">Video to Audio</span>
                       </div>
                       <p className="text-[10px] text-gray-500">Generate synced SFX from video</p>
-                      <span className="text-[9px] mt-1 inline-block" style={{color:'rgba(200,200,220,0.45)'}}>-2 to -10 credits</span>
+                      <span className="text-[9px] mt-1 inline-block" style={{color:'rgba(6,182,212,0.45)'}}>-2 to -10 credits</span>
                     </button>
                     )}
 
@@ -3494,11 +3494,11 @@ function PluginPageInner() {
                     <button onClick={() => setUploadMode('stem-split')}
                       className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
-                        <Scissors size={16} style={{color:'rgba(200,200,220,0.6)'}} />
+                        <Scissors size={16} style={{color:'rgba(6,182,212,0.6)'}} />
                         <span className="text-sm font-bold text-white">Split Stems</span>
                       </div>
                       <p className="text-[10px] text-gray-500">Separate vocals, drums, bass & more</p>
-                      <span className="text-[9px] mt-1 inline-block" style={{color:'rgba(200,200,220,0.45)'}}>-5 credits</span>
+                      <span className="text-[9px] mt-1 inline-block" style={{color:'rgba(6,182,212,0.45)'}}>-5 credits</span>
                     </button>
                     )}
 
@@ -3520,11 +3520,11 @@ function PluginPageInner() {
                     <button onClick={() => setUploadMode('extract-video')}
                       className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
-                        <Layers size={16} style={{color:'rgba(200,200,220,0.6)'}} />
+                        <Layers size={16} style={{color:'rgba(6,182,212,0.6)'}} />
                         <span className="text-sm font-bold text-white">Extract: Video</span>
                       </div>
                       <p className="text-[10px] text-gray-500">Extract audio track from video</p>
-                      <span className="text-[9px] mt-1 inline-block" style={{color:'rgba(200,200,220,0.45)'}}>-1 credit</span>
+                      <span className="text-[9px] mt-1 inline-block" style={{color:'rgba(6,182,212,0.45)'}}>-1 credit</span>
                     </button>
                     )}
 
@@ -3533,11 +3533,11 @@ function PluginPageInner() {
                     <button onClick={() => setUploadMode('extract-audio')}
                       className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-all text-left">
                       <div className="flex items-center gap-2 mb-1">
-                        <Layers size={16} style={{color:'rgba(200,200,220,0.6)'}} />
+                        <Layers size={16} style={{color:'rgba(6,182,212,0.6)'}} />
                         <span className="text-sm font-bold text-white">Extract: Audio Stem</span>
                       </div>
                       <p className="text-[10px] text-gray-500">Extract specific stem (vocals, bass, drums, piano, guitar) from audio</p>
-                      <span className="text-[9px] mt-1 inline-block" style={{color:'rgba(200,200,220,0.45)'}}>-1 credit</span>
+                      <span className="text-[9px] mt-1 inline-block" style={{color:'rgba(6,182,212,0.45)'}}>-1 credit</span>
                     </button>
                     )}
 
@@ -3567,11 +3567,11 @@ function PluginPageInner() {
                   </button>
 
                   <div className="flex items-center gap-2">
-                    {uploadMode === 'video-to-audio' && <><Film size={18} style={{color:'rgba(200,200,220,0.6)'}} /><span className="font-bold text-white">Video to Audio</span></>}
-                    {uploadMode === 'stem-split' && <><Scissors size={18} style={{color:'rgba(200,200,220,0.6)'}} /><span className="font-bold text-white">Split Stems</span></>}
+                    {uploadMode === 'video-to-audio' && <><Film size={18} style={{color:'rgba(6,182,212,0.6)'}} /><span className="font-bold text-white">Video to Audio</span></>}
+                    {uploadMode === 'stem-split' && <><Scissors size={18} style={{color:'rgba(6,182,212,0.6)'}} /><span className="font-bold text-white">Split Stems</span></>}
                     {uploadMode === 'audio-boost' && <><Volume2 size={18} className="text-orange-400" /><span className="font-bold text-white">Audio Boost</span></>}
-                    {uploadMode === 'extract-video' && <><Layers size={18} style={{color:'rgba(200,200,220,0.6)'}} /><span className="font-bold text-white">Extract: Video → Audio</span></>}
-                    {uploadMode === 'extract-audio' && <><Layers size={18} style={{color:'rgba(200,200,220,0.6)'}} /><span className="font-bold text-white">Extract: Audio Stem</span></>}
+                    {uploadMode === 'extract-video' && <><Layers size={18} style={{color:'rgba(6,182,212,0.6)'}} /><span className="font-bold text-white">Extract: Video → Audio</span></>}
+                    {uploadMode === 'extract-audio' && <><Layers size={18} style={{color:'rgba(6,182,212,0.6)'}} /><span className="font-bold text-white">Extract: Audio Stem</span></>}
                     {uploadMode === 'autotune' && <><Mic size={18} className="text-violet-400" /><span className="font-bold text-white">Autotune</span></>}
                   </div>
 
@@ -3601,7 +3601,7 @@ function PluginPageInner() {
                     <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {uploadFile.type.startsWith('video/') ? <Film size={16} style={{color:'rgba(200,200,220,0.6)'}} className="flex-shrink-0" /> : <Music size={16} style={{color:'rgba(200,200,220,0.6)'}} className="flex-shrink-0" />}
+                          {uploadFile.type.startsWith('video/') ? <Film size={16} style={{color:'rgba(6,182,212,0.6)'}} className="flex-shrink-0" /> : <Music size={16} style={{color:'rgba(6,182,212,0.6)'}} className="flex-shrink-0" />}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-white truncate">{uploadFile.name}</p>
                             <p className="text-[10px] text-gray-500">{(uploadFile.size / (1024 * 1024)).toFixed(1)} MB</p>
@@ -3785,7 +3785,7 @@ function PluginPageInner() {
               <div className="px-5 py-4 border-t border-white/10">
                 <button onClick={handleUploadModalProcess} disabled={isUploading || (uploadMode === 'video-to-audio' && !videoPrompt.trim())}
                   className="w-full py-3 font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  style={{background:'linear-gradient(135deg, rgba(200,200,220,0.15), rgba(180,180,200,0.1))',color:'rgba(255,255,255,0.9)',border:'1px solid rgba(200,200,220,0.15)'}}>
+                  style={{background:'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(180,180,200,0.1))',color:'rgba(255,255,255,0.9)',border:'1px solid rgba(200,200,220,0.15)'}}>
                   {isUploading ? <><Loader2 size={16} className="animate-spin" /> Processing...</> : <><Zap size={16} /> Process File</>}
                 </button>
               </div>
@@ -3872,7 +3872,7 @@ function PluginPageInner() {
           {/* Animated ring */}
           <div className="relative w-48 h-48 mb-6">
             <div className="absolute inset-0 rounded-full" style={{border:'2px solid rgba(200,200,220,0.15)',animation:'spin 8s linear infinite'}} />
-            <div className="absolute inset-3 rounded-full" style={{border:'1px dashed rgba(200,200,220,0.25)',animation:'spin 12s linear infinite reverse'}} />
+            <div className="absolute inset-3 rounded-full" style={{border:'1px dashed rgba(6,182,212,0.25)',animation:'spin 12s linear infinite reverse'}} />
             <div className="absolute inset-0 flex items-center justify-center">
               {/* Visualizer SVG icon */}
               <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{filter:'drop-shadow(0 0 20px rgba(200,210,230,0.3))'}}>
@@ -3892,11 +3892,11 @@ function PluginPageInner() {
               </svg>
             </div>
           </div>
-          <p className="text-2xl font-bold tracking-wide" style={{color:'rgba(220,220,235,0.95)',textShadow:'0 0 30px rgba(200,200,220,0.2)'}}>Drop to Process</p>
+          <p className="text-2xl font-bold tracking-wide" style={{color:'rgba(220,220,235,0.95)',textShadow:'0 0 30px rgba(6,182,212,0.2)'}}>Drop to Process</p>
           <p className="text-sm mt-2" style={{color:'rgba(180,180,200,0.6)'}}>Audio & video up to 500 MB — stems, boost, effects & more</p>
           {!isPinned && (
-            <div className="mt-6 px-5 py-2.5 rounded-xl" style={{background:'rgba(200,200,220,0.06)',border:'1px solid rgba(200,200,220,0.15)'}}>
-              <p className="text-xs text-center leading-relaxed" style={{color:'rgba(200,200,220,0.7)'}}>
+            <div className="mt-6 px-5 py-2.5 rounded-xl" style={{background:'rgba(6,182,212,0.06)',border:'1px solid rgba(200,200,220,0.15)'}}>
+              <p className="text-xs text-center leading-relaxed" style={{color:'rgba(6,182,212,0.7)'}}>
                 <Pin size={10} className="inline mr-1" style={{position:'relative',top:'1px'}} /> Pin window to enable drag & drop from DAW
               </p>
             </div>
@@ -4002,10 +4002,10 @@ function PluginPageInner() {
         /* Scrollbar styling */
         .chat-scroll-container::-webkit-scrollbar { width: 4px; }
         .chat-scroll-container::-webkit-scrollbar-track { background: transparent; }
-        .chat-scroll-container::-webkit-scrollbar-thumb { background: rgba(200,200,220,0.1); border-radius: 4px; }
-        .chat-scroll-container::-webkit-scrollbar-thumb:hover { background: rgba(200,200,220,0.2); }
+        .chat-scroll-container::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.15); border-radius: 4px; }
+        .chat-scroll-container::-webkit-scrollbar-thumb:hover { background: rgba(6,182,212,0.3); }
         select option { background: #080810; color: white; }
-        .generating-glow { box-shadow: 0 0 20px rgba(200,200,220,0.06), 0 0 40px rgba(200,200,220,0.03); }
+        .generating-glow { box-shadow: 0 0 20px rgba(6,182,212,0.1), 0 0 40px rgba(6,182,212,0.05); }
 
         /* ═══ Universal responsive plugin sizing ═══ */
         html, body { 

@@ -309,7 +309,7 @@ export default function PricingPage() {
         modal: {
           ondismiss: () => setIsPurchasing(false),
         },
-        theme: { color: '#ffffff' },
+        theme: { color: '#06b6d4' },
       })
       rzp.open()
     } catch (err: any) {
@@ -890,7 +890,7 @@ export default function PricingPage() {
               <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-xl">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">You'll receive:</span>
-                  <span className="font-bold text-white">
+                  <span className="font-bold text-cyan-400">
                     {currency === 'INR'
                       ? Math.floor(parseFloat(convertAmount) / INR_RATE / CREDIT_RATE)
                       : Math.floor(parseFloat(convertAmount) / CREDIT_RATE)} credits
@@ -930,9 +930,9 @@ export default function PricingPage() {
         const creditsAfterDeposit = Math.floor(convertibleAfterDeposit / CREDIT_RATE)
         return (
           <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={() => { setShowFirstTimeModal(false); setPendingDepositAmount(null) }}>
-            <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-white/20 rounded-2xl max-w-md w-full shadow-2xl shadow-black/30 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-cyan-500/40 rounded-2xl max-w-md w-full shadow-2xl shadow-cyan-500/10 overflow-hidden" onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div className="bg-white/5 border-b border-white/10 p-6 text-center">
+              <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border-b border-cyan-500/20 p-6 text-center">
                 <div className="text-4xl mb-3">💜</div>
                 <h3 className="text-xl font-bold text-white">Thank You for Supporting 444</h3>
               </div>
@@ -940,11 +940,11 @@ export default function PricingPage() {
               {/* Body */}
               <div className="p-6 space-y-4">
                 {/* Warm brand message */}
-                <div className="bg-white/5 border border-white/15 rounded-xl p-4">
+                <div className="bg-cyan-500/10 border border-cyan-500/25 rounded-xl p-4">
                   <p className="text-sm text-gray-300 leading-relaxed">
                     We love you and we want you with us forever. A dollar won&apos;t hurt your soul — it only helps us build something meaningful together.
                   </p>
-                  <p className="text-sm text-white font-semibold mt-2">
+                  <p className="text-sm text-cyan-400 font-semibold mt-2">
                     Lock in and tune in. 444 is your new and OG producer. 🎶
                   </p>
                 </div>
@@ -981,13 +981,13 @@ export default function PricingPage() {
                   )}
                   <div className="border-t border-white/10 pt-2 flex items-center justify-between text-sm">
                     <span className="text-gray-300">Convertible to credits</span>
-                    <span className="text-white font-bold">${convertibleAfterDeposit.toFixed(2)} → {creditsAfterDeposit} credits</span>
+                    <span className="text-cyan-400 font-bold">${convertibleAfterDeposit.toFixed(2)} → {creditsAfterDeposit} credits</span>
                   </div>
                 </div>
 
                 {/* Reassurance */}
                 <div className="flex items-start gap-2 text-xs text-gray-500">
-                  <Shield className="w-4 h-4 flex-shrink-0 text-white/30 mt-0.5" />
+                  <Shield className="w-4 h-4 flex-shrink-0 text-cyan-400/50 mt-0.5" />
                   <span>{isFirstTime ? 'After this one-time fee, all future deposits convert fully to credits. No hidden charges.' : 'Instant deposit to your wallet. Convert to credits whenever you\u2019re ready.'}</span>
                 </div>
               </div>
@@ -1007,7 +1007,7 @@ export default function PricingPage() {
                     setPendingDepositAmount(null)
                     if (amount) handleDeposit(amount)
                   }}
-                  className="flex-1 px-5 py-3 bg-white hover:bg-gray-200 text-black rounded-xl font-bold text-sm transition-all"
+                  className="flex-1 px-5 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-xl font-bold text-sm transition-all"
                 >
                   Proceed to Checkout
                 </button>

@@ -1691,6 +1691,12 @@ function CreatePageContent() {
 
   return (
     <div className={`min-h-screen bg-black text-white flex flex-col transition-all duration-300 ${showFeaturesSidebar ? 'md:pl-[464px]' : 'md:pl-20'} md:pr-28`}>
+      {/* Ambient Cyan Glow Overlays */}
+      <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-cyan-500/[0.03] rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-teal-500/[0.025] rounded-full blur-[100px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-cyan-400/[0.015] rounded-full blur-[150px]" />
+      </div>
       {/* Features Sidebar */}
       <Suspense fallback={null}>
         <FeaturesSidebar
@@ -1762,17 +1768,17 @@ function CreatePageContent() {
         style={{ pointerEvents: showTopNav ? 'auto' : 'none' }}
       >
         <Link href="/" className="block">
-          <button className="group flex items-center gap-2 px-3 md:px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 hover:border-white/30 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl pointer-events-auto">
+          <button className="group flex items-center gap-2 px-3 md:px-4 py-2 bg-black/40 hover:bg-cyan-500/10 backdrop-blur-xl border border-cyan-500/30 hover:border-cyan-400/60 rounded-full transition-all duration-300 shadow-lg shadow-cyan-500/5 hover:shadow-cyan-500/20 hover:shadow-xl pointer-events-auto">
             <svg 
-              className="w-4 h-4 transition-transform group-hover:-translate-x-1" 
+              className="w-4 h-4 text-cyan-400 transition-transform group-hover:-translate-x-1" 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span className="text-sm font-medium hidden md:inline">Home</span>
-            <span className="text-xs text-gray-400 ml-1 hidden lg:inline">(ESC)</span>
+            <span className="text-sm font-medium text-cyan-300 hidden md:inline">Home</span>
+            <span className="text-xs text-cyan-400/50 ml-1 hidden lg:inline">(ESC)</span>
           </button>
         </Link>
       </div>
@@ -1780,7 +1786,7 @@ function CreatePageContent() {
       {/* Chat Area - Glassmorphism Effect */}
       <div className="chat-scroll-container flex-1 overflow-y-auto px-3 sm:px-4 md:px-8 lg:px-16 xl:px-24 py-6 pb-40 w-full scrollbar-thin scroll-smooth">
         {/* Single Glassmorphism Container - Full Width */}
-        <div className="relative p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-sm bg-white/[0.01] border border-white/10 shadow-2xl">
+        <div className="relative p-4 sm:p-6 md:p-8 rounded-3xl backdrop-blur-sm bg-white/[0.01] border border-cyan-500/10 shadow-2xl shadow-cyan-500/[0.03]">
           {/* Dew-like gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/5 via-transparent to-cyan-500/5 rounded-3xl pointer-events-none"></div>
           
@@ -1798,8 +1804,8 @@ function CreatePageContent() {
                   <div className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}>
                     <div className={`inline-block px-4 py-2.5 rounded-2xl backdrop-blur-xl ${
                       message.type === 'user' 
-                        ? 'bg-gradient-to-br from-cyan-500/15 via-cyan-600/10 to-blue-500/15 border border-cyan-400/40 shadow-lg shadow-cyan-500/10' 
-                        : 'bg-gradient-to-br from-white/8 to-white/4 border border-white/20 shadow-lg shadow-black/20'
+                        ? 'bg-gradient-to-br from-cyan-500/15 via-cyan-600/10 to-blue-500/15 border border-cyan-400/40 shadow-lg shadow-cyan-500/15' 
+                        : 'bg-gradient-to-br from-white/8 to-white/4 border border-white/15 shadow-lg shadow-cyan-500/[0.05]'
                     }`}>
                       <p className={`text-sm leading-relaxed break-words font-light ${
                         message.type === 'user' ? 'text-cyan-100' : 'text-gray-200'
@@ -2402,7 +2408,7 @@ function CreatePageContent() {
             )}
 
             {/* Credits Display - Always Visible */}
-            <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl">
+            <div className="flex-shrink-0 flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-2 md:py-2.5 bg-black/40 md:bg-black/20 backdrop-blur-xl border-2 border-cyan-500/30 rounded-2xl shadow-lg shadow-cyan-500/10">
               <Zap size={14} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.9)] md:w-[16px] md:h-[16px]" />
               <span className="text-xs md:text-sm font-bold text-white">
                 {isLoadingCredits ? '...' : userCredits}

@@ -54,6 +54,10 @@ export default async function RootLayout({
     return (
       <html lang="en">
         <head>
+          {/* Load Inter font for plugin readability */}
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
           {/* Suppress JS error DIALOGS in DAW WebView2 — but log to console for debugging */}
           <script dangerouslySetInnerHTML={{ __html: `
             window._pluginDebug={start:Date.now(),phase:'html-loaded'};
@@ -77,7 +81,7 @@ export default async function RootLayout({
             },12000);
           `}} />
         </head>
-        <body className="antialiased bg-black text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <body className="antialiased bg-black text-white" style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
           {/* Fallback shown while React loads — hidden once React mounts */}
           <div id="plugin-fallback" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
             <div style={{ textAlign: 'center' }}>
