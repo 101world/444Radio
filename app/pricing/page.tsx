@@ -71,6 +71,7 @@ interface Transaction {
 const GST_RATE = 0.18
 const INR_RATE = 91
 const CREDIT_RATE = 0.035 // $0.035 per credit
+const PAYPAL_FEE_RATE = 0.044 // 4.4% PayPal fee for receiving international payments in India
 
 // ── Dollar deposit packs ──
 const WALLET_PACKS = [
@@ -94,12 +95,23 @@ const GENERATION_COSTS = [
 ]
 
 function calcCharge(amountUsd: number, currency: 'INR' | 'USD') {
-  const gst = amountUsd * GST_RATE
-  const total = amountUsd + gst
-  if (currency === 'INR') {
-    return { base: amountUsd * INR_RATE, gst: gst * INR_RATE, total: total * INR_RATE, symbol: '₹' }
+  const baseInr = amountUsd * INR_RATE
+  // International (PayPal): base → +4.4% fee → subtotal → +18% GST → total
+  const paypalFee = baseInr * PAYPAL_FEE_RATE
+  const subtotalIntl = baseInr + paypalFee
+  const gstIntl = subtotalIntl * GST_RATE
+  const totalIntl = subtotalIntl + gstIntl
+  // India domestic: base → +18% GST → total (no PayPal fee)
+  const gstIndia = baseInr * GST_RATE
+  const totalIndia = baseInr + gstIndia
+  const symbol = currency === 'INR' ? '₹' : '$'
+  return {
+    baseInr, paypalFee, subtotalIntl, gstIntl, totalIntl, gstIndia, totalIndia, symbol,
+    // backward-compat (defaults to India domestic path)
+    base: currency === 'INR' ? baseInr : amountUsd,
+    gst: currency === 'INR' ? gstIndia : amountUsd * GST_RATE,
+    total: currency === 'INR' ? totalIndia : amountUsd * (1 + GST_RATE),
   }
-  return { base: amountUsd, gst, total, symbol: '$' }
 }
 
 export default function PricingPage() {
@@ -297,7 +309,7 @@ export default function PricingPage() {
         modal: {
           ondismiss: () => setIsPurchasing(false),
         },
-        theme: { color: '#06b6d4' },
+        theme: { color: '#ffffff' },
       })
       rzp.open()
     } catch (err: any) {
@@ -309,7 +321,7 @@ export default function PricingPage() {
   if (!isLoaded || !user) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center md:pl-20 md:pr-28">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500" />
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white" />
       </div>
     )
   }
@@ -318,13 +330,13 @@ export default function PricingPage() {
 
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden md:pl-20 md:pr-28">
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-950/20 via-black to-black pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-950/30 via-black to-black pointer-events-none" />
 
       <div className="max-w-5xl mx-auto relative z-10 px-6 py-12">
         {/* Back nav */}
         <Link
           href="/explore"
-          className="group flex items-center gap-2 text-cyan-400/60 hover:text-cyan-400 transition-colors duration-300 mb-8"
+          className="group flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors duration-300 mb-8"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="text-sm font-medium">Back to Explore</span>
@@ -332,7 +344,7 @@ export default function PricingPage() {
 
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-cyan-400 via-white to-cyan-300 bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent">
             Add Money
           </h1>
           <p className="text-gray-400 max-w-xl mx-auto">
@@ -340,11 +352,11 @@ export default function PricingPage() {
           </p>
 
           {/* Info banner: $1 wallet requirement */}
-          <div className="mt-5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 max-w-2xl mx-auto">
+          <div className="mt-5 bg-white/5 border border-white/20 rounded-xl p-4 max-w-2xl mx-auto">
             <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+              <Info className="w-5 h-5 text-white flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-cyan-300">$1 Locked as Access Fee</p>
+                <p className="text-sm font-semibold text-white">$1 Locked as Access Fee</p>
                 <p className="text-xs text-gray-400 mt-1">
                   Your first $1 is permanently locked in your wallet. Only the balance above $1 can be converted to credits.
                 </p>
@@ -362,16 +374,16 @@ export default function PricingPage() {
               </span>
             </div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
-              <Zap className="w-4 h-4 text-cyan-400" />
+              <Zap className="w-4 h-4 text-white" />
               <span className="text-sm text-gray-300">Credits:</span>
-              <span className="text-sm font-bold text-cyan-400">{currentCredits ?? 0}</span>
+              <span className="text-sm font-bold text-white">{currentCredits ?? 0}</span>
             </div>
             {/* Convert wallet to credits button (only if wallet > $1 locked minimum) */}
             {(walletBalance ?? 0) > 1 && (
               <button
                 onClick={() => setShowConvertModal(true)}
                 disabled={isPurchasing}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-full font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-200 text-black rounded-full font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ArrowDownRight className="w-4 h-4" />
                 Convert to Credits
@@ -398,7 +410,7 @@ export default function PricingPage() {
             <button
               onClick={() => setCurrency('INR')}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                currency === 'INR' ? 'bg-cyan-500 text-black' : 'text-gray-400 hover:text-white'
+                currency === 'INR' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
               }`}
             >
               ₹ INR
@@ -406,7 +418,7 @@ export default function PricingPage() {
             <button
               onClick={() => setCurrency('USD')}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                currency === 'USD' ? 'bg-cyan-500 text-black' : 'text-gray-400 hover:text-white'
+                currency === 'USD' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
               }`}
             >
               $ USD
@@ -414,7 +426,7 @@ export default function PricingPage() {
             <button
               onClick={() => setCurrency('CREDITS')}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                currency === 'CREDITS' ? 'bg-cyan-500 text-black' : 'text-gray-400 hover:text-white'
+                currency === 'CREDITS' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
               }`}
             >
               ⚡ Credits
@@ -451,68 +463,68 @@ export default function PricingPage() {
             return (
               <div
                 key={pack.amount}
-                className={`relative bg-white/5 backdrop-blur-xl border rounded-2xl p-6 transition-all hover:border-cyan-500/40 hover:bg-white/[0.07] ${
-                  pack.popular ? 'border-cyan-500/40 ring-1 ring-cyan-500/20' : 'border-white/10'
+                className={`relative bg-black/60 backdrop-blur-xl border rounded-2xl p-6 transition-all hover:border-white/30 hover:bg-black/80 ${
+                  pack.popular ? 'border-white/30 ring-1 ring-white/20' : 'border-white/10'
                 }`}
               >
                 {pack.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-cyan-500 text-black text-xs font-bold rounded-full">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-black text-xs font-bold rounded-full">
                     Most Popular
                   </div>
                 )}
-                <div className="mb-4">
+                <div className="mb-3">
                   <p className="text-sm text-gray-400 font-medium">{pack.label}</p>
-                  {currency === 'CREDITS' ? (
-                    <p className="text-3xl font-bold mt-1">
-                      <span className="text-cyan-400">{realCredits.toLocaleString()}</span>
-                      <span className="text-sm text-gray-500 ml-1">credits</span>
-                    </p>
-                  ) : (
-                    <p className="text-3xl font-bold mt-1">
-                      <span className="text-green-400">${pack.amount}</span>
-                      <span className="text-sm text-gray-500 ml-1">deposit</span>
-                    </p>
-                  )}
-                </div>
-                <div className="mb-5 space-y-1">
-                  {currency === 'CREDITS' ? (
-                    <>
-                      <p className="text-sm text-green-400 font-semibold">
-                        ${pack.amount} USD · ₹{(pack.amount * INR_RATE * (1 + GST_RATE)).toFixed(0)} INR
-                      </p>
-                      {isReduced && (
-                        <p className="text-[10px] text-amber-400 flex items-center gap-1">
-                          <Lock className="w-3 h-3" />
-                          $1 locked · {maxCredits} credits after
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-cyan-400 font-semibold">
-                        {realCredits.toLocaleString()} credits
-                      </p>
-                      {isReduced && (
-                        <p className="text-[10px] text-amber-400 flex items-center gap-1">
-                          <Lock className="w-3 h-3" />
-                          $1 locked as access fee · {maxCredits} after
-                        </p>
-                      )}
-                      <p className="text-2xl font-bold">
-                        {charge.symbol}{charge.total.toFixed(2)}
-                      </p>
-                    </>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    {isReduced ? `$1 access fee + $${pack.amount - 1} credits` : `Instant delivery • $${pack.amount} USD worth`}
+                  <p className="text-3xl font-bold mt-1">
+                    <span className="text-green-400">${pack.amount}</span>
+                    <span className="text-sm text-gray-500 ml-1">deposit</span>
                   </p>
+                  <p className="text-sm text-gray-300 font-semibold mt-1">
+                    {realCredits.toLocaleString()} credits
+                  </p>
+                  {isReduced && (
+                    <p className="text-[10px] text-amber-400 flex items-center gap-1 mt-1">
+                      <Lock className="w-3 h-3" />
+                      $1 locked as access fee · {maxCredits} after
+                    </p>
+                  )}
                 </div>
+
+                {/* INR Cost Breakdown */}
+                <div className="mb-4 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5 text-xs">
+                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">₹ Cost Breakdown</p>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Base rate</span>
+                    <span className="text-gray-300">${pack.amount} × ₹{INR_RATE} = ₹{charge.baseInr.toFixed(0)}</span>
+                  </div>
+                  <div className="flex justify-between text-amber-400/80">
+                    <span>PayPal fee (4.4%)</span>
+                    <span>+₹{charge.paypalFee.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-white/5 pt-1.5 flex justify-between">
+                    <span className="text-gray-400">Subtotal</span>
+                    <span className="text-gray-300">₹{charge.subtotalIntl.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">GST (18%)</span>
+                    <span className="text-gray-300">+₹{charge.gstIntl.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-white/10 pt-1.5 flex justify-between font-semibold">
+                    <span className="text-white">Total (Intl)</span>
+                    <span className="text-white">₹{charge.totalIntl.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-green-400/90 font-semibold pt-1">
+                    <span>🇮🇳 India only</span>
+                    <span>₹{charge.totalIndia.toFixed(2)}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-600 pt-1">India: no PayPal fee, just 18% GST</p>
+                </div>
+
                 <button
                   onClick={() => handleDeposit(pack.amount)}
                   disabled={isPurchasing}
                   className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 ${
                     pack.popular
-                      ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-black hover:from-cyan-400 hover:to-teal-400'
+                      ? 'bg-white text-black hover:bg-gray-200'
                       : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
                   }`}
                 >
@@ -523,10 +535,10 @@ export default function PricingPage() {
           })}
 
           {/* Custom amount card */}
-          <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-6 sm:col-span-2 lg:col-span-3">
+          <div className="bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl p-6 sm:col-span-2 lg:col-span-3">
             <div className="flex flex-col gap-6">
               <div>
-                <p className="text-sm text-cyan-400 font-semibold mb-3">Custom Amount</p>
+                <p className="text-sm text-white font-semibold mb-3">Custom Amount</p>
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
                     <label className="text-xs text-gray-400 mb-1.5 block">Amount (USD)</label>
@@ -540,14 +552,14 @@ export default function PricingPage() {
                         const val = Number(e.target.value)
                         if (val >= 0.07 && val <= 500) setCustomAmount(val)
                       }}
-                      className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-xl text-white font-semibold text-lg focus:outline-none focus:border-cyan-500 transition-colors"
+                      className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-xl text-white font-semibold text-lg focus:outline-none focus:border-white/40 transition-colors"
                       placeholder="Enter amount"
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-xs text-gray-400 mb-1.5 block">You'll Get</label>
-                    <div className="px-4 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
-                      <p className="text-2xl font-bold text-cyan-300">
+                    <label className="text-xs text-gray-400 mb-1.5 block">You&apos;ll Get</label>
+                    <div className="px-4 py-3 bg-white/5 border border-white/20 rounded-xl">
+                      <p className="text-2xl font-bold text-white">
                         {calcRealCredits(customAmount).toLocaleString()} credits
                       </p>
                       {calcRealCredits(customAmount) < Math.floor(customAmount / CREDIT_RATE) && (
@@ -559,27 +571,56 @@ export default function PricingPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="flex-1 text-left">
-                  {(() => {
-                    const charge = calcCharge(customAmount, currency === 'CREDITS' ? 'USD' : currency)
-                    return (
-                      <>
-                        <p className="text-sm text-gray-400">Total Charge (incl. GST)</p>
-                        <p className="text-3xl font-bold text-white">{charge.symbol}{charge.total.toFixed(2)}</p>
-                        <p className="text-xs text-gray-500 mt-1">Credits worth ${customAmount} USD</p>
-                      </>
-                    )
-                  })()}
-                </div>
-                <button
-                  onClick={() => handleDeposit(customAmount)}
-                  disabled={isPurchasing || customAmount < 0.07}
-                  className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-teal-500 text-black rounded-xl font-bold text-base hover:from-cyan-400 hover:to-teal-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
-                >
-                  {isPurchasing ? 'Processing...' : `Buy ${calcRealCredits(customAmount)} Credits`}
-                </button>
-              </div>
+
+              {/* INR Cost Breakdown for custom amount */}
+              {(() => {
+                const charge = calcCharge(customAmount, currency === 'CREDITS' ? 'USD' : currency)
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5 text-xs">
+                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">₹ Cost Breakdown</p>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Base rate</span>
+                        <span className="text-gray-300">${customAmount} × ₹{INR_RATE} = ₹{charge.baseInr.toFixed(0)}</span>
+                      </div>
+                      <div className="flex justify-between text-amber-400/80">
+                        <span>PayPal fee (4.4%)</span>
+                        <span>+₹{charge.paypalFee.toFixed(2)}</span>
+                      </div>
+                      <div className="border-t border-white/5 pt-1.5 flex justify-between">
+                        <span className="text-gray-400">Subtotal</span>
+                        <span className="text-gray-300">₹{charge.subtotalIntl.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">GST (18%)</span>
+                        <span className="text-gray-300">+₹{charge.gstIntl.toFixed(2)}</span>
+                      </div>
+                      <div className="border-t border-white/10 pt-1.5 flex justify-between font-semibold">
+                        <span className="text-white">Total (Intl)</span>
+                        <span className="text-white">₹{charge.totalIntl.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-green-400/90 font-semibold pt-1">
+                        <span>🇮🇳 India only</span>
+                        <span>₹{charge.totalIndia.toFixed(2)}</span>
+                      </div>
+                      <p className="text-[10px] text-gray-600 pt-1">India: no PayPal fee, just 18% GST</p>
+                    </div>
+                    <div className="flex flex-col justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Credits worth ${customAmount} USD</p>
+                        <p className="text-3xl font-bold text-white mt-1">{calcRealCredits(customAmount).toLocaleString()} credits</p>
+                      </div>
+                      <button
+                        onClick={() => handleDeposit(customAmount)}
+                        disabled={isPurchasing || customAmount < 0.07}
+                        className="px-8 py-4 bg-white text-black rounded-xl font-bold text-base hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full mt-4"
+                      >
+                        {isPurchasing ? 'Processing...' : `Buy ${calcRealCredits(customAmount)} Credits`}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </div>
@@ -596,7 +637,7 @@ export default function PricingPage() {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs font-bold text-cyan-400">2</div>
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-xs font-bold text-white">2</div>
               <div>
                 <p className="text-sm font-medium text-white">Get credits</p>
                 <p className="text-xs text-gray-500">Convert balance above $1 to credits at $0.035/credit.</p>
@@ -616,7 +657,7 @@ export default function PricingPage() {
         <div className="mb-6">
           <button
             onClick={() => setShowCostModal(true)}
-            className="flex items-center gap-2 mx-auto text-sm text-cyan-400/70 hover:text-cyan-400 transition-colors"
+            className="flex items-center gap-2 mx-auto text-sm text-gray-400 hover:text-gray-300 transition-colors"
           >
             <Info className="w-4 h-4" />
             What does each generation cost?
@@ -630,7 +671,7 @@ export default function PricingPage() {
             className="w-full flex items-center justify-between p-5 hover:bg-white/[0.03] transition-colors"
           >
             <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-cyan-400" />
+              <Clock className="w-5 h-5 text-gray-400" />
               <span className="text-sm font-semibold text-white">Transaction History</span>
               {txnTotal > 0 && (
                 <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{txnTotal}</span>
@@ -643,7 +684,7 @@ export default function PricingPage() {
             <div className="border-t border-white/5">
               {txnLoading && transactions.length === 0 ? (
                 <div className="flex items-center justify-center py-10">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-cyan-500" />
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-white" />
                 </div>
               ) : transactions.length === 0 ? (
                 <p className="text-center text-gray-500 text-sm py-10">No transactions yet</p>
@@ -692,7 +733,7 @@ export default function PricingPage() {
                       <button
                         onClick={() => fetchTransactions(txnOffset + TXN_LIMIT)}
                         disabled={txnLoading}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors disabled:opacity-50"
+                        className="text-xs text-gray-400 hover:text-gray-300 transition-colors disabled:opacity-50"
                       >
                         {txnLoading ? 'Loading...' : `Load more (${transactions.length} of ${txnTotal})`}
                       </button>
@@ -712,12 +753,12 @@ export default function PricingPage() {
             <p className="text-xs text-gray-500 mt-1">$1 locked permanently as access fee. Cannot be converted or withdrawn.</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-            <Shield className="w-6 h-6 text-cyan-400 mx-auto mb-2" />
+            <Shield className="w-6 h-6 text-white mx-auto mb-2" />
             <p className="text-sm font-semibold">Secure Payments</p>
             <p className="text-xs text-gray-500 mt-1">Powered by Razorpay. Cards, UPI, wallets accepted.</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-            <Sparkles className="w-6 h-6 text-cyan-400 mx-auto mb-2" />
+            <Sparkles className="w-6 h-6 text-white mx-auto mb-2" />
             <p className="text-sm font-semibold">Instant Credits</p>
             <p className="text-xs text-gray-500 mt-1">Convert wallet balance above $1 to credits for generation.</p>
           </div>
@@ -728,11 +769,11 @@ export default function PricingPage() {
           <p>All prices include 18% GST. INR prices calculated at approx. ₹{INR_RATE}/USD.</p>
           <p>Credits are non-refundable and non-transferable. They never expire.</p>
           <p>
-            <Link href="/terms" className="text-cyan-400/50 hover:text-cyan-400 underline">Terms</Link>
+            <Link href="/terms" className="text-gray-400/50 hover:text-gray-300 underline">Terms</Link>
             {' · '}
-            <Link href="/privacy" className="text-cyan-400/50 hover:text-cyan-400 underline">Privacy</Link>
+            <Link href="/privacy" className="text-gray-400/50 hover:text-gray-300 underline">Privacy</Link>
             {' · '}
-            <Link href="/refunds" className="text-cyan-400/50 hover:text-cyan-400 underline">Refund Policy</Link>
+            <Link href="/refunds" className="text-gray-400/50 hover:text-gray-300 underline">Refund Policy</Link>
           </p>
         </div>
       </div>
@@ -752,12 +793,12 @@ export default function PricingPage() {
                 <div key={item.name} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/5 rounded-lg">
-                      <item.icon className="w-4 h-4 text-cyan-400" />
+                      <item.icon className="w-4 h-4 text-gray-300" />
                     </div>
                     <span className="text-sm">{item.name}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-bold text-cyan-400">{item.credits} cr</span>
+                    <span className="text-sm font-bold text-white">{item.credits} cr</span>
                     {typeof item.credits === 'number' && (
                       <span className="text-xs text-gray-500 ml-1">(${(item.credits * CREDIT_RATE).toFixed(3)})</span>
                     )}
@@ -765,8 +806,8 @@ export default function PricingPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-6 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
-              <p className="text-xs text-cyan-300">
+            <div className="mt-6 p-3 bg-white/5 border border-white/20 rounded-xl">
+              <p className="text-xs text-gray-300">
                 <strong>Example:</strong> $10 deposit = ~285 credits = ~142 songs or ~285 cover art images.
               </p>
             </div>
@@ -794,8 +835,8 @@ export default function PricingPage() {
               const maxCredits = Math.floor(convertible / CREDIT_RATE)
               return (
                 <>
-                  <div className="mb-4 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
-                    <p className="text-xs text-cyan-300 leading-relaxed">
+                  <div className="mb-4 p-4 bg-white/5 border border-white/20 rounded-xl">
+                    <p className="text-xs text-gray-300 leading-relaxed">
                       <strong>Current Wallet:</strong> {currency === 'INR' 
                         ? `₹${((walletBalance ?? 0) * INR_RATE).toFixed(2)}`
                         : `$${(walletBalance ?? 0).toFixed(2)}`}
@@ -835,7 +876,7 @@ export default function PricingPage() {
                     min="0.01"
                     max={currency === 'INR' ? (convertible * INR_RATE) : convertible}
                     step={currency === 'INR' ? '1' : '0.01'}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:border-white/40 focus:ring-2 focus:ring-white/20 outline-none transition-all"
                   />
                   <p className="text-xs text-gray-500 mt-2">
                     Leave empty to convert all available balance (above $1)
@@ -849,7 +890,7 @@ export default function PricingPage() {
               <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-xl">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-400">You'll receive:</span>
-                  <span className="font-bold text-cyan-400">
+                  <span className="font-bold text-white">
                     {currency === 'INR'
                       ? Math.floor(parseFloat(convertAmount) / INR_RATE / CREDIT_RATE)
                       : Math.floor(parseFloat(convertAmount) / CREDIT_RATE)} credits
@@ -873,7 +914,7 @@ export default function PricingPage() {
               <button
                 onClick={handleConvertSubmit}
                 disabled={isConverting || isPurchasing}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-white hover:bg-gray-200 text-black rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isConverting ? 'Converting...' : 'Confirm'}
               </button>
@@ -889,9 +930,9 @@ export default function PricingPage() {
         const creditsAfterDeposit = Math.floor(convertibleAfterDeposit / CREDIT_RATE)
         return (
           <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={() => { setShowFirstTimeModal(false); setPendingDepositAmount(null) }}>
-            <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-cyan-500/40 rounded-2xl max-w-md w-full shadow-2xl shadow-cyan-500/10 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-white/20 rounded-2xl max-w-md w-full shadow-2xl shadow-black/30 overflow-hidden" onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border-b border-cyan-500/20 p-6 text-center">
+              <div className="bg-white/5 border-b border-white/10 p-6 text-center">
                 <div className="text-4xl mb-3">💜</div>
                 <h3 className="text-xl font-bold text-white">Thank You for Supporting 444</h3>
               </div>
@@ -899,11 +940,11 @@ export default function PricingPage() {
               {/* Body */}
               <div className="p-6 space-y-4">
                 {/* Warm brand message */}
-                <div className="bg-cyan-500/10 border border-cyan-500/25 rounded-xl p-4">
+                <div className="bg-white/5 border border-white/15 rounded-xl p-4">
                   <p className="text-sm text-gray-300 leading-relaxed">
                     We love you and we want you with us forever. A dollar won&apos;t hurt your soul — it only helps us build something meaningful together.
                   </p>
-                  <p className="text-sm text-cyan-400 font-semibold mt-2">
+                  <p className="text-sm text-white font-semibold mt-2">
                     Lock in and tune in. 444 is your new and OG producer. 🎶
                   </p>
                 </div>
@@ -940,13 +981,13 @@ export default function PricingPage() {
                   )}
                   <div className="border-t border-white/10 pt-2 flex items-center justify-between text-sm">
                     <span className="text-gray-300">Convertible to credits</span>
-                    <span className="text-cyan-400 font-bold">${convertibleAfterDeposit.toFixed(2)} → {creditsAfterDeposit} credits</span>
+                    <span className="text-white font-bold">${convertibleAfterDeposit.toFixed(2)} → {creditsAfterDeposit} credits</span>
                   </div>
                 </div>
 
                 {/* Reassurance */}
                 <div className="flex items-start gap-2 text-xs text-gray-500">
-                  <Shield className="w-4 h-4 flex-shrink-0 text-cyan-400/50 mt-0.5" />
+                  <Shield className="w-4 h-4 flex-shrink-0 text-white/30 mt-0.5" />
                   <span>{isFirstTime ? 'After this one-time fee, all future deposits convert fully to credits. No hidden charges.' : 'Instant deposit to your wallet. Convert to credits whenever you\u2019re ready.'}</span>
                 </div>
               </div>
@@ -966,7 +1007,7 @@ export default function PricingPage() {
                     setPendingDepositAmount(null)
                     if (amount) handleDeposit(amount)
                   }}
-                  className="flex-1 px-5 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-xl font-bold text-sm transition-all"
+                  className="flex-1 px-5 py-3 bg-white hover:bg-gray-200 text-black rounded-xl font-bold text-sm transition-all"
                 >
                   Proceed to Checkout
                 </button>
