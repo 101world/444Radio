@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUserId } from '@/lib/hybrid-auth'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 5 minutes for video generation (Vercel Pro limit: 300s)
@@ -345,6 +345,16 @@ export async function POST(req: NextRequest) {
             const errText = await insertRes.text()
             console.error('⚠️ Failed to save to combined_media:', insertRes.status, errText)
           }
+
+          // Enrich the credit transaction with the output media URL
+          updateTransactionMedia({
+            userId: userId!,
+            type: 'generation_video',
+            mediaUrl: permanentVideoUrl,
+            mediaType: 'video',
+            title,
+            extraMeta: { duration: durationSec, resolution: finalResolution },
+          }).catch(() => {})
 
           send({
             status: 'complete',

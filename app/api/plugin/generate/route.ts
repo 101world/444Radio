@@ -19,7 +19,7 @@ import { authenticatePlugin, getPluginUserCredits, deductPluginCredits, createPl
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { downloadAndUploadToR2 } from '@/lib/storage'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
 import { randomUUID } from 'crypto'
@@ -198,6 +198,20 @@ export async function POST(req: NextRequest) {
       if (result.success) {
         result.creditsDeducted = creditCost
         result.creditsRemaining = deduct.newCredits
+
+        // Enrich the credit transaction with output media URL
+        const mediaUrl = (result.audioUrl || result.imageUrl || result.videoUrl || result.url) as string | undefined
+        const mediaType = type === 'image' ? 'image' : type === 'video-to-audio' || type === 'extract-video' ? 'video' : 'audio'
+        if (mediaUrl) {
+          updateTransactionMedia({
+            userId,
+            type: txType as any,
+            mediaUrl,
+            mediaType: mediaType as 'audio' | 'image' | 'video',
+            title: (result.title as string) || txDesc,
+            extraMeta: { source: 'plugin', jobId },
+          }).catch(() => {})
+        }
 
         await updatePluginJob(jobId, { status: 'completed', output: result as Record<string, unknown> })
       } else {

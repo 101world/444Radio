@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUserId } from '@/lib/hybrid-auth'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
-import { logCreditTransaction } from '@/lib/credit-transactions'
+import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
 export const maxDuration = 120
@@ -236,6 +236,15 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('✅ Autotune complete')
+
+    // Enrich the credit transaction with the output media URL
+    updateTransactionMedia({
+      userId,
+      type: 'generation_autotune',
+      mediaUrl: audioUrl,
+      mediaType: 'audio',
+      title,
+    }).catch(() => {})
 
     // Quest progress: fire-and-forget
     const { trackQuestProgress } = await import('@/lib/quest-progress')
