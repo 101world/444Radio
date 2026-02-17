@@ -332,7 +332,7 @@ export default function PricingPage() {
     <main className="min-h-screen bg-black text-white relative overflow-hidden md:pl-20 md:pr-28">
       <div className="absolute inset-0 bg-gradient-to-br from-gray-950/30 via-black to-black pointer-events-none" />
 
-      <div className="max-w-5xl mx-auto relative z-10 px-6 py-12">
+      <div className="max-w-5xl mx-auto relative z-10 px-4 sm:px-6 py-8 sm:py-12 pb-28">
         {/* Back nav */}
         <Link
           href="/explore"
@@ -343,40 +343,44 @@ export default function PricingPage() {
         </Link>
 
         {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent">
-            Add Money
+        <div className="text-center mb-8">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent">
+            Pay Per Usage
           </h1>
-          <p className="text-gray-400 max-w-xl mx-auto">
-            Deposit money → convert to credits. 1 credit = ${CREDIT_RATE}. $1 stays locked as access fee.
+          <p className="text-gray-400 max-w-xl mx-auto text-sm sm:text-base">
+            No subscriptions. Only pay for what you create. 1 credit = ${CREDIT_RATE}.
           </p>
 
-          {/* Info banner: $1 wallet requirement */}
-          <div className="mt-5 bg-white/5 border border-white/20 rounded-xl p-4 max-w-2xl mx-auto">
+          {/* $1 Access Fee — PROMINENT */}
+          <div className="mt-5 bg-amber-500/10 border-2 border-amber-500/40 rounded-xl p-4 max-w-2xl mx-auto">
             <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-white flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-white">$1 Locked as Access Fee</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Your first $1 is permanently locked in your wallet. Only the balance above $1 can be converted to credits.
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                <Lock className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold text-amber-300">⚡ $1 Platform Access Fee (One-Time)</p>
+                <p className="text-xs text-gray-300 mt-1 leading-relaxed">
+                  Your first <span className="font-bold text-white">$1 is automatically locked</span> from your first deposit as a one-time platform fee.
+                  This is <span className="font-semibold text-amber-300">not a charge</span> — it stays in your wallet permanently.
+                  All balance above $1 converts to credits at $0.035/credit.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Current balance strip */}
-          <div className="flex items-center justify-center gap-4 mt-5 flex-wrap">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
-              <DollarSign className="w-4 h-4 text-green-400" />
-              <span className="text-sm text-gray-300">Wallet:</span>
-              <span className="text-sm font-bold text-green-400">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 mt-5 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+              <DollarSign className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-green-400" />
+              <span className="text-xs sm:text-sm text-gray-300">Wallet:</span>
+              <span className="text-xs sm:text-sm font-bold text-green-400">
                 ${(walletBalance ?? 0).toFixed(2)}
               </span>
             </div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
-              <Zap className="w-4 h-4 text-white" />
-              <span className="text-sm text-gray-300">Credits:</span>
-              <span className="text-sm font-bold text-white">{currentCredits ?? 0}</span>
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+              <Zap className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-white" />
+              <span className="text-xs sm:text-sm text-gray-300">Credits:</span>
+              <span className="text-xs sm:text-sm font-bold text-white">{currentCredits ?? 0}</span>
             </div>
             {/* Convert wallet to credits button (only if wallet > $1 locked minimum) */}
             {(walletBalance ?? 0) > 1 && (
@@ -453,8 +457,107 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* ── Dollar Deposit Packs ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+        {/* ── Custom Amount (TOP) ── */}
+        <div className="bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl p-4 sm:p-6 mb-6">
+          <div className="flex flex-col gap-4 sm:gap-6">
+            <div>
+              <p className="text-sm text-white font-semibold mb-3">💰 Enter Your Amount</p>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                <div className="flex-1">
+                  <label className="text-xs text-gray-400 mb-1.5 block">Amount (USD)</label>
+                  <input
+                    type="number"
+                    min="0.07"
+                    max="500"
+                    step="0.01"
+                    value={customAmount}
+                    onChange={(e) => {
+                      const val = Number(e.target.value)
+                      if (val >= 0.07 && val <= 500) setCustomAmount(val)
+                    }}
+                    className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-xl text-white font-semibold text-lg focus:outline-none focus:border-white/40 transition-colors"
+                    placeholder="Enter amount"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-gray-400 mb-1.5 block">You&apos;ll Get</label>
+                  <div className="px-4 py-3 bg-white/5 border border-white/20 rounded-xl">
+                    <p className="text-2xl font-bold text-white">
+                      {calcRealCredits(customAmount).toLocaleString()} credits
+                    </p>
+                    {calcRealCredits(customAmount) < Math.floor(customAmount / CREDIT_RATE) && (
+                      <p className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> $1 locked · {Math.floor(customAmount / CREDIT_RATE)} after
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* INR Cost Breakdown for custom amount */}
+            {(() => {
+              const charge = calcCharge(customAmount, currency === 'CREDITS' ? 'USD' : currency)
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5 text-xs">
+                    <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">₹ Cost Breakdown</p>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Base rate</span>
+                      <span className="text-gray-300">${customAmount} × ₹{INR_RATE} = ₹{charge.baseInr.toFixed(0)}</span>
+                    </div>
+                    <div className="flex justify-between text-amber-400/80">
+                      <span>PayPal fee (4.4%)</span>
+                      <span>+₹{charge.paypalFee.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-white/5 pt-1.5 flex justify-between">
+                      <span className="text-gray-400">Subtotal</span>
+                      <span className="text-gray-300">₹{charge.subtotalIntl.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">GST (18%)</span>
+                      <span className="text-gray-300">+₹{charge.gstIntl.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-white/10 pt-1.5 flex justify-between font-semibold">
+                      <span className="text-white">Total (Intl)</span>
+                      <span className="text-white">₹{charge.totalIntl.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-green-400/90 font-semibold pt-1">
+                      <span>🇮🇳 India only</span>
+                      <span>₹{charge.totalIndia.toFixed(2)}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-600 pt-1">India: no PayPal fee, just 18% GST</p>
+                  </div>
+                  <div className="flex flex-col justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">Credits worth ${customAmount} USD</p>
+                      <p className="text-3xl font-bold text-white mt-1">{calcRealCredits(customAmount).toLocaleString()} credits</p>
+                    </div>
+                    <button
+                      onClick={() => handleDeposit(customAmount)}
+                      disabled={isPurchasing || customAmount < 0.07}
+                      className="px-6 py-3 sm:px-8 sm:py-4 bg-white text-black rounded-xl font-bold text-sm sm:text-base hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full mt-4"
+                    >
+                      {isPurchasing ? 'Processing...' : `Buy ${calcRealCredits(customAmount)} Credits`}
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* $1 lock reminder — always visible */}
+            <div className="flex items-center gap-2 p-2.5 bg-amber-500/8 border border-amber-500/20 rounded-lg">
+              <Lock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              <p className="text-[11px] text-amber-300/90">
+                <span className="font-semibold">$1 is locked automatically</span> from your first deposit as a one-time platform access fee. This is not a hidden charge.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Quick Deposit Packs ── */}
+        <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3 px-1">Quick Deposit Packs</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
           {WALLET_PACKS.map((pack) => {
             const charge = calcCharge(pack.amount, currency === 'CREDITS' ? 'USD' : currency)
             const realCredits = calcRealCredits(pack.amount)
@@ -463,205 +566,126 @@ export default function PricingPage() {
             return (
               <div
                 key={pack.amount}
-                className={`relative bg-black/60 backdrop-blur-xl border rounded-2xl p-6 transition-all hover:border-white/30 hover:bg-black/80 ${
+                className={`relative bg-black/60 backdrop-blur-xl border rounded-2xl p-4 transition-all hover:border-white/30 hover:bg-black/80 flex flex-col ${
                   pack.popular ? 'border-white/30 ring-1 ring-white/20' : 'border-white/10'
                 }`}
               >
                 {pack.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white text-black text-xs font-bold rounded-full">
-                    Most Popular
+                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-white text-black text-[10px] font-bold rounded-full whitespace-nowrap">
+                    Popular
                   </div>
                 )}
-                <div className="mb-3">
-                  <p className="text-sm text-gray-400 font-medium">{pack.label}</p>
-                  <p className="text-3xl font-bold mt-1">
+                <div className="mb-2">
+                  <p className="text-[10px] text-gray-500 font-medium">{pack.label}</p>
+                  <p className="text-2xl font-bold mt-0.5">
                     <span className="text-green-400">${pack.amount}</span>
-                    <span className="text-sm text-gray-500 ml-1">deposit</span>
                   </p>
-                  <p className="text-sm text-gray-300 font-semibold mt-1">
-                    {realCredits.toLocaleString()} credits
+                  <p className="text-xs text-gray-300 font-semibold">
+                    {realCredits.toLocaleString()} cr
                   </p>
-                  {isReduced && (
-                    <p className="text-[10px] text-amber-400 flex items-center gap-1 mt-1">
-                      <Lock className="w-3 h-3" />
-                      $1 locked as access fee · {maxCredits} after
-                    </p>
-                  )}
                 </div>
 
-                {/* INR Cost Breakdown */}
-                <div className="mb-4 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5 text-xs">
-                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">₹ Cost Breakdown</p>
+                {/* $1 lock notice on each card */}
+                <div className="flex items-center gap-1 p-1.5 bg-amber-500/8 border border-amber-500/15 rounded-md mb-3">
+                  <Lock className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />
+                  <p className="text-[9px] text-amber-300/80 leading-tight">
+                    {isReduced ? '$1 locked as platform fee' : '$1 already locked'}
+                  </p>
+                </div>
+
+                {/* Compact INR info */}
+                <div className="mb-3 text-[10px] text-gray-500 space-y-0.5">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Base rate</span>
-                    <span className="text-gray-300">${pack.amount} × ₹{INR_RATE} = ₹{charge.baseInr.toFixed(0)}</span>
-                  </div>
-                  <div className="flex justify-between text-amber-400/80">
-                    <span>PayPal fee (4.4%)</span>
-                    <span>+₹{charge.paypalFee.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t border-white/5 pt-1.5 flex justify-between">
-                    <span className="text-gray-400">Subtotal</span>
-                    <span className="text-gray-300">₹{charge.subtotalIntl.toFixed(2)}</span>
+                    <span>🇮🇳 India</span>
+                    <span className="text-gray-300">₹{charge.totalIndia.toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">GST (18%)</span>
-                    <span className="text-gray-300">+₹{charge.gstIntl.toFixed(2)}</span>
+                    <span>🌍 Intl</span>
+                    <span className="text-gray-300">₹{charge.totalIntl.toFixed(0)}</span>
                   </div>
-                  <div className="border-t border-white/10 pt-1.5 flex justify-between font-semibold">
-                    <span className="text-white">Total (Intl)</span>
-                    <span className="text-white">₹{charge.totalIntl.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-green-400/90 font-semibold pt-1">
-                    <span>🇮🇳 India only</span>
-                    <span>₹{charge.totalIndia.toFixed(2)}</span>
-                  </div>
-                  <p className="text-[10px] text-gray-600 pt-1">India: no PayPal fee, just 18% GST</p>
                 </div>
 
                 <button
                   onClick={() => handleDeposit(pack.amount)}
                   disabled={isPurchasing}
-                  className={`w-full py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 ${
+                  className={`w-full py-2.5 rounded-xl font-semibold text-xs transition-all disabled:opacity-50 mt-auto ${
                     pack.popular
                       ? 'bg-white text-black hover:bg-gray-200'
                       : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
                   }`}
                 >
-                  {isPurchasing ? 'Processing...' : 'Add to Wallet'}
+                  {isPurchasing ? '...' : 'Deposit'}
                 </button>
               </div>
             )
           })}
-
-          {/* Custom amount card */}
-          <div className="bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl p-6 sm:col-span-2 lg:col-span-3">
-            <div className="flex flex-col gap-6">
-              <div>
-                <p className="text-sm text-white font-semibold mb-3">Custom Amount</p>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-400 mb-1.5 block">Amount (USD)</label>
-                    <input
-                      type="number"
-                      min="0.07"
-                      max="500"
-                      step="0.01"
-                      value={customAmount}
-                      onChange={(e) => {
-                        const val = Number(e.target.value)
-                        if (val >= 0.07 && val <= 500) setCustomAmount(val)
-                      }}
-                      className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-xl text-white font-semibold text-lg focus:outline-none focus:border-white/40 transition-colors"
-                      placeholder="Enter amount"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-400 mb-1.5 block">You&apos;ll Get</label>
-                    <div className="px-4 py-3 bg-white/5 border border-white/20 rounded-xl">
-                      <p className="text-2xl font-bold text-white">
-                        {calcRealCredits(customAmount).toLocaleString()} credits
-                      </p>
-                      {calcRealCredits(customAmount) < Math.floor(customAmount / CREDIT_RATE) && (
-                        <p className="text-[10px] text-amber-400 mt-1 flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> $1 locked · {Math.floor(customAmount / CREDIT_RATE)} after
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* INR Cost Breakdown for custom amount */}
-              {(() => {
-                const charge = calcCharge(customAmount, currency === 'CREDITS' ? 'USD' : currency)
-                return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5 text-xs">
-                      <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">₹ Cost Breakdown</p>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Base rate</span>
-                        <span className="text-gray-300">${customAmount} × ₹{INR_RATE} = ₹{charge.baseInr.toFixed(0)}</span>
-                      </div>
-                      <div className="flex justify-between text-amber-400/80">
-                        <span>PayPal fee (4.4%)</span>
-                        <span>+₹{charge.paypalFee.toFixed(2)}</span>
-                      </div>
-                      <div className="border-t border-white/5 pt-1.5 flex justify-between">
-                        <span className="text-gray-400">Subtotal</span>
-                        <span className="text-gray-300">₹{charge.subtotalIntl.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">GST (18%)</span>
-                        <span className="text-gray-300">+₹{charge.gstIntl.toFixed(2)}</span>
-                      </div>
-                      <div className="border-t border-white/10 pt-1.5 flex justify-between font-semibold">
-                        <span className="text-white">Total (Intl)</span>
-                        <span className="text-white">₹{charge.totalIntl.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-green-400/90 font-semibold pt-1">
-                        <span>🇮🇳 India only</span>
-                        <span>₹{charge.totalIndia.toFixed(2)}</span>
-                      </div>
-                      <p className="text-[10px] text-gray-600 pt-1">India: no PayPal fee, just 18% GST</p>
-                    </div>
-                    <div className="flex flex-col justify-between">
-                      <div>
-                        <p className="text-sm text-gray-400">Credits worth ${customAmount} USD</p>
-                        <p className="text-3xl font-bold text-white mt-1">{calcRealCredits(customAmount).toLocaleString()} credits</p>
-                      </div>
-                      <button
-                        onClick={() => handleDeposit(customAmount)}
-                        disabled={isPurchasing || customAmount < 0.07}
-                        className="px-8 py-4 bg-white text-black rounded-xl font-bold text-base hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full mt-4"
-                      >
-                        {isPurchasing ? 'Processing...' : `Buy ${calcRealCredits(customAmount)} Credits`}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          </div>
         </div>
 
         {/* ── How it works ── */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-10">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6 mb-8">
           <h3 className="text-sm font-semibold text-gray-300 mb-4">How it works</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-xs font-bold text-green-400">1</div>
               <div>
                 <p className="text-sm font-medium text-white">Deposit money</p>
-                <p className="text-xs text-gray-500">Choose amount in USD. GST included in final price.</p>
+                <p className="text-xs text-gray-500">Choose amount in USD. Pay via Razorpay (UPI/Cards).</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-xs font-bold text-white">2</div>
               <div>
-                <p className="text-sm font-medium text-white">Get credits</p>
-                <p className="text-xs text-gray-500">Convert balance above $1 to credits at $0.035/credit.</p>
+                <p className="text-sm font-medium text-white">$1 locked once</p>
+                <p className="text-xs text-gray-500">$1 is locked from your first deposit as a platform fee. Only happens once.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xs font-bold text-purple-400">3</div>
               <div>
-                <p className="text-sm font-medium text-white">Generate content</p>
-                <p className="text-xs text-gray-500">$1 stays locked as your access fee. Use credits to generate.</p>
+                <p className="text-sm font-medium text-white">Use credits per feature</p>
+                <p className="text-xs text-gray-500">Convert balance to credits. Each feature costs different credits. Pay only for what you use.</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Generation Costs ── */}
-        <div className="mb-6">
+        {/* ── Generation Costs — Inline Toggle ── */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl mb-8 overflow-hidden">
           <button
-            onClick={() => setShowCostModal(true)}
-            className="flex items-center gap-2 mx-auto text-sm text-gray-400 hover:text-gray-300 transition-colors"
+            onClick={() => setShowCostModal(!showCostModal)}
+            className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-white/[0.03] transition-colors"
           >
-            <Info className="w-4 h-4" />
-            What does each generation cost?
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center">
+                <Zap className="w-4 h-4 text-cyan-400" />
+              </div>
+              <span className="text-sm font-semibold text-white">What Does Each Feature Cost?</span>
+            </div>
+            {showCostModal ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
           </button>
+
+          {showCostModal && (
+            <div className="border-t border-white/5 p-4 sm:p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                {GENERATION_COSTS.map((item) => (
+                  <div key={item.name} className="flex items-center gap-2.5 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
+                    <div className="p-2 bg-white/5 rounded-lg flex-shrink-0">
+                      <item.icon className="w-4 h-4 text-gray-300" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-white truncate">{item.name}</p>
+                      <p className="text-xs text-cyan-400 font-bold">{item.credits} cr</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 p-3 bg-white/5 border border-white/10 rounded-xl">
+                <p className="text-xs text-gray-300">
+                  <strong>Example:</strong> $10 deposit → ~257 credits → ~128 songs or ~257 cover art images. All pay-per-use — no subscriptions.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Transaction History ── */}
@@ -746,21 +770,21 @@ export default function PricingPage() {
         </div>
 
         {/* ── Trust ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-            <DollarSign className="w-6 h-6 text-green-400 mx-auto mb-2" />
-            <p className="text-sm font-semibold">$1 Access Fee</p>
-            <p className="text-xs text-gray-500 mt-1">$1 locked permanently as access fee. Cannot be converted or withdrawn.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-5 text-center">
+            <DollarSign className="w-5 sm:w-6 h-5 sm:h-6 text-green-400 mx-auto mb-2" />
+            <p className="text-xs sm:text-sm font-semibold">$1 Access Fee</p>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Locked once from first deposit. Not a charge — stays in your wallet.</p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-            <Shield className="w-6 h-6 text-white mx-auto mb-2" />
-            <p className="text-sm font-semibold">Secure Payments</p>
-            <p className="text-xs text-gray-500 mt-1">Powered by Razorpay. Cards, UPI, wallets accepted.</p>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-5 text-center">
+            <Shield className="w-5 sm:w-6 h-5 sm:h-6 text-white mx-auto mb-2" />
+            <p className="text-xs sm:text-sm font-semibold">Secure Payments</p>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Powered by Razorpay. Cards, UPI, wallets accepted.</p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-center">
-            <Sparkles className="w-6 h-6 text-white mx-auto mb-2" />
-            <p className="text-sm font-semibold">Instant Credits</p>
-            <p className="text-xs text-gray-500 mt-1">Convert wallet balance above $1 to credits for generation.</p>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-5 text-center">
+            <Sparkles className="w-5 sm:w-6 h-5 sm:h-6 text-white mx-auto mb-2" />
+            <p className="text-xs sm:text-sm font-semibold">Pay Per Use</p>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-1">No subscriptions. Only pay for features you actually use.</p>
           </div>
         </div>
 
@@ -778,47 +802,12 @@ export default function PricingPage() {
         </div>
       </div>
 
-      {/* ── Generation Cost Modal ── */}
-      {showCostModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCostModal(false)}>
-          <div className="bg-gray-900 border border-white/10 rounded-2xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold">Generation Costs</h3>
-              <button onClick={() => setShowCostModal(false)} className="p-2 hover:bg-white/10 rounded-lg">
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              {GENERATION_COSTS.map((item) => (
-                <div key={item.name} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white/5 rounded-lg">
-                      <item.icon className="w-4 h-4 text-gray-300" />
-                    </div>
-                    <span className="text-sm">{item.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-bold text-white">{item.credits} cr</span>
-                    {typeof item.credits === 'number' && (
-                      <span className="text-xs text-gray-500 ml-1">(${(item.credits * CREDIT_RATE).toFixed(3)})</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 p-3 bg-white/5 border border-white/20 rounded-xl">
-              <p className="text-xs text-gray-300">
-                <strong>Example:</strong> $10 deposit = ~285 credits = ~142 songs or ~285 cover art images.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Generation costs are now inline — no modal needed */}
 
       {/* ── Convert Wallet Modal ── */}
       {showConvertModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowConvertModal(false)}>
-          <div className="bg-gray-900 border border-white/10 rounded-2xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-gray-900 border border-white/10 rounded-2xl p-5 sm:p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold">Convert Wallet to Credits</h3>
               <button onClick={() => setShowConvertModal(false)} className="p-2 hover:bg-white/10 rounded-lg">
@@ -930,15 +919,15 @@ export default function PricingPage() {
         const creditsAfterDeposit = Math.floor(convertibleAfterDeposit / CREDIT_RATE)
         return (
           <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={() => { setShowFirstTimeModal(false); setPendingDepositAmount(null) }}>
-            <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-cyan-500/40 rounded-2xl max-w-md w-full shadow-2xl shadow-cyan-500/10 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-cyan-500/40 rounded-2xl max-w-md w-full shadow-2xl shadow-cyan-500/10 overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border-b border-cyan-500/20 p-6 text-center">
-                <div className="text-4xl mb-3">💜</div>
-                <h3 className="text-xl font-bold text-white">Thank You for Supporting 444</h3>
+              <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border-b border-cyan-500/20 p-4 sm:p-6 text-center">
+                <div className="text-3xl sm:text-4xl mb-2 sm:mb-3">💜</div>
+                <h3 className="text-lg sm:text-xl font-bold text-white">Thank You for Supporting 444</h3>
               </div>
 
               {/* Body */}
-              <div className="p-6 space-y-4">
+              <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
                 {/* Warm brand message */}
                 <div className="bg-cyan-500/10 border border-cyan-500/25 rounded-xl p-4">
                   <p className="text-sm text-gray-300 leading-relaxed">
@@ -993,7 +982,7 @@ export default function PricingPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 p-6 pt-0">
+              <div className="flex gap-3 p-4 sm:p-6 pt-0">
                 <button
                   onClick={() => { setShowFirstTimeModal(false); setPendingDepositAmount(null) }}
                   className="flex-1 px-5 py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl font-semibold text-sm transition-all"
