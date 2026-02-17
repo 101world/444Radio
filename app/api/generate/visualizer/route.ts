@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getAuthUserId } from '@/lib/hybrid-auth'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction } from '@/lib/credit-transactions'
@@ -70,8 +70,7 @@ export async function POST(req: NextRequest) {
   let creditsDeducted = false
 
   try {
-    const authResult = await auth()
-    userId = authResult.userId
+    userId = await getAuthUserId(req)
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

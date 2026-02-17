@@ -3717,6 +3717,7 @@ export default function PluginPage() {
         onClose={() => setShowVisualizerModal(false)}
         userCredits={userCredits ?? undefined}
         initialPrompt={input}
+        authToken={token ?? undefined}
         onGenerationStart={(prompt: string, generationId: string) => {
           const userMsgId = Date.now().toString()
           const genMsgId = (Date.now() + 1).toString()

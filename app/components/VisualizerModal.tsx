@@ -35,6 +35,8 @@ interface VisualizerModalProps {
   onSuccess?: (videoUrl: string, prompt: string, mediaId: string | null) => void
   onGenerationStart?: (prompt: string, generationId: string) => void
   initialPrompt?: string
+  /** Plugin Bearer token — when provided, all API calls include Authorization header */
+  authToken?: string
 }
 
 /**
@@ -80,6 +82,7 @@ export default function VisualizerModal({
   onSuccess,
   onGenerationStart,
   initialPrompt = '',
+  authToken,
 }: VisualizerModalProps) {
   const { addGeneration, updateGeneration } = useGenerationQueue()
 
@@ -132,7 +135,7 @@ export default function VisualizerModal({
     try {
       const res = await fetch('/api/generate/prompt-idea', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}) },
         body: JSON.stringify({ promptType: 'visualizer' }),
       })
       if (res.ok) {
@@ -181,7 +184,7 @@ export default function VisualizerModal({
         const formData = new FormData()
         formData.append('file', imageFile)
         formData.append('type', 'image')
-        const uploadRes = await fetch('/api/storage/upload', { method: 'POST', body: formData })
+        const uploadRes = await fetch('/api/storage/upload', { method: 'POST', body: formData, headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {} })
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json()
           imageUrl = uploadData.url
@@ -194,7 +197,7 @@ export default function VisualizerModal({
 
       const res = await fetch('/api/generate/visualizer', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}) },
         signal: controller.signal,
         body: JSON.stringify({
           prompt: prompt.trim(),
