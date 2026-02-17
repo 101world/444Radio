@@ -18,7 +18,6 @@ const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
-import GenerationRecovery from '../components/GenerationRecovery'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
@@ -3697,9 +3696,6 @@ function CreatePageContent() {
           }}
         />
       </Suspense>
-
-      {/* Generation Recovery UI for stuck generations */}
-      <GenerationRecovery />
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { AudioPlayerProvider } from './contexts/AudioPlayerContext';
 import { GenerationQueueProvider } from './contexts/GenerationQueueContext';
 import ConditionalGlobalPlayer from './components/ConditionalGlobalPlayer';
 import GenerationMonitor from './components/GenerationMonitor';
+import GenerationRecovery from './components/GenerationRecovery';
 import DockedSidebar from './components/DockedSidebar';
 import FloatingNavButton from './components/FloatingNavButton';
 import CreditBadge from './components/CreditBadge';
@@ -112,6 +113,7 @@ export default async function RootLayout({
               </PlayerAwareMain>
               <ConditionalGlobalPlayer />
               <GenerationMonitor />
+              <GenerationRecovery />
               <Suspense fallback={null}><PluginBackButton /></Suspense>
             </GenerationQueueProvider>
             </CreditsProvider>

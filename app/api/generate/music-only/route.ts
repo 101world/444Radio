@@ -274,9 +274,17 @@ export async function POST(req: NextRequest) {
     const stream = new TransformStream()
     const writer = stream.writable.getWriter()
 
-    // Helper to send a JSON line
+    // Track if client navigated away so we still finish the generation
+    let clientDisconnected = false
+
+    // Helper to send a JSON line — swallows errors if client is gone
     const sendLine = async (data: Record<string, unknown>) => {
-      await writer.write(encoder.encode(JSON.stringify(data) + '\n'))
+      if (clientDisconnected) return
+      try {
+        await writer.write(encoder.encode(JSON.stringify(data) + '\n'))
+      } catch {
+        clientDisconnected = true
+      }
     }
 
     // Capture the request signal so the IIFE can detect client disconnect
@@ -313,14 +321,11 @@ export async function POST(req: NextRequest) {
           finalPrediction.status !== 'canceled' &&
           attempts < maxAttempts
         ) {
-          // If the client disconnected, cancel the prediction and bail
-          if (requestSignal.aborted) {
-            console.log('⏹ Client disconnected, cancelling prediction:', prediction.id)
-            try { await replicate.predictions.cancel(prediction.id) } catch {}
-            await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Cancelled (client disconnected): ${title}`, metadata: { prompt, genre, reason: 'client_disconnected' } })
-            await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits }).catch(() => {})
-            await writer.close().catch(() => {})
-            return
+          // If the client disconnected (navigated away / switched tabs), DON'T cancel.
+          // Let the generation complete and save to DB so the user finds it in their library.
+          if (requestSignal.aborted && !clientDisconnected) {
+            console.log('🔄 Client disconnected but continuing generation:', prediction.id)
+            clientDisconnected = true
           }
           await new Promise(resolve => setTimeout(resolve, 2000))
           finalPrediction = await replicate.predictions.get(prediction.id)
@@ -331,7 +336,7 @@ export async function POST(req: NextRequest) {
           console.log('⏹ Prediction cancelled by user:', prediction.id)
           await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Cancelled by user: ${title}`, metadata: { prompt, genre, reason: 'user_cancelled' } })
           await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits })
-          await writer.close()
+          await writer.close().catch(() => {})
           return
         }
 
@@ -340,7 +345,7 @@ export async function POST(req: NextRequest) {
           console.error('❌ Prediction did not succeed:', errMsg)
           await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Failed: ${title}`, metadata: { prompt, genre, error: String(errMsg).substring(0, 200) } })
           await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: deductResult!.new_credits })
-          await writer.close()
+          await writer.close().catch(() => {})
           return
         }
 
@@ -511,8 +516,13 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        if (clientDisconnected) {
+          console.log('✅ Generation completed in background (client navigated away):', title)
+          console.log('  📚 Saved to music_library — user will find it there')
+        }
+
         await sendLine(response)
-        await writer.close()
+        await writer.close().catch(() => {})
 
       } catch (error) {
         console.error('❌ Music generation error (stream):', error)
