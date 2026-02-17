@@ -60,10 +60,10 @@ const ALL_STEM_OPTIONS: StemOption[] = [
   { key: 'other', label: 'Instrumental', description: 'Everything else', emoji: '🎶', color: 'text-cyan-400', gradient: 'from-cyan-500/20 to-teal-500/20', border: 'border-cyan-500/30 hover:border-cyan-400/60' },
 ]
 
-const MODEL_INFO: Record<DemucsModel, { label: string; description: string; stems: number; stemKeys: StemType[] }> = {
-  htdemucs: { label: 'HTDemucs', description: 'Hybrid Transformer — fast, high quality, 4 stems', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'] },
-  htdemucs_6s: { label: 'HTDemucs 6s', description: 'Hybrid Transformer — 6 stems incl. guitar & piano', stems: 6, stemKeys: ['drums', 'bass', 'vocals', 'guitar', 'piano', 'other'] },
-  htdemucs_ft: { label: 'HTDemucs FT', description: 'Fine-tuned — best vocal separation, 4 stems', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'] },
+const MODEL_INFO: Record<DemucsModel, { label: string; tier: string; description: string; stems: number; stemKeys: StemType[]; badge: string }> = {
+  htdemucs: { label: '444 Core', tier: 'core', description: 'Fast & reliable — 4-stem separation for quick edits', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'], badge: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
+  htdemucs_6s: { label: '444 Extended', tier: 'extended', description: '6-stem separation — unlocks guitar & piano isolation', stems: 6, stemKeys: ['drums', 'bass', 'vocals', 'guitar', 'piano', 'other'], badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+  htdemucs_ft: { label: '444 Pro', tier: 'pro', description: 'Fine-tuned for best vocal clarity — 4x processing for studio results', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'], badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
 }
 
 interface SplitStemsModalProps {
@@ -144,14 +144,17 @@ export default function SplitStemsModal({
               <button
                 key={key}
                 onClick={() => setAdvancedParams(p => ({ ...p, model: key }))}
-                className={`px-3 py-2 rounded-lg border text-left transition-all ${
+                className={`px-3 py-2.5 rounded-lg border text-left transition-all ${
                   advancedParams.model === key
-                    ? 'border-purple-500/60 bg-purple-500/15 text-white'
+                    ? 'border-purple-500/60 bg-purple-500/15 text-white ring-1 ring-purple-500/30'
                     : 'border-gray-700/40 bg-gray-900/40 text-gray-400 hover:border-gray-600/60 hover:text-gray-300'
                 }`}
               >
-                <div className="text-xs font-bold">{info.label}</div>
-                <div className="text-[10px] opacity-70">{info.stems} stems</div>
+                <div className="flex items-center gap-1.5">
+                  <div className="text-xs font-bold">{info.label}</div>
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${info.badge}`}>{info.tier}</span>
+                </div>
+                <div className="text-[10px] opacity-70 mt-0.5">{info.stems} stems</div>
               </button>
             ))}
           </div>
@@ -429,7 +432,7 @@ export default function SplitStemsModal({
               <Music2 className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
                 <p className="text-gray-300">
-                  Powered by <span className="text-purple-400 font-semibold">Demucs {modelInfo.label}</span> — {modelInfo.stems}-stem AI separation.
+                  <span className="text-purple-400 font-semibold">{modelInfo.label}</span> — {modelInfo.stems}-stem AI separation.
                   Output: <span className="text-cyan-400 font-semibold">{advancedParams.output_format.toUpperCase()}{advancedParams.output_format === 'wav' ? ` (${advancedParams.wav_format})` : advancedParams.output_format === 'mp3' ? ` ${advancedParams.mp3_bitrate}kbps` : ''}</span>
                 </p>
                 {completedCount > 0 && (
