@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { use } from 'react'
-import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus, Trash2 } from 'lucide-react'
+import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus, Trash2, Zap, Award, BarChart3, Clock, Disc3 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
@@ -513,9 +513,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
     }
   }
 
+  // Helper: format number
+  const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toString()
+  // Helper: total plays
+  const totalPlays = tracks.reduce((s, t) => s + t.plays, 0)
+  const totalLikes = tracks.reduce((s, t) => s + t.likes, 0)
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white md:pl-20 md:pr-28">
+      <div className="min-h-screen bg-[#060a12] text-white md:pl-20 md:pr-28">
         <ProfileHeaderSkeleton />
         <div className="px-8 pb-32">
           <TrackListSkeleton count={8} />
@@ -526,375 +532,450 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center md:pl-20 md:pr-28">
-        <div className="text-red-400 text-xl">Profile not found</div>
+      <div className="min-h-screen bg-[#060a12] flex items-center justify-center md:pl-20 md:pr-28">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+            <Zap size={24} className="text-red-400" />
+          </div>
+          <p className="text-red-400 font-mono text-sm">SIGNAL NOT FOUND</p>
+          <p className="text-gray-700 font-mono text-xs mt-1">Profile does not exist</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white md:pl-20 md:pr-28">
+    <div className="min-h-screen bg-[#060a12] text-white md:pl-20 md:pr-28">
       <FloatingMenu />
 
-      {/* Banner - Gradient only (upload feature removed) */}
-      <div className="relative h-64 bg-gradient-to-br from-cyan-900/20 via-purple-900/10 to-black overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-900/30 via-purple-900/20 to-black" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.1),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.1),transparent_50%)]" />
-      </div>
+      {/* ═══ BACKGROUND GRID TEXTURE ═══ */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(0,255,255,0.4) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,255,255,0.4) 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px',
+        }}
+      />
 
-      {/* Profile Status Bar */}
-      <div className="relative -mt-24 px-8 pb-8">
-        <div className="flex flex-col md:flex-row items-start md:items-end gap-6">
-          {/* Avatar */}
-          <div className="relative group">
-            <div className="w-40 h-40 rounded-full border-4 border-black overflow-hidden bg-gradient-to-br from-cyan-500 to-cyan-600">
-              <Image
-                src={profile.avatar_url}
-                alt={profile.username}
-                width={160}
-                height={160}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {isOwnProfile && (
-              <button
-                onClick={() => setShowAvatarUpload(true)}
-                className="absolute bottom-0 right-0 w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center text-black hover:bg-cyan-400 transition-all opacity-0 group-hover:opacity-100"
-              >
-                <Edit2 size={16} />
-              </button>
-            )}
-          </div>
-
-          {/* Profile Info */}
-          <div className="flex-1">
-            <div className="bg-black/60 backdrop-blur-md border border-cyan-500/20 rounded-xl p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                {/* Name & Username */}
-                <div>
-                  <h1 className="text-3xl font-bold text-white mb-1">{profile.fullName}</h1>
-                  <p className="text-cyan-400">@{profile.username}</p>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3">
-                  {isOwnProfile ? (
-                    <button
-                      onClick={() => {
-                        // Initialize form with current values
-                        setEditFullName(profile?.username || '')
-                        setEditBio(profile?.bio || '')
-                        setShowEditProfile(true)
-                      }}
-                      className="px-6 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-all"
-                    >
-                      <Edit2 size={16} className="inline mr-2" />
-                      Edit Profile
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleFollowToggle}
-                      className={`px-6 py-2 rounded-lg font-bold transition-all ${
-                        isFollowing
-                          ? 'bg-white/10 border border-white/20 hover:bg-white/20'
-                          : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500'
-                      }`}
-                    >
-                      {isFollowing ? 'Following' : '+ Follow'}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => router.push(`/station?dj=${profile.username || user?.username}`)}
-                    className={`px-6 py-2 rounded-lg font-bold transition-all ${
-                      profile.is_live
-                        ? 'bg-gradient-to-r from-red-500 to-pink-500 animate-pulse'
-                        : 'bg-white/10 border border-white/20 hover:bg-white/20'
-                    }`}
-                  >
-                    <Radio size={16} className="inline mr-2" />
-                    {profile.is_live ? 'LIVE NOW' : 'Go to Station'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="flex items-center gap-6 mt-4 pt-4 border-t border-white/10">
-                <div>
-                  <div className="text-2xl font-bold text-cyan-400">{tracks.length}</div>
-                  <div className="text-sm text-gray-400">Tracks</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-cyan-400">{profile.follower_count}</div>
-                  <div className="text-sm text-gray-400">Followers</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-cyan-400">{profile.following_count}</div>
-                  <div className="text-sm text-gray-400">Following</div>
-                </div>
-              </div>
-
-              {/* Bio */}
-              <p className="mt-4 text-gray-300">
-                {profile.bio || 'No bio yet'}
-              </p>
-
-              {/* Location & Joined */}
-              <div className="flex items-center gap-4 mt-3 text-sm text-gray-400">
-                {profile.location && (
-                  <span>
-                    <MapPin size={14} className="inline mr-1" />
-                    {profile.location}
-                  </span>
-                )}
-                <span>
-                  <Calendar size={14} className="inline mr-1" />
-                  Joined {new Date(profile.joined_date).toLocaleDateString()}
-                </span>
-              </div>
-
-              {/* Social Links */}
-              {Object.keys(profile.social_links).length > 0 && (
-                <div className="flex items-center gap-3 mt-3">
-                  {profile.social_links.twitter && (
-                    <a href={profile.social_links.twitter} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-cyan-400">
-                      <ExternalLink size={16} />
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+      {/* ═══ HERO BANNER ═══ */}
+      <div className="relative h-56 md:h-64 overflow-hidden">
+        {/* Gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a1628] via-[#0d1a2d] to-[#060a12]" />
+        {/* Radial glows */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(6,182,214,0.08),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(139,92,246,0.06),transparent_60%)]" />
+        {/* Scan lines */}
+        <div className="absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,255,0.15) 3px, rgba(0,255,255,0.15) 4px)' }} />
+        {/* Bottom edge accent */}
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent" />
+        {/* Corner decorations */}
+        <div className="absolute top-4 left-6 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-cyan-500/40" />
+          <span className="text-[9px] font-mono text-cyan-600/60 tracking-[0.3em]">444RADIO.PROFILE</span>
+        </div>
+        <div className="absolute top-4 right-6 text-[9px] font-mono text-cyan-700/40">
+          ID: {userId.slice(-8).toUpperCase()}
         </div>
       </div>
 
-      {/* Main Content */}
-      {activeView === 'profile' ? (
-        <div className="px-8 pb-32">
-          {/* View Toggle */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Releases</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-cyan-500 text-black' : 'bg-white/10'}`}
-              >
-                <Grid size={20} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded ${viewMode === 'list' ? 'bg-cyan-500 text-black' : 'bg-white/10'}`}
-              >
-                <ListIcon size={20} />
-              </button>
-            </div>
-          </div>
+      {/* ═══ PROFILE CONTENT ═══ */}
+      <div className="relative z-10 -mt-28 px-4 md:px-8 pb-32">
+        {/* ─── TOP SECTION: Avatar + Info Card ─── */}
+        <div className="flex flex-col lg:flex-row gap-5">
 
-          {/* Track Grid/List */}
-          {tracks.length === 0 ? (
-            <div className="text-center py-20">
-              <Music size={64} className="mx-auto text-gray-600 mb-4" />
-              <p className="text-gray-400">No tracks yet</p>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {tracks.map((track) => (
-                <div
-                  key={track.id}
-                  className="group relative bg-white/5 rounded-lg overflow-hidden hover:bg-white/10 transition-all cursor-pointer"
-                  onClick={() => handlePlayTrack(track)}
-                >
-                  <div className="relative aspect-square">
-                    <Image
-                      src={track.image_url}
-                      alt={track.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleLikeTrack(track.id)
-                        }}
-                        className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all"
-                      >
-                        <Heart size={20} className={likedTracks.has(track.id) ? 'text-red-500 fill-red-500' : 'text-white'} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (currentTrack?.id === track.id) {
-                            togglePlayPause()
-                          } else {
-                            handlePlayTrack(track)
-                          }
-                        }}
-                        className="w-14 h-14 rounded-full bg-cyan-500 hover:bg-cyan-400 flex items-center justify-center transition-all"
-                      >
-                        {currentTrack?.id === track.id && isPlaying ? (
-                          <Pause size={24} className="text-black" />
-                        ) : (
-                          <Play size={24} className="text-black ml-1" />
-                        )}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          const audioPlayerTracks = tracks.map(t => ({
-                            id: t.id,
-                            title: t.title,
-                            audioUrl: t.audio_url,
-                            imageUrl: t.image_url,
-                            artist: profile?.username,
-                            userId: t.user_id
-                          }))
-                          setPlaylist(audioPlayerTracks)
-                        }}
-                        className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all"
-                      >
-                        <Plus size={20} className="text-white" />
-                      </button>
-                      {isOwnProfile && (
-                        <button
-                          onClick={(e) => handleDeleteTrack(track.id, e)}
-                          className="w-10 h-10 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-all"
-                          title="Delete release"
-                        >
-                          <Trash2 size={18} className="text-red-400" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-bold text-sm truncate">{track.title}</h3>
-                    <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
-                      <span>{track.plays} plays</span>
-                      <span className="flex items-center gap-1">
-                        <Heart size={12} className={likedTracks.has(track.id) ? 'text-red-500 fill-red-500' : ''} />
-                        {track.likes}
-                      </span>
-                    </div>
-                  </div>
+          {/* ── LEFT COLUMN: User Card ── */}
+          <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
+            {/* Avatar Card */}
+            <div className="relative bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl overflow-hidden backdrop-blur-sm">
+              {/* Card header accent */}
+              <div className="h-[1px] bg-gradient-to-r from-cyan-500/50 via-cyan-400/20 to-transparent" />
+              
+              <div className="p-5">
+                {/* Section label */}
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-3 bg-cyan-500 rounded-full" />
+                  <span className="text-[9px] font-mono font-bold text-cyan-500/70 tracking-[0.2em]">USER PROFILE</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {tracks.map((track, index) => (
-                <div
-                  key={track.id}
-                  className="flex items-center gap-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all cursor-pointer group"
-                  onClick={() => handlePlayTrack(track)}
-                >
-                  <div className="text-gray-400 w-8">{index + 1}</div>
-                  <div className="relative w-12 h-12 flex-shrink-0">
-                    <Image
-                      src={track.image_url}
-                      alt={track.title}
-                      fill
-                      className="object-cover rounded"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold">{track.title}</h3>
-                    <p className="text-sm text-gray-400">{track.genre}</p>
-                  </div>
-                  <div className="text-sm text-gray-400">{Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}</div>
-                  <div className="text-sm text-gray-400">{track.plays} plays</div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleLikeTrack(track.id)
-                      }}
-                      className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
-                    >
-                      <Heart size={14} className={likedTracks.has(track.id) ? 'text-red-500 fill-red-500' : 'text-gray-400'} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const audioPlayerTracks = tracks.map(t => ({
-                          id: t.id,
-                          title: t.title,
-                          audioUrl: t.audio_url,
-                          imageUrl: t.image_url,
-                          artist: profile?.username,
-                          userId: t.user_id
-                        }))
-                        setPlaylist(audioPlayerTracks)
-                      }}
-                      className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
-                    >
-                      <Plus size={14} className="text-gray-400" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handlePlayTrack(track)
-                      }}
-                      className="w-10 h-10 rounded-full bg-cyan-500 flex items-center justify-center transition-all"
-                    >
-                      {currentTrack?.id === track.id && isPlaying ? (
-                        <Pause size={16} className="text-black" />
-                      ) : (
-                        <Play size={16} className="text-black ml-0.5" />
-                      )}
-                    </button>
+
+                {/* Avatar + Name */}
+                <div className="flex items-start gap-4">
+                  {/* Hexagonal-style avatar */}
+                  <div className="relative group flex-shrink-0">
+                    <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-cyan-500/20 shadow-[0_0_15px_rgba(0,255,255,0.05)]">
+                      <Image
+                        src={profile.avatar_url}
+                        alt={profile.username}
+                        width={80}
+                        height={80}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {/* Online indicator */}
+                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#0a0f1a] rounded-full flex items-center justify-center">
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" />
+                    </div>
                     {isOwnProfile && (
                       <button
-                        onClick={(e) => handleDeleteTrack(track.id, e)}
-                        className="w-8 h-8 rounded-full bg-red-500/10 hover:bg-red-500/30 flex items-center justify-center transition-all"
-                        title="Delete release"
+                        onClick={() => setShowAvatarUpload(true)}
+                        className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <Trash2 size={14} className="text-red-400" />
+                        <Edit2 size={14} className="text-cyan-400" />
                       </button>
                     )}
                   </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-xl font-bold text-white tracking-wide truncate">{profile.fullName}</h1>
+                    <p className="text-xs font-mono text-cyan-500 mt-0.5">@{profile.username}</p>
+                    {profile.location && (
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <MapPin size={10} className="text-gray-600" />
+                        <span className="text-[10px] font-mono text-gray-600">{profile.location}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Station View - Redirect to comprehensive station page */
-        <div className="px-8 pb-32">
-          <div className="max-w-4xl mx-auto text-center py-20">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center mb-8 mx-auto animate-pulse">
-              <Radio size={64} />
-            </div>
-            <h2 className="text-4xl font-bold mb-4">Visit the Station Page</h2>
-            <p className="text-gray-400 mb-8 text-lg">
-              All streaming features are now on the dedicated station page with live chat, reactions, analytics, and more!
-            </p>
-            <button
-              onClick={() => router.push(`/station?dj=${profile.username || user?.username}`)}
-              className="px-12 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-xl font-bold text-lg hover:from-cyan-400 hover:to-blue-400 transition-all shadow-2xl shadow-cyan-500/50 inline-flex items-center gap-3"
-            >
-              <Radio size={24} />
-              Go to Station Page
-            </button>
-            <div className="mt-12 grid grid-cols-3 gap-6 max-w-2xl mx-auto">
-              <div className="p-6 bg-white/5 rounded-xl">
-                <div className="text-3xl mb-2">🎥</div>
-                <h3 className="font-bold mb-1">Live Streaming</h3>
-                <p className="text-sm text-gray-400">WebRTC video & audio</p>
+
+                {/* Bio */}
+                <div className="mt-4 pt-3 border-t border-white/[0.04]">
+                  <p className="text-xs text-gray-400 leading-relaxed">{profile.bio || 'No bio yet'}</p>
+                </div>
+
+                {/* Joined */}
+                <div className="flex items-center gap-1.5 mt-3">
+                  <Calendar size={10} className="text-gray-700" />
+                  <span className="text-[9px] font-mono text-gray-700">
+                    JOINED {new Date(profile.joined_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
+                  </span>
+                </div>
               </div>
-              <div className="p-6 bg-white/5 rounded-xl">
-                <div className="text-3xl mb-2">💬</div>
-                <h3 className="font-bold mb-1">Live Chat</h3>
-                <p className="text-sm text-gray-400">Real-time messages</p>
-              </div>
-              <div className="p-6 bg-white/5 rounded-xl">
-                <div className="text-3xl mb-2">❤️</div>
-                <h3 className="font-bold mb-1">Reactions</h3>
-                <p className="text-sm text-gray-400">Floating emojis</p>
+
+              {/* Action Buttons */}
+              <div className="px-5 pb-5">
+                {isOwnProfile ? (
+                  <button
+                    onClick={() => {
+                      setEditFullName(profile?.username || '')
+                      setEditBio(profile?.bio || '')
+                      setShowEditProfile(true)
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.03] border border-white/[0.06] hover:border-cyan-500/25 rounded-lg transition-all text-xs font-mono text-gray-400 hover:text-cyan-400"
+                  >
+                    <Settings size={12} /> EDIT PROFILE
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleFollowToggle}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-mono text-xs font-bold transition-all ${
+                        isFollowing
+                          ? 'bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 hover:bg-cyan-500/20'
+                          : 'bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.15)]'
+                      }`}
+                    >
+                      <Users size={12} />
+                      {isFollowing ? 'FOLLOWING' : 'FOLLOW'}
+                    </button>
+                    <button
+                      onClick={() => router.push(`/station?dj=${profile.username || user?.username}`)}
+                      className="px-3 py-2.5 bg-white/[0.03] border border-white/[0.06] hover:border-purple-500/25 rounded-lg transition-all"
+                      title="Go to Station"
+                    >
+                      <Radio size={12} className="text-gray-500 hover:text-purple-400" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Stats Card */}
+            <div className="bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl overflow-hidden backdrop-blur-sm">
+              <div className="h-[1px] bg-gradient-to-r from-cyan-500/50 via-cyan-400/20 to-transparent" />
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-3 bg-cyan-500 rounded-full" />
+                  <span className="text-[9px] font-mono font-bold text-cyan-500/70 tracking-[0.2em]">STATS</span>
+                </div>
+
+                {/* Stats table */}
+                <div className="space-y-0">
+                  {[
+                    { label: 'TRACKS', value: tracks.length, icon: Music },
+                    { label: 'TOTAL PLAYS', value: fmtNum(totalPlays), icon: BarChart3 },
+                    { label: 'TOTAL LIKES', value: fmtNum(totalLikes), icon: Heart },
+                    { label: 'FOLLOWERS', value: fmtNum(profile.follower_count), icon: Users },
+                    { label: 'FOLLOWING', value: fmtNum(profile.following_count), icon: Users },
+                  ].map((stat, i) => (
+                    <div key={stat.label} className={`flex items-center justify-between py-2.5 ${i > 0 ? 'border-t border-white/[0.03]' : ''}`}>
+                      <div className="flex items-center gap-2.5">
+                        <stat.icon size={12} className="text-gray-700" />
+                        <span className="text-[10px] font-mono text-gray-500 tracking-wider">{stat.label}</span>
+                      </div>
+                      <span className="text-sm font-bold font-mono text-cyan-400">{stat.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            {(profile.website || Object.keys(profile.social_links).length > 0) && (
+              <div className="bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl overflow-hidden backdrop-blur-sm">
+                <div className="h-[1px] bg-gradient-to-r from-cyan-500/50 via-cyan-400/20 to-transparent" />
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-3 bg-cyan-500 rounded-full" />
+                    <span className="text-[9px] font-mono font-bold text-cyan-500/70 tracking-[0.2em]">LINKS</span>
+                  </div>
+                  <div className="space-y-2">
+                    {profile.website && (
+                      <a href={profile.website} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-[11px] font-mono text-gray-500 hover:text-cyan-400 transition-colors">
+                        <ExternalLink size={11} /> {profile.website.replace(/^https?:\/\//, '')}
+                      </a>
+                    )}
+                    {profile.social_links.twitter && (
+                      <a href={profile.social_links.twitter} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-[11px] font-mono text-gray-500 hover:text-cyan-400 transition-colors">
+                        <ExternalLink size={11} /> Twitter
+                      </a>
+                    )}
+                    {profile.social_links.instagram && (
+                      <a href={profile.social_links.instagram} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-[11px] font-mono text-gray-500 hover:text-cyan-400 transition-colors">
+                        <ExternalLink size={11} /> Instagram
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── RIGHT COLUMN: Content ── */}
+          <div className="flex-1 min-w-0">
+            {/* Content Header Bar */}
+            <div className="bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl overflow-hidden backdrop-blur-sm mb-4">
+              <div className="h-[1px] bg-gradient-to-r from-cyan-500/50 via-cyan-400/20 to-transparent" />
+              <div className="px-5 py-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3 bg-cyan-500 rounded-full" />
+                  <span className="text-[9px] font-mono font-bold text-cyan-500/70 tracking-[0.2em]">RELEASES</span>
+                  <span className="ml-1 px-1.5 py-0.5 bg-cyan-500/10 border border-cyan-500/15 rounded text-[9px] font-mono font-bold text-cyan-500">{tracks.length}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20' : 'text-gray-700 hover:text-gray-400'}`}
+                  >
+                    <Grid size={14} />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20' : 'text-gray-700 hover:text-gray-400'}`}
+                  >
+                    <ListIcon size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Track Grid / List */}
+            {tracks.length === 0 ? (
+              <div className="bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl p-16 text-center backdrop-blur-sm">
+                <div className="w-16 h-16 rounded-xl bg-white/[0.02] border border-white/[0.04] flex items-center justify-center mx-auto mb-4">
+                  <Disc3 size={24} className="text-gray-800" />
+                </div>
+                <p className="text-xs font-mono text-gray-700">NO RELEASES YET</p>
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {tracks.map((track) => {
+                  const isCurrent = currentTrack?.id === track.id
+                  return (
+                    <div
+                      key={track.id}
+                      className={`group relative rounded-xl overflow-hidden cursor-pointer transition-all ${
+                        isCurrent
+                          ? 'ring-1 ring-cyan-500/40 shadow-[0_0_20px_rgba(0,255,255,0.08)]'
+                          : 'ring-1 ring-white/[0.04] hover:ring-white/[0.08]'
+                      }`}
+                      onClick={() => handlePlayTrack(track)}
+                    >
+                      {/* Cover Art */}
+                      <div className="relative aspect-square bg-[#0a0f1a]">
+                        <Image
+                          src={track.image_url}
+                          alt={track.title}
+                          fill
+                          className="object-cover"
+                          loading="lazy"
+                        />
+                        {/* Scan line effect on cover */}
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px)' }} />
+                        {/* Darken overlay on hover */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all" />
+                        {/* Hover controls */}
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleLikeTrack(track.id)
+                            }}
+                            className="w-8 h-8 rounded-lg bg-black/60 border border-white/10 hover:border-red-500/30 flex items-center justify-center transition-all"
+                          >
+                            <Heart size={14} className={likedTracks.has(track.id) ? 'text-red-400 fill-red-400' : 'text-gray-400'} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (currentTrack?.id === track.id) togglePlayPause()
+                              else handlePlayTrack(track)
+                            }}
+                            className="w-11 h-11 rounded-xl bg-cyan-500/90 hover:bg-cyan-400 flex items-center justify-center transition-all shadow-[0_0_15px_rgba(0,255,255,0.3)]"
+                          >
+                            {isCurrent && isPlaying ? (
+                              <Pause size={16} className="text-black" />
+                            ) : (
+                              <Play size={16} className="text-black ml-0.5" />
+                            )}
+                          </button>
+                          {isOwnProfile && (
+                            <button
+                              onClick={(e) => handleDeleteTrack(track.id, e)}
+                              className="w-8 h-8 rounded-lg bg-black/60 border border-white/10 hover:border-red-500/30 flex items-center justify-center transition-all"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} className="text-red-400/70" />
+                            </button>
+                          )}
+                        </div>
+                        {/* Now playing indicator */}
+                        {isCurrent && (
+                          <div className="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/70 border border-cyan-500/30 rounded">
+                            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                            <span className="text-[8px] font-mono font-bold text-cyan-400">PLAYING</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Track info */}
+                      <div className="p-2.5 bg-[#0a0f1a]/95">
+                        <h3 className="text-[11px] font-bold text-white truncate">{track.title}</h3>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[9px] font-mono text-gray-600">{fmtNum(track.plays)} plays</span>
+                          <div className="flex items-center gap-1">
+                            <Heart size={8} className={likedTracks.has(track.id) ? 'text-red-400 fill-red-400' : 'text-gray-700'} />
+                            <span className="text-[9px] font-mono text-gray-600">{track.likes}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              /* ─── LIST VIEW ─── */
+              <div className="bg-[#0a0f1a]/90 border border-cyan-500/10 rounded-xl overflow-hidden backdrop-blur-sm">
+                <div className="h-[1px] bg-gradient-to-r from-cyan-500/50 via-cyan-400/20 to-transparent" />
+                {/* Table header */}
+                <div className="grid grid-cols-[32px_48px_1fr_80px_60px_80px] md:grid-cols-[32px_48px_1fr_100px_80px_80px_100px] gap-3 px-4 py-2 border-b border-white/[0.04]">
+                  <span className="text-[9px] font-mono text-gray-700">#</span>
+                  <span></span>
+                  <span className="text-[9px] font-mono text-gray-700 tracking-widest">TITLE</span>
+                  <span className="text-[9px] font-mono text-gray-700 tracking-widest hidden md:block">GENRE</span>
+                  <span className="text-[9px] font-mono text-gray-700 tracking-widest">PLAYS</span>
+                  <span className="text-[9px] font-mono text-gray-700 tracking-widest">LIKES</span>
+                  <span className="text-[9px] font-mono text-gray-700 tracking-widest text-right hidden md:block">TIME</span>
+                </div>
+                {tracks.map((track, index) => {
+                  const isCurrent = currentTrack?.id === track.id
+                  return (
+                    <div
+                      key={track.id}
+                      className={`grid grid-cols-[32px_48px_1fr_80px_60px_80px] md:grid-cols-[32px_48px_1fr_100px_80px_80px_100px] gap-3 items-center px-4 py-2.5 cursor-pointer transition-all group ${
+                        isCurrent
+                          ? 'bg-cyan-500/[0.04] border-l-2 border-l-cyan-500'
+                          : 'hover:bg-white/[0.02] border-l-2 border-l-transparent'
+                      } ${index > 0 ? 'border-t border-white/[0.03]' : ''}`}
+                      onClick={() => handlePlayTrack(track)}
+                    >
+                      {/* Number / Play button */}
+                      <div className="flex items-center">
+                        <span className={`text-xs font-mono group-hover:hidden ${isCurrent ? 'text-cyan-400' : 'text-gray-700'}`}>
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <button
+                          className="hidden group-hover:flex w-6 h-6 items-center justify-center"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (isCurrent) togglePlayPause()
+                            else handlePlayTrack(track)
+                          }}
+                        >
+                          {isCurrent && isPlaying ? (
+                            <Pause size={12} className="text-cyan-400" />
+                          ) : (
+                            <Play size={12} className="text-cyan-400 ml-0.5" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Cover */}
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/[0.05]">
+                        <Image src={track.image_url} alt={track.title} fill className="object-cover" loading="lazy" />
+                      </div>
+
+                      {/* Title */}
+                      <div className="min-w-0">
+                        <h3 className={`text-xs font-bold truncate ${isCurrent ? 'text-cyan-300' : 'text-white'}`}>{track.title}</h3>
+                      </div>
+
+                      {/* Genre */}
+                      <span className="text-[10px] font-mono text-gray-600 truncate hidden md:block">{track.genre}</span>
+
+                      {/* Plays */}
+                      <span className="text-[10px] font-mono text-gray-500">{fmtNum(track.plays)}</span>
+
+                      {/* Likes + action */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleLikeTrack(track.id) }}
+                          className="hover:scale-110 transition-transform"
+                        >
+                          <Heart size={10} className={likedTracks.has(track.id) ? 'text-red-400 fill-red-400' : 'text-gray-700'} />
+                        </button>
+                        <span className="text-[10px] font-mono text-gray-500">{track.likes}</span>
+                      </div>
+
+                      {/* Duration + delete */}
+                      <div className="flex items-center justify-end gap-2 hidden md:flex">
+                        <span className="text-[10px] font-mono text-gray-600">
+                          {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
+                        </span>
+                        {isOwnProfile && (
+                          <button
+                            onClick={(e) => handleDeleteTrack(track.id, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 size={11} className="text-red-400/50 hover:text-red-400" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
+
+      {/* ═══ MODALS ═══ */}
 
       {/* Avatar Upload Modal */}
       <ProfileUploadModal
@@ -903,66 +984,78 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         onUploadComplete={handleAvatarSuccess}
       />
 
-      {/* Edit Profile Modal */}
+      {/* Edit Profile Modal — Cyber styled */}
       {showEditProfile && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#0a0a0a] to-[#1a1a1a] border border-cyan-500/30 rounded-2xl p-8 max-w-2xl w-full shadow-2xl shadow-cyan-500/20 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-cyan-400">Edit Profile</h3>
-              <button
-                onClick={() => setShowEditProfile(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <Edit2 size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Username */}
-              <div>
-                <label htmlFor="edit-username" className="block text-sm text-gray-400 mb-2">Username</label>
-                <input
-                  type="text"
-                  id="edit-username"
-                  name="username"
-                  value={editFullName}
-                  onChange={(e) => setEditFullName(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
-                  placeholder="Your username"
-                />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && setShowEditProfile(false)}>
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+            style={{
+              backgroundImage: `linear-gradient(rgba(0,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,255,0.3) 1px, transparent 1px)`,
+              backgroundSize: '40px 40px',
+            }}
+          />
+          <div className="relative w-full max-w-md">
+            {/* Neon edge */}
+            <div className="absolute -inset-[1px] bg-gradient-to-b from-cyan-500/40 via-cyan-500/10 to-transparent rounded-2xl blur-[1px]" />
+            <div className="relative bg-[#080c14] border border-cyan-500/20 rounded-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-5 pt-5 pb-3">
+                <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-3 bg-cyan-500 rounded-full" />
+                    <span className="text-[10px] font-mono font-bold text-cyan-500/70 tracking-[0.2em]">EDIT PROFILE</span>
+                  </div>
+                  <button onClick={() => setShowEditProfile(false)}
+                    className="p-1 hover:bg-white/5 rounded-lg transition-colors">
+                    <Edit2 size={14} className="text-gray-600" />
+                  </button>
+                </div>
               </div>
 
-              {/* Bio */}
-              <div>
-                <label htmlFor="edit-bio" className="block text-sm text-gray-400 mb-2">Bio</label>
-                <textarea
-                  id="edit-bio"
-                  name="bio"
-                  value={editBio}
-                  onChange={(e) => setEditBio(e.target.value)}
-                  rows={4}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-cyan-500 text-white resize-none"
-                  placeholder="Tell us about yourself..."
-                />
+              {/* Form */}
+              <div className="px-5 pb-5 space-y-4">
+                <div>
+                  <label className="text-[9px] font-mono font-bold text-cyan-500/60 tracking-[0.2em] mb-1.5 block">USERNAME</label>
+                  <input
+                    type="text"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-black/60 border border-white/[0.07] rounded-xl text-sm text-white font-light focus:outline-none focus:border-cyan-500/30 transition-colors"
+                    placeholder="Username"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] font-mono font-bold text-cyan-500/60 tracking-[0.2em] mb-1.5 block">BIO</label>
+                  <textarea
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    rows={4}
+                    className="w-full px-3.5 py-2.5 bg-black/60 border border-white/[0.07] rounded-xl text-sm text-white font-light resize-none focus:outline-none focus:border-cyan-500/30 transition-colors"
+                    placeholder="Tell the world about yourself..."
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowEditProfile(false)}
-                className="flex-1 px-6 py-3 bg-white/5 border border-white/10 text-gray-300 rounded-lg hover:bg-white/10 transition-all font-semibold"
-                disabled={isUpdatingProfile}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleEditProfileSubmit}
-                disabled={isUpdatingProfile}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-black rounded-lg hover:from-cyan-400 hover:to-cyan-500 transition-all font-bold shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
-              </button>
+              {/* Footer */}
+              <div className="px-5 pb-5 flex gap-2">
+                <button
+                  onClick={() => setShowEditProfile(false)}
+                  disabled={isUpdatingProfile}
+                  className="flex-1 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs font-mono text-gray-500 hover:text-gray-300 transition-all"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleEditProfileSubmit}
+                  disabled={isUpdatingProfile}
+                  className="flex-1 py-2.5 bg-cyan-500/90 hover:bg-cyan-400 text-black rounded-xl text-xs font-mono font-bold shadow-[0_0_15px_rgba(0,255,255,0.15)] transition-all disabled:opacity-40"
+                >
+                  {isUpdatingProfile ? 'SAVING...' : 'SAVE'}
+                </button>
+              </div>
+              <div className="h-[1px] bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
             </div>
           </div>
         </div>
