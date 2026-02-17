@@ -4,19 +4,15 @@
   "functions": {
     "app/api/**/*.ts": {
       "memory": 1024,
-      "maxDuration": 10
+      "maxDuration": 30
     },
     "app/api/generate/**/route.ts": {
       "memory": 1024,
       "maxDuration": 120
     },
-    "app/api/studio/**/route.ts": {
-      "memory": 1024,
-      "maxDuration": 120
-    },
     "app/api/plugin/generate/route.ts": {
       "memory": 1024,
-      "maxDuration": 120
+      "maxDuration": 300
     },
     "app/api/audio/split-stems/route.ts": {
       "memory": 1024,
@@ -28,6 +24,10 @@
     },
     "app/api/profile/banner/route.ts": {
       "memory": 3008,
+      "maxDuration": 60
+    },
+    "app/api/webhooks/**/route.ts": {
+      "memory": 1024,
       "maxDuration": 60
     }
   },
@@ -71,23 +71,6 @@
         {
           "key": "Access-Control-Allow-Headers",
           "value": "*"
-        }
-      ]
-    },
-    {
-      "source": "/studio/multi-track",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate, max-age=0"
-        },
-        {
-          "key": "Pragma",
-          "value": "no-cache"
-        },
-        {
-          "key": "Expires",
-          "value": "0"
         }
       ]
     }

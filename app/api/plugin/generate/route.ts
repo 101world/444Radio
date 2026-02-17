@@ -100,7 +100,15 @@ export async function POST(req: NextRequest) {
   await createPluginJob({ jobId, userId, type, creditsCost: creditCost, inputParams: body })
 
   // ── Deduct credits atomically BEFORE generation ──
-  const txType = `generation_${type.replace('-', '_')}`
+  // Map plugin type names to valid credit_transactions types
+  const TYPE_MAP: Record<string, string> = {
+    'stems': 'generation_stem_split',
+    'extract-video': 'generation_extract',
+    'video-to-audio': 'generation_video_to_audio',
+    'audio-boost': 'generation_audio_boost',
+    'cover-art': 'generation_cover_art',
+  }
+  const txType = TYPE_MAP[type] || `generation_${type.replace('-', '_')}`
   const txDesc = `Plugin: ${type} — ${(body.prompt as string || body.title as string || '').substring(0, 60)}`
   const deduct = await deductPluginCredits(userId, creditCost, {
     type: txType,

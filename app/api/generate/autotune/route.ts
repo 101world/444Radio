@@ -5,7 +5,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction } from '@/lib/credit-transactions'
 import { corsResponse, handleOptions } from '@/lib/cors'
 
-export const maxDuration = 60
+export const maxDuration = 120
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_KEY_LATEST2!,
