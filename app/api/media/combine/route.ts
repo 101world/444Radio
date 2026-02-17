@@ -160,6 +160,10 @@ export async function POST(req: NextRequest) {
       },
     }).catch(() => {}) // fire-and-forget
 
+    // Track quest progress — "Social Butterfly" (share_tracks) quest
+    const { trackQuestProgress } = await import('@/lib/quest-progress')
+    trackQuestProgress(userId, 'share_tracks').catch(() => {})
+
     return NextResponse.json({
       success: true,
       combinedMedia: {

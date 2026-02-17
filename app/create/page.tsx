@@ -18,6 +18,7 @@ const DeletedChatsModal = lazy(() => import('../components/DeletedChatsModal'))
 const SplitStemsModal = lazy(() => import('../components/SplitStemsModal'))
 const FeaturesSidebar = lazy(() => import('../components/FeaturesSidebar'))
 const MatrixConsole = lazy(() => import('../components/MatrixConsole'))
+import PluginGenerationQueue from '../components/PluginGenerationQueue'
 import { getLanguageHook, getSamplePromptsForLanguage, getLyricsStructureForLanguage } from '@/lib/language-hooks'
 import { useAudioPlayer } from '../contexts/AudioPlayerContext'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
@@ -1492,6 +1493,19 @@ function CreatePageContent() {
     })
     updateGeneration(genId, { status: 'generating' })
 
+    // Create a generating message in the chat with progress bar
+    const stemMsgId = `stem-gen-${Date.now()}-${stem}`
+    const stemGenMessage: Message = {
+      id: stemMsgId,
+      type: 'generation',
+      content: `🎶 Splitting ${stem}...`,
+      generationType: 'music',
+      generationId: genId,
+      isGenerating: true,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, stemGenMessage])
+
     const abortController = new AbortController()
 
     try {
@@ -1563,8 +1577,17 @@ function CreatePageContent() {
       // Add completed stems to state — merge with existing
       setSplitStemsCompleted(prev => ({ ...prev, ...data.stems }))
 
-      // Also add stems to the message for persistence
+      // Update the generating message to show the stem result
       setMessages(prev => prev.map(msg => {
+        if (msg.id === stemMsgId) {
+          return {
+            ...msg,
+            isGenerating: false,
+            content: `✅ ${stem.charAt(0).toUpperCase() + stem.slice(1)} separated! Used ${data.creditsUsed || 1} credit.`,
+            stems: data.stems
+          }
+        }
+        // Also merge into the original stem parent message if it exists
         if (msg.id === splitStemsMessageId || msg.id === `${splitStemsMessageId}-stems-processing`) {
           return {
             ...msg,
@@ -1579,7 +1602,12 @@ function CreatePageContent() {
       console.error('Stem splitting error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to split stem. Please try again.'
       updateGeneration(genId, { status: 'failed', error: errorMessage })
-      alert(`❌ ${errorMessage}`)
+      // Update the chat message to show the error
+      setMessages(prev => prev.map(msg =>
+        msg.id === stemMsgId
+          ? { ...msg, isGenerating: false, content: `❌ ${stem.charAt(0).toUpperCase() + stem.slice(1)} split failed: ${errorMessage}` }
+          : msg
+      ))
     } finally {
       setSplitStemsProcessing(null)
       setIsSplittingStems(false)
@@ -2149,8 +2177,26 @@ function CreatePageContent() {
                   </div>
                 )}
 
-                {/* Loading with cancel */}
-                {message.isGenerating && (
+                {/* Generation progress bar — replaces simple spinner */}
+                {message.isGenerating && message.generationId && (() => {
+                  const gen = generations.find(g => g.id === message.generationId)
+                  if (gen && (gen.status === 'queued' || gen.status === 'generating')) {
+                    return (
+                      <PluginGenerationQueue
+                        jobs={[{
+                          id: gen.id,
+                          type: gen.type,
+                          startedAt: gen.startedAt,
+                          label: gen.title || gen.type.charAt(0).toUpperCase() + gen.type.slice(1)
+                        }]}
+                        onCancel={(id) => handleCancelGeneration(message.id)}
+                      />
+                    )
+                  }
+                  return null
+                })()}
+                {/* Fallback spinner for generations without a queue entry */}
+                {message.isGenerating && !message.generationId && (
                   <div className="flex items-center gap-2 px-4 py-3 backdrop-blur-xl bg-cyan-500/10 border border-cyan-400/20 rounded-2xl">
                     <Loader2 className="animate-spin text-cyan-400" size={16} />
                     <span className="text-xs text-cyan-300 flex-1">Generating...</span>

@@ -161,11 +161,10 @@ export async function POST(request: Request) {
       if (!deductResult?.success) {
         const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
         console.error('❌ Credit deduction blocked:', errorMsg)
-        await logCreditTransaction({ userId, amount: -stemCost, type: 'generation_stem_split', status: 'failed', description: `Stem split: ${stem} (${demucsModel})`, metadata: {} })
         return NextResponse.json({ error: errorMsg }, { status: 402 })
       }
       console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
-      await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem split: ${stem} (${demucsModel})`, metadata: { stem, model: demucsModel, cost: stemCost } })
+      // Note: deduct_credits RPC already logs the transaction atomically — no duplicate log needed
     }
 
     // Stream prediction ID to client for cancellation, then process result
@@ -296,9 +295,17 @@ export async function POST(request: Request) {
         }
 
         // Collect only non-null stem URLs from the output
+        // When a SPECIFIC stem is requested (not 'other'/'none'), Demucs returns the
+        // requested stem + a residual "other" track.  We only keep the requested stem
+        // to avoid duplicating rows in the library and confusing the UI.
         const outputStems: Record<string, string> = {}
         for (const [key, value] of Object.entries(raw)) {
           if (typeof value === 'string' && value.startsWith('http')) {
+            // If a specific stem was requested, skip the residual "other" output
+            if (stem !== 'other' && stem !== 'none' && key === 'other') {
+              console.log(`[Stem Split] Skipping residual "other" output (user requested: ${stem})`)
+              continue
+            }
             outputStems[key] = value
           }
         }
