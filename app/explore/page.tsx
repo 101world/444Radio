@@ -199,8 +199,10 @@ function ListTrackRow({ media, index, isCurrentlyPlaying, isPlaying, onPlay, onL
         </button>
       </div>
       {/* Cover */}
-      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 ring-1 ring-white/[0.06]">
-        {media.image_url || media.imageUrl ? (
+      <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 ring-1 ring-white/[0.06] relative">
+        {media.video_url ? (
+          <video src={media.video_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+        ) : (media.image_url || media.imageUrl) ? (
           <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={40} height={40}
             className="w-full h-full object-cover" loading="lazy" quality={60} unoptimized />
         ) : (

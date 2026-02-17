@@ -226,7 +226,7 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
           id: t.id,
           title: t.title || 'Untitled',
           audio_url: t.audio_url,
-          image_url: t.image_url || '/default-cover.jpg',
+          image_url: t.image_url || '',
           duration: t.duration || 0,
           plays: t.plays || 0,
           likes: t.likes || 0,
@@ -808,15 +808,30 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                       }`}
                       onClick={() => handlePlayTrack(track)}
                     >
-                      {/* Cover Art */}
+                      {/* Cover Art / Visualizer Video */}
                       <div className="relative aspect-square bg-[#0a0f1a]">
-                        <Image
-                          src={track.image_url}
-                          alt={track.title}
-                          fill
-                          className="object-cover"
-                          loading="lazy"
-                        />
+                        {track.video_url ? (
+                          <video
+                            src={track.video_url}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : track.image_url ? (
+                          <Image
+                            src={track.image_url}
+                            alt={track.title}
+                            fill
+                            className="object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
+                            <Music size={24} className="text-gray-700" />
+                          </div>
+                        )}
                         {/* Scan line effect on cover */}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 4px)' }} />
@@ -929,7 +944,15 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
                       {/* Cover */}
                       <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-white/[0.05]">
-                        <Image src={track.image_url} alt={track.title} fill className="object-cover" loading="lazy" />
+                        {track.video_url ? (
+                          <video src={track.video_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+                        ) : track.image_url ? (
+                          <Image src={track.image_url} alt={track.title} fill className="object-cover" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
+                            <Music size={8} className="text-gray-700" />
+                          </div>
+                        )}
                       </div>
 
                       {/* Title */}

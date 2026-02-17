@@ -119,7 +119,7 @@ export default function ReleasePage() {
       id: item.id,
       title: item.title || 'Untitled',
       artist: user?.username || user?.firstName || 'You',
-      imageUrl: item.image_url || '/default-cover.jpg',
+      imageUrl: item.image_url || '',
       audioUrl: item.audio_url
     })
   }
