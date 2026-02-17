@@ -2613,16 +2613,41 @@ export default function PluginPage() {
                       </button>
                       {isInDAW ? (
                         <button onClick={() => sendVideoToDAW(msg.result!.url!, msg.result!.title || 'video')}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
-                          <Download size={12} /> Import to DAW
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all relative overflow-hidden"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(0,255,255,0.1), rgba(0,136,255,0.06))',
+                            border: '1px solid rgba(0,255,255,0.3)',
+                            color: '#00ffff',
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 20px rgba(0,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.1)',
+                          }}>
+                          <ArrowDownToLine size={12} /> Import to DAW
                         </button>
                       ) : (
-                        <a href={msg.result!.url!} download={`${(msg.result!.title || 'video').replace(/[^a-zA-Z0-9 _-]/g, '')}.mp4`}
-                          draggable="true"
-                          onDragStart={(e) => { e.dataTransfer.setData('text/uri-list', msg.result!.url!); e.dataTransfer.setData('text/plain', msg.result!.url!) }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all cursor-grab active:cursor-grabbing">
-                          <Download size={12} /> Drag to Timeline
-                        </a>
+                        <button onClick={async () => {
+                          try {
+                            const safeName = (msg.result!.title || 'video').replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'video'
+                            const resp = await fetch(msg.result!.url!)
+                            const blob = await resp.blob()
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `${safeName}.mp4`
+                            document.body.appendChild(a)
+                            a.click()
+                            document.body.removeChild(a)
+                            setTimeout(() => URL.revokeObjectURL(url), 5000)
+                            showBridgeToast?.('✅ Downloaded! Drag the .mp4 file into your Premiere Pro timeline')
+                          } catch { showBridgeToast?.('❌ Download failed — try the direct download button') }
+                        }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all relative overflow-hidden group"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(255,140,0,0.12), rgba(255,80,0,0.06))',
+                            border: '1px solid rgba(255,140,0,0.35)',
+                            color: '#ffb347',
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 0 16px rgba(255,140,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08)',
+                          }}>
+                          <Film size={12} /> Import to Premiere
+                        </button>
                       )}
                       <button onClick={() => window.open('https://444radio.co.in/library?tab=videos&host=juce', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">

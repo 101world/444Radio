@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getAuthUserId } from '@/lib/hybrid-auth'
 import Replicate from 'replicate'
 import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction } from '@/lib/credit-transactions'
@@ -27,8 +27,9 @@ export async function OPTIONS() {
  *   trackTitle: Optional title for saved audio
  */
 export async function POST(req: NextRequest) {
+  let userId: string | null = null
   try {
-    const { userId } = await auth()
+    userId = await getAuthUserId(req)
     if (!userId) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
@@ -236,7 +237,6 @@ export async function POST(req: NextRequest) {
     
     // REFUND credit on failure — user should not lose credits for failed generations
     try {
-      const { userId } = await auth()
       if (userId) {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!

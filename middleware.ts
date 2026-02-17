@@ -19,6 +19,10 @@ const isPublicRoute = createRouteMatcher([
   '/api/r2/proxy(.*)', // R2 file proxy — must be public so audio downloads work in plugin/DAW
   '/api/generate/atom-(.*)',   // Used by plugin page (hybrid auth: Clerk or Bearer token)
   '/api/generate/prompt-idea', // Used by plugin page (hybrid auth: Clerk or Bearer token)
+  '/api/generate/visualizer',  // Uses hybrid auth (Clerk session OR Bearer token)
+  '/api/generate/autotune',    // Uses hybrid auth (Clerk session OR Bearer token)
+  '/api/storage/upload',       // Used by VisualizerModal (image upload, hybrid auth)
+  '/api/upload/media',         // Used by AutotuneModal (audio upload, hybrid auth)
   '/manifest.json',
   '/explore',
   '/sitemap.xml',

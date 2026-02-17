@@ -541,32 +541,40 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/98 backdrop-blur-2xl" onClick={handleClose} />
+      <div className="absolute inset-0 bg-black/95 backdrop-blur-2xl" onClick={handleClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0a0a0a] shadow-[0_0_80px_rgba(0,0,0,0.8)]">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl shadow-[0_0_120px_rgba(139,92,246,0.15),0_0_60px_rgba(6,182,212,0.1)]"
+        style={{ background: 'linear-gradient(180deg, #0c0015 0%, #050008 50%, #000a0f 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
 
-        {/* Subtle top accent line */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
+        {/* Animated top accent */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-cyan-400 to-violet-600" style={{ animation: 'shimmer 3s linear infinite', backgroundSize: '200% 100%' }} />
+        </div>
+
+        {/* Background glow effects */}
+        <div className="absolute top-0 left-1/4 w-64 h-64 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, rgba(139,92,246,1), transparent 70%)' }} />
+        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, rgba(6,182,212,1), transparent 70%)' }} />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.04]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-violet-500/10">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-                <Mic size={18} className="text-white/70" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.1))', border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 0 20px rgba(139,92,246,0.1)' }}>
+                <Mic size={18} className="text-violet-400" />
               </div>
               {isProcessing && (
-                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-violet-500 animate-pulse" />
+                <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
               )}
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white/90 tracking-wide">AUTOTUNE</h3>
-              <p className="text-[10px] text-white/25 tracking-widest uppercase">Pitch Correction Engine</p>
+              <h3 className="text-sm font-bold tracking-wider" style={{ background: 'linear-gradient(135deg, #c4b5fd, #67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AUTOTUNE</h3>
+              <p className="text-[10px] text-violet-300/30 tracking-[0.2em] uppercase font-medium">Pitch Correction Engine</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-white/[0.04] transition-colors">
-            <X size={18} className="text-white/30 hover:text-white/60 transition-colors" />
+          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-violet-500/10 transition-colors group">
+            <X size={18} className="text-violet-300/30 group-hover:text-violet-300/70 transition-colors" />
           </button>
         </div>
 
@@ -579,17 +587,24 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="group relative cursor-pointer rounded-xl border border-dashed border-white/[0.08] hover:border-violet-500/30 bg-white/[0.01] hover:bg-violet-500/[0.02] transition-all duration-300 p-10"
+              className="group relative cursor-pointer rounded-xl transition-all duration-300 p-10"
+              style={{
+                border: '1px dashed rgba(139,92,246,0.2)',
+                background: 'linear-gradient(135deg, rgba(139,92,246,0.03), rgba(6,182,212,0.02))',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(139,92,246,0.4)'; (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(6,182,212,0.04))' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(139,92,246,0.2)'; (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(139,92,246,0.03), rgba(6,182,212,0.02))' }}
             >
               <div className="flex flex-col items-center gap-3 text-center">
-                <div className="w-14 h-14 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center group-hover:border-violet-500/20 group-hover:bg-violet-500/[0.04] transition-all">
-                  <Upload size={24} className="text-white/20 group-hover:text-violet-400/60 transition-colors" />
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center transition-all"
+                  style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(6,182,212,0.05))', border: '1px solid rgba(139,92,246,0.15)', boxShadow: '0 0 24px rgba(139,92,246,0.06)' }}>
+                  <Upload size={24} className="text-violet-400/50 group-hover:text-violet-400/80 transition-colors" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white/50 group-hover:text-white/70 transition-colors">
+                  <p className="text-sm font-medium text-violet-200/50 group-hover:text-violet-200/80 transition-colors">
                     Drop audio file or click to browse
                   </p>
-                  <p className="text-[11px] text-white/20 mt-1">WAV, MP3, FLAC, OGG — up to 100MB</p>
+                  <p className="text-[11px] text-violet-300/20 mt-1">WAV, MP3, FLAC, OGG — up to 100MB</p>
                 </div>
               </div>
               <input
@@ -609,11 +624,11 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400/60" />
-                    <span className="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase">Input</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400" style={{ boxShadow: '0 0 6px rgba(139,92,246,0.5)' }} />
+                    <span className="text-[10px] font-bold text-violet-300/50 tracking-[0.2em] uppercase">Input</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-white/15 font-mono">{selectedFile.name}</span>
+                    <span className="text-[10px] text-violet-300/25 font-mono">{selectedFile.name}</span>
                     <button
                       onClick={() => {
                         setSelectedFile(null)
@@ -631,7 +646,7 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                 </div>
 
                 {/* Waveform + playback controls */}
-                <div className="relative rounded-lg bg-white/[0.015] border border-white/[0.04] p-3">
+                <div className="relative rounded-lg p-3" style={{ background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(139,92,246,0.1)' }}>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={togglePlayInput}
@@ -646,7 +661,7 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                     <div className="flex-1 relative h-12">
                       <canvas ref={inputCanvasRef} className="w-full h-full" />
                     </div>
-                    <span className="text-[10px] font-mono text-white/20 w-10 text-right flex-shrink-0">
+                    <span className="text-[10px] font-mono text-violet-300/30 w-10 text-right flex-shrink-0">
                       {inputDuration > 0 ? formatTime(inputDuration) : '--:--'}
                     </span>
                   </div>
@@ -657,8 +672,8 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
               {/* Key & Scale Selector */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                  <span className="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase">Key & Scale</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60" style={{ boxShadow: '0 0 6px rgba(6,182,212,0.4)' }} />
+                  <span className="text-[10px] font-bold text-cyan-300/40 tracking-[0.2em] uppercase">Key & Scale</span>
                 </div>
 
                 {/* Key grid */}
@@ -669,9 +684,16 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                       onClick={() => setAutotuneKey(k)}
                       className={`py-2 rounded text-[11px] font-bold transition-all duration-150 ${
                         autotuneKey === k
-                          ? 'bg-white text-black shadow-[0_0_12px_rgba(255,255,255,0.15)]'
-                          : 'bg-white/[0.03] text-white/30 hover:bg-white/[0.06] hover:text-white/50 border border-white/[0.04]'
+                          ? 'text-white'
+                          : 'text-violet-200/30 hover:text-violet-200/60 border border-violet-500/[0.08] hover:border-violet-500/20'
                       }`}
+                      style={autotuneKey === k ? {
+                        background: 'linear-gradient(135deg, rgba(139,92,246,0.5), rgba(6,182,212,0.3))',
+                        boxShadow: '0 0 14px rgba(139,92,246,0.25), inset 0 1px rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(139,92,246,0.4)',
+                      } : {
+                        background: 'rgba(139,92,246,0.04)',
+                      }}
                     >
                       {k}
                     </button>
@@ -684,9 +706,16 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                     onClick={() => setAutotuneScale('maj')}
                     className={`py-2.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-150 ${
                       autotuneScale === 'maj'
-                        ? 'bg-white text-black shadow-[0_0_16px_rgba(255,255,255,0.1)]'
-                        : 'bg-white/[0.02] text-white/25 hover:bg-white/[0.05] hover:text-white/40 border border-white/[0.04]'
+                        ? 'text-white'
+                        : 'text-violet-200/25 hover:text-violet-200/50 border border-violet-500/[0.08] hover:border-violet-500/20'
                     }`}
+                    style={autotuneScale === 'maj' ? {
+                      background: 'linear-gradient(135deg, rgba(139,92,246,0.45), rgba(6,182,212,0.25))',
+                      boxShadow: '0 0 16px rgba(139,92,246,0.2), inset 0 1px rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(139,92,246,0.35)',
+                    } : {
+                      background: 'rgba(139,92,246,0.03)',
+                    }}
                   >
                     MAJOR
                   </button>
@@ -694,9 +723,16 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                     onClick={() => setAutotuneScale('min')}
                     className={`py-2.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-150 ${
                       autotuneScale === 'min'
-                        ? 'bg-white text-black shadow-[0_0_16px_rgba(255,255,255,0.1)]'
-                        : 'bg-white/[0.02] text-white/25 hover:bg-white/[0.05] hover:text-white/40 border border-white/[0.04]'
+                        ? 'text-white'
+                        : 'text-violet-200/25 hover:text-violet-200/50 border border-violet-500/[0.08] hover:border-violet-500/20'
                     }`}
+                    style={autotuneScale === 'min' ? {
+                      background: 'linear-gradient(135deg, rgba(139,92,246,0.45), rgba(6,182,212,0.25))',
+                      boxShadow: '0 0 16px rgba(139,92,246,0.2), inset 0 1px rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(139,92,246,0.35)',
+                    } : {
+                      background: 'rgba(139,92,246,0.03)',
+                    }}
                   >
                     MINOR
                   </button>
@@ -704,8 +740,8 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
 
                 {/* Selected key indicator */}
                 <div className="flex items-center justify-center gap-2 py-1">
-                  <span className="text-[10px] text-white/15 tracking-widest uppercase">Target</span>
-                  <span className="text-sm font-bold text-white/80 tracking-wide">
+                  <span className="text-[10px] text-violet-300/20 tracking-widest uppercase">Target</span>
+                  <span className="text-sm font-bold tracking-wide" style={{ background: 'linear-gradient(90deg, #c4b5fd, #67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     {autotuneKey} {autotuneScale === 'maj' ? 'Major' : 'Minor'}
                   </span>
                 </div>
@@ -715,12 +751,12 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
               {outputUrl && (
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60" />
-                    <span className="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase">Output</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 6px rgba(6,182,212,0.5)' }} />
+                    <span className="text-[10px] font-bold text-cyan-300/50 tracking-[0.2em] uppercase">Output</span>
                     <span className="text-[10px] text-cyan-400/40 ml-auto font-mono">{autotuneKey}:{autotuneScale}</span>
                   </div>
 
-                  <div className="relative rounded-lg bg-cyan-500/[0.02] border border-cyan-500/[0.08] p-3">
+                  <div className="relative rounded-lg p-3" style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)' }}>
                     <div className="flex items-center gap-3">
                       <button
                         onClick={togglePlayOutput}
@@ -734,7 +770,7 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                       <div className="flex-1 relative h-12">
                         <canvas ref={outputCanvasRef} className="w-full h-full" />
                       </div>
-                      <span className="text-[10px] font-mono text-white/20 w-10 text-right flex-shrink-0">
+                      <span className="text-[10px] font-mono text-cyan-300/30 w-10 text-right flex-shrink-0">
                         {outputDuration > 0 ? formatTime(outputDuration) : '--:--'}
                       </span>
                     </div>
@@ -747,10 +783,10 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
               {isProcessing && (
                 <div className="flex items-center justify-center gap-3 py-4">
                   <div className="relative">
-                    <div className="w-8 h-8 rounded-full border-2 border-white/[0.06]" />
-                    <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent border-t-violet-400 animate-spin" />
+                    <div className="w-8 h-8 rounded-full" style={{ border: '2px solid rgba(139,92,246,0.1)' }} />
+                    <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent border-t-violet-400 animate-spin" style={{ filter: 'drop-shadow(0 0 4px rgba(139,92,246,0.4))' }} />
                   </div>
-                  <span className="text-xs text-white/40">{processingStatus || 'Processing...'}</span>
+                  <span className="text-xs text-violet-300/50">{processingStatus || 'Processing...'}</span>
                 </div>
               )}
             </>
@@ -758,18 +794,18 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-red-500/[0.06] border border-red-500/[0.1]">
-              <div className="w-1.5 h-1.5 rounded-full bg-red-400/60 flex-shrink-0" />
-              <p className="text-xs text-red-300/70">{error}</p>
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400" style={{ boxShadow: '0 0 6px rgba(239,68,68,0.4)' }} />
+              <p className="text-xs text-red-300/80">{error}</p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-white/[0.04] flex items-center justify-between bg-white/[0.01]">
+        <div className="px-6 py-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(139,92,246,0.08)', background: 'rgba(139,92,246,0.02)' }}>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-white/15 tracking-widest uppercase">Cost</span>
-            <span className="text-xs font-bold text-white/50">1 credit</span>
+            <span className="text-[10px] text-violet-300/20 tracking-widest uppercase">Cost</span>
+            <span className="text-xs font-bold" style={{ background: 'linear-gradient(90deg, #c4b5fd, #67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>1 credit</span>
           </div>
           <div className="flex items-center gap-2">
             {outputUrl && (
@@ -780,7 +816,8 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                   setIsPlayingOutput(false)
                   setOutputProgress(0)
                 }}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-white/30 hover:text-white/50 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] transition-all"
+                className="px-4 py-2 rounded-lg text-xs font-medium text-violet-300/40 hover:text-violet-300/70 transition-all"
+                style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.1)' }}
               >
                 <RotateCcw size={13} className="inline mr-1.5 -mt-0.5" />
                 Redo
@@ -789,7 +826,12 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
             <button
               onClick={handleProcess}
               disabled={!selectedFile || isProcessing}
-              className="px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed bg-white text-black hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.08)] hover:shadow-[0_0_28px_rgba(255,255,255,0.14)]"
+              className="px-6 py-2 rounded-lg text-xs font-bold text-white transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139,92,246,0.6), rgba(6,182,212,0.4))',
+                boxShadow: '0 0 24px rgba(139,92,246,0.2), 0 0 48px rgba(6,182,212,0.08), inset 0 1px rgba(255,255,255,0.1)',
+                border: '1px solid rgba(139,92,246,0.3)',
+              }}
             >
               {isProcessing ? (
                 <span className="flex items-center gap-2">
@@ -807,7 +849,7 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
         </div>
 
         {/* Bottom accent */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(6,182,212,0.3), rgba(139,92,246,0.2), transparent)' }} />
       </div>
     </div>
   )

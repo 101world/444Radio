@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getAuthUserId } from '@/lib/hybrid-auth'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { corsResponse, handleOptions } from '@/lib/cors'
@@ -28,7 +28,7 @@ const s3Client = new S3Client({
  */
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth()
+    const userId = await getAuthUserId(req)
     
     if (!userId) {
       return corsResponse(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
