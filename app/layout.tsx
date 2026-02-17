@@ -56,17 +56,23 @@ export default async function RootLayout({
         <head>
           {/* Suppress JS error DIALOGS in DAW WebView2 — but log to console for debugging */}
           <script dangerouslySetInnerHTML={{ __html: `
-            window.onerror=function(msg,src,line){
-              try{console.warn('[444] JS error:',msg,src,line)}catch(e){}
+            window._pluginDebug={start:Date.now(),phase:'html-loaded'};
+            window.onerror=function(msg,src,line,col,err){
+              try{console.warn('[444] JS error:',msg,src,line,col)}catch(e){}
               var fb=document.getElementById('plugin-fallback');
-              if(fb){fb.innerHTML='<div style="text-align:center;padding:40px"><p style="font-size:18px;margin-bottom:8px">⚠️ Plugin failed to load</p><p style="font-size:12px;color:#888">Try refreshing or check your internet connection</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 24px;background:#06b6d4;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer">Reload</button></div>'}
+              var detail=(msg||'Unknown error')+(src?' in '+src.split('/').pop()+':'+line:'');
+              if(fb){fb.innerHTML='<div style="text-align:center;padding:40px"><p style="font-size:18px;margin-bottom:8px">⚠️ Plugin failed to load</p><p style="font-size:12px;color:#f87171;max-width:360px;margin:0 auto 12px;word-break:break-all">'+detail+'</p><p style="font-size:11px;color:#666">Phase: '+(window._pluginDebug?window._pluginDebug.phase:'unknown')+'</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 24px;background:#06b6d4;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer">Reload</button></div>'}
               return true
             };
-            window.onunhandledrejection=function(e){e&&e.preventDefault&&e.preventDefault()};
+            window.onunhandledrejection=function(e){
+              try{console.warn('[444] Unhandled rejection:',e&&e.reason)}catch(x){}
+              e&&e.preventDefault&&e.preventDefault()
+            };
             setTimeout(function(){
               var fb=document.getElementById('plugin-fallback');
               if(fb&&fb.style.display!=='none'){
-                fb.innerHTML='<div style="text-align:center;padding:40px"><p style="font-size:14px;color:#888">Taking longer than expected...</p><button onclick="location.reload()" style="margin-top:12px;padding:8px 24px;background:#06b6d4;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer">Reload</button></div>'
+                var elapsed=Math.round((Date.now()-window._pluginDebug.start)/1000);
+                fb.innerHTML='<div style="text-align:center;padding:40px"><p style="font-size:14px;color:#888">Taking longer than expected ('+elapsed+'s)...</p><p style="font-size:11px;color:#666;margin:8px 0">Phase: '+(window._pluginDebug?window._pluginDebug.phase:'unknown')+'</p><button onclick="location.reload()" style="margin-top:12px;padding:8px 24px;background:#06b6d4;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer">Reload</button></div>'
               }
             },12000);
           `}} />

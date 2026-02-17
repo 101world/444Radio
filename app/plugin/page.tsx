@@ -107,6 +107,43 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   return new Blob([arrayBuffer], { type: 'audio/wav' })
 }
 
+// ─── React Error Boundary — catches render crashes in WebView ──
+import React from 'react'
+class PluginErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false, error: '' }
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: `${error.name}: ${error.message}` }
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    try { console.error('[plugin] React Error Boundary:', error, info.componentStack) } catch {}
+    // Also hide fallback so we can show our own error UI
+    try { const fb = document.getElementById('plugin-fallback'); if (fb) fb.style.display = 'none' } catch {}
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{minHeight:'100vh',background:'#000',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+          <div style={{textAlign:'center',maxWidth:420}}>
+            <div style={{fontSize:48,marginBottom:12}}>⚠️</div>
+            <h1 style={{fontSize:18,color:'#fff',marginBottom:8}}>Plugin failed to load</h1>
+            <p style={{fontSize:12,color:'#888',marginBottom:16}}>{this.state.error}</p>
+            <button onClick={() => location.reload()} style={{padding:'8px 24px',background:'#06b6d4',color:'#000',border:'none',borderRadius:8,fontWeight:'bold',cursor:'pointer'}}>
+              Reload Plugin
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 // ─── Quick Tags (same as create page sidebar) ──────────────────
 const QUICK_TAGS = [
   'upbeat', 'chill', 'energetic', 'melancholic', 'ambient',
@@ -151,9 +188,17 @@ const FEATURES = [
 ]
 
 // ═══════════════════════════════════════════════════════════════
-//  MAIN COMPONENT
+//  MAIN COMPONENT — wrapped in ErrorBoundary for WebView safety
 // ═══════════════════════════════════════════════════════════════
 export default function PluginPage() {
+  return (
+    <PluginErrorBoundary>
+      <PluginPageInner />
+    </PluginErrorBoundary>
+  )
+}
+
+function PluginPageInner() {
   // ── Auth ──
   const [token, setToken] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -166,15 +211,17 @@ export default function PluginPage() {
 
   // ── Plugin window pin & resize ──
   const [isPinned, setIsPinned] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem(PIN_KEY) === 'true'
+    try { if (typeof window !== 'undefined') return localStorage.getItem(PIN_KEY) === 'true' } catch {}
     return false
   })
   const [windowSizeIdx, setWindowSizeIdx] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(SIZE_KEY)
-      const idx = stored ? parseInt(stored, 10) : 0
-      return Math.min(idx, 2) // clamp to 3 presets
-    }
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(SIZE_KEY)
+        const idx = stored ? parseInt(stored, 10) : 0
+        return Math.min(idx, 2) // clamp to 3 presets
+      }
+    } catch {}
     return 0
   })
   const [bridgeToast, setBridgeToast] = useState<string | null>(null)
@@ -279,8 +326,8 @@ export default function PluginPage() {
   const [videoPrompt, setVideoPrompt] = useState('')
   const [videoHQ, setVideoHQ] = useState(false)
 
-  // Autotune settings
-  const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const
+  // Autotune settings — Replicate only accepts naturals + flats (no sharps)
+  const MUSICAL_KEYS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'] as const
   const [autotuneKey, setAutotuneKey] = useState('C')
   const [autotuneScale, setAutotuneScale] = useState<'maj' | 'min'>('maj')
 
@@ -329,8 +376,14 @@ export default function PluginPage() {
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
   const pendingCancelsRef = useRef<Set<string>>(new Set())
 
+  // ═══ DEBUG: Track loading phases for WebView diagnostics ═══
+  useEffect(() => {
+    try { (window as any)._pluginDebug = { ...(window as any)._pluginDebug, phase: 'react-mounted' } } catch {}
+  }, [])
+
   // ═══ AUTH: Extract token from URL or localStorage ═══
   useEffect(() => {
+    try { (window as any)._pluginDebug = { ...(window as any)._pluginDebug, phase: 'token-extraction' } } catch {}
     try {
       const params = new URLSearchParams(window.location.search)
       const urlToken = params.get('token')
@@ -369,9 +422,11 @@ export default function PluginPage() {
   const [authError, setAuthError] = useState<string | null>(null)
   useEffect(() => {
     if (!token) {
+      try { (window as any)._pluginDebug = { ...(window as any)._pluginDebug, phase: 'no-token-auth-screen' } } catch {}
       setIsLoadingCredits(false)
       return
     }
+    try { (window as any)._pluginDebug = { ...(window as any)._pluginDebug, phase: 'verifying-token' } } catch {}
     setAuthError(null)
     ;(async () => {
       try {
