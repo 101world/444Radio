@@ -1,8 +1,36 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Film, Loader2, Camera, CameraOff, Volume2, VolumeX, Upload, Image as ImageIcon, Wand2 } from 'lucide-react'
+import { X, Film, Loader2, Camera, CameraOff, Volume2, VolumeX, Upload, Image as ImageIcon, Wand2, Sparkles, Shuffle } from 'lucide-react'
 import { useGenerationQueue } from '../contexts/GenerationQueueContext'
+
+// ─── 20 Curated Visualizer Prompts ───
+const SUGGESTED_PROMPTS = [
+  // Photorealistic / Cinematic
+  'A lone figure walks through golden hour light on an empty desert highway, cinematic lens flare, 35mm film grain',
+  'Rain-soaked neon streets of Tokyo at midnight, reflections on wet asphalt, slow camera drift, hyper-realistic',
+  'Aerial shot of ocean waves crashing against volcanic black sand, drone footage, 4K cinematic color grading',
+  'Close-up of hands playing a grand piano in a dimly lit jazz club, shallow depth of field, warm amber lighting',
+  'A vintage muscle car drives through a tunnel of cherry blossom trees, sunlight filtering through petals, cinematic slow motion',
+  // Dreamy / Atmospheric
+  'Ethereal fog rolling through a bioluminescent forest at twilight, soft cyan and purple glow, dreamlike atmosphere',
+  'A floating island city above the clouds at sunrise, volumetric lighting, Studio Ghibli meets photorealism',
+  'Underwater ballet of jellyfish illuminated by deep sea light, slow graceful movement, dark teal ocean',
+  'Northern lights dancing over a frozen lake reflecting infinite stars, time-lapse feel, surreal colors',
+  'A field of lavender swaying in warm wind under a pastel sunset sky, gentle camera pan, nostalgic film look',
+  // Anime / Stylized
+  'An anime girl with headphones standing on a rooftop overlooking a cyberpunk cityscape, neon rain, lo-fi aesthetic',
+  'Samurai standing in a field of red spider lilies during a storm, dramatic wind, anime cinematic style',
+  'Futuristic DJ booth made of holographic light panels, anime sci-fi concert scene, electric blue energy',
+  'A cozy anime study room at night with a cat sleeping by the window, rain outside, warm lamp light, lo-fi vibes',
+  'Watercolor animation style: koi fish swimming through floating cherry blossoms in an enchanted stream',
+  // Abstract / Music Video
+  'Liquid chrome morphing into abstract geometric shapes, reflecting neon colors, smooth metallic motion',
+  'Sound waves materializing as golden particles that ripple through dark space, abstract music visualization',
+  'Ink drops exploding in slow motion underwater, spreading into organic fractal patterns, high contrast',
+  'A vinyl record spinning in macro view, needle catching grooves, dust particles floating in sunlight beam',
+  'Geometric crystal structures growing and refracting prismatic light, hypnotic rotation, dark background',
+]
 
 interface VisualizerModalProps {
   isOpen: boolean
@@ -40,6 +68,7 @@ export default function VisualizerModal({
 
   const [isGenerating, setIsGenerating] = useState(false)
   const [statusMsg, setStatusMsg] = useState('')
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -64,6 +93,37 @@ export default function VisualizerModal({
     if (imagePreview) URL.revokeObjectURL(imagePreview)
     setImagePreview(null)
   }, [imagePreview])
+
+  // ── Suggested Prompts ──
+  const shufflePrompt = useCallback(() => {
+    const random = SUGGESTED_PROMPTS[Math.floor(Math.random() * SUGGESTED_PROMPTS.length)]
+    setPrompt(random)
+  }, [])
+
+  const generateAIPrompt = useCallback(async () => {
+    setIsGeneratingPrompt(true)
+    try {
+      const res = await fetch('/api/generate/prompt-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'music visualizer video',
+          style: 'cinematic, photorealistic, or anime — create a vivid visual scene description for a music video. Include camera movement, lighting, atmosphere, and mood. Keep under 200 characters.',
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.prompt || data.idea) {
+          setPrompt(data.prompt || data.idea)
+        }
+      }
+    } catch {
+      // Fallback to a random suggested prompt
+      shufflePrompt()
+    } finally {
+      setIsGeneratingPrompt(false)
+    }
+  }, [shufflePrompt])
 
   // ── Generate ──
   const creditCost = calcCredits(duration)
@@ -244,6 +304,25 @@ export default function VisualizerModal({
               <span className={`text-[10px] ${prompt.length > 900 ? 'text-red-400' : prompt.length > 700 ? 'text-yellow-400' : 'text-gray-600'}`}>
                 {prompt.length}/1000
               </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={shufflePrompt}
+                  disabled={isGenerating}
+                  className="flex items-center gap-1 px-2 py-1 bg-white/5 hover:bg-purple-500/15 border border-white/10 hover:border-purple-500/30 rounded-lg text-[10px] text-gray-400 hover:text-purple-300 transition-all disabled:opacity-30"
+                  title="Random suggested prompt"
+                >
+                  <Shuffle size={10} /> Surprise Me
+                </button>
+                <button
+                  onClick={generateAIPrompt}
+                  disabled={isGenerating || isGeneratingPrompt}
+                  className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 rounded-lg text-[10px] text-purple-300 transition-all disabled:opacity-30"
+                  title="AI-generate a creative prompt"
+                >
+                  {isGeneratingPrompt ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                  AI Prompt
+                </button>
+              </div>
             </div>
           </div>
 

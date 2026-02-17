@@ -51,8 +51,45 @@ export async function trackQuestProgress(
       `${supabaseUrl}/rest/v1/user_quests?user_id=eq.${userId}&status=eq.active&select=id,quest_id,progress,target`,
       { headers: headers() }
     )
-    const userQuests: Array<{ id: string; quest_id: string; progress: number; target: number }> = await uqRes.json()
-    if (!userQuests?.length) return
+    let userQuests: Array<{ id: string; quest_id: string; progress: number; target: number }> = await uqRes.json()
+
+    // 2b. If the user has no active user_quests, auto-start all matching quests
+    //     This fixes the bug where users buy a pass but never manually "start" quests
+    if (!userQuests?.length || !Array.isArray(userQuests)) {
+      userQuests = []
+      // Fetch all active quests whose action matches
+      const allQRes = await fetch(
+        `${supabaseUrl}/rest/v1/quests?is_active=eq.true&select=id,requirement`,
+        { headers: headers() }
+      )
+      const allQuests: Array<{ id: string; requirement: { action: string; target: number } }> = await allQRes.json()
+      const matchingQuests = (allQuests || []).filter(q => q.requirement?.action === action)
+
+      for (const quest of matchingQuests) {
+        const target = quest.requirement?.target || 1
+        const startRes = await fetch(
+          `${supabaseUrl}/rest/v1/user_quests?on_conflict=user_id,quest_id`,
+          {
+            method: 'POST',
+            headers: { ...headers(), Prefer: 'return=representation,resolution=merge-duplicates' },
+            body: JSON.stringify({
+              user_id: userId,
+              quest_id: quest.id,
+              progress: 0,
+              target,
+              status: 'active',
+              started_at: new Date().toISOString(),
+            }),
+          }
+        )
+        if (startRes.ok) {
+          const started = await startRes.json()
+          if (started?.[0]) userQuests.push(started[0])
+          console.log(`🚀 Auto-started quest ${quest.id} for user ${userId} (action: ${action})`)
+        }
+      }
+      if (!userQuests.length) return
+    }
 
     // 3. For each user quest, fetch the quest to see if the action matches
     //    (batch-fetch all quest ids)

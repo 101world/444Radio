@@ -19,6 +19,7 @@ const LyricsModal = lazy(() => import('../components/LyricsModal'))
 // ─── Types ───
 interface CombinedMedia {
   id: string; title: string; audio_url: string; audioUrl?: string; image_url: string; imageUrl?: string
+  video_url?: string
   audio_prompt: string; image_prompt: string; user_id: string; username?: string; likes: number; plays: number
   created_at: string; users: { username: string }; genre?: string; mood?: string; bpm?: number; vocals?: string
   language?: string; tags?: string[]; description?: string; key_signature?: string; instruments?: string[]
@@ -86,7 +87,17 @@ function GridTrackCard({ media, isCurrentlyPlaying, isPlaying, onPlay, onLyrics,
       <div className={`relative w-[140px] h-[140px] rounded-xl overflow-hidden transition-all duration-200 ${
         isCurrentlyPlaying ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/20' : 'ring-1 ring-white/[0.06] hover:ring-white/15 hover:shadow-lg hover:shadow-black/30'
       }`}>
-        {media.image_url || media.imageUrl ? (
+        {/* Looping video canvas (Spotify Canvas–style) */}
+        {media.video_url && isCurrentlyPlaying ? (
+          <video
+            src={media.video_url}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : media.image_url || media.imageUrl ? (
           <Image src={media.image_url || media.imageUrl || ''} alt={media.title} width={140} height={140}
             className="w-full h-full object-cover" loading="lazy" quality={70} unoptimized />
         ) : (

@@ -633,6 +633,16 @@ export default function PluginPage() {
     sendBridgeMessage({ action: 'import_audio', url, title: safeName, format })
   }
 
+  const sendImageToDAW = (url: string, title: string) => {
+    const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'image'
+    sendBridgeMessage({ action: 'import_image', url, title: safeName, format: 'png' })
+  }
+
+  const sendVideoToDAW = (url: string, title: string) => {
+    const safeName = title.replace(/[^a-zA-Z0-9 _-]/g, '').replace(/\s+/g, '_') || 'video'
+    sendBridgeMessage({ action: 'import_video', url, title: safeName, format: 'mp4' })
+  }
+
   // ═══ PROXY FETCH — always go through same-domain proxy for CORS safety ═══
   const proxyFetch = async (url: string): Promise<Response> => {
     try {
@@ -2552,6 +2562,12 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Download size={12} /> Save
                       </a>
+                      {isInDAW && (
+                        <button onClick={() => sendImageToDAW(msg.result!.imageUrl!, msg.result!.title || 'cover-art')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-xs text-cyan-300 hover:text-cyan-200 transition-all">
+                          <Download size={12} /> Import to Premiere
+                        </button>
+                      )}
                       <button onClick={() => window.open('https://444radio.co.in/library?host=juce', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library
@@ -2576,6 +2592,12 @@ export default function PluginPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300 hover:text-purple-200 transition-all">
                         <Download size={12} /> Download
                       </button>
+                      {isInDAW && (
+                        <button onClick={() => sendVideoToDAW(msg.result!.url!, msg.result!.title || 'video')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 rounded-lg text-xs text-orange-300 hover:text-orange-200 transition-all">
+                          <Download size={12} /> Import to Premiere
+                        </button>
+                      )}
                       <button onClick={() => window.open('https://444radio.co.in/library?tab=videos&host=juce', '_blank')}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs text-gray-300 hover:text-white transition-all">
                         <Layers size={12} /> Library

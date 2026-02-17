@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     const {
       audioUrl,
       imageUrl,
+      videoUrl,
       title,
       audioPrompt,
       imagePrompt,
@@ -29,11 +30,11 @@ export async function POST(req: NextRequest) {
     } = await req.json()
 
     console.log('🔍 [COMBINE DEBUG] Title received:', title)
-    console.log('🔍 [COMBINE DEBUG] Full request body:', JSON.stringify({ audioUrl, imageUrl, title, audioPrompt, imagePrompt, isPublic, metadata }, null, 2))
+    console.log('🔍 [COMBINE DEBUG] Full request body:', JSON.stringify({ audioUrl, imageUrl, videoUrl, title, audioPrompt, imagePrompt, isPublic, metadata }, null, 2))
 
-    if (!audioUrl || !imageUrl) {
+    if (!audioUrl || (!imageUrl && !videoUrl)) {
       return NextResponse.json(
-        { error: 'Audio URL and Image URL are required' },
+        { error: 'Audio URL and either Image URL or Video URL are required' },
         { status: 400 }
       )
     }
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     const insertData: Record<string, unknown> = {
       user_id: userId,
       audio_url: audioUrl,
-      image_url: imageUrl,
+      image_url: imageUrl || null,
       title: title || 'Untitled Track',
       genre,
       mood,
@@ -63,6 +64,11 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
       likes: 0,
       plays: 0,
+    }
+
+    // Attach video URL for Spotify Canvas–style looping on Explore
+    if (videoUrl) {
+      insertData.video_url = videoUrl
     }
 
     // ─── Block purchased tracks from re-release ───

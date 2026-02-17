@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { X, Music, Image as ImageIcon, Rocket, ChevronRight, ChevronLeft, Check, Plus, Trash2, Info, Shield, Tag, Mic2, Users, Lock, Zap, AlertTriangle, Fingerprint } from 'lucide-react'
+import { X, Music, Image as ImageIcon, Rocket, ChevronRight, ChevronLeft, Check, Plus, Trash2, Info, Shield, Tag, Mic2, Users, Lock, Zap, AlertTriangle, Fingerprint, Film } from 'lucide-react'
 import { calculateMetadataStrength, type Atmosphere, type EraVibe, type TempoFeel, type LicenseType444, type CreationType } from '@/lib/track-id-444'
 
 interface LibraryMusic {
@@ -19,6 +19,16 @@ interface LibraryImage {
   title: string | null
   prompt: string
   image_url: string
+  created_at: string
+}
+
+interface LibraryVideo {
+  id: string
+  title: string | null
+  prompt: string
+  video_url: string
+  audio_url?: string
+  thumbnail_url?: string
   created_at: string
 }
 
@@ -99,9 +109,11 @@ export default function TwoStepReleaseModal({
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [selectedMusic, setSelectedMusic] = useState<string | null>(preselectedMusic || null)
   const [selectedImage, setSelectedImage] = useState<string | null>(preselectedImage || null)
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [musicItems, setMusicItems] = useState<LibraryMusic[]>([])
   const [imageItems, setImageItems] = useState<LibraryImage[]>([])
+  const [videoItems, setVideoItems] = useState<LibraryVideo[]>([])
   const [isPublishing, setIsPublishing] = useState(false)
   const [showMintConfirm, setShowMintConfirm] = useState(false)
   const [fingerprintStatus, setFingerprintStatus] = useState<'idle' | 'checking' | 'clear' | 'flagged'>('idle')
@@ -160,7 +172,7 @@ export default function TwoStepReleaseModal({
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
       bpm: bpm ? parseInt(bpm) : undefined,
       keySignature: keySignature || undefined,
-      imageUrl: selectedImage ? 'has-image' : undefined,
+      imageUrl: (selectedImage || selectedVideo) ? 'has-image' : undefined,
       instruments: instruments.length > 0 ? instruments : undefined,
       keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(Boolean) : undefined,
       lyrics: lyrics || musicItem?.lyrics || undefined,
@@ -202,6 +214,7 @@ export default function TwoStepReleaseModal({
       setStep(1)
       setSelectedMusic(preselectedMusic || null)
       setSelectedImage(preselectedImage || null)
+      setSelectedVideo(null)
       setPurchaseBlockError(null)
       setShowMintConfirm(false)
       setFingerprintStatus('idle')
@@ -211,12 +224,14 @@ export default function TwoStepReleaseModal({
   const fetchLibraryItems = async () => {
     setIsLoading(true)
     try {
-      const [musicRes, imagesRes] = await Promise.all([
+      const [musicRes, imagesRes, videosRes] = await Promise.all([
         fetch('/api/library/music'),
-        fetch('/api/library/images')
+        fetch('/api/library/images'),
+        fetch('/api/library/videos'),
       ])
       const musicData = await musicRes.json()
       const imagesData = await imagesRes.json()
+      const videosData = await videosRes.json()
 
       if (musicData.success && Array.isArray(musicData.music)) {
         const markedMusic = musicData.music.map((m: LibraryMusic) => ({
@@ -227,6 +242,9 @@ export default function TwoStepReleaseModal({
       }
       if (imagesData.success && Array.isArray(imagesData.images)) {
         setImageItems(imagesData.images)
+      }
+      if (videosData.success && Array.isArray(videosData.videos)) {
+        setVideoItems(videosData.videos)
       }
     } catch (error) {
       console.error('Error fetching library:', error)
@@ -246,8 +264,8 @@ export default function TwoStepReleaseModal({
   }
 
   const handleNextToStep2 = () => {
-    if (!selectedMusic || !selectedImage) {
-      alert('Please select both music and cover art to continue')
+    if (!selectedMusic || (!selectedImage && !selectedVideo)) {
+      alert('Please select music and either cover art or a visualizer to continue')
       return
     }
     const music = musicItems.find(m => m.id === selectedMusic)
@@ -340,7 +358,8 @@ export default function TwoStepReleaseModal({
     try {
       const music = musicItems.find(m => m.id === selectedMusic)
       const image = imageItems.find(i => i.id === selectedImage)
-      if (!music || !image) throw new Error('Selected media not found')
+      const video = videoItems.find(v => v.id === selectedVideo)
+      if (!music || (!image && !video)) throw new Error('Selected media not found')
       if (music.is_purchased) throw new Error('Purchased tracks cannot be released.')
 
       const metadata: Record<string, unknown> = {
@@ -388,10 +407,11 @@ export default function TwoStepReleaseModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           audioUrl: music.audio_url,
-          imageUrl: image.image_url,
+          imageUrl: image?.image_url || null,
+          videoUrl: video?.video_url || null,
           title: title.trim(),
           audioPrompt: music.prompt,
-          imagePrompt: image.prompt,
+          imagePrompt: image?.prompt || video?.prompt || '',
           isPublic,
           metadata
         })
@@ -414,6 +434,7 @@ export default function TwoStepReleaseModal({
 
   const selectedMusicItem = musicItems.find(m => m.id === selectedMusic)
   const selectedImageItem = imageItems.find(i => i.id === selectedImage)
+  const selectedVideoItem = videoItems.find(v => v.id === selectedVideo)
   const releasableMusic = musicItems.filter(m => !m.is_purchased)
   const purchasedMusic = musicItems.filter(m => m.is_purchased)
 
@@ -479,7 +500,7 @@ export default function TwoStepReleaseModal({
                 </div>
               )}
 
-              {(selectedMusic || selectedImage) && !purchaseBlockError && (
+              {(selectedMusic || selectedImage || selectedVideo) && !purchaseBlockError && (
                 <div className="flex gap-3 p-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
                   {selectedMusicItem && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
@@ -492,6 +513,13 @@ export default function TwoStepReleaseModal({
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
                       <ImageIcon size={14} className="text-cyan-400" />
                       <span className="text-sm text-white">{selectedImageItem.title || 'Cover'}</span>
+                      <Check size={14} className="text-green-400" />
+                    </div>
+                  )}
+                  {selectedVideoItem && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
+                      <Film size={14} className="text-purple-400" />
+                      <span className="text-sm text-white">{selectedVideoItem.title || 'Visualizer'}</span>
                       <Check size={14} className="text-green-400" />
                     </div>
                   )}
@@ -564,6 +592,50 @@ export default function TwoStepReleaseModal({
                   )}
                 </div>
               </div>
+
+              {/* Visualizer (Video) — Optional, loops like Spotify Canvas */}
+              {videoItems.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                      <Film size={12} className="text-purple-400" />
+                      Attach Visualizer
+                      <span className="text-[10px] font-normal text-gray-600">(loops like Spotify Canvas)</span>
+                    </h3>
+                    {selectedVideo && (
+                      <button onClick={() => setSelectedVideo(null)} className="text-[10px] text-red-400 hover:text-red-300 transition-colors">
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
+                    {videoItems.map(video => (
+                      <button
+                        key={video.id}
+                        onClick={() => {
+                          setSelectedVideo(selectedVideo === video.id ? null : video.id)
+                        }}
+                        className={`aspect-video rounded-xl overflow-hidden transition-all relative ${
+                          selectedVideo === video.id ? 'ring-3 ring-purple-500 shadow-lg shadow-purple-500/20' : 'ring-1 ring-white/10 hover:ring-purple-500/40'
+                        }`}
+                      >
+                        <video src={video.video_url} muted className="w-full h-full object-cover" preload="metadata" />
+                        {selectedVideo === video.id && (
+                          <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                            <Check size={24} className="text-white" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/70 rounded text-[9px] text-purple-300 font-medium">
+                          {video.title || 'Visualizer'}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-purple-300/50 mt-1.5">
+                    Video will loop on the Explore feed while your track plays. Cover art is still required as fallback.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -572,9 +644,11 @@ export default function TwoStepReleaseModal({
             <div className="p-6 space-y-4">
               {/* Preview */}
               <div className="flex gap-4 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl">
-                {selectedImageItem && (
+                {selectedVideoItem ? (
+                  <video src={selectedVideoItem.video_url} muted autoPlay loop playsInline className="w-20 h-20 rounded-lg object-cover" />
+                ) : selectedImageItem ? (
                   <img src={selectedImageItem.image_url} alt="Cover" className="w-20 h-20 rounded-lg object-cover" />
-                )}
+                ) : null}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <Music size={14} className="text-cyan-400" />
@@ -1084,7 +1158,7 @@ export default function TwoStepReleaseModal({
           {step === 1 ? (
             <>
               <button onClick={onClose} className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-white text-sm font-medium">Cancel</button>
-              <button onClick={handleNextToStep2} disabled={!selectedMusic || !selectedImage}
+              <button onClick={handleNextToStep2} disabled={!selectedMusic || (!selectedImage && !selectedVideo)}
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-cyan-500/20">
                 Next: Sound DNA <ChevronRight size={16} />
               </button>
