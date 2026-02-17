@@ -282,7 +282,37 @@ export async function POST(req: NextRequest) {
 
           // ────── Save to combined_media ──────
           const title = `Visualizer: ${prompt.substring(0, 60).trim()}`
-          const insertRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+          const metadataJson = {
+            source: '444-engine',
+            duration: durationSec,
+            resolution: finalResolution,
+            aspect_ratio: finalAspectRatio,
+            camera_fixed: cameraFixed,
+            generate_audio: generateAudio,
+            mode: imageUrl ? 'image-to-video' : 'text-to-video',
+            credit_cost: creditCost,
+            cost_per_second: getCostDetails(finalResolution, generateAudio).costPerSec,
+            charge_per_second: getCostDetails(finalResolution, generateAudio).chargePerSec,
+          }
+
+          // Try full insert first (with video_url column), fall back without it
+          let savedMedia = null
+          const baseFields = {
+            user_id: userId,
+            type: 'video',
+            title,
+            audio_url: permanentVideoUrl,  // NOT NULL constraint — use video URL
+            image_url: permanentVideoUrl,  // NOT NULL constraint — use video URL as placeholder
+            media_url: permanentVideoUrl,
+            cover_url: null,
+            prompt,
+            genre: 'visualizer',
+            is_public: false,
+            metadata: metadataJson,
+          }
+
+          // Attempt 1: with video_url column (exists after migration 131)
+          let insertRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
             method: 'POST',
             headers: {
               'apikey': supabaseKey,
@@ -290,39 +320,31 @@ export async function POST(req: NextRequest) {
               'Content-Type': 'application/json',
               'Prefer': 'return=representation',
             },
-            body: JSON.stringify({
-              user_id: userId,
-              type: 'video',
-              title,
-              media_url: permanentVideoUrl,
-              video_url: permanentVideoUrl,
-              cover_url: null,
-              prompt,
-              genre: 'visualizer',
-              is_public: false,
-              is_ai_generated: true,
-              metadata: {
-                source: '444-engine',
-                duration: durationSec,
-                resolution: finalResolution,
-                aspect_ratio: finalAspectRatio,
-                camera_fixed: cameraFixed,
-                generate_audio: generateAudio,
-                mode: imageUrl ? 'image-to-video' : 'text-to-video',
-                credit_cost: creditCost,
-                cost_per_second: getCostDetails(finalResolution, generateAudio).costPerSec,
-                charge_per_second: getCostDetails(finalResolution, generateAudio).chargePerSec,
-              },
-            }),
+            body: JSON.stringify({ ...baseFields, video_url: permanentVideoUrl }),
           })
 
-          let savedMedia = null
+          // Attempt 2: without video_url if column doesn't exist yet
+          if (!insertRes.ok) {
+            console.log('⚠️ Insert with video_url failed, retrying without it...')
+            insertRes = await fetch(`${supabaseUrl}/rest/v1/combined_media`, {
+              method: 'POST',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation',
+              },
+              body: JSON.stringify(baseFields),
+            })
+          }
+
           if (insertRes.ok) {
             const inserted = await insertRes.json()
             savedMedia = Array.isArray(inserted) ? inserted[0] : inserted
             console.log('✅ Saved to combined_media:', savedMedia?.id)
           } else {
-            console.error('⚠️ Failed to save to combined_media:', insertRes.status, await insertRes.text())
+            const errText = await insertRes.text()
+            console.error('⚠️ Failed to save to combined_media:', insertRes.status, errText)
           }
 
           send({

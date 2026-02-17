@@ -13,6 +13,17 @@ WHERE type = 'video'
   AND video_url IS NULL
   AND media_url IS NOT NULL;
 
+-- Also backfill audio_url for video rows that are missing it (NOT NULL constraint workaround)
+UPDATE combined_media
+SET audio_url = COALESCE(audio_url, media_url, '')
+WHERE type = 'video'
+  AND (audio_url IS NULL OR audio_url = '');
+
+UPDATE combined_media
+SET image_url = COALESCE(image_url, media_url, '')
+WHERE type = 'video'
+  AND (image_url IS NULL OR image_url = '');
+
 -- Index for video lookups
 CREATE INDEX IF NOT EXISTS idx_combined_media_video_url
 ON combined_media(video_url)
