@@ -45,6 +45,9 @@ const txTypeLabel = (type: string) => {
     generation_cover_art: 'Cover Art',
     generation_stem_split: 'Stem Split',
     generation_audio_boost: 'Audio Boost',
+    generation_autotune: 'Autotune',
+    generation_video: '444 Visualizer',
+    generation_extract: 'Audio Extract',
     earn_list: 'Earn Listing',
     earn_purchase: 'Earn Purchase',
     earn_sale: 'Earn Sale',
@@ -53,6 +56,11 @@ const txTypeLabel = (type: string) => {
     credit_award: 'Credit Award',
     credit_refund: 'Refund',
     subscription_bonus: 'Subscription Bonus',
+    quest_reward: 'Quest Reward',
+    quest_entry: 'Quest Pass',
+    wallet_deposit: 'Wallet Deposit',
+    wallet_conversion: 'Wallet Conversion',
+    code_claim: 'Code Claim',
     other: 'Other',
   }
   return map[type] || type
@@ -64,12 +72,17 @@ const txTypeIcon = (type: string) => {
   if (type === 'generation_video_to_audio') return <Video className="w-3.5 h-3.5" />
   if (type === 'generation_effects') return <Sparkles className="w-3.5 h-3.5" />
   if (type === 'generation_stem_split') return <Scissors className="w-3.5 h-3.5" />
-  if (type === 'generation_audio_boost') return <Volume2 className="w-3.5 h-3.5" />
+  if (type === 'generation_audio_boost' || type === 'generation_autotune') return <Volume2 className="w-3.5 h-3.5" />
+  if (type === 'generation_video') return <Video className="w-3.5 h-3.5" />
+  if (type === 'generation_extract') return <Scissors className="w-3.5 h-3.5" />
   if (type === 'earn_purchase') return <ShoppingCart className="w-3.5 h-3.5" />
   if (type === 'earn_sale' || type === 'earn_list') return <Tag className="w-3.5 h-3.5" />
   if (type === 'release') return <Send className="w-3.5 h-3.5" />
-  if (type === 'credit_award' || type === 'subscription_bonus') return <Gift className="w-3.5 h-3.5" />
+  if (type === 'credit_award' || type === 'subscription_bonus' || type === 'quest_reward') return <Gift className="w-3.5 h-3.5" />
+  if (type === 'quest_entry') return <Zap className="w-3.5 h-3.5" />
   if (type === 'credit_refund') return <RefreshCw className="w-3.5 h-3.5" />
+  if (type === 'wallet_deposit' || type === 'wallet_conversion') return <Wallet className="w-3.5 h-3.5" />
+  if (type === 'code_claim') return <Gift className="w-3.5 h-3.5" />
   return <Zap className="w-3.5 h-3.5" />
 }
 
@@ -79,6 +92,7 @@ const quickFilters = [
   { value: 'earn_sale', label: 'Sales' },
   { value: 'earn_purchase', label: 'Purchases' },
   { value: 'release', label: 'Releases' },
+  { value: 'awards', label: 'Awards' },
 ]
 
 function timeAgo(dateStr: string) {

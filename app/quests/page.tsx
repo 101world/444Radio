@@ -239,6 +239,7 @@ export default function QuestsPage() {
   const [claiming, setClaiming] = useState<string | null>(null)
   const [purchasing, setPurchasing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [claimToast, setClaimToast] = useState<{ credits: number; title: string } | null>(null)
 
   // ── Fetch quests + stats ─────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -321,6 +322,10 @@ export default function QuestsPage() {
       })
       const data = await res.json()
       if (data.success) {
+        // Show celebration toast
+        const quest = quests.find(q => q.id === questId)
+        setClaimToast({ credits: data.creditsAwarded || 0, title: quest?.title || 'Quest' })
+        setTimeout(() => setClaimToast(null), 5000)
         refreshCredits()
         fetchData()
       } else {
@@ -561,6 +566,23 @@ export default function QuestsPage() {
 
       {/* Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 md:pl-24">
+
+        {/* Quest Reward Celebration Toast */}
+        {claimToast && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] animate-[slideDown_0.4s_cubic-bezier(0.22,1,0.36,1)]">
+            <div className="flex items-center gap-3 pl-4 pr-5 py-3.5 rounded-2xl border border-blue-500/40 shadow-2xl shadow-blue-500/20"
+              style={{ background: 'linear-gradient(135deg, rgba(30,58,138,0.95), rgba(15,23,42,0.97))' }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 0 20px rgba(59,130,246,0.4)' }}>
+                <Gift size={20} className="text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Quest Reward Claimed!</p>
+                <p className="text-xs text-blue-300/80">{claimToast.title} — <span className="text-blue-400 font-bold">+{claimToast.credits} credits</span></p>
+              </div>
+              <button onClick={() => setClaimToast(null)} className="ml-2 text-blue-400/40 hover:text-white transition-colors">✕</button>
+            </div>
+          </div>
+        )}
         
         {/* Back + Header */}
         <div className="mb-8">

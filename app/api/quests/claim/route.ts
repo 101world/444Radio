@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { corsResponse, handleOptions } from '@/lib/cors'
+import { logCreditTransaction } from '@/lib/credit-transactions'
 
 export async function OPTIONS() { return handleOptions() }
 
@@ -99,25 +100,15 @@ export async function POST(req: NextRequest) {
       }
     )
 
-    // 5. Log in credit_transactions
-    await fetch(
-      `${supabaseUrl}/rest/v1/credit_transactions`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          type: 'quest_reward',
-          credits_amount: reward,
-          description: `Quest Reward: ${quest.title}`,
-          metadata: { quest_id: questId, quest_title: quest.title, quest_type: quest.quest_type },
-        }),
-      }
-    )
+    // 5. Log in credit_transactions via helper (retries + enrichment)
+    await logCreditTransaction({
+      userId,
+      amount: reward,
+      balanceAfter: currentCredits + reward,
+      type: 'quest_reward',
+      description: `Quest Reward: ${quest.title} (+${reward} credits)`,
+      metadata: { quest_id: questId, quest_title: quest.title, quest_type: quest.quest_type },
+    })
 
     // 6. Update user_quest status to 'claimed'
     await fetch(
