@@ -41,7 +41,13 @@ interface VisualizerModalProps {
   initialPrompt?: string
 }
 
-/** Calculate credits: ceil(duration * 0.75) */
+/**
+ * Credit cost for video generation.
+ * Cost: $0.06/sec (Replicate)  |  Charge: $0.075/sec  |  1 credit = $0.10
+ * Formula: ceil(duration × 0.75)
+ * Examples: 2s→2cr, 5s→4cr, 8s→6cr, 12s→9cr ($0.90)
+ * Same price with or without audio.
+ */
 function calcCredits(duration: number): number {
   return Math.ceil(duration * 0.75)
 }
@@ -274,7 +280,7 @@ export default function VisualizerModal({
               <div>
                 <h2 className="text-lg font-bold text-white">Visualizer</h2>
                 <p className="text-xs text-gray-500">
-                  {imageFile ? 'Image → Video' : 'Text → Video'} &middot; Seedance 1.5 Pro
+                  {imageFile ? 'Image → Video' : 'Text → Video'} &middot; 444 Engine
                 </p>
               </div>
             </div>
@@ -474,7 +480,7 @@ export default function VisualizerModal({
               }`}>
                 {creditCost} {creditCost === 1 ? 'credit' : 'credits'}
               </div>
-              <span className="text-[10px] text-gray-600">{duration}s &middot; {resolution}</span>
+              <span className="text-[10px] text-gray-600">{duration}s &middot; {resolution} &middot; ${(creditCost * 0.10).toFixed(2)}</span>
             </div>
 
             {/* Generate button */}

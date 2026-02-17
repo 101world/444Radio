@@ -3746,7 +3746,7 @@ function CreatePageContent() {
             const generatingMessage: Message = {
               id: genMsgId,
               type: 'generation',
-              content: '🎬 Generating video with Seedance 1.5 Pro...',
+              content: '🎬 Generating video with 444 Engine...',
               generationType: 'video',
               generationId: generationId,
               isGenerating: true,

@@ -16,9 +16,20 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 /**
- * Calculate credit cost based on video duration in seconds.
- * Pricing: ~$0.075/second selling price → Math.ceil(duration * 0.75) credits
- * 1s=1, 3s=3, 6s=5, 9s=7, 12s=9
+ * Credit cost for 444 video generation.
+ *
+ * Cost (Replicate):  $0.06/sec (1080p, with or without audio)
+ * Charge to user:    $0.075/sec  →  1 credit = $0.10
+ * Formula:           ceil(duration × 0.75)
+ *
+ *   Duration │ Credits │ Charge
+ *   ─────────┼─────────┼────────
+ *     2s     │    2    │  $0.20
+ *     5s     │    4    │  $0.40
+ *     8s     │    6    │  $0.60
+ *    12s     │    9    │  $0.90
+ *
+ * Same price regardless of audio / resolution / aspect ratio.
  */
 function calculateCredits(durationSeconds: number): number {
   return Math.ceil(durationSeconds * 0.75)
@@ -26,7 +37,8 @@ function calculateCredits(durationSeconds: number): number {
 
 /**
  * POST /api/generate/visualizer
- * Text-to-video and image-to-video generation using Seedance 1.5 Pro.
+ * 444 Engine — text-to-video and image-to-video generation.
+ * 1080p, 24fps, 1-12s duration, optional audio, camera control.
  * Streams NDJSON progress updates to the client.
  */
 export async function POST(req: NextRequest) {
@@ -126,8 +138,8 @@ export async function POST(req: NextRequest) {
       console.error('❌ Credit deduction blocked:', errorMsg)
       await logCreditTransaction({
         userId, amount: -creditCost, type: 'generation_video', status: 'failed',
-        description: `Visualizer (${durationSec}s): ${prompt.substring(0, 80)}`,
-        metadata: { prompt, duration: durationSec },
+        description: `444 Visualizer FAILED (${durationSec}s ${finalResolution}) — insufficient credits`,
+        metadata: { prompt: prompt.substring(0, 200), duration: durationSec },
       })
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 })
     }
@@ -137,8 +149,19 @@ export async function POST(req: NextRequest) {
     await logCreditTransaction({
       userId, amount: -creditCost, balanceAfter: deductResult.new_credits,
       type: 'generation_video',
-      description: `Visualizer (${durationSec}s): ${prompt.substring(0, 80)}`,
-      metadata: { prompt, duration: durationSec, resolution: finalResolution, aspectRatio: finalAspectRatio, mode: imageUrl ? 'image-to-video' : 'text-to-video' },
+      description: `444 Visualizer (${durationSec}s ${finalResolution}${generateAudio ? ' +audio' : ''}) — ${creditCost} credits`,
+      metadata: {
+        prompt: prompt.substring(0, 200),
+        duration: durationSec,
+        resolution: finalResolution,
+        aspectRatio: finalAspectRatio,
+        cameraFixed,
+        generateAudio,
+        mode: imageUrl ? 'image-to-video' : 'text-to-video',
+        costPerSecond: 0.06,
+        chargePerSecond: 0.075,
+        totalCharge: (creditCost * 0.10).toFixed(2),
+      },
     })
 
     // ────── Stream NDJSON progress ──────
@@ -255,7 +278,7 @@ export async function POST(req: NextRequest) {
               is_public: false,
               is_ai_generated: true,
               metadata: {
-                source: 'seedance-1.5-pro',
+                source: '444-engine',
                 duration: durationSec,
                 resolution: finalResolution,
                 aspect_ratio: finalAspectRatio,
