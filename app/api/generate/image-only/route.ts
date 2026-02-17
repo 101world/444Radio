@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 5 minutes for image generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -125,12 +126,14 @@ export async function POST(req: NextRequest) {
         // Either not a 502 or we're out of retries
         console.error(`❌ Image generation failed after ${attempt} attempts:`, genError)
         
-        // NO credits deducted since generation failed
+        // Refund credit since generation failed
+        await refundCredits({ userId, amount: 1, type: 'generation_image', reason: `Image generation failed after ${attempt} attempts`, metadata: { prompt, retriesAttempted: attempt, error: errorMessage.substring(0, 200) } })
+        
         return NextResponse.json(
           { 
             success: false, 
             error: SAFE_ERROR_MESSAGE,
-            creditsRefunded: false,
+            creditsRefunded: true,
             creditsRemaining: user.credits,
             retriesAttempted: attempt
           },
@@ -140,11 +143,12 @@ export async function POST(req: NextRequest) {
     }
     
     if (!output) {
+      await refundCredits({ userId, amount: 1, type: 'generation_image', reason: 'No output after all retries', metadata: { prompt, retriesAttempted: maxRetries } })
       return NextResponse.json(
         { 
           success: false, 
           error: SAFE_ERROR_MESSAGE,
-          creditsRefunded: false,
+          creditsRefunded: true,
           creditsRemaining: user.credits,
           retriesAttempted: maxRetries
         },
@@ -242,17 +246,16 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('Standalone image generation error:', error)
-    console.log('💰 No credits deducted due to error')
     try {
       const { userId: uid } = await auth()
       if (uid) {
-        await logCreditTransaction({ userId: uid, amount: 0, type: 'generation_image', status: 'failed', description: `Image failed: ${String(error).substring(0, 80)}`, metadata: { error: String(error).substring(0, 200) } })
+        await refundCredits({ userId: uid, amount: 1, type: 'generation_image', reason: `Image failed: ${String(error).substring(0, 80)}`, metadata: { error: String(error).substring(0, 200) } })
       }
     } catch { /* auth failed in catch — skip logging */ }
     return NextResponse.json({ 
       success: false,
       error: SAFE_ERROR_MESSAGE,
-      creditsRefunded: false
+      creditsRefunded: true
     }, { status: 500 })
   }
 }

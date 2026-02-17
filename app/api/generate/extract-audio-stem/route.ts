@@ -5,6 +5,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { createClient } from '@supabase/supabase-js'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 5 minutes for stem extraction (large files can take time)
 export const maxDuration = 300
@@ -147,7 +148,7 @@ export async function POST(request: Request) {
           if (requestSignal.aborted) {
             console.log('[Extract] Client disconnected, cancelling:', prediction.id)
             try { await replicate.predictions.cancel(prediction.id) } catch {}
-            await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Extract ${stem} cancelled`, metadata: { reason: 'client_disconnected' } })
+            await refundCredits({ userId, amount: EXTRACT_COST, type: 'generation_extract', reason: `Extract ${stem} cancelled (client disconnected)`, metadata: { reason: 'client_disconnected' } })
             await sendLine({ type: 'result', success: false, error: 'Extraction cancelled' }).catch(() => {})
             await writer.close().catch(() => {})
             return
@@ -163,7 +164,7 @@ export async function POST(request: Request) {
         if (finalPrediction.status !== 'succeeded' && finalPrediction.status !== 'failed' && finalPrediction.status !== 'canceled') {
           console.log(`[Extract] ⏰ Timeout after ${attempts * 5}s, cancelling:`, prediction.id)
           try { await replicate.predictions.cancel(prediction.id) } catch {}
-          await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Extract ${stem} timed out`, metadata: { reason: 'timeout', predictionId: prediction.id } })
+          await refundCredits({ userId, amount: EXTRACT_COST, type: 'generation_extract', reason: `Extract ${stem} timed out`, metadata: { reason: 'timeout', predictionId: prediction.id } })
           await sendLine({ type: 'result', success: false, error: 'Extraction timed out after 3 minutes. Please try again.' })
           await writer.close()
           return
@@ -172,7 +173,7 @@ export async function POST(request: Request) {
         if (finalPrediction.status !== 'succeeded') {
           const errMsg = finalPrediction.error || 'Extraction failed'
           console.error('[extract-audio-stem] Prediction failed:', errMsg)
-          await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Extract ${stem} failed`, metadata: { error: String(errMsg).substring(0, 200) } })
+          await refundCredits({ userId, amount: EXTRACT_COST, type: 'generation_extract', reason: `Extract ${stem} failed`, metadata: { error: String(errMsg).substring(0, 200) } })
           await sendLine({ type: 'result', success: false, error: SAFE_ERROR_MESSAGE })
           await writer.close()
           return
@@ -181,6 +182,7 @@ export async function POST(request: Request) {
         // Demucs output is an object with stem names as keys
         const output = finalPrediction.output as Record<string, string | null>
         if (!output) {
+          await refundCredits({ userId, amount: EXTRACT_COST, type: 'generation_extract', reason: `Extract ${stem}: no output from model`, metadata: {} })
           await sendLine({ type: 'result', success: false, error: 'No output from model' })
           await writer.close()
           return
@@ -294,7 +296,7 @@ export async function POST(request: Request) {
         await writer.close()
       } catch (error) {
         console.error('[Extract] Stream error:', error)
-        await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Extract failed`, metadata: { error: String(error).substring(0, 200) } })
+        await refundCredits({ userId, amount: EXTRACT_COST, type: 'generation_extract', reason: `Extract failed`, metadata: { error: String(error).substring(0, 200) } })
         try {
           await sendLine({ type: 'result', success: false, error: '444 radio is locking in, please try again in few minutes' })
           await writer.close()

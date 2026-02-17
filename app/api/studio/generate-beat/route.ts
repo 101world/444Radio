@@ -9,12 +9,15 @@ import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
 import { createClient } from '@supabase/supabase-js';
 import { uploadToR2 } from '@/lib/r2-upload';
+import { refundCredits } from '@/lib/refund-credits';
 
 export async function OPTIONS() {
   return handleOptions();
 }
 
 export async function POST(request: Request) {
+  let deductedAmount = 0
+  let deductedUserId: string | null = null
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -55,6 +58,8 @@ export async function POST(request: Request) {
         }, { status: 402 })
       );
     }
+    deductedAmount = 2
+    deductedUserId = userId
 
     // Initialize Replicate
     const replicate = new Replicate({
@@ -80,6 +85,7 @@ export async function POST(request: Request) {
     const startTime = Date.now();
     while (result.status !== 'succeeded' && result.status !== 'failed') {
       if (Date.now() - startTime > 120000) {
+        await refundCredits({ userId, amount: 2, type: 'generation_music', reason: 'Beat generation timeout', metadata: { prompt, duration } }).catch(() => {})
         return corsResponse(
           NextResponse.json({ 
             success: false, 
@@ -94,6 +100,7 @@ export async function POST(request: Request) {
     }
 
     if (result.status === 'failed') {
+      await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Beat generation failed: ${String(result.error).substring(0, 80)}`, metadata: { prompt, error: String(result.error).substring(0, 200) } }).catch(() => {})
       return corsResponse(
         NextResponse.json({ 
           success: false, 
@@ -122,6 +129,7 @@ export async function POST(request: Request) {
     }
 
     if (!audioUrl) {
+      await refundCredits({ userId, amount: 2, type: 'generation_music', reason: 'No audio URL from model', metadata: { prompt, raw: JSON.stringify(out).substring(0, 200) } }).catch(() => {})
       return corsResponse(
         NextResponse.json({ 
           success: false, 
@@ -208,8 +216,10 @@ export async function POST(request: Request) {
     );
 
   } catch (error) {
-    console.error('❌ Beat generation error:', error);
-    return corsResponse(
+    console.error('❌ Beat generation error:', error);    // Refund if credits were already deducted
+    if (deductedAmount > 0 && deductedUserId) {
+      await refundCredits({ userId: deductedUserId, amount: deductedAmount, type: 'generation_music', reason: `Beat generation error: ${error instanceof Error ? error.message.substring(0, 80) : 'unknown'}`, metadata: { error: String(error).substring(0, 200) } }).catch(() => {})
+    }    return corsResponse(
       NextResponse.json({ 
         success: false, 
         error: error instanceof Error ? error.message : 'Beat generation failed' 

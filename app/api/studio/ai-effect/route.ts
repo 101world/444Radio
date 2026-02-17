@@ -9,12 +9,15 @@ import Replicate from 'replicate';
 import { corsResponse, handleOptions } from '@/lib/cors';
 import { createClient } from '@supabase/supabase-js';
 import { logCreditTransaction } from '@/lib/credit-transactions';
+import { refundCredits } from '@/lib/refund-credits';
 
 export async function OPTIONS() {
   return handleOptions();
 }
 
 export async function POST(request: Request) {
+  let deductedAmount = 0
+  let deductedUserId: string | null = null
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -51,6 +54,8 @@ export async function POST(request: Request) {
         NextResponse.json({ error: row?.error_message || 'Insufficient credits' }, { status: 402 })
       );
     }
+    deductedAmount = 1
+    deductedUserId = userId
 
     // Initialize Replicate
     const replicate = new Replicate({
@@ -124,6 +129,10 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('AI effect error:', error);
+    // Refund if credits were already deducted
+    if (deductedAmount > 0 && deductedUserId) {
+      await refundCredits({ userId: deductedUserId, amount: deductedAmount, type: 'generation_effects', reason: `AI effect error: ${error instanceof Error ? error.message.substring(0, 80) : 'unknown'}`, metadata: { error: String(error).substring(0, 200) } }).catch(() => {})
+    }
     return corsResponse(
       NextResponse.json(
         { 

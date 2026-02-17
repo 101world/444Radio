@@ -5,6 +5,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 2.5 minutes for effects generation (AudioGen can take 60-90s)
 export const maxDuration = 150
@@ -250,7 +251,7 @@ export async function POST(req: NextRequest) {
 
     } catch (genError) {
       console.error('❌ AudioGen generation failed:', genError)
-      await logCreditTransaction({ userId, amount: 0, type: 'generation_effects', status: 'failed', description: `Effects failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, error: String(genError).substring(0, 200) } })
+      await refundCredits({ userId, amount: 2, type: 'generation_effects', reason: `Effects failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, error: String(genError).substring(0, 200) } })
       throw genError
     }
 

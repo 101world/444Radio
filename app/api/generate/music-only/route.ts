@@ -4,6 +4,7 @@ import Replicate from 'replicate'
 import { downloadAndUploadToR2 } from '@/lib/storage'
 import { findBestMatchingLyrics } from '@/lib/lyrics-matcher'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
+import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 5 minutes for music generation (Vercel Pro limit: 300s)
 export const maxDuration = 300
@@ -316,7 +317,7 @@ export async function POST(req: NextRequest) {
           if (requestSignal.aborted) {
             console.log('⏹ Client disconnected, cancelling prediction:', prediction.id)
             try { await replicate.predictions.cancel(prediction.id) } catch {}
-            await logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Cancelled: ${title}`, metadata: { prompt, genre, reason: 'client_disconnected' } })
+            await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Cancelled (client disconnected): ${title}`, metadata: { prompt, genre, reason: 'client_disconnected' } })
             await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits }).catch(() => {})
             await writer.close().catch(() => {})
             return
@@ -328,7 +329,7 @@ export async function POST(req: NextRequest) {
 
         if (finalPrediction.status === 'canceled') {
           console.log('⏹ Prediction cancelled by user:', prediction.id)
-          await logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Cancelled: ${title}`, metadata: { prompt, genre, reason: 'user_cancelled' } })
+          await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Cancelled by user: ${title}`, metadata: { prompt, genre, reason: 'user_cancelled' } })
           await sendLine({ type: 'result', success: false, error: 'Generation cancelled', creditsRemaining: deductResult!.new_credits })
           await writer.close()
           return
@@ -337,7 +338,7 @@ export async function POST(req: NextRequest) {
         if (finalPrediction.status !== 'succeeded') {
           const errMsg = finalPrediction.error || `Generation ${finalPrediction.status === 'failed' ? 'failed' : 'timed out'}`
           console.error('❌ Prediction did not succeed:', errMsg)
-          await logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Failed: ${title}`, metadata: { prompt, genre, error: String(errMsg).substring(0, 200) } })
+          await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Failed: ${title}`, metadata: { prompt, genre, error: String(errMsg).substring(0, 200) } })
           await sendLine({ type: 'result', success: false, error: sanitizeError(errMsg), creditsRemaining: deductResult!.new_credits })
           await writer.close()
           return
@@ -515,7 +516,7 @@ export async function POST(req: NextRequest) {
 
       } catch (error) {
         console.error('❌ Music generation error (stream):', error)
-        await logCreditTransaction({ userId, amount: 0, type: 'generation_music', status: 'failed', description: `Error: ${String(error).substring(0, 80)}`, metadata: { prompt, genre, error: String(error).substring(0, 200) } })
+        await refundCredits({ userId, amount: 2, type: 'generation_music', reason: `Error: ${String(error).substring(0, 80)}`, metadata: { prompt, genre, error: String(error).substring(0, 200) } })
         try {
           await sendLine({ type: 'result', success: false, error: sanitizeError(error) })
           await writer.close()

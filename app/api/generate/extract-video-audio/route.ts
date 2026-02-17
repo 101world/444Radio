@@ -6,6 +6,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { createClient } from '@supabase/supabase-js'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 3 minutes for extraction
 export const maxDuration = 180
@@ -132,14 +133,14 @@ export async function POST(req: NextRequest) {
       if (finalPrediction.status !== 'succeeded') {
         const errMsg = finalPrediction.error || 'Extraction failed or timed out'
         console.error('❌ Extraction failed:', errMsg)
-        await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Video Extract failed: ${trackTitle}`, metadata: { videoUrl, error: String(errMsg).substring(0, 200) } })
+        await refundCredits({ userId, amount: EXTRACT_COST, type: 'generation_extract', reason: `Video Extract failed: ${trackTitle}`, metadata: { videoUrl, error: String(errMsg).substring(0, 200) } })
         return corsResponse(NextResponse.json({ error: SAFE_ERROR_MESSAGE }, { status: 500 }))
       }
 
       // Output is a direct URL string
       const outputUrl = finalPrediction.output as string
       if (!outputUrl) {
-        await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Video Extract: no output`, metadata: { videoUrl } })
+        await refundCredits({ userId, amount: EXTRACT_COST, type: 'generation_extract', reason: `Video Extract: no output`, metadata: { videoUrl } })
         return corsResponse(NextResponse.json({ error: 'No audio output from extraction' }, { status: 500 }))
       }
 
@@ -213,7 +214,7 @@ export async function POST(req: NextRequest) {
 
     } catch (genError) {
       console.error('❌ Video audio extraction failed:', genError)
-      await logCreditTransaction({ userId, amount: 0, type: 'generation_extract', status: 'failed', description: `Video Extract failed: ${trackTitle}`, metadata: { videoUrl, error: String(genError).substring(0, 200) } })
+      await refundCredits({ userId, amount: EXTRACT_COST, type: 'generation_extract', reason: `Video Extract failed: ${trackTitle}`, metadata: { videoUrl, error: String(genError).substring(0, 200) } })
       throw genError
     }
 

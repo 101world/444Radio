@@ -5,6 +5,7 @@ import { uploadToR2 } from '@/lib/r2-upload'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 3 minutes for looper generation (can take 1-2 minutes for 20s loops)
 export const maxDuration = 180
@@ -302,7 +303,7 @@ export async function POST(req: NextRequest) {
 
     } catch (genError) {
       console.error('❌ MusicGen Looper generation failed:', genError)
-      await logCreditTransaction({ userId, amount: 0, type: 'generation_loops', status: 'failed', description: `Loops failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, bpm, error: String(genError).substring(0, 200) } })
+      await refundCredits({ userId, amount: creditCost, type: 'generation_loops', reason: `Loops failed: ${prompt?.substring(0, 50) || 'unknown'}`, metadata: { prompt, bpm, error: String(genError).substring(0, 200) } })
       throw genError
     }
 

@@ -9,6 +9,7 @@ import { auth } from '@clerk/nextjs/server'
 import Replicate from 'replicate'
 import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction } from '@/lib/credit-transactions'
+import { refundCredits } from '@/lib/refund-credits'
 import { createClient } from '@supabase/supabase-js'
 
 export async function OPTIONS() {
@@ -48,6 +49,8 @@ function normalizeStems(output: any): StemsMap | null {
 }
 
 export async function POST(request: Request) {
+  let deductedAmount = 0
+  let deductedUserId: string | null = null
   try {
     const { userId } = await auth()
     if (!userId) {
@@ -125,6 +128,8 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: errorMsg }, { status: 402 }))
     }
     console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
+    deductedAmount = stemCost
+    deductedUserId = userId
     await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Studio stem split (${demucsModel})`, metadata: { model: demucsModel, cost: stemCost } })
 
     console.log('🎵 Stem splitting requested by user:', userId)
@@ -207,6 +212,7 @@ export async function POST(request: Request) {
     if (!prediction) {
       const errorMsg = lastError?.message || lastError?.toString() || 'Unknown error'
       console.error('❌ Stem separation failed:', errorMsg)
+      await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem separation failed (no prediction): ${errorMsg.substring(0, 80)}`, metadata: { model: demucsModel, error: errorMsg.substring(0, 200) } }).catch(() => {})
       return corsResponse(NextResponse.json({ 
         success: false, 
         error: 'Stem separation is temporarily unavailable. This feature requires specific AI models that may be under maintenance.', 
@@ -231,6 +237,7 @@ export async function POST(request: Request) {
         try { await replicate.predictions.cancel(result.id) } catch (cancelErr) {
           console.error('❌ Failed to cancel prediction:', cancelErr)
         }
+        await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split timed out after 60s`, metadata: { model: demucsModel, predictionId: result.id } }).catch(() => {})
         return corsResponse(NextResponse.json({ 
           success: false, 
           error: 'Stem separation timed out after 60 seconds. The AI model may be overloaded — please try again later.',
@@ -251,6 +258,7 @@ export async function POST(request: Request) {
           continue
         }
         // After 5 poll failures, give up
+        await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: 'Stem split poll failures', metadata: { model: demucsModel, pollAttempts } }).catch(() => {})
         return corsResponse(NextResponse.json({ 
           success: false, 
           error: 'Unable to check stem separation status. Please try again.',
@@ -261,6 +269,7 @@ export async function POST(request: Request) {
 
     if (result.status === 'failed') {
       console.error('❌ Demucs prediction failed:', result.error)
+      await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: `Stem split failed: ${String(result.error).substring(0, 80)}`, metadata: { model: demucsModel, predictionId: result.id } }).catch(() => {})
       return corsResponse(NextResponse.json({ 
         success: false, 
         error: `Stem separation failed: ${result.error || 'Unknown error from AI model'}`,
@@ -269,7 +278,8 @@ export async function POST(request: Request) {
     }
     
     if (result.status === 'canceled') {
-      console.error('❌ Demucs prediction canceled')
+      console.error('\u274c Demucs prediction canceled')
+      await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: 'Stem split cancelled', metadata: { model: demucsModel, predictionId: result.id } }).catch(() => {})
       return corsResponse(NextResponse.json({ 
         success: false, 
         error: 'Stem separation was canceled',
@@ -280,6 +290,7 @@ export async function POST(request: Request) {
     const stems = normalizeStems(result.output)
     if (!stems || Object.keys(stems).length === 0) {
       console.error('❌ No stems in output:', result.output)
+      await refundCredits({ userId, amount: stemCost, type: 'generation_stem_split', reason: 'No stems in output', metadata: { model: demucsModel, predictionId: result.id } }).catch(() => {})
       return corsResponse(NextResponse.json({ 
         success: false, 
         error: 'AI model returned no stems. This may be due to audio format or quality issues.',
@@ -299,6 +310,11 @@ export async function POST(request: Request) {
       data: error?.response?.data,
       stack: error?.stack
     })
+    
+    // Refund if credits were already deducted
+    if (deductedAmount > 0 && deductedUserId) {
+      await refundCredits({ userId: deductedUserId, amount: deductedAmount, type: 'generation_stem_split', reason: `Split-stems critical error: ${error?.message?.substring(0, 80) || 'unknown'}`, metadata: { error: String(error).substring(0, 200) } }).catch(() => {})
+    }
     
     // Provide helpful error messages based on status code
     let userMessage = 'An error occurred during stem separation. Please try again.'

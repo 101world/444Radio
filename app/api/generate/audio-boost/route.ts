@@ -5,6 +5,7 @@ import { corsResponse, handleOptions } from '@/lib/cors'
 import { logCreditTransaction, updateTransactionMedia } from '@/lib/credit-transactions'
 import { logBoostGeneration, updateBoostLog } from '@/lib/boost-logs'
 import { sanitizeError, sanitizeCreditError, SAFE_ERROR_MESSAGE } from '@/lib/sanitize-error'
+import { refundCredits } from '@/lib/refund-credits'
 
 // Allow up to 2 minutes for audio boost processing
 export const maxDuration = 120
@@ -333,7 +334,7 @@ export async function POST(req: NextRequest) {
       if (boostLogId) {
         await updateBoostLog(boostLogId, { status: 'failed', errorMessage: errStr })
       }
-      await logCreditTransaction({ userId, amount: 0, type: 'generation_audio_boost', status: 'failed', description: `Audio Boost failed`, metadata: { error: errStr } })
+      await refundCredits({ userId, amount: BOOST_COST, type: 'generation_audio_boost', reason: 'Audio Boost failed', metadata: { error: errStr } })
       throw genError
     }
 
