@@ -342,6 +342,18 @@ export default function PluginPage() {
         setIsLoadingCredits(false)
       }
     }
+    // Safety timeout: if still loading after 10s, force auth screen
+    const timeout = setTimeout(() => {
+      setIsLoadingCredits(prev => {
+        if (prev) {
+          console.warn('[plugin] Loading timeout — showing auth screen')
+          setAuthError('Connection timed out. Try again or regenerate your token.')
+          return false
+        }
+        return prev
+      })
+    }, 10000)
+    return () => clearTimeout(timeout)
   }, [])
 
   // ═══ AUTH: Verify token on mount ═══
@@ -390,6 +402,12 @@ export default function PluginPage() {
       }
     })()
   }, [token])
+
+  // ═══ MOUNT: hide HTML fallback loader once React is alive ═══
+  useEffect(() => {
+    const fb = document.getElementById('plugin-fallback')
+    if (fb) fb.style.display = 'none'
+  }, [])
 
   // ═══ LAYOUT: detect mobile + set layout from preset ═══
   useEffect(() => {

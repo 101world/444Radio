@@ -53,10 +53,32 @@ export default async function RootLayout({
     return (
       <html lang="en">
         <head>
-          {/* Suppress ALL script errors — WebView2 inside DAWs shows modal dialogs for any JS error */}
-          <script dangerouslySetInnerHTML={{ __html: `window.onerror=function(){return true};window.onunhandledrejection=function(e){e&&e.preventDefault&&e.preventDefault()};` }} />
+          {/* Suppress JS error DIALOGS in DAW WebView2 — but log to console for debugging */}
+          <script dangerouslySetInnerHTML={{ __html: `
+            window.onerror=function(msg,src,line){
+              try{console.warn('[444] JS error:',msg,src,line)}catch(e){}
+              var fb=document.getElementById('plugin-fallback');
+              if(fb){fb.innerHTML='<div style="text-align:center;padding:40px"><p style="font-size:18px;margin-bottom:8px">⚠️ Plugin failed to load</p><p style="font-size:12px;color:#888">Try refreshing or check your internet connection</p><button onclick="location.reload()" style="margin-top:16px;padding:8px 24px;background:#06b6d4;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer">Reload</button></div>'}
+              return true
+            };
+            window.onunhandledrejection=function(e){e&&e.preventDefault&&e.preventDefault()};
+            setTimeout(function(){
+              var fb=document.getElementById('plugin-fallback');
+              if(fb&&fb.style.display!=='none'){
+                fb.innerHTML='<div style="text-align:center;padding:40px"><p style="font-size:14px;color:#888">Taking longer than expected...</p><button onclick="location.reload()" style="margin-top:12px;padding:8px 24px;background:#06b6d4;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer">Reload</button></div>'
+              }
+            },12000);
+          `}} />
         </head>
         <body className="antialiased bg-black text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          {/* Fallback shown while React loads — hidden once React mounts */}
+          <div id="plugin-fallback" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: 32, height: 32, border: '3px solid rgba(6,182,212,0.3)', borderTopColor: '#06b6d4', borderRadius: '50%', margin: '0 auto 12px', animation: 'spin 1s linear infinite' }} />
+              <p style={{ fontSize: 13, color: '#888' }}>Loading 444 Radio...</p>
+            </div>
+          </div>
+          <style dangerouslySetInnerHTML={{ __html: '@keyframes spin{to{transform:rotate(360deg)}}' }} />
           {children}
         </body>
       </html>
