@@ -103,6 +103,9 @@ export async function POST(request: NextRequest) {
     }
     const newUserCredits = deductRow.new_credits
 
+    // Log lister's deduction
+    await logCreditTransaction({ userId, amount: -LISTING_FEE, balanceAfter: newUserCredits, type: 'earn_list', description: `Listed track on Earn (${LISTING_FEE} credits)`, metadata: { trackId } })
+
     // 3. Fetch admin account to credit
     let admin: any = null
 

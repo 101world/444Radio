@@ -44,6 +44,25 @@ export async function POST(req: NextRequest) {
       }, { status: 400 }))
     }
 
+    // Normalize scale: Replicate only accepts naturals + flats (no sharps)
+    const SHARP_TO_FLAT: Record<string, string> = {
+      'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
+    }
+    const VALID_KEYS = ['A', 'Bb', 'B', 'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab']
+    const VALID_MODES = ['maj', 'min']
+
+    let normalizedScale = scale
+    if (scale !== 'closest') {
+      const [rawKey, mode] = scale.split(':')
+      const mappedKey = SHARP_TO_FLAT[rawKey] || rawKey
+      if (!VALID_KEYS.includes(mappedKey) || !VALID_MODES.includes(mode)) {
+        return corsResponse(NextResponse.json({
+          error: `Invalid scale "${scale}". Key must be one of: ${VALID_KEYS.join(', ')}. Mode must be "maj" or "min".`,
+        }, { status: 400 }))
+      }
+      normalizedScale = `${mappedKey}:${mode}`
+    }
+
     // Validate audio URL
     try {
       const urlObj = new URL(audio_file)
@@ -67,7 +86,7 @@ export async function POST(req: NextRequest) {
     const CREDIT_COST = 1
     console.log(`🎵 Autotune request for ${userId}`)
     console.log(` - Audio: ${audio_file}`)
-    console.log(` - Scale: ${scale}`)
+    console.log(` - Scale: ${normalizedScale}${normalizedScale !== scale ? ` (normalized from ${scale})` : ''}`)
     console.log(` - Cost: ${CREDIT_COST} credit`)
 
     // Check user credits
@@ -123,8 +142,8 @@ export async function POST(req: NextRequest) {
         amount: -CREDIT_COST, 
         type: 'generation_autotune',
         status: 'failed', 
-        description: `Autotune (${scale})`,
-        metadata: { audio_file, scale, output_format }
+        description: `Autotune (${normalizedScale})`,
+        metadata: { audio_file, scale: normalizedScale, output_format }
       })
       return corsResponse(NextResponse.json({ error: errorMsg }, { status: 402 }))
     }
@@ -135,8 +154,8 @@ export async function POST(req: NextRequest) {
       amount: -CREDIT_COST, 
       balanceAfter: deductResult.new_credits,
       type: 'generation_autotune',
-      description: `Autotune (${scale})`,
-      metadata: { audio_file, scale, output_format }
+      description: `Autotune (${normalizedScale})`,
+      metadata: { audio_file, scale: normalizedScale, output_format }
     })
 
     // Run autotune via Replicate
@@ -145,7 +164,7 @@ export async function POST(req: NextRequest) {
       "nateraw/autotune:53d58aea27ccd949e5f9d77e4b2a74ffe90e1fa534295b257cea50f011e233dd",
       {
         input: {
-          scale,
+          scale: normalizedScale,
           audio_file,
           output_format
         }
@@ -185,7 +204,7 @@ export async function POST(req: NextRequest) {
     console.log('✅ Uploaded to R2:', audioUrl)
 
     // Save to combined_media
-    const title = trackTitle || `Autotuned (${scale})`
+    const title = trackTitle || `Autotuned (${normalizedScale})`
     console.log('💾 Saving to library...')
     const saveRes = await fetch(
       `${supabaseUrl}/rest/v1/combined_media`,
@@ -201,7 +220,7 @@ export async function POST(req: NextRequest) {
           user_id: userId,
           type: 'audio',
           title,
-          prompt: `Pitch-corrected to ${scale}`,
+          prompt: `Pitch-corrected to ${normalizedScale}`,
           audio_url: audioUrl,
           is_public: false,
           genre: 'processed'
@@ -225,7 +244,7 @@ export async function POST(req: NextRequest) {
     return corsResponse(NextResponse.json({ 
       success: true, 
       audioUrl,
-      scale,
+      scale: normalizedScale,
       output_format,
       title,
       creditsRemaining: deductResult!.new_credits,

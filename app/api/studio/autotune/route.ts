@@ -24,12 +24,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const { audioUrl, scale = 'C:maj', outputFormat = 'wav' } = await request.json();
+    const { audioUrl, scale: rawScale = 'C:maj', outputFormat = 'wav' } = await request.json();
 
     if (!audioUrl) {
       return corsResponse(
         NextResponse.json({ error: 'Audio URL required' }, { status: 400 })
       );
+    }
+
+    // Normalize scale: Replicate only accepts naturals + flats (no sharps)
+    const SHARP_TO_FLAT: Record<string, string> = {
+      'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
+    };
+    let scale = rawScale;
+    if (rawScale !== 'closest') {
+      const [rawKey, mode] = rawScale.split(':');
+      const mappedKey = SHARP_TO_FLAT[rawKey] || rawKey;
+      scale = `${mappedKey}:${mode || 'maj'}`;
     }
 
     // Initialize Supabase for credits
@@ -42,7 +53,7 @@ export async function POST(request: Request) {
     const { data: deductResult, error: deductErr } = await supabase.rpc('deduct_credits', {
       p_clerk_user_id: userId,
       p_amount: 1,
-      p_type: 'generation_audio_boost',
+      p_type: 'generation_autotune',
       p_description: 'Studio auto-tune processing',
       p_metadata: { generation_type: 'autotune', scale }
     });

@@ -11,7 +11,7 @@ interface AutotuneModalProps {
   onError?: (error: string) => void
 }
 
-const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+const MUSICAL_KEYS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
 
 export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onError }: AutotuneModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)

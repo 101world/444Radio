@@ -32,7 +32,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const [extractStem, setExtractStem] = useState<'vocals' | 'bass' | 'drums' | 'piano' | 'guitar' | 'other'>('vocals')
 
   // Autotune parameters
-  const MUSICAL_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B', 'Db', 'Eb', 'Gb', 'Ab', 'Bb']
+  const MUSICAL_KEYS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
   const [autotuneKey, setAutotuneKey] = useState('C')
   const [autotuneScale, setAutotuneScale] = useState<'maj' | 'min'>('maj')
 

@@ -164,7 +164,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: errorMsg }, { status: 402 })
       }
       console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
-      // Note: deduct_credits RPC already logs the transaction atomically — no duplicate log needed
+      // Log the deduction to credit_transactions
+      await logCreditTransaction({
+        userId, amount: -stemCost, balanceAfter: deductResult.new_credits,
+        type: 'generation_stem_split',
+        description: `Stem Split: ${stem} (${demucsModel})`,
+        metadata: { stem, model: demucsModel, cost: stemCost },
+      })
     }
 
     // Stream prediction ID to client for cancellation, then process result

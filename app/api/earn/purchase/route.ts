@@ -111,6 +111,9 @@ export async function POST(request: NextRequest) {
     }
     const newBuyerCredits = deductRow.new_credits
 
+    // Log buyer's deduction
+    await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}${splitStems ? ' (with stems)' : ''}`, metadata: { trackId, splitStems, baseCost, stemsCost, totalCost } })
+
     // 6. Fetch artist's credits + username
     const artistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}&select=clerk_user_id,credits,username`)
     const artists = await artistRes.json()

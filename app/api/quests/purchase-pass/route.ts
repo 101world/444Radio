@@ -104,6 +104,16 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Quest pass credits deducted. Remaining: ${deductResult.new_credits}`)
 
+    // Log successful deduction
+    await logCreditTransaction({
+      userId,
+      amount: -QUEST_PASS_COST,
+      balanceAfter: deductResult.new_credits,
+      type: 'quest_entry',
+      description: `Quest Pass purchased (30-day access) — ${QUEST_PASS_COST} credits`,
+      metadata: { pass_type: 'quest_entry', duration_days: 30, cost: QUEST_PASS_COST },
+    })
+
     // 4. Create quest pass
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)

@@ -1102,11 +1102,22 @@ async function generateCoverArtForTrack(userId: string, prompt: string, title: s
 // ------------------------------------------------------------------
 async function generateAutotune(userId: string, body: Record<string, unknown>, jobId: string) {
   const audioUrl = (body.audio_file as string) || (body.audioUrl as string)
-  const scale = (body.scale as string) || 'C:maj'
+  const rawScale = (body.scale as string) || 'C:maj'
   const output_format = (body.output_format as string) || 'wav'
   const trackTitle = (body.trackTitle as string) || 'Autotuned Audio'
 
   if (!audioUrl) return { success: false, error: 'Missing audio URL for autotune' }
+
+  // Normalize scale: Replicate only accepts naturals + flats (no sharps)
+  const SHARP_TO_FLAT: Record<string, string> = {
+    'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb'
+  }
+  let scale = rawScale
+  if (rawScale !== 'closest') {
+    const [rawKey, mode] = rawScale.split(':')
+    const mappedKey = SHARP_TO_FLAT[rawKey] || rawKey
+    scale = `${mappedKey}:${mode || 'maj'}`
+  }
 
   console.log(`🎤 [${jobId}] Autotune: ${audioUrl} → ${scale} (${output_format})`)
 
