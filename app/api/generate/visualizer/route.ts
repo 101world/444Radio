@@ -16,23 +16,23 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 /**
- * Credit cost for 444 video generation.
+ * Credit cost for 444 Engine video generation.
  *
  * Cost (Replicate):  $0.06/sec (1080p, with or without audio)
- * Charge to user:    $0.075/sec  →  1 credit = $0.10
- * Formula:           ceil(duration × 0.75)
+ * Charge to user:    $0.075/sec  →  1 credit = $0.035
+ * Formula:           ceil(duration × 0.075 / 0.035)
  *
- *   Duration │ Credits │ Charge
- *   ─────────┼─────────┼────────
- *     2s     │    2    │  $0.20
- *     5s     │    4    │  $0.40
- *     8s     │    6    │  $0.60
- *    12s     │    9    │  $0.90
+ *   Duration │ Credits │  Charge
+ *   ─────────┼─────────┼─────────
+ *     2s     │    5    │  $0.175
+ *     5s     │   11    │  $0.385
+ *     8s     │   18    │  $0.630
+ *    12s     │   26    │  $0.910
  *
  * Same price regardless of audio / resolution / aspect ratio.
  */
 function calculateCredits(durationSeconds: number): number {
-  return Math.ceil(durationSeconds * 0.75)
+  return Math.ceil(durationSeconds * 0.075 / 0.035)
 }
 
 /**
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
         mode: imageUrl ? 'image-to-video' : 'text-to-video',
         costPerSecond: 0.06,
         chargePerSecond: 0.075,
-        totalCharge: (creditCost * 0.10).toFixed(2),
+        totalCharge: (creditCost * 0.035).toFixed(2),
       },
     })
 

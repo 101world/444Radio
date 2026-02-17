@@ -20,22 +20,36 @@ export async function POST(request: NextRequest) {
 
     const { genre, promptType } = await request.json()
 
-    if (!genre || !promptType) {
+    if (!promptType) {
       return corsResponse(NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       ))
     }
 
-    console.log(`🎨 Generating ${promptType} prompt for ${genre}...`)
+    // Visualizer prompts don't require genre
+    if (promptType !== 'visualizer' && !genre) {
+      return corsResponse(NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      ))
+    }
 
-    const typeDescription = promptType === 'song' 
-      ? 'a complete song with vocals, lyrics, and full melodic vocal performance' 
-      : 'a pure instrumental beat with absolutely NO vocals, NO voice, NO singing, NO humming - purely instrumental'
-    
-    const fullPrompt = promptType === 'beat'
-      ? `Generate a professional INSTRUMENTAL music production prompt in the ${genre} genre. CRITICAL RULES: This is 100% instrumental — NEVER mention vocals, voice, singing, humming, melody vocals, vocal chops, vocal samples, or any human vocal element. Focus ONLY on: instruments, synths, drums, bass, production techniques, mood, atmosphere, tempo/energy. The prompt should be 200-265 characters. Use vivid, descriptive language about sonic qualities. Example: "Hard-hitting trap beat at 140 BPM with distorted 808 bass, crisp hi-hats, dark synth pads, eerie atmospheric textures, punchy kicks, and aggressive energy." Generate ONLY the music prompt, nothing else:`
-      : `Generate a professional music generation prompt for ${typeDescription} in the ${genre} genre. The prompt should be 200-265 characters, include specific instruments, production techniques, mood, atmosphere, tempo/energy, and sound professional. Use vivid, descriptive language about sonic qualities. NO negative words. Example: "Euphoric progressive house at 128 BPM with soaring synth leads, deep sub-bass, crisp percussion, ethereal vocal chops, lush pads, warm analog saturation." Generate ONLY the music prompt, nothing else:`
+    console.log(`🎨 Generating ${promptType} prompt${genre ? ` for ${genre}` : ''}...`)
+
+    let fullPrompt: string
+
+    if (promptType === 'visualizer') {
+      fullPrompt = `Generate a vivid, cinematic visual scene description for a music video or visualizer. Include specific camera movement, lighting, atmosphere, color palette, and mood. Pick ONE of these styles randomly: photorealistic cinematic, anime/stylized, dreamy/atmospheric, or abstract/experimental. The description should be 120-180 characters, visually rich and evocative. Examples: "Rain-soaked neon streets of Tokyo at midnight, slow camera drift, reflections on wet asphalt, hyper-realistic" or "An anime girl with headphones on a cyberpunk rooftop, neon rain, lo-fi aesthetic". Generate ONLY the scene description, nothing else:`
+    } else {
+      const typeDescription = promptType === 'song' 
+        ? 'a complete song with vocals, lyrics, and full melodic vocal performance' 
+        : 'a pure instrumental beat with absolutely NO vocals, NO voice, NO singing, NO humming - purely instrumental'
+      
+      fullPrompt = promptType === 'beat'
+        ? `Generate a professional INSTRUMENTAL music production prompt in the ${genre} genre. CRITICAL RULES: This is 100% instrumental — NEVER mention vocals, voice, singing, humming, melody vocals, vocal chops, vocal samples, or any human vocal element. Focus ONLY on: instruments, synths, drums, bass, production techniques, mood, atmosphere, tempo/energy. The prompt should be 200-265 characters. Use vivid, descriptive language about sonic qualities. Example: "Hard-hitting trap beat at 140 BPM with distorted 808 bass, crisp hi-hats, dark synth pads, eerie atmospheric textures, punchy kicks, and aggressive energy." Generate ONLY the music prompt, nothing else:`
+        : `Generate a professional music generation prompt for ${typeDescription} in the ${genre} genre. The prompt should be 200-265 characters, include specific instruments, production techniques, mood, atmosphere, tempo/energy, and sound professional. Use vivid, descriptive language about sonic qualities. NO negative words. Example: "Euphoric progressive house at 128 BPM with soaring synth leads, deep sub-bass, crisp percussion, ethereal vocal chops, lush pads, warm analog saturation." Generate ONLY the music prompt, nothing else:`
+    }
 
     // Use GPT-5 Nano
     const output = await replicate.run(
@@ -83,16 +97,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Ensure it's within character limit
-    if (cleanPrompt.length > 265) {
-      cleanPrompt = cleanPrompt.slice(0, 265).trim()
+    // Character limits vary by type
+    const maxLen = promptType === 'visualizer' ? 200 : 265
+    const minLen = promptType === 'visualizer' ? 80 : 150
+
+    if (cleanPrompt.length > maxLen) {
+      cleanPrompt = cleanPrompt.slice(0, maxLen).trim()
     }
 
     // Ensure minimum quality length
-    if (cleanPrompt.length < 150) {
-      cleanPrompt += ` with professional mixing, warm analog character, and spatial depth`
-      if (cleanPrompt.length > 265) {
-        cleanPrompt = cleanPrompt.slice(0, 265).trim()
+    if (cleanPrompt.length < minLen) {
+      const filler = promptType === 'visualizer'
+        ? ', cinematic lighting, volumetric atmosphere, slow camera drift'
+        : ' with professional mixing, warm analog character, and spatial depth'
+      cleanPrompt += filler
+      if (cleanPrompt.length > maxLen) {
+        cleanPrompt = cleanPrompt.slice(0, maxLen).trim()
       }
     }
 

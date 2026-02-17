@@ -42,14 +42,21 @@ interface VisualizerModalProps {
 }
 
 /**
- * Credit cost for video generation.
- * Cost: $0.06/sec (Replicate)  |  Charge: $0.075/sec  |  1 credit = $0.10
- * Formula: ceil(duration × 0.75)
- * Examples: 2s→2cr, 5s→4cr, 8s→6cr, 12s→9cr ($0.90)
+ * Credit cost for 444 Engine video generation.
+ * Cost: $0.06/sec (Replicate)  |  Charge: $0.075/sec  |  1 credit = $0.035
+ * Formula: ceil(duration × 0.075 / 0.035)
+ *
+ *   Duration │ Credits │  Charge
+ *   ─────────┼─────────┼─────────
+ *     2s     │    5    │  $0.175
+ *     5s     │   11    │  $0.385
+ *     8s     │   18    │  $0.630
+ *    12s     │   26    │  $0.910
+ *
  * Same price with or without audio.
  */
 function calcCredits(duration: number): number {
-  return Math.ceil(duration * 0.75)
+  return Math.ceil(duration * 0.075 / 0.035)
 }
 
 export default function VisualizerModal({
@@ -112,10 +119,7 @@ export default function VisualizerModal({
       const res = await fetch('/api/generate/prompt-idea', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          context: 'music visualizer video',
-          style: 'cinematic, photorealistic, or anime — create a vivid visual scene description for a music video. Include camera movement, lighting, atmosphere, and mood. Keep under 200 characters.',
-        }),
+        body: JSON.stringify({ promptType: 'visualizer' }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -480,7 +484,7 @@ export default function VisualizerModal({
               }`}>
                 {creditCost} {creditCost === 1 ? 'credit' : 'credits'}
               </div>
-              <span className="text-[10px] text-gray-600">{duration}s &middot; {resolution} &middot; ${(creditCost * 0.10).toFixed(2)}</span>
+              <span className="text-[10px] text-gray-600">{duration}s &middot; {resolution} &middot; ${(creditCost * 0.035).toFixed(2)}</span>
             </div>
 
             {/* Generate button */}

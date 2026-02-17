@@ -96,6 +96,7 @@ export default async function RootLayout({
         )}
       </head>
       <body
+        suppressHydrationWarning
         className={`${poppins.className} antialiased bg-gray-900 text-white`}
       >
         <ConsoleBlocker />
