@@ -87,7 +87,7 @@ const GENERATION_COSTS = [
   { name: 'Song',          credits: 2,  icon: Music },
   { name: 'Cover Art',     credits: 1,  icon: ImageIcon },
   { name: 'Sound Effect',  credits: 2,  icon: Sparkles },
-  { name: 'Stem Split',    credits: 5,  icon: Scissors },
+  { name: 'Stem Split',    credits: 1,  icon: Scissors },
   { name: 'Loops',         credits: 7,  icon: Repeat },
   { name: 'Audio Boost',   credits: 1,  icon: Volume2 },
   { name: 'Extract Audio', credits: 1,  icon: Wand2 },
@@ -117,6 +117,8 @@ export default function PricingPage() {
   const [purchaseMessage, setPurchaseMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showCostModal, setShowCostModal] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false)
+  const [pendingDepositAmount, setPendingDepositAmount] = useState<number | null>(null)
 
   // $1 is locked as access fee. Calculate how much of a new deposit is convertible.
   const hasAccessFee = (walletBalance ?? 0) >= 1
@@ -228,6 +230,15 @@ export default function PricingPage() {
   // ── Deposit handler ──
   const handleDeposit = async (amountUsd: number) => {
     if (isPurchasing) return
+
+    // First-time deposit: show onboarding modal explaining the $1 access fee
+    const isFirstTime = (walletBalance ?? 0) < 1
+    if (isFirstTime && !showFirstTimeModal) {
+      setPendingDepositAmount(amountUsd)
+      setShowFirstTimeModal(true)
+      return
+    }
+
     setIsPurchasing(true)
     setPurchaseMessage(null)
 
@@ -865,6 +876,84 @@ export default function PricingPage() {
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isConverting ? 'Converting...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── First-Time Purchase Onboarding Modal ── */}
+      {showFirstTimeModal && pendingDepositAmount !== null && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={() => { setShowFirstTimeModal(false); setPendingDepositAmount(null) }}>
+          <div className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 border border-cyan-500/40 rounded-2xl max-w-md w-full shadow-2xl shadow-cyan-500/10 overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border-b border-cyan-500/20 p-6 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-cyan-500/30">
+                <Wallet className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Welcome to 444 Radio</h3>
+              <p className="text-sm text-gray-400 mt-1">Quick heads-up before your first deposit</p>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              {/* The key info */}
+              <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <DollarSign className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-amber-300">$1 One-Time Access Fee</p>
+                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                      From your first deposit, <span className="text-white font-semibold">$1 will be locked permanently</span> as a one-time platform access fee. This is a one-time charge — it never happens again on future deposits.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Breakdown */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Your deposit breakdown</p>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Deposit amount</span>
+                  <span className="text-white font-semibold">${pendingDepositAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-amber-400">Access fee (one-time)</span>
+                  <span className="text-amber-400 font-semibold">−$1.00</span>
+                </div>
+                <div className="border-t border-white/10 pt-2 flex items-center justify-between text-sm">
+                  <span className="text-gray-300">Convertible to credits</span>
+                  <span className="text-cyan-400 font-bold">${Math.max(0, pendingDepositAmount - 1).toFixed(2)} → {Math.floor(Math.max(0, pendingDepositAmount - 1) / CREDIT_RATE)} credits</span>
+                </div>
+              </div>
+
+              {/* Reassurance */}
+              <div className="flex items-start gap-2 text-xs text-gray-500">
+                <Shield className="w-4 h-4 flex-shrink-0 text-cyan-400/50 mt-0.5" />
+                <span>After this one-time fee, all future deposits convert fully to credits. No hidden charges.</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 p-6 pt-0">
+              <button
+                onClick={() => { setShowFirstTimeModal(false); setPendingDepositAmount(null) }}
+                className="flex-1 px-5 py-3 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl font-semibold text-sm transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowFirstTimeModal(false)
+                  const amount = pendingDepositAmount
+                  setPendingDepositAmount(null)
+                  if (amount) handleDeposit(amount)
+                }}
+                className="flex-1 px-5 py-3 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-black rounded-xl font-bold text-sm transition-all"
+              >
+                Got it, Continue
               </button>
             </div>
           </div>

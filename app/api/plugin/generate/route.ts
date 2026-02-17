@@ -45,7 +45,7 @@ const CREDIT_COSTS: Record<string, number | ((params: Record<string, unknown>) =
   image: 1,
   effects: 2,
   loops: (p) => ((p.max_duration as number) || 8) <= 10 ? 6 : 7,
-  stems: 1,
+  stems: (p) => (p.model as string) === 'htdemucs_ft' ? 3 : 1,
   extract: 1,
   'audio-boost': 1,
   'extract-video': 1,
