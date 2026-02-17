@@ -17,8 +17,8 @@ export default function CreditIndicator() {
   const playerActive = !!currentTrack
 
   return (
-    <div className={`fixed z-50 flex items-center transition-all duration-300 ${
-      playerActive ? 'top-3 right-3 gap-2' : 'top-6 right-6 gap-2.5'
+    <div className={`fixed z-[60] flex items-center transition-all duration-300 ${
+      playerActive ? 'top-3 right-[640px] gap-2' : 'top-6 right-6 gap-2.5'
     }`}>
       {/* Notification Bell */}
       <NotificationBell />

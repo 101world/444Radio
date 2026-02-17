@@ -63,12 +63,12 @@ function GenerationCard({ job, position, total, onCancel }: {
     : 'border-cyan-500/30 bg-gradient-to-r from-cyan-950/20 via-black/50 to-cyan-950/20'
 
   const statusText = phase === 'hot'
-    ? '🔥 GPU at full throttle...'
+    ? '🔥 GPU CORES MAXED — FULL THROTTLE'
     : phase === 'warm'
-    ? '⚡ Processing intensely...'
+    ? '⚡ GPU COMPUTE RAMPING...'
     : position > 1
     ? `⏳ Queued (#${position} of ${total})`
-    : '🎵 Generating...'
+    : '🧬 Neural inference running...'
 
   // Fake progress: logarithmic curve that slows down approaching 95%
   const maxSec = 120
@@ -84,6 +84,13 @@ function GenerationCard({ job, position, total, onCancel }: {
           backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px)',
         }}
       />
+      {/* Hot phase: animated heat shimmer at edges */}
+      {phase === 'hot' && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-orange-500/60 to-transparent animate-pulse" />
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-orange-500/40 to-transparent animate-pulse" style={{ animationDelay: '0.5s' }} />
+        </div>
+      )}
 
       <div className="relative px-4 py-3">
         {/* Header row */}
@@ -150,15 +157,24 @@ function GenerationCard({ job, position, total, onCancel }: {
 
         {/* Bottom detail strip */}
         <div className="flex items-center justify-between mt-1.5">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <Zap size={8} className={phase === 'hot' ? 'text-orange-500 animate-pulse' : 'text-gray-600'} />
             <span className="text-[8px] text-gray-600 font-mono uppercase tracking-wider">
-              {phase === 'hot' ? 'MAX LOAD' : phase === 'warm' ? 'HIGH LOAD' : 'PROCESSING'}
+              {phase === 'hot' ? 'MAX LOAD · GPU 100%' : phase === 'warm' ? 'HIGH LOAD · GPU 80%' : 'INFERENCE · GPU 40%'}
             </span>
           </div>
-          <span className="text-[8px] text-gray-600 font-mono">
-            {job.type.toUpperCase()}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] text-gray-600 font-mono">
+              {job.type.toUpperCase()}
+            </span>
+            {phase !== 'cool' && (
+              <span className={`text-[7px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                phase === 'hot' ? 'bg-orange-500/20 text-orange-400 animate-pulse' : 'bg-yellow-500/15 text-yellow-400'
+              }`}>
+                {phase === 'hot' ? 'THROTTLE' : 'COMPUTE'}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

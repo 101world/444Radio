@@ -24,7 +24,7 @@ function VerticalWaveform({ audioElement, isPlaying }: { audioElement: HTMLAudio
         const ctx = ctxRef.current
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 256
-        analyser.smoothingTimeConstant = 0.8
+        analyser.smoothingTimeConstant = 0.65
         const source = ctx.createMediaElementSource(audioElement)
         source.connect(analyser)
         analyser.connect(ctx.destination)
@@ -188,6 +188,7 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
   const ctxRef = useRef<AudioContext | null>(null)
   const rafRef = useRef<number>(0)
   const connectedRef = useRef<HTMLAudioElement | null>(null)
+  const rotRef = useRef(0)
 
   useEffect(() => {
     if (!audioElement || !canvasRef.current) return
@@ -198,8 +199,8 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
         }
         const ctx = ctxRef.current
         const analyser = ctx.createAnalyser()
-        analyser.fftSize = 256
-        analyser.smoothingTimeConstant = 0.8
+        analyser.fftSize = 512
+        analyser.smoothingTimeConstant = 0.65
         try {
           const source = ctx.createMediaElementSource(audioElement)
           source.connect(analyser)
@@ -214,8 +215,9 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
     const c = canvas.getContext('2d')
     if (!c) return
     const analyser = analyserRef.current
-    const bufLen = analyser ? analyser.frequencyBinCount : 64
+    const bufLen = analyser ? analyser.frequencyBinCount : 128
     const data = new Uint8Array(bufLen)
+    const prevData = new Float32Array(bufLen)
 
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw)
@@ -230,47 +232,96 @@ function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAud
       c.clearRect(0, 0, W, H)
 
       if (analyser && isPlaying) analyser.getByteFrequencyData(data)
-      else for (let i = 0; i < bufLen; i++) data[i] = Math.floor(20 + 10 * Math.sin(Date.now() / 1000 + i * 0.3))
+      else for (let i = 0; i < bufLen; i++) data[i] = Math.floor(15 + 8 * Math.sin(Date.now() / 800 + i * 0.2))
+
+      // Ultra-smooth interpolation
+      for (let i = 0; i < bufLen; i++) {
+        prevData[i] += (data[i] - prevData[i]) * 0.35
+      }
+      if (isPlaying) rotRef.current += 0.003
 
       const cx = W / 2
       const cy = H / 2
-      const baseR = Math.min(cx, cy) * 0.35
-      const maxR = Math.min(cx, cy) * 0.9
-      const barCount = Math.min(bufLen, 64)
+      const baseR = Math.min(cx, cy) * 0.3
+      const maxR = Math.min(cx, cy) * 0.88
+      const barCount = 96
 
+      // Outer pulsing ring
+      const avgLevel = prevData.reduce((s, v) => s + v, 0) / bufLen / 255
+      const pulseR = baseR + (maxR - baseR) * 0.6 + avgLevel * 12
+      c.beginPath()
+      c.arc(cx, cy, pulseR, 0, Math.PI * 2)
+      c.strokeStyle = `rgba(34, 211, 238, ${0.04 + avgLevel * 0.12})`
+      c.lineWidth = 1.5
+      c.stroke()
+
+      // Secondary inner pulse ring
+      c.beginPath()
+      c.arc(cx, cy, baseR + avgLevel * 20, 0, Math.PI * 2)
+      c.strokeStyle = `rgba(20, 184, 166, ${0.06 + avgLevel * 0.15})`
+      c.lineWidth = 1
+      c.stroke()
+
+      // Main frequency bars — rotating radial
       for (let i = 0; i < barCount; i++) {
-        const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2
-        const v = data[i] / 255
-        const r = baseR + v * (maxR - baseR)
+        const dataIdx = Math.floor((i / barCount) * Math.min(bufLen, 128))
+        const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2 + rotRef.current
+        const v = prevData[dataIdx] / 255
+        const r = baseR + v * (maxR - baseR) * 0.85
 
-        const x1 = cx + Math.cos(angle) * baseR
-        const y1 = cy + Math.sin(angle) * baseR
+        const x1 = cx + Math.cos(angle) * (baseR + 2)
+        const y1 = cy + Math.sin(angle) * (baseR + 2)
+        const x2 = cx + Math.cos(angle) * r
+        const y2 = cy + Math.sin(angle) * r
+
+        // Gradient from cyan to teal based on frequency
+        const hue = 175 + (i / barCount) * 15
+        c.beginPath()
+        c.moveTo(x1, y1)
+        c.lineTo(x2, y2)
+        c.lineWidth = 1.8
+        c.strokeStyle = `hsla(${hue}, 80%, 65%, ${0.2 + v * 0.8})`
+        c.shadowColor = `hsla(${hue}, 90%, 60%, ${v * 0.5})`
+        c.shadowBlur = v * 10
+        c.stroke()
+      }
+
+      // Mirror bars (inner, smaller)
+      for (let i = 0; i < barCount; i += 2) {
+        const dataIdx = Math.floor((i / barCount) * Math.min(bufLen, 128))
+        const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2 - rotRef.current * 0.5
+        const v = prevData[dataIdx] / 255
+        const innerR = baseR * 0.95
+        const r = innerR - v * baseR * 0.4
+
+        const x1 = cx + Math.cos(angle) * innerR
+        const y1 = cy + Math.sin(angle) * innerR
         const x2 = cx + Math.cos(angle) * r
         const y2 = cy + Math.sin(angle) * r
 
         c.beginPath()
         c.moveTo(x1, y1)
         c.lineTo(x2, y2)
-        c.lineWidth = 2
-        c.strokeStyle = `rgba(34, 211, 238, ${0.3 + v * 0.7})`
-        c.shadowColor = 'rgba(34, 211, 238, 0.4)'
-        c.shadowBlur = v * 6
+        c.lineWidth = 1
+        c.strokeStyle = `rgba(34, 211, 238, ${0.1 + v * 0.3})`
+        c.shadowBlur = 0
         c.stroke()
       }
 
-      // Center glow
-      const grad = c.createRadialGradient(cx, cy, 0, cx, cy, baseR)
-      grad.addColorStop(0, 'rgba(34, 211, 238, 0.08)')
+      // Center glow — reactive
+      const grad = c.createRadialGradient(cx, cy, 0, cx, cy, baseR * 1.1)
+      grad.addColorStop(0, `rgba(34, 211, 238, ${0.06 + avgLevel * 0.12})`)
+      grad.addColorStop(0.5, `rgba(20, 184, 166, ${0.03 + avgLevel * 0.06})`)
       grad.addColorStop(1, 'rgba(34, 211, 238, 0)')
       c.fillStyle = grad
       c.beginPath()
-      c.arc(cx, cy, baseR, 0, Math.PI * 2)
+      c.arc(cx, cy, baseR * 1.1, 0, Math.PI * 2)
       c.fill()
 
-      // Center icon text
+      // Center icon
       c.shadowBlur = 0
-      c.fillStyle = 'rgba(34, 211, 238, 0.4)'
-      c.font = `${Math.round(baseR * 0.6)}px sans-serif`
+      c.fillStyle = `rgba(34, 211, 238, ${0.3 + avgLevel * 0.4})`
+      c.font = `${Math.round(baseR * 0.5)}px sans-serif`
       c.textAlign = 'center'
       c.textBaseline = 'middle'
       c.fillText('♪', cx, cy)
@@ -716,7 +767,7 @@ export default function FloatingAudioPlayer() {
       {/* ─── Now Playing ─── */}
       <div className="flex flex-col items-center px-6 pt-5 pb-3 flex-shrink-0">
         {/* Album art with progress ring — large centered */}
-        <div className="relative w-52 h-52 flex-shrink-0 mb-4">
+        <div className="relative w-64 h-64 flex-shrink-0 mb-4">
           {/* Ambient glow behind art */}
           {isPlaying && (
             <div className="absolute -inset-3 rounded-3xl opacity-30 blur-xl pointer-events-none"

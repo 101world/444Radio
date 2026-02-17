@@ -506,6 +506,10 @@ export default function LibraryPage() {
         <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-teal-500/[0.02] rounded-full blur-[100px]" />
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-cyan-400/[0.015] rounded-full blur-[140px]" />
       </div>
+      {/* Scanline overlay for cinematic depth */}
+      <div className="fixed inset-0 pointer-events-none z-[1] mix-blend-overlay opacity-[0.015]" style={{
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(200,200,220,0.08) 3px, rgba(200,200,220,0.08) 4px)',
+      }} />
       {/* Holographic 3D Background - Lazy Loaded */}
       <Suspense fallback={null}>
         <HolographicBackgroundClient />
@@ -541,7 +545,7 @@ export default function LibraryPage() {
       <div className="max-w-7xl mx-auto px-4 pt-20 md:pt-24 pb-8">
         {/* Header with Refresh Button */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400" style={{ filter: 'drop-shadow(0 0 12px rgba(6,182,212,0.4))' }}>
+          <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-teal-400" style={{ filter: 'drop-shadow(0 0 16px rgba(6,182,212,0.5))' }}>
             My Library
           </h1>
           <div className="flex gap-3">
@@ -565,7 +569,10 @@ export default function LibraryPage() {
         </div>
         
         {/* Category Tabs - Clean & Prominent */}
-        <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-cyan-500/20 -mx-4 px-4 py-4 mb-6 shadow-lg shadow-cyan-500/[0.05]">
+        <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl -mx-4 px-4 py-4 mb-6" style={{
+          borderBottom: '1px solid rgba(200,200,220,0.08)',
+          boxShadow: '0 4px 20px rgba(6,182,212,0.03), 0 1px 0 rgba(200,200,220,0.05)',
+        }}>
           <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setActiveTab('images')}
@@ -747,7 +754,19 @@ export default function LibraryPage() {
                 {imageItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-square bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-xl overflow-hidden hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/10 hover:scale-105 transition-all duration-300 cursor-pointer"
+                    className="group relative aspect-square bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden hover:scale-105 transition-all duration-300 cursor-pointer"
+                    style={{
+                      border: '1px solid rgba(200,200,220,0.1)',
+                      boxShadow: '0 0 0 0 rgba(200,200,220,0), inset 0 0 30px rgba(6,182,212,0.02)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.25)'
+                      e.currentTarget.style.boxShadow = '0 0 15px rgba(200,200,220,0.08), 0 0 40px rgba(6,182,212,0.06)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.1)'
+                      e.currentTarget.style.boxShadow = '0 0 0 0 rgba(200,200,220,0), inset 0 0 30px rgba(6,182,212,0.02)'
+                    }}
                   >
                     {/* Image */}
                     <Image
@@ -825,7 +844,19 @@ export default function LibraryPage() {
                 {musicItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative bg-black/40 backdrop-blur-xl border border-cyan-500/20 rounded-xl overflow-hidden hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300"
+                    className="group relative bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300"
+                    style={{
+                      border: '1px solid rgba(200,200,220,0.08)',
+                      boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                      e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                      e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                    }}
                   >
                     <div className="flex items-center gap-3 p-3">
                       {/* Thumbnail */}
@@ -964,7 +995,19 @@ export default function LibraryPage() {
                 {videoItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative aspect-video bg-black/60 backdrop-blur-xl border border-purple-500/20 rounded-xl overflow-hidden hover:border-purple-400/60 transition-all duration-300 cursor-pointer"
+                    className="group relative aspect-video bg-black/60 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300 cursor-pointer"
+                    style={{
+                      border: '1px solid rgba(200,200,220,0.08)',
+                      boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                      e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                      e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                    }}
                     onClick={() => {
                       // Play video with generated audio
                       const videoUrl = item.video_url || item.audioUrl || item.audio_url || item.media_url
@@ -1021,7 +1064,19 @@ export default function LibraryPage() {
                 {releaseItems.map((item) => (
                   <div
                     key={item.id}
-                    className="group relative bg-black/40 backdrop-blur-xl border border-green-500/20 rounded-xl overflow-hidden hover:border-green-400/60 transition-all duration-300"
+                    className="group relative bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300"
+                    style={{
+                      border: '1px solid rgba(200,200,220,0.08)',
+                      boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                      e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                      e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                    }}
                   >
                     <div className="flex items-center gap-3 p-3">
                       {/* Cover Art */}
@@ -1107,7 +1162,20 @@ export default function LibraryPage() {
             ) : (
               <div className="space-y-2">
                 {likedItems.map((item: any) => (
-                  <div key={item.id} className="group relative bg-black/40 backdrop-blur-xl border border-pink-500/20 rounded-xl overflow-hidden hover:border-pink-400/60 transition-all duration-300">
+                  <div key={item.id} className="group relative bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all duration-300"
+                    style={{
+                      border: '1px solid rgba(200,200,220,0.08)',
+                      boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                      e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                      e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                    }}
+                  >
                     <div className="flex items-center gap-3 p-3">
                       <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border border-pink-500/30">
                         <Image src={item.image_url} alt={item.title || 'Release'} width={56} height={56} className="w-full h-full object-cover" loading="lazy" />
@@ -1160,7 +1228,20 @@ export default function LibraryPage() {
                 {stemGroups.map((group: any, idx: number) => {
                   const isExpanded = expandedStems.has(idx)
                   return (
-                    <div key={idx} className="bg-black/40 backdrop-blur-xl border border-orange-500/20 rounded-xl overflow-hidden hover:border-orange-400/40 transition-all">
+                    <div key={idx} className="bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all"
+                      style={{
+                        border: '1px solid rgba(200,200,220,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
+                    >
                       {/* Parent track header — click to expand */}
                       <button
                         onClick={() => {
@@ -1292,7 +1373,19 @@ export default function LibraryPage() {
                   return (
                     <div
                       key={track.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-orange-500/20 rounded-xl hover:border-orange-400/40 transition-all group"
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
+                      style={{
+                        border: '1px solid rgba(200,200,220,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
                     >
                       {/* Play button */}
                       <button
@@ -1368,7 +1461,19 @@ export default function LibraryPage() {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-yellow-500/20 rounded-xl hover:border-yellow-400/40 transition-all group"
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
+                      style={{
+                        border: '1px solid rgba(200,200,220,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
                     >
                       {/* Play button */}
                       <button
@@ -1474,7 +1579,20 @@ export default function LibraryPage() {
                 {extractGroups.map((group: any, idx: number) => {
                   const isExpanded = expandedExtracts.has(idx)
                   return (
-                    <div key={idx} className="bg-black/40 backdrop-blur-xl border border-emerald-500/20 rounded-xl overflow-hidden hover:border-emerald-400/40 transition-all">
+                    <div key={idx} className="bg-black/40 backdrop-blur-xl rounded-xl overflow-hidden transition-all"
+                      style={{
+                        border: '1px solid rgba(200,200,220,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
+                    >
                       {/* Parent track header — click to expand */}
                       <button
                         onClick={() => {
@@ -1613,7 +1731,19 @@ export default function LibraryPage() {
                   return (
                     <div
                       key={loop.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-indigo-500/20 rounded-xl hover:border-indigo-400/40 transition-all group"
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
+                      style={{
+                        border: '1px solid rgba(200,200,220,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
                     >
                       {/* Play button */}
                       <button
@@ -1695,7 +1825,19 @@ export default function LibraryPage() {
                   return (
                     <div
                       key={effect.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-pink-500/20 rounded-xl hover:border-pink-400/40 transition-all group"
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
+                      style={{
+                        border: '1px solid rgba(200,200,220,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
                     >
                       {/* Play button */}
                       <button
@@ -1777,7 +1919,19 @@ export default function LibraryPage() {
                   return (
                     <div
                       key={track.id}
-                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl border border-violet-500/20 rounded-xl hover:border-violet-400/40 transition-all group"
+                      className="flex items-center gap-3 p-3 bg-black/40 backdrop-blur-xl rounded-xl transition-all group"
+                      style={{
+                        border: '1px solid rgba(200,200,220,0.08)',
+                        boxShadow: 'inset 0 0 30px rgba(6,182,212,0.02)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.2)'
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(200,200,220,0.06), 0 0 30px rgba(6,182,212,0.04)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.border = '1px solid rgba(200,200,220,0.08)'
+                        e.currentTarget.style.boxShadow = 'inset 0 0 30px rgba(6,182,212,0.02)'
+                      }}
                     >
                       {/* Play button */}
                       <button

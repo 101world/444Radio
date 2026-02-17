@@ -758,12 +758,20 @@ function ExplorePageContent() {
                               <Play size={10} /> Play All
                             </button>
                           </div>
-                          <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                            {genreTracks.map(media => (
-                              <GridTrackCard key={`genre-${genre}-${media.id}`} media={media}
-                                isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
-                                onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
-                            ))}
+                          <div className="relative group/scroll">
+                            <div className="flex gap-3 overflow-x-auto px-4 md:px-6 pb-2" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                              {genreTracks.map(media => (
+                                <GridTrackCard key={`genre-${genre}-${media.id}`} media={media}
+                                  isCurrentlyPlaying={playingId === media.id} isPlaying={isPlaying}
+                                  onPlay={() => handlePlay(media)} onLyrics={() => openLyrics(media)} onInfo={() => setInfoMedia(media)} />
+                              ))}
+                            </div>
+                            {/* Right-scroll fade indicator */}
+                            {genreTracks.length > 3 && (
+                              <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-black/80 via-black/40 to-transparent pointer-events-none flex items-center justify-end pr-2">
+                                <ChevronRight size={18} className="text-cyan-400/60 animate-pulse" />
+                              </div>
+                            )}
                           </div>
                         </section>
                       )
