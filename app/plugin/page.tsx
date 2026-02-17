@@ -144,7 +144,7 @@ const FEATURES = [
   { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
   { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1 },
   { key: 'autotune', icon: Zap, label: 'Autotune', desc: 'Pitch correct to any key', color: 'purple', cost: 1 },
-  { key: 'visualizer', icon: Film, label: 'Visualizer', desc: 'Text/Image to video', color: 'purple', cost: 0 },
+  { key: 'visualizer', icon: Film, label: 'Visualizer', desc: 'Text/Image to video', color: 'purple', cost: -1 },
   { key: 'lyrics', icon: Edit3, label: 'Lyrics', desc: 'Write & edit lyrics', color: 'cyan', cost: 0, conditionalMusic: true },
   { key: 'upload', icon: Upload, label: 'Upload', desc: 'Upload audio/video', color: 'purple', cost: 0 },
   { key: 'release', icon: Rocket, label: 'Release', desc: 'Publish to feed', color: 'cyan', cost: 0 },
@@ -1923,6 +1923,24 @@ export default function PluginPage() {
     })()
   }, [token, isAuthenticated])
 
+  // ═══ STUCK VIDEO GENERATION RECOVERY ═══
+  // Clean up stuck "Generating video..." messages that survived a tab close/reopen.
+  // If a message has isGenerating + generationType==='video' and is older than 10 min, mark it as failed.
+  useEffect(() => {
+    setMessages(prev => {
+      const TEN_MIN = 10 * 60 * 1000
+      let changed = false
+      const updated = prev.map(msg => {
+        if (msg.isGenerating && msg.generationType === 'video' && (Date.now() - msg.timestamp.getTime() > TEN_MIN)) {
+          changed = true
+          return { ...msg, isGenerating: false, content: '⚠️ Video generation timed out — credits were refunded if generation failed. Try again.' }
+        }
+        return msg
+      })
+      return changed ? updated : prev
+    })
+  }, []) // Run once on mount
+
   // ═══ RELEASE: Open in browser (plugin can't host the full release modal) ═══
   const handleOpenRelease = () => {
     window.open('https://444radio.co.in/create', '_blank')
@@ -2296,8 +2314,12 @@ export default function PluginPage() {
                         openUploadModal()
                       } else if (f.key === 'release') {
                         handleOpenRelease()
+                      } else if (f.key === 'visualizer') {
+                        setShowVisualizerModal(true)
+                        setShowFeaturesSidebar(false)
                       } else {
                         setSelectedType(f.key as GenerationType)
+                        setShowFeaturesSidebar(false)
                       }
                     }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all relative overflow-hidden"
@@ -2308,6 +2330,7 @@ export default function PluginPage() {
                         <div className="text-[9px]" style={{color:'rgba(255,255,255,0.3)'}}>{f.desc}</div>
                       </div>
                       {f.cost > 0 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(255,255,255,0.25)',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.04)'}}>-{f.cost}</span>}
+                      {f.cost === -1 && <span className="text-[10px] px-2 py-1 rounded-full" style={{color:'rgba(160,130,255,0.4)',background:'rgba(160,80,255,0.05)',border:'1px solid rgba(160,80,255,0.08)'}}>~5+</span>}
                     </button>
                   )
                 })}
@@ -3738,6 +3761,12 @@ export default function PluginPage() {
             updated[idx] = { ...updated[idx], isGenerating: false, content: '✅ Video generated!', result: { url: videoUrl, title: `Visualizer: ${prompt.substring(0, 40)}`, prompt } }
             return updated
           })
+          // Save to local plugin library (same as music)
+          try {
+            const lib = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]')
+            lib.unshift({ id: Date.now(), type: 'video', title: `Visualizer: ${prompt.substring(0, 40)}`, videoUrl, audioUrl: videoUrl, prompt, mediaId, createdAt: new Date().toISOString() })
+            localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib.slice(0, 200)))
+          } catch {}
           refreshCredits()
         }}
       />
