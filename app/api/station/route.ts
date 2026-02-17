@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
     // Query by station ID
     if (id) {
       const { data: station, error } = await supabase
-        .from('stations')
+        .from('live_stations')
         .select(`
           *,
-          users:user_id (
+          users:clerk_user_id (
             clerk_user_id,
             username,
             profile_image_url
@@ -38,15 +38,15 @@ export async function GET(request: NextRequest) {
       const formatted = {
         id: station.id,
         title: station.title,
-        description: station.description,
-        coverUrl: station.cover_url,
-        genre: station.genre,
+        description: station.description || '',
+        coverUrl: station.cover_url || station.current_track_image,
+        genre: station.genre || '',
         isLive: station.is_live,
         listenerCount: station.listener_count || 0,
-        lastLiveAt: station.last_live_at,
+        lastLiveAt: station.last_live_at || station.updated_at,
         owner: {
-          userId: station.users?.clerk_user_id,
-          username: station.users?.username || 'Unknown',
+          userId: station.clerk_user_id || station.users?.clerk_user_id,
+          username: station.username || station.users?.username || 'Unknown',
           profileImage: station.users?.profile_image_url
         }
       }
