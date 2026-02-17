@@ -193,13 +193,36 @@ export async function POST(req: NextRequest) {
 
         await updatePluginJob(jobId, { status: 'completed', output: result as Record<string, unknown> })
       } else {
+        // REFUND credits on failed generation — user should not lose credits
+        try {
+          const refundRes = await fetch(`${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify({ credits: (deduct.newCredits || 0) + creditCost }),
+          })
+          if (refundRes.ok) {
+            console.log(`🔄 [plugin] Refunded ${creditCost} credits for failed ${type} (job ${jobId})`)
+            result.creditsRefunded = creditCost
+          } else {
+            console.error(`❌ [plugin] Refund failed for ${type} (job ${jobId})`)
+          }
+        } catch (refErr) {
+          console.error(`❌ [plugin] Refund error:`, refErr)
+        }
+
         await logCreditTransaction({
           userId,
-          amount: 0,
+          amount: creditCost,
+          balanceAfter: (deduct.newCredits || 0) + creditCost,
           type: `generation_${type.replace('-', '_')}` as any,
           status: 'failed',
-          description: `Plugin failed: ${type}`,
-          metadata: { source: 'plugin', jobId, error: result.error },
+          description: `Plugin ${type} failed — ${creditCost} credit(s) refunded`,
+          metadata: { source: 'plugin', jobId, error: result.error, refunded: true },
         })
         await updatePluginJob(jobId, { status: 'failed', error: String(result.error) })
       }
@@ -208,9 +231,33 @@ export async function POST(req: NextRequest) {
       await writer.close()
     } catch (error) {
       console.error(`[plugin/generate] Fatal error (${type}):`, error)
+      // Refund credits on fatal error
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ credits: (deduct.newCredits || 0) + creditCost }),
+        })
+        console.log(`🔄 [plugin] Refunded ${creditCost} credits after fatal error in ${type}`)
+        await logCreditTransaction({
+          userId,
+          amount: creditCost,
+          balanceAfter: (deduct.newCredits || 0) + creditCost,
+          type: `generation_${type.replace('-', '_')}` as any,
+          status: 'failed',
+          description: `Plugin ${type} crashed — ${creditCost} credit(s) refunded`,
+          metadata: { source: 'plugin', jobId, error: String(error), refunded: true },
+        })
+      } catch (refErr) {
+        console.error(`❌ [plugin] Fatal error refund failed:`, refErr)
+      }
       await updatePluginJob(jobId, { status: 'failed', error: String(error) })
       try {
-        await sendLine({ type: 'result', jobId, success: false, error: '444 radio is locking in, please try again' })
+        await sendLine({ type: 'result', jobId, success: false, error: '444 radio is locking in, please try again', creditsRefunded: creditCost })
         await writer.close()
       } catch { /* stream closed */ }
     }

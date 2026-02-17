@@ -328,19 +328,25 @@ export default function PluginPage() {
 
   // ═══ AUTH: Extract token from URL or localStorage ═══
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const urlToken = params.get('token')
-    if (urlToken) {
-      localStorage.setItem(TOKEN_KEY, urlToken)
-      setToken(urlToken)
-    } else {
-      const saved = localStorage.getItem(TOKEN_KEY)
-      if (saved) {
-        setToken(saved)
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const urlToken = params.get('token')
+      if (urlToken) {
+        try { localStorage.setItem(TOKEN_KEY, urlToken) } catch {}
+        setToken(urlToken)
       } else {
-        // No token found — stop loading so auth screen shows
-        setIsLoadingCredits(false)
+        let saved: string | null = null
+        try { saved = localStorage.getItem(TOKEN_KEY) } catch {}
+        if (saved) {
+          setToken(saved)
+        } else {
+          // No token found — stop loading so auth screen shows
+          setIsLoadingCredits(false)
+        }
       }
+    } catch (e) {
+      console.warn('[plugin] Token extraction error:', e)
+      setIsLoadingCredits(false)
     }
     // Safety timeout: if still loading after 10s, force auth screen
     const timeout = setTimeout(() => {
@@ -389,7 +395,7 @@ export default function PluginPage() {
           console.warn('[plugin] Auth failed:', res.status, errorMsg)
 
           // Clear invalid token so user can re-enter
-          localStorage.removeItem(TOKEN_KEY)
+          try { localStorage.removeItem(TOKEN_KEY) } catch {}
           setToken(null)
           setAuthError(errorMsg)
           setIsAuthenticated(false)
@@ -1960,7 +1966,7 @@ export default function PluginPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const val = (e.target as HTMLInputElement).value.trim()
-                    if (val) { localStorage.setItem(TOKEN_KEY, val); setToken(val) }
+                    if (val) { try { localStorage.setItem(TOKEN_KEY, val) } catch {}; setToken(val) }
                   }
                 }}
               />
@@ -1968,7 +1974,7 @@ export default function PluginPage() {
                 onClick={() => {
                   const input = document.getElementById('plugin-token-input') as HTMLInputElement
                   const val = input?.value?.trim()
-                  if (val) { localStorage.setItem(TOKEN_KEY, val); setToken(val) }
+                  if (val) { try { localStorage.setItem(TOKEN_KEY, val) } catch {}; setToken(val) }
                 }}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white text-sm font-semibold transition-all"
               >
@@ -1984,8 +1990,17 @@ export default function PluginPage() {
   }
 
   if (isLoadingCredits) {
-    // Return null — the HTML fallback in layout.tsx stays visible
-    return null
+    // Return a minimal inline-styled loading screen (no Tailwind dependency)
+    // This ensures no white flash if CSS hasn't loaded yet
+    return (
+      <div style={{ minHeight: '100vh', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 32, height: 32, border: '3px solid rgba(6,182,212,0.3)', borderTopColor: '#06b6d4', borderRadius: '50%', margin: '0 auto 12px', animation: 'spin 1s linear infinite' }} />
+          <p style={{ fontSize: 13, color: '#888' }}>Connecting to 444 Radio...</p>
+        </div>
+        <style dangerouslySetInnerHTML={{ __html: '@keyframes spin{to{transform:rotate(360deg)}}' }} />
+      </div>
+    )
   }
 
   // ═══════════════════════════════════════════════════════════════

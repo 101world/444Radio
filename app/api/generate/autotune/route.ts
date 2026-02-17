@@ -234,24 +234,54 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Autotune error:', error)
     
-    // Log generation failure
+    // REFUND credit on failure — user should not lose credits for failed generations
     try {
       const { userId } = await auth()
       if (userId) {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+        // Read current credits then add 1 back
+        const readRes = await fetch(
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}&select=credits`,
+          { headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` } }
+        )
+        const readData = readRes.ok ? await readRes.json() : []
+        const currentCredits = readData?.[0]?.credits ?? 0
+
+        const refundRes = await fetch(
+          `${supabaseUrl}/rest/v1/users?clerk_user_id=eq.${userId}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation',
+            },
+            body: JSON.stringify({ credits: currentCredits + 1 }),
+          }
+        )
+        const refundedCredits = refundRes.ok ? currentCredits + 1 : null
+        console.log(`🔄 Autotune refund: +1 credit → ${refundedCredits ?? 'FAILED'}`)
+
         await logCreditTransaction({
           userId,
-          amount: 0,
+          amount: 1,
+          balanceAfter: refundedCredits ?? undefined,
           type: 'generation_autotune',
           status: 'failed',
-          description: 'Autotune generation failed (post-deduction)',
-          metadata: { error: error instanceof Error ? error.message : String(error) }
+          description: 'Autotune failed — credit refunded',
+          metadata: { error: error instanceof Error ? error.message : String(error), refunded: true }
         })
       }
-    } catch { /* ignore logging errors */ }
+    } catch (refundErr) {
+      console.error('Autotune refund error:', refundErr)
+    }
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return corsResponse(NextResponse.json(
-      { error: `Failed to autotune audio: ${errorMessage}` },
+      { error: `Failed to autotune audio: ${errorMessage}`, creditsRefunded: 1 },
       { status: 500 }
     ))
   }
