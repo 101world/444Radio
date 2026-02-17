@@ -28,9 +28,6 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
   const extractAudioFileInputRef = useRef<HTMLInputElement>(null)
   const autotuneFileInputRef = useRef<HTMLInputElement>(null)
 
-  // Extract Audio parameters
-  const [extractStem, setExtractStem] = useState<'vocals' | 'bass' | 'drums' | 'piano' | 'guitar' | 'other'>('vocals')
-
   // Autotune parameters
   const MUSICAL_KEYS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
   const [autotuneKey, setAutotuneKey] = useState('C')
@@ -209,73 +206,10 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
 
       // For stem splitting, hand off to SplitStemsModal via callback
       if (uploadMode === 'stem-split') {
+        const fileName = selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Uploaded Audio'
         if (onStemSplit) {
-          const fileName = selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Uploaded Audio'
           onStemSplit(publicUrl, fileName)
-          handleClose()
-          return
         }
-        // Fallback: direct API call if no onStemSplit callback
-        onStart?.('stem-split')
-        
-        setUploadProgress('Splitting stems... This may take 1-2 minutes.')
-        console.log('🎵 Splitting stems from:', publicUrl)
-
-        const splitResponse = await fetch('/api/audio/split-stems', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            audioUrl: publicUrl,
-            format: 'mp3' // Default to MP3 for faster processing
-          })
-        })
-
-        // Parse NDJSON stream (server sends heartbeats + result)
-        const reader = splitResponse.body?.getReader()
-        if (!reader) throw new Error('No response stream from stem splitter')
-
-        const decoder = new TextDecoder()
-        let streamBuffer = ''
-        let splitResult: any = null
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          streamBuffer += decoder.decode(value, { stream: true })
-          const lines = streamBuffer.split('\n')
-          streamBuffer = lines.pop() || ''
-          for (const line of lines) {
-            if (!line.trim()) continue
-            try {
-              const parsed = JSON.parse(line)
-              if (parsed.type === 'progress') {
-                setUploadProgress(`Splitting stems... ${parsed.status} (${parsed.elapsed || 0}s)`)
-              } else if (parsed.type === 'result') {
-                splitResult = parsed
-              }
-            } catch { /* skip unparseable lines */ }
-          }
-        }
-        // Process remaining buffer
-        if (streamBuffer.trim()) {
-          for (const line of streamBuffer.split('\n')) {
-            if (!line.trim()) continue
-            try {
-              const parsed = JSON.parse(line)
-              if (parsed.type === 'result') splitResult = parsed
-            } catch { /* skip */ }
-          }
-        }
-        reader.releaseLock()
-
-        if (!splitResult || !splitResult.success) {
-          const errMsg = splitResult?.error || 'Stem splitting failed'
-          console.error('❌ Stem splitting error:', errMsg)
-          throw new Error(errMsg)
-        }
-
-        console.log('✅ Stems split successfully:', splitResult)
-        onSuccess?.(splitResult)
         handleClose()
         return
       }
@@ -347,102 +281,10 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
 
       // For extract audio-to-audio stem, hand off to SplitStemsModal via callback
       if (uploadMode === 'extract-audio') {
+        const fileName = selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Audio'
         if (onStemSplit) {
-          const fileName = selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Audio'
           onStemSplit(publicUrl, fileName)
-          handleClose()
-          return
         }
-        // Fallback: direct API call if no onStemSplit callback
-        onStart?.('extract-audio')
-
-        // Wait for R2 propagation
-        setUploadProgress('Verifying file accessibility...')
-        await new Promise(resolve => setTimeout(resolve, 5000))
-
-        let retries = 0
-        const maxRetries = 3
-        let isAccessible = false
-        while (retries < maxRetries && !isAccessible) {
-          try {
-            const headResponse = await fetch(publicUrl, { method: 'HEAD' })
-            if (headResponse.ok) {
-              isAccessible = true
-            } else {
-              await new Promise(resolve => setTimeout(resolve, 2000))
-              retries++
-            }
-          } catch {
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            retries++
-          }
-        }
-
-        if (!isAccessible) {
-          throw new Error('Uploaded file is not yet accessible. Please try again in a moment.')
-        }
-
-        setUploadProgress(`Extracting ${extractStem}... This may take 1-3 minutes.`)
-        console.log('🎵 Extracting stem:', extractStem, 'from:', publicUrl)
-
-        const extractResponse = await fetch('/api/generate/extract-audio-stem', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            audioUrl: publicUrl,
-            stem: extractStem,
-            trackTitle: selectedFile?.name?.replace(/\.[^/.]+$/, '') || 'Audio',
-            output_format: 'mp3',
-            mp3_bitrate: 320,
-          })
-        })
-
-        // Parse NDJSON stream
-        const reader = extractResponse.body?.getReader()
-        if (!reader) throw new Error('No response stream from extractor')
-
-        const decoder = new TextDecoder()
-        let streamBuffer = ''
-        let extractResult: any = null
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          streamBuffer += decoder.decode(value, { stream: true })
-          const lines = streamBuffer.split('\n')
-          streamBuffer = lines.pop() || ''
-          for (const line of lines) {
-            if (!line.trim()) continue
-            try {
-              const parsed = JSON.parse(line)
-              if (parsed.type === 'progress') {
-                setUploadProgress(`Extracting ${extractStem}... ${parsed.status} (${parsed.elapsed || 0}s)`)
-              } else if (parsed.type === 'result') {
-                extractResult = parsed
-              }
-            } catch { /* skip unparseable lines */ }
-          }
-        }
-        // Process remaining buffer
-        if (streamBuffer.trim()) {
-          for (const line of streamBuffer.split('\n')) {
-            if (!line.trim()) continue
-            try {
-              const parsed = JSON.parse(line)
-              if (parsed.type === 'result') extractResult = parsed
-            } catch { /* skip */ }
-          }
-        }
-        reader.releaseLock()
-
-        if (!extractResult || !extractResult.success) {
-          const errMsg = extractResult?.error || 'Audio extraction failed'
-          console.error('❌ Extract error:', errMsg)
-          throw new Error(errMsg)
-        }
-
-        console.log('✅ Stem extracted successfully:', extractResult)
-        onSuccess?.({ ...extractResult, type: 'extract-audio', requestedStem: extractStem })
         handleClose()
         return
       }
@@ -936,37 +778,17 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                 </div>
               )}
 
-              {/* Extract Audio Stem Selector */}
+              {/* Extract Audio — opens SplitStemsModal */}
               {uploadMode === 'extract-audio' && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-3">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-2">
                   <div className="flex items-start gap-3">
                     <Layers className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                     <div className="text-sm">
-                      <p className="text-white font-semibold">Choose a stem to extract</p>
-                      <p className="text-gray-400 text-xs mt-1">The AI will isolate the selected instrument from your audio</p>
+                      <p className="text-white font-semibold">Extract Audio Stems</p>
+                      <p className="text-gray-400 text-xs mt-1">Upload your audio file — you&apos;ll choose the stem, model & format in the next step</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['vocals', 'bass', 'drums', 'piano', 'guitar', 'other'] as const).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setExtractStem(s)}
-                        className={`px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                          extractStem === s
-                            ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/30'
-                            : 'bg-white/5 text-gray-300 hover:bg-emerald-500/20 hover:text-emerald-300 border border-white/10'
-                        }`}
-                      >
-                        {s === 'vocals' ? '🎤 Vocals' :
-                         s === 'bass' ? '🎸 Bass' :
-                         s === 'drums' ? '🥁 Drums' :
-                         s === 'piano' ? '🎹 Piano' :
-                         s === 'guitar' ? '🎸 Guitar' :
-                         '🎵 Other'}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-emerald-400 font-semibold text-xs">Cost: 1 credit</p>
+                  <p className="text-emerald-400 font-semibold text-xs">Cost: 1-3 credits per stem</p>
                 </div>
               )}
 
@@ -1182,7 +1004,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
             ) : uploadMode === 'stem-split' ? (
               <>
                 <Scissors size={16} />
-                <span>Split Stems</span>
+                <span>Upload &amp; Split Stems</span>
               </>
             ) : uploadMode === 'audio-boost' ? (
               <>
@@ -1197,7 +1019,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
             ) : uploadMode === 'extract-audio' ? (
               <>
                 <Layers size={16} />
-                <span>Extract {extractStem.charAt(0).toUpperCase() + extractStem.slice(1)}</span>
+                <span>Upload &amp; Split Stems</span>
               </>
             ) : uploadMode === 'autotune' ? (
               <>

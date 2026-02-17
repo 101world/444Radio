@@ -162,7 +162,7 @@ export async function POST(request: Request) {
     let deductResult: { success: boolean; new_credits: number; error_message?: string | null } | null = null
     if (!skipCreditDeduction) {
       const { data: deductResultRaw } = await supabase
-        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem split: ${stem} (${demucsModel})` })
+        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem Split: ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})` })
         .single()
       deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
       if (!deductResult?.success) {

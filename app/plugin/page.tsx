@@ -1757,6 +1757,46 @@ function PluginPageInner() {
       return
     }
 
+    // For stem-split and extract-audio: upload to R2, then open SplitStemsModal
+    if (uploadMode === 'stem-split' || uploadMode === 'extract-audio') {
+      setIsUploading(true)
+      setUploadProgress('Uploading file...')
+      try {
+        // Upload via presigned URL
+        const uploadRes = await fetch('/api/plugin/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ fileName: uploadFile.name, fileType: uploadFile.type, fileSize: uploadFile.size })
+        })
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}))
+          throw new Error(err.error || 'Upload setup failed')
+        }
+        const { presignedUrl, publicUrl } = await uploadRes.json()
+        const putRes = await fetch(presignedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': uploadFile.type },
+          body: uploadFile
+        })
+        if (!putRes.ok) throw new Error('File upload to storage failed')
+
+        // Open SplitStemsModal with the uploaded audio URL
+        const fileName = uploadFile.name?.replace(/\.[^/.]+$/, '') || 'Audio'
+        closeUploadModal()
+        setSplitStemsAudioUrl(publicUrl)
+        setSplitStemsMessageId(`upload-stem-${Date.now()}`)
+        setSplitStemsTrackTitle(fileName)
+        setSplitStemsCompleted({})
+        setSplitStemsProcessing(null)
+        setShowSplitStemsModal(true)
+      } catch (err: any) {
+        setUploadError(err?.message || 'Upload failed')
+      } finally {
+        setIsUploading(false)
+      }
+      return
+    }
+
     setIsUploading(true)
     setUploadProgress('Uploading file...')
 
@@ -1770,8 +1810,6 @@ function PluginPageInner() {
       extraParams.noise_reduction = boostNoiseReduction
       extraParams.output_format = boostFormat
       extraParams.bitrate = boostBitrate
-    } else if (uploadMode === 'extract-audio') {
-      extraParams.stem = extractStem
     } else if (uploadMode === 'video-to-audio') {
       extraParams.prompt = videoPrompt
       extraParams.quality = videoHQ ? 'hq' : 'standard'
@@ -1781,9 +1819,7 @@ function PluginPageInner() {
     }
 
     // Map mode to featureType
-    const featureType = uploadMode === 'stem-split' ? 'stems'
-      : uploadMode === 'extract-video' ? 'extract-video'
-      : uploadMode === 'extract-audio' ? 'extract-audio'
+    const featureType = uploadMode === 'extract-video' ? 'extract-video'
       : uploadMode
 
     closeUploadModal()
