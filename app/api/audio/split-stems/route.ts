@@ -16,8 +16,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// New: 1 credit per individual stem split
-const STEM_SPLIT_COST = 1
+// Credit cost: 1 per stem (Core/Extended), 3 per stem (Pro / htdemucs_ft)
+function getStemCost(model: string): number {
+  return model === 'htdemucs_ft' ? 3 : 1
+}
 
 // Valid stem choices (maps UI labels → Demucs stem parameter)
 const VALID_STEMS = ['drums', 'bass', 'vocals', 'guitar', 'piano', 'other'] as const
@@ -27,14 +29,14 @@ type StemChoice = typeof VALID_STEMS[number]
 const DEMUCS_VERSION = '5a7041cc9b82e5a558fea6b3d7b12dea89625e89da33f0447bd727c2d0ab9e77'
 
 // Helper to refund stem credits for failed earn purchases
-async function refundEarnStemCredits(userId: string, earnJobId: string, reason: string) {
+async function refundEarnStemCredits(userId: string, earnJobId: string, reason: string, cost: number = 1) {
   try {
     await supabase.from('earn_split_jobs').update({ status: 'failed' }).eq('id', earnJobId)
     const { data: refundUser } = await supabase.from('users').select('credits').eq('clerk_user_id', userId).single()
-    const refundedCredits = (refundUser?.credits || 0) + STEM_SPLIT_COST
+    const refundedCredits = (refundUser?.credits || 0) + cost
     await supabase.from('users').update({ credits: refundedCredits }).eq('clerk_user_id', userId)
-    await logCreditTransaction({ userId, amount: STEM_SPLIT_COST, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split ${reason} — refunded ${STEM_SPLIT_COST} credit`, metadata: { earnJobId, reason } })
-    console.log(`[Stem Split] Refunded ${STEM_SPLIT_COST} credit to ${userId} (reason: ${reason})`)
+    await logCreditTransaction({ userId, amount: cost, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split ${reason} — refunded ${cost} credit${cost > 1 ? 's' : ''}`, metadata: { earnJobId, reason } })
+    console.log(`[Stem Split] Refunded ${cost} credit${cost > 1 ? 's' : ''} to ${userId} (reason: ${reason})`)
   } catch (refundErr) {
     console.error('[Stem Split] Refund failed:', refundErr)
   }
@@ -141,9 +143,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    if (!skipCreditDeduction && userData.credits < STEM_SPLIT_COST) {
+    const stemCost = getStemCost(demucsModel)
+    if (!skipCreditDeduction && userData.credits < stemCost) {
       return NextResponse.json({ 
-        error: `Insufficient credits. Need ${STEM_SPLIT_COST} credit but have ${userData.credits}` 
+        error: `Insufficient credits. Need ${stemCost} credit${stemCost > 1 ? 's' : ''} but have ${userData.credits}` 
       }, { status: 402 })
     }
 
@@ -151,17 +154,17 @@ export async function POST(request: Request) {
     let deductResult: { success: boolean; new_credits: number; error_message?: string | null } | null = null
     if (!skipCreditDeduction) {
       const { data: deductResultRaw } = await supabase
-        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_SPLIT_COST, p_type: 'generation_stem_split', p_description: `Stem split: ${stem}` })
+        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem split: ${stem} (${demucsModel})` })
         .single()
       deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
       if (!deductResult?.success) {
         const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
         console.error('❌ Credit deduction blocked:', errorMsg)
-        await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, type: 'generation_stem_split', status: 'failed', description: `Stem split: ${stem}`, metadata: {} })
+        await logCreditTransaction({ userId, amount: -stemCost, type: 'generation_stem_split', status: 'failed', description: `Stem split: ${stem} (${demucsModel})`, metadata: {} })
         return NextResponse.json({ error: errorMsg }, { status: 402 })
       }
-      console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-      await logCreditTransaction({ userId, amount: -STEM_SPLIT_COST, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem split: ${stem}`, metadata: { stem } })
+      console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
+      await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem split: ${stem} (${demucsModel})`, metadata: { stem, model: demucsModel, cost: stemCost } })
     }
 
     // Stream prediction ID to client for cancellation, then process result
@@ -358,7 +361,7 @@ export async function POST(request: Request) {
           stem: stem,
           stems: permanentStems,
           libraryIds: savedLibraryIds,
-          creditsUsed: STEM_SPLIT_COST,
+          creditsUsed: stemCost,
           creditsRemaining: skipCreditDeduction ? userData.credits : (deductResult?.new_credits ?? userData.credits),
           model: demucsModel,
           outputFormat: outputFormat,
@@ -377,10 +380,10 @@ export async function POST(request: Request) {
           try {
             await supabase.from('earn_split_jobs').update({ status: 'failed' }).eq('id', earnJobId)
             const { data: refundUser } = await supabase.from('users').select('credits').eq('clerk_user_id', userId).single()
-            const refundedCredits = (refundUser?.credits || 0) + STEM_SPLIT_COST
+            const refundedCredits = (refundUser?.credits || 0) + stemCost
             await supabase.from('users').update({ credits: refundedCredits }).eq('clerk_user_id', userId)
-            await logCreditTransaction({ userId, amount: STEM_SPLIT_COST, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split failed — refunded ${STEM_SPLIT_COST} credit`, metadata: { earnJobId, error: String(error).substring(0, 200) } })
-            console.log(`[Stem Split] Refunded ${STEM_SPLIT_COST} credit to ${userId} for failed stem split`)
+            await logCreditTransaction({ userId, amount: stemCost, balanceAfter: refundedCredits, type: 'credit_refund', description: `Stem split failed — refunded ${stemCost} credit${stemCost > 1 ? 's' : ''}`, metadata: { earnJobId, error: String(error).substring(0, 200) } })
+            console.log(`[Stem Split] Refunded ${stemCost} credit${stemCost > 1 ? 's' : ''} to ${userId} for failed stem split`)
           } catch (refundErr) {
             console.error('[Stem Split] Refund failed:', refundErr)
           }

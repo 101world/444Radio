@@ -87,8 +87,8 @@ export async function POST(request: Request) {
     const segment = typeof body?.segment === 'number' && body.segment > 0 ? body.segment : undefined
     const jobs = 0 // Locked to 0 (auto) — prevents abuse of parallel jobs
 
-    // Check and deduct credits (stem split costs 1 credit per stem)
-    const STEM_COST = 1
+    // Credit cost: 1 per stem (Core/Extended), 3 per stem (Pro / htdemucs_ft)
+    const stemCost = demucsModel === 'htdemucs_ft' ? 3 : 1
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -104,28 +104,28 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'User not found' }, { status: 404 }))
     }
 
-    if (userData.credits < STEM_COST) {
+    if (userData.credits < stemCost) {
       return corsResponse(NextResponse.json({
         success: false,
-        error: `Insufficient credits. Stem split requires ${STEM_COST} credits, you have ${userData.credits}.`,
-        creditsNeeded: STEM_COST,
+        error: `Insufficient credits. Stem split requires ${stemCost} credit${stemCost > 1 ? 's' : ''}, you have ${userData.credits}.`,
+        creditsNeeded: stemCost,
         creditsAvailable: userData.credits
       }, { status: 402 }))
     }
 
     // ✅ DEDUCT credits atomically BEFORE generation
     const { data: deductResultRaw } = await supabase
-      .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: STEM_COST, p_type: 'generation_stem_split', p_description: 'Studio stem split' })
+      .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Studio stem split (${demucsModel})` })
       .single()
     const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
     if (!deductResult?.success) {
       const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
       console.error('❌ Credit deduction blocked:', errorMsg)
-      await logCreditTransaction({ userId, amount: -STEM_COST, type: 'generation_stem_split', status: 'failed', description: 'Studio stem split', metadata: {} })
+      await logCreditTransaction({ userId, amount: -stemCost, type: 'generation_stem_split', status: 'failed', description: `Studio stem split (${demucsModel})`, metadata: {} })
       return corsResponse(NextResponse.json({ success: false, error: errorMsg }, { status: 402 }))
     }
-    console.log(`✅ Credits deducted. Remaining: ${deductResult.new_credits}`)
-    await logCreditTransaction({ userId, amount: -STEM_COST, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: 'Studio stem split', metadata: {} })
+    console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
+    await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Studio stem split (${demucsModel})`, metadata: { model: demucsModel, cost: stemCost } })
 
     console.log('🎵 Stem splitting requested by user:', userId)
 

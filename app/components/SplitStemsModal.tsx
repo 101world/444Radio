@@ -1,7 +1,7 @@
 /**
  * Split Stems Modal — Select individual stems to isolate from audio
  * Uses ryan5453/demucs with htdemucs / htdemucs_6s / htdemucs_ft models
- * Each stem costs 1 credit; output is WAV for DAW import
+ * Each stem costs 1 credit (Core/Extended) or 3 credits (Pro); output is WAV for DAW import
  */
 'use client'
 
@@ -60,10 +60,10 @@ const ALL_STEM_OPTIONS: StemOption[] = [
   { key: 'other', label: 'Instrumental', description: 'Everything else', emoji: '🎶', color: 'text-cyan-400', gradient: 'from-cyan-500/20 to-teal-500/20', border: 'border-cyan-500/30 hover:border-cyan-400/60' },
 ]
 
-const MODEL_INFO: Record<DemucsModel, { label: string; tier: string; description: string; stems: number; stemKeys: StemType[]; badge: string }> = {
-  htdemucs: { label: '444 Core', tier: 'core', description: 'Fast & reliable — 4-stem separation for quick edits', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'], badge: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
-  htdemucs_6s: { label: '444 Extended', tier: 'extended', description: '6-stem separation — unlocks guitar & piano isolation', stems: 6, stemKeys: ['drums', 'bass', 'vocals', 'guitar', 'piano', 'other'], badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
-  htdemucs_ft: { label: '444 Pro', tier: 'pro', description: 'Fine-tuned for best vocal clarity — 4x processing for studio results', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'], badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+const MODEL_INFO: Record<DemucsModel, { label: string; tier: string; description: string; stems: number; stemKeys: StemType[]; badge: string; costPerStem: number }> = {
+  htdemucs: { label: '444 Core', tier: 'core', description: 'Fast & reliable — 4-stem separation for quick edits', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'], badge: 'bg-gray-500/20 text-gray-300 border-gray-500/30', costPerStem: 1 },
+  htdemucs_6s: { label: '444 Extended', tier: 'extended', description: '6-stem separation — unlocks guitar & piano isolation', stems: 6, stemKeys: ['drums', 'bass', 'vocals', 'guitar', 'piano', 'other'], badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30', costPerStem: 1 },
+  htdemucs_ft: { label: '444 Pro', tier: 'pro', description: 'Fine-tuned for best vocal clarity — 4x processing for studio results', stems: 4, stemKeys: ['drums', 'bass', 'vocals', 'other'], badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30', costPerStem: 3 },
 }
 
 interface SplitStemsModalProps {
@@ -154,7 +154,7 @@ export default function SplitStemsModal({
                   <div className="text-xs font-bold">{info.label}</div>
                   <span className={`text-[8px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${info.badge}`}>{info.tier}</span>
                 </div>
-                <div className="text-[10px] opacity-70 mt-0.5">{info.stems} stems</div>
+                <div className="text-[10px] opacity-70 mt-0.5">{info.stems} stems · {info.costPerStem} cr/stem</div>
               </button>
             ))}
           </div>
@@ -164,7 +164,7 @@ export default function SplitStemsModal({
         {/* Stem Buttons */}
         <div className="p-5 space-y-3">
           <p className="text-sm text-gray-400 mb-4">
-            Choose a stem to isolate. Each extraction costs <span className="text-purple-400 font-bold">1 credit</span>.
+            Choose a stem to isolate. Each extraction costs <span className={`font-bold ${modelInfo.costPerStem > 1 ? 'text-amber-400' : 'text-purple-400'}`}>{modelInfo.costPerStem} credit{modelInfo.costPerStem > 1 ? 's' : ''}</span>{modelInfo.costPerStem > 1 && <span className="text-[10px] text-amber-400/60 ml-1">(Pro tier)</span>}.
           </p>
 
           {userCredits !== null && userCredits !== undefined && (
@@ -189,7 +189,7 @@ export default function SplitStemsModal({
                         onSplitStem(opt.key, advancedParams)
                       }
                     }}
-                    disabled={isProcessing || isCompleted || (userCredits !== null && userCredits !== undefined && userCredits < 1)}
+                    disabled={isProcessing || isCompleted || (userCredits !== null && userCredits !== undefined && userCredits < modelInfo.costPerStem)}
                     className="w-full p-4 text-left transition-all disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-3">
@@ -209,8 +209,12 @@ export default function SplitStemsModal({
                         </div>
                       )}
                       {!isProcessing && !isCompleted && (
-                        <div className="text-[10px] text-purple-400/60 bg-purple-500/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                          1 credit
+                        <div className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 ${
+                          modelInfo.costPerStem > 1 
+                            ? 'text-amber-400/80 bg-amber-500/15 border border-amber-500/20' 
+                            : 'text-purple-400/60 bg-purple-500/10'
+                        }`}>
+                          {modelInfo.costPerStem} credit{modelInfo.costPerStem > 1 ? 's' : ''}
                         </div>
                       )}
                     </div>

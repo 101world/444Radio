@@ -1476,9 +1476,10 @@ function CreatePageContent() {
   const handleSplitSingleStem = async (stem: 'drums' | 'bass' | 'vocals' | 'guitar' | 'piano' | 'other', params?: { model?: string; output_format?: string; mp3_bitrate?: number; mp3_preset?: number; wav_format?: string; clip_mode?: string; shifts?: number; overlap?: number; split?: boolean; segment?: number; jobs?: number }) => {
     if (!splitStemsAudioUrl || !splitStemsMessageId) return
     
-    // Check credits (1 credit per stem)
-    if (userCredits !== null && userCredits < 1) {
-      alert(`⚡ Insufficient credits! You need 1 credit to split a stem but only have ${userCredits}.`)
+    // Check credits — Pro (htdemucs_ft) costs 3, others cost 1
+    const stemCost = params?.model === 'htdemucs_ft' ? 3 : 1
+    if (userCredits !== null && userCredits < stemCost) {
+      alert(`⚡ Insufficient credits! You need ${stemCost} credit${stemCost > 1 ? 's' : ''} to split a stem but only have ${userCredits}.`)
       return
     }
 

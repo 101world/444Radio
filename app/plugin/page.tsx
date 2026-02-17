@@ -1284,8 +1284,10 @@ export default function PluginPage() {
   // Handle individual stem split from modal
   const handleSplitSingleStem = async (stem: StemType, params?: StemAdvancedParams) => {
     if (!splitStemsAudioUrl) return
-    if (userCredits !== null && userCredits < 1) {
-      alert(`⚡ Need 1 credit for stem split, have ${userCredits}.`)
+    // Pro (htdemucs_ft) costs 3 credits, others cost 1
+    const stemCost = params?.model === 'htdemucs_ft' ? 3 : 1
+    if (userCredits !== null && userCredits < stemCost) {
+      alert(`⚡ Need ${stemCost} credit${stemCost > 1 ? 's' : ''} for stem split, have ${userCredits}.`)
       return
     }
     setSplitStemsProcessing(stem)
