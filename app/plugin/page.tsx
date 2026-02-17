@@ -176,7 +176,7 @@ const FEATURES = [
   { key: 'effects', icon: Sparkles, label: 'Effects', desc: 'Sound effects', color: 'purple', cost: 2 },
   { key: 'loops', icon: Repeat, label: 'Loops', desc: 'Fixed BPM loops', color: 'cyan', cost: 6 },
   { key: 'image', icon: ImageIcon, label: 'Cover Art', desc: 'AI album artwork', color: 'cyan', cost: 1 },
-  { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 2 },
+  { key: 'video-to-audio', icon: Film, label: 'Video to Audio', desc: 'Synced SFX from video', color: 'cyan', cost: 4 },
   { key: 'stems', icon: Scissors, label: 'Split Stems', desc: 'Vocals, drums, bass & more', color: 'purple', cost: 1 },
   { key: 'audio-boost', icon: Volume2, label: 'Audio Boost', desc: 'Mix & master your track', color: 'orange', cost: 1 },
   { key: 'extract', icon: Layers, label: 'Extract', desc: 'Extract audio from video/audio', color: 'cyan', cost: 1 },
@@ -2133,14 +2133,19 @@ function PluginPageInner() {
   return (
     <div className="h-screen text-white flex flex-col relative overflow-hidden"
       style={{
-        background: '#050a0f',
+        background: 'linear-gradient(180deg, #060810 0%, #04070c 50%, #030609 100%)',
       }}>
-      {/* ── Global ambient background glow — cyan tinted ── */}
+      {/* ── Global ambient background — frosted clay glass ── */}
       <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'radial-gradient(ellipse 90% 50% at 50% 0%, rgba(0,255,255,0.06) 0%, rgba(0,136,255,0.02) 40%, transparent 70%)',
+        background: 'radial-gradient(ellipse 80% 45% at 50% -5%, rgba(120,180,255,0.06) 0%, rgba(0,200,255,0.02) 35%, transparent 65%)',
       }} />
       <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'radial-gradient(ellipse 60% 40% at 80% 100%, rgba(0,255,255,0.03) 0%, transparent 50%), radial-gradient(ellipse 60% 40% at 20% 100%, rgba(0,136,255,0.03) 0%, transparent 50%)',
+        background: 'radial-gradient(ellipse 50% 35% at 85% 100%, rgba(140,100,255,0.035) 0%, transparent 50%), radial-gradient(ellipse 50% 35% at 15% 100%, rgba(0,200,255,0.025) 0%, transparent 50%)',
+      }} />
+      {/* Subtle dot matrix texture */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.015]" style={{
+        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 0.5px, transparent 0.5px)',
+        backgroundSize: '16px 16px',
       }} />
 
       {/* Bridge action toast */}
@@ -2185,11 +2190,9 @@ function PluginPageInner() {
           {/* Mobile backdrop */}
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={() => setShowFeaturesSidebar(false)} />
 
-          <div className="fixed left-0 top-0 h-screen w-[280px] z-50 flex flex-col overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(5,18,28,0.98), rgba(3,12,20,0.99))', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderRight: '1px solid rgba(0,255,255,0.12)', boxShadow: '4px 0 40px rgba(0,0,0,0.6)', animation: 'slideInLeft 0.2s ease-out' }}>
-            {/* Sidebar diagonal shine */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-50%',left:'-15%',width:'45%',height:'200%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.03) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.03) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
-            {/* Subtle cyan ambient overlay */}
-            <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 80% 30% at 50% 0%, rgba(0,255,255,0.04) 0%, transparent 60%)'}} />
+          <div className="fixed left-0 top-0 h-screen w-[280px] z-50 flex flex-col overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(12,16,24,0.97), rgba(8,12,20,0.99))', backdropFilter: 'blur(60px) saturate(1.2)', WebkitBackdropFilter: 'blur(60px) saturate(1.2)', borderRight: '1px solid rgba(255,255,255,0.06)', boxShadow: '4px 0 40px rgba(0,0,0,0.5), inset -1px 0 0 rgba(255,255,255,0.03)', animation: 'slideInLeft 0.2s ease-out' }}>
+            {/* Subtle ambient gradient */}
+            <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 80% 30% at 50% 0%, rgba(120,180,255,0.03) 0%, transparent 60%)'}} />
             {/* Header */}
             <div className="flex items-center justify-between px-4 h-12 relative z-10" style={{borderBottom:'1px solid rgba(0,255,255,0.08)'}}>
               <div className="flex items-center gap-2">
@@ -2378,16 +2381,16 @@ function PluginPageInner() {
                   const isActive = f.key === selectedType || (f.key === 'lyrics' && !!(customTitle || genre || customLyrics || bpm))
                   const colorMap: Record<string, { active: React.CSSProperties; inactive: React.CSSProperties }> = {
                     cyan: {
-                      active: {background:'linear-gradient(135deg, rgba(0,255,255,0.08), rgba(0,136,255,0.05))',border:'1px solid rgba(0,255,255,0.3)',color:'#00ffff',boxShadow:'0 0 20px rgba(0,255,255,0.08), inset 0 1px 0 rgba(0,255,255,0.1)'},
-                      inactive: {background:'rgba(255,255,255,0.02)',border:'1px solid rgba(0,255,255,0.1)',color:'rgba(0,255,255,0.6)'},
+                      active: {background:'linear-gradient(135deg, rgba(80,180,255,0.1), rgba(60,140,255,0.05))',border:'1px solid rgba(100,180,255,0.22)',color:'rgba(140,200,255,0.95)',boxShadow:'0 0 16px rgba(80,160,255,0.05), inset 0 1px 0 rgba(255,255,255,0.06)'},
+                      inactive: {background:'rgba(255,255,255,0.015)',border:'1px solid rgba(255,255,255,0.04)',color:'rgba(160,200,255,0.5)'},
                     },
                     purple: {
-                      active: {background:'linear-gradient(135deg, rgba(160,80,255,0.08), rgba(120,60,200,0.05))',border:'1px solid rgba(160,80,255,0.3)',color:'rgba(200,160,255,0.95)',boxShadow:'0 0 20px rgba(160,80,255,0.08), inset 0 1px 0 rgba(160,80,255,0.1)'},
-                      inactive: {background:'rgba(255,255,255,0.02)',border:'1px solid rgba(160,80,255,0.1)',color:'rgba(180,130,255,0.6)'},
+                      active: {background:'linear-gradient(135deg, rgba(140,80,255,0.1), rgba(120,60,220,0.05))',border:'1px solid rgba(150,100,255,0.22)',color:'rgba(180,150,255,0.95)',boxShadow:'0 0 16px rgba(140,80,255,0.05), inset 0 1px 0 rgba(255,255,255,0.06)'},
+                      inactive: {background:'rgba(255,255,255,0.015)',border:'1px solid rgba(255,255,255,0.04)',color:'rgba(170,140,255,0.5)'},
                     },
                     orange: {
-                      active: {background:'linear-gradient(135deg, rgba(255,140,0,0.08), rgba(255,100,0,0.05))',border:'1px solid rgba(255,140,0,0.3)',color:'rgba(255,200,100,0.95)',boxShadow:'0 0 20px rgba(255,140,0,0.08), inset 0 1px 0 rgba(255,140,0,0.1)'},
-                      inactive: {background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,140,0,0.1)',color:'rgba(255,180,80,0.6)'},
+                      active: {background:'linear-gradient(135deg, rgba(255,140,60,0.1), rgba(255,100,40,0.05))',border:'1px solid rgba(255,160,80,0.22)',color:'rgba(255,200,120,0.95)',boxShadow:'0 0 16px rgba(255,140,60,0.05), inset 0 1px 0 rgba(255,255,255,0.06)'},
+                      inactive: {background:'rgba(255,255,255,0.015)',border:'1px solid rgba(255,255,255,0.04)',color:'rgba(255,180,100,0.5)'},
                     },
                   }
                   return (
@@ -2449,19 +2452,17 @@ function PluginPageInner() {
 
       {/* ── Main Chat Area ── */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Chat Header — glass morphism */}
+        {/* Chat Header — frosted clay glass */}
         <div className={`shrink-0 flex items-center justify-between ${layoutMode === 'wide' ? 'px-3 py-1.5' : 'px-4 py-2.5'} relative overflow-hidden`}
           style={{
-            background: 'linear-gradient(135deg, rgba(5,18,28,0.9), rgba(3,12,20,0.92))',
-            backdropFilter: 'blur(40px)',
-            WebkitBackdropFilter: 'blur(40px)',
-            borderBottom: '1px solid rgba(0,255,255,0.1)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.6), 0 0 20px rgba(0,255,255,0.03)',
+            background: 'linear-gradient(135deg, rgba(12,16,24,0.85), rgba(8,12,20,0.9))',
+            backdropFilter: 'blur(60px) saturate(1.2)',
+            WebkitBackdropFilter: 'blur(60px) saturate(1.2)',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            boxShadow: '0 4px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
           }}>
-          {/* Glass shine sweep on header */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-100%',left:'-15%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.06) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
-          {/* Top edge cyan shine */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 5%,rgba(0,255,255,0.15) 30%,rgba(0,255,255,0.3) 50%,rgba(0,255,255,0.15) 70%,transparent 95%)'}} />
+          {/* Frosted glass accent line */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(255,255,255,0.08) 35%,rgba(120,180,255,0.12) 50%,rgba(255,255,255,0.08) 65%,transparent 90%)'}} />
           <div className="flex items-center gap-3 relative z-10">
             <button onClick={() => setShowFeaturesSidebar(!showFeaturesSidebar)}
               className="p-2 rounded-lg transition-all" style={{color:'#00ffff'}}
@@ -2540,17 +2541,19 @@ function PluginPageInner() {
               }`}
                 style={{
                   background: msg.type === 'user'
-                    ? 'linear-gradient(135deg, rgba(0,20,30,0.95), rgba(0,15,25,0.92))'
-                    : 'linear-gradient(135deg, rgba(12,18,26,0.95), rgba(10,16,24,0.92))',
+                    ? 'linear-gradient(135deg, rgba(18,22,32,0.92), rgba(14,18,28,0.95))'
+                    : 'linear-gradient(135deg, rgba(14,17,26,0.88), rgba(12,15,22,0.92))',
                   border: msg.type === 'user'
-                    ? '1px solid rgba(0,255,255,0.2)'
-                    : '1px solid rgba(255,255,255,0.1)',
+                    ? '1px solid rgba(120,180,255,0.12)'
+                    : '1px solid rgba(255,255,255,0.06)',
                   boxShadow: msg.type === 'user'
-                    ? '0 4px 24px rgba(0,0,0,0.4), 0 0 16px rgba(0,255,255,0.06), inset 0 1px 0 rgba(0,255,255,0.1)'
-                    : '0 4px 20px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06)',
+                    ? '0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(120,180,255,0.06)'
+                    : '0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
                 }}>
                 {/* Text content */}
-                <p className="text-sm text-white whitespace-pre-wrap">{msg.content}</p>
+                <p className="text-sm text-white/90 whitespace-pre-wrap leading-relaxed">{msg.content}</p>
 
                 {/* Futuristic generation queue card */}
                 {msg.isGenerating && (
@@ -2817,17 +2820,15 @@ function PluginPageInner() {
           <div
             className={`transition-all duration-300 ease-out relative overflow-hidden ${showBottomDock ? 'max-h-[500px] opacity-100 overflow-visible' : 'max-h-0 opacity-0 overflow-hidden'}`}
             style={{
-              background: 'linear-gradient(180deg, rgba(5,18,28,0.95), rgba(3,12,20,0.97))',
-              backdropFilter: 'blur(40px)',
-              WebkitBackdropFilter: 'blur(40px)',
-              borderTop: '1px solid rgba(0,255,255,0.1)',
-              boxShadow: '0 -12px 48px rgba(0,0,0,0.7), 0 0 20px rgba(0,255,255,0.03), inset 0 1px 0 rgba(0,255,255,0.08)',
+              background: 'linear-gradient(180deg, rgba(10,14,22,0.94), rgba(6,10,18,0.97))',
+              backdropFilter: 'blur(60px) saturate(1.1)',
+              WebkitBackdropFilter: 'blur(60px) saturate(1.1)',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+              boxShadow: '0 -12px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)',
             }}
           >
-          {/* Dock diagonal shine */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden"><div style={{position:'absolute',top:'-100%',left:'-10%',width:'40%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.05) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
-          {/* Top edge cyan shine */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(0,255,255,0.12) 40%,rgba(0,255,255,0.22) 50%,rgba(0,255,255,0.12) 60%,transparent 90%)'}} />
+          {/* Top edge subtle accent */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] pointer-events-none" style={{background:'linear-gradient(90deg,transparent 10%,rgba(120,180,255,0.08) 40%,rgba(120,180,255,0.12) 50%,rgba(120,180,255,0.08) 60%,transparent 90%)'}} />
           <div className="pt-3 pb-3 px-3 relative z-10">
             {/* Icon Row */}
             <div className={`flex items-center justify-center gap-1 mb-2 ${layoutMode === 'wide' ? 'gap-0.5' : 'gap-1'} flex-wrap`}>
@@ -2951,19 +2952,19 @@ function PluginPageInner() {
               </div>
             )}
 
-            {/* Prompt Input Bar — Glass Node */}
+            {/* Prompt Input Bar — Frosted Clay Glass */}
             <div className="relative">
               <div className={`flex items-end gap-2 rounded-2xl ${layoutMode === 'wide' ? 'px-2 py-1.5' : 'px-3 py-2'} transition-all duration-300 relative overflow-hidden`}
                 style={{
-                  background: 'linear-gradient(135deg, rgba(5,18,28,0.8), rgba(3,12,20,0.85))',
+                  background: 'linear-gradient(135deg, rgba(16,20,30,0.8), rgba(10,14,22,0.85))',
                   backdropFilter: 'blur(40px)',
                   WebkitBackdropFilter: 'blur(40px)',
                   border: input.trim().length >= MIN_PROMPT_LENGTH
-                    ? '1px solid rgba(0,255,255,0.3)'
-                    : '1px solid rgba(0,255,255,0.1)',
+                    ? '1px solid rgba(120,180,255,0.2)'
+                    : '1px solid rgba(255,255,255,0.06)',
                   boxShadow: input.trim().length >= MIN_PROMPT_LENGTH
-                    ? '0 0 24px rgba(0,255,255,0.1), 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,255,255,0.1), 0 0 1px rgba(0,255,255,0.4)'
-                    : '0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,255,255,0.05), 0 0 1px rgba(0,255,255,0.1)',
+                    ? '0 0 20px rgba(100,160,255,0.06), 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)'
+                    : '0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)',
                 }}>
                 {/* Prompt box diagonal shine */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-0"><div style={{position:'absolute',top:'-100%',left:'40%',width:'45%',height:'300%',background:'linear-gradient(105deg,transparent 40%,rgba(0,255,255,0.02) 45%,rgba(255,255,255,0.05) 50%,rgba(0,255,255,0.02) 55%,transparent 60%)',transform:'rotate(-15deg)'}} /></div>
@@ -3031,12 +3032,12 @@ function PluginPageInner() {
                   <Lightbulb size={18} />
                 </button>
 
-                {/* Send button — Cyan glow node */}
+                {/* Send button — frosted glow node */}
                 <button onClick={handleGenerate} disabled={!input.trim() || input.trim().length < MIN_PROMPT_LENGTH}
                   className="relative flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all disabled:opacity-20 active:scale-90 hover:scale-110 mb-0.5 z-10"
                   style={{
-                    background: 'linear-gradient(135deg, #00ffff, #0088ff)',
-                    boxShadow: '0 0 28px rgba(0,255,255,0.4), 0 0 60px rgba(0,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.4)',
+                    background: 'linear-gradient(135deg, rgba(100,180,255,0.9), rgba(80,140,255,0.85))',
+                    boxShadow: '0 0 20px rgba(100,160,255,0.3), 0 0 50px rgba(100,160,255,0.08), inset 0 1px 0 rgba(255,255,255,0.35)',
                   }}>
                   {activeGenerations.size > 0 && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs font-bold text-white">{activeGenerations.size}</div>

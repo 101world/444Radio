@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Upload, Mic, Loader2, Play, Pause, RotateCcw, Zap, ChevronDown } from 'lucide-react'
+import { X, Upload, Mic, Loader2, Play, Pause, RotateCcw, Zap, Waves, Sparkles } from 'lucide-react'
 
 interface AutotuneModalProps {
   isOpen: boolean
@@ -71,7 +71,6 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       const channelData = audioBuffer.getChannelData(0)
 
-      // Downsample to 200 points
       const samples = 200
       const blockSize = Math.floor(channelData.length / samples)
       const waveform = new Float32Array(samples)
@@ -84,11 +83,8 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
         waveform[i] = sum / blockSize
       }
 
-      if (isInput) {
-        setInputWaveformData(waveform)
-      } else {
-        setOutputWaveformData(waveform)
-      }
+      if (isInput) setInputWaveformData(waveform)
+      else setOutputWaveformData(waveform)
 
       audioContext.close()
     } catch (err) {
@@ -96,7 +92,7 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
     }
   }, [])
 
-  // Draw static waveform
+  // Draw static waveform — monochrome glass style
   const drawStaticWaveform = useCallback((
     canvas: HTMLCanvasElement,
     waveformData: Float32Array,
@@ -113,16 +109,14 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
     canvas.width = width * dpr
     canvas.height = height * dpr
     ctx.scale(dpr, dpr)
-
     ctx.clearRect(0, 0, width, height)
 
     const barCount = waveformData.length
-    const barWidth = Math.max(1, (width / barCount) * 0.6)
-    const gap = (width / barCount) * 0.4
+    const barWidth = Math.max(1, (width / barCount) * 0.55)
+    const gap = (width / barCount) * 0.45
     const centerY = height / 2
     const maxBarHeight = height * 0.8
 
-    // Normalize
     let max = 0
     for (let i = 0; i < waveformData.length; i++) {
       if (waveformData[i] > max) max = waveformData[i]
@@ -135,13 +129,11 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
       const x = i * (barWidth + gap)
       const amp = (waveformData[i] / max) * maxBarHeight / 2
       const barH = Math.max(1.5, amp)
-
       const isPast = x < progressX
 
-      // Glow for played section
       if (isPast) {
         ctx.shadowColor = accentColor
-        ctx.shadowBlur = 4
+        ctx.shadowBlur = 3
         ctx.fillStyle = accentColor
       } else {
         ctx.shadowColor = 'transparent'
@@ -149,21 +141,17 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
         ctx.fillStyle = dimColor
       }
 
-      // Top bar
       ctx.beginPath()
       ctx.roundRect(x, centerY - barH, barWidth, barH, 1)
       ctx.fill()
-
-      // Bottom bar (mirror)
       ctx.beginPath()
       ctx.roundRect(x, centerY + 1, barWidth, barH, 1)
       ctx.fill()
     }
 
-    // Playhead
     if (progress > 0 && progress < 1) {
       ctx.shadowColor = accentColor
-      ctx.shadowBlur = 8
+      ctx.shadowBlur = 6
       ctx.fillStyle = '#fff'
       ctx.fillRect(progressX - 1, 0, 2, height)
       ctx.shadowBlur = 0
@@ -175,13 +163,11 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
     }
-
     const ctx = audioCtxRef.current
     const analyser = ctx.createAnalyser()
     analyser.fftSize = 256
     analyser.smoothingTimeConstant = 0.85
 
-    // Avoid creating duplicate sources
     const sourceRef = isInput ? inputSourceRef : outputSourceRef
     if (!sourceRef.current) {
       const source = ctx.createMediaElementSource(audioEl)
@@ -193,11 +179,8 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
       analyser.connect(ctx.destination)
     }
 
-    if (isInput) {
-      inputAnalyserRef.current = analyser
-    } else {
-      outputAnalyserRef.current = analyser
-    }
+    if (isInput) inputAnalyserRef.current = analyser
+    else outputAnalyserRef.current = analyser
 
     return analyser
   }, [])
@@ -221,9 +204,7 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
       canvas.width = width * dpr
       canvas.height = height * dpr
       ctx.scale(dpr, dpr)
-
       analyser.getByteFrequencyData(dataArray)
-
       ctx.clearRect(0, 0, width, height)
 
       const barCount = analyser.frequencyBinCount
@@ -234,28 +215,22 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
       for (let i = 0; i < barCount; i++) {
         const amp = (dataArray[i] / 255) * (height / 2) * 0.9
         const x = i * (barWidth + gap)
-
         ctx.shadowColor = accentColor
-        ctx.shadowBlur = amp > 10 ? 6 : 2
+        ctx.shadowBlur = amp > 10 ? 5 : 2
         ctx.fillStyle = accentColor
 
-        // Top bar
         ctx.beginPath()
         ctx.roundRect(x, centerY - amp, barWidth, Math.max(1, amp), 1)
         ctx.fill()
-
-        // Bottom bar
         ctx.beginPath()
         ctx.roundRect(x, centerY + 1, barWidth, Math.max(1, amp), 1)
         ctx.fill()
       }
 
       ctx.shadowBlur = 0
-
       const frameRef = isInput ? inputAnimFrameRef : outputAnimFrameRef
       frameRef.current = requestAnimationFrame(draw)
     }
-
     draw()
   }, [])
 
@@ -265,22 +240,16 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
     const outputAudio = outputAudioRef.current
 
     const updateInputProgress = () => {
-      if (inputAudio && inputAudio.duration) {
-        setInputProgress(inputAudio.currentTime / inputAudio.duration)
-      }
+      if (inputAudio && inputAudio.duration) setInputProgress(inputAudio.currentTime / inputAudio.duration)
     }
     const updateOutputProgress = () => {
-      if (outputAudio && outputAudio.duration) {
-        setOutputProgress(outputAudio.currentTime / outputAudio.duration)
-      }
+      if (outputAudio && outputAudio.duration) setOutputProgress(outputAudio.currentTime / outputAudio.duration)
     }
 
     inputAudio?.addEventListener('timeupdate', updateInputProgress)
     outputAudio?.addEventListener('timeupdate', updateOutputProgress)
-
     inputAudio?.addEventListener('loadedmetadata', () => setInputDuration(inputAudio.duration))
     outputAudio?.addEventListener('loadedmetadata', () => setOutputDuration(outputAudio.duration))
-
     inputAudio?.addEventListener('ended', () => { setIsPlayingInput(false); setInputProgress(0) })
     outputAudio?.addEventListener('ended', () => { setIsPlayingOutput(false); setOutputProgress(0) })
 
@@ -290,37 +259,27 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
     }
   }, [previewUrl, outputUrl])
 
-  // Redraw static waveforms when progress/data changes
+  // Redraw static waveforms — monochrome for input, green-tint for output
   useEffect(() => {
     if (inputCanvasRef.current && inputWaveformData && !isPlayingInput) {
-      drawStaticWaveform(inputCanvasRef.current, inputWaveformData, inputProgress, '#a78bfa', 'rgba(167,139,250,0.15)')
+      drawStaticWaveform(inputCanvasRef.current, inputWaveformData, inputProgress, 'rgba(255,255,255,0.65)', 'rgba(255,255,255,0.1)')
     }
   }, [inputProgress, inputWaveformData, isPlayingInput, drawStaticWaveform])
 
   useEffect(() => {
     if (outputCanvasRef.current && outputWaveformData && !isPlayingOutput) {
-      drawStaticWaveform(outputCanvasRef.current, outputWaveformData, outputProgress, '#22d3ee', 'rgba(34,211,238,0.15)')
+      drawStaticWaveform(outputCanvasRef.current, outputWaveformData, outputProgress, 'rgba(0,255,200,0.65)', 'rgba(0,255,200,0.1)')
     }
   }, [outputProgress, outputWaveformData, isPlayingOutput, drawStaticWaveform])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     setError('')
     setOutputUrl(null)
     setOutputWaveformData(null)
-
-    if (!file.type.startsWith('audio/')) {
-      setError('Please select an audio file')
-      return
-    }
-
-    if (file.size > 100 * 1024 * 1024) {
-      setError('File must be under 100MB')
-      return
-    }
-
+    if (!file.type.startsWith('audio/')) { setError('Please select an audio file'); return }
+    if (file.size > 100 * 1024 * 1024) { setError('File must be under 100MB'); return }
     setSelectedFile(file)
     const url = URL.createObjectURL(file)
     setPreviewUrl(url)
@@ -331,10 +290,7 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
     e.preventDefault()
     const file = e.dataTransfer.files[0]
     if (!file) return
-    if (!file.type.startsWith('audio/')) {
-      setError('Please drop an audio file')
-      return
-    }
+    if (!file.type.startsWith('audio/')) { setError('Please drop an audio file'); return }
     setSelectedFile(file)
     setOutputUrl(null)
     setOutputWaveformData(null)
@@ -345,33 +301,26 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
 
   const togglePlayInput = () => {
     if (!inputAudioRef.current) return
-
-    if (audioCtxRef.current?.state === 'suspended') {
-      audioCtxRef.current.resume()
-    }
+    if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume()
 
     if (isPlayingInput) {
       inputAudioRef.current.pause()
       if (inputAnimFrameRef.current) cancelAnimationFrame(inputAnimFrameRef.current)
       setIsPlayingInput(false)
     } else {
-      // Pause other
       if (isPlayingOutput && outputAudioRef.current) {
         outputAudioRef.current.pause()
         if (outputAnimFrameRef.current) cancelAnimationFrame(outputAnimFrameRef.current)
         setIsPlayingOutput(false)
       }
-
       inputAudioRef.current.play()
       setIsPlayingInput(true)
-
-      // Setup analyser if needed and animate
       if (inputCanvasRef.current) {
         if (!inputAnalyserRef.current) {
           const analyser = setupAnalyser(inputAudioRef.current, true)
-          animateLiveWaveform(inputCanvasRef.current, analyser, '#a78bfa', true)
+          animateLiveWaveform(inputCanvasRef.current, analyser, 'rgba(255,255,255,0.55)', true)
         } else {
-          animateLiveWaveform(inputCanvasRef.current, inputAnalyserRef.current, '#a78bfa', true)
+          animateLiveWaveform(inputCanvasRef.current, inputAnalyserRef.current, 'rgba(255,255,255,0.55)', true)
         }
       }
     }
@@ -379,32 +328,26 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
 
   const togglePlayOutput = () => {
     if (!outputAudioRef.current) return
-
-    if (audioCtxRef.current?.state === 'suspended') {
-      audioCtxRef.current.resume()
-    }
+    if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume()
 
     if (isPlayingOutput) {
       outputAudioRef.current.pause()
       if (outputAnimFrameRef.current) cancelAnimationFrame(outputAnimFrameRef.current)
       setIsPlayingOutput(false)
     } else {
-      // Pause other
       if (isPlayingInput && inputAudioRef.current) {
         inputAudioRef.current.pause()
         if (inputAnimFrameRef.current) cancelAnimationFrame(inputAnimFrameRef.current)
         setIsPlayingInput(false)
       }
-
       outputAudioRef.current.play()
       setIsPlayingOutput(true)
-
       if (outputCanvasRef.current) {
         if (!outputAnalyserRef.current) {
           const analyser = setupAnalyser(outputAudioRef.current, false)
-          animateLiveWaveform(outputCanvasRef.current, analyser, '#22d3ee', false)
+          animateLiveWaveform(outputCanvasRef.current, analyser, 'rgba(0,255,200,0.55)', false)
         } else {
-          animateLiveWaveform(outputCanvasRef.current, outputAnalyserRef.current, '#22d3ee', false)
+          animateLiveWaveform(outputCanvasRef.current, outputAnalyserRef.current, 'rgba(0,255,200,0.55)', false)
         }
       }
     }
@@ -417,7 +360,6 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
   }
 
   const handleClose = () => {
-    // Stop all playback
     if (inputAudioRef.current) { inputAudioRef.current.pause(); inputAudioRef.current.currentTime = 0 }
     if (outputAudioRef.current) { outputAudioRef.current.pause(); outputAudioRef.current.currentTime = 0 }
     if (inputAnimFrameRef.current) cancelAnimationFrame(inputAnimFrameRef.current)
@@ -439,65 +381,44 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
     setAutotuneKey('C')
     setAutotuneScale('maj')
 
-    // Reset source refs so they can be recreated for new files
     inputSourceRef.current = null
     outputSourceRef.current = null
     inputAnalyserRef.current = null
     outputAnalyserRef.current = null
-
     onClose()
   }
 
   const handleProcess = async () => {
     if (!selectedFile) return
-
     setIsProcessing(true)
     setError('')
 
     try {
-      // Step 1: Upload to R2
       setProcessingStatus('Uploading audio...')
       const presignResponse = await fetch('/api/upload/media', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: selectedFile.name,
-          fileType: selectedFile.type,
-          fileSize: selectedFile.size,
-        })
+        body: JSON.stringify({ fileName: selectedFile.name, fileType: selectedFile.type, fileSize: selectedFile.size })
       })
-
       if (!presignResponse.ok) {
         const err = await presignResponse.json()
         throw new Error(err.error || 'Failed to prepare upload')
       }
 
       const { uploadUrl, publicUrl } = await presignResponse.json()
-
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': selectedFile.type },
-        body: selectedFile,
-      })
-
+      const uploadResponse = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': selectedFile.type }, body: selectedFile })
       if (!uploadResponse.ok) throw new Error('Upload failed')
 
-      // Wait for R2 propagation
       setProcessingStatus('Verifying file...')
       await new Promise(resolve => setTimeout(resolve, 5000))
 
-      // Verify accessibility
       let retries = 0
       while (retries < 3) {
-        try {
-          const head = await fetch(publicUrl, { method: 'HEAD' })
-          if (head.ok) break
-        } catch { /* retry */ }
+        try { const head = await fetch(publicUrl, { method: 'HEAD' }); if (head.ok) break } catch { /* retry */ }
         await new Promise(resolve => setTimeout(resolve, 2000))
         retries++
       }
 
-      // Step 2: Call autotune API
       onStart?.()
       const scale = `${autotuneKey}:${autotuneScale}`
       setProcessingStatus(`Autotuning to ${autotuneKey} ${autotuneScale === 'maj' ? 'Major' : 'Minor'}...`)
@@ -505,26 +426,15 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
       const autotuneResponse = await fetch('/api/generate/autotune', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          audio_file: publicUrl,
-          scale: scale,
-          trackTitle: selectedFile.name.replace(/\.[^/.]+$/, '') || 'Audio',
-          output_format: 'wav',
-        })
+        body: JSON.stringify({ audio_file: publicUrl, scale, trackTitle: selectedFile.name.replace(/\.[^/.]+$/, '') || 'Audio', output_format: 'wav' })
       })
 
       const result = await autotuneResponse.json()
+      if (!autotuneResponse.ok || result.error) throw new Error(result.error || 'Autotune processing failed')
 
-      if (!autotuneResponse.ok || result.error) {
-        throw new Error(result.error || 'Autotune processing failed')
-      }
-
-      // Step 3: Show output
       setOutputUrl(result.audioUrl)
       generateStaticWaveform(result.audioUrl, false)
       setProcessingStatus('')
-
-      // Notify parent
       onSuccess?.({ ...result, type: 'autotune' })
     } catch (err) {
       console.error('Autotune error:', err)
@@ -538,97 +448,146 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
 
   if (!isOpen) return null
 
+  // ═══════════════════════════════════════════════════════════════
+  //  RENDER — Black + White Glass Morphism AI Theme
+  // ═══════════════════════════════════════════════════════════════
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/95 backdrop-blur-2xl" onClick={handleClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ animation: 'autotuneIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+      {/* Backdrop — deep black with desaturation */}
+      <div className="absolute inset-0" onClick={handleClose}
+        style={{
+          background: 'rgba(0,0,0,0.92)',
+          backdropFilter: 'blur(40px) saturate(0.4)',
+          WebkitBackdropFilter: 'blur(40px) saturate(0.4)',
+        }}
+      />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl shadow-[0_0_120px_rgba(139,92,246,0.15),0_0_60px_rgba(6,182,212,0.1)]"
-        style={{ background: 'linear-gradient(180deg, #0c0015 0%, #050008 50%, #000a0f 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
+      {/* ─── Modal ─── */}
+      <div className="relative w-full max-w-[580px] overflow-hidden rounded-3xl"
+        style={{
+          background: 'linear-gradient(180deg, rgba(22,22,24,0.88) 0%, rgba(14,14,16,0.94) 40%, rgba(8,8,10,0.98) 100%)',
+          backdropFilter: 'blur(80px) saturate(1.1)',
+          WebkitBackdropFilter: 'blur(80px) saturate(1.1)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: '0 60px 120px rgba(0,0,0,0.85), 0 0 0 0.5px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.4)',
+        }}
+      >
+        {/* Top glass shine */}
+        <div className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.1) 75%, transparent 95%)' }} />
 
-        {/* Animated top accent */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-cyan-400 to-violet-600" style={{ animation: 'shimmer 3s linear infinite', backgroundSize: '200% 100%' }} />
+        {/* Ambient light orbs */}
+        <div className="absolute top-[-25%] right-[-8%] w-[280px] h-[280px] rounded-full pointer-events-none opacity-[0.035]"
+          style={{ background: 'radial-gradient(circle, #fff, transparent 60%)' }} />
+        <div className="absolute bottom-[-15%] left-[-8%] w-[220px] h-[220px] rounded-full pointer-events-none opacity-[0.025]"
+          style={{ background: 'radial-gradient(circle, rgba(180,255,230,1), transparent 60%)' }} />
+
+        {/* Diagonal frosted glass sheet */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+          <div style={{
+            position: 'absolute', top: '-60%', left: '-15%', width: '40%', height: '220%',
+            background: 'linear-gradient(105deg, transparent 42%, rgba(255,255,255,0.015) 47%, rgba(255,255,255,0.03) 50%, rgba(255,255,255,0.015) 53%, transparent 58%)',
+            transform: 'rotate(-15deg)',
+          }} />
         </div>
 
-        {/* Background glow effects */}
-        <div className="absolute top-0 left-1/4 w-64 h-64 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, rgba(139,92,246,1), transparent 70%)' }} />
-        <div className="absolute bottom-0 right-1/4 w-48 h-48 rounded-full opacity-[0.03]" style={{ background: 'radial-gradient(circle, rgba(6,182,212,1), transparent 70%)' }} />
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-violet-500/10">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.1))', border: '1px solid rgba(139,92,246,0.3)', boxShadow: '0 0 20px rgba(139,92,246,0.1)' }}>
-                <Mic size={18} className="text-violet-400" />
-              </div>
+        {/* ─── Header ─── */}
+        <div className="relative flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3.5">
+            {/* AI orb icon */}
+            <div className="relative w-10 h-10 rounded-2xl flex items-center justify-center overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.015))',
+                border: '1px solid rgba(255,255,255,0.09)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.35)',
+              }}
+            >
+              <Mic size={16} className="text-white/50" />
               {isProcessing && (
-                <div className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                <div className="absolute inset-0 rounded-2xl"
+                  style={{
+                    background: 'conic-gradient(from 0deg, transparent, rgba(255,255,255,0.12), transparent)',
+                    animation: 'spin 2s linear infinite',
+                  }} />
               )}
+              {/* Glass highlight */}
+              <div className="absolute top-0 left-0 right-0 h-[45%] rounded-t-2xl pointer-events-none"
+                style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.06), transparent)' }} />
             </div>
             <div>
-              <h3 className="text-sm font-bold tracking-wider" style={{ background: 'linear-gradient(135deg, #c4b5fd, #67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AUTOTUNE</h3>
-              <p className="text-[10px] text-violet-300/30 tracking-[0.2em] uppercase font-medium">Pitch Correction Engine</p>
+              <h3 className="text-[13px] font-semibold text-white/85 tracking-[0.06em]">AUTOTUNE</h3>
+              <p className="text-[9.5px] text-white/18 tracking-[0.18em] font-medium">AI PITCH CORRECTION ENGINE</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-violet-500/10 transition-colors group">
-            <X size={18} className="text-violet-300/30 group-hover:text-violet-300/70 transition-colors" />
+
+          <button onClick={handleClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+            style={{
+              background: 'rgba(255,255,255,0.035)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            <X size={13} className="text-white/25 hover:text-white/55 transition-colors" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-5">
+        {/* Separator line */}
+        <div className="mx-6 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)' }} />
 
-          {/* Drop Zone — No file selected */}
+        {/* ─── Content ─── */}
+        <div className="p-6 space-y-5 max-h-[62vh] overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}>
+
+          {/* Drop Zone */}
           {!selectedFile && (
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="group relative cursor-pointer rounded-xl transition-all duration-300 p-10"
-              style={{
-                border: '1px dashed rgba(139,92,246,0.2)',
-                background: 'linear-gradient(135deg, rgba(139,92,246,0.03), rgba(6,182,212,0.02))',
+              className="group relative cursor-pointer rounded-2xl p-10 transition-all duration-300"
+              style={{ background: 'rgba(255,255,255,0.015)', border: '1.5px dashed rgba(255,255,255,0.07)' }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.16)'
+                ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.035)'
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(139,92,246,0.4)'; (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(6,182,212,0.04))' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(139,92,246,0.2)'; (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(139,92,246,0.03), rgba(6,182,212,0.02))' }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.07)'
+                ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.015)'
+              }}
             >
-              <div className="flex flex-col items-center gap-3 text-center">
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center transition-all"
-                  style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(6,182,212,0.05))', border: '1px solid rgba(139,92,246,0.15)', boxShadow: '0 0 24px rgba(139,92,246,0.06)' }}>
-                  <Upload size={24} className="text-violet-400/50 group-hover:text-violet-400/80 transition-colors" />
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015))',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.25)',
+                  }}
+                >
+                  <Upload size={22} className="text-white/20 group-hover:text-white/45 transition-colors duration-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-violet-200/50 group-hover:text-violet-200/80 transition-colors">
-                    Drop audio file or click to browse
+                  <p className="text-sm font-medium text-white/35 group-hover:text-white/60 transition-colors duration-300">
+                    Drop audio or click to browse
                   </p>
-                  <p className="text-[11px] text-violet-300/20 mt-1">WAV, MP3, FLAC, OGG — up to 100MB</p>
+                  <p className="text-[10.5px] text-white/12 mt-1.5 tracking-wide">WAV · MP3 · FLAC · OGG — max 100 MB</p>
                 </div>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" accept="audio/*" onChange={handleFileSelect} className="hidden" />
             </div>
           )}
 
-          {/* File selected — Main interface */}
+          {/* ── File selected ── */}
           {selectedFile && (
             <>
-              {/* Input Section */}
+              {/* Input section */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400" style={{ boxShadow: '0 0 6px rgba(139,92,246,0.5)' }} />
-                    <span className="text-[10px] font-bold text-violet-300/50 tracking-[0.2em] uppercase">Input</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/25" />
+                    <span className="text-[10px] font-bold text-white/25 tracking-[0.2em]">ORIGINAL</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-violet-300/25 font-mono">{selectedFile.name}</span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[10px] text-white/12 font-mono truncate max-w-[180px]">{selectedFile.name}</span>
                     <button
                       onClick={() => {
                         setSelectedFile(null)
@@ -638,30 +597,30 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                         setInputWaveformData(null)
                         setOutputWaveformData(null)
                       }}
-                      className="text-[10px] text-red-400/40 hover:text-red-400/80 transition-colors"
-                    >
-                      remove
-                    </button>
+                      className="text-[10px] text-white/12 hover:text-red-400/50 transition-colors"
+                    >remove</button>
                   </div>
                 </div>
 
-                {/* Waveform + playback controls */}
-                <div className="relative rounded-lg p-3" style={{ background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(139,92,246,0.1)' }}>
+                {/* Glass waveform card */}
+                <div className="relative rounded-xl p-3 overflow-hidden"
+                  style={{
+                    background: 'rgba(255,255,255,0.015)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.035)',
+                  }}
+                >
                   <div className="flex items-center gap-3">
-                    <button
-                      onClick={togglePlayInput}
-                      disabled={!previewUrl}
-                      className="w-9 h-9 flex-shrink-0 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center hover:bg-violet-500/20 transition-all disabled:opacity-30"
+                    <button onClick={togglePlayInput} disabled={!previewUrl}
+                      className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center transition-all disabled:opacity-15"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }}
                     >
-                      {isPlayingInput
-                        ? <Pause size={14} className="text-violet-300" />
-                        : <Play size={14} className="text-violet-300 ml-0.5" />
-                      }
+                      {isPlayingInput ? <Pause size={13} className="text-white/55" /> : <Play size={13} className="text-white/55 ml-0.5" />}
                     </button>
                     <div className="flex-1 relative h-12">
                       <canvas ref={inputCanvasRef} className="w-full h-full" />
                     </div>
-                    <span className="text-[10px] font-mono text-violet-300/30 w-10 text-right flex-shrink-0">
+                    <span className="text-[10px] font-mono text-white/18 w-10 text-right flex-shrink-0">
                       {inputDuration > 0 ? formatTime(inputDuration) : '--:--'}
                     </span>
                   </div>
@@ -669,108 +628,105 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                 </div>
               </div>
 
-              {/* Key & Scale Selector */}
-              <div className="space-y-3">
+              {/* ── Key & Scale Selector ── */}
+              <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400/60" style={{ boxShadow: '0 0 6px rgba(6,182,212,0.4)' }} />
-                  <span className="text-[10px] font-bold text-cyan-300/40 tracking-[0.2em] uppercase">Key & Scale</span>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(180,255,230,0.3)' }} />
+                  <span className="text-[10px] font-bold text-white/22 tracking-[0.2em]">TARGET KEY</span>
                 </div>
 
-                {/* Key grid */}
-                <div className="grid grid-cols-12 gap-1">
-                  {MUSICAL_KEYS.map((k) => (
-                    <button
-                      key={k}
-                      onClick={() => setAutotuneKey(k)}
-                      className={`py-2 rounded text-[11px] font-bold transition-all duration-150 ${
-                        autotuneKey === k
-                          ? 'text-white'
-                          : 'text-violet-200/30 hover:text-violet-200/60 border border-violet-500/[0.08] hover:border-violet-500/20'
-                      }`}
-                      style={autotuneKey === k ? {
-                        background: 'linear-gradient(135deg, rgba(139,92,246,0.5), rgba(6,182,212,0.3))',
-                        boxShadow: '0 0 14px rgba(139,92,246,0.25), inset 0 1px rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(139,92,246,0.4)',
+                {/* Chromatic key grid — glass keys */}
+                <div className="grid grid-cols-12 gap-[5px]">
+                  {MUSICAL_KEYS.map((k) => {
+                    const isSharp = k.includes('b')
+                    const isSelected = autotuneKey === k
+                    return (
+                      <button key={k} onClick={() => setAutotuneKey(k)}
+                        className={`py-2.5 rounded-xl text-[11px] font-bold transition-all duration-200 ${isSelected ? '' : 'hover:border-white/12'}`}
+                        style={isSelected ? {
+                          background: 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05))',
+                          border: '1px solid rgba(255,255,255,0.22)',
+                          color: 'rgba(255,255,255,0.92)',
+                          boxShadow: '0 0 18px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 14px rgba(0,0,0,0.35)',
+                        } : {
+                          background: isSharp ? 'rgba(255,255,255,0.008)' : 'rgba(255,255,255,0.025)',
+                          border: '1px solid rgba(255,255,255,0.035)',
+                          color: isSharp ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.22)',
+                        }}
+                      >
+                        {k}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Scale toggle — glass pills */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { value: 'maj' as const, label: 'MAJOR', sub: 'bright · happy · uplifting' },
+                    { value: 'min' as const, label: 'MINOR', sub: 'dark · moody · emotional' },
+                  ].map(({ value, label, sub }) => (
+                    <button key={value} onClick={() => setAutotuneScale(value)}
+                      className="relative py-3.5 rounded-xl text-center transition-all duration-200 overflow-hidden"
+                      style={autotuneScale === value ? {
+                        background: 'linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03))',
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        boxShadow: '0 0 22px rgba(255,255,255,0.035), inset 0 1px 0 rgba(255,255,255,0.1)',
                       } : {
-                        background: 'rgba(139,92,246,0.04)',
+                        background: 'rgba(255,255,255,0.012)',
+                        border: '1px solid rgba(255,255,255,0.035)',
                       }}
                     >
-                      {k}
+                      {autotuneScale === value && (
+                        <div className="absolute inset-0 pointer-events-none"
+                          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%)', borderRadius: 'inherit' }} />
+                      )}
+                      <span className={`text-xs font-bold tracking-wider relative z-10 ${autotuneScale === value ? 'text-white/85' : 'text-white/18'}`}>{label}</span>
+                      <p className={`text-[9px] mt-0.5 relative z-10 tracking-wide ${autotuneScale === value ? 'text-white/28' : 'text-white/08'}`}>{sub}</p>
                     </button>
                   ))}
                 </div>
 
-                {/* Scale toggle */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setAutotuneScale('maj')}
-                    className={`py-2.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-150 ${
-                      autotuneScale === 'maj'
-                        ? 'text-white'
-                        : 'text-violet-200/25 hover:text-violet-200/50 border border-violet-500/[0.08] hover:border-violet-500/20'
-                    }`}
-                    style={autotuneScale === 'maj' ? {
-                      background: 'linear-gradient(135deg, rgba(139,92,246,0.45), rgba(6,182,212,0.25))',
-                      boxShadow: '0 0 16px rgba(139,92,246,0.2), inset 0 1px rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(139,92,246,0.35)',
-                    } : {
-                      background: 'rgba(139,92,246,0.03)',
-                    }}
+                {/* Selected key badge — floating glass */}
+                <div className="flex items-center justify-center">
+                  <div className="flex items-center gap-2.5 px-5 py-2 rounded-2xl"
+                    style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
                   >
-                    MAJOR
-                  </button>
-                  <button
-                    onClick={() => setAutotuneScale('min')}
-                    className={`py-2.5 rounded-lg text-xs font-bold tracking-wide transition-all duration-150 ${
-                      autotuneScale === 'min'
-                        ? 'text-white'
-                        : 'text-violet-200/25 hover:text-violet-200/50 border border-violet-500/[0.08] hover:border-violet-500/20'
-                    }`}
-                    style={autotuneScale === 'min' ? {
-                      background: 'linear-gradient(135deg, rgba(139,92,246,0.45), rgba(6,182,212,0.25))',
-                      boxShadow: '0 0 16px rgba(139,92,246,0.2), inset 0 1px rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(139,92,246,0.35)',
-                    } : {
-                      background: 'rgba(139,92,246,0.03)',
-                    }}
-                  >
-                    MINOR
-                  </button>
-                </div>
-
-                {/* Selected key indicator */}
-                <div className="flex items-center justify-center gap-2 py-1">
-                  <span className="text-[10px] text-violet-300/20 tracking-widest uppercase">Target</span>
-                  <span className="text-sm font-bold tracking-wide" style={{ background: 'linear-gradient(90deg, #c4b5fd, #67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    {autotuneKey} {autotuneScale === 'maj' ? 'Major' : 'Minor'}
-                  </span>
+                    <Waves size={11} className="text-white/16" />
+                    <span className="text-[10px] text-white/16 tracking-widest">TARGET</span>
+                    <span className="text-sm font-bold text-white/75 tracking-wide">
+                      {autotuneKey} {autotuneScale === 'maj' ? 'Major' : 'Minor'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Output Section — only after processing */}
+              {/* ── Output ── */}
               {outputUrl && (
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 6px rgba(6,182,212,0.5)' }} />
-                    <span className="text-[10px] font-bold text-cyan-300/50 tracking-[0.2em] uppercase">Output</span>
-                    <span className="text-[10px] text-cyan-400/40 ml-auto font-mono">{autotuneKey}:{autotuneScale}</span>
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(0,255,200,0.45)', boxShadow: '0 0 6px rgba(0,255,200,0.25)' }} />
+                    <span className="text-[10px] font-bold tracking-[0.2em]" style={{ color: 'rgba(0,255,200,0.35)' }}>AUTOTUNED</span>
+                    <span className="text-[10px] font-mono ml-auto" style={{ color: 'rgba(0,255,200,0.2)' }}>{autotuneKey}:{autotuneScale}</span>
                   </div>
 
-                  <div className="relative rounded-lg p-3" style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)' }}>
+                  <div className="relative rounded-xl p-3 overflow-hidden"
+                    style={{ background: 'rgba(0,255,200,0.015)', border: '1px solid rgba(0,255,200,0.07)', boxShadow: 'inset 0 1px 0 rgba(0,255,200,0.035)' }}
+                  >
                     <div className="flex items-center gap-3">
-                      <button
-                        onClick={togglePlayOutput}
-                        className="w-9 h-9 flex-shrink-0 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center hover:bg-cyan-500/20 transition-all"
+                      <button onClick={togglePlayOutput}
+                        className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center transition-all"
+                        style={{ background: 'rgba(0,255,200,0.05)', border: '1px solid rgba(0,255,200,0.1)', boxShadow: 'inset 0 1px 0 rgba(0,255,200,0.05)' }}
                       >
                         {isPlayingOutput
-                          ? <Pause size={14} className="text-cyan-300" />
-                          : <Play size={14} className="text-cyan-300 ml-0.5" />
+                          ? <Pause size={13} style={{ color: 'rgba(0,255,200,0.65)' }} />
+                          : <Play size={13} className="ml-0.5" style={{ color: 'rgba(0,255,200,0.65)' }} />
                         }
                       </button>
                       <div className="flex-1 relative h-12">
                         <canvas ref={outputCanvasRef} className="w-full h-full" />
                       </div>
-                      <span className="text-[10px] font-mono text-cyan-300/30 w-10 text-right flex-shrink-0">
+                      <span className="text-[10px] font-mono w-10 text-right flex-shrink-0" style={{ color: 'rgba(0,255,200,0.2)' }}>
                         {outputDuration > 0 ? formatTime(outputDuration) : '--:--'}
                       </span>
                     </div>
@@ -779,14 +735,23 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
                 </div>
               )}
 
-              {/* Processing indicator */}
+              {/* Processing spinner — abstract */}
               {isProcessing && (
-                <div className="flex items-center justify-center gap-3 py-4">
-                  <div className="relative">
-                    <div className="w-8 h-8 rounded-full" style={{ border: '2px solid rgba(139,92,246,0.1)' }} />
-                    <div className="absolute inset-0 w-8 h-8 rounded-full border-2 border-transparent border-t-violet-400 animate-spin" style={{ filter: 'drop-shadow(0 0 4px rgba(139,92,246,0.4))' }} />
+                <div className="flex items-center justify-center gap-3 py-5">
+                  <div className="relative w-9 h-9">
+                    <div className="absolute inset-0 rounded-full" style={{ border: '2px solid rgba(255,255,255,0.04)' }} />
+                    <div className="absolute inset-0 rounded-full"
+                      style={{
+                        border: '2px solid transparent',
+                        borderTopColor: 'rgba(255,255,255,0.35)',
+                        borderRightColor: 'rgba(255,255,255,0.12)',
+                        animation: 'spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite',
+                        filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.12))',
+                      }}
+                    />
+                    <div className="absolute inset-[35%] rounded-full bg-white/15" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
                   </div>
-                  <span className="text-xs text-violet-300/50">{processingStatus || 'Processing...'}</span>
+                  <span className="text-xs text-white/28 font-light">{processingStatus || 'Processing...'}</span>
                 </div>
               )}
             </>
@@ -794,63 +759,65 @@ export default function AutotuneModal({ isOpen, onClose, onSuccess, onStart, onE
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
-              <div className="w-1.5 h-1.5 rounded-full bg-red-400" style={{ boxShadow: '0 0 6px rgba(239,68,68,0.4)' }} />
-              <p className="text-xs text-red-300/80">{error}</p>
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl"
+              style={{ background: 'rgba(255,60,60,0.035)', border: '1px solid rgba(255,60,60,0.08)' }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'rgba(255,80,80,0.55)', boxShadow: '0 0 6px rgba(255,80,80,0.25)' }} />
+              <p className="text-xs text-red-300/55">{error}</p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(139,92,246,0.08)', background: 'rgba(139,92,246,0.02)' }}>
+        {/* ─── Footer ─── */}
+        <div className="relative px-6 py-3.5 flex items-center justify-between"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.035)', background: 'rgba(255,255,255,0.008)' }}
+        >
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-violet-300/20 tracking-widest uppercase">Cost</span>
-            <span className="text-xs font-bold" style={{ background: 'linear-gradient(90deg, #c4b5fd, #67e8f9)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>1 credit</span>
+            <Sparkles size={11} className="text-white/12" />
+            <span className="text-[10px] text-white/12 tracking-widest">COST</span>
+            <span className="text-xs font-bold text-white/45">1 credit</span>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2.5">
             {outputUrl && (
               <button
-                onClick={() => {
-                  setOutputUrl(null)
-                  setOutputWaveformData(null)
-                  setIsPlayingOutput(false)
-                  setOutputProgress(0)
-                }}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-violet-300/40 hover:text-violet-300/70 transition-all"
-                style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.1)' }}
+                onClick={() => { setOutputUrl(null); setOutputWaveformData(null); setIsPlayingOutput(false); setOutputProgress(0) }}
+                className="px-4 py-2 rounded-xl text-xs font-medium transition-all"
+                style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}
               >
-                <RotateCcw size={13} className="inline mr-1.5 -mt-0.5" />
-                Redo
+                <RotateCcw size={11} className="inline mr-1.5 -mt-0.5" />Redo
               </button>
             )}
-            <button
-              onClick={handleProcess}
-              disabled={!selectedFile || isProcessing}
-              className="px-6 py-2 rounded-lg text-xs font-bold text-white transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed"
+            <button onClick={handleProcess} disabled={!selectedFile || isProcessing}
+              className="px-6 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 disabled:opacity-12 disabled:cursor-not-allowed"
               style={{
-                background: 'linear-gradient(135deg, rgba(139,92,246,0.6), rgba(6,182,212,0.4))',
-                boxShadow: '0 0 24px rgba(139,92,246,0.2), 0 0 48px rgba(6,182,212,0.08), inset 0 1px rgba(255,255,255,0.1)',
-                border: '1px solid rgba(139,92,246,0.3)',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0.04))',
+                border: '1px solid rgba(255,255,255,0.14)',
+                color: 'rgba(255,255,255,0.88)',
+                boxShadow: '0 0 22px rgba(255,255,255,0.035), inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 18px rgba(0,0,0,0.45)',
               }}
             >
               {isProcessing ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 size={13} className="animate-spin" />
-                  Processing
-                </span>
+                <span className="flex items-center gap-2"><Loader2 size={12} className="animate-spin" />Processing</span>
               ) : (
-                <span className="flex items-center gap-1.5">
-                  <Zap size={13} />
-                  {outputUrl ? 'Retune' : 'Autotune'}
-                </span>
+                <span className="flex items-center gap-1.5"><Zap size={12} />{outputUrl ? 'Retune' : 'Autotune'}</span>
               )}
             </button>
           </div>
         </div>
 
         {/* Bottom accent */}
-        <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(6,182,212,0.3), rgba(139,92,246,0.2), transparent)' }} />
+        <div className="absolute bottom-0 left-0 right-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.05) 50%, transparent 95%)' }} />
       </div>
+
+      {/* Animations */}
+      <style jsx>{`
+        @keyframes autotuneIn {
+          from { opacity: 0; transform: scale(0.96) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }

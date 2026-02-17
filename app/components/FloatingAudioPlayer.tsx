@@ -466,7 +466,7 @@ export default function FloatingAudioPlayer() {
   if (!expanded) {
     return (
       <div
-        className="fixed top-0 right-0 h-screen w-[104px] z-40 flex flex-col items-center py-2 transition-all duration-300 overflow-hidden"
+        className="fixed top-0 right-0 h-screen w-[104px] z-[55] flex flex-col items-center py-2 transition-all duration-300 overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, rgba(8,8,12,0.95) 0%, rgba(4,4,8,0.98) 100%)',
           borderLeft: '1px solid rgba(34, 211, 238, 0.06)',
@@ -582,7 +582,7 @@ export default function FloatingAudioPlayer() {
 
   return (
     <div
-      className="fixed top-0 right-0 h-screen w-[620px] z-40 flex flex-col transition-all duration-300"
+      className="fixed top-0 right-0 h-screen w-[620px] z-[55] flex flex-col transition-all duration-300"
       style={{
         background: 'linear-gradient(180deg, rgba(8,8,12,0.98) 0%, rgba(4,4,8,0.99) 100%)',
         borderLeft: '1px solid rgba(34, 211, 238, 0.06)',

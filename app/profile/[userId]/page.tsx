@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { use } from 'react'
-import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus, Trash2, Zap, Award, BarChart3, Clock, Disc3 } from 'lucide-react'
+import { Play, Pause, Heart, MessageCircle, Radio, Grid, List as ListIcon, Upload, Edit2, Users, MapPin, Calendar, ExternalLink, Video, Mic, Send, Smile, Settings, Music, Circle, Plus, Trash2, Zap, Award, BarChart3, Clock, Disc3, Camera, ImageIcon, X as XIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAudioPlayer } from '../../contexts/AudioPlayerContext'
 import FloatingMenu from '../../components/FloatingMenu'
@@ -86,9 +86,12 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
   const [chatInput, setChatInput] = useState('')
   const [viewerCount, setViewerCount] = useState(0)
 
-  // Modals (banner removed)
+  // Modals
   const [showAvatarUpload, setShowAvatarUpload] = useState(false)
   const [showEditProfile, setShowEditProfile] = useState(false)
+  const [showBannerUpload, setShowBannerUpload] = useState(false)
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const bannerFileRef = useRef<HTMLInputElement>(null)
   
   // Edit profile form state
   const [editFullName, setEditFullName] = useState('')
@@ -201,14 +204,14 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
 
         if (tracksError) throw tracksError
 
-        // Set profile data (banner system removed)
+        // Set profile data
         setProfile({
           userId: userData.clerk_user_id,
           username: userData.username || 'Anonymous',
           fullName: userData.username || 'User',
           bio: userData.bio || 'No bio yet',
           avatar_url: userData.avatar_url || '/default-avatar.png',
-          banner_url: '/default-banner.jpg',
+          banner_url: userData.banner_url || '',
           follower_count: userData.follower_count || 0,
           following_count: userData.following_count || 0,
           location: userData.location || '',
@@ -306,6 +309,60 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       .single()
     if (data) {
       setProfile(prev => prev ? { ...prev, avatar_url: data.avatar_url } : null)
+    }
+  }
+
+  // Handle Banner Upload
+  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const isVideo = file.type.startsWith('video/')
+    const isImage = file.type.startsWith('image/')
+    if (!isVideo && !isImage) { alert('Please select an image or video file'); return }
+    if (file.size > 50 * 1024 * 1024) { alert('File must be under 50MB'); return }
+
+    setBannerUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('kind', isVideo ? 'video' : 'image')
+      const res = await fetch('/api/profile/banner', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.success && data.banner_url) {
+        setProfile(prev => prev ? { ...prev, banner_url: data.banner_url } : null)
+        setShowBannerUpload(false)
+      } else {
+        alert(data.error || 'Banner upload failed')
+      }
+    } catch (err) {
+      console.error('Banner upload error:', err)
+      alert('Failed to upload banner')
+    } finally {
+      setBannerUploading(false)
+      if (bannerFileRef.current) bannerFileRef.current.value = ''
+    }
+  }
+
+  // Use latest cover art as banner
+  const handleUseLatestCover = async () => {
+    setBannerUploading(true)
+    try {
+      const res = await fetch('/api/profile/banner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ useLatestCover: true })
+      })
+      const data = await res.json()
+      if (data.success && data.banner_url) {
+        setProfile(prev => prev ? { ...prev, banner_url: data.banner_url } : null)
+        setShowBannerUpload(false)
+      } else {
+        alert(data.error || 'Could not use latest cover')
+      }
+    } catch (err) {
+      console.error('Banner cover error:', err)
+    } finally {
+      setBannerUploading(false)
     }
   }
 
@@ -563,12 +620,23 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
       />
 
       {/* ═══ HERO BANNER ═══ */}
-      <div className="relative h-56 md:h-64 overflow-hidden">
-        {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a1628] via-[#0d1a2d] to-[#060a12]" />
-        {/* Radial glows */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(6,182,214,0.08),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(139,92,246,0.06),transparent_60%)]" />
+      <div className="relative h-56 md:h-64 overflow-hidden group/banner">
+        {/* Banner image/video or gradient fallback */}
+        {profile.banner_url ? (
+          profile.banner_url.match(/\.(mp4|webm|mov)(\?.*)?$/i) ? (
+            <video src={profile.banner_url} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <Image src={profile.banner_url} alt="Banner" fill className="object-cover" priority />
+          )
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0a1628] via-[#0d1a2d] to-[#060a12]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(6,182,214,0.08),transparent_60%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(139,92,246,0.06),transparent_60%)]" />
+          </>
+        )}
+        {/* Overlay gradient for readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#060a12] via-[#060a12]/40 to-transparent" />
         {/* Scan lines */}
         <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,255,0.15) 3px, rgba(0,255,255,0.15) 4px)' }} />
@@ -582,6 +650,18 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
         <div className="absolute top-4 right-6 text-[9px] font-mono text-cyan-700/40">
           ID: {userId.slice(-8).toUpperCase()}
         </div>
+        {/* Banner upload button — own profile only */}
+        {isOwnProfile && (
+          <button
+            onClick={() => setShowBannerUpload(true)}
+            className="absolute bottom-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-mono font-medium transition-all opacity-0 group-hover/banner:opacity-100 z-10"
+            style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(0,255,255,0.2)', color: 'rgba(0,255,255,0.8)', backdropFilter: 'blur(8px)' }}
+          >
+            <Camera size={12} /> {profile.banner_url ? 'CHANGE BANNER' : 'ADD BANNER'}
+          </button>
+        )}
+        {/* Hidden file input for banner */}
+        <input ref={bannerFileRef} type="file" accept="image/*,video/mp4,video/webm" onChange={handleBannerFileChange} className="hidden" />
       </div>
 
       {/* ═══ PROFILE CONTENT ═══ */}
@@ -1082,6 +1162,95 @@ export default function ProfilePage({ params }: { params: Promise<{ userId: stri
                 </button>
               </div>
               <div className="h-[1px] bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Banner Upload Modal */}
+      {showBannerUpload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && setShowBannerUpload(false)}>
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" />
+          <div className="relative w-full max-w-sm">
+            <div className="absolute -inset-[1px] bg-gradient-to-b from-cyan-500/40 via-cyan-500/10 to-transparent rounded-2xl blur-[1px]" />
+            <div className="relative bg-[#080c14] border border-cyan-500/20 rounded-2xl overflow-hidden">
+              <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
+              <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-3 bg-cyan-500 rounded-full" />
+                  <span className="text-[10px] font-mono font-bold text-cyan-500/70 tracking-[0.2em]">BANNER</span>
+                </div>
+                <button onClick={() => setShowBannerUpload(false)} className="p-1 hover:bg-white/5 rounded-lg transition-colors">
+                  <XIcon size={14} className="text-gray-600" />
+                </button>
+              </div>
+
+              <div className="px-5 pb-5 space-y-3">
+                {/* Upload file */}
+                <button
+                  onClick={() => bannerFileRef.current?.click()}
+                  disabled={bannerUploading}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-left"
+                  style={{ background: 'rgba(0,255,255,0.04)', border: '1px solid rgba(0,255,255,0.12)' }}
+                >
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,255,255,0.08)' }}>
+                    <Upload size={14} className="text-cyan-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-mono font-bold text-white/70">Upload Image or Video</p>
+                    <p className="text-[9px] font-mono text-gray-600 mt-0.5">JPG, PNG, MP4, WebM — max 50 MB</p>
+                  </div>
+                </button>
+
+                {/* Use latest cover art */}
+                <button
+                  onClick={handleUseLatestCover}
+                  disabled={bannerUploading}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-left"
+                  style={{ background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.12)' }}
+                >
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.08)' }}>
+                    <Music size={14} className="text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-mono font-bold text-white/70">Use Latest Cover Art</p>
+                    <p className="text-[9px] font-mono text-gray-600 mt-0.5">Auto-pick from your recent releases</p>
+                  </div>
+                </button>
+
+                {/* Remove banner */}
+                {profile?.banner_url && (
+                  <button
+                    onClick={async () => {
+                      setBannerUploading(true)
+                      try {
+                        const res = await fetch('/api/profile/banner', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ coverUrl: '' })
+                        })
+                        const data = await res.json()
+                        if (data.success) {
+                          setProfile(prev => prev ? { ...prev, banner_url: '' } : null)
+                          setShowBannerUpload(false)
+                        }
+                      } catch {} finally { setBannerUploading(false) }
+                    }}
+                    disabled={bannerUploading}
+                    className="w-full py-2.5 text-center text-[10px] font-mono text-red-400/50 hover:text-red-400/80 transition-colors"
+                  >
+                    REMOVE BANNER
+                  </button>
+                )}
+
+                {bannerUploading && (
+                  <div className="flex items-center justify-center gap-2 py-2">
+                    <div className="w-4 h-4 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+                    <span className="text-[10px] font-mono text-cyan-500/60">Uploading...</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
