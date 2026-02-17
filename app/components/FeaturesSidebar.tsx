@@ -109,7 +109,7 @@ export default function FeaturesSidebar({
       description: 'Fixed BPM loops',
       color: 'cyan',
       active: false,
-      cost: 2,
+      cost: 6,
       onClick: onShowLoopers,
     },
     {
@@ -127,7 +127,7 @@ export default function FeaturesSidebar({
       description: 'Synced SFX from video',
       color: 'cyan',
       active: false,
-      cost: 2,
+      cost: 4,
       onClick: onShowVideoToAudio,
     },
     {
@@ -136,7 +136,7 @@ export default function FeaturesSidebar({
       description: 'Vocals, drums, bass & more',
       color: 'purple',
       active: false,
-      cost: 5,
+      cost: 1,
       onClick: onShowStemSplit,
     },
     {

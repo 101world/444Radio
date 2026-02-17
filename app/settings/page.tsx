@@ -539,10 +539,16 @@ function SettingsPageInner() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{tx.description || txTypeLabel(tx.type)}</p>
                           {tx.type === 'earn_sale' && tx.metadata?.buyerUsername && (
-                            <p className="text-xs text-cyan-400/80 truncate">Bought by @{tx.metadata.buyerUsername}</p>
+                            <p className="text-xs text-cyan-400/80 truncate">
+                              Bought by @{tx.metadata.buyerUsername}
+                              {tx.metadata?.trackTitle && <span className="text-gray-500"> &middot; {tx.metadata.trackTitle}</span>}
+                            </p>
                           )}
                           {tx.type === 'earn_purchase' && tx.metadata?.sellerUsername && (
-                            <p className="text-xs text-purple-400/80 truncate">From @{tx.metadata.sellerUsername}</p>
+                            <p className="text-xs text-purple-400/80 truncate">
+                              From @{tx.metadata.sellerUsername}
+                              {tx.metadata?.trackTitle && <span className="text-gray-500"> &middot; {tx.metadata.trackTitle}</span>}
+                            </p>
                           )}
                           {tx.type === 'release' && tx.metadata?.trackId444 && (
                             <p className="text-xs text-cyan-400/80 truncate font-mono">ID: {tx.metadata.trackId444}</p>
@@ -551,13 +557,13 @@ function SettingsPageInner() {
                             {txTypeLabel(tx.type)} &middot; {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
-                        {tx.type === 'release' && tx.metadata && (
+                        {(tx.type === 'release' || tx.type === 'earn_sale' || tx.type === 'earn_purchase') && tx.metadata && (
                           <button
                             onClick={() => setExpandedTx(expandedTx === tx.id ? null : tx.id)}
                             className={`p-2 rounded-lg flex-shrink-0 transition-colors ${
                               expandedTx === tx.id ? 'bg-cyan-500/20 text-cyan-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
                             }`}
-                            title="View release metadata"
+                            title="View details"
                           >
                             <Info className="w-4 h-4" />
                           </button>
@@ -618,6 +624,64 @@ function SettingsPageInner() {
                                 </div>
                               </div>
                             )}
+                          </div>
+                        </div>
+                      )}
+                      {/* Earn sale detail */}
+                      {tx.type === 'earn_sale' && expandedTx === tx.id && tx.metadata && (
+                        <div className="px-5 pb-4 -mt-1">
+                          <div className="ml-10 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5">
+                            {tx.metadata.trackTitle && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Track</span>
+                                <span className="text-xs text-gray-300">{tx.metadata.trackTitle}</span>
+                              </div>
+                            )}
+                            {tx.metadata.buyerUsername && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Buyer</span>
+                                <span className="text-xs text-cyan-400">@{tx.metadata.buyerUsername}</span>
+                              </div>
+                            )}
+                            {tx.metadata.purchasedAt && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Purchased</span>
+                                <span className="text-xs text-gray-300">{new Date(tx.metadata.purchasedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-500 w-20">Earned</span>
+                              <span className="text-xs text-green-400 font-bold">+{tx.amount} credits</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {/* Earn purchase detail */}
+                      {tx.type === 'earn_purchase' && expandedTx === tx.id && tx.metadata && (
+                        <div className="px-5 pb-4 -mt-1">
+                          <div className="ml-10 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-1.5">
+                            {tx.metadata.trackTitle && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Track</span>
+                                <span className="text-xs text-gray-300">{tx.metadata.trackTitle}</span>
+                              </div>
+                            )}
+                            {tx.metadata.sellerUsername && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Seller</span>
+                                <span className="text-xs text-purple-400">@{tx.metadata.sellerUsername}</span>
+                              </div>
+                            )}
+                            {tx.metadata.sellerId && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500 w-20">Seller ID</span>
+                                <span className="text-xs text-gray-500 font-mono truncate">{tx.metadata.sellerId}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-500 w-20">Cost</span>
+                              <span className="text-xs text-red-400 font-bold">{tx.amount} credits</span>
+                            </div>
                           </div>
                         </div>
                       )}

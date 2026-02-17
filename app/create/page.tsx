@@ -2164,10 +2164,10 @@ function CreatePageContent() {
                               <button
                                 onClick={() => {
                                   if (!url) return
-                                  // Create clean filename with "444 - " prefix
+                                  // Create clean filename with "444 - " prefix — stems are WAV from Replicate
                                   const stemName = key.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_')
-                                  const filename = `444_${stemName}.mp3`
-                                  handleDownload(url, filename, 'mp3')
+                                  const filename = `444_${stemName}.wav`
+                                  handleDownload(url, filename, 'wav')
                                 }}
                                 className={`p-2.5 ${def.hoverBg} rounded-lg transition-colors`}
                               >

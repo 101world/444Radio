@@ -94,11 +94,10 @@ export async function POST(request: Request) {
     const MODEL_DISPLAY_NAMES: Record<string, string> = {
       htdemucs: '444 Core',
       htdemucs_6s: '444 Extended',
-      htdemucs_ft: '444 Pro',
     }
 
-    // Credit cost: 1 per stem (Core/Extended), 3 per stem (Pro / htdemucs_ft)
-    const stemCost = demucsModel === 'htdemucs_ft' ? 3 : 1
+    // Credit cost: FREE for int16/int24, 1 credit per stem for float32
+    const stemCost = wavFormat === 'float32' ? 1 : 0
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -114,7 +113,7 @@ export async function POST(request: Request) {
       return corsResponse(NextResponse.json({ success: false, error: 'User not found' }, { status: 404 }))
     }
 
-    if (userData.credits < stemCost) {
+    if (stemCost > 0 && userData.credits < stemCost) {
       return corsResponse(NextResponse.json({
         success: false,
         error: `Insufficient credits. Stem split requires ${stemCost} credit${stemCost > 1 ? 's' : ''}, you have ${userData.credits}.`,
@@ -123,21 +122,25 @@ export async function POST(request: Request) {
       }, { status: 402 }))
     }
 
-    // ✅ DEDUCT credits atomically BEFORE generation
-    const { data: deductResultRaw } = await supabase
-      .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})` })
-      .single()
-    const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
-    if (!deductResult?.success) {
-      const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
-      console.error('❌ Credit deduction blocked:', errorMsg)
-      await logCreditTransaction({ userId, amount: -stemCost, type: 'generation_stem_split', status: 'failed', description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`, metadata: {} })
-      return corsResponse(NextResponse.json({ success: false, error: errorMsg }, { status: 402 }))
+    // ✅ DEDUCT credits atomically BEFORE generation (skip if free tier)
+    if (stemCost > 0) {
+      const { data: deductResultRaw } = await supabase
+        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]` })
+        .single()
+      const deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
+      if (!deductResult?.success) {
+        const errorMsg = deductResult?.error_message || 'Failed to deduct credits'
+        console.error('❌ Credit deduction blocked:', errorMsg)
+        await logCreditTransaction({ userId, amount: -stemCost, type: 'generation_stem_split', status: 'failed', description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`, metadata: {} })
+        return corsResponse(NextResponse.json({ success: false, error: errorMsg }, { status: 402 }))
+      }
+      console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
+      deductedAmount = stemCost
+      deductedUserId = userId
+      await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`, metadata: { model: demucsModel, cost: stemCost, wav_format: wavFormat } })
+    } else {
+      console.log(`🆓 Free stem split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`)
     }
-    console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
-    deductedAmount = stemCost
-    deductedUserId = userId
-    await logCreditTransaction({ userId, amount: -stemCost, balanceAfter: deductResult.new_credits, type: 'generation_stem_split', description: `Stem Split (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`, metadata: { model: demucsModel, cost: stemCost } })
 
     console.log('🎵 Stem splitting requested by user:', userId)
 

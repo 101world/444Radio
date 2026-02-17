@@ -17,16 +17,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Credit cost: 1 per stem (Core/Extended), 3 per stem (Pro / htdemucs_ft)
-function getStemCost(model: string): number {
-  return model === 'htdemucs_ft' ? 3 : 1
+// Credit cost: FREE for int16/int24, 1 credit per stem for float32
+function getStemCost(model: string, wavFormat?: string): number {
+  if (wavFormat === 'float32') return 1
+  return 0 // Free for int16 and int24
 }
 
 // Display names for Demucs models (used in transaction descriptions)
 const MODEL_DISPLAY_NAMES: Record<string, string> = {
   htdemucs: '444 Core',
   htdemucs_6s: '444 Extended',
-  htdemucs_ft: '444 Pro',
 }
 
 // Valid stem choices (maps UI labels → Demucs stem parameter)
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     // Validate and apply advanced params with safe defaults
-    const VALID_MODELS = ['htdemucs', 'htdemucs_6s', 'htdemucs_ft'] as const
+    const VALID_MODELS = ['htdemucs', 'htdemucs_6s'] as const
     const demucsModel = VALID_MODELS.includes(requestedModel as any) ? requestedModel as string : 'htdemucs'
     const outputFormat = (['wav', 'mp3', 'flac'].includes(requestedOutputFormat || '') ? requestedOutputFormat : 'wav') as string
     const mp3Bitrate = typeof requestedMp3Bitrate === 'number' && requestedMp3Bitrate >= 64 && requestedMp3Bitrate <= 320 ? requestedMp3Bitrate : 320
@@ -151,18 +151,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const stemCost = stem === 'all' ? 5 : getStemCost(demucsModel)
-    if (!skipCreditDeduction && userData.credits < stemCost) {
+    const perStemCost = getStemCost(demucsModel, wavFormat)
+    const stemCost = stem === 'all' ? (perStemCost * (SIX_STEM_MODELS.includes(demucsModel) ? 6 : 4)) : perStemCost
+    if (!skipCreditDeduction && stemCost > 0 && userData.credits < stemCost) {
       return NextResponse.json({ 
         error: `Insufficient credits. Need ${stemCost} credit${stemCost > 1 ? 's' : ''} but have ${userData.credits}` 
       }, { status: 402 })
     }
 
-    // ✅ DEDUCT credits atomically BEFORE generation (skip if earn-purchased)
+    // ✅ DEDUCT credits atomically BEFORE generation (skip if earn-purchased or free tier)
     let deductResult: { success: boolean; new_credits: number; error_message?: string | null } | null = null
-    if (!skipCreditDeduction) {
+    if (!skipCreditDeduction && stemCost > 0) {
+      const rpcLabel = stem === 'all' ? '444 Heat' : `${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`
       const { data: deductResultRaw } = await supabase
-        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem Split: ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})` })
+        .rpc('deduct_credits', { p_clerk_user_id: userId, p_amount: stemCost, p_type: 'generation_stem_split', p_description: `Stem Split: ${rpcLabel} [${wavFormat}]` })
         .single()
       deductResult = deductResultRaw as { success: boolean; new_credits: number; error_message?: string | null } | null
       if (!deductResult?.success) {
@@ -172,12 +174,15 @@ export async function POST(request: Request) {
       }
       console.log(`✅ Credits deducted: ${stemCost}. Remaining: ${deductResult.new_credits}`)
       // Log the deduction to credit_transactions
+      const txnLabel = stem === 'all' ? '444 Heat' : `${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`
       await logCreditTransaction({
         userId, amount: -stemCost, balanceAfter: deductResult.new_credits,
         type: 'generation_stem_split',
-        description: `Stem Split: ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel})`,
-        metadata: { stem, model: demucsModel, cost: stemCost },
+        description: `Stem Split: ${txnLabel} [${wavFormat}]`,
+        metadata: { stem, model: demucsModel, cost: stemCost, wav_format: wavFormat },
       })
+    } else if (stemCost === 0) {
+      console.log(`🆓 Free stem split: ${stem} (${MODEL_DISPLAY_NAMES[demucsModel] || demucsModel}) [${wavFormat}]`)
     }
 
     // Stream prediction ID to client for cancellation, then process result

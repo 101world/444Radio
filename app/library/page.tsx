@@ -1245,7 +1245,7 @@ export default function LibraryPage() {
                                 </button>
                                 {/* Download */}
                                 <button
-                                  onClick={() => handleDownload(stem.audioUrl, `${stem.title || stemLabel}.mp3`)}
+                                  onClick={() => handleDownload(stem.audioUrl, `${stem.title || stemLabel}.wav`, 'wav')}
                                   className="p-2 rounded-lg hover:bg-cyan-500/20 transition-colors"
                                   title={`Download ${stemLabel}`}
                                 >

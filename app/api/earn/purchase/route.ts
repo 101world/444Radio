@@ -111,13 +111,23 @@ export async function POST(request: NextRequest) {
     }
     const newBuyerCredits = deductRow.new_credits
 
-    // Log buyer's deduction
-    await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}${splitStems ? ' (with stems)' : ''}`, metadata: { trackId, splitStems, baseCost, stemsCost, totalCost } })
-
     // 6. Fetch artist's credits + username
     const artistRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}&select=clerk_user_id,credits,username`)
     const artists = await artistRes.json()
     const artist = artists?.[0]
+
+    // Fetch buyer username early (needed for transaction logs)
+    let buyerUsername = 'Unknown'
+    try {
+      const buyerInfoRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=username`)
+      if (buyerInfoRes.ok) {
+        const buyerInfos = await buyerInfoRes.json()
+        buyerUsername = buyerInfos?.[0]?.username || 'Unknown'
+      }
+    } catch { /* fallback to Unknown */ }
+
+    // Log buyer's deduction
+    await logCreditTransaction({ userId, amount: -totalCost, balanceAfter: newBuyerCredits, type: 'earn_purchase', description: `Purchased: ${track.title}${splitStems ? ' (with stems)' : ''}`, metadata: { trackId, trackTitle: track.title, splitStems, baseCost, stemsCost, totalCost, sellerUsername: artist?.username || 'Unknown', sellerId: track.user_id } })
 
     if (!artist) {
       // Refund buyer — add credits back
@@ -155,7 +165,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({ credits: newAdminCredits }),
       })
       // Log admin credit transaction
-      await logCreditTransaction({ userId: ADMIN_CLERK_ID, amount: adminShare, balanceAfter: newAdminCredits, type: 'earn_admin', description: `Download fee: ${track.title}`, metadata: { trackId, buyerId: userId } })
+      await logCreditTransaction({ userId: ADMIN_CLERK_ID, amount: adminShare, balanceAfter: newAdminCredits, type: 'earn_admin', description: `Download fee: ${track.title}`, metadata: { trackId, trackTitle: track.title, buyerId: userId, buyerUsername, sellerId: track.user_id, sellerUsername: artist?.username || 'Unknown' } })
     }
 
     // 8. Increment download count on track
@@ -165,24 +175,7 @@ export async function POST(request: NextRequest) {
     })
 
     // 9. Record transaction + purchase record
-    // Fetch buyer username for transaction record
-    let buyerUsername = 'Unknown'
-    try {
-      const buyerInfoRes = await supabaseRest(`users?clerk_user_id=eq.${userId}&select=username`)
-      if (buyerInfoRes.ok) {
-        const buyerInfos = await buyerInfoRes.json()
-        buyerUsername = buyerInfos?.[0]?.username || 'Unknown'
-      }
-    } catch { /* non-critical */ }
-
-    let sellerUsername = 'Unknown'
-    try {
-      const sellerInfoRes = await supabaseRest(`users?clerk_user_id=eq.${track.user_id}&select=username`)
-      if (sellerInfoRes.ok) {
-        const sellerInfos = await sellerInfoRes.json()
-        sellerUsername = sellerInfos?.[0]?.username || 'Unknown'
-      }
-    } catch { /* non-critical */ }
+    const sellerUsername = artist?.username || 'Unknown'
 
     // earn_transactions insert — use base columns only, then try extra columns separately
     try {
@@ -246,7 +239,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 9b. Log credit transactions (buyer already logged atomically by deduct_credits RPC)
-    await logCreditTransaction({ userId: track.user_id, amount: artistShare, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, buyerId: userId, buyerUsername: buyer?.username || 'Unknown' } })
+    await logCreditTransaction({ userId: track.user_id, amount: artistShare, balanceAfter: newArtistCredits, type: 'earn_sale', description: `Sale: ${track.title}`, metadata: { trackId, trackTitle: track.title, buyerId: userId, buyerUsername, purchasedAt: new Date().toISOString() } })
 
     // 9c. Log 444 ownership lineage for the purchase
     try {

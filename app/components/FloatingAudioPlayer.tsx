@@ -181,6 +181,107 @@ function HorizontalWaveform({ audioElement, isPlaying, progress }: { audioElemen
   return <canvas ref={canvasRef} className="w-full h-full" />
 }
 
+// ─── Circular Visualizer (expanded player fallback) ─────────────
+function CircularVisualizer({ audioElement, isPlaying }: { audioElement: HTMLAudioElement | null; isPlaying: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const ctxRef = useRef<AudioContext | null>(null)
+  const rafRef = useRef<number>(0)
+  const connectedRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    if (!audioElement || !canvasRef.current) return
+    if (connectedRef.current !== audioElement) {
+      try {
+        if (!ctxRef.current) {
+          ctxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+        }
+        const ctx = ctxRef.current
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        analyser.smoothingTimeConstant = 0.8
+        try {
+          const source = ctx.createMediaElementSource(audioElement)
+          source.connect(analyser)
+          analyser.connect(ctx.destination)
+        } catch { /* Already connected */ }
+        analyserRef.current = analyser
+        connectedRef.current = audioElement
+      } catch { /* fallback */ }
+    }
+
+    const canvas = canvasRef.current
+    const c = canvas.getContext('2d')
+    if (!c) return
+    const analyser = analyserRef.current
+    const bufLen = analyser ? analyser.frequencyBinCount : 64
+    const data = new Uint8Array(bufLen)
+
+    const draw = () => {
+      rafRef.current = requestAnimationFrame(draw)
+      const dpr = window.devicePixelRatio || 1
+      const W = canvas.offsetWidth
+      const H = canvas.offsetHeight
+      if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
+        canvas.width = W * dpr
+        canvas.height = H * dpr
+        c.setTransform(dpr, 0, 0, dpr, 0, 0)
+      }
+      c.clearRect(0, 0, W, H)
+
+      if (analyser && isPlaying) analyser.getByteFrequencyData(data)
+      else for (let i = 0; i < bufLen; i++) data[i] = Math.floor(20 + 10 * Math.sin(Date.now() / 1000 + i * 0.3))
+
+      const cx = W / 2
+      const cy = H / 2
+      const baseR = Math.min(cx, cy) * 0.35
+      const maxR = Math.min(cx, cy) * 0.9
+      const barCount = Math.min(bufLen, 64)
+
+      for (let i = 0; i < barCount; i++) {
+        const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2
+        const v = data[i] / 255
+        const r = baseR + v * (maxR - baseR)
+
+        const x1 = cx + Math.cos(angle) * baseR
+        const y1 = cy + Math.sin(angle) * baseR
+        const x2 = cx + Math.cos(angle) * r
+        const y2 = cy + Math.sin(angle) * r
+
+        c.beginPath()
+        c.moveTo(x1, y1)
+        c.lineTo(x2, y2)
+        c.lineWidth = 2
+        c.strokeStyle = `rgba(34, 211, 238, ${0.3 + v * 0.7})`
+        c.shadowColor = 'rgba(34, 211, 238, 0.4)'
+        c.shadowBlur = v * 6
+        c.stroke()
+      }
+
+      // Center glow
+      const grad = c.createRadialGradient(cx, cy, 0, cx, cy, baseR)
+      grad.addColorStop(0, 'rgba(34, 211, 238, 0.08)')
+      grad.addColorStop(1, 'rgba(34, 211, 238, 0)')
+      c.fillStyle = grad
+      c.beginPath()
+      c.arc(cx, cy, baseR, 0, Math.PI * 2)
+      c.fill()
+
+      // Center icon text
+      c.shadowBlur = 0
+      c.fillStyle = 'rgba(34, 211, 238, 0.4)'
+      c.font = `${Math.round(baseR * 0.6)}px sans-serif`
+      c.textAlign = 'center'
+      c.textBaseline = 'middle'
+      c.fillText('♪', cx, cy)
+    }
+    draw()
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [audioElement, isPlaying])
+
+  return <canvas ref={canvasRef} className="w-full h-full" />
+}
+
 // ─── Explore media item type ────────────────────────────────────
 interface ExploreMedia {
   id: string
@@ -641,7 +742,7 @@ export default function FloatingAudioPlayer() {
               <Image src={currentTrack.imageUrl} alt={currentTrack.title} fill className="object-cover" />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-gray-800/80 to-gray-900 flex items-center justify-center">
-                <Disc3 size={40} className="text-teal-500/20" />
+                <CircularVisualizer audioElement={audioEl} isPlaying={isPlaying} />
               </div>
             )}
           </div>
