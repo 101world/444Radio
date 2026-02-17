@@ -18,19 +18,20 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get('limit')) || 500 // Increased to show all tracks
     const offset = Number(searchParams.get('offset')) || 0
 
-    // Fetch ONLY properly released tracks with cover art
-    // The key filter: real releases always have both audio_url AND image_url
-    // Tool outputs (effects, boosts, stems, loops, video-to-audio) never have image_url
+    // Fetch ONLY properly released tracks
+    // Real releases always have audio_url AND (image_url OR video_url)
+    // Tool outputs (effects, boosts, stems, loops, video-to-audio) never have image_url or video_url
+    //
+    // Supabase PostgREST doesn't support OR across columns natively,
+    // so we use the `or` filter: must have cover art OR a visualizer video.
     const { data, error } = await supabase
       .from('combined_media')
       .select('*')
       // Must have audio
       .not('audio_url', 'is', null)
       .neq('audio_url', '')
-      // Must have cover art — this is the strongest signal of a proper release
-      // Tool/generation outputs (effects, boosts, stems, loops, video-to-audio) all set image_url: null
-      .not('image_url', 'is', null)
-      .neq('image_url', '')
+      // Must have cover art OR a visualizer video — this ensures proper releases only
+      .or('and(image_url.not.is.null,image_url.neq.),and(video_url.not.is.null,video_url.neq.)')
       // Exclude internal tool genres (safety net)
       .not('genre', 'in', '(stem,effects,loop,boosted)')
       .order('created_at', { ascending: false })
@@ -85,6 +86,7 @@ export async function GET(req: NextRequest) {
         ...publicMedia,
         audioUrl: media.audio_url, // Normalize for AudioPlayerContext
         imageUrl: media.image_url, // Normalize for AudioPlayerContext
+        video_url: media.video_url || null, // Ensure video_url is always present
         users: { username }
       }
     })
