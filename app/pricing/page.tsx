@@ -86,11 +86,11 @@ const GENERATION_COSTS = [
   { name: 'Song',          credits: 2,  icon: Music },
   { name: 'Cover Art',     credits: 1,  icon: ImageIcon },
   { name: 'Sound Effect',  credits: 2,  icon: Sparkles },
-  { name: 'Stem Split',    credits: 1,  icon: Scissors },
+  { name: 'Stem Split',    credits: '0-5', icon: Scissors },
   { name: 'Loops',         credits: 7,  icon: Repeat },
   { name: 'Audio Boost',   credits: 1,  icon: Volume2 },
   { name: 'Extract Audio', credits: 1,  icon: Wand2 },
-  { name: 'Video→Audio',   credits: 2,  icon: Video },
+  { name: 'Video\u2192Audio',   credits: 4,  icon: Video },
 ]
 
 function calcCharge(amountUsd: number, currency: 'INR' | 'USD') {
@@ -758,7 +758,9 @@ export default function PricingPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-bold text-cyan-400">{item.credits} cr</span>
-                    <span className="text-xs text-gray-500 ml-1">(${(item.credits * CREDIT_RATE).toFixed(3)})</span>
+                    {typeof item.credits === 'number' && (
+                      <span className="text-xs text-gray-500 ml-1">(${(item.credits * CREDIT_RATE).toFixed(3)})</span>
+                    )}
                   </div>
                 </div>
               ))}

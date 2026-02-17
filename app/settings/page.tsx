@@ -446,11 +446,11 @@ function SettingsPageInner() {
                   { name: 'Song', cost: 2 },
                   { name: 'Cover Art', cost: 1 },
                   { name: 'Sound Effect', cost: 2 },
-                  { name: 'Stem Split', cost: 5 },
+                  { name: 'Stem Split', cost: '0-5' },
                   { name: 'Loops', cost: 7 },
                   { name: 'Audio Boost', cost: 1 },
                   { name: 'Extract', cost: 1 },
-                  { name: 'Video to Audio', cost: 2 },
+                  { name: 'Video to Audio', cost: 4 },
                 ].map((item) => (
                   <div key={item.name} className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-lg">
                     <span className="text-xs text-gray-400">{item.name}</span>

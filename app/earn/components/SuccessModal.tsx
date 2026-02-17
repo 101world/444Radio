@@ -103,7 +103,7 @@ export default function SuccessModal({ track, splitJobId, stemStatus, onClose }:
                   <RefreshCw size={16} className="text-amber-400" />
                   <span className="text-sm font-semibold text-amber-300">Stem Split Failed — Credits Refunded</span>
                 </div>
-                <p className="text-xs text-gray-400">The stem splitting service is temporarily overloaded. Your 5 stem credits have been refunded. You can try again from your Library.</p>
+                <p className="text-xs text-gray-400">The stem splitting service is temporarily overloaded. Your stem credits have been refunded. You can try again from your Library.</p>
               </div>
             )}
             {stemStatus === 'failed' && (

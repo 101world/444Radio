@@ -788,7 +788,7 @@ export default function MediaUploadModal({ isOpen, onClose, onSuccess, onStart, 
                       <p className="text-gray-400 text-xs mt-1">Upload your audio file — you&apos;ll choose the stem, model & format in the next step</p>
                     </div>
                   </div>
-                  <p className="text-emerald-400 font-semibold text-xs">Cost: 1-3 credits per stem</p>
+                  <p className="text-emerald-400 font-semibold text-xs">Core: FREE · Extended/Float32: 1 cr/stem · Heat: 5 cr</p>
                 </div>
               )}
 

@@ -30,7 +30,7 @@ export async function GET() {
       image: { cost: 1, description: 'Cover art / AI image' },
       effects: { cost: 2, description: 'Sound effects (SFX)' },
       loops: { cost: '6-7', description: 'BPM-locked loops (1-2 variations)' },
-      stems: { cost: 5, description: 'Stem extraction (vocals, drums, bass, etc.)' },
+      stems: { cost: '0-5', description: 'Stem extraction — Core free (int16/int24 WAV), Extended 1cr/stem, Heat 5cr' },
       'audio-boost': { cost: 1, description: 'Mix & master audio' },
       extract: { cost: 1, description: 'Extract audio from video/audio' },
       'video-to-audio': { cost: '2-10', description: 'Generate synced SFX from video' },
